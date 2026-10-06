@@ -7,20 +7,14 @@ open global.Ranvier
 module Dom =
     type Modifier = HTMLElement -> unit
 
-    [<Global "window">]
-    let window: Window = jsNative
-
-    [<Global "document">]
-    let document: Document = jsNative
-
     let createElement (name: string) : HTMLElement =
-        document.createElement name
+        Global.document.createElement name
 
     let text (value: string) : Node =
-        document.createTextNode value
+        Global.document.createTextNode value
 
     let reactiveText (read: unit -> string) : Node =
-        let node = document.createTextNode ""
+        let node = Global.document.createTextNode ""
         DomContext.bind read (fun value -> node.data <- value)
         node
 

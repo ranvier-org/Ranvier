@@ -7,8 +7,10 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="Microtask.fs"/>
-        <Compile Include="DomScheduling.fs"/>
+        <Compile Include="Global.fs" />
+        <Compile Include="Types\DomQueue.Microtask.fs" />
+        <Compile Include="Types\DomScheduling.fs" />
+        <Compile Include="Types\Component.fs" />
         <Compile Include="Dom.fs"/>
         <Compile Include="Mount.fs"/>
     </ItemGroup>
@@ -18,6 +20,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <PackageReference Include="Xantham.Fable.Core" Version="0.1.0" />
       <PackageReference Include="Xantham.Fable.Core.TS" Version="0.1.0" />
       <PackageReference Update="FSharp.Core" Version="10.1.401" />
     </ItemGroup>

@@ -1,8 +1,8 @@
-namespace Fable.Ranvier
+﻿namespace Fable.Ranvier
 
-open System.Collections.Generic
 open Fable.Core
-open global.Ranvier
+open Ranvier
+open System.Collections.Generic
 
 type internal DomQueue(graph: Graph) as this =
     let pending = Dictionary<int, unit -> unit>()
