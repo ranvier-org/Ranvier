@@ -369,8 +369,29 @@ let private ancestorReentry () =
         fixture.Dispose ()
         equal 1.0 host.childNodes.length)
 
+let private attachmentPhases () =
+    let root = Scope (ignore, ignore)
+    let child = root.Child ignore
+    equal SettingUp root.Phase
+    root.MarkAttached ()
+    equal Attached child.Phase
+    let later = root.Child ignore
+    equal SettingUp later.Phase
+    later.MarkAttached ()
+    root.Dispose ()
+    equal Disposed child.Phase
+    let mutable rejected = false
+
+    try
+        child.MarkAttached ()
+    with :? InvalidOperationException ->
+        rejected <- true
+
+    equal true rejected
+
 let cases: (string * (unit -> unit)) array =
     [|
+        "attachment cannot revive disposed scopes", attachmentPhases
         "child cleanup may dispose a live ancestor while attached", ancestorReentry
         "explicit mount disposal preserves attached cleanup", fun () -> disposalPath "explicit"
         "core owner disposal preserves attached cleanup", fun () -> disposalPath "owner"

@@ -1,9 +1,15 @@
 namespace Ranvier.View.Foundation
 
+type ScopePhase =
+    | SettingUp
+    | Attached
+    | Disposed
+
 type Scope private (report: exn list -> unit, release: unit -> unit, parent: Scope option, drain: ResizeArray<Scope> option ref) =
     let children = ResizeArray<Scope>()
     let callbacks = ResizeArray<unit -> unit>()
     let mutable disposed = false
+    let mutable attached = false
     let mutable failures: exn list = []
 
     new(report, release) = Scope (report, release, None, ref None)
@@ -86,6 +92,23 @@ type Scope private (report: exn list -> unit, release: unit -> unit, parent: Sco
                         report failures
                     with error ->
                         failures <- failures @ [ error ]
+
+    member this.MarkAttached() =
+        this.EnsureLive ()
+
+        if attached then
+            raise (System.InvalidOperationException "Renderer scope is already attached")
+
+        attached <- true
+
+        for child in children do
+            if not child.IsDisposed && child.Phase = SettingUp then
+                child.MarkAttached ()
+
+    member _.Phase =
+        if disposed then Disposed
+        elif attached then Attached
+        else SettingUp
 
     member _.IsDisposed = disposed
     member _.ChildCount = children.Count
