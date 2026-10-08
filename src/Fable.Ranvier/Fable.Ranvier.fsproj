@@ -10,7 +10,6 @@
         <Compile Include="Global.fs" />
         <Compile Include="Types\DomQueue.Microtask.fs" />
         <Compile Include="Types\DomScheduling.fs" />
-        <Compile Include="Types\Component.fs" />
         <Compile Include="Dom.fs"/>
         <Compile Include="Mount.fs"/>
     </ItemGroup>
