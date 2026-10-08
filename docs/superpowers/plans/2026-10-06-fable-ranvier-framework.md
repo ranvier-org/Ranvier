@@ -10,13 +10,13 @@
 
 **Spec:** [framework brief](../specs/2026-10-06-fable-ranvier-framework-brief.md). **Tradeoffs and risk IDs:** [variants and gotchas](../specs/2026-10-06-fable-ranvier-framework-variants-and-risks.md).
 
-Status: Task 1 audited on 2026-10-08; later runtime tasks remain proposed. See the [baseline report](../../research/2026-10-08-fable-ranvier-baseline.md) for fresh results and known whole-solution/Fable-test failures. The user selected explicit typed functions; the [DSL design](../specs/2026-10-08-ranvier-view-dsl-design.md) is a draft for review. File names below are proposed seams; verify existing symbols before choosing final names. API descriptions are design sketches, not compiler-validated signatures.
+Status: Task 1 audited on 2026-10-08; later runtime tasks remain proposed. See the [baseline report](../../research/2026-10-08-fable-ranvier-baseline.md) for fresh results and known whole-solution/Fable-test failures. The user approved explicit typed functions subject to extreme performance and efficient Oxpecker-style or Feliz-style sugar; the [DSL design](../specs/2026-10-08-ranvier-view-dsl-design.md) records the proof requirements. File names below are proposed seams; verify existing symbols before choosing final names. API descriptions are design sketches, not compiler-validated signatures.
 
 ## Global constraints
 
 - Preserve explicit core policies and plugin independence. Do not add silent scheduling, ownership inference, implicit async retention or automatic memoization.
 - Follow repository AGENTS.md. Use fslangmcp `check` before symbol queries and `fcs_refactor_impact` before public-signature changes. If required tools are missing, follow the repository setup-permission instructions.
-- Read the SageFs and XML documentation skills before applicable F# changes. Do not restart the previously stopped SageFs daemon without user authorization. Use the CLI for final acceptance.
+- Read the SageFs and XML documentation skills before applicable F# changes. The user has started the SageFs daemon; do not stop, restart or reinstall it without user authorization. Use the CLI for final acceptance.
 - Keep microtask implementation separate. Preserve legacy behavior only through documented explicit compatibility configuration or a named adapter.
 - Do not claim Solid parity before equivalent production benchmarks. Do not let optimization change observable identity or timing.
 - Run the full repository acceptance suite at release gates, not just filtered tests. Determine the current build-runner command from its help before execution.
@@ -34,7 +34,7 @@ The highest-risk seams are child-first cleanup over current core semantics, stat
 - `src/Fable.Ranvier/Runtime/Binding.fs`: tracked read/untracked write, committed equality and status handling.
 - `src/Fable.Ranvier/Runtime/Branch.fs` and `Runtime/KeyedList.fs`: retained identity and structural updates.
 - Existing `Types/DomScheduling.fs` and `Types/DomQueue.Microtask.fs`: scheduler interface and optional queue strategy, evolving after audit.
-- Existing `Types/Component.fs`, `Dom.fs` and `Mount.fs`: audit and migrate existing responsibilities; avoid parallel competing component APIs.
+- Existing `Dom.fs` and `Mount.fs`: audit and migrate existing responsibilities; avoid parallel competing component APIs. The empty `Types/Component.fs` placeholder was removed in the checkpoint.
 - `src/Fable.Ranvier/Dom/Attributes.fs`, `Properties.fs`, `Events.fs`, `Lifecycle.fs`: typed browser surface over the runtime.
 - Future `src/Ranvier.View/` and `src/Ranvier.Html/`: possible extraction of portable contracts and server interpreter, only after the portability experiment justifies the package split.
 - `examples/Fable.Ranvier.Playground/tests/`: expand the existing tests, registering new F# files in `DomTests.fsproj` and generated test entry points in existing JS runners.
@@ -59,14 +59,18 @@ Execution record: starting checkpoint `174f07649f38b1ff7a3ebc60c6c3fb9f290d1cb0`
 
 Contracts: C01, C03, C09. Variants: V01, V03. Risks: G03, G11, G12, G15. This is a blocking experiment.
 
+The [focused lifetime proof plan](2026-10-08-renderer-lifetime-proof.md) executes the disposal gate first. Representation, portability and sugar measurements follow its result; completing that focused plan does not complete all of Task 2.
+
 - [ ] Write lifecycle trace tests first: nested children clean up before parent while nodes remain attached; a throwing child does not prevent other cleanup/removal; disposal repeats are harmless.
 - [ ] Run the same traces through mount disposal, graph disposal, failed setup and owner disposal during reactive reruns. Include two mounts sharing one graph.
 - [ ] Prototype the renderer child registry. If any entry point bypasses the ordering guarantee, document the failure and evaluate a core extension with refactor-impact analysis; do not conceal it behind only mount-level tests.
 - [ ] Prototype a small portable instruction definition and a backend-neutral executable definition for the same component, fragment, text binding and keyed branch.
 - [ ] Interpret a static selection on .NET into escaped HTML and instantiate the equivalent definition in Fable. Prove browser refs cannot accidentally be required by the portable setup surface.
 - [ ] Measure definition/instance allocations and mount cost in Release JS; inspect generated closure/DU dispatch. Choose A or B from V01 and record the reason.
+- [ ] Compare equivalent direct-function, function-sugar and builder-sugar examples in both representations. Separate construction, mount, update and disposal measurements; include static-heavy trees, sibling-heavy trees, nested fragments and repeated independent mounts. Inspect generated JS and report residual wrapper work before selecting the core representation.
+- [ ] Assert static content creates no reactive machinery and a scalar update touches only its binding target. Sugar must preserve setup counts, owners, observers, listeners and scheduling waves. Establish numerical regression budgets from repeated baseline runs before public API freeze.
 
-**Exit:** both lifecycle and portability proofs pass. If not, revise the proposed representation before public API freeze. The HTML proof is not yet a production SSR renderer.
+**Exit:** lifecycle, portability and performance/sugar proofs pass. If not, revise the proposed representation before public API freeze. The HTML proof is not yet a production SSR renderer; the sugar probes are not complete ergonomic libraries.
 
 ## Task 3 — Implement scopes, ranges and explicit mount policies
 
@@ -172,6 +176,7 @@ Contracts: C09. Risks: G02, G09, G11–G13. Depends on portable proof and stable
 Contracts: C10. Variant: V06. Risk: G14. Depends on settled runtime contracts.
 
 - [ ] Add optional ergonomic wrappers that select clearly documented policies and expand to explicit operations.
+- [ ] Recheck complete Oxpecker-style or Feliz-style authoring wrappers against Task 2's direct-function baseline: equivalent resource counts and update paths, with construction overhead and bundle contribution reported separately. Preserve the measured regression budgets.
 - [ ] Prototype CE control flow using actual F# compiler behavior; verify nested selection and continuations rather than relying on surface syntax assumptions.
 - [ ] Add Fable plugin golden-output and behavioral-equivalence tests for setup count, prop reads, nested branches, cleanup, pending/error outcomes and timing.
 - [ ] Measure static-template specialization and generated bundle size against the plugin-free baseline. Keep a complete no-plugin test application permanently.

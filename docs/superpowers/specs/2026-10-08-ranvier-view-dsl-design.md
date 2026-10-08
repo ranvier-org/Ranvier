@@ -1,6 +1,6 @@
 # Ranvier view DSL design
 
-Date: 2026-10-08. Status: draft for review. No proposed API below has been implemented or compiler-validated.
+Date: 2026-10-08. Status: typed-function direction approved, conditional on the performance proof below. No proposed API below has been implemented or compiler-validated.
 
 Baseline: `174f07649f38b1ff7a3ebc60c6c3fb9f290d1cb0` (`chore: checkpoint DOM PoC and framework design`). This design refines the [framework brief](2026-10-06-fable-ranvier-framework-brief.md), especially C01, C02, C04, C07, C09 and C10. The existing [implementation plan](../plans/2026-10-06-fable-ranvier-framework.md) remains the delivery sequence; this document does not authorize skipping its lifecycle and portability proofs.
 
@@ -64,6 +64,20 @@ The experiment must prove: no DOM at definition construction; independent instan
 
 An initial SageFs audit of the existing core on 2026-10-08 returned `parent -> child` for a parent root containing a child root. This confirms the known incompatibility with the renderer's child-first contract. A renderer adapter must be proved across disposal entry points before a public view representation or component interface is frozen. This audit is not the new adapter proof.
 
+## Performance and sugar contract
+
+The user's approval is conditional: the core DSL must be extremely performant and support Oxpecker-style or Feliz-style sugar over it. These names describe desired authoring styles, not a commitment to depend on either library. Ergonomic wrappers must lower into the same definitions and runtime operations with the same policies.
+
+Separate four costs: definition construction, mounted-instance creation, steady-state reactive updates and disposal. Reusable definitions may allocate lists, descriptors or closures; measure those costs rather than promising allocation-free F# authoring. Reuse must amortize definition construction without sharing mounted resources. Static content creates no reactive observers, memos or scheduler entries.
+
+Mounting may interpret a definition once. A scalar binding update must reach its mounted target directly, without walking the view, rebuilding modifier/child lists or rerunning component setup. Neither sugar nor typed helper dispatch may introduce additional mounted owners, reactive computations, listener registrations or scheduling waves. Avoid reflection and runtime property-name lookup in typed property/event helpers; inspect generated Fable JavaScript to verify the actual lowering.
+
+Before choosing a representation, compare the instruction and build-program candidates with identical DOM, ownership and policies. Include static-heavy trees, many small siblings, nested fragments, repeated independent mounts of a reusable definition, text/property updates and repeated mount/dispose cycles. Measure construction separately from mounting, and direct updates separately from construction. Use the existing PoC operations as a reactive baseline and equivalent direct DOM operations to expose abstraction overhead; neither comparison alone establishes framework parity.
+
+Add tiny function-style and builder-style sugar probes during the foundation experiment, before implementing complete sugar libraries. Compare their Release JavaScript with direct typed-function authoring. Check semantics, definition allocations, mounted allocations, update work and bundle contribution. F# `inline`, generic specialization and builder syntax are hypotheses to verify, not guarantees of erasure. Any residual wrapper allocation or dispatch must be reported and either removed or explicitly accepted; do not label a wrapper zero-cost from syntax alone.
+
+Report repeated-run timings and variability, operation/resource counts, and allocation evidence where the tooling supports it. Keep noisy heap observations separate from exact counters. Set numerical regression budgets from the measured baseline before public API freeze. A representation is not accepted merely because it passes correctness tests or wins one mount benchmark.
+
 ## Generation relationship
 
 Begin with a handwritten representative HTML subset. A later generator can produce the same constructors and modifiers. The [Wire-based option](../../research/xantham-ranvier-dom-evaluation.md#alternative-minimal-generator-over-xanthamtypescriptwire), currently discussed in [Xantham #110](https://github.com/shayanhabibi/Xantham/issues/110), must preserve this surface and its runtime contracts.
@@ -72,6 +86,6 @@ Reuse Xantham's native bindings, including `HTMLInputElement` and non-element re
 
 ## Review and acceptance
 
-Review the constructor shape, the distinction between reusable definitions and mounted elements, and the explicit static/reactive/policy vocabulary. Exact helper names remain illustrative until the compiler/portability experiment selects workable signatures; this is an explicit experiment scope, not a claim of an existing API.
+The user approved the constructor direction subject to the performance and sugar contract above. Exact helper names remain illustrative until the compiler/portability experiment selects workable signatures; this is an explicit experiment scope, not a claim of an existing API.
 
-After design approval, narrow Task 2's implementation plan around the handwritten subset and representation/disposal proofs. Keep existing PoC behavior available while testing the foundation. No runtime implementation belongs in this design checkpoint.
+Narrow Task 2's implementation plan around the handwritten subset, representation/disposal proofs and sugar overhead probes. Keep existing PoC behavior available while testing the foundation. No runtime implementation belongs in this design checkpoint.

@@ -25,6 +25,7 @@ node_modules/
 /fable/**/fable_modules/
 
 .superpowers/
+.worktrees/
 .serena/
 *.user
 
