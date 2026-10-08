@@ -55,6 +55,20 @@ let private invalid message =
 let private same a b =
     obj.ReferenceEquals (a, b)
 
+[<Emit("new WeakSet()")>]
+let private createClaims () : obj = jsNative
+
+let private claims = createClaims ()
+
+[<Emit("$0.add($1)")>]
+let private claim (registry: obj) (node: Node) : unit = jsNative
+
+[<Emit("$0.delete($1)")>]
+let private unclaim (registry: obj) (node: Node) : unit = jsNative
+
+[<Emit("(() => { for (let p = $1; p; p = p.parentNode) { if ($0.has(p)) return true; } if (!$1.firstChild) return false; const pending = Array.from($1.childNodes); while (pending.length) { const n = pending.pop(); if ($0.has(n)) return true; for (let c = n.firstChild; c; c = c.nextSibling) pending.push(c); } return false; })()")>]
+let private overlaps (registry: obj) (node: Node) : bool = jsNative
+
 type private Entry =
     {
         Node: Node
@@ -72,6 +86,8 @@ type private OwnedRange(host: Node) =
         staging.appendChild last |> ignore
         entries.Add { Node = first; Restore = None }
         entries.Add { Node = last; Restore = None }
+        claim claims first
+        claim claims last
 
     member _.Staging = staging
 
@@ -79,12 +95,8 @@ type private OwnedRange(host: Node) =
         if contains node host || contains node staging then
             invalid "A native node cannot contain its mount host or range"
 
-        for entry in entries do
-            if
-                contains entry.Node node
-                || contains node entry.Node
-            then
-                invalid "Native ownership overlaps an existing range entry"
+        if overlaps claims node then
+            invalid "Native ownership overlaps a live mount"
 
         let restore =
             match ownership with
@@ -103,6 +115,7 @@ type private OwnedRange(host: Node) =
                         insert parent node before)
 
         entries.Insert (entries.Count - 1, { Node = node; Restore = restore })
+        claim claims node
         insert staging node (Some last)
 
     member private _.Validate() =
@@ -180,6 +193,8 @@ type private OwnedRange(host: Node) =
                 | None -> remove entry.Node
             with error ->
                 errors.Add error
+
+            unclaim claims entry.Node
 
         entries.Clear ()
 
