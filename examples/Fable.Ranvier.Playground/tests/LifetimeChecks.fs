@@ -49,6 +49,7 @@ type private Fixture =
         Parent: HTMLElement
         Child: HTMLElement
         Scope: Scope
+        ChildScope: Scope
         Owner: Owner
         Set: int -> unit
         Writes: unit -> int
@@ -144,6 +145,7 @@ let private createFixture (graph: Graph) (host: HTMLElement) (trace: ResizeArray
         Parent = parent
         Child = child
         Scope = scope
+        ChildScope = childScope
         Owner = owner
         Set = fun value -> graph.Run (fun () -> signal.Value <- value)
         Writes = fun () -> writes
@@ -353,8 +355,23 @@ let private unlinkChildren () =
     equal false parent.IsDisposed
     parent.Dispose ()
 
+let private ancestorReentry () =
+    withHost (fun host _ ->
+        use graph = new Graph ()
+        let trace = ResizeArray<string>()
+        let fixture = createFixture graph host trace "root" normal
+        fixture.ChildScope.OnCleanup (fixture.Scope.Dispose)
+        fixture.ChildScope.OnCleanup (fun () -> same host fixture.Parent.parentNode.Value)
+        fixture.ChildScope.Dispose ()
+        equal (expected "root") (List.ofSeq trace)
+        equal [] fixture.ChildScope.Failures
+        equal true fixture.Scope.IsDisposed
+        fixture.Dispose ()
+        equal 1.0 host.childNodes.length)
+
 let cases: (string * (unit -> unit)) array =
     [|
+        "child cleanup may dispose a live ancestor while attached", ancestorReentry
         "explicit mount disposal preserves attached cleanup", fun () -> disposalPath "explicit"
         "core owner disposal preserves attached cleanup", fun () -> disposalPath "owner"
         "graph disposal preserves attached cleanup", fun () -> disposalPath "graph"

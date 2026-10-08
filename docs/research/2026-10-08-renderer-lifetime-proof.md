@@ -6,7 +6,7 @@ Date: 2026-10-08. Branch: `experiment/renderer-lifetime`, based on `ed53ab470857
 
 A renderer-local registry can deliver child-first attached cleanup over the current parent-first core using existing cleanup hooks. The tested entry points pass without changing a shipping library API or core disposal semantics. The prototype lives in `experiments/Ranvier.View.Foundation/Lifetime.fs`; only the playground test project compiles it. This is evidence for the adapter design, not a production renderer or a performance claim.
 
-The registry marks its entire subtree inactive, executes callbacks in postorder, then releases DOM in a separate postorder pass. Parent cleanup therefore still sees its child DOM attached. Cleanup, release and reporting exceptions are collected; repeated and reentrant disposal are harmless. Disposed children unlink from a retained parent's registry.
+The registry marks its entire subtree inactive, executes callbacks in postorder, then releases DOM in a separate postorder pass. A shared drain coordinates nested disposal within one scope tree: an ancestor disposal requested by an independently disposing child joins the active drain, and its cleanup waits for that child's remaining callbacks. Newly queued cleanup completes before further release. Parent cleanup therefore still sees its child DOM attached in the cleanup-reentry regression. Cleanup, release and reporting exceptions are collected; repeated and tested reentrant disposal are harmless. Disposed children unlink from a retained parent's registry.
 
 The browser fixture registers parent and child adapters with their corresponding `Api.onCleanup` hooks. An enclosing effect also registers the instance adapter directly. Explicit disposal drains the adapter before disposing its core owner. Failed setup explicitly drains both in its catch path and rethrows the original exception; it does not assume `createRoot` unwinds arbitrary renderer resources by itself.
 
@@ -29,6 +29,8 @@ Failed setup produces the same teardown trace, removes acquired DOM, stops the a
 
 Reentrant disposal adds no duplicate work. Registration during teardown raises `InvalidOperationException`. A retained parent has zero registered children after 1000 independently created/disposed children, on both .NET and Fable. This registry-count check does not establish heap collection.
 
+The independent review found that the initial algorithm covered root-to-root reentry but failed child-to-live-ancestor reentry: parent removal preceded the child's remaining cleanup. Pure .NET, SageFs and jsdom regressions reproduced it. The shared-drain correction now yields `child-first`, `child-second`, `parent`, `remove-child`, `remove-parent`; the browser regression also asserts native attachment and repeated disposal. No other review findings remained.
+
 Independent core roots do not have a renderer-relative disposal order: the graph ran the later-created fixture first in the failure case. Tests assert each root's exact descendant ordering without promising ordering between independent mounts.
 
 ## Test-first evidence and cross-runtime finding
@@ -41,8 +43,8 @@ Fable's generated `invalidOp` did not create a catchable `InvalidOperationExcept
 
 ## Fresh verification
 
-- `rtk proxy dotnet fsi experiments/Ranvier.View.Foundation/LifetimeChecks.fsx`: 7/7 pure checks pass; also evaluated in SageFs.
-- `rtk proxy npm --prefix examples/Fable.Ranvier.Playground test`: 55/55 Node/jsdom tests and 12/12 Chromium tests pass. The new Chromium test executes all nine lifetime cases.
+- `rtk proxy dotnet fsi experiments/Ranvier.View.Foundation/LifetimeChecks.fsx`: 8/8 pure checks pass; also evaluated in SageFs.
+- `rtk proxy npm --prefix examples/Fable.Ranvier.Playground test`: 56/56 Node/jsdom tests and 12/12 Chromium tests pass. The new Chromium test executes all ten lifetime cases.
 - `rtk proxy dotnet build examples/Fable.Ranvier.Playground/tests/DomTests.fsproj --configuration Release`: passes, zero warnings/errors.
 - Fresh fslangmcp project check of `DomTests.fsproj`: clean, zero warnings/errors. Earlier semantic queries followed a clean scoped check.
 - `rtk proxy npm --prefix examples/Fable.Ranvier.Playground run build`: passes; application bundle remains 48.90 kB, gzip 14.42 kB. The experiment is test-only and is not included in that application bundle.
@@ -53,7 +55,7 @@ Environment: Node v26.7.0, Fable 5.18.0, Chromium 153.0.8010.12, Vite 8.3.2; loc
 
 ## Allocation and scalability evidence
 
-Inspected the generated Release `Lifetime.js`. A scope allocates an object and two arrays (children/callbacks). Each first disposal allocates postorder and error arrays. Fable emits enumerator helpers for traversal, collection removal helpers for unlinking, and error-list conversion. The registry imports no Ranvier graph/effect/scheduler implementation and creates no reactive machinery itself. The fixture's deliberately created observers are separate core resources.
+Inspected the generated Release `Lifetime.js`. A scope allocates an object and two arrays (children/callbacks), with one shared drain reference cell per root tree. Each outermost first disposal allocates postorder and error arrays; nested requests reuse the active postorder storage. Fable emits enumerator helpers for collection and callbacks, collection removal helpers for unlinking, and error-list conversion; the drain itself uses indexed loops. The registry imports no Ranvier graph/effect/scheduler implementation and creates no reactive machinery itself. The fixture's deliberately created observers are separate core resources.
 
 Postorder storage is O(n) in the disposed subtree, with recursion proportional to depth. Unlinking uses linear search/removal. Disposing a wide retained parent currently performs repeated removal/array shifts and can cost O(n²) across siblings. These are known prototype costs to address or reject in the performance experiment, not acceptable evidence of an extremely performant production DSL. No heap allocation byte counts or wall-clock comparison were measured here.
 

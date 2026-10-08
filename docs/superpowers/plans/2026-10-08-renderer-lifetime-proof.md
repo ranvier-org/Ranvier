@@ -4,7 +4,7 @@
 
 **Goal:** prove a renderer-local child-first cleanup adapter over the current parent-first Ranvier core, before selecting the performant view representation.
 
-**Architecture:** an experimental scope registry owns renderer callbacks and DOM release operations. Register its disposal with the existing core cleanup hook; drain descendant callbacks before parent callbacks, then release DOM. All scopes in a drained subtree become inactive before callbacks run, preventing duplicate or reentrant cleanup.
+**Architecture:** an experimental scope registry owns renderer callbacks and DOM release operations. Register its disposal with the existing core cleanup hook; drain descendant callbacks before parent callbacks, then release DOM. All scopes in a drained subtree become inactive before callbacks run. A shared active drain coordinates overlapping child-to-ancestor disposal requests so reentry cannot detach unfinished cleanup.
 
 **Tech Stack:** F#, Ranvier, Fable Release output, existing Node/jsdom and Chromium harnesses; SageFs for pure logic/type probes, CLI for acceptance.
 
@@ -114,59 +114,92 @@ Run: `rtk proxy dotnet fsi experiments/Ranvier.View.Foundation/LifetimeChecks.fs
 ```fsharp
 namespace Ranvier.View.Foundation
 
-type Scope private
-    (report: exn list -> unit, release: unit -> unit, parent: Scope option) =
+type Scope private (report: exn list -> unit, release: unit -> unit, parent: Scope option, drain: ResizeArray<Scope> option ref) =
     let children = ResizeArray<Scope>()
     let callbacks = ResizeArray<unit -> unit>()
     let mutable disposed = false
     let mutable failures: exn list = []
 
-    new(report, release) = Scope(report, release, None)
+    new(report, release) = Scope (report, release, None, ref None)
 
-    member private _.RemoveChild(child) = children.Remove child |> ignore
+    member private _.RemoveChild(child) =
+        children.Remove child |> ignore
 
     member private _.EnsureLive() =
-        if disposed then invalidOp "Renderer scope is disposed"
+        if disposed then
+            raise (System.InvalidOperationException "Renderer scope is disposed")
 
     member this.Child(childRelease: unit -> unit) =
-        this.EnsureLive()
-        let child = Scope(report, childRelease, Some this)
+        this.EnsureLive ()
+        let child = Scope (report, childRelease, Some this, drain)
         children.Add child
         child
 
     member this.OnCleanup(callback: unit -> unit) =
-        this.EnsureLive()
+        this.EnsureLive ()
         callbacks.Add callback
 
     member private this.Collect(order: ResizeArray<Scope>) =
         if not disposed then
             disposed <- true
-            for child in children do child.Collect order
+
+            for child in children do
+                child.Collect order
+
             order.Add this
 
     member private _.Clean(errors: ResizeArray<exn>) =
         for callback in callbacks do
-            try callback() with error -> errors.Add error
-        callbacks.Clear()
+            try
+                callback ()
+            with error ->
+                errors.Add error
+
+        callbacks.Clear ()
 
     member private this.Release(errors: ResizeArray<exn>) =
-        try release() with error -> errors.Add error
-        children.Clear()
+        try
+            release ()
+        with error ->
+            errors.Add error
+
+        children.Clear ()
+
         match parent with
         | Some owner -> owner.RemoveChild this
         | None -> ()
 
     member this.Dispose() =
         if not disposed then
-            let order = ResizeArray<Scope>()
-            let errors = ResizeArray<exn>()
-            this.Collect order
-            for scope in order do scope.Clean errors
-            for scope in order do scope.Release errors
-            failures <- List.ofSeq errors
-            if errors.Count > 0 then
-                try report failures
-                with error -> failures <- failures @ [ error ]
+            match drain.Value with
+            | Some order -> this.Collect order
+            | None ->
+                let order = ResizeArray<Scope>()
+                let errors = ResizeArray<exn>()
+                drain.Value <- Some order
+
+                try
+                    this.Collect order
+                    let mutable cleaned = 0
+                    let mutable released = 0
+
+                    while released < order.Count do
+                        while cleaned < order.Count do
+                            order[cleaned].Clean errors
+                            cleaned <- cleaned + 1
+
+                        order[released].Release errors
+                        released <- released + 1
+
+                    failures <- List.ofSeq errors
+                finally
+                    drain.Value <- None
+
+                if errors.Count > 0 then
+                    try
+                        report failures
+                    with error ->
+                        failures <- failures @ [ error ]
 
     member _.IsDisposed = disposed
     member _.ChildCount = children.Count
@@ -296,6 +329,8 @@ rtk proxy dotnet build Ranvier.slnx --configuration Release
 - [x] Commit the integration checks, runner changes and report: `rtk git commit -m "test: prove renderer lifetime ordering across disposal paths"` after staging the named files and passing the relevant checks.
 
 ## Exit and next plan
+
+Execution completed on 2026-10-08. Independent review found an ancestor-reentry defect in the initial candidate; pure and browser regressions reproduced it, and the shared-drain correction passed 8 pure checks, 56 Node checks and 12 Chromium tests. See the [evidence report](../../research/2026-10-08-renderer-lifetime-proof.md). Candidate code above reflects the verified correction.
 
 This plan covers only the lifetime gate within framework Task 2. Do not mark all of Task 2 complete. A passing adapter permits the next focused plan: compare instruction-tree versus build-program representations, prove typed modifiers and escaped .NET output, then measure direct authoring and tiny Oxpecker-style/Feliz-style sugar probes under identical policies. Representation selection must include lifetime bookkeeping costs from this proof.
 

@@ -1,12 +1,12 @@
 namespace Ranvier.View.Foundation
 
-type Scope private (report: exn list -> unit, release: unit -> unit, parent: Scope option) =
+type Scope private (report: exn list -> unit, release: unit -> unit, parent: Scope option, drain: ResizeArray<Scope> option ref) =
     let children = ResizeArray<Scope>()
     let callbacks = ResizeArray<unit -> unit>()
     let mutable disposed = false
     let mutable failures: exn list = []
 
-    new(report, release) = Scope (report, release, None)
+    new(report, release) = Scope (report, release, None, ref None)
 
     member private _.RemoveChild(child) =
         children.Remove child |> ignore
@@ -17,7 +17,7 @@ type Scope private (report: exn list -> unit, release: unit -> unit, parent: Sco
 
     member this.Child(childRelease: unit -> unit) =
         this.EnsureLive ()
-        let child = Scope (report, childRelease, Some this)
+        let child = Scope (report, childRelease, Some this, drain)
         children.Add child
         child
 
@@ -57,23 +57,35 @@ type Scope private (report: exn list -> unit, release: unit -> unit, parent: Sco
 
     member this.Dispose() =
         if not disposed then
-            let order = ResizeArray<Scope>()
-            let errors = ResizeArray<exn>()
-            this.Collect order
+            match drain.Value with
+            | Some order -> this.Collect order
+            | None ->
+                let order = ResizeArray<Scope>()
+                let errors = ResizeArray<exn>()
+                drain.Value <- Some order
 
-            for scope in order do
-                scope.Clean errors
-
-            for scope in order do
-                scope.Release errors
-
-            failures <- List.ofSeq errors
-
-            if errors.Count > 0 then
                 try
-                    report failures
-                with error ->
-                    failures <- failures @ [ error ]
+                    this.Collect order
+                    let mutable cleaned = 0
+                    let mutable released = 0
+
+                    while released < order.Count do
+                        while cleaned < order.Count do
+                            order[cleaned].Clean errors
+                            cleaned <- cleaned + 1
+
+                        order[released].Release errors
+                        released <- released + 1
+
+                    failures <- List.ofSeq errors
+                finally
+                    drain.Value <- None
+
+                if errors.Count > 0 then
+                    try
+                        report failures
+                    with error ->
+                        failures <- failures @ [ error ]
 
     member _.IsDisposed = disposed
     member _.ChildCount = children.Count

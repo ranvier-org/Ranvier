@@ -16,8 +16,41 @@ let rejects action =
 
     equal true rejected
 
+let ancestorReentry () =
+    let trace = ResizeArray<string>()
+    let mutable attached = true
+
+    let parent =
+        Scope (
+            ignore,
+            fun () ->
+                trace.Add "remove-parent"
+                attached <- false
+        )
+
+    let child = parent.Child (fun () -> trace.Add "remove-child")
+
+    child.OnCleanup (fun () ->
+        trace.Add "child-first"
+        parent.Dispose ())
+
+    child.OnCleanup (fun () ->
+        equal true attached
+        trace.Add "child-second")
+
+    parent.OnCleanup (fun () ->
+        equal true attached
+        trace.Add "parent")
+
+    child.Dispose ()
+    equal [ "child-first"; "child-second"; "parent"; "remove-child"; "remove-parent" ] (List.ofSeq trace)
+    equal [] child.Failures
+    parent.Dispose ()
+    equal 0 parent.ChildCount
+
 let cases =
     [|
+        "child cleanup may dispose a live ancestor", ancestorReentry
         "postorder, failure and reentrant disposal",
         fun () ->
             let trace = ResizeArray<string>()
