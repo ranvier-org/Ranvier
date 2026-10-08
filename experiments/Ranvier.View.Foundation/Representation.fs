@@ -138,20 +138,37 @@ module Html =
 
                 member _.Element(tag, tokens, children) =
                     append ("<" + name tag)
+                    let attributes = System.Collections.Generic.Dictionary<string, string>()
+                    let keys = ResizeArray<string>()
+
+                    let set key value =
+                        if not (attributes.ContainsKey key) then
+                            keys.Add key
+
+                        attributes[key] <- value
 
                     for token in tokens do
                         match token with
                         | Attribute (key, value) ->
                             validateAttribute key
-                            append (" " + key + "=\"" + escape true value + "\"")
+                            set key value
                         | InputValue value ->
                             if tag <> Input then
                                 invalidArg "tokens" "Input value requires input"
 
-                            append (" value=\"" + escape true value + "\"")
+                            set "value" value
                         | Browser _ ->
                             if policy = Reject then
                                 invalidOp "Browser capability requires explicit Omit policy"
+
+                    for key in keys do
+                        append (
+                            " "
+                            + key
+                            + "=\""
+                            + escape true attributes[key]
+                            + "\""
+                        )
 
                     append ">"
 
@@ -161,20 +178,28 @@ module Html =
 
                 member _.Component setup =
                     let cleanups = ResizeArray<unit -> unit>()
+                    let mutable setupFailure: exn option = None
 
                     try
                         setup { OnCleanup = cleanups.Add }
-                    finally
-                        let errors = ResizeArray<exn>()
+                    with error ->
+                        setupFailure <- Some error
 
-                        for cleanup in cleanups do
-                            try
-                                cleanup ()
-                            with error ->
-                                errors.Add error
+                    let errors = ResizeArray<exn>()
 
-                        if errors.Count > 0 then
-                            raise (System.AggregateException (errors))
+                    for cleanup in cleanups do
+                        try
+                            cleanup ()
+                        with error ->
+                            errors.Add error
+
+                    match setupFailure, errors.Count with
+                    | None, 0 -> ()
+                    | Some error, 0 -> raise error
+                    | Some error, _ ->
+                        errors.Insert (0, error)
+                        raise (System.AggregateException (errors))
+                    | None, _ -> raise (System.AggregateException (errors))
             }
 
         build backend

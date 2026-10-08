@@ -14,22 +14,24 @@ Check escaping, browser capability rejection, independent mount ownership, setup
 
 ## Task 1 — Portable definitions and HTML
 
-- [ ] Add failing .NET tests for equivalent escaped HTML, fragments, snapshot bindings, independent component setup, failure cleanup and explicit browser policy.
-- [ ] Implement the two opaque representations against one backend contract and an HTML interpreter.
-- [ ] Prove typed modifiers accept input properties only on inputs and generic attributes on the selected native types using SageFs compiler probes.
-- [ ] Run all portable checks in Release; commit.
+- [x] Add failing .NET tests for equivalent escaped HTML, fragments, snapshot bindings, independent component setup, failure cleanup and explicit browser policy.
+- [x] Implement the two opaque representations against one backend contract and an HTML interpreter.
+- [x] Prove typed modifiers accept input properties only on inputs and generic attributes on the selected native types using SageFs compiler probes.
+- [x] Run all portable checks in Release; commit.
 
 ## Task 2 — Browser interpretation
 
-- [ ] Add failing jsdom/Chromium checks for reuse, component setup once, scalar update locality, static content without effects, event cleanup and failed setup unwind.
-- [ ] Implement one browser interpreter for both definitions using existing graph APIs and the proven lifetime adapter.
-- [ ] Run complete playground Node/browser suites and portable checks; commit.
+- [x] Add failing jsdom/Chromium checks for reuse, component setup once, scalar update locality, static content without effects, event cleanup and failed setup unwind.
+- [x] Implement one browser interpreter for both definitions using existing graph APIs and the proven lifetime adapter.
+- [x] Run complete playground Node/browser suites and portable checks; commit.
 
 ## Task 3 — Sugar and measurements
 
-- [ ] Compare direct, function sugar and builder sugar definitions with identical output and resource counts.
-- [ ] Measure Release definition allocations on .NET and browser construction, mount, update and disposal across static, wide, fragment and reused workloads; repeat independent browser processes.
-- [ ] Inspect generated JS, write evidence and a provisional recommendation, update framework progress honestly.
-- [ ] Run repository acceptance, get one independent whole-branch review, fix important findings with regression tests, commit.
+- [x] Compare direct, function sugar and builder sugar definitions with identical output and resource counts.
+- [x] Measure Release definition allocations on .NET and browser construction, mount, update and disposal across static, wide, fragment and reused workloads; repeat independent browser processes.
+- [x] Inspect generated JS, write evidence and a provisional recommendation, update framework progress honestly.
+- [x] Run repository acceptance, get one independent whole-branch review, fix important findings with regression tests, commit.
 
 **Acceptance:** portable checks, complete playground suites and Release builds pass; baseline whole-solution errors are reported separately. Representation choice remains provisional until keyed branches, status and retained heap gates are proven.
+
+Execution complete: see the evidence report for measurements, review findings/fixes and remaining framework gates. Commits begin at 504b1a2; Task 1 2cb30c6, Task 2 e7760c4, measurements e1cd2c3, followed by the portable edge fixes.

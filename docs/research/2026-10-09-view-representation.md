@@ -52,9 +52,19 @@ rtk proxy dotnet fsi build.fsx -- test --quick --configuration Release
 rtk proxy dotnet build Ranvier.slnx --configuration Release
 ```
 
-Portable checks pass. Playground acceptance passes 61 Node checks and 13 Chromium tests, with each representation browser case executed within the Chromium aggregate. Canonical .NET acceptance passes F# 938 and C# 81 tests on each of net8/net10 plus AOT smoke. The whole solution still fails on the baseline five FS0039 errors: IcedTasks, cancellableTask, Expect.isNotNull, testSequenced and Expect.hasLength in the Fable core-test project. Existing NU1608/xUnit warnings and the playground's two npm audit critical entries are unchanged.
+Portable checks pass. Playground acceptance passes 63 Node checks and 13 Chromium tests, with each representation browser case executed within the Chromium aggregate. Canonical .NET acceptance passes F# 938 and C# 81 tests on each of net8/net10 plus AOT smoke. The whole solution still fails on the baseline five FS0039 errors: IcedTasks, cancellableTask, Expect.isNotNull, testSequenced and Expect.hasLength in the Fable core-test project. Existing NU1608/xUnit warnings and the playground's two npm audit critical entries are unchanged.
 
 SageFs session fdf01aa5 was created for this worktree after its Debug build. Pure and compiler probes succeeded; hard reset/rebuild then loaded the persisted portable checks successfully. Source-file declarations initially required file-mode wrapping. The Python MCP client sometimes reported anyio.BrokenResourceError/ClosedResourceError while closing SSE after a successful structured evaluation; this did not invalidate the result. No daemon restart was performed.
+
+## Independent review and fixes
+
+A fresh-context read-only review found two Important portability defects and no Critical or deferred Minor findings. Repeated id/title/input-value modifiers now serialize their final effective value once, matching native DOM assignment. A component that fails during setup/render and cleanup now reports an aggregate containing the original failure followed by cleanup errors, while all cleanup callbacks still run; a setup-only failure is rethrown as the original object. Both findings were reproduced RED in the portable checks, fixed in SageFs, persisted and verified GREEN. Parsed HTML versus actual native input/id values is covered in both browser representations. An earlier expanded fragment test also caught and fixed clearing the root list inside the removal loop; multiple top-level nodes now release completely.
+
+Session e5ee1e46 was created for the fix probes and reset to verify persisted checks. Initial optimized-project health warnings concerned hot reload; the probes defined fresh pure code, and reset rebuilt the session without optimizations. Owned sessions were stopped through their exact dashboard session endpoints when the one-shot MCP client could not satisfy connection ownership; the user's daemon remained healthy.
+
+Timing data was collected before these correctness fixes. The HTML changes are absent from the timed browser path, and the root-release change preserves the measured one-root-per-mount fixture operations. These timings remain candidate evidence, not final production performance acceptance.
+
+Review rulings: retain the plan's deferrals for keyed branches, status/scheduling/reactive properties, JS allocation/instance/retained heap, strict timing budgets and minified contribution, wider HTML/sanitization/hydration/native event maps/package isolation, portable closure enforcement, CE/control-flow/full sugar, other browsers/larger components, lifetime scaling and direct DOM/old-PoC baselines. Those are explicit future gates rather than claims proved by this experiment. Cost if wrong: larger workloads or production semantics may change the representation decision or expose additional unsupported cases.
 
 ## Decision and follow-up
 

@@ -26,6 +26,12 @@ let private sameFirst (a: HTMLElement) (b: HTMLElement) : bool = jsNative
 [<Emit("$0.querySelector('button')")>]
 let private firstButton (node: HTMLElement) : HTMLButtonElement = jsNative
 
+[<Emit("$0.firstChild.id")>]
+let private firstId (node: HTMLElement) : string = jsNative
+
+[<Emit("$0.querySelector('input').value")>]
+let private firstValue (node: HTMLElement) : string = jsNative
+
 let private exercise (ops: Operations<'view>) run =
     use graph = new Graph ()
     let host = Dom.element "section" [] []
@@ -136,10 +142,31 @@ let private staticAndFailure (ops: Operations<'view>) run =
     equal true cleaned
     equal 1. host.childNodes.length
 
+let private portableModifiers (ops: Operations<'view>) run =
+    use graph = new Graph ()
+    let host = Dom.element "section" [] []
+    let parsed = Dom.element "section" [] []
+
+    let view =
+        Typed.div ops [ Typed.id "first"; Typed.id "last" ] [ Typed.input ops [ Typed.value "first"; Typed.value "last" ] ]
+
+    let dispose = Browser.mount graph host ignore None (run view)
+
+    try
+        parsed.innerHTML <- Html.render Reject (run view)
+        equal "last" (firstId host)
+        equal "last" (firstId parsed)
+        equal "last" (firstValue host)
+        equal "last" (firstValue parsed)
+    finally
+        dispose ()
+
 let cases =
     [|
         "tree reusable typed views have local synchronous bindings", fun () -> exercise Tree.ops Tree.run
         "program reusable typed views have local synchronous bindings", fun () -> exercise Program.ops Program.run
         "tree static allocation and setup failure unwind", fun () -> staticAndFailure Tree.ops Tree.run
         "program static allocation and setup failure unwind", fun () -> staticAndFailure Program.ops Program.run
+        "tree repeated modifiers agree with parsed server HTML", fun () -> portableModifiers Tree.ops Tree.run
+        "program repeated modifiers agree with parsed server HTML", fun () -> portableModifiers Program.ops Program.run
     |]

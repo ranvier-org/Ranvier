@@ -82,6 +82,59 @@ let sugarChecks ops run =
 sugarChecks Tree.ops Tree.run
 sugarChecks Program.ops Program.run
 
+let edgeChecks name (ops: Operations<'view>) run =
+    let failures = ResizeArray<string>()
+
+    let check label action =
+        try
+            action ()
+        with error ->
+            failures.Add (label + ": " + error.Message)
+
+    check "last modifier wins" (fun () ->
+        let view =
+            ops.Element Div [ Attribute ("id", "first"); Attribute ("id", "last") ] []
+
+        equal "<div id=\"last\"></div>" (Html.render Reject (run view))
+        let input = ops.Element Input [ InputValue "first"; InputValue "last" ] []
+        equal "<input value=\"last\">" (Html.render Reject (run input)))
+
+    check "setup and cleanup failures are preserved" (fun () ->
+        let original = System.InvalidOperationException "setup"
+        let mutable completed = false
+
+        let view =
+            ops.Component (fun context ->
+                context.OnCleanup (fun () -> failwith "cleanup")
+                context.OnCleanup (fun () -> completed <- true)
+                raise original)
+
+        let mutable caught = false
+
+        try
+            Html.render Reject (run view) |> ignore
+        with :? System.AggregateException as error ->
+            equal
+                [ "setup"; "cleanup" ]
+                (error.InnerExceptions
+                 |> Seq.map _.Message
+                 |> List.ofSeq)
+
+            equal true (obj.ReferenceEquals (original, error.InnerExceptions[0]))
+            caught <- true
+
+        equal true caught
+        equal true completed)
+
+    for failure in failures do
+        printfn "FAIL %s %s" name failure
+
+    equal 0 failures.Count
+    printfn "PASS %s portable modifier/failure edges" name
+
+edgeChecks "tree" Tree.ops Tree.run
+edgeChecks "program" Program.ops Program.run
+
 #if !INTERACTIVE
 if
     System.Environment.GetCommandLineArgs ()
