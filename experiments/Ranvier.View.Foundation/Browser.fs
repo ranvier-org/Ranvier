@@ -43,7 +43,8 @@ let mount (graph: Graph) (host: HTMLElement) (report: exn list -> unit) (counts:
             fun () ->
                 for node in roots do
                     remove node
-                    roots.Clear ()
+
+                roots.Clear ()
         )
 
     let mutable parent: Node = host

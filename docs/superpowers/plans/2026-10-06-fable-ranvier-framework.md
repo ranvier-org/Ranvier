@@ -61,11 +61,13 @@ Contracts: C01, C03, C09. Variants: V01, V03. Risks: G03, G11, G12, G15. This is
 
 The [focused lifetime proof plan](2026-10-08-renderer-lifetime-proof.md) executes the disposal gate first. Representation, portability and sugar measurements follow its result; completing that focused plan does not complete all of Task 2.
 
+The [representation experiment](2026-10-09-view-representation.md) compares portable trees/build functions and minimal typed/function/builder surfaces. Its [evidence](../../research/2026-10-09-view-representation.md) provisionally favors the tree. The .NET/static-browser proof and small sugar/resource checks pass; keyed branches, production status, JS instance/retained allocations and stable timing budgets remain outstanding. Task 2 and public API freeze remain open.
+
 - [x] Write lifecycle trace tests first: nested children clean up before parent while nodes remain attached; a throwing child does not prevent other cleanup/removal; disposal repeats are harmless.
 - [x] Run the same traces through mount disposal, graph disposal, failed setup and owner disposal during reactive reruns. Include two mounts sharing one graph.
 - [x] Prototype the renderer child registry. Existing core cleanup hooks pass the tested entry points; see the [lifetime proof report](../../research/2026-10-08-renderer-lifetime-proof.md) for traces, evidence limits and known allocation/unlinking costs. No core extension was required.
 - [ ] Prototype a small portable instruction definition and a backend-neutral executable definition for the same component, fragment, text binding and keyed branch.
-- [ ] Interpret a static selection on .NET into escaped HTML and instantiate the equivalent definition in Fable. Prove browser refs cannot accidentally be required by the portable setup surface.
+- [x] Interpret a static selection on .NET into escaped HTML and instantiate the equivalent definition in Fable. The setup surface exposes cleanup only; native hooks use an explicit browser token and server Reject/Omit policy. This does not prevent arbitrary user closures capturing browser globals; production package separation remains Task 9.
 - [ ] Measure definition/instance allocations and mount cost in Release JS; inspect generated closure/DU dispatch. Choose A or B from V01 and record the reason.
 - [ ] Compare equivalent direct-function, function-sugar and builder-sugar examples in both representations. Separate construction, mount, update and disposal measurements; include static-heavy trees, sibling-heavy trees, nested fragments and repeated independent mounts. Inspect generated JS and report residual wrapper work before selecting the core representation.
 - [ ] Assert static content creates no reactive machinery and a scalar update touches only its binding target. Sugar must preserve setup counts, owners, observers, listeners and scheduling waves. Establish numerical regression budgets from repeated baseline runs before public API freeze.

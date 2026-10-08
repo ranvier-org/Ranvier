@@ -1,5 +1,6 @@
 #if INTERACTIVE
 #load "Representation.fs"
+#load "Fixtures.fs"
 #endif
 
 open Ranvier.View.Foundation.Representation
@@ -65,3 +66,60 @@ let exercise name (ops: Operations<'view>) render =
 
 exercise "tree" Tree.ops (fun policy view -> Html.render policy (Tree.run view))
 exercise "program" Program.ops (fun policy view -> Html.render policy (Program.run view))
+
+let sugarChecks ops run =
+    for workload in [ "static"; "wide"; "fragments"; "reactive" ] do
+        let output sugar =
+            Html.render Reject (run (Ranvier.View.Foundation.Fixtures.create ops workload sugar (fun () -> "live")))
+
+        let direct = output "direct"
+        equal true (direct.StartsWith ("<div"))
+        equal direct (output "functions")
+        equal direct (output "builder")
+
+    printfn "PASS direct/function/builder output equivalence"
+
+sugarChecks Tree.ops Tree.run
+sugarChecks Program.ops Program.run
+
+#if !INTERACTIVE
+if
+    System.Environment.GetCommandLineArgs ()
+    |> Array.contains "--allocations"
+then
+    let measure representation ops =
+        for workload in [ "static"; "wide"; "fragments"; "reactive" ] do
+            for sugar in [ "direct"; "functions"; "builder" ] do
+                let mutable sink = ops.Empty
+                let samples = ResizeArray<float>()
+
+                for round in -3 .. 6 do
+                    let before = System.GC.GetAllocatedBytesForCurrentThread ()
+
+                    for _ in 1..100 do
+                        sink <- Ranvier.View.Foundation.Fixtures.create ops workload sugar (fun () -> "live")
+
+                    let bytes =
+                        float (
+                            System.GC.GetAllocatedBytesForCurrentThread ()
+                            - before
+                        )
+                        / 100.
+
+                    System.GC.KeepAlive sink
+
+                    if round >= 0 then
+                        samples.Add bytes
+
+                let median = (samples |> Seq.sort |> Seq.toArray)[3]
+
+                printfn
+                    "{\"representation\":\"%s\",\"workload\":\"%s\",\"sugar\":\"%s\",\"bytesPerDefinition\":%f}"
+                    representation
+                    workload
+                    sugar
+                    median
+
+    measure "tree" Tree.ops
+    measure "program" Program.ops
+#endif

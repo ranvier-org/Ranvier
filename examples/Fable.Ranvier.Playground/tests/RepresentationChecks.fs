@@ -23,6 +23,9 @@ let private click (node: HTMLElement) : unit = jsNative
 [<Emit("$0.firstChild === $1.firstChild")>]
 let private sameFirst (a: HTMLElement) (b: HTMLElement) : bool = jsNative
 
+[<Emit("$0.querySelector('button')")>]
+let private firstButton (node: HTMLElement) : HTMLButtonElement = jsNative
+
 let private exercise (ops: Operations<'view>) run =
     use graph = new Graph ()
     let host = Dom.element "section" [] []
@@ -79,10 +82,13 @@ let private exercise (ops: Operations<'view>) run =
     equal 2 setups
     click host
     equal 1 calls
+    let retainedButton = firstButton host
     disposeA ()
     disposeA ()
     equal "" host.textContent
     equal 1 cleanups
+    retainedButton.click ()
+    equal 1 calls
     graph.Run (fun () -> source.Value <- 4)
     equal 2 a.Writes
     equal "02go" other.textContent
@@ -103,7 +109,7 @@ let private staticAndFailure (ops: Operations<'view>) run =
     let counts = Browser.metrics ()
 
     let dispose =
-        Browser.mount graph host ignore (Some counts) (run (ops.Fragment [ ops.Empty; ops.Text "static" ]))
+        Browser.mount graph host ignore (Some counts) (run (ops.Fragment [ ops.Empty; ops.Text "static"; ops.Text "second" ]))
 
     equal 0 counts.Effects
     equal 1 counts.Owners

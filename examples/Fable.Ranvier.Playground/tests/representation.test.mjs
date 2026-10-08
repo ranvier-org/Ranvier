@@ -12,3 +12,5 @@ after(() => {
 });
 
 for (const [name, check] of cases) test(name, () => check());
+const bench = await import("../generated-tests/RepresentationBench.js");
+test("sugar preserves output and mounted resource counts", () => bench.verify());

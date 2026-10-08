@@ -72,6 +72,9 @@ module Tree =
         }
 
 module Program =
+#if FABLE_COMPILER
+    [<Fable.Core.Erase>]
+#endif
     type View = private View of (Backend -> unit)
 
     let run (View build) backend =
