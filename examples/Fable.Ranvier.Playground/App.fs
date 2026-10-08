@@ -28,7 +28,7 @@ let start () : unit -> unit =
 
     try
         let host =
-            Dom.document.getElementById ("app")
+            Global.document.getElementById ("app")
             |> Option.defaultWith (fun () -> invalidOp "The playground needs an #app host.")
 
         let count, name, mounted, queued =

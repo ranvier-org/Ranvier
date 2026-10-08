@@ -10,7 +10,7 @@
 
 **Spec:** [framework brief](../specs/2026-10-06-fable-ranvier-framework-brief.md). **Tradeoffs and risk IDs:** [variants and gotchas](../specs/2026-10-06-fable-ranvier-framework-variants-and-risks.md).
 
-Status: proposed work, not executed. File names below are proposed seams; verify existing symbols before choosing final names. API descriptions are design sketches, not compiler-validated signatures.
+Status: Task 1 audited on 2026-10-08; later runtime tasks remain proposed. See the [baseline report](../../research/2026-10-08-fable-ranvier-baseline.md) for fresh results and known whole-solution/Fable-test failures. The user selected explicit typed functions; the [DSL design](../specs/2026-10-08-ranvier-view-dsl-design.md) is a draft for review. File names below are proposed seams; verify existing symbols before choosing final names. API descriptions are design sketches, not compiler-validated signatures.
 
 ## Global constraints
 
@@ -45,13 +45,15 @@ The implementation may consolidate small modules; these names identify responsib
 
 Contracts: C01–C10. Risks: G03, G09, G12. No public API changes in this task.
 
-- [ ] Read current project instructions and manifests; confirm the working tree and isolate implementation work as appropriate.
-- [ ] Run fslangmcp `check`, then inspect mount, component, scheduler, owner disposal and status/effect APIs semantically. Record existing signatures and public API snapshots.
-- [ ] Compare the implementation with `src/Fable.Ranvier/README.md`; identify where its documented behavior has drifted.
-- [ ] Establish current full .NET and browser test results. Run existing `test:dom`, `test:browser` and Release build scripts from the playground.
-- [ ] Record legacy behavior requiring migration: ambient batched events, retained successful DOM on pending/error, initial versus deferred setter failures, and single-node mounting.
+- [x] Read current project instructions and manifests; confirm the working tree and isolate implementation work as appropriate.
+- [x] Run fslangmcp `check`, then inspect mount, component, scheduler, owner disposal and status/effect APIs semantically. Record existing signatures and public API snapshots. No component implementation remains after the checkpoint's empty placeholder removal; clean scoped checks preceded queries. The whole-solution check reports baseline Fable-test errors.
+- [x] Compare the implementation with `src/Fable.Ranvier/README.md`; identify where its documented behavior has drifted. Updated the stale global reference in the example, app and fragment-root test.
+- [x] Establish current full .NET and browser test results. Run existing `test:dom`, `test:browser` and Release build scripts from the playground. Canonical .NET tests, complete playground suites and production build pass; whole-solution build/Fable core acceptance remain blocked by recorded baseline errors.
+- [x] Record legacy behavior requiring migration: ambient batched events, retained successful DOM on pending/error, initial versus deferred setter failures, and single-node mounting.
 
 **Exit:** a baseline report appended to this plan with actual commands/results and an API migration list. Existing failures are attributed before feature work begins.
+
+Execution record: starting checkpoint `174f07649f38b1ff7a3ebc60c6c3fb9f290d1cb0`. The [baseline report](../../research/2026-10-08-fable-ranvier-baseline.md) and [API snapshot](../../research/2026-10-08-fable-ranvier-api.json) contain the commands, results, migration list and tool limitations. No new view runtime has been implemented. SageFs observed current owner disposal as `parent -> child`; Task 2 must prove the renderer's child-first adapter.
 
 ## Task 2 — Prove disposal and portable view representation
 

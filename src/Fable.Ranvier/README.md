@@ -10,7 +10,7 @@ open Fable.Ranvier
 
 let graph = new Graph()
 let count = graph.Run(fun () -> createSignal 0)
-let host = Dom.document.getElementById("app").Value
+let host = Global.document.getElementById("app").Value
 
 let mounted =
     Mount.mount graph host (fun () ->

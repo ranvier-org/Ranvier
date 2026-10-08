@@ -269,7 +269,7 @@ let fragmentRootIsRejectedWithoutLeaks () =
 
     try
         Mount.mount graph host (fun () ->
-            let fragment = Dom.document.createDocumentFragment ()
+            let fragment = Global.document.createDocumentFragment ()
             child <- Dom.reactiveText (fun () -> string count.Value)
             button <- Dom.element "button" [ Dom.on "click" (fun _ -> count.Value <- count.Value + 1) ] [ child ]
             fragment.appendChild button |> ignore
