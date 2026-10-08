@@ -1,0 +1,440 @@
+module RangeChecks
+
+open System
+open Ranvier
+open Fable.Core
+open Fable.Core.TS.Dom
+open Fable.Ranvier
+open Ranvier.View.Foundation
+open Ranvier.View.Foundation.Representation
+open Ranvier.View.Foundation.Mounting
+
+let private equal expected actual =
+    if expected <> actual then
+        failwithf "Expected %A; got %A" expected actual
+
+let private same a b =
+    equal true (obj.ReferenceEquals (a, b))
+
+let private rejected action =
+    let mutable caught = false
+
+    try
+        action ()
+    with :? InvalidOperationException ->
+        caught <- true
+
+    equal true caught
+
+[<Emit("$0.remove()")>]
+let private remove (node: Node) : unit = jsNative
+
+[<Emit("$0.childNodes[$1]")>]
+let private at (node: Node) (index: int) : Node = jsNative
+
+[<Emit("(() => { const old = $0.insertBefore; $0.insertBefore = function(n,b) { old.call(this,n,b); throw $1; }; return () => $0.insertBefore = old; })()")>]
+let private failAttachment (node: Node) (error: exn) : unit -> unit = jsNative
+
+[<Emit("(() => { const f = () => $1(); $0.addEventListener('click', f); return () => $0.removeEventListener('click', f); })()")>]
+let private listen (node: HTMLElement) (handler: unit -> unit) : unit -> unit = jsNative
+
+[<Emit("(() => { const old = $0.remove; $0.remove = () => { throw new Error('remove'); }; return () => $0.remove = old; })()")>]
+let private failRemoval (node: Node) : unit -> unit = jsNative
+
+let private mounted graph parent host before build =
+    mount graph parent ignore host before build
+
+let private tree graph host view =
+    mounted graph None host None (fun ctx -> Tree.run view ctx.Backend)
+
+let private sizes () =
+    use graph = new Graph ()
+
+    for view, expected in
+        [
+            Tree.ops.Empty, ""
+            Tree.ops.Text "one", "one"
+            Tree.ops.Fragment [ Tree.ops.Text "a"; Tree.ops.Empty; Tree.ops.Text "b" ], "ab"
+        ] do
+        let host = Dom.element "section" [] []
+        let sibling = Dom.element "aside" [] []
+        host.appendChild sibling |> ignore
+
+        let handle =
+            mounted graph None host (Some sibling) (fun ctx ->
+                equal SettingUp (ctx.Phase ())
+                equal 1. host.childNodes.length
+                Tree.run view ctx.Backend
+                equal 1. host.childNodes.length)
+
+        equal Attached handle.Phase
+        equal expected host.textContent
+        same sibling (at host (int host.childNodes.length - 1))
+        handle.Dispose ()
+        handle.Dispose ()
+        equal 1. host.childNodes.length
+        same sibling (at host 0)
+
+let private movement () =
+    use graph = new Graph ()
+    let host, other = Dom.element "section" [] [], Dom.element "section" [] []
+    let handle = tree graph host (Typed.button Tree.ops [] [ Tree.ops.Text "go" ])
+    let button = at host 1
+    let sibling = Dom.element "aside" [] []
+    other.appendChild sibling |> ignore
+    handle.MoveBefore (other, Some sibling)
+    equal 0. host.childNodes.length
+    same button (at other 1)
+    same sibling (at other 3)
+    handle.MoveBefore (other, Some (at other 0))
+    equal 4. other.childNodes.length
+    rejected (fun () -> handle.MoveBefore (button, None))
+    same button (at other 1)
+    rejected (fun () -> handle.MoveBefore (host, Some sibling))
+    same button (at other 1)
+    handle.Dispose ()
+    equal 1. other.childNodes.length
+    rejected (fun () -> handle.MoveBefore (host, None))
+
+let private mutatedBoundaries () =
+    use graph = new Graph ()
+    let host, other = Dom.element "section" [] [], Dom.element "section" [] []
+    let handle = tree graph host (Tree.ops.Text "owned")
+    let foreign = Dom.element "aside" [] []
+    host.insertBefore (foreign, at host 2) |> ignore
+    rejected (fun () -> handle.MoveBefore (other, None))
+    equal 0. other.childNodes.length
+    handle.Dispose ()
+    equal 1. host.childNodes.length
+    same foreign (at host 0)
+    let next = tree graph host (Tree.ops.Text "next")
+    remove (at host 1)
+    rejected (fun () -> next.MoveBefore (other, None))
+    next.Dispose ()
+    equal 1. host.childNodes.length
+
+let private reparentedOwnership () =
+    use graph = new Graph ()
+    let host, other = Dom.element "section" [] [], Dom.element "section" [] []
+
+    let handle =
+        tree graph host (Tree.ops.Fragment [ Tree.ops.Text "a"; Tree.ops.Text "b" ])
+
+    other.appendChild (at host 1) |> ignore
+    handle.Dispose ()
+    equal 0. host.childNodes.length
+    equal 0. other.childNodes.length
+
+let private nativePolicies () =
+    use graph = new Graph ()
+
+    let original, host, other =
+        Dom.element "section" [] [], Dom.element "section" [] [], Dom.element "section" [] []
+
+    let a, b, c =
+        Dom.element "button" [] [], Dom.element "button" [] [], Dom.element "aside" [] []
+
+    for node in [ a; b; c ] do
+        original.appendChild node |> ignore
+
+    let handle =
+        mounted graph None host None (fun ctx ->
+            ctx.Native (a, Borrowed)
+            ctx.Native (b, Borrowed))
+
+    handle.MoveBefore (other, None)
+    handle.Dispose ()
+    same a (at original 0)
+    same b (at original 1)
+    same c (at original 2)
+    let again = mounted graph None host None (fun ctx -> ctx.Native (b, Borrowed))
+    remove c
+    again.Dispose ()
+    same b (at original 1)
+    let owned = mounted graph None host None (fun ctx -> ctx.Native (a, Owned))
+    other.appendChild a |> ignore
+    owned.Dispose ()
+    equal None a.parentNode
+    let detached = Dom.element "button" [] []
+
+    let borrowed =
+        mounted graph None host None (fun ctx -> ctx.Native (detached, Borrowed))
+
+    borrowed.Dispose ()
+    equal None detached.parentNode
+
+let private failures attachFailure =
+    use graph = new Graph ()
+    let host = Dom.element "section" [] []
+    let sibling = Dom.element "aside" [] []
+    host.appendChild sibling |> ignore
+    let signal = graph.Run (fun () -> Api.createSignal 0)
+    let mutable calls, reads, cleaned = 0, 0, false
+    let mutable button: HTMLElement option = None
+    let error = InvalidOperationException "original"
+    let restore = if attachFailure then failAttachment host error else ignore
+    let mutable caught = false
+
+    try
+        try
+            mounted graph None host None (fun ctx ->
+                ctx.Backend.Element (
+                    Button,
+                    [
+                        Browser (fun node ->
+                            let b = unbox<HTMLElement> node
+                            button <- Some b
+                            listen b (fun () -> calls <- calls + 1))
+                    ],
+                    ignore
+                )
+
+                ctx.Backend.Bind (
+                    (=),
+                    fun () ->
+                        reads <- reads + 1
+                        string signal.Value
+                )
+
+                ctx.OnCleanup (fun () -> cleaned <- true)
+
+                if not attachFailure then
+                    raise error)
+            |> ignore
+        with e ->
+            same error e
+            caught <- true
+    finally
+        restore ()
+
+    equal true caught
+    equal true cleaned
+    equal 1. host.childNodes.length
+    same sibling (at host 0)
+    button.Value.click ()
+    equal 0 calls
+    let before = reads
+    graph.Run (fun () -> signal.Value <- 1)
+    equal before reads
+
+let private cleanupOrder () =
+    use graph = new Graph ()
+    let host = Dom.element "section" [] []
+    let trace = ResizeArray<string>()
+
+    let view =
+        Tree.ops.Component (fun parent ->
+            parent.OnCleanup (fun () ->
+                equal "x" host.textContent
+                trace.Add "parent")
+
+            Tree.ops.Component (fun child ->
+                child.OnCleanup (fun () ->
+                    equal "x" host.textContent
+                    trace.Add "child")
+
+                Tree.ops.Text "x"))
+
+    let handle = tree graph host view
+    handle.Dispose ()
+    equal [ "child"; "parent" ] (List.ofSeq trace)
+    equal 0. host.childNodes.length
+
+let private parentAndGraph () =
+    use graph = new Graph ()
+    let host = Dom.element "section" [] []
+    let parent = Scope (ignore, ignore)
+    parent.MarkAttached ()
+    let a = mounted graph (Some parent) host None (fun ctx -> ctx.Backend.Text "a")
+    let b = tree graph host (Tree.ops.Text "b")
+    parent.Dispose ()
+    equal Disposed a.Phase
+    equal "b" host.textContent
+    let c = tree graph host (Tree.ops.Text "c")
+    b.Dispose ()
+    equal "c" host.textContent
+    graph.Dispose ()
+    equal Disposed c.Phase
+    equal 0. host.childNodes.length
+
+    rejected (fun () ->
+        mounted graph (Some parent) host None ignore
+        |> ignore)
+
+let private retainedCapabilities () =
+    use graph = new Graph ()
+    let host = Dom.element "section" [] []
+    let mutable captured: BuildContext option = None
+
+    let handle =
+        mounted graph None host None (fun ctx ->
+            captured <- Some ctx
+            ctx.Backend.Text "x")
+
+    rejected (fun () -> captured.Value.Backend.Text "late")
+    rejected (fun () -> captured.Value.Native (Dom.element "div" [] [], Owned))
+    equal "x" host.textContent
+    handle.Dispose ()
+    rejected (fun () -> captured.Value.OnCleanup ignore)
+    rejected (fun () -> captured.Value.Backend.Bind ((=), fun () -> "late"))
+    equal 0. host.childNodes.length
+
+let private duplicateNative () =
+    use graph = new Graph ()
+    let host = Dom.element "section" [] []
+    let node = Dom.element "button" [] []
+
+    rejected (fun () ->
+        mounted graph None host None (fun ctx ->
+            ctx.Native (node, Owned)
+            ctx.Native (node, Borrowed))
+        |> ignore)
+
+    equal 0. host.childNodes.length
+
+    rejected (fun () ->
+        mounted graph None host None (fun ctx -> ctx.Native (host, Borrowed))
+        |> ignore)
+
+    equal 0. host.childNodes.length
+
+let private releaseFailures () =
+    use graph = new Graph ()
+    let host = Dom.element "section" [] []
+    let node = Dom.element "button" [] []
+    let restore = failRemoval node
+    let mutable reports = 0
+
+    let handle =
+        mount
+            graph
+            None
+            (fun errors ->
+                reports <- reports + 1
+                equal 2 errors.Length
+                failwith "report")
+            host
+            None
+            (fun ctx ->
+                ctx.Native (node, Owned)
+                ctx.Backend.Text "removed"
+                ctx.OnCleanup (fun () -> failwith "cleanup"))
+
+    try
+        handle.Dispose ()
+        equal 1 reports
+        equal 3 handle.Failures.Length
+        equal 1. host.childNodes.length
+        same node (at host 0)
+        handle.Dispose ()
+        equal 1 reports
+    finally
+        restore ()
+        remove node
+
+let private disposedDuringSetup () =
+    use graph = new Graph ()
+    let host = Dom.element "section" [] []
+    let parent = Scope (ignore, ignore)
+
+    rejected (fun () ->
+        mounted graph (Some parent) host None (fun ctx ->
+            ctx.Backend.Text "x"
+            parent.Dispose ()
+            ctx.Backend.Text "y")
+        |> ignore)
+
+    equal 0. host.childNodes.length
+
+let cases =
+    [|
+        "staged empty single and fragment ranges preserve siblings", sizes
+        "range movement preserves identity and rejects invalid destinations", movement
+        "mutated boundaries reject movement without deleting foreign nodes", mutatedBoundaries
+        "owned nodes release after external reparenting", reparentedOwnership
+        "borrowed native nodes restore original placement", nativePolicies
+        "setup failure unwinds acquired listeners and bindings", fun () -> failures false
+        "attachment failure after insertion unwinds resources and nodes", fun () -> failures true
+        "range cleanup runs child first while DOM stays attached", cleanupOrder
+        "parent and graph disposal preserve independent mounts", parentAndGraph
+        "retained setup capabilities cannot mutate attached or disposed mounts", retainedCapabilities
+        "duplicate or host native ownership is rejected", duplicateNative
+        "release and reporter failures cannot strand remaining owned nodes", releaseFailures
+        "disposal during setup cannot attach or acquire further nodes", disposedDuringSetup
+    |]
+
+[<Emit("(() => { const old = $0.insertBefore; $0.insertBefore = function(n,b) { const result = old.call(this,n,b); $1(); return result; }; return () => $0.insertBefore = old; })()")>]
+let private afterAttachment (node: Node) (action: unit -> unit) : unit -> unit = jsNative
+
+let private reactiveMoves () =
+    use graph = new Graph ()
+    let host, other = Dom.element "section" [] [], Dom.element "section" [] []
+    let source = graph.Run (fun () -> Api.createSignal 0)
+    let mutable setups = 0
+
+    let view =
+        Tree.ops.Component (fun _ ->
+            setups <- setups + 1
+            Tree.ops.Bind ((=)) (fun () -> string (source.Value / 2)))
+
+    let a, b = tree graph host view, tree graph other view
+    equal 2 setups
+    let node = at host 1
+    a.MoveBefore (other, None)
+    graph.Run (fun () -> source.Value <- 2)
+    equal "11" other.textContent
+    same node (at other 4)
+    a.Dispose ()
+    graph.Run (fun () -> source.Value <- 4)
+    equal "2" other.textContent
+    equal 2 setups
+    b.Dispose ()
+    equal 0. other.childNodes.length
+
+let private attachmentReentry () =
+    use graph = new Graph ()
+    let host = Dom.element "section" [] []
+    let parent = Scope (ignore, ignore)
+    let restore = afterAttachment host parent.Dispose
+
+    try
+        rejected (fun () ->
+            mounted graph (Some parent) host None (fun ctx -> ctx.Backend.Text "x")
+            |> ignore)
+
+        equal 0. host.childNodes.length
+    finally
+        restore ()
+
+let private overlappingMounts () =
+    use graph = new Graph ()
+    let host, other = Dom.element "section" [] [], Dom.element "section" [] []
+    let node = Dom.element "button" [] []
+    let a = mounted graph None host None (fun ctx -> ctx.Native (node, Owned))
+
+    try
+        rejected (fun () ->
+            mounted graph None other None (fun ctx -> ctx.Native (node, Borrowed))
+            |> ignore)
+
+        same node (at host 1)
+        equal 0. other.childNodes.length
+        let child = Dom.element "span" [] []
+        node.appendChild child |> ignore
+
+        rejected (fun () ->
+            mounted graph None other None (fun ctx -> ctx.Native (child, Owned))
+            |> ignore)
+
+        same node child.parentNode.Value
+    finally
+        a.Dispose ()
+
+let allCases =
+    Array.append
+        cases
+        [|
+            "reusable bindings retain identity across range movement", reactiveMoves
+            "disposal during attachment cannot revive a mount", attachmentReentry
+            "native ownership cannot overlap another live mount", overlappingMounts
+        |]

@@ -15,6 +15,8 @@
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Typed.fs" Link="Typed.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Browser.fs" Link="Browser.fs" />
     <Compile Include="RepresentationChecks.fs" />
+    <Compile Include="../../../experiments/Ranvier.View.Foundation/Mounting.fs" Link="Mounting.fs" />
+    <Compile Include="RangeChecks.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Fixtures.fs" Link="Fixtures.fs" />
     <Compile Include="RepresentationBench.fs" />
     <ProjectReference Include="../../../src/Fable.Ranvier/Fable.Ranvier.fsproj" />
