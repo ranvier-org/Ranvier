@@ -1,6 +1,6 @@
 # Renderer lifetime proof implementation plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** prove a renderer-local child-first cleanup adapter over the current parent-first Ranvier core, before selecting the performant view representation.
 
@@ -62,8 +62,8 @@ type Scope(report: exn list -> unit, release: unit -> unit) =
 **Consumes:** callbacks and release functions only; no Ranvier owner or DOM dependency.
 **Produces:** the experimental `Scope` interface above and executable pure traces.
 
-- [ ] Read the SageFs skill and create an isolated implementation workspace using the worktree skill. Build the target once, create a SageFs project session and wait until Ready. Do not modify the running daemon.
-- [ ] Write the pure assertions in `LifetimeChecks.fsx`. The first run must fail because the registry does not exist. Use `#load "Lifetime.fs"`, then include these tests:
+- [x] Read the SageFs skill and create an isolated implementation workspace using the worktree skill. Build the target once, create a SageFs project session and wait until Ready. Do not modify the running daemon.
+- [x] Write the pure assertions in `LifetimeChecks.fsx`. The first run must fail because the registry does not exist. Use `#load "Lifetime.fs"`, then include these tests:
 
 ```fsharp
 open Ranvier.View.Foundation
@@ -109,7 +109,7 @@ equal 2 brokenReporter.Failures.Length
 
 Run: `rtk proxy dotnet fsi experiments/Ranvier.View.Foundation/LifetimeChecks.fsx`.
 
-- [ ] Implement the registry using this two-phase algorithm. Compiler-check the recursive type in SageFs before saving. This is the candidate to test, not a claim that its signatures have already compiled:
+- [x] Implement the registry using this two-phase algorithm. Compiler-check the recursive type in SageFs before saving. This is the candidate to test, not a claim that its signatures have already compiled:
 
 ```fsharp
 namespace Ranvier.View.Foundation
@@ -173,7 +173,7 @@ type Scope private
     member _.Failures = failures
 ```
 
-- [ ] Add these assertions for throwing release, three-level postorder, registration during cleanup and child-only disposal. Run the complete pure file in SageFs and the CLI.
+- [x] Add these assertions for throwing release, three-level postorder, registration during cleanup and child-only disposal. Run the complete pure file in SageFs and the CLI.
 
 ```fsharp
 let nestedTrace = ResizeArray<string>()
@@ -203,15 +203,15 @@ equal false laterChild.IsDisposed
 liveParent.Dispose()
 equal true laterChild.IsDisposed
 ```
-- [ ] Add the registry as a linked file in `DomTests.fsproj` before browser tests; run Release build/compilation to detect differences from the REPL. Do not optimize the two-phase allocation strategy yet; record its O(n) teardown storage as a candidate cost for the next performance experiment.
-- [ ] Commit only the prototype, pure checks and compile registration: `rtk git commit -m "test: prototype renderer child-first lifetime registry"` after staging the named files and passing the relevant checks.
+- [x] Add the registry as a linked file in `DomTests.fsproj` before browser tests; run Release build/compilation to detect differences from the REPL. Do not optimize the two-phase allocation strategy yet; record its O(n) teardown storage as a candidate cost for the next performance experiment.
+- [x] Commit only the prototype, pure checks and compile registration: `rtk git commit -m "test: prototype renderer child-first lifetime registry"` after staging the named files and passing the relevant checks.
 
 ## Task 2: Exercise every core/browser teardown entry point
 
 **Consumes:** `Scope`, `Ranvier.Api.createRoot`, `onCleanup`, `createEffect`, and caller-owned `Graph`.
 **Produces:** passing browser integration traces or a recorded blocking incompatibility. Existing shipping APIs remain unchanged.
 
-- [ ] Register the Node runner as `lifetime.test.mjs`:
+- [x] Register the Node runner as `lifetime.test.mjs`:
 
 ```javascript
 import test, { after } from "node:test";
@@ -235,7 +235,7 @@ Set `test:dom` to `npm run compile:tests && node --test tests/dom.test.mjs tests
 <Compile Include="LifetimeChecks.fs" />
 ```
 
-- [ ] Create `lifetime.html`:
+- [x] Create `lifetime.html`:
 
 ```html
 <!doctype html>
@@ -264,7 +264,7 @@ test("lifetime ordering across core entry points", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 ```
-- [ ] Write a browser fixture with an attached parent and child element plus an unrelated host sibling. Its core integration uses this shape:
+- [x] Write a browser fixture with an attached parent and child element plus an unrelated host sibling. Its core integration uses this shape:
 
 ```fsharp
 let owner =
@@ -276,13 +276,13 @@ let owner =
 
 Register renderer callbacks through `scope.OnCleanup`, not raw core callbacks. Child callbacks assert both child and parent have their expected parents. Parent cleanup asserts the child remains attached. Release callbacks remove only the fixture's owned nodes. For explicit disposal, call `scope.Dispose()` before `owner.Dispose()`; hook reentry must be harmless.
 
-- [ ] Run the fixture independently for explicit disposal, direct `owner.Dispose()`, and `graph.Dispose()`. Exact successful trace: `child-clean-attached`, `parent-clean-attached`, `remove-child`, `remove-parent`. Assert the unrelated sibling survives and a second disposal adds no trace entries.
-- [ ] Add a second independently owned fixture sharing one graph. Dispose the first explicitly: the second remains attached and reactive. Dispose the graph: only the second contributes new cleanup/release trace entries.
-- [ ] Add an effect-rerun fixture with a signal read in `Api.createEffect`. Each run creates its own adapter, registers `Api.onCleanup scope.Dispose` directly in the effect scope, and inserts one parent/child pair. Change the signal synchronously: the old pair must produce the exact trace before the new pair is attached. Graph disposal cleans the latest pair once. Use fslangmcp to resolve the current signal-construction signature before writing the fixture; no core signature changes are authorized by this plan.
-- [ ] Add failed setup: create the adapter and core owner, insert the parent, acquire a child listener, then throw before setup completes. The mount-side `try/with` must call the adapter's disposal and owner disposal before rethrowing the original error. Assert the child cleanup runs, the listener stops firing, owned nodes disappear and unrelated host content survives. Do not assume `createRoot` alone supplies this unwind.
-- [ ] Add cleanup/release/reporting failure fixtures. Capture reported errors explicitly. All remaining callbacks and releases must run, DOM must disappear, and another disposal must neither retry failures nor duplicate reports.
-- [ ] Add callback reentry and rejected registration fixtures. Attempt sibling/parent disposal during cleanup; all callbacks still run once while attached. The registry is inactive throughout teardown. Check `ChildCount = 0` after 1000 independently created/disposed children of a retained parent.
-- [ ] Run full `test:dom`, full `test:browser`, the production playground build and the pure CLI checks. Inspect Release JS to confirm the adapter introduces no observers, memos or scheduler entries. Record the known whole-solution failures separately rather than calling a scoped build a full acceptance gate.
+- [x] Run the fixture independently for explicit disposal, direct `owner.Dispose()`, and `graph.Dispose()`. Exact successful trace: `child-clean-attached`, `parent-clean-attached`, `remove-child`, `remove-parent`. Assert the unrelated sibling survives and a second disposal adds no trace entries.
+- [x] Add a second independently owned fixture sharing one graph. Dispose the first explicitly: the second remains attached and reactive. Dispose the graph: only the second contributes new cleanup/release trace entries.
+- [x] Add an effect-rerun fixture with a signal read in `Api.createEffect`. Each run creates its own adapter, registers `Api.onCleanup scope.Dispose` directly in the effect scope, and inserts one parent/child pair. Change the signal synchronously: the old pair must produce the exact trace before the new pair is attached. Graph disposal cleans the latest pair once. Use fslangmcp to resolve the current signal-construction signature before writing the fixture; no core signature changes are authorized by this plan.
+- [x] Add failed setup: create the adapter and core owner, insert the parent, acquire a child listener, then throw before setup completes. The mount-side `try/with` must call the adapter's disposal and owner disposal before rethrowing the original error. Assert the child cleanup runs, the listener stops firing, owned nodes disappear and unrelated host content survives. Do not assume `createRoot` alone supplies this unwind.
+- [x] Add cleanup/release/reporting failure fixtures. Capture reported errors explicitly. All remaining callbacks and releases must run, DOM must disappear, and another disposal must neither retry failures nor duplicate reports.
+- [x] Add callback reentry and rejected registration fixtures. Attempt sibling/parent disposal during cleanup; all callbacks still run once while attached. The registry is inactive throughout teardown. Check `ChildCount = 0` after 1000 independently created/disposed children of a retained parent.
+- [x] Run full `test:dom`, full `test:browser`, the production playground build and the pure CLI checks. Inspect Release JS to confirm the adapter introduces no observers, memos or scheduler entries. Record the known whole-solution failures separately rather than calling a scoped build a full acceptance gate.
 
 ```powershell
 rtk proxy dotnet fsi experiments/Ranvier.View.Foundation/LifetimeChecks.fsx
@@ -292,8 +292,8 @@ rtk proxy npm --prefix examples/Fable.Ranvier.Playground run build
 rtk proxy dotnet build Ranvier.slnx --configuration Release
 ```
 
-- [ ] Write the evidence report with each entry point's actual trace and result, callback/error counts, Fable/browser versions, and the two-phase registry's allocation costs. If an entry point bypasses the adapter, stop representation selection and identify the exact failing trace; evaluate a core extension only after `fcs_refactor_impact` and a separate design review.
-- [ ] Commit the integration checks, runner changes and report: `rtk git commit -m "test: prove renderer lifetime ordering across disposal paths"` after staging the named files and passing the relevant checks.
+- [x] Write the evidence report with each entry point's actual trace and result, callback/error counts, Fable/browser versions, and the two-phase registry's allocation costs. If an entry point bypasses the adapter, stop representation selection and identify the exact failing trace; evaluate a core extension only after `fcs_refactor_impact` and a separate design review.
+- [x] Commit the integration checks, runner changes and report: `rtk git commit -m "test: prove renderer lifetime ordering across disposal paths"` after staging the named files and passing the relevant checks.
 
 ## Exit and next plan
 

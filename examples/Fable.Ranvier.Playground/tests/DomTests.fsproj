@@ -10,6 +10,7 @@
     <Compile Include="DomChecks.fs" />
     <Compile Include="ScheduledChecks.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Lifetime.fs" Link="Lifetime.fs" />
+    <Compile Include="LifetimeChecks.fs" />
     <ProjectReference Include="../../../src/Fable.Ranvier/Fable.Ranvier.fsproj" />
     <PackageReference Update="FSharp.Core" Version="10.1.401" />
   </ItemGroup>

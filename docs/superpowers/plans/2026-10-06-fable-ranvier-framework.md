@@ -61,9 +61,9 @@ Contracts: C01, C03, C09. Variants: V01, V03. Risks: G03, G11, G12, G15. This is
 
 The [focused lifetime proof plan](2026-10-08-renderer-lifetime-proof.md) executes the disposal gate first. Representation, portability and sugar measurements follow its result; completing that focused plan does not complete all of Task 2.
 
-- [ ] Write lifecycle trace tests first: nested children clean up before parent while nodes remain attached; a throwing child does not prevent other cleanup/removal; disposal repeats are harmless.
-- [ ] Run the same traces through mount disposal, graph disposal, failed setup and owner disposal during reactive reruns. Include two mounts sharing one graph.
-- [ ] Prototype the renderer child registry. If any entry point bypasses the ordering guarantee, document the failure and evaluate a core extension with refactor-impact analysis; do not conceal it behind only mount-level tests.
+- [x] Write lifecycle trace tests first: nested children clean up before parent while nodes remain attached; a throwing child does not prevent other cleanup/removal; disposal repeats are harmless.
+- [x] Run the same traces through mount disposal, graph disposal, failed setup and owner disposal during reactive reruns. Include two mounts sharing one graph.
+- [x] Prototype the renderer child registry. Existing core cleanup hooks pass the tested entry points; see the [lifetime proof report](../../research/2026-10-08-renderer-lifetime-proof.md) for traces, evidence limits and known allocation/unlinking costs. No core extension was required.
 - [ ] Prototype a small portable instruction definition and a backend-neutral executable definition for the same component, fragment, text binding and keyed branch.
 - [ ] Interpret a static selection on .NET into escaped HTML and instantiate the equivalent definition in Fable. Prove browser refs cannot accidentally be required by the portable setup surface.
 - [ ] Measure definition/instance allocations and mount cost in Release JS; inspect generated closure/DU dispatch. Choose A or B from V01 and record the reason.

@@ -13,7 +13,7 @@ type Scope private (report: exn list -> unit, release: unit -> unit, parent: Sco
 
     member private _.EnsureLive() =
         if disposed then
-            invalidOp "Renderer scope is disposed"
+            raise (System.InvalidOperationException "Renderer scope is disposed")
 
     member this.Child(childRelease: unit -> unit) =
         this.EnsureLive ()
