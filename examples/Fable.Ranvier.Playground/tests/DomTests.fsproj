@@ -11,6 +11,10 @@
     <Compile Include="ScheduledChecks.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Lifetime.fs" Link="Lifetime.fs" />
     <Compile Include="LifetimeChecks.fs" />
+    <Compile Include="../../../experiments/Ranvier.View.Foundation/Representation.fs" Link="Representation.fs" />
+    <Compile Include="../../../experiments/Ranvier.View.Foundation/Typed.fs" Link="Typed.fs" />
+    <Compile Include="../../../experiments/Ranvier.View.Foundation/Browser.fs" Link="Browser.fs" />
+    <Compile Include="RepresentationChecks.fs" />
     <ProjectReference Include="../../../src/Fable.Ranvier/Fable.Ranvier.fsproj" />
     <PackageReference Update="FSharp.Core" Version="10.1.401" />
   </ItemGroup>
