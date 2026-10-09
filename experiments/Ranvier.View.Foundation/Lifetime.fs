@@ -21,11 +21,14 @@ type Scope private (report: exn list -> unit, release: unit -> unit, parent: Sco
         if disposed then
             raise (System.InvalidOperationException "Renderer scope is disposed")
 
-    member this.Child(childRelease: unit -> unit) =
+    member this.Child(childReport: exn list -> unit, childRelease: unit -> unit) =
         this.EnsureLive ()
-        let child = Scope (report, childRelease, Some this, drain)
+        let child = Scope (childReport, childRelease, Some this, drain)
         children.Add child
         child
+
+    member this.Child(childRelease: unit -> unit) =
+        this.Child (report, childRelease)
 
     member this.OnCleanup(callback: unit -> unit) =
         this.EnsureLive ()

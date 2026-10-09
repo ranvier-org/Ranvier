@@ -79,6 +79,7 @@ type private OwnedRange(host: Node) =
     let staging = fragment ()
     let first, last = comment "ranvier:start", comment "ranvier:end"
     let entries = ResizeArray<Entry>()
+    let generatedDescendants = ResizeArray<Node>()
     let mutable placement: Node = staging
 
     do
@@ -90,6 +91,11 @@ type private OwnedRange(host: Node) =
         claim claims last
 
     member _.Staging = staging
+
+    member _.AppendGenerated(parent: Node, node: Node) =
+        generatedDescendants.Add node
+        claim claims node
+        parent.appendChild node |> ignore
 
     member _.Add(node: Node, ownership) =
         if contains node host || contains node staging then
@@ -157,7 +163,7 @@ type private OwnedRange(host: Node) =
         insert parent staging before
         placement <- parent
 
-    member this.Move(parent, before) =
+    member this.Move(parent, before, rollbackFailed: unit -> unit) =
         this.Validate ()
         this.ValidateDestination (parent, before)
 
@@ -177,12 +183,25 @@ type private OwnedRange(host: Node) =
 
                     insert originalParent staging originalNext
                 with rollback ->
+                    rollbackFailed ()
                     raise (AggregateException ("Range movement and rollback failed", [| original; rollback |]))
 
                 raise original
 
     member _.Release() =
         let errors = ResizeArray<exn>()
+
+        for index in generatedDescendants.Count - 1 .. -1 .. 0 do
+            let node = generatedDescendants[index]
+
+            try
+                remove node
+            with error ->
+                errors.Add error
+
+            unclaim claims node
+
+        generatedDescendants.Clear ()
 
         for index in entries.Count - 1 .. -1 .. 0 do
             let entry = entries[index]
@@ -221,7 +240,7 @@ let mount (graph: Graph) (parentScope: Scope option) (report: exn list -> unit) 
 
     let root =
         match parentScope with
-        | Some parent -> parent.Child range.Release
+        | Some parent -> parent.Child (report, range.Release)
         | None -> Scope (report, range.Release)
 
     let mutable parent = range.Staging
@@ -240,7 +259,7 @@ let mount (graph: Graph) (parentScope: Scope option) (report: exn list -> unit) 
         if same parent range.Staging then
             range.Add (node, Owned)
         else
-            parent.appendChild node |> ignore
+            range.AppendGenerated (parent, node)
 
     let backend =
         { new Backend() with
@@ -288,16 +307,21 @@ let mount (graph: Graph) (parentScope: Scope option) (report: exn list -> unit) 
                 let node = text ""
                 append node
                 let mutable committed: string option = None
+                let bindingScope = scope
 
                 Api.createEffect (fun () ->
                     let value = read ()
 
-                    if not root.IsDisposed && not scope.IsDisposed then
+                    if not root.IsDisposed && not bindingScope.IsDisposed then
                         let changed =
                             committed
                             |> Option.forall (fun old -> not (equals old value))
 
-                        if changed then
+                        if
+                            changed
+                            && not root.IsDisposed
+                            && not bindingScope.IsDisposed
+                        then
                             Api.untrack (fun () -> node.textContent <- Some value)
                             committed <- Some value)
 
@@ -341,7 +365,7 @@ let mount (graph: Graph) (parentScope: Scope option) (report: exn list -> unit) 
         ensureSetup ()
         range.Attach (host, before)
         root.MarkAttached ()
-        Mounted (root, fun (parent, before) -> range.Move (parent, before))
+        Mounted (root, fun (parent, before) -> range.Move (parent, before, root.Dispose))
     with _ ->
         root.Dispose ()
         reraise ()

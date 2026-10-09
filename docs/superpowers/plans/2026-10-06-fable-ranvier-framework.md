@@ -78,14 +78,16 @@ The [representation experiment](2026-10-09-view-representation.md) compares port
 
 Contracts: C01, C03, C07. Risks: G03, G04, G11, G15.
 
+The [focused owned-range proof](2026-10-09-view-owned-ranges.md) implements these contracts experimentally with the provisional instruction tree. Its [evidence and review](../../research/2026-10-09-view-owned-ranges.md) cover staging, movement, borrowed restoration, parent/graph disposal and failure recovery. Production integration and the Task 2 performance/API-freeze gates remain open.
+
 Proposed operation: `mount(graph, parentScope, policies, host, view) -> MountedView`. `MountedView` exposes disposal and explicit mounted capabilities, not arbitrary mutation of its range internals.
 
-- [ ] Add failing tests for empty, one-node and fragment views; sibling preservation; failed attachment; reparented owned nodes; borrowed-node release; and post-disposal operations.
-- [ ] Implement a scope state machine that distinguishes setup, attached and disposed states and tracks children/cleanup deterministically.
-- [ ] Implement ranges with stable insertion boundaries, explicit movement and idempotent removal. Validate boundaries before destructive structural operations.
-- [ ] Make partial mount failure unwind created listeners, bindings, children and inserted nodes while preserving unrelated host content.
-- [ ] Aggregate disposal errors through the supplied reporter; guard reporter failure so it cannot interrupt resource release.
-- [ ] Extend the playground's existing mount tests and run the full DOM/browser test scripts.
+- [x] Add failing tests for empty, one-node and fragment views; sibling preservation; failed attachment; reparented owned nodes; borrowed-node release; and post-disposal operations.
+- [x] Implement a scope state machine that distinguishes setup, attached and disposed states and tracks children/cleanup deterministically.
+- [x] Implement ranges with stable insertion boundaries, explicit movement and idempotent removal. Validate boundaries before destructive structural operations.
+- [x] Make partial mount failure unwind created listeners, bindings, children and inserted nodes while preserving unrelated host content.
+- [x] Aggregate disposal errors through the supplied reporter; guard reporter failure so it cannot interrupt resource release.
+- [x] Extend the playground's existing mount tests and run the full DOM/browser test scripts.
 
 **Exit:** mount ownership is independent of graph ownership and every lifecycle entry point follows Task 2's proven order.
 

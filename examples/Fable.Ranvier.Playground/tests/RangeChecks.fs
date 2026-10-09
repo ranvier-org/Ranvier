@@ -430,6 +430,114 @@ let private overlappingMounts () =
     finally
         a.Dispose ()
 
+let private equalityDisposal () =
+    use graph = new Graph ()
+    let host = Dom.element "section" [] []
+    let parent = Scope (ignore, ignore)
+    let source = graph.Run (fun () -> Api.createSignal 0)
+
+    let handle =
+        mounted graph (Some parent) host None (fun ctx ->
+            ctx.Backend.Bind (
+                (fun _ _ ->
+                    parent.Dispose ()
+                    false),
+                fun () -> string source.Value
+            ))
+
+    let node = at host 1
+    graph.Run (fun () -> source.Value <- 1)
+    equal Disposed handle.Phase
+    equal "0" node.textContent.Value
+    equal 0. host.childNodes.length
+
+let private childReporter () =
+    use graph = new Graph ()
+    let host = Dom.element "section" [] []
+    let mutable parentReports, mountReports = 0, 0
+    let parent = Scope ((fun _ -> parentReports <- parentReports + 1), ignore)
+
+    let handle =
+        mount
+            graph
+            (Some parent)
+            (fun errors ->
+                equal [ "cleanup" ] (errors |> List.map _.Message)
+                mountReports <- mountReports + 1)
+            host
+            None
+            (fun ctx ->
+                ctx.Backend.Text "x"
+                ctx.OnCleanup (fun () -> failwith "cleanup"))
+
+    handle.Dispose ()
+    equal 1 mountReports
+    equal 0 parentReports
+    equal 0 parent.ChildCount
+    equal 0. host.childNodes.length
+    parent.Dispose ()
+
+let private failedMovementRollback () =
+    use graph = new Graph ()
+    let host, other = Dom.element "section" [] [], Dom.element "section" [] []
+    let source = graph.Run (fun () -> Api.createSignal 0)
+    let mutable reads = 0
+
+    let handle =
+        mounted graph None host None (fun ctx ->
+            ctx.Backend.Bind (
+                (=),
+                fun () ->
+                    reads <- reads + 1
+                    string source.Value
+            ))
+
+    let restoreHost = failAttachment host (InvalidOperationException "rollback")
+    let restoreOther = failAttachment other (InvalidOperationException "move")
+
+    try
+        let mutable caught = false
+
+        try
+            handle.MoveBefore (other, None)
+        with error ->
+            equal "Range movement and rollback failed" error.Message
+            caught <- true
+
+        equal true caught
+        equal Disposed handle.Phase
+        equal 0. host.childNodes.length
+        equal 0. other.childNodes.length
+        let before = reads
+        graph.Run (fun () -> source.Value <- 1)
+        equal before reads
+    finally
+        restoreHost ()
+        restoreOther ()
+        handle.Dispose ()
+
+let private reparentedGeneratedDescendants () =
+    use graph = new Graph ()
+    let host, other = Dom.element "section" [] [], Dom.element "section" [] []
+
+    let handle =
+        tree graph host (Typed.div Tree.ops [] [ Typed.button Tree.ops [] [ Tree.ops.Text "x" ] ])
+
+    let wrapper = at host 1
+    let button = at wrapper 0
+    other.appendChild button |> ignore
+
+    try
+        rejected (fun () ->
+            mounted graph None other None (fun ctx -> ctx.Native (button, Owned))
+            |> ignore)
+
+        handle.Dispose ()
+        equal 0. host.childNodes.length
+        equal 0. other.childNodes.length
+    finally
+        handle.Dispose ()
+
 let allCases =
     Array.append
         cases
@@ -437,4 +545,8 @@ let allCases =
             "reusable bindings retain identity across range movement", reactiveMoves
             "disposal during attachment cannot revive a mount", attachmentReentry
             "native ownership cannot overlap another live mount", overlappingMounts
+            "equality-triggered disposal prevents a late DOM write", equalityDisposal
+            "direct child mount disposal uses its explicit reporter", childReporter
+            "failed movement rollback disposes resources instead of stranding bindings", failedMovementRollback
+            "generated descendants remain owned after external reparenting", reparentedGeneratedDescendants
         |]
