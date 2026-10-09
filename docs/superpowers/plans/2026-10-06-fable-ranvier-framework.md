@@ -97,11 +97,13 @@ Contracts: C02, C10. Risks: G01, G02, G14.
 
 Proposed operation: `component(setup, props) -> View`, where setup receives its explicit child scope at instantiation. `Prop.read` evaluates constants/readers; it never memoizes or creates a subscription by itself.
 
-- [ ] Add tests demonstrating setup runs once, untracked; two mounts have distinct instance state; captured state remains shared; static snapshots stay static; reactive props remain live.
-- [ ] Add compile-time API examples for typed props, explicit callback writes, read-only adapters and reusable child views.
-- [ ] Implement component instantiation using Task 3's child scope; normalize prop adapters once where useful.
-- [ ] Reject use of disposed setup capabilities; test component setup failure and cleanup registration before failure.
-- [ ] Document instance state versus captured state with one minimal example of each.
+- [x] Add tests demonstrating setup runs once, untracked; two mounts have distinct instance state; captured state remains shared; static snapshots stay static; reactive props remain live.
+- [x] Add compile-time API examples for typed props, explicit callback writes, read-only adapters and reusable child views.
+- [x] Implement component instantiation using Task 3's child scope; normalize prop adapters once where useful.
+- [x] Reject use of disposed setup capabilities; test component setup failure and cleanup registration before failure.
+- [x] Document instance state versus captured state with one minimal example of each.
+
+Experimental proof completed 2026-10-09 in Components.fs; see [component evidence](../../research/2026-10-09-view-components.md). Production API freeze remains open.
 
 **Exit:** no plugin, dynamic invocation trick or props proxy is required for a typed component example.
 

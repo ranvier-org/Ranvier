@@ -34,5 +34,5 @@ module Prop =
             ensure "reader" reader
             ops.Bind equals reader
 
-let create (ops: Operations<'view>) (setup: Setup -> 'props -> 'view) (props: 'props) =
+let inline create (ops: Operations<'view>) (setup: Setup -> 'props -> 'view) (props: 'props) =
     ops.Component (fun context -> setup context props)
