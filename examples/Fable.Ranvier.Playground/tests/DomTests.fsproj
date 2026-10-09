@@ -17,6 +17,9 @@
     <Compile Include="RepresentationChecks.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Mounting.fs" Link="Mounting.fs" />
     <Compile Include="RangeChecks.fs" />
+    <Compile Include="../../../experiments/Ranvier.View.Foundation/Components.fs" Link="Components.fs" />
+    <Compile Include="../../../experiments/Ranvier.View.Foundation/ComponentPortableChecks.fs" Link="ComponentPortableChecks.fs" />
+    <Compile Include="ComponentChecks.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Fixtures.fs" Link="Fixtures.fs" />
     <Compile Include="RepresentationBench.fs" />
     <ProjectReference Include="../../../src/Fable.Ranvier/Fable.Ranvier.fsproj" />

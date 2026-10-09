@@ -178,13 +178,22 @@ module Html =
 
                 member _.Component setup =
                     let cleanups = ResizeArray<unit -> unit>()
+                    let mutable completed = false
+
+                    let onCleanup callback =
+                        if completed then
+                            raise (System.InvalidOperationException "Server component setup is completed")
+
+                        cleanups.Add callback
+
                     let mutable setupFailure: exn option = None
 
                     try
-                        setup { OnCleanup = cleanups.Add }
+                        setup { OnCleanup = onCleanup }
                     with error ->
                         setupFailure <- Some error
 
+                    completed <- true
                     let errors = ResizeArray<exn>()
 
                     for cleanup in cleanups do
