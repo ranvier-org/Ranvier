@@ -12,6 +12,9 @@
   <Folder Name="/Build/">
     <File Path="build.fsx" />
   </Folder>
+  <Folder Name="/examples/">
+    <Project Path="examples/Fable.Ranvier.Playground/Playground.fsproj" />
+  </Folder>
   <Folder Name="/experiments/">
     <Project Path="experiments/Ranvier.View.Foundation/RepresentationChecks.fsproj" />
   </Folder>

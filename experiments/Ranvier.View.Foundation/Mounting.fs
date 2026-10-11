@@ -4,6 +4,7 @@ open System
 open Ranvier
 open Fable.Core
 open Fable.Core.TS.Dom
+open Fable.Core.TS
 open Ranvier.View.Foundation
 open Ranvier.View.Foundation.Representation
 open Ranvier.View.Foundation.Scheduling
@@ -20,38 +21,48 @@ type BuildContext =
         Phase: unit -> ScopePhase
     }
 
-[<Emit("document.createDocumentFragment()")>]
-let private fragment () : Node = jsNative
+[<Global>]
+let private globalThis: GlobalThis = jsNative
 
-[<Emit("document.createComment($0)")>]
-let private comment (value: string) : Node = jsNative
+[<Global "document">]
+let private document: Document = jsNative
 
-[<Emit("document.createTextNode($0)")>]
-let private text (value: string) : Node = jsNative
+let private fragment () =
+    document.createDocumentFragment ()
 
-[<Emit("document.createElement($0)")>]
-let private element (tag: string) : HTMLElement = jsNative
+let private comment (value: string) =
+    document.createComment (value)
 
-[<Emit("$0.insertBefore($1, $2 == null ? null : $2)")>]
-let private insert (parent: Node) (node: Node) (before: Node option) : unit = jsNative
+let private text (value: string) =
+    document.createTextNode (value)
 
-[<Emit("$0.remove()")>]
-let private remove (node: Node) : unit = jsNative
+let inline private insert (parent: #Node) (node: #Node) (before: #Node option) : unit =
+    let before: Node option = before |> Option.map (fun x -> x :> Node)
 
-[<Emit("$0.contains($1)")>]
-let private contains (parent: Node) (node: Node) : bool = jsNative
+    parent.insertBefore (node, ?child = before)
+    |> ignore
 
-[<Emit("$0.ownerDocument === $1.ownerDocument")>]
-let private sameDocument (a: Node) (b: Node) : bool = jsNative
+let inline private nextSiblingNode (node: #Node) : Node option =
+    node.nextSibling
+    |> Option.map (fun x -> x :> Node)
 
-[<Emit("$0.value = $1")>]
-let private inputValue (node: HTMLElement) (value: string) : unit = jsNative
+let private remove (node: ChildNode) : unit =
+    node.remove ()
 
-[<Emit("$0.nextSibling")>]
-let private nextSibling (node: Node) : Node option = jsNative
+let private contains (parent: Node) (node: Node) : bool =
+    parent.contains node
 
-[<Emit("$0.nodeType === 11")>]
-let private isDocumentFragment (node: Node) : bool = jsNative
+let private sameDocument (a: Node) (b: Node) : bool =
+    match a.ownerDocument, b.ownerDocument with
+    | None, None -> true
+    | Some left, Some right -> obj.ReferenceEquals (left, right)
+    | _ -> false
+
+let private inputValue (node: HTMLInputElement) (value: string) : unit =
+    node.value <- value
+
+let private isDocumentFragment (node: Node) : bool =
+    node.nodeType = 11.
 
 let private invalid message =
     raise (InvalidOperationException message)
@@ -59,19 +70,19 @@ let private invalid message =
 let private same a b =
     obj.ReferenceEquals (a, b)
 
-[<Emit("new WeakSet()")>]
-let private createClaims () : obj = jsNative
+let private createClaims () : WeakSet<Node> =
+    globalThis.WeakSet.Create ()
 
 let private claims = createClaims ()
 
-[<Emit("$0.add($1)")>]
-let private claim (registry: obj) (node: Node) : unit = jsNative
+let private claim (registry: WeakSet<Node>) (node: Node) : unit =
+    registry.add node |> ignore
 
-[<Emit("$0.delete($1)")>]
-let private unclaim (registry: obj) (node: Node) : unit = jsNative
+let private unclaim (registry: WeakSet<Node>) (node: Node) : unit =
+    registry.delete node |> ignore
 
 [<Emit("(() => { for (let p = $1; p; p = p.parentNode) { if ($0.has(p)) return true; } if (!$1.firstChild) return false; const pending = Array.from($1.childNodes); while (pending.length) { const n = pending.pop(); if ($0.has(n)) return true; for (let c = n.firstChild; c; c = c.nextSibling) pending.push(c); } return false; })()")>]
-let private overlaps (registry: obj) (node: Node) : bool = jsNative
+let private overlaps (registry: WeakSet<Node>) (node: Node) : bool = jsNative
 
 type private Entry =
     {
@@ -90,7 +101,7 @@ type private OwnedRange(host: Node) =
     let mutable placement: Node = staging
 
     let intactAt parent =
-        let mutable cursor = Some first
+        let mutable cursor = Some (first :> ChildNode)
         let mutable intact = true
 
         for entry in entries do
@@ -109,7 +120,7 @@ type private OwnedRange(host: Node) =
 
             while spanCursor
                   |> Option.exists (fun node -> not (same node entry.EndNode)) do
-                spanCursor <- spanCursor |> Option.bind nextSibling
+                spanCursor <- spanCursor |> Option.bind nextSiblingNode
 
             if
                 spanCursor.IsNone
@@ -120,7 +131,7 @@ type private OwnedRange(host: Node) =
             then
                 intact <- false
 
-            cursor <- nextSibling entry.EndNode
+            cursor <- entry.EndNode.nextSibling
 
         intact
 
@@ -173,7 +184,7 @@ type private OwnedRange(host: Node) =
         claim claims node
         parent.appendChild node |> ignore
 
-    member _.Add(node: Node, ownership) =
+    member _.Add(node: ChildNode, ownership) =
         if contains node host || contains node staging then
             invalid "A native node cannot contain its mount host or range"
 
@@ -184,7 +195,7 @@ type private OwnedRange(host: Node) =
             match ownership with
             | Owned -> None
             | Borrowed ->
-                let originalParent, originalNext = node.parentNode, nextSibling node
+                let originalParent, originalNext = node.parentNode, node.nextSibling
 
                 Some (fun () ->
                     match originalParent with
@@ -251,7 +262,12 @@ type private OwnedRange(host: Node) =
                 then
                     invalid "Cannot insert a range inside its own boundaries"
 
-                cursor <- if same node entry.EndNode then None else nextSibling node
+                cursor <-
+                    if same node entry.EndNode then
+                        None
+                    else
+                        node.nextSibling
+                        |> Option.map (fun x -> x :> Node)
 
     member this.Attach(parent, before) =
         this.Validate ()
@@ -262,6 +278,7 @@ type private OwnedRange(host: Node) =
     member _.Relocate() =
         placement <-
             first.parentNode
+            |> Option.map (fun node -> node :> Node)
             |> Option.defaultWith (fun () -> invalid "Range has no parent")
 
         for entry in entries do
@@ -272,7 +289,7 @@ type private OwnedRange(host: Node) =
         this.ValidateDestination (parent, before)
 
         if not (before |> Option.exists (same first)) then
-            let originalParent, originalNext = placement, nextSibling last
+            let originalParent, originalNext = placement, last.nextSibling
 
             try
                 for entry in entries do
@@ -280,7 +297,13 @@ type private OwnedRange(host: Node) =
 
                     while cursor.IsSome do
                         let node = cursor.Value
-                        cursor <- if same node entry.EndNode then None else nextSibling node
+
+                        cursor <-
+                            if same node entry.EndNode then
+                                None
+                            else
+                                nextSiblingNode node
+
                         staging.appendChild node |> ignore
 
                 insert parent staging before
@@ -295,7 +318,13 @@ type private OwnedRange(host: Node) =
 
                         while cursor.IsSome do
                             let node = cursor.Value
-                            cursor <- if same node entry.EndNode then None else nextSibling node
+
+                            cursor <-
+                                if same node entry.EndNode then
+                                    None
+                                else
+                                    nextSiblingNode node
+
                             staging.appendChild node |> ignore
 
                     insert originalParent staging originalNext
@@ -316,7 +345,7 @@ type private OwnedRange(host: Node) =
             let node = generatedDescendants[index]
 
             try
-                remove node
+                remove (node :?> ChildNode)
             with error ->
                 errors.Add error
 
@@ -336,10 +365,10 @@ type private OwnedRange(host: Node) =
             match entry.Restore with
             | Some restore -> attempt restore
             | None ->
-                attempt (fun () -> remove entry.Node)
+                attempt (fun () -> remove (entry.Node :?> ChildNode))
 
                 if not (same entry.Node entry.EndNode) then
-                    attempt (fun () -> remove entry.EndNode)
+                    attempt (fun () -> remove (entry.EndNode :?> ChildNode))
 
             unclaim claims entry.Node
             unclaim claims entry.EndNode
@@ -414,7 +443,7 @@ let rec private mountCore
         | Some parent -> parent.Child (report, range.Release)
         | None -> Scope (report, range.Release)
 
-    let mutable parent = range.Staging
+    let mutable parent: Node = range.Staging
     let mutable scope = root
     let mutable bindingSetupFailure: exn option = None
 
@@ -443,7 +472,7 @@ let rec private mountCore
 
             member _.Element(tag, tokens, children) =
                 ensureSetup ()
-                let node = element (name tag)
+                let node = document.createElement (name tag)
                 append node
 
                 for token in tokens do
@@ -457,7 +486,7 @@ let rec private mountCore
                         if tag <> Input then
                             invalidArg "tokens" "Input value requires input"
 
-                        inputValue node value
+                        inputValue (node :?> HTMLInputElement) value
                     | Browser hook ->
                         let cleanup = hook (box node)
 
@@ -500,7 +529,7 @@ let rec private mountCore
 
                                 if changed && live () then
                                     try
-                                        node.textContent <- Some value
+                                        node.textContent <- value
                                     with error when root.Phase = SettingUp ->
                                         bindingSetupFailure <- Some error
                                         reraise ()
@@ -509,7 +538,7 @@ let rec private mountCore
                 | Queued queue ->
                     Binding.startQueued bindingScope.OnCleanup live queue equals read (fun value ->
                         try
-                            node.textContent <- Some value
+                            node.textContent <- value
                         with error when root.Phase = SettingUp ->
                             bindingSetupFailure <- Some error
                             reraise ())
@@ -586,7 +615,7 @@ let rec private mountCore
                     then
                         invalid "Keyed-list boundaries were externally mutated"
 
-                    let mutable cursor = nextSibling regionStart
+                    let mutable cursor = nextSiblingNode regionStart
 
                     for entry in entries do
                         entry.Mount.Validate ()
@@ -594,7 +623,7 @@ let rec private mountCore
                         if not (cursor |> Option.exists (same entry.First)) then
                             invalid "Keyed-list rows or contents were externally mutated"
 
-                        cursor <- nextSibling entry.Last
+                        cursor <- nextSiblingNode entry.Last
 
                     if not (cursor |> Option.exists (same regionEnd)) then
                         invalid "Keyed-list boundaries were externally reordered"
@@ -610,7 +639,7 @@ let rec private mountCore
                     )
 
                 let moveToOrder regionParent (ordered: KeyedEntry list) =
-                    let mutable anchor = Some regionEnd
+                    let mutable anchor: Node option = Some regionEnd
 
                     for entry in List.rev ordered do
                         ensureRegionLive ()
@@ -618,7 +647,7 @@ let rec private mountCore
                         let alreadyPlaced =
                             entry.Last.parentNode
                             |> Option.exists (same regionParent)
-                            && (nextSibling entry.Last
+                            && (nextSiblingNode entry.Last
                                 |> Option.exists (fun next -> anchor |> Option.exists (same next)))
 
                         if not alreadyPlaced then
@@ -832,7 +861,7 @@ let rec private mountCore
                     if not (same parent range.Staging) then
                         invalid "Native roots require top-level placement"
 
-                    range.Add (node, ownership)
+                    range.Add (node :?> ChildNode, ownership)
             OnCleanup = root.OnCleanup
             Phase = fun () -> root.Phase
         }

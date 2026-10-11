@@ -272,8 +272,8 @@ module Html =
                     | Some error, 0 -> raise error
                     | Some error, _ ->
                         errors.Insert (0, error)
-                        raise (System.AggregateException (errors))
-                    | None, _ -> raise (System.AggregateException (errors))
+                        raise (System.AggregateException errors)
+                    | None, _ -> raise (System.AggregateException errors)
             }
 
         build backend

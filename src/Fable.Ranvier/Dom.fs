@@ -1,25 +1,25 @@
 namespace Fable.Ranvier
 
-open Fable.Core
+open Fable.Core.JsInterop
 open Fable.Core.TS.Dom
 open global.Ranvier
 
 module Dom =
     type Modifier = HTMLElement -> unit
 
-    let createElement (name: string) : HTMLElement =
+    let createElement (name: string) =
         Global.document.createElement name
 
-    let text (value: string) : Node =
+    let text (value: string) =
         Global.document.createTextNode value
 
-    let reactiveText (read: unit -> string) : Node =
+    let reactiveText (read: unit -> string) =
         let node = Global.document.createTextNode ""
         DomContext.bind read (fun value -> node.data <- value)
         node
 
     let attribute (name: string) (value: string) : Modifier =
-        fun element -> element.setAttribute (name, value)
+        _.setAttribute(name, value)
 
     let bindAttribute (name: string) (read: unit -> string option) : Modifier =
         fun element ->
@@ -52,7 +52,7 @@ module Dom =
                                 | Some current when current.Options.BatchEvents -> batch invoke
                                 | _ -> invoke ())))
 
-            let callback: EventListenerOrEventListenerObject = U2.Case1 listener
+            let callback: EventListenerOrEventListenerObject = !^listener
             target.addEventListener (name, callback)
             onCleanup (fun () -> target.removeEventListener (name, callback))
 
