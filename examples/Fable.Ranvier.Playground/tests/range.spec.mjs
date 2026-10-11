@@ -13,3 +13,23 @@ test("owned range lifecycle and attachment rollback", async ({ page }) => {
   expect(results.filter(result => !result.passed)).toEqual([]);
   expect(errors).toEqual([]);
 });
+
+test("binding microtasks coalesce and cancel in Chromium", async ({ page }) => {
+  await page.goto("/tests/range.html");
+  await page.waitForFunction(() => window.bindingMicrotaskFixture);
+  const values = await page.evaluate(async () => {
+    const fixture = window.bindingMicrotaskFixture();
+    try {
+      const initial = fixture.Values();
+      fixture.Update(2);
+      fixture.Update(3);
+      await Promise.resolve();
+      const committed = fixture.Values();
+      fixture.Update(4);
+      fixture.Dispose();
+      await Promise.resolve();
+      return [initial, committed, fixture.Values()];
+    } finally { fixture.Dispose(); }
+  });
+  expect(values).toEqual([[], [3], [3]]);
+});

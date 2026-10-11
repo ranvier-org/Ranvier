@@ -113,6 +113,8 @@ Contracts: C04, C06. Variants: V02, V05. Risks: G06–G09.
 
 Proposed binding input: reader, setter, equality, outcome policy, scope and scheduler. Proposed committed cache changes only after a successful setter. Final status adapter design depends on the semantic audit of Ranvier's read APIs.
 
+The [binding policy proof](../../research/2026-10-11-binding-policies.md) implements this seam experimentally with core `TryValue` observation, explicit fallbacks/reporting/equality, synchronous and separate microtask scheduling, versioned slots and mount-lifetime checks. Native tests use `BuildContext`; the view representation/backend and public DSL do not yet carry these policies. The checklist below remains a production integration gate; proof coverage and its selected per-reader-run cleanup semantics are recorded in the evidence note. Allocation/timing budgets and the complete callback/reentry matrix remain open.
+
 - [ ] Add tests separating source equality, memo equality and binding equality, including always-write and a setter that reads another signal without subscribing to it.
 - [ ] Add explicit initial-pending, later-pending, initial-error, later-error and recovery cases. Verify status transitions are observable when the ordinary split-effect action would otherwise be skipped.
 - [ ] Implement policy-driven status handling and consistent reporting for initial and deferred writes.
