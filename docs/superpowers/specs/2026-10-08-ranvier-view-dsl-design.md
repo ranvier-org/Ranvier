@@ -80,7 +80,7 @@ Report repeated-run timings and variability, operation/resource counts, and allo
 
 ## Generation relationship
 
-Begin with a handwritten representative HTML subset. A later generator can produce the same constructors and modifiers. The [Wire-based option](../../research/xantham-ranvier-dom-evaluation.md#alternative-minimal-generator-over-xanthamtypescriptwire), currently discussed in [Xantham #110](https://github.com/shayanhabibi/Xantham/issues/110), must preserve this surface and its runtime contracts.
+Begin with a handwritten representative HTML subset. A later generator can produce the same constructors and modifiers. The [catalogue-backed Wire option](../../research/xantham-ranvier-dom-evaluation.md#alternative-minimal-generator-over-xanthamtypescriptwire) must preserve this surface and its runtime contracts. As of the [2026-10-11 artifact check](../../research/2026-10-11-xantham-release-catalogues.md), Generator 0.2.0 supports portable/Brotli file catalogues, but published Core.TS 0.2.0 contains no catalogue. [Xantham #110](https://github.com/shayanhabibi/Xantham/issues/110) is closed; package distribution and supported identity lookup remain prerequisites to verify rather than assumed released capabilities.
 
 Reuse Xantham's native bindings, including `HTMLInputElement` and non-element references such as `FileList`. Generated Ranvier definitions are a separate authoring surface. Neither generator availability nor an upstream binding-map change blocks the handwritten lifecycle and portability experiment.
 

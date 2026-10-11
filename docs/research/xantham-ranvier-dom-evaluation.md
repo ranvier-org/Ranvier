@@ -1,32 +1,36 @@
 # Xantham generation for Ranvier DOM
 
-Date: 2026-10-08. Status: architectural assessment, not an implemented or compiler-validated pipeline.
+Assessed 2026-10-08; reoriented 2026-10-11 against published Cloudsmith artifacts. Status: architectural assessment, not an implemented or compiler-validated generation pipeline.
 
 ## Verdict
 
-Use Xantham as the source of typed DOM knowledge and as build-time generation infrastructure. Let Ranvier own the generated public vocabulary and the runtime semantics. The promising path is a Ranvier-owned generation pass consuming Xantham's semantic snapshot, not assuming that its stock property companion hook can generate the whole renderer-facing scaffold.
+Use Xantham as the source of typed DOM knowledge and native binding identity. Let Ranvier own the generated public vocabulary and the runtime semantics. Explore a minimal catalogue-backed HTML generator over Wire, with Xantham's generator as the alternative when its authenticated catalogue/application machinery is needed. Neither approach assumes that the stock property companion hook generates the whole renderer-facing scaffold.
+
+The [current release investigation](2026-10-11-xantham-release-catalogues.md) verifies Generator 0.2.0, Wire 0.3.0 and Core/Core.TS 0.2.0 on Cloudsmith. Generator supports portable schema-2 catalogues and Brotli file transport, but the downloaded Core.TS 0.2.0 package contains no catalogue or descriptor. Catalogue distribution remains an upstream prerequisite; issue closure is insufficient evidence of shipment. Ranvier still references Core/Core.TS 0.1.0; this assessment makes no dependency upgrade.
 
 Upstream capabilities and constraints are recorded in [the source investigation](xantham-generation-sources.md). Ranvier requirements come from the [proposed framework brief](../superpowers/specs/2026-10-06-fable-ranvier-framework-brief.md), especially C01, C04, C06, C07, C09 and C10. Existing behavior is documented in the [DOM PoC README](../../src/Fable.Ranvier/README.md); the proposal is not an implementation audit.
 
 ## Proposed pipeline
 
-1. Pin TypeScript DOM declarations and Xantham's generator/library version.
-2. Use Xantham to resolve declarations and produce semantic snapshots and native bindings.
-3. Apply a versioned Ranvier mapping: tag/interface identity, inherited writable properties, event maps, names, nullability and explicit exceptions.
-4. Generate reusable element definitions and distinct static/reactive property, attribute and listener helpers. Delegate behavior to Ranvier's small handwritten runtime.
-5. Validate deterministic regeneration, compile generated examples in Release Fable, and exercise the resulting browser behavior.
+1. Inspect a newly published catalogue-bearing Core.TS nupkg from Cloudsmith. Pin its version, package hash, catalogue provenance and compatible Wire/compiler inputs. Check the downloaded artifact, not just the producer checkout.
+2. Prove a bridge from compiler declaration identity to the catalogue's qualified F# name, arity and ownership, and verify it against the actual binding assembly. Reuse native bindings throughout; do not regenerate them alongside the scaffold.
+3. Query tag maps, inheritance, writable properties and event maps through Wire or a structured Xantham projection. Normalize a narrow HTML model plus a versioned Ranvier policy map for names, nullability, form semantics and explicit exceptions. The catalogue authenticates binding identities; it does not supply complete member metadata.
+4. Generate ordinary typed element functions and distinct static/reactive property, attribute and listener helpers targeting the existing experimental Foundation runtime. Keep ownership, scheduling and policy in handwritten runtime operations.
+5. Validate deterministic regeneration, negative typing examples, Release Fable compilation and browser behavior. Compare generated helpers with handwritten equivalents before expanding coverage or freezing the public surface.
 
 The snapshot adapter must establish that the required tag maps, inheritance and event types survive in a usable form. The public customization contract currently uses opaque binding-type handles and a display string; it does not expose a complete structured type decomposition or dedicated tag-map/event-map queries. Follow-up inspection found that the wider generator API already exposes `FsTypeRef`, `FsMember`, `FsDecl` and `RenderModel.Decls`: a Ranvier-owned emitter can inspect declarations returned by `Pipeline.generateWith` and write its own files without a new output hook. This path requires the needed declarations to be reached and shipped, and does not preserve every source-semantic distinction. Small upstream inspection and qualified-name functions would improve the richer semantic path. Avoid reverse-engineering emitted F# text or parsing display strings to reconstruct semantic types.
 
 ## Alternative: minimal generator over Xantham.TypeScript.Wire
 
-Discussed on 2026-10-08. This option is currently being discussed in [Xantham #110](https://github.com/shayanhabibi/Xantham/issues/110). It remains a proposal; no upstream commitment or implementation is assumed.
+Discussed on 2026-10-08; revised against the 2026-10-11 release evidence. [Xantham #110](https://github.com/shayanhabibi/Xantham/issues/110) proposed package catalogue discovery/distribution and is now closed. Portable compatibility and Brotli file transport shipped, but Core.TS catalogue packing and a standalone resolver are not established by the released artifacts. The minimal Ranvier emitter remains a proposal.
 
 Use `Xantham.TypeScript.Wire` directly for TypeScript checker queries and AST access, then implement a narrowly scoped Ranvier HTML model and F# scaffold emitter. Select tag maps, inherited writable properties and event maps; generate reusable views and distinct static/reactive helpers that delegate behavior to Ranvier's runtime.
 
 Reuse `Xantham.Fable.Core.TS` native bindings throughout, including native types within the HTML domain. For example, an input scaffold uses the existing `HTMLInputElement`, and its `files` property references the existing `FileList`. Generate the Ranvier authoring surface without redeclaring these native types.
 
-The main integration requirement is a reliable bridge from TypeScript declaration identity to the existing qualified F# binding name, generic arity and representation. Wire supplies TypeScript facts, not Xantham's F# mapping. Xantham's declaration catalog records much of this information, but the inspected Core.TS 0.1.0 package does not ship it; the current package project also has no catalog packaging item. Catalog loading and identity calculation are private, and no standalone Wire-to-catalog resolver was identified. A producer-generated binding map distributed with Core.TS, plus a small identity resolver, would make this approach substantially easier without expanding Xantham's framework customization machinery.
+The main integration requirement is a reliable bridge from TypeScript declaration identity to the existing qualified F# binding name, generic arity and representation. Wire supplies TypeScript facts, not Xantham's F# mapping. The released catalogue format records qualified names, identity, arity, constraints and provenance, but its API field is an authentication fingerprint rather than recoverable member signatures. Core.TS 0.2.0 does not ship an instance. File loading/authentication remains private or internal, and no public standalone Wire-to-catalog resolver was identified. Shipping the producer's Brotli catalogue with Core.TS is the first improvement; a small supported identity lookup and authenticated loader would then avoid duplicating Xantham's compatibility machinery. Automatic package discovery can follow: the first prototype can use an explicit path to the payload in a restored, pinned package.
+
+Requested upstream on 2026-10-11 via the active Codex task “Review Xantham's ready PRs”: generate the catalogue from the exact packaged-binding inputs/configuration, include the Brotli payload and ownership/version descriptor where supported, verify the downloaded Cloudsmith package, and add a restored-package consumer test without a sibling checkout. Request delivery is recorded here; implementation and publication remain unverified.
 
 Pin compatible Wire/compiler versions and the TypeScript declaration inputs associated with the Core.TS package. Support a small verified type grammar: explicit primitive, optional, array, generic and callback conversion rules; catalog-resolved named types; and curated union/HTML exceptions. Unsupported shapes must produce generation diagnostics rather than silently widening to `obj`.
 
@@ -42,7 +46,7 @@ For the framework author, the central benefit is coverage and maintenance consis
 
 - **Types are insufficient behavioral specifications.** A writable boolean property does not establish boolean-attribute serialization. Live form properties, default values, removal, focus and IME behavior require explicit rules. Read-only properties must not produce setters.
 - **Current customization is narrower than arbitrary scaffolding.** Property companions help adapt properties; constructors, event registration and reusable views require another generation pass or extension work. A raw interface replacement escape is a poor default for systematic HTML generation.
-- **The target is moving.** The PoC constructs native nodes; the proposed framework constructs reusable definitions and allocates DOM at instantiation. Generating the former now risks rewriting the entire surface later.
+- **The target is still experimental.** The Foundation PoC now supports reusable definitions, typed components, owned ranges and keyed views, as recorded in the [current checkpoint](2026-10-11-view-poc-checkpoint.md). Generate against that runtime direction, while treating helper signatures and broader scheduling/property policies as provisional.
 - **Ownership cannot be generated from DOM declarations.** Generated listeners and bindings must delegate disposal, untracked writes, outcome handling and scheduling to Ranvier. Duplicating these behaviors in each helper multiplies failure points.
 - **Browser setters cannot by themselves support server rendering.** Portable operations need metadata and curated serialization rules; arbitrary native callbacks remain explicitly browser-only.
 - **A huge generated surface still has a cost.** Measure compiler time, declaration size, editor completion quality and bundled output. Upstream changes must produce reviewable diffs rather than silently expanding or breaking Ranvier's public interface.
@@ -52,7 +56,9 @@ The declaration source supplies useful tag, property and event information: [Typ
 
 ## Smallest decisive experiment
 
-Generate only `div`, `button`, `input`, `select` and `option`. Compare them with equivalent handwritten definitions using the same runtime. Prove:
+First prove catalogue identity resolution for `HTMLInputElement`, inherited `HTMLElement` members, `FileList`, optional `files`, `value`, `checked` and an input event. Include generic references and callback/array shapes where reached; missing, ambiguous or unsupported mappings must fail explicitly. Verify the catalogue against the referenced binding version rather than assuming package version equality authenticates its contents.
+
+Then generate only `div`, `button`, `input`, `select` and `option`. Compare them with equivalent handwritten definitions using the same runtime. Prove:
 
 - Two mounts of one definition create independent nodes, bindings and listeners.
 - Generated static and reactive helpers preserve the documented differences; no policy is inferred from a getter.
@@ -64,4 +70,4 @@ Generate only `div`, `button`, `input`, `select` and `option`. Compare them with
 - Release JS, bundle size and mount/update/disposal workloads remain comparable to the handwritten equivalent.
 - A small portable definition can be interpreted as escaped server HTML without browser nodes or globals.
 
-Proceed to broader coverage after these gates pass. This assessment ran no generated-output compilation, runtime tests or performance benchmarks, and changes no runtime code or existing implementation plan.
+Proceed to broader coverage after these gates pass. This update reorients the documentation and Task 7 generation prerequisites. It changes no runtime code or dependencies and ran no generated-output compilation, runtime tests or performance benchmarks.
