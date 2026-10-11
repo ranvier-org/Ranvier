@@ -16,7 +16,9 @@
     "test": "npm run test:dom && npm run test:browser",
     "bench:dom": "npm run compile:tests && node benchmarks/dom-scheduling.mjs",
     "bench:view": "npm run compile:tests && node benchmarks/view-representation.mjs",
-    "bench:binding": "npm run compile:tests && node benchmarks/binding-minimal.mjs"
+    "bench:binding": "npm run compile:tests && node benchmarks/binding-minimal.mjs",
+    "bench:branch": "npm run compile:tests && node benchmarks/branch-snapshots.mjs",
+    "bench:snapshot:dotnet": "pwsh -NoProfile -File benchmarks/snapshot-dotnet.ps1"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",

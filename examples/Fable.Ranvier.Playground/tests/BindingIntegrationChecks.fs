@@ -192,7 +192,7 @@ let private structuralBoundary (ops: Operations<'view>) run queued =
                     let left, right = flight.Value
                     2, (left.Value, right.Value))
 
-            Keyed.list ops (=) fst (fun () -> [ selected.Value ]) (fun current ->
+            Branch.select ops (=) fst (fun () -> selected.Value) (fun current ->
                 ops.Component (fun setup ->
                     let key = fst (current ())
                     setups.Add key
@@ -318,7 +318,7 @@ let private serverStructuralBoundary (ops: Operations<'view>) run =
                 Api.createBoundary (fun _ -> 0, ("<loading>", "")) (fun error _ -> 1, (error.Message, "")) (fun () -> 2, (left.Value, right.Value))
 
             let view =
-                Keyed.list ops (=) fst (fun () -> [ selected.Value ]) (fun current ->
+                Branch.select ops (=) fst (fun () -> selected.Value) (fun current ->
                     Typed.div
                         ops
                         []
@@ -337,6 +337,54 @@ let private serverStructuralBoundary (ops: Operations<'view>) run =
             equal "<div>&lt;one&gt;&amp;two</div>" (render ())
             left.Fail (Exception "<failed>")
             equal "<div>&lt;failed&gt;</div>" (render ())))
+
+let private descendantFailure queued =
+    use graph = new Graph ()
+    let failing = graph.Run (fun () -> Api.createSignal (false, "ready"))
+    let mutable recovered = 0
+    let attempts = ResizeArray<bool>()
+    let host = host ()
+
+    let view =
+        Tree.ops.Component (fun _ ->
+            let selection =
+                Api.createErrorBoundary
+                    (fun _ _ ->
+                        recovered <- recovered + 1
+                        1)
+                    (fun () -> 0)
+
+            Branch.select Tree.ops (=) id (fun () -> selection.Value) (fun _ ->
+                Typed.reactiveText Tree.ops (fun () ->
+                    let fails, value = failing.Value
+                    attempts.Add fails
+
+                    if fails then
+                        failwith "descendant reader"
+
+                    value)))
+
+    let mode =
+        if queued then
+            QueuedCommits (CollectAndContinue, ignore)
+        else
+            SynchronousCommits
+
+    let mounted =
+        mountWith mode graph None ignore host None (fun context -> Tree.run view context.Backend)
+
+    try
+        equal "ready" host.textContent
+        graph.Run (fun () -> failing.Value <- true, "failed")
+        mounted.Flush ()
+        equal (0, "ready", 0) (recovered, host.textContent, mounted.CommitErrors.Length)
+        equal [ false; true ] (List.ofSeq attempts)
+        graph.Run (fun () -> failing.Value <- false, "recovered")
+        mounted.Flush ()
+        equal "recovered" host.textContent
+        equal [ false; true; false ] (List.ofSeq attempts)
+    finally
+        mounted.Dispose ()
 
 let portableCases =
     [|
@@ -363,4 +411,6 @@ let cases =
             "tree queued structural selection shares a core boundary", fun () -> structuralBoundary Tree.ops Tree.run true
             "program synchronous structural selection shares a core boundary", fun () -> structuralBoundary Program.ops Program.run false
             "program queued structural selection shares a core boundary", fun () -> structuralBoundary Program.ops Program.run true
+            "computation boundary leaves synchronous descendant read failures on the effect", fun () -> descendantFailure false
+            "computation boundary leaves queued descendant read failures on the effect", fun () -> descendantFailure true
         |]

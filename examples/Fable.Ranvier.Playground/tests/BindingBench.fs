@@ -36,17 +36,33 @@ let sample path queued width phase iterations =
     let source = graph.Run (fun () -> Api.createSignal 0)
 
     let make () =
-        Tree.ops.Element
-            Div
-            []
-            [
-                for _ in 1..width do
-                    match path with
-                    | "legacy" -> Tree.ops.Bind (=) (fun () -> string source.Value)
-                    | "direct" -> Tree.ops.Bind (=) (fun () -> string source.Value)
-                    | "helper" -> Typed.reactiveText Tree.ops (fun () -> string source.Value)
-                    | _ -> invalidArg "path" path
-            ]
+        let contents read =
+            Tree.ops.Element
+                Div
+                []
+                [
+                    for _ in 1..width -> Typed.reactiveText Tree.ops (fun () -> string (read ()))
+                ]
+
+        let key value =
+            if phase = "replace" then value % 2 else 0
+
+        if path = "branch" then
+            Branch.select Tree.ops (=) key (fun () -> source.Value) contents
+        elif path = "branch-list" then
+            Keyed.list Tree.ops (=) key (fun () -> [ source.Value ]) contents
+        else
+            Tree.ops.Element
+                Div
+                []
+                [
+                    for _ in 1..width do
+                        match path with
+                        | "legacy" -> Tree.ops.Bind (=) (fun () -> string source.Value)
+                        | "direct" -> Tree.ops.Bind (=) (fun () -> string source.Value)
+                        | "helper" -> Typed.reactiveText Tree.ops (fun () -> string source.Value)
+                        | _ -> invalidArg "path" path
+                ]
 
     let view = make ()
     let host = host ()
@@ -81,6 +97,7 @@ let sample path queued width phase iterations =
     try
         match phase with
         | "update"
+        | "replace"
         | "coalesce" -> mounts.Add (mount ())
         | "dispose" ->
             for _ in 1..iterations do
@@ -107,6 +124,12 @@ let sample path queued width phase iterations =
 
                 if queued then
                     mounts[0].Flush()
+        | "replace" ->
+            for value in 1..iterations do
+                graph.Run (fun () -> source.Value <- value)
+
+                if queued then
+                    mounts[0].Flush()
         | "coalesce" ->
             for value in 1..iterations do
                 graph.Run (fun () ->
@@ -120,7 +143,11 @@ let sample path queued width phase iterations =
 
         let elapsed = now () - started
 
-        if phase = "update" || phase = "coalesce" then
+        if
+            phase = "update"
+            || phase = "replace"
+            || phase = "coalesce"
+        then
             let final = if phase = "coalesce" then iterations * 100 else iterations
 
             if

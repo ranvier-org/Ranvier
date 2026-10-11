@@ -132,7 +132,7 @@ Experimental keyed-list checkpoint: retained values/identity, reorder, removal/r
 
 Contracts: C05. Variant: V04. Risks: G05, G10, G15.
 
-Proposed branch input: selection reader, key selector, equality, factory receiving a current-value reader, and explicit outcome policy. List input additionally supplies key lookup semantics, including compatible hashing if required by the implementation.
+Current experimental branch input: selection reader, key selector, equality and factory receiving a current-value reader. `Branch.select` delegates to the existing keyed runtime; outcome presentation comes from enclosing boundaries. The [branch and snapshot experiment](../../research/2026-10-11-branches-and-snapshots.md) records its tests and list/array measurements. A specialized branch engine and internal array storage remain unimplemented; descendant effect-error boundaries and coordinated reveal remain open. List input additionally supplies key lookup semantics, including compatible hashing if required by the implementation.
 
 - [ ] Test equal-key data replacement without setup rerun; changed-key replacement; variant-discriminated keys; duplicate keys; remove/reinsert; and cleanup during replacement.
 - [ ] Implement keyed branches using owned ranges; avoid capturing only the initial selected value in retained children.

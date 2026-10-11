@@ -87,6 +87,29 @@ module Keyed =
 
         ops.Keyed equalsObjects readObjects renderObject
 
+module Branch =
+    /// <summary>Selects a mounted instance by key and supplies a reader for its current selection.</summary>
+    /// <remarks>Equal keys retain the instance; changed keys replace it.
+    /// Include the branch discriminator in the key when component shape changes.</remarks>
+    let select (ops: Operations<'view>) (equals: 'key -> 'key -> bool) (key: 'item -> 'key) (read: unit -> 'item) (render: (unit -> 'item) -> 'view) =
+        if isNull (box equals) then
+            invalidArg "equals" "Key comparer cannot be null"
+
+        if isNull (box key) then
+            invalidArg "key" "Key selector cannot be null"
+
+        if isNull (box read) then
+            invalidArg "read" "Selection reader cannot be null"
+
+        if isNull (box render) then
+            invalidArg "render" "Instance renderer cannot be null"
+
+        let readObjects () =
+            let item = read ()
+            [ box (key item), box item ]
+
+        ops.Keyed (fun left right -> equals (unbox left) (unbox right)) readObjects (fun current -> render (fun () -> unbox (current ())))
+
 module Tree =
     type View =
         private

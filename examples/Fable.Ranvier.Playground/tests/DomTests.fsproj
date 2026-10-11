@@ -30,6 +30,7 @@
     <Compile Include="../../../experiments/Ranvier.View.Foundation/ComponentBench.fs" Link="ComponentBench.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Fixtures.fs" Link="Fixtures.fs" />
     <Compile Include="RepresentationBench.fs" />
+    <Compile Include="../../../experiments/Ranvier.View.Foundation/SnapshotBench.fs" Link="SnapshotBench.fs" />
     <ProjectReference Include="../../../src/Fable.Ranvier/Fable.Ranvier.fsproj" />
     <PackageReference Update="FSharp.Core" Version="10.1.401" />
   </ItemGroup>
