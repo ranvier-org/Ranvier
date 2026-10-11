@@ -49,6 +49,9 @@ input { width: 100%; border: 1px solid #dce1e6; border-radius: 8px; padding: 13p
 .empty-state { text-align: center; padding: 63px 30px; border: 1px dashed #ced5df; border-radius: 16px; color: #657084; }
 .empty-state h2 { color: #44536c; font-weight: 550; font-size: 22px; }
 .empty-state p { font-size: 14px; line-height: 1.7; max-width: 480px; margin: auto; }
+#foundation-demo { display: grid; gap: 12px; margin-top: 24px; padding: 20px; border: 1px solid #dce1e6; border-radius: 12px; background: #fff; }
+#foundation-demo button { justify-self: start; border: 1px solid #e1e5e9; border-radius: 8px; padding: 9px 12px; background: #fff; color: #44536c; }
+#foundation-demo [id^="foundation-row-"] { padding: 8px 0; border-top: 1px solid #edf0f2; }
 footer { margin: 25px 0 0; color: #8a94a3; font-size: 11px; line-height: 1.7; }
 @media (max-width: 650px) {
   .playground { padding: 23px 19px; }

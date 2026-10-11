@@ -49,6 +49,9 @@ let private inputValue (node: HTMLElement) (value: string) : unit = jsNative
 [<Emit("$0.nextSibling")>]
 let private nextSibling (node: Node) : Node option = jsNative
 
+[<Emit("$0.nodeType === 11")>]
+let private isDocumentFragment (node: Node) : bool = jsNative
+
 let private invalid message =
     raise (InvalidOperationException message)
 
@@ -72,6 +75,9 @@ let private overlaps (registry: obj) (node: Node) : bool = jsNative
 type private Entry =
     {
         Node: Node
+        EndNode: Node
+        Validate: unit -> unit
+        Relocate: unit -> unit
         Restore: (unit -> unit) option
     }
 
@@ -82,17 +88,86 @@ type private OwnedRange(host: Node) =
     let generatedDescendants = ResizeArray<Node>()
     let mutable placement: Node = staging
 
+    let intactAt parent =
+        let mutable cursor = Some first
+        let mutable intact = true
+
+        for entry in entries do
+            entry.Validate ()
+
+            if
+                not (
+                    entry.Node.parentNode
+                    |> Option.exists (same parent)
+                )
+                || not (cursor |> Option.exists (same entry.Node))
+            then
+                intact <- false
+
+            let mutable spanCursor = Some entry.Node
+
+            while spanCursor
+                  |> Option.exists (fun node -> not (same node entry.EndNode)) do
+                spanCursor <- spanCursor |> Option.bind nextSibling
+
+            if
+                spanCursor.IsNone
+                || not (
+                    entry.EndNode.parentNode
+                    |> Option.exists (same parent)
+                )
+            then
+                intact <- false
+
+            cursor <- nextSibling entry.EndNode
+
+        intact
+
     do
         staging.appendChild first |> ignore
         staging.appendChild last |> ignore
-        entries.Add { Node = first; Restore = None }
-        entries.Add { Node = last; Restore = None }
+
+        entries.Add
+            {
+                Node = first
+                EndNode = first
+                Validate = ignore
+                Relocate = ignore
+                Restore = None
+            }
+
+        entries.Add
+            {
+                Node = last
+                EndNode = last
+                Validate = ignore
+                Relocate = ignore
+                Restore = None
+            }
+
         claim claims first
         claim claims last
 
     member _.Staging = staging
 
-    member _.AppendGenerated(parent: Node, node: Node) =
+    member _.AddRegion(start: Node, finish: Node, validate: unit -> unit, relocate: unit -> unit) =
+        entries.Insert (
+            entries.Count - 1,
+            {
+                Node = start
+                EndNode = finish
+                Validate = validate
+                Relocate = relocate
+                Restore = None
+            }
+        )
+
+        claim claims start
+        claim claims finish
+        insert staging start (Some last)
+        insert staging finish (Some last)
+
+    member this.AppendGenerated(parent: Node, node: Node) =
         generatedDescendants.Add node
         claim claims node
         parent.appendChild node |> ignore
@@ -120,24 +195,37 @@ type private OwnedRange(host: Node) =
 
                         insert parent node before)
 
-        entries.Insert (entries.Count - 1, { Node = node; Restore = restore })
+        entries.Insert (
+            entries.Count - 1,
+            {
+                Node = node
+                EndNode = node
+                Validate = ignore
+                Relocate = ignore
+                Restore = restore
+            }
+        )
+
         claim claims node
         insert staging node (Some last)
 
-    member private _.Validate() =
-        let mutable cursor = Some first
+    member _.Validate() =
+        if intactAt placement then
+            ()
+        elif
+            isDocumentFragment placement
+            && placement.firstChild.IsNone
+        then
+            let relocatedParent =
+                first.parentNode
+                |> Option.defaultWith (fun () -> invalid "Range boundaries or owned roots were externally mutated")
 
-        for entry in entries do
-            if
-                not (
-                    entry.Node.parentNode
-                    |> Option.exists (same placement)
-                )
-                || not (cursor |> Option.exists (same entry.Node))
-            then
-                invalid "Range boundaries or owned roots were externally mutated"
+            if not (intactAt relocatedParent) then
+                invalid "Range roots were not contiguous after their staging fragment was attached"
 
-            cursor <- nextSibling entry.Node
+            placement <- relocatedParent
+        else
+            invalid "Range boundaries or owned roots were externally mutated"
 
     member private _.ValidateDestination(parent: Node, before: Node option) =
         if not (sameDocument first parent) then
@@ -148,20 +236,35 @@ type private OwnedRange(host: Node) =
         | _ -> ()
 
         for entry in entries do
-            if contains entry.Node parent then
-                invalid "Cannot move a range into itself"
+            let mutable cursor = Some entry.Node
 
-            if
-                before
-                |> Option.exists (fun anchor -> same entry.Node anchor && not (same first anchor))
-            then
-                invalid "Cannot insert a range inside its own boundaries"
+            while cursor.IsSome do
+                let node = cursor.Value
+
+                if contains node parent then
+                    invalid "Cannot move a range into itself"
+
+                if
+                    before
+                    |> Option.exists (fun anchor -> same node anchor && not (same first anchor))
+                then
+                    invalid "Cannot insert a range inside its own boundaries"
+
+                cursor <- if same node entry.EndNode then None else nextSibling node
 
     member this.Attach(parent, before) =
         this.Validate ()
         this.ValidateDestination (parent, before)
         insert parent staging before
         placement <- parent
+
+    member _.Relocate() =
+        placement <-
+            first.parentNode
+            |> Option.defaultWith (fun () -> invalid "Range has no parent")
+
+        for entry in entries do
+            entry.Relocate ()
 
     member this.Move(parent, before, rollbackFailed: unit -> unit) =
         this.Validate ()
@@ -172,16 +275,33 @@ type private OwnedRange(host: Node) =
 
             try
                 for entry in entries do
-                    staging.appendChild entry.Node |> ignore
+                    let mutable cursor = Some entry.Node
+
+                    while cursor.IsSome do
+                        let node = cursor.Value
+                        cursor <- if same node entry.EndNode then None else nextSibling node
+                        staging.appendChild node |> ignore
 
                 insert parent staging before
                 placement <- parent
+
+                for entry in entries do
+                    entry.Relocate ()
             with original ->
                 try
                     for entry in entries do
-                        staging.appendChild entry.Node |> ignore
+                        let mutable cursor = Some entry.Node
+
+                        while cursor.IsSome do
+                            let node = cursor.Value
+                            cursor <- if same node entry.EndNode then None else nextSibling node
+                            staging.appendChild node |> ignore
 
                     insert originalParent staging originalNext
+                    placement <- originalParent
+
+                    for entry in entries do
+                        entry.Relocate ()
                 with rollback ->
                     rollbackFailed ()
                     raise (AggregateException ("Range movement and rollback failed", [| original; rollback |]))
@@ -206,14 +326,22 @@ type private OwnedRange(host: Node) =
         for index in entries.Count - 1 .. -1 .. 0 do
             let entry = entries[index]
 
-            try
-                match entry.Restore with
-                | Some restore -> restore ()
-                | None -> remove entry.Node
-            with error ->
-                errors.Add error
+            let attempt action =
+                try
+                    action ()
+                with error ->
+                    errors.Add error
+
+            match entry.Restore with
+            | Some restore -> attempt restore
+            | None ->
+                attempt (fun () -> remove entry.Node)
+
+                if not (same entry.Node entry.EndNode) then
+                    attempt (fun () -> remove entry.EndNode)
 
             unclaim claims entry.Node
+            unclaim claims entry.EndNode
 
         entries.Clear ()
 
@@ -222,9 +350,16 @@ type private OwnedRange(host: Node) =
         elif errors.Count > 1 then
             raise (AggregateException ("Range release failed", errors))
 
-type Mounted internal (scope: Scope, move: Node * Node option -> unit) =
+type Mounted internal (scope: Scope, move: Node * Node option -> unit, validate: unit -> unit, relocate: unit -> unit) =
     member _.Phase = scope.Phase
     member _.Failures = scope.Failures
+
+    /// <summary>Checks that the mount's recorded DOM range remains intact.</summary>
+    member internal _.Validate() =
+        validate ()
+
+    member internal _.Relocate() =
+        relocate ()
 
     member _.Dispose() =
         scope.Dispose ()
@@ -235,7 +370,16 @@ type Mounted internal (scope: Scope, move: Node * Node option -> unit) =
 
         move (parent, before)
 
-let mount (graph: Graph) (parentScope: Scope option) (report: exn list -> unit) (host: Node) (before: Node option) (build: BuildContext -> unit) =
+type private KeyedEntry =
+    {
+        Key: obj
+        Value: Signal<obj>
+        First: Node
+        Last: Node
+        Mount: Mounted
+    }
+
+let rec mount (graph: Graph) (parentScope: Scope option) (report: exn list -> unit) (host: Node) (before: Node option) (build: BuildContext -> unit) =
     let range = OwnedRange host
 
     let root =
@@ -325,6 +469,210 @@ let mount (graph: Graph) (parentScope: Scope option) (report: exn list -> unit) 
                             Api.untrack (fun () -> node.textContent <- Some value)
                             committed <- Some value)
 
+            member _.Keyed(equals, read, render) =
+                ensureSetup ()
+                Keyed.validateUniqueKeys equals (read ())
+
+                let regionStart, regionEnd =
+                    comment "ranvier:list:start", comment "ranvier:list:end"
+
+                if not (same parent range.Staging) then
+                    range.AppendGenerated (parent, regionStart)
+                    range.AppendGenerated (parent, regionEnd)
+
+                let regionScope = scope.Child (report, ignore)
+                let mutable entries: KeyedEntry list = []
+                let mutable regionOwner: Owner option = None
+
+                let getRegionParent () =
+                    let regionParent =
+                        regionStart.parentNode
+                        |> Option.defaultWith (fun () -> invalid "Keyed-list boundaries have no parent")
+
+                    if
+                        not (
+                            regionEnd.parentNode
+                            |> Option.exists (same regionParent)
+                        )
+                    then
+                        invalid "Keyed-list boundaries were externally mutated"
+
+                    regionParent
+
+                let validateRegion regionParent =
+                    if
+                        not (
+                            regionStart.parentNode
+                            |> Option.exists (same regionParent)
+                        )
+                        || not (
+                            regionEnd.parentNode
+                            |> Option.exists (same regionParent)
+                        )
+                    then
+                        invalid "Keyed-list boundaries were externally mutated"
+
+                    let mutable cursor = nextSibling regionStart
+
+                    for entry in entries do
+                        entry.Mount.Validate ()
+
+                        if not (cursor |> Option.exists (same entry.First)) then
+                            invalid "Keyed-list rows or contents were externally mutated"
+
+                        cursor <- nextSibling entry.Last
+
+                    if not (cursor |> Option.exists (same regionEnd)) then
+                        invalid "Keyed-list boundaries were externally reordered"
+
+                if same parent range.Staging then
+                    range.AddRegion (
+                        regionStart,
+                        regionEnd,
+                        (fun () -> validateRegion (getRegionParent ())),
+                        (fun () ->
+                            for entry in entries do
+                                entry.Mount.Relocate ())
+                    )
+
+                let moveToOrder regionParent (ordered: KeyedEntry list) =
+                    let mutable anchor = Some regionEnd
+
+                    for entry in List.rev ordered do
+                        let alreadyPlaced =
+                            entry.Last.parentNode
+                            |> Option.exists (same regionParent)
+                            && (nextSibling entry.Last
+                                |> Option.exists (fun next -> anchor |> Option.exists (same next)))
+
+                        if not alreadyPlaced then
+                            entry.Mount.MoveBefore (regionParent, anchor)
+
+                        anchor <- Some entry.First
+
+                let createEntry key value =
+                    let item = graph.Run (fun () -> Api.createSignal value)
+                    let staging = fragment ()
+
+                    let owner =
+                        regionOwner
+                        |> Option.defaultWith (fun () -> invalid "Keyed-list owner is unavailable")
+
+                    let mounted =
+                        Api.runWithOwner owner (fun () ->
+                            mount graph (Some regionScope) report staging None (fun context -> render (fun () -> item.Value) context.Backend))
+
+                    let first =
+                        staging.firstChild
+                        |> Option.defaultWith (fun () -> invalid "A keyed row has no start boundary")
+
+                    let last =
+                        staging.lastChild
+                        |> Option.defaultWith (fun () -> invalid "A keyed row has no end boundary")
+
+                    {
+                        Key = key
+                        Value = item
+                        First = first
+                        Last = last
+                        Mount = mounted
+                    }
+
+                let reconcileCore () =
+                    let items = read ()
+                    let regionParent = getRegionParent ()
+                    validateRegion regionParent
+                    Keyed.validateUniqueKeys equals items
+
+                    let matches =
+                        items
+                        |> List.map (fun (key, value) ->
+                            match
+                                entries
+                                |> List.tryFind (fun entry -> equals entry.Key key)
+                            with
+                            | Some entry -> Choice1Of2 (entry, value)
+                            | None -> Choice2Of2 (key, value))
+
+                    let created = ResizeArray<KeyedEntry>()
+                    let desired = ResizeArray<KeyedEntry * obj>()
+
+                    try
+                        for matchResult in matches do
+                            match matchResult with
+                            | Choice1Of2 (entry, value) -> desired.Add (entry, value)
+                            | Choice2Of2 (key, value) ->
+                                let entry = createEntry key value
+                                created.Add entry
+                                desired.Add (entry, value)
+                    with original ->
+                        let errors = ResizeArray<exn>()
+                        errors.Add original
+
+                        for index in created.Count - 1 .. -1 .. 0 do
+                            try
+                                created[index].Mount.Dispose()
+                            with error ->
+                                errors.Add error
+
+                        if errors.Count = 1 then
+                            reraise ()
+                        else
+                            raise (AggregateException ("Keyed row setup and cleanup failed", errors))
+
+                    let nextEntries = desired |> Seq.map fst |> List.ofSeq
+
+                    try
+                        moveToOrder regionParent nextEntries
+                    with movementError ->
+                        try
+                            moveToOrder regionParent entries
+                        with rollbackError ->
+                            regionScope.Dispose ()
+                            raise (AggregateException ("Keyed reconciliation and rollback failed", [| movementError; rollbackError |]))
+
+                        let errors = ResizeArray<exn>()
+                        errors.Add movementError
+
+                        for entry in created do
+                            try
+                                entry.Mount.Dispose ()
+                            with error ->
+                                errors.Add error
+
+                        if errors.Count = 1 then
+                            reraise ()
+                        else
+                            raise (AggregateException ("Keyed reconciliation and cleanup failed", errors))
+
+                    let removedEntries =
+                        entries
+                        |> List.filter (fun entry ->
+                            nextEntries
+                            |> List.exists (fun next -> obj.ReferenceEquals (entry, next))
+                            |> not)
+
+                    Api.batch (fun () ->
+                        for entry, value in desired do
+                            entry.Value.Value <- value
+
+                        entries <- nextEntries
+
+                        for removed in removedEntries do
+                            removed.Mount.Dispose ())
+
+                let reconcile () =
+                    try
+                        reconcileCore ()
+                    with error ->
+                        reraise ()
+
+                Api.createRoot (fun owner ->
+                    regionOwner <- Some owner
+                    Api.onCleanup regionScope.Dispose
+                    regionScope.OnCleanup owner.Dispose
+                    Api.untrack (fun () -> Api.createEffect reconcile))
+
             member _.Component setup =
                 ensureSetup ()
                 let previous = scope
@@ -365,7 +713,13 @@ let mount (graph: Graph) (parentScope: Scope option) (report: exn list -> unit) 
         ensureSetup ()
         range.Attach (host, before)
         root.MarkAttached ()
-        Mounted (root, fun (parent, before) -> range.Move (parent, before, root.Dispose))
+
+        Mounted (
+            root,
+            (fun (parent, before) -> range.Move (parent, before, root.Dispose)),
+            (fun () -> range.Validate ()),
+            (fun () -> range.Relocate ())
+        )
     with _ ->
         root.Dispose ()
         reraise ()

@@ -1,5 +1,6 @@
 module RepresentationChecks
 
+open System
 open Ranvier
 open Fable.Core
 open Fable.Core.TS.Dom
@@ -161,6 +162,37 @@ let private portableModifiers (ops: Operations<'view>) run =
     finally
         dispose ()
 
+let private keyedPortable (ops: Operations<'view>) run =
+    let mutable reads = 0
+
+    let view =
+        Keyed.list
+            ops
+            (=)
+            fst
+            (fun () ->
+                reads <- reads + 1
+                [ 1, "first"; 2, "second" ])
+            (fun current -> ops.Text (snd (current ())))
+
+    equal 0 reads
+    equal "firstsecond" (Html.render Reject (run view))
+    equal 1 reads
+    equal "firstsecond" (Html.render Reject (run view))
+    equal 2 reads
+
+    let duplicate =
+        Keyed.list ops (=) fst (fun () -> [ 1, "first"; 1, "duplicate" ]) (fun _ -> ops.Text "row")
+
+    let mutable rejected = false
+
+    try
+        Html.render Reject (run duplicate) |> ignore
+    with :? ArgumentException ->
+        rejected <- true
+
+    equal true rejected
+
 let cases =
     [|
         "tree reusable typed views have local synchronous bindings", fun () -> exercise Tree.ops Tree.run
@@ -169,4 +201,6 @@ let cases =
         "program static allocation and setup failure unwind", fun () -> staticAndFailure Program.ops Program.run
         "tree repeated modifiers agree with parsed server HTML", fun () -> portableModifiers Tree.ops Tree.run
         "program repeated modifiers agree with parsed server HTML", fun () -> portableModifiers Program.ops Program.run
+        "tree keyed lists render snapshots and reject duplicate keys", fun () -> keyedPortable Tree.ops Tree.run
+        "program keyed lists render snapshots and reject duplicate keys", fun () -> keyedPortable Program.ops Program.run
     |]

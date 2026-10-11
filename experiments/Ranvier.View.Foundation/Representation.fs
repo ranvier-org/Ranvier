@@ -21,6 +21,8 @@ type Backend() =
     abstract Text: string -> unit
     abstract Element: Tag * Token list * (unit -> unit) -> unit
     abstract Bind: (string -> string -> bool) * (unit -> string) -> unit
+    /// <summary>Interprets a keyed item snapshot and renders its items into this backend.</summary>
+    abstract Keyed: (obj -> obj -> bool) * (unit -> (obj * obj) list) * ((unit -> obj) -> Backend -> unit) -> unit
     abstract Component: (Setup -> unit) -> unit
 
 type Operations<'view> =
@@ -30,8 +32,60 @@ type Operations<'view> =
         Fragment: 'view list -> 'view
         Element: Tag -> Token list -> 'view list -> 'view
         Bind: (string -> string -> bool) -> (unit -> string) -> 'view
+        /// <summary>Creates the internal keyed-list representation used by <c>Keyed.list</c>.</summary>
+        Keyed: (obj -> obj -> bool) -> (unit -> (obj * obj) list) -> ((unit -> obj) -> 'view) -> 'view
         Component: (Setup -> 'view) -> 'view
     }
+
+module Keyed =
+    let internal validateUniqueKeys equals items =
+        let seen = ResizeArray<obj>()
+
+        for key, _ in items do
+            let mutable duplicate = false
+
+            for previous in seen do
+                if equals previous key then
+                    duplicate <- true
+
+            if duplicate then
+                raise (System.ArgumentException ("Keyed items must have unique keys", "items"))
+
+            seen.Add key
+
+    /// <summary>Creates a reactive keyed list that retains mounted rows while their extracted keys remain equal.</summary>
+    /// <remarks><c>render</c> receives a reader for the latest item value.
+    /// Duplicate keys raise <see cref="T:System.ArgumentException"/> before reconciliation.</remarks>
+    let list
+        (ops: Operations<'view>)
+        (equals: 'key -> 'key -> bool)
+        (key: 'item -> 'key)
+        (read: unit -> 'item list)
+        (render: (unit -> 'item) -> 'view)
+        =
+        if isNull (box equals) then
+            invalidArg "equals" "Key comparer cannot be null"
+
+        if isNull (box read) then
+            invalidArg "read" "Keyed item reader cannot be null"
+
+        if isNull (box key) then
+            invalidArg "key" "Key selector cannot be null"
+
+        if isNull (box render) then
+            invalidArg "render" "Keyed row renderer cannot be null"
+
+        let equalsObjects left right =
+            equals (unbox left) (unbox right)
+
+        let readObjects () =
+            read ()
+            |> List.map (fun item -> box (key item), box item)
+
+        let renderObject (current: unit -> obj) =
+            render (fun () -> unbox<'item>(current ()))
+
+        ops.Keyed equalsObjects readObjects renderObject
 
 module Tree =
     type View =
@@ -41,6 +95,7 @@ module Tree =
         | Fragment of View list
         | Element of Tag * Token list * View list
         | Bind of (string -> string -> bool) * (unit -> string)
+        | Keyed of (obj -> obj -> bool) * (unit -> (obj * obj) list) * ((unit -> obj) -> View)
         | Component of (Setup -> View)
 
     let rec run view (backend: Backend) =
@@ -59,6 +114,7 @@ module Tree =
                         run child backend
             )
         | Bind (equals, read) -> backend.Bind (equals, read)
+        | Keyed (equals, read, render) -> backend.Keyed (equals, read, fun current target -> run (render current) target)
         | Component setup -> backend.Component (fun context -> run (setup context) backend)
 
     let ops =
@@ -68,6 +124,7 @@ module Tree =
             Fragment = Fragment
             Element = fun tag tokens children -> Element (tag, tokens, children)
             Bind = fun equals read -> Bind (equals, read)
+            Keyed = fun equals read render -> Keyed (equals, read, render)
             Component = Component
         }
 
@@ -100,6 +157,7 @@ module Program =
                                     run child backend
                         ))
             Bind = fun equals read -> View (fun backend -> backend.Bind (equals, read))
+            Keyed = fun equals read render -> View (fun backend -> backend.Keyed (equals, read, fun current target -> run (render current) target))
             Component = fun setup -> View (fun backend -> backend.Component (fun context -> run (setup context) backend))
         }
 
@@ -135,6 +193,13 @@ module Html =
 
                 member _.Bind(_, read) =
                     append (escape false (read ()))
+
+                member this.Keyed(equals, read, render) =
+                    let items = read ()
+                    Keyed.validateUniqueKeys equals items
+
+                    for _, item in items do
+                        render (fun () -> item) this
 
                 member _.Element(tag, tokens, children) =
                     append ("<" + name tag)

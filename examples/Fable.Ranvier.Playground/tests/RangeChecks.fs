@@ -32,6 +32,9 @@ let private remove (node: Node) : unit = jsNative
 [<Emit("$0.childNodes[$1]")>]
 let private at (node: Node) (index: int) : Node = jsNative
 
+[<Emit("$0.querySelector($1)")>]
+let private query (node: Node) (selector: string) : HTMLElement option = jsNative
+
 [<Emit("(() => { const old = $0.insertBefore; $0.insertBefore = function(n,b) { old.call(this,n,b); throw $1; }; return () => $0.insertBefore = old; })()")>]
 let private failAttachment (node: Node) (error: exn) : unit -> unit = jsNative
 
@@ -391,6 +394,180 @@ let private reactiveMoves () =
     b.Dispose ()
     equal 0. other.childNodes.length
 
+let private keyedReconciliation () =
+    use graph = new Graph ()
+    let host = Dom.element "section" [] []
+    let rows = graph.Run (fun () -> Api.createSignal [ 1, "one"; 2, "two" ])
+    let setups = ResizeArray<int>()
+    let cleanups = ResizeArray<int>()
+    let clicks = ResizeArray<int>()
+
+    let view =
+        Keyed.list Tree.ops (=) fst (fun () -> rows.Value) (fun current ->
+            Tree.ops.Component (fun context ->
+                let key = fst (current ())
+                setups.Add key
+                context.OnCleanup (fun () -> cleanups.Add key)
+
+                Tree.ops.Element
+                    Button
+                    [
+                        Attribute ("id", "row-" + string key)
+                        Browser (fun node -> listen (unbox<HTMLElement> node) (fun () -> clicks.Add key))
+                    ]
+                    [ Tree.ops.Bind (=) (fun () -> string (snd (current ()))) ]))
+
+    let handle = tree graph host view
+
+    equal
+        []
+        (graph.Root.Errors
+         |> Seq.map _.Message
+         |> List.ofSeq)
+
+    let find key =
+        query host ("#row-" + string key)
+        |> Option.defaultWith (fun () -> failwithf "Missing keyed row %d" key)
+
+    let one, two = find 1, find 2
+    equal [ 1; 2 ] (setups |> Seq.sort |> List.ofSeq)
+    equal "onetwo" host.textContent
+
+    graph.Run (fun () -> rows.Value <- [ 2, "TWO"; 3, "three"; 1, "ONE" ])
+    let three = find 3
+    same one (find 1)
+    same two (find 2)
+    equal [ 1; 2; 3 ] (setups |> Seq.sort |> List.ofSeq)
+    equal [] (List.ofSeq cleanups)
+    equal "TWOthreeONE" host.textContent
+
+    graph.Run (fun () -> rows.Value <- [ 3, "three!" ])
+    equal [ 1; 2 ] (cleanups |> Seq.sort |> List.ofSeq)
+    equal "three!" host.textContent
+    one.click ()
+    two.click ()
+    three.click ()
+    equal [ 3 ] (List.ofSeq clicks)
+
+    graph.Run (fun () -> rows.Value <- [ 1, "again"; 3, "three!" ])
+    let replacement = find 1
+    equal false (obj.ReferenceEquals (one, replacement))
+    equal [ 1; 2 ] (cleanups |> Seq.sort |> List.ofSeq)
+    equal [ 1; 1; 2; 3 ] (setups |> Seq.sort |> List.ofSeq)
+    equal "againthree!" host.textContent
+
+    handle.Dispose ()
+    equal [ 1; 1; 2; 3 ] (cleanups |> Seq.sort |> List.ofSeq)
+    equal 0. host.childNodes.length
+
+let private keyedRootMovement () =
+    use graph = new Graph ()
+    let host, other = Dom.element "section" [] [], Dom.element "section" [] []
+    let rows = graph.Run (fun () -> Api.createSignal [ 1, "one"; 2, "two" ])
+
+    let view =
+        Tree.ops.Fragment
+            [
+                Tree.ops.Text "before:"
+                Keyed.list Tree.ops (=) fst (fun () -> rows.Value) (fun current -> Tree.ops.Bind (=) (fun () -> snd (current ())))
+                Tree.ops.Text ":after"
+            ]
+
+    let handle = tree graph host view
+    equal "before:onetwo:after" host.textContent
+    handle.MoveBefore (other, None)
+    equal "" host.textContent
+    equal "before:onetwo:after" other.textContent
+    graph.Run (fun () -> rows.Value <- [ 2, "TWO"; 1, "ONE"; 3, "three" ])
+    equal "before:TWOONEthree:after" other.textContent
+    handle.MoveBefore (host, None)
+    equal "" other.textContent
+    equal "before:TWOONEthree:after" host.textContent
+    handle.Dispose ()
+    equal 0. host.childNodes.length
+
+let private keyedForeignMutation () =
+    use graph = new Graph ()
+    let host, other = Dom.element "section" [] [], Dom.element "section" [] []
+
+    let view =
+        Keyed.list Tree.ops (=) fst (fun () -> [ 1, "one" ]) (fun current -> Tree.ops.Text (snd (current ())))
+
+    let handle = tree graph host view
+    let foreign = Dom.element "aside" [] []
+
+    host.insertBefore (foreign, at host 3) |> ignore
+
+    rejected (fun () -> handle.MoveBefore (other, None))
+    equal 0. other.childNodes.length
+    handle.Dispose ()
+    same host foreign.parentNode.Value
+    remove foreign
+
+[<Emit("(() => { const old = $0.remove; $0.remove = () => { throw new Error('remove start'); }; return () => $0.remove = old; })()")>]
+let private failRegionRemoval (node: Node) : unit -> unit = jsNative
+
+let private keyedReleaseFailure () =
+    use graph = new Graph ()
+    let host = Dom.element "section" [] []
+
+    let view =
+        Keyed.list Tree.ops (=) fst (fun () -> [ 1, "one" ]) (fun current -> Tree.ops.Text (snd (current ())))
+
+    let handle = tree graph host view
+    let start, finish = at host 1, at host 5
+    let restore = failRegionRemoval start
+
+    try
+        handle.Dispose ()
+        equal None finish.parentNode
+        equal 1. host.childNodes.length
+        equal 1 handle.Failures.Length
+    finally
+        restore ()
+        remove start
+
+let private duplicateKeys () =
+    use graph = new Graph ()
+    let host = Dom.element "section" [] []
+
+    let view =
+        Keyed.list Tree.ops (=) fst (fun () -> [ 1, "first"; 1, "duplicate" ]) (fun _ -> Tree.ops.Text "row")
+
+    let mutable caught = false
+
+    try
+        tree graph host view |> ignore
+    with :? ArgumentException ->
+        caught <- true
+
+    equal true caught
+    equal 0. host.childNodes.length
+
+    use liveGraph = new Graph ()
+    let liveHost = Dom.element "section" [] []
+    let rows = liveGraph.Run (fun () -> Api.createSignal [ 1, "one"; 2, "two" ])
+    let mutable setups = 0
+
+    let liveView =
+        Keyed.list Tree.ops (=) fst (fun () -> rows.Value) (fun current ->
+            Tree.ops.Component (fun _ ->
+                setups <- setups + 1
+                Tree.ops.Text (snd (current ()))))
+
+    let liveHandle = tree liveGraph liveHost liveView
+    let originalChildCount = liveHost.childNodes.length
+    equal "onetwo" liveHost.textContent
+    equal 2 setups
+
+    liveGraph.Run (fun () -> rows.Value <- [ 1, "changed"; 1, "duplicate" ])
+
+    equal "onetwo" liveHost.textContent
+    equal originalChildCount liveHost.childNodes.length
+    equal 2 setups
+
+    liveHandle.Dispose ()
+
 let private attachmentReentry () =
     use graph = new Graph ()
     let host = Dom.element "section" [] []
@@ -543,6 +720,11 @@ let allCases =
         cases
         [|
             "reusable bindings retain identity across range movement", reactiveMoves
+            "keyed rows preserve identity and current data across reorder and removal", keyedReconciliation
+            "top-level keyed regions retain sibling order and move with their mount", keyedRootMovement
+            "foreign mutations inside keyed rows reject outer movement", keyedForeignMutation
+            "keyed range release attempts both endpoints after a removal failure", keyedReleaseFailure
+            "duplicate keys fail before mounting mutates the host", duplicateKeys
             "disposal during attachment cannot revive a mount", attachmentReentry
             "native ownership cannot overlap another live mount", overlappingMounts
             "equality-triggered disposal prevents a late DOM write", equalityDisposal

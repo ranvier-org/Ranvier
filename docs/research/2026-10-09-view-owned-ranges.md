@@ -25,13 +25,20 @@ handle.Dispose()
 
 Native borrowing uses `context.Native(node, Mounting.Borrowed)` during setup. These are top-level roots. Captured construction operations reject calls after attachment or disposal.
 
+## Keyed-list reconciliation
+
+Mounted keyed lists retain row mounts while keys remain equal, update retained rows with the latest item values, and move their ranges into the new order without replacing their DOM nodes. Removed rows dispose their listeners and mounted resources; a later occurrence of the same key creates a new row. Duplicate keys fail before initial host mutation, and a duplicate live update leaves the current host contents intact.
+
+Row mounts run under the keyed region's stable owner rather than the reconciliation effect's per-run owner. This keeps retained rows alive across effect reruns while preserving disposal with the keyed region.
+
 ## Evidence
 
 - The scope phase test failed on the missing API, then passed in SageFs and after rebuilding the session.
 - Range tests failed before the mounting interpreter existed.
 - Cross-mount native ownership failed before the registry fix. Generated JavaScript showed an Emit-annotated value expanded to a fresh WeakSet at every use. An emitted factory called once now initializes the shared registry.
-- Final full Node suite: 84/84 passed.
-- Final full Chromium suite: 14/14 passed, including the same 20 range cases exercised in Node.
+- Keyed reconciliation tests cover retained DOM identity, latest values, reorder, removal, reinsertion, listener cleanup, and duplicate keys.
+- Current checkpoint Node suite: 113/113 passed.
+- Current checkpoint Chromium suite: 16/16 passed.
 - Release DomTests build: zero warnings and errors.
 - Pure .NET lifetime checks: 8/8 passed; portable representation checks: all six groups passed.
 
@@ -39,7 +46,7 @@ Checkpoint `a00997b` recorded the ownership regression before its fix, following
 
 ## Limits
 
-This is a correctness experiment. Markers, staging, entry records and ownership checks add mounting costs that have not been benchmarked. Scalar bindings still write directly to their text node. JavaScript allocation, retained heap, keyed structures and performance budgets remain open framework Task 2 gates.
+This is a correctness experiment. Markers, staging, entry records and ownership checks add mounting costs that have not been benchmarked. Scalar bindings still write directly to their text node. Recovery and error notification for a failed live reconciliation remain unspecified. JavaScript allocation, retained heap and performance budgets remain open framework Task 2 gates.
 
 Movement retains the original renderer scope. Ownership transfer, cross-document adoption, dynamic structures, nested native borrowing and generated HTML-domain coverage remain later work.
 
@@ -63,6 +70,8 @@ Every finding's regression was observed RED and then GREEN; the full 84 Node and
 
 Review focus: boundary mutation is rejected before movement; descendant destinations and cross-document destinations are rejected by explicit validation; borrowed restoration tolerates a missing original anchor; failed insertion after actual mutation unwinds acquired listeners and bindings; retained constructors reject late calls; release/report failures attempt remaining releases; attachment and equality reentry are covered.
 
-Performance parity, keyed structures, production pending/error policies, owner transfer and hydration were considered but are not implemented or claimed by this correctness experiment. Their existing framework gates remain open. No polish findings were deferred.
+Performance parity, production pending/error policies, owner transfer and hydration were considered but are not implemented or claimed by this correctness experiment. Their existing framework gates remain open. No polish findings were deferred.
 
 The additional reporter probe could not reach SageFs: `send_fsharp_code` failed with `httpx.ConnectError: All connection attempts failed`. The same pure candidate passed under `dotnet fsi`, and the eight existing lifetime checks passed. No daemon restart or stop was attempted. The session created for the initial phase probe was `4602caf4`; its final status could not be queried after the endpoint became unavailable.
+
+The 2026-10-11 keyed-list/application checkpoint and additional range regressions are recorded in [current PoC status](2026-10-11-view-poc-checkpoint.md). Keyed structures now work experimentally; production policies and performance gates remain open.

@@ -61,6 +61,21 @@ test("text and element identity stay stable", async ({ page }) => {
   })).toBe(true);
 });
 
+test("Foundation keyed views are consumed by the playground app", async ({ page }) => {
+  const alpha = page.locator("#foundation-row-1");
+  const beta = page.locator("#foundation-row-2");
+  await expect(alpha).toHaveText("Alpha");
+  await expect(beta).toHaveText("Beta");
+
+  const retainedAlpha = await alpha.elementHandle();
+  await page.locator("#foundation-add").click();
+  await expect(page.locator("#foundation-row-3")).toHaveText("Item 3");
+  await page.locator("#foundation-reverse").click();
+
+  expect(await retainedAlpha.evaluate(element => element === document.querySelector("#foundation-row-1"))).toBe(true);
+  await expect(page.locator("#foundation-demo")).toHaveText("Foundation implementation: keyed rowsAdd rowReverse rowsItem 3BetaAlpha");
+});
+
 test("unmount removes listeners and repeated remount preserves state", async ({ page }) => {
   await page.getByTestId("increment").click();
   const detachedButton = await page.getByTestId("increment").elementHandle();

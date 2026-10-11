@@ -8,6 +8,11 @@ explicitly. Changing scheduling mode remounts the demo while preserving its stat
 Events batch state writes in both modes. The default synchronous mode commits the final values
 before the handler returns; the microtask mode defers subsequent DOM commits.
 
+The Playground project also compiles the experimental `Ranvier.View.Foundation` sources from
+`experiments/` directly into the app. Its keyed-row panel is mounted with the Foundation
+representation and range-mounting APIs; add and reverse rows to exercise reconciliation in the
+browser. This is an app-level consumer of the experiment, not a separately packaged library.
+
 ## Run
 
 Prerequisites: .NET 10 SDK, Node.js 26 or newer, npm. The repository pins Fable 5.18.0 in its
@@ -67,7 +72,8 @@ See [the benchmark method and results](../../docs/.ai/benchmarks/dom-scheduling/
 
 ## Layout
 
-- `App.fs`: application state, static element creation and explicit reactive bindings.
+- `App.fs`: the DOM PoC, plus a Foundation keyed-list example.
+- `Playground.fsproj`: links Foundation source files before `App.fs` so the app can use them.
 - `main.js`: imports the compiled app and registers disposal with Vite.
 - `style.css`: responsive layout and styling.
 - `tests/DomChecks.fs`: compiled F# checks of library behaviour.
@@ -81,9 +87,10 @@ the local `src/Fable.Ranvier` project, so library edits are part of the Fable wa
 
 ## PoC limits
 
-This covers HTML with a static child structure, synchronous state and optional microtask DOM writes.
-The queue adds overhead; reduced mutation counts are not a measured overall speedup. There is no JSX, SSR,
-hydration, SVG, keyed collection reconciliation, dynamic subtree replacement or event delegation.
+The Fable.Ranvier DOM PoC covers HTML with a static child structure, synchronous state and optional
+microtask DOM writes. The Foundation panel separately exercises keyed collection reconciliation.
+The queue adds overhead; reduced mutation counts are not a measured overall speedup. There is no
+JSX, SSR, hydration, SVG or event delegation.
 The runtime is Ranvier, not Solid; Solid 2's split effects inspired the binding approach.
 Pending/error values retain the last successful binding output rather than automatically creating
 a loading/error view. See the library README for its ownership and property-setter contracts.

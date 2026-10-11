@@ -10,7 +10,7 @@
 
 **Spec:** [framework brief](../specs/2026-10-06-fable-ranvier-framework-brief.md). **Tradeoffs and risk IDs:** [variants and gotchas](../specs/2026-10-06-fable-ranvier-framework-variants-and-risks.md).
 
-Status: Task 1 audited on 2026-10-08; later runtime tasks remain proposed. See the [baseline report](../../research/2026-10-08-fable-ranvier-baseline.md) for fresh results and known whole-solution/Fable-test failures. The user approved explicit typed functions subject to extreme performance and efficient Oxpecker-style or Feliz-style sugar; the [DSL design](../specs/2026-10-08-ranvier-view-dsl-design.md) records the proof requirements. File names below are proposed seams; verify existing symbols before choosing final names. API descriptions are design sketches, not compiler-validated signatures.
+Status: lifetime, representation, ranges and components have experimental proofs. The 2026-10-11 [current checkpoint](../../research/2026-10-11-view-poc-checkpoint.md) adds keyed lists and a playground consumer; remaining contracts, production integration and performance gates remain open. See the [baseline report](../../research/2026-10-08-fable-ranvier-baseline.md) for fresh results and known whole-solution/Fable-test failures. The user approved explicit typed functions subject to extreme performance and efficient Oxpecker-style or Feliz-style sugar; the [DSL design](../specs/2026-10-08-ranvier-view-dsl-design.md) records the proof requirements. File names below are proposed seams; verify existing symbols before choosing final names. API descriptions are design sketches, not compiler-validated signatures.
 
 ## Global constraints
 
@@ -124,6 +124,8 @@ Proposed binding input: reader, setter, equality, outcome policy, scope and sche
 **Exit:** scheduling and rendering outcomes are independently selectable and no unselected PoC retention behavior leaks into the core.
 
 ## Task 6 — Keyed branches and lists
+
+Experimental keyed-list checkpoint: retained values/identity, reorder, removal/reinsertion and app integration are implemented; branch selection, failure/reentry gates and list performance remain open. See the [current checkpoint](../../research/2026-10-11-view-poc-checkpoint.md).
 
 Contracts: C05. Variant: V04. Risks: G05, G10, G15.
 

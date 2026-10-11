@@ -6,6 +6,11 @@
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../experiments/Ranvier.View.Foundation/Lifetime.fs" Link="Foundation/Lifetime.fs" />
+    <Compile Include="../../experiments/Ranvier.View.Foundation/Representation.fs" Link="Foundation/Representation.fs" />
+    <Compile Include="../../experiments/Ranvier.View.Foundation/Typed.fs" Link="Foundation/Typed.fs" />
+    <Compile Include="../../experiments/Ranvier.View.Foundation/Mounting.fs" Link="Foundation/Mounting.fs" />
+    <Compile Include="../../experiments/Ranvier.View.Foundation/Components.fs" Link="Foundation/Components.fs" />
     <Compile Include="App.fs" />
     <ProjectReference Include="../../src/Fable.Ranvier/Fable.Ranvier.fsproj" />
     <PackageReference Update="FSharp.Core" Version="10.1.401" />

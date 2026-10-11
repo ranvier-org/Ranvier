@@ -1,9 +1,18 @@
 module App
 
 open System
+open Fable.Core
 open Fable.Core.TS.Dom
 open Fable.Ranvier
 open global.Ranvier
+open Ranvier.View.Foundation.Representation
+
+module FoundationMounting = Ranvier.View.Foundation.Mounting
+module FoundationTree = Ranvier.View.Foundation.Representation.Tree
+module FoundationTyped = Ranvier.View.Foundation.Typed
+
+[<Emit("(() => { const f = () => $1(); $0.addEventListener('click', f); return () => $0.removeEventListener('click', f); })()")>]
+let private listen (node: HTMLElement) (handler: unit -> unit) : unit -> unit = jsNative
 
 let private node tag modifiers children : Node =
     Dom.element tag modifiers children
@@ -25,6 +34,7 @@ let private setDisabled (element: HTMLElement) value =
 
 let start () : unit -> unit =
     let graph = new Graph ()
+    let foundationGraph = new Graph ()
 
     try
         let host =
@@ -35,6 +45,7 @@ let start () : unit -> unit =
             graph.Run (fun () -> createSignal 0, createSignal "world", createSignal true, createSignal false)
 
         let demoHost = Dom.createElement "div"
+        let foundationHost = Dom.createElement "section"
         let mutable demo: DomMount option = None
 
         let mountDemo () =
@@ -279,6 +290,7 @@ let start () : unit -> unit =
                                     ]
                             ]
                         demoHost
+                        foundationHost
                         node
                             "section"
                             [
@@ -304,11 +316,66 @@ let start () : unit -> unit =
                     ])
 
         mountDemo ()
+
+        let foundationRows =
+            foundationGraph.Run (fun () -> createSignal [ 1, "Alpha"; 2, "Beta" ])
+
+        let foundationOps = FoundationTree.ops
+
+        let foundationRowsView =
+            Keyed.list foundationOps (=) fst (fun () -> foundationRows.Value) (fun current ->
+                let key = fst (current ())
+
+                FoundationTyped.div
+                    foundationOps
+                    [ FoundationTyped.id ("foundation-row-" + string key) ]
+                    [ foundationOps.Bind (=) (fun () -> snd (current ())) ])
+
+        let foundationView =
+            FoundationTyped.div
+                foundationOps
+                [ FoundationTyped.id "foundation-demo" ]
+                [
+                    foundationOps.Text "Foundation implementation: keyed rows"
+                    FoundationTyped.button
+                        foundationOps
+                        [
+                            FoundationTyped.id "foundation-add"
+                            FoundationTyped.browser (fun button ->
+                                listen button (fun () ->
+                                    let next =
+                                        foundationRows.Value
+                                        |> List.map fst
+                                        |> List.max
+                                        |> (+) 1
+
+                                    foundationRows.Value <-
+                                        foundationRows.Value
+                                        @ [ next, "Item " + string next ]))
+                        ]
+                        [ foundationOps.Text "Add row" ]
+                    FoundationTyped.button
+                        foundationOps
+                        [
+                            FoundationTyped.id "foundation-reverse"
+                            FoundationTyped.browser (fun button -> listen button (fun () -> foundationRows.Value <- List.rev foundationRows.Value))
+                        ]
+                        [ foundationOps.Text "Reverse rows" ]
+                    foundationRowsView
+                ]
+
+        let foundation =
+            FoundationMounting.mount foundationGraph None ignore foundationHost None (fun context ->
+                FoundationTree.run foundationView context.Backend)
+
         let mutable stopped = false
 
         fun () ->
             if not stopped then
                 stopped <- true
+
+                foundation.Dispose ()
+                foundationGraph.Dispose ()
 
                 demo
                 |> Option.iter (fun scope -> scope.Dispose ())
@@ -317,5 +384,6 @@ let start () : unit -> unit =
                 shell.Dispose ()
                 graph.Dispose ()
     with _ ->
+        foundationGraph.Dispose ()
         graph.Dispose ()
         reraise ()
