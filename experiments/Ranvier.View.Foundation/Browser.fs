@@ -80,6 +80,7 @@ let mount (graph: Graph) (host: HTMLElement) (report: exn list -> unit) (counts:
 
                         inputValue node value
                     | Browser hook -> scope.OnCleanup (hook (box node))
+                    | ReactiveProperty _ -> invalidOp "Reactive properties require the owned-range interpreter"
 
                 if tag <> Input then
                     let previous = parent

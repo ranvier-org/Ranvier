@@ -439,6 +439,7 @@ let rec mount (graph: Graph) (parentScope: Scope option) (report: exn list -> un
                             ensureSetup ()
 
                         scope.OnCleanup cleanup
+                    | ReactiveProperty _ -> invalidOp "Reactive properties are outside the frozen text benchmark"
 
                 if tag <> Input then
                     let previous = parent

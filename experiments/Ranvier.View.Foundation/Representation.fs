@@ -4,11 +4,14 @@ type Tag =
     | Div
     | Button
     | Input
+    | Select
+    | Option
 
 type Token =
     | Attribute of string * string
     | InputValue of string
     | Browser of (obj -> (unit -> unit))
+    | ReactiveProperty of (obj -> (unit -> obj) * (obj -> unit))
 
 type BrowserPolicy =
     | Reject
@@ -203,6 +206,8 @@ let name =
     | Div -> "div"
     | Button -> "button"
     | Input -> "input"
+    | Select -> "select"
+    | Option -> "option"
 
 let validateAttribute name =
     if name <> "id" && name <> "title" then
@@ -259,7 +264,8 @@ module Html =
                                 invalidArg "tokens" "Input value requires input"
 
                             set "value" value
-                        | Browser _ ->
+                        | Browser _
+                        | ReactiveProperty _ ->
                             if policy = Reject then
                                 invalidOp "Browser capability requires explicit Omit policy"
 

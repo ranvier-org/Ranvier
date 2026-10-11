@@ -19,8 +19,8 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Xantham.Fable.Core" Version="0.1.0" />
-      <PackageReference Include="Xantham.Fable.Core.TS" Version="0.1.0" />
+      <PackageReference Include="Xantham.Fable.Core" Version="0.2.0" />
+      <PackageReference Include="Xantham.Fable.Core.TS" Version="0.2.1" />
       <PackageReference Update="FSharp.Core" Version="10.1.401" />
     </ItemGroup>
 

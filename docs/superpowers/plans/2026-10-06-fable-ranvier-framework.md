@@ -147,11 +147,11 @@ Current experimental branch input: selection reader, key selector, equality and 
 
 Contracts: C07, C08. Risks: G08, G10, G11, G13.
 
-Generation follow-on, reoriented 2026-10-11: follow the [catalogue-backed pipeline](../../research/xantham-ranvier-dom-evaluation.md). Published Core.TS 0.2.0 lacks a catalogue even though Generator 0.2.0 supports Brotli file transport; inspect the next Cloudsmith artifact before adopting it. This prerequisite does not block handwritten runtime work or imply a dependency upgrade.
+Generation follow-on, implemented subset 2026-10-12: the [published catalogue integration](../../research/2026-10-12-catalogue-dom-generation.md) consumes Cloudsmith Core.TS 0.2.1 with Wire 0.3.0 and pins Core 0.2.0 in the consumer. The five-tag generated surface passes compiler and DOM checks; broader generation, attributes/portable property metadata, application migration and performance gates remain open.
 
-- [ ] Verify the published Core.TS catalogue payload, provenance and compatible compiler/Wire inputs; consume it from a restored pinned package without a sibling checkout.
-- [ ] Prove declaration-to-native-binding identity/arity resolution for input properties, FileList, inherited members and an input event. Fail on unsupported or ambiguous types; avoid duplicating native bindings or parsing API fingerprints as signatures.
-- [ ] Generate a five-tag subset against Foundation's typed functions and handwritten operations. Compare Release JS, resource counts and browser behavior with handwritten equivalents, and check deterministic regeneration and rejected readonly/incompatible setters before expanding the surface.
+- [x] Verify the published Core.TS catalogue payload, provenance and compatible compiler/Wire inputs; consume it from a restored pinned package without a sibling checkout.
+- [x] Prove declaration-to-native-binding identity/arity resolution for input properties, FileList, inherited members and an input event. Fail on unsupported or ambiguous types; avoid duplicating native bindings or parsing API fingerprints as signatures.
+- [ ] Generate a five-tag subset against Foundation's typed functions and handwritten operations. Compare Release JS, resource counts and browser behavior with handwritten equivalents, and check deterministic regeneration and rejected readonly/incompatible setters before expanding the surface. The subset, emitted JS, tracked-reader counts, browser behavior and regeneration/negative compiler checks pass; full retained-resource/performance budgets remain open.
 
 - [ ] Implement distinct static/reactive attribute and property operations, with typed event registration and explicit batch/scheduler context.
 - [ ] Test boolean attributes, null/removal, `value`, `checked`, selection and IME behavior. Add browser-only tests where jsdom cannot represent behavior adequately.

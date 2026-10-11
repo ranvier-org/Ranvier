@@ -1,7 +1,9 @@
 module Ranvier.View.Foundation.Typed
 
 open Fable.Core
+open Fable.Core.JsInterop
 open Fable.Core.TS.Dom
+open Ranvier
 open Ranvier.View.Foundation.Representation
 
 [<Erase>]
@@ -19,9 +21,35 @@ let value text : Modifier<HTMLInputElement> =
 let browser (hook: 'native -> (unit -> unit)) : Modifier<'native> =
     Modifier (Browser (fun node -> hook (unbox node)))
 
+let staticProperty (setter: 'native -> 'value -> unit) value : Modifier<'native> =
+    browser (fun node ->
+        setter node value
+        ignore)
+
+let reactiveProperty (setter: 'native -> 'value -> unit) (read: unit -> 'value) : Modifier<'native> =
+    Modifier (ReactiveProperty (fun node -> (fun () -> box (read ())), (fun value -> setter (unbox node) (unbox value))))
+
+let listener (eventName: string) (handler: Event -> unit) : Modifier<'native> =
+    browser (fun native ->
+        let node = unbox<EventTarget>(box native)
+        let graph = Graph.Current
+        let owner = Api.getOwner ()
+
+        let invoke: EventListener =
+            fun event ->
+                if not owner.IsDisposed then
+                    graph.Run (fun () -> Api.runWithOwner owner (fun () -> Api.untrack (fun () -> handler event)))
+
+        let callback: EventListenerOrEventListenerObject = !^invoke
+        node.addEventListener (eventName, callback)
+        fun () -> node.removeEventListener (eventName, callback))
+
 let private tokens modifiers =
     modifiers
     |> List.map (fun (Modifier token) -> token)
+
+let element (ops: Operations<'view>) tag (modifiers: Modifier<'native> list) children =
+    ops.Element tag (tokens modifiers) children
 
 let div (ops: Operations<'view>) (modifiers: Modifier<HTMLDivElement> list) children =
     ops.Element Div (tokens modifiers) children

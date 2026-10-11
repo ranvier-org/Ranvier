@@ -1,12 +1,12 @@
 # Xantham generation for Ranvier DOM
 
-Assessed 2026-10-08; reoriented 2026-10-11 against published Cloudsmith artifacts. Status: architectural assessment, not an implemented or compiler-validated generation pipeline.
+Assessed 2026-10-08; release investigation 2026-10-11. Superseded for availability and implementation by the [2026-10-12 catalogue integration](2026-10-12-catalogue-dom-generation.md): published Core.TS 0.2.1 ships its catalogue, and the five-tag Wire-backed generator is compiled and tested. The remaining proposal and cautions below describe broader work beyond that subset.
 
 ## Verdict
 
 Use Xantham as the source of typed DOM knowledge and native binding identity. Let Ranvier own the generated public vocabulary and the runtime semantics. Explore a minimal catalogue-backed HTML generator over Wire, with Xantham's generator as the alternative when its authenticated catalogue/application machinery is needed. Neither approach assumes that the stock property companion hook generates the whole renderer-facing scaffold.
 
-The [current release investigation](2026-10-11-xantham-release-catalogues.md) verifies Generator 0.2.0, Wire 0.3.0 and Core/Core.TS 0.2.0 on Cloudsmith. Generator supports portable schema-2 catalogues and Brotli file transport, but the downloaded Core.TS 0.2.0 package contains no catalogue or descriptor. Catalogue distribution remains an upstream prerequisite; issue closure is insufficient evidence of shipment. Ranvier still references Core/Core.TS 0.1.0; this assessment makes no dependency upgrade.
+The [earlier release investigation](2026-10-11-xantham-release-catalogues.md) verified that Core.TS 0.2.0 lacked a catalogue. Core.TS 0.2.1 now ships one; the narrow generator verifies its descriptor/payload/assembly and uses Wire 0.3.0. Fable.Ranvier references Core 0.2.0 and Core.TS 0.2.1. A public standalone catalogue loader/resolver remains unavailable; the adapter uses explicit pinned artifacts.
 
 Upstream capabilities and constraints are recorded in [the source investigation](xantham-generation-sources.md). Ranvier requirements come from the [proposed framework brief](../superpowers/specs/2026-10-06-fable-ranvier-framework-brief.md), especially C01, C04, C06, C07, C09 and C10. Existing behavior is documented in the [DOM PoC README](../../src/Fable.Ranvier/README.md); the proposal is not an implementation audit.
 

@@ -464,6 +464,39 @@ let rec private mountCore
         else
             range.AppendGenerated (parent, node)
 
+    let startBinding equals read write =
+        let bindingScope = scope
+
+        let live () =
+            not root.IsDisposed && not bindingScope.IsDisposed
+
+        let write value =
+            try
+                write value
+            with error when root.Phase = SettingUp ->
+                bindingSetupFailure <- Some error
+                reraise ()
+
+        match scheduling with
+        | Synchronous ->
+            let mutable committed = None
+
+            Api.createEffect (fun () ->
+                let value = read ()
+
+                if live () then
+                    Api.untrack (fun () ->
+                        let changed =
+                            committed
+                            |> Option.forall (fun old -> not (equals old value))
+
+                        if changed && live () then
+                            write value
+                            committed <- Some value))
+        | Queued queue -> Binding.startQueued bindingScope.OnCleanup live queue equals read write
+
+        bindingSetupFailure |> Option.iter raise
+
     let backend =
         { new Backend() with
             member _.Text value =
@@ -475,7 +508,7 @@ let rec private mountCore
                 let node = document.createElement (name tag)
                 append node
 
-                for token in tokens do
+                let applyToken token =
                     ensureSetup ()
 
                     match token with
@@ -495,6 +528,13 @@ let rec private mountCore
                             ensureSetup ()
 
                         scope.OnCleanup cleanup
+                    | ReactiveProperty bind ->
+                        let read, write = bind (box node)
+                        startBinding (=) read write
+
+                if tag <> Select then
+                    for token in tokens do
+                        applyToken token
 
                 if tag <> Input then
                     let previous = parent
@@ -505,45 +545,15 @@ let rec private mountCore
                     finally
                         parent <- previous
 
+                if tag = Select then
+                    for token in tokens do
+                        applyToken token
+
             member _.Bind(equals, read) =
                 ensureSetup ()
                 let node = text ""
                 append node
-                let bindingScope = scope
-
-                let live () =
-                    not root.IsDisposed && not bindingScope.IsDisposed
-
-                match scheduling with
-                | Synchronous ->
-                    let mutable committed: string option = None
-
-                    Api.createEffect (fun () ->
-                        let value = read ()
-
-                        if live () then
-                            Api.untrack (fun () ->
-                                let changed =
-                                    committed
-                                    |> Option.forall (fun old -> not (equals old value))
-
-                                if changed && live () then
-                                    try
-                                        node.textContent <- value
-                                    with error when root.Phase = SettingUp ->
-                                        bindingSetupFailure <- Some error
-                                        reraise ()
-
-                                    committed <- Some value))
-                | Queued queue ->
-                    Binding.startQueued bindingScope.OnCleanup live queue equals read (fun value ->
-                        try
-                            node.textContent <- value
-                        with error when root.Phase = SettingUp ->
-                            bindingSetupFailure <- Some error
-                            reraise ())
-
-                bindingSetupFailure |> Option.iter raise
+                startBinding equals read (fun value -> node.textContent <- value)
 
             member _.Keyed(equals, read, render) =
                 ensureSetup ()

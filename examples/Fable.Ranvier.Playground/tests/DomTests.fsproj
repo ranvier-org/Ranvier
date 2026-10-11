@@ -16,12 +16,14 @@
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Microtask.fs" Link="Microtask.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Representation.fs" Link="Representation.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Typed.fs" Link="Typed.fs" />
+    <Compile Include="../../../experiments/Ranvier.View.Foundation/Generated/Html.fs" Link="Generated/Html.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Browser.fs" Link="Browser.fs" />
     <Compile Include="RepresentationChecks.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Mounting.fs" Link="Mounting.fs" />
     <Compile Include="RangeChecks.fs" />
     <Compile Include="BindingChecks.fs" />
     <Compile Include="BindingIntegrationChecks.fs" />
+    <Compile Include="GeneratedChecks.fs" />
     <Compile Include="../benchmarks/BindingBaselineMounting.fs" Link="BindingBaselineMounting.fs" />
     <Compile Include="BindingBench.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Components.fs" Link="Components.fs" />

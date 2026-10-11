@@ -1,5 +1,7 @@
 # Xantham catalogue release evidence — 2026-10-11
 
+Historical snapshot of Core.TS 0.2.0. The [Core.TS 0.2.1 integration](2026-10-12-catalogue-dom-generation.md) supersedes its availability conclusion and records the now-shipped catalogue, pinned generator and verification.
+
 ## Finding
 
 The current public Cloudsmith release supports generating and consuming **explicit declaration catalogue files**, including Brotli and portable compatibility. However, the published `Xantham.Fable.Core.TS` **0.2.0 nupkg does not contain a catalogue or descriptor**. Package discovery and a shipped Core.TS catalogue cannot currently be treated as verified released inputs for Ranvier. This conclusion comes from inspecting the downloaded package ZIP, not from an old GitHub release page or the local Xantham checkout.
