@@ -6,6 +6,7 @@ open Fable.Core
 open Fable.Core.TS.Dom
 open Ranvier.View.Foundation
 open Ranvier.View.Foundation.Representation
+open Ranvier.View.Foundation.Scheduling
 
 type NativeOwnership =
     | Owned
@@ -350,9 +351,23 @@ type private OwnedRange(host: Node) =
         elif errors.Count > 1 then
             raise (AggregateException ("Range release failed", errors))
 
-type Mounted internal (scope: Scope, move: Node * Node option -> unit, validate: unit -> unit, relocate: unit -> unit) =
+type Mounted
+    internal
+    (
+        scope: Scope,
+        move: Node * Node option -> unit,
+        validate: unit -> unit,
+        relocate: unit -> unit,
+        flush: unit -> unit,
+        commitErrors: unit -> exn array
+    ) =
     member _.Phase = scope.Phase
     member _.Failures = scope.Failures
+    member _.CommitErrors = commitErrors ()
+
+    member _.Flush() =
+        if not scope.IsDisposed then
+            flush ()
 
     /// <summary>Checks that the mount's recorded DOM range remains intact.</summary>
     member internal _.Validate() =
@@ -382,7 +397,16 @@ type private KeyedEntry =
 exception private KeyedDisposed
 exception private KeyedSetupFailed of exn list
 
-let rec mount (graph: Graph) (parentScope: Scope option) (report: exn list -> unit) (host: Node) (before: Node option) (build: BuildContext -> unit) =
+let rec private mountCore
+    scheduling
+    onRoot
+    (graph: Graph)
+    (parentScope: Scope option)
+    (report: exn list -> unit)
+    (host: Node)
+    (before: Node option)
+    (build: BuildContext -> unit)
+    =
     let range = OwnedRange host
 
     let root =
@@ -392,6 +416,8 @@ let rec mount (graph: Graph) (parentScope: Scope option) (report: exn list -> un
 
     let mutable parent = range.Staging
     let mutable scope = root
+
+    onRoot root
 
     let ensureSetup () =
         if
@@ -471,6 +497,20 @@ let rec mount (graph: Graph) (parentScope: Scope option) (report: exn list -> un
                         then
                             Api.untrack (fun () -> node.textContent <- Some value)
                             committed <- Some value)
+
+            member _.BindWith(policy, read) =
+                ensureSetup ()
+                let node = text ""
+                append node
+                let bindingScope = scope
+
+                Binding.startChecked
+                    bindingScope.OnCleanup
+                    (fun () -> not root.IsDisposed && not bindingScope.IsDisposed)
+                    scheduling
+                    policy
+                    read
+                    (fun value -> node.textContent <- Some value)
 
             member _.Keyed(equals, read, render) =
                 ensureSetup ()
@@ -601,7 +641,7 @@ let rec mount (graph: Graph) (parentScope: Scope option) (report: exn list -> un
                         try
                             try
                                 Api.runWithOwner owner (fun () ->
-                                    mount graph (Some regionScope) reportRow staging None (fun context ->
+                                    mountCore scheduling ignore graph (Some regionScope) reportRow staging None (fun context ->
                                         render (fun () -> item.Value) context.Backend))
                             with original ->
                                 if setupErrors.Count > 0 then
@@ -808,8 +848,33 @@ let rec mount (graph: Graph) (parentScope: Scope option) (report: exn list -> un
             root,
             (fun (parent, before) -> range.Move (parent, before, root.Dispose)),
             (fun () -> range.Validate ()),
-            (fun () -> range.Relocate ())
+            (fun () -> range.Relocate ()),
+            (fun () ->
+                match scheduling with
+                | Synchronous -> graph.Run Api.flush
+                | Queued queue -> queue.Flush ()),
+            (fun () ->
+                match scheduling with
+                | Synchronous -> [||]
+                | Queued queue -> queue.Errors)
         )
     with _ ->
         root.Dispose ()
         reraise ()
+
+/// <summary>Mounts a view with an owned commit queue when deferred scheduling is selected.</summary>
+/// <remarks>Nested keyed mounts share the containing mount's scheduler.</remarks>
+let mountWith mode graph parentScope report host before build =
+    match mode with
+    | SynchronousCommits -> mountCore Synchronous ignore graph parentScope report host before build
+    | QueuedCommits (failure, post) ->
+        let queue = Queue (graph, failure, post)
+
+        try
+            mountCore (Queued queue) (fun root -> root.OnCleanup queue.Dispose) graph parentScope report host before build
+        with _ ->
+            queue.Dispose ()
+            reraise ()
+
+let mount graph parentScope report host before build =
+    mountWith SynchronousCommits graph parentScope report host before build

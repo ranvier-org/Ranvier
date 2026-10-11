@@ -18,7 +18,7 @@ type Policy<'T> =
         Report: exn -> unit
     }
 
-let start registerCleanup isLive scheduling (policy: Policy<'T>) (read: unit -> Reading<'T>) (write: 'T -> unit) =
+let private startCore rejectInitial registerCleanup isLive scheduling (policy: Policy<'T>) (read: unit -> Reading<'T>) (write: 'T -> unit) =
     if not (isLive ()) then
         raise (InvalidOperationException "Binding destination is disposed")
 
@@ -32,6 +32,8 @@ let start registerCleanup isLive scheduling (policy: Policy<'T>) (read: unit -> 
     let mutable first = true
     let mutable version = 0
     let mutable committed: 'T option = None
+    let mutable constructing = rejectInitial
+    let mutable setupFailure: exn option = None
 
     let live () =
         not disposed && isLive ()
@@ -70,6 +72,19 @@ let start registerCleanup isLive scheduling (policy: Policy<'T>) (read: unit -> 
             report error
             reraise ()
 
+    let createEffect body =
+        if rejectInitial then
+            Api.createEffect (fun () ->
+                try
+                    body ()
+                with error ->
+                    if constructing then
+                        setupFailure <- Some error
+
+                    reraise ())
+        else
+            Api.createEffect body
+
     try
         Api.createRoot (fun bindingOwner ->
             owner <- Some bindingOwner
@@ -80,7 +95,7 @@ let start registerCleanup isLive scheduling (policy: Policy<'T>) (read: unit -> 
 
             Api.onCleanup dispose
 
-            Api.createEffect (fun () ->
+            createEffect (fun () ->
                 if live () then
                     let reading =
                         try
@@ -140,6 +155,22 @@ let start registerCleanup isLive scheduling (policy: Policy<'T>) (read: unit -> 
                                     | Queued _ when initial && policy.Initial = Immediate -> commit ()
                                     | Queued queue -> queue.Enqueue (snd slot.Value, commit)
                                 | _ -> ())))
+
+        constructing <- false
+
+        match setupFailure with
+        | Some error ->
+            dispose ()
+            raise error
+        | None -> ()
     with _ ->
         dispose ()
         reraise ()
+
+let start registerCleanup isLive scheduling policy read write =
+    startCore false registerCleanup isLive scheduling policy read write
+
+/// <summary>Starts a binding and rejects setup when an initial policy callback or immediate setter fails.</summary>
+/// <remarks>Failed readings use the selected outcome policy; deferred commit errors are reported by the queue.</remarks>
+let startChecked registerCleanup isLive scheduling policy read write =
+    startCore true registerCleanup isLive scheduling policy read write

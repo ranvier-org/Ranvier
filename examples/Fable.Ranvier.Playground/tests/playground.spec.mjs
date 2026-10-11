@@ -94,6 +94,25 @@ test("unmount removes listeners and repeated remount preserves state", async ({ 
   await expect(page.getByTestId("doubled")).toHaveText("4");
 });
 
+test("Foundation outcome text shows pending failure and recovery on retained nodes", async ({ page }) => {
+  const result = page.locator("#foundation-load-result");
+  const status = page.locator("#foundation-load-status");
+  const retained = await result.elementHandle();
+  await expect(result).toHaveText("Loaded result");
+  await page.locator("#foundation-pending").click();
+  await expect(result).toHaveText("Loading…");
+  await expect(status).toHaveText("Pending");
+  await page.locator("#foundation-fail").click();
+  await expect(result).toHaveText("Could not load the result");
+  await expect(status).toHaveText("Failed");
+  await expect(page.locator("#foundation-load-error")).toHaveText("Connection unavailable");
+  await page.locator("#foundation-recover").click();
+  await expect(result).toHaveText("Recovered result");
+  await expect(status).toHaveText("Ready");
+  await expect(page.locator("#foundation-load-error")).toBeEmpty();
+  expect(await retained.evaluate(node => node === document.querySelector("#foundation-load-result"))).toBe(true);
+});
+
 test("default synchronous mode batches a burst before click returns", async ({ page }) => {
   await expect(page.getByTestId("scheduling-status")).toHaveText("Synchronous DOM commits · batched events");
   expect(await page.evaluate(() => {

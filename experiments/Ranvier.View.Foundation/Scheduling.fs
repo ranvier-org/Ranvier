@@ -128,3 +128,7 @@ type Queue(graph: Graph, failure: CommitFailure, post: (unit -> unit) -> unit) a
 type Scheduling =
     | Synchronous
     | Queued of Queue
+
+type CommitMode =
+    | SynchronousCommits
+    | QueuedCommits of CommitFailure * ((unit -> unit) -> unit)

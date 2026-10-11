@@ -6,6 +6,8 @@
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Scheduling.fs" />
+    <Compile Include="Binding.fs" />
     <Compile Include="Representation.fs" />
     <Compile Include="Typed.fs" />
     <Compile Include="Fixtures.fs" />

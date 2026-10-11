@@ -8,3 +8,6 @@ let private post (callback: unit -> unit) : unit = jsNative
 
 let create graph failure =
     Queue (graph, failure, post)
+
+let mode failure =
+    QueuedCommits (failure, post)

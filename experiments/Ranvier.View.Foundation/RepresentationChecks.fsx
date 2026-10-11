@@ -1,4 +1,7 @@
 #if INTERACTIVE
+#r "../../src/Ranvier/bin/Release/net10.0/Ranvier.dll"
+#load "Scheduling.fs"
+#load "Binding.fs"
 #load "Representation.fs"
 #load "Fixtures.fs"
 #endif
@@ -134,6 +137,52 @@ let edgeChecks name (ops: Operations<'view>) run =
 
 edgeChecks "tree" Tree.ops Tree.run
 edgeChecks "program" Program.ops Program.run
+
+let outcomeSnapshots name (ops: Operations<'view>) run =
+    let clientOnly () =
+        failwith "Client callback executed on server"
+
+    let policy: Ranvier.View.Foundation.Binding.Policy<string> =
+        {
+            Equals = (=)
+            Initial = Ranvier.View.Foundation.Binding.Scheduled
+            Pending = clientOnly
+            Failed = fun _ -> clientOnly ()
+            Status = fun _ -> clientOnly ()
+            Report = fun _ -> clientOnly ()
+        }
+
+    let mutable reading = Ranvier.Reading.Ready "<&"
+    let view = ops.BindWith policy (fun () -> reading)
+
+    let snapshot =
+        function
+        | Ranvier.Reading.Ready text -> Some text
+        | Ranvier.Reading.Pending -> Some "<pending>"
+        | Ranvier.Reading.Failed error -> Some error.Message
+
+    let render () =
+        Html.renderBindings snapshot Reject (run view)
+
+    equal "&lt;&amp;" (render ())
+    reading <- Ranvier.Reading.Pending
+    equal "&lt;pending&gt;" (render ())
+    reading <- Ranvier.Reading.Failed (System.Exception "<failed>")
+    equal "&lt;failed&gt;" (render ())
+    let mutable rejected = false
+
+    try
+        Html.render Reject (run view) |> ignore
+    with :? System.NotSupportedException ->
+        rejected <- true
+
+    equal true rejected
+    let throwing = ops.BindWith policy (fun () -> failwith "<thrown>")
+    equal "&lt;thrown&gt;" (Html.renderBindings snapshot Reject (run throwing))
+    printfn "PASS %s explicit server outcome snapshots and client callback isolation" name
+
+outcomeSnapshots "tree" Tree.ops Tree.run
+outcomeSnapshots "program" Program.ops Program.run
 
 #if !INTERACTIVE
 if

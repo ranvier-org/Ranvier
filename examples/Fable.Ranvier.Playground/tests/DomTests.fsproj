@@ -21,6 +21,8 @@
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Mounting.fs" Link="Mounting.fs" />
     <Compile Include="RangeChecks.fs" />
     <Compile Include="BindingChecks.fs" />
+    <Compile Include="BindingIntegrationChecks.fs" />
+    <Compile Include="BindingBench.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Components.fs" Link="Components.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/ComponentPortableChecks.fs" Link="ComponentPortableChecks.fs" />
     <Compile Include="ComponentChecks.fs" />
