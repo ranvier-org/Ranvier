@@ -175,10 +175,175 @@ let private serverBoundary (ops: Operations<'view>) run =
             source.Fail (Exception "<failed>")
             equal "&lt;failed&gt;" (Html.render Reject (run view))))
 
+let private structuralBoundary (ops: Operations<'view>) run queued =
+    use graph = new Graph ()
+
+    let fresh () =
+        Api.createAsyncSource<string>(), Api.createAsyncSource<string>()
+
+    let flight = graph.Run (fun () -> Api.createSignal (fresh ()))
+    let setups, cleanups = ResizeArray<int>(), ResizeArray<int>()
+    let host = host ()
+
+    let view =
+        ops.Component (fun _ ->
+            let selected =
+                Api.createBoundary (fun _ -> 0, ("loading", "")) (fun error _ -> 1, (error.Message, "")) (fun () ->
+                    let left, right = flight.Value
+                    2, (left.Value, right.Value))
+
+            Keyed.list ops (=) fst (fun () -> [ selected.Value ]) (fun current ->
+                ops.Component (fun setup ->
+                    let key = fst (current ())
+                    setups.Add key
+                    setup.OnCleanup (fun () -> cleanups.Add key)
+
+                    Typed.div
+                        ops
+                        []
+                        [
+                            Typed.reactiveText ops (fun () -> current () |> snd |> fst)
+                            Typed.reactiveText ops (fun () -> current () |> snd |> snd)
+                        ])))
+
+    let mode =
+        if queued then
+            QueuedCommits (CollectAndContinue, ignore)
+        else
+            SynchronousCommits
+
+    let mounted =
+        mountWith mode graph None ignore host None (fun context -> run view context.Backend)
+
+    let content () =
+        host.children.item(0.).Value
+
+    let initial = content ()
+    equal "loading" host.textContent
+
+    graph.Run (fun () ->
+        fst flight.Value
+        |> fun source -> source.Settle "one")
+
+    mounted.Flush ()
+    equal "loading" host.textContent
+    equal true (obj.ReferenceEquals (initial, content ()))
+    equal [ 0 ] (List.ofSeq setups)
+
+    graph.Run (fun () ->
+        snd flight.Value
+        |> fun source -> source.Settle "two")
+
+    mounted.Flush ()
+    equal "onetwo" host.textContent
+    let ready = content ()
+    let first, second = ready.firstChild.Value, ready.lastChild.Value
+    equal false (obj.ReferenceEquals (initial, ready))
+
+    graph.Run (fun () ->
+        fst flight.Value
+        |> fun source -> source.Settle "ONE")
+
+    if queued then
+        equal "onetwo" host.textContent
+
+    mounted.Flush ()
+    equal "ONEtwo" host.textContent
+    equal true (obj.ReferenceEquals (ready, content ()))
+    equal true (obj.ReferenceEquals (first, ready.firstChild.Value))
+    equal true (obj.ReferenceEquals (second, ready.lastChild.Value))
+    equal [ 0; 2 ] (List.ofSeq setups)
+
+    graph.Run (fun () ->
+        fst flight.Value
+        |> fun source -> source.Settle "stale")
+
+    graph.Run (fun () -> flight.Value <- fresh ())
+    mounted.Flush ()
+    equal "loading" host.textContent
+    equal "" ready.textContent
+    equal None ready.parentNode
+    equal (Some (if queued then "ONE" else "stale")) first.textContent
+    equal (Some "two") second.textContent
+    equal [ 0; 2 ] (List.ofSeq cleanups)
+
+    graph.Run (fun () ->
+        fst flight.Value
+        |> fun source -> source.Fail (Exception "broken"))
+
+    mounted.Flush ()
+    equal "broken" host.textContent
+    let failed = content ()
+
+    graph.Run (fun () ->
+        fst flight.Value
+        |> fun source -> source.Fail (Exception "again"))
+
+    mounted.Flush ()
+    equal "again" host.textContent
+    equal true (obj.ReferenceEquals (failed, content ()))
+
+    graph.Run (fun () ->
+        let left, right = flight.Value
+
+        Api.batch (fun () ->
+            left.Settle "re"
+            right.Settle "covered"))
+
+    mounted.Flush ()
+    equal "recovered" host.textContent
+    equal false (obj.ReferenceEquals (ready, content ()))
+    equal [ 0; 2; 0; 1; 2 ] (List.ofSeq setups)
+
+    graph.Run (fun () ->
+        fst flight.Value
+        |> fun source -> source.Settle "discarded")
+
+    mounted.Dispose ()
+    let disposedSetups = setups.Count
+    graph.Run (fun () -> flight.Value <- fresh ())
+    mounted.Flush ()
+    equal disposedSetups setups.Count
+    equal [ 0; 2; 0; 1; 2 ] (List.ofSeq cleanups)
+    equal "" host.textContent
+
+let private serverStructuralBoundary (ops: Operations<'view>) run =
+    use graph = new Graph ()
+
+    graph.Run (fun () ->
+        Api.createRoot (fun _ ->
+            let left, right = Api.createAsyncSource<string>(), Api.createAsyncSource<string>()
+
+            let selected =
+                Api.createBoundary (fun _ -> 0, ("<loading>", "")) (fun error _ -> 1, (error.Message, "")) (fun () -> 2, (left.Value, right.Value))
+
+            let view =
+                Keyed.list ops (=) fst (fun () -> [ selected.Value ]) (fun current ->
+                    Typed.div
+                        ops
+                        []
+                        [
+                            Typed.reactiveText ops (fun () -> current () |> snd |> fst)
+                            Typed.reactiveText ops (fun () -> current () |> snd |> snd)
+                        ])
+
+            let render () =
+                Html.render Reject (run view)
+
+            equal "<div>&lt;loading&gt;</div>" (render ())
+            left.Settle "<one>"
+            equal "<div>&lt;loading&gt;</div>" (render ())
+            right.Settle "&two"
+            equal "<div>&lt;one&gt;&amp;two</div>" (render ())
+            left.Fail (Exception "<failed>")
+            equal "<div>&lt;failed&gt;</div>" (render ())))
+
 let portableCases =
     [|
         "tree HTML serializes the boundary's escaped result", fun () -> serverBoundary Tree.ops Tree.run
         "program HTML serializes the boundary's escaped result", fun () -> serverBoundary Program.ops Program.run
+        "tree HTML selects structural boundary snapshots", fun () -> serverStructuralBoundary Tree.ops Tree.run
+        "program HTML selects structural boundary snapshots", fun () -> serverStructuralBoundary Program.ops Program.run
     |]
 
 let cases =
@@ -194,4 +359,8 @@ let cases =
             "tree keyed components share queue and cancel removed rows", fun () -> nested Tree.ops Tree.run
             "program keyed components share queue and cancel removed rows", fun () -> nested Program.ops Program.run
             "mounts own independent queues on a shared graph", independentMounts
+            "tree synchronous structural selection shares a core boundary", fun () -> structuralBoundary Tree.ops Tree.run false
+            "tree queued structural selection shares a core boundary", fun () -> structuralBoundary Tree.ops Tree.run true
+            "program synchronous structural selection shares a core boundary", fun () -> structuralBoundary Program.ops Program.run false
+            "program queued structural selection shares a core boundary", fun () -> structuralBoundary Program.ops Program.run true
         |]

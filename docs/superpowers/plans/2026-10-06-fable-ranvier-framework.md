@@ -119,6 +119,8 @@ Corrected 2026-10-11 after the user rejected per-binding outcome presentation. T
 - [x] Measure the corrected runtime beside a frozen original implementation with the same current core in Release Chromium.
 - [ ] Expand source/memo/binding equality and arbitrary setter/reentry coverage when typed properties are added.
 - [ ] Implement structural view boundaries and coordinated reveal semantics. Core computation boundaries do not catch descendant effect failures; this remains a separate renderer contract.
+
+The [structural composition proof](../../research/2026-10-11-structural-boundary-composition.md) demonstrates keyed loading/error/content selection from a shared core computation boundary, with same-key identity, replacement cleanup and portable snapshots. It adds no runtime API. Structural reconciliation remains synchronous under queued text commits; dedicated branches, descendant effect-error capture and coordinated reveal remain open.
 - [ ] Define explicit handling of live synchronous DOM setter failures and deferred commit reporting for the production API.
 - [ ] Measure retained allocations, microtask latency and property workloads before public API freeze.
 
