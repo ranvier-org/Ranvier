@@ -547,16 +547,6 @@ let rec private mountCore
 
             member _.Keyed(equals, read, render) =
                 ensureSetup ()
-                let initialItems = read ()
-                ensureSetup ()
-
-                let setupEquals left right =
-                    ensureSetup ()
-                    let result = equals left right
-                    ensureSetup ()
-                    result
-
-                Keyed.validateUniqueKeys setupEquals initialItems
 
                 let regionStart, regionEnd =
                     comment "ranvier:list:start", comment "ranvier:list:end"
@@ -566,7 +556,7 @@ let rec private mountCore
                     range.AppendGenerated (parent, regionEnd)
 
                 let regionScope = scope.Child (report, ignore)
-                let mutable entries: KeyedEntry list = []
+                let mutable entries: KeyedEntry array = [||]
                 let mutable regionOwner: Owner option = None
                 let mutable initializing = true
                 let mutable setupFailure: exn option = None
@@ -638,10 +628,11 @@ let rec private mountCore
                                 entry.Mount.Relocate ())
                     )
 
-                let moveToOrder regionParent (ordered: KeyedEntry list) =
+                let moveToOrder regionParent (ordered: KeyedEntry array) =
                     let mutable anchor: Node option = Some regionEnd
 
-                    for entry in List.rev ordered do
+                    for index in ordered.Length - 1 .. -1 .. 0 do
+                        let entry = ordered[index]
                         ensureRegionLive ()
 
                         let alreadyPlaced =
@@ -710,10 +701,10 @@ let rec private mountCore
 
                     let matches =
                         items
-                        |> List.map (fun (key, value) ->
+                        |> Array.map (fun (key, value) ->
                             let matched =
                                 entries
-                                |> List.tryFind (fun entry -> liveEquals entry.Key key)
+                                |> Array.tryFind (fun entry -> liveEquals entry.Key key)
 
                             ensureRegionLive ()
 
@@ -748,7 +739,7 @@ let rec private mountCore
                         else
                             raise (AggregateException ("Keyed row setup and cleanup failed", errors))
 
-                    let nextEntries = desired |> Seq.map fst |> List.ofSeq
+                    let nextEntries = Array.init desired.Count (fun index -> fst desired[index])
 
                     try
                         moveToOrder regionParent nextEntries
@@ -777,9 +768,9 @@ let rec private mountCore
 
                     let removedEntries =
                         entries
-                        |> List.filter (fun entry ->
+                        |> Array.filter (fun entry ->
                             nextEntries
-                            |> List.exists (fun next -> obj.ReferenceEquals (entry, next))
+                            |> Array.exists (fun next -> obj.ReferenceEquals (entry, next))
                             |> not)
 
                     Api.batch (fun () ->
@@ -794,7 +785,7 @@ let rec private mountCore
 
                 let reconcile () =
                     try
-                        let items = read ()
+                        let items = Array.copy (read ())
                         Api.untrack (fun () -> reconcileItems items)
                     with
                     | KeyedDisposed -> ()

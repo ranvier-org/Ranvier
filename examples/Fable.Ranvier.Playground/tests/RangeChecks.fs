@@ -1093,10 +1093,56 @@ let private keyedSetupAndCleanupFailure () =
     handle.Dispose ()
     equal 0. host.childNodes.length
 
+let private arrayKeyMutation () =
+    use graph = new Graph ()
+    let host = Dom.element "section" [] []
+    let slots = [| 1, "one"; 2, "two" |]
+    let mutable reads = 0
+
+    let view =
+        Keyed.array
+            Tree.ops
+            (=)
+            (fun (key, _) ->
+                if key = 1 then
+                    slots[1] <- 9, "changed"
+
+                key)
+            (fun () ->
+                reads <- reads + 1
+                slots)
+            (fun current -> Typed.reactiveText Tree.ops (fun () -> snd (current ())))
+
+    let handle = tree graph host view
+    equal "onetwo" host.textContent
+    equal 1 reads
+    handle.Dispose ()
+    equal 0. host.childNodes.length
+
+let private arrayComparerMutation () =
+    use graph = new Graph ()
+    let host = Dom.element "section" [] []
+    let slots = [| box 1, box "one"; box 2, box "two" |]
+
+    let view =
+        Tree.ops.Keyed
+            (fun left right ->
+                slots[1] <- box 9, box "changed"
+                left = right)
+            (fun () -> slots)
+            (fun current -> Tree.ops.Text (unbox<string>(current ())))
+
+    let handle = tree graph host view
+    equal "onetwo" host.textContent
+    handle.Dispose ()
+    equal 0. host.childNodes.length
+
 let allCases =
     Array.append
         cases
         [|
+            "array key callbacks cannot change unread snapshot slots", arrayKeyMutation
+            "array comparers cannot change renderer snapshot slots", arrayComparerMutation
             "reusable bindings retain identity across range movement", reactiveMoves
             "keyed rows preserve identity and current data across reorder and removal", keyedReconciliation
             "top-level keyed regions retain sibling order and move with their mount", keyedRootMovement

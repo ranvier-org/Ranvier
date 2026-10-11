@@ -473,6 +473,9 @@ let rec mount (graph: Graph) (parentScope: Scope option) (report: exn list -> un
                             committed <- Some value)
 
             member _.Keyed(equals, read, render) =
+                let read () =
+                    Array.toList (read ())
+
                 ensureSetup ()
                 let initialItems = read ()
                 ensureSetup ()

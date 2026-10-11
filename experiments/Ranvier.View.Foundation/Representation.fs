@@ -22,7 +22,7 @@ type Backend() =
     abstract Element: Tag * Token list * (unit -> unit) -> unit
     abstract Bind: (string -> string -> bool) * (unit -> string) -> unit
     /// <summary>Interprets a keyed item snapshot and renders its items into this backend.</summary>
-    abstract Keyed: (obj -> obj -> bool) * (unit -> (obj * obj) list) * ((unit -> obj) -> Backend -> unit) -> unit
+    abstract Keyed: (obj -> obj -> bool) * (unit -> (obj * obj) array) * ((unit -> obj) -> Backend -> unit) -> unit
     abstract Component: (Setup -> unit) -> unit
 
 type Operations<'view> =
@@ -33,7 +33,7 @@ type Operations<'view> =
         Element: Tag -> Token list -> 'view list -> 'view
         Bind: (string -> string -> bool) -> (unit -> string) -> 'view
         /// <summary>Creates the internal keyed-list representation used by <c>Keyed.list</c>.</summary>
-        Keyed: (obj -> obj -> bool) -> (unit -> (obj * obj) list) -> ((unit -> obj) -> 'view) -> 'view
+        Keyed: (obj -> obj -> bool) -> (unit -> (obj * obj) array) -> ((unit -> obj) -> 'view) -> 'view
         Component: (Setup -> 'view) -> 'view
     }
 
@@ -53,14 +53,11 @@ module Keyed =
 
             seen.Add key
 
-    /// <summary>Creates a reactive keyed list that retains mounted rows while their extracted keys remain equal.</summary>
-    /// <remarks><c>render</c> receives a reader for the latest item value.
-    /// Duplicate keys raise <see cref="T:System.ArgumentException"/> before reconciliation.</remarks>
-    let list
+    let private create
         (ops: Operations<'view>)
         (equals: 'key -> 'key -> bool)
         (key: 'item -> 'key)
-        (read: unit -> 'item list)
+        (read: unit -> 'item array)
         (render: (unit -> 'item) -> 'view)
         =
         if isNull (box equals) then
@@ -80,12 +77,29 @@ module Keyed =
 
         let readObjects () =
             read ()
-            |> List.map (fun item -> box (key item), box item)
+            |> Array.map (fun item -> box (key item), box item)
 
         let renderObject (current: unit -> obj) =
             render (fun () -> unbox<'item>(current ()))
 
         ops.Keyed equalsObjects readObjects renderObject
+
+    /// <summary>Retains keyed rows and supplies their current item values.</summary>
+    /// <remarks>The input array's slots are copied before key callbacks run.
+    /// Duplicate keys fail before reconciliation mutates the DOM.</remarks>
+    let array ops equals key (read: unit -> 'item array) render =
+        if isNull (box read) then
+            invalidArg "read" "Keyed item reader cannot be null"
+
+        create ops equals key (fun () -> Array.copy (read ())) render
+
+    /// <summary>Adapts list snapshots to the array-backed keyed renderer.</summary>
+    /// <remarks>Equal keys retain rows; their item readers return current values.</remarks>
+    let list ops equals key (read: unit -> 'item list) render =
+        if isNull (box read) then
+            invalidArg "read" "Keyed item reader cannot be null"
+
+        create ops equals key (fun () -> List.toArray (read ())) render
 
 module Branch =
     /// <summary>Selects a mounted instance by key and supplies a reader for its current selection.</summary>
@@ -106,7 +120,7 @@ module Branch =
 
         let readObjects () =
             let item = read ()
-            [ box (key item), box item ]
+            [| box (key item), box item |]
 
         ops.Keyed (fun left right -> equals (unbox left) (unbox right)) readObjects (fun current -> render (fun () -> unbox (current ())))
 
@@ -118,7 +132,7 @@ module Tree =
         | Fragment of View list
         | Element of Tag * Token list * View list
         | Bind of (string -> string -> bool) * (unit -> string)
-        | Keyed of (obj -> obj -> bool) * (unit -> (obj * obj) list) * ((unit -> obj) -> View)
+        | Keyed of (obj -> obj -> bool) * (unit -> (obj * obj) array) * ((unit -> obj) -> View)
         | Component of (Setup -> View)
 
     let rec run view (backend: Backend) =
@@ -218,7 +232,7 @@ module Html =
                     append (escape false (read ()))
 
                 member this.Keyed(equals, read, render) =
-                    let items = read ()
+                    let items = Array.copy (read ())
                     Keyed.validateUniqueKeys equals items
 
                     for _, item in items do
