@@ -715,6 +715,384 @@ let private reparentedGeneratedDescendants () =
     finally
         handle.Dispose ()
 
+let private keyedReportsAndRecovery () =
+    use graph = new Graph ()
+    let host = Dom.element "section" [] []
+    let rows = graph.Run (fun () -> Api.createSignal [ 1, "one"; 2, "two" ])
+    let reports = ResizeArray<exn>()
+    let mutable setups = 0
+
+    let view =
+        Keyed.list Tree.ops (=) fst (fun () -> rows.Value) (fun current ->
+            Tree.ops.Component (fun _ ->
+                setups <- setups + 1
+                Tree.ops.Bind (=) (fun () -> snd (current ()))))
+
+    let handle =
+        mount graph None (List.iter reports.Add) host None (fun ctx -> Tree.run view ctx.Backend)
+
+    let one = at host 3
+    graph.Run (fun () -> rows.Value <- [ 1, "changed"; 1, "duplicate" ])
+    equal "onetwo" host.textContent
+    equal 2 setups
+    equal 1 reports.Count
+    equal true (reports[0] :? ArgumentException)
+    graph.Run (fun () -> rows.Value <- [ 2, "TWO"; 1, "ONE" ])
+    equal "TWOONE" host.textContent
+    same one (at host 6)
+    equal 2 setups
+    equal 1 reports.Count
+    handle.Dispose ()
+    equal 0. host.childNodes.length
+
+let private keyedSetupRecovery initial =
+    use graph = new Graph ()
+    let host = Dom.element "section" [] []
+
+    let rows =
+        graph.Run (fun () -> Api.createSignal (if initial then [ 1; 2; 3 ] else [ 1 ]))
+
+    let reports = ResizeArray<exn>()
+    let cleanups = ResizeArray<int>()
+    let mutable fail = true
+
+    let view =
+        Keyed.list Tree.ops (=) id (fun () -> rows.Value) (fun current ->
+            Tree.ops.Component (fun ctx ->
+                let key = current ()
+                ctx.OnCleanup (fun () -> cleanups.Add key)
+
+                if key = 3 && fail then
+                    failwith "row setup"
+
+                Tree.ops.Text (string key)))
+
+    let build ctx =
+        Tree.run view ctx.Backend
+
+    if initial then
+        let mutable caught = false
+
+        try
+            mount graph None (List.iter reports.Add) host None build
+            |> ignore
+        with error ->
+            equal "row setup" error.Message
+            caught <- true
+
+        equal true caught
+        equal 0. host.childNodes.length
+        equal [ 1; 2; 3 ] (cleanups |> Seq.sort |> List.ofSeq)
+    else
+        let handle = mount graph None (List.iter reports.Add) host None build
+        let one = at host 3
+        graph.Run (fun () -> rows.Value <- [ 2; 1; 3 ])
+        equal "1" host.textContent
+        same one (at host 3)
+        equal [ 2; 3 ] (cleanups |> Seq.sort |> List.ofSeq)
+        equal [ "row setup" ] (reports |> Seq.map _.Message |> List.ofSeq)
+        fail <- false
+        graph.Run (fun () -> rows.Value <- [ 3; 1; 2 ])
+        equal "312" host.textContent
+        same one (at host 6)
+        handle.Dispose ()
+        equal [ 1; 2; 2; 3; 3 ] (cleanups |> Seq.sort |> List.ofSeq)
+        equal 0. host.childNodes.length
+
+let private keyedMoveRecovery rollbackFailure =
+    use graph = new Graph ()
+    let host = Dom.element "section" [] []
+    let rows = graph.Run (fun () -> Api.createSignal [ 1; 2 ])
+    let reports = ResizeArray<exn>()
+    let cleanups = ResizeArray<int>()
+
+    let view =
+        Keyed.list Tree.ops (=) id (fun () -> rows.Value) (fun current ->
+            Tree.ops.Component (fun ctx ->
+                let key = current ()
+                ctx.OnCleanup (fun () -> cleanups.Add key)
+                Tree.ops.Text (string key)))
+
+    let handle =
+        mount graph None (List.iter reports.Add) host None (fun ctx -> Tree.run view ctx.Backend)
+
+    let one, two = at host 3, at host 6
+    let mutable inserts = 0
+
+    let restore =
+        afterAttachment host (fun () ->
+            inserts <- inserts + 1
+
+            if rollbackFailure || inserts = 1 then
+                failwith "insert")
+
+    try
+        graph.Run (fun () -> rows.Value <- [ 3; 2; 1 ])
+    finally
+        restore ()
+
+    equal 1 reports.Count
+
+    if rollbackFailure then
+        equal Disposed handle.Phase
+        equal 0. host.childNodes.length
+        equal [ 1; 2; 3 ] (cleanups |> Seq.sort |> List.ofSeq)
+    else
+        equal "12" host.textContent
+        same one (at host 3)
+        same two (at host 6)
+        equal [ 3 ] (List.ofSeq cleanups)
+        graph.Run (fun () -> rows.Value <- [ 2; 1; 3 ])
+        equal "213" host.textContent
+        same one (at host 6)
+        same two (at host 3)
+
+    handle.Dispose ()
+    equal 0. host.childNodes.length
+
+let private keyedNestedMovement () =
+    use graph = new Graph ()
+    let host, other = Dom.element "section" [] [], Dom.element "section" [] []
+
+    let rows =
+        graph.Run (fun () -> Api.createSignal [ 1, [ 10, "a"; 11, "b" ]; 2, [ 20, "c" ] ])
+
+    let setups = ResizeArray<int>()
+    let cleanups = ResizeArray<int>()
+
+    let view =
+        Keyed.list Tree.ops (=) fst (fun () -> rows.Value) (fun outer ->
+            Keyed.list Tree.ops (=) fst (fun () -> snd (outer ())) (fun inner ->
+                Tree.ops.Component (fun ctx ->
+                    let key = fst (inner ())
+                    setups.Add key
+                    ctx.OnCleanup (fun () -> cleanups.Add key)
+
+                    Tree.ops.Fragment
+                        [
+                            Tree.ops.Element Button [ Attribute ("id", "nested-" + string key) ] [ Tree.ops.Bind (=) (fun () -> snd (inner ())) ]
+                            Tree.ops.Text "!"
+                        ])))
+
+    let handle = tree graph host view
+    equal "a!b!c!" host.textContent
+
+    let a, b, c =
+        query host "#nested-10", query host "#nested-11", query host "#nested-20"
+
+    handle.MoveBefore (other, None)
+    graph.Run (fun () -> rows.Value <- [ 2, [ 20, "C"; 21, "d" ]; 1, [ 11, "B"; 10, "A" ] ])
+    equal "C!d!B!A!" other.textContent
+    same a.Value (query other "#nested-10").Value
+    same b.Value (query other "#nested-11").Value
+    same c.Value (query other "#nested-20").Value
+    equal [ 10; 11; 20; 21 ] (setups |> Seq.sort |> List.ofSeq)
+    equal [] (List.ofSeq cleanups)
+    handle.MoveBefore (host, None)
+    graph.Run (fun () -> rows.Value <- [ 1, [ 10, "last" ] ])
+    equal "last!" host.textContent
+    same a.Value (query host "#nested-10").Value
+    equal [ 11; 20; 21 ] (cleanups |> Seq.sort |> List.ofSeq)
+    handle.Dispose ()
+    equal [ 10; 11; 20; 21 ] (cleanups |> Seq.sort |> List.ofSeq)
+    equal 0. host.childNodes.length
+    equal 0. other.childNodes.length
+
+let private keyedDisposal point =
+    use graph = new Graph ()
+    let host = Dom.element "section" [] []
+    let parent = Scope (ignore, ignore)
+    let rows = graph.Run (fun () -> Api.createSignal [ 1; 2 ])
+    let reports = ResizeArray<exn>()
+    let cleanups = ResizeArray<int>()
+    let mutable updating = false
+    let mutable setups = 0
+    let mutable comparisonsAfterDisposal = 0
+
+    let dispose atPoint =
+        if updating && point = atPoint then
+            parent.Dispose ()
+
+    let view =
+        Keyed.list
+            Tree.ops
+            (fun a b ->
+                if parent.IsDisposed then
+                    comparisonsAfterDisposal <- comparisonsAfterDisposal + 1
+
+                dispose "equals"
+                a = b)
+            id
+            (fun () ->
+                dispose "read"
+                rows.Value)
+            (fun current ->
+                Tree.ops.Component (fun ctx ->
+                    let key = current ()
+                    setups <- setups + 1
+
+                    ctx.OnCleanup (fun () ->
+                        cleanups.Add key
+                        dispose "cleanup")
+
+                    dispose "setup"
+                    Tree.ops.Bind (=) (fun () -> string (current ()))))
+
+    let handle =
+        mount graph (Some parent) (List.iter reports.Add) host None (fun ctx -> Tree.run view ctx.Backend)
+
+    updating <- true
+    let restore = afterAttachment host (fun () -> dispose "move")
+
+    try
+        graph.Run (fun () -> rows.Value <- [ 3; 2; 4 ])
+    finally
+        restore ()
+
+    equal Disposed handle.Phase
+    equal 0. host.childNodes.length
+
+    let expected =
+        if point = "read" || point = "equals" then [ 1; 2 ]
+        elif point = "setup" then [ 1; 2; 3 ]
+        else [ 1; 2; 3; 4 ]
+
+    equal expected (cleanups |> Seq.sort |> List.ofSeq)
+    equal 0 reports.Count
+    equal 0 comparisonsAfterDisposal
+    let before = setups
+    graph.Run (fun () -> rows.Value <- [ 4; 5 ])
+    equal before setups
+    equal 0. host.childNodes.length
+
+let private keyedReporter throws =
+    use graph = new Graph ()
+    let host = Dom.element "section" [] []
+    let rows = graph.Run (fun () -> Api.createSignal [ 1; 2 ])
+    let unrelated = graph.Run (fun () -> Api.createSignal 0)
+    let mutable reports = 0
+
+    let report _ =
+        reports <- reports + 1
+        unrelated.Value |> ignore
+
+        if throws then
+            failwith "reporter"
+
+    let view =
+        Keyed.list Tree.ops (=) id (fun () -> rows.Value) (fun current -> Tree.ops.Text (string (current ())))
+
+    let handle =
+        mount graph None report host None (fun ctx -> Tree.run view ctx.Backend)
+
+    let one = at host 3
+    graph.Run (fun () -> rows.Value <- [ 1; 1 ])
+    equal 1 reports
+    graph.Run (fun () -> unrelated.Value <- 1)
+    equal 1 reports
+    equal "12" host.textContent
+    graph.Run (fun () -> rows.Value <- [ 2; 1 ])
+    equal "21" host.textContent
+    same one (at host 6)
+    equal 1 reports
+    handle.Dispose ()
+    equal 0. host.childNodes.length
+
+let private keyedTracksOnlySnapshot () =
+    use graph = new Graph ()
+    let host = Dom.element "section" [] []
+    let rows = graph.Run (fun () -> Api.createSignal [ 1; 2 ])
+    let unrelated = graph.Run (fun () -> Api.createSignal 0)
+    let mutable reads = 0
+
+    let view =
+        Keyed.list
+            Tree.ops
+            (fun a b ->
+                unrelated.Value |> ignore
+                a = b)
+            id
+            (fun () ->
+                reads <- reads + 1
+                rows.Value)
+            (fun current ->
+                Tree.ops.Component (fun ctx ->
+                    ctx.OnCleanup (fun () -> unrelated.Value |> ignore)
+                    Tree.ops.Text (string (current ()))))
+
+    let handle = tree graph host view
+    graph.Run (fun () -> rows.Value <- [ 1 ])
+    equal "1" host.textContent
+    let before = reads
+    graph.Run (fun () -> unrelated.Value <- 1)
+    equal before reads
+    handle.Dispose ()
+
+let private keyedInitialDisposal fromReader =
+    use graph = new Graph ()
+    let host = Dom.element "section" [] []
+    let parent = Scope (ignore, ignore)
+    let mutable comparisons = 0
+    let mutable rendered = 0
+
+    let view =
+        Keyed.list
+            Tree.ops
+            (fun a b ->
+                comparisons <- comparisons + 1
+                parent.Dispose ()
+                a = b)
+            id
+            (fun () ->
+                if fromReader then
+                    parent.Dispose ()
+
+                [ 1; 2; 3 ])
+            (fun _ ->
+                rendered <- rendered + 1
+                Tree.ops.Empty)
+
+    rejected (fun () ->
+        mounted graph (Some parent) host None (fun ctx -> Tree.run view ctx.Backend)
+        |> ignore)
+
+    equal (if fromReader then 0 else 1) comparisons
+    equal 0 rendered
+    equal 0. host.childNodes.length
+    equal 0 parent.ChildCount
+
+let private keyedSetupAndCleanupFailure () =
+    use graph = new Graph ()
+    let host = Dom.element "section" [] []
+    let rows = graph.Run (fun () -> Api.createSignal [ 1 ])
+    let reports = ResizeArray<exn list>()
+
+    let view =
+        Keyed.list Tree.ops (=) id (fun () -> rows.Value) (fun current ->
+            Tree.ops.Component (fun ctx ->
+                let key = current ()
+
+                if key = 3 then
+                    ctx.OnCleanup (fun () -> failwith "row cleanup")
+                    failwith "row setup"
+
+                Tree.ops.Text (string key)))
+
+    let handle =
+        mount graph None reports.Add host None (fun ctx -> Tree.run view ctx.Backend)
+
+    let one = at host 3
+    graph.Run (fun () -> rows.Value <- [ 2; 1; 3 ])
+    equal "1" host.textContent
+    same one (at host 3)
+    equal 1 reports.Count
+    equal [ "row setup"; "row cleanup" ] (reports[0] |> List.map _.Message)
+    graph.Run (fun () -> rows.Value <- [ 2; 1 ])
+    equal "21" host.textContent
+    same one (at host 6)
+    handle.Dispose ()
+    equal 0. host.childNodes.length
+
 let allCases =
     Array.append
         cases
@@ -731,4 +1109,21 @@ let allCases =
             "direct child mount disposal uses its explicit reporter", childReporter
             "failed movement rollback disposes resources instead of stranding bindings", failedMovementRollback
             "generated descendants remain owned after external reparenting", reparentedGeneratedDescendants
+            "duplicate keyed updates report once and recover without replacing retained rows", keyedReportsAndRecovery
+            "initial keyed row setup failure unwinds the entire mount", fun () -> keyedSetupRecovery true
+            "failed live row setup retains prior rows and permits recovery", fun () -> keyedSetupRecovery false
+            "failed keyed movement restores prior order and permits recovery", fun () -> keyedMoveRecovery false
+            "failed keyed rollback terminates the mount and all row resources", fun () -> keyedMoveRecovery true
+            "nested keyed rows update and dispose after outer movement", keyedNestedMovement
+            "keyed reader disposal prevents further reconciliation", fun () -> keyedDisposal "read"
+            "keyed comparer disposal prevents further reconciliation", fun () -> keyedDisposal "equals"
+            "keyed row setup disposal cannot attach new rows", fun () -> keyedDisposal "setup"
+            "keyed movement disposal cannot revive row ranges", fun () -> keyedDisposal "move"
+            "keyed row cleanup disposal cancels the remaining update", fun () -> keyedDisposal "cleanup"
+            "keyed error reporting does not subscribe to reporter reads", fun () -> keyedReporter false
+            "throwing keyed reporters cannot prevent later recovery or disposal", fun () -> keyedReporter true
+            "keyed reconciliation tracks snapshots but not comparers or cleanup", keyedTracksOnlySnapshot
+            "initial keyed reader disposal stops before comparer calls", fun () -> keyedInitialDisposal true
+            "initial keyed comparer disposal stops before further callbacks", fun () -> keyedInitialDisposal false
+            "keyed setup and its cleanup failure report together and recover", keyedSetupAndCleanupFailure
         |]

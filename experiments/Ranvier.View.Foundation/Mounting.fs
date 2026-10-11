@@ -379,6 +379,9 @@ type private KeyedEntry =
         Mount: Mounted
     }
 
+exception private KeyedDisposed
+exception private KeyedSetupFailed of exn list
+
 let rec mount (graph: Graph) (parentScope: Scope option) (report: exn list -> unit) (host: Node) (before: Node option) (build: BuildContext -> unit) =
     let range = OwnedRange host
 
@@ -471,7 +474,16 @@ let rec mount (graph: Graph) (parentScope: Scope option) (report: exn list -> un
 
             member _.Keyed(equals, read, render) =
                 ensureSetup ()
-                Keyed.validateUniqueKeys equals (read ())
+                let initialItems = read ()
+                ensureSetup ()
+
+                let setupEquals left right =
+                    ensureSetup ()
+                    let result = equals left right
+                    ensureSetup ()
+                    result
+
+                Keyed.validateUniqueKeys setupEquals initialItems
 
                 let regionStart, regionEnd =
                     comment "ranvier:list:start", comment "ranvier:list:end"
@@ -483,6 +495,24 @@ let rec mount (graph: Graph) (parentScope: Scope option) (report: exn list -> un
                 let regionScope = scope.Child (report, ignore)
                 let mutable entries: KeyedEntry list = []
                 let mutable regionOwner: Owner option = None
+                let mutable initializing = true
+                let mutable setupFailure: exn option = None
+                let mutable rowSetupErrors: ResizeArray<exn> option = None
+
+                let reportRow errors =
+                    match rowSetupErrors with
+                    | Some collected -> collected.AddRange errors
+                    | None -> report errors
+
+                let ensureRegionLive () =
+                    if root.IsDisposed || regionScope.IsDisposed then
+                        raise KeyedDisposed
+
+                let liveEquals left right =
+                    ensureRegionLive ()
+                    let result = equals left right
+                    ensureRegionLive ()
+                    result
 
                 let getRegionParent () =
                     let regionParent =
@@ -539,6 +569,8 @@ let rec mount (graph: Graph) (parentScope: Scope option) (report: exn list -> un
                     let mutable anchor = Some regionEnd
 
                     for entry in List.rev ordered do
+                        ensureRegionLive ()
+
                         let alreadyPlaced =
                             entry.Last.parentNode
                             |> Option.exists (same regionParent)
@@ -548,19 +580,37 @@ let rec mount (graph: Graph) (parentScope: Scope option) (report: exn list -> un
                         if not alreadyPlaced then
                             entry.Mount.MoveBefore (regionParent, anchor)
 
+                        ensureRegionLive ()
+
                         anchor <- Some entry.First
 
                 let createEntry key value =
+                    ensureRegionLive ()
                     let item = graph.Run (fun () -> Api.createSignal value)
                     let staging = fragment ()
+                    let setupErrors = ResizeArray<exn>()
+                    let previousErrors = rowSetupErrors
 
                     let owner =
                         regionOwner
                         |> Option.defaultWith (fun () -> invalid "Keyed-list owner is unavailable")
 
                     let mounted =
-                        Api.runWithOwner owner (fun () ->
-                            mount graph (Some regionScope) report staging None (fun context -> render (fun () -> item.Value) context.Backend))
+                        rowSetupErrors <- Some setupErrors
+
+                        try
+                            try
+                                Api.runWithOwner owner (fun () ->
+                                    mount graph (Some regionScope) reportRow staging None (fun context ->
+                                        render (fun () -> item.Value) context.Backend))
+                            with original ->
+                                if setupErrors.Count > 0 then
+                                    raise (KeyedSetupFailed (original :: List.ofSeq setupErrors))
+
+                                ensureRegionLive ()
+                                reraise ()
+                        finally
+                            rowSetupErrors <- previousErrors
 
                     let first =
                         staging.firstChild
@@ -578,19 +628,23 @@ let rec mount (graph: Graph) (parentScope: Scope option) (report: exn list -> un
                         Mount = mounted
                     }
 
-                let reconcileCore () =
-                    let items = read ()
+                let reconcileItems items =
+                    ensureRegionLive ()
                     let regionParent = getRegionParent ()
                     validateRegion regionParent
-                    Keyed.validateUniqueKeys equals items
+                    Keyed.validateUniqueKeys liveEquals items
+                    ensureRegionLive ()
 
                     let matches =
                         items
                         |> List.map (fun (key, value) ->
-                            match
+                            let matched =
                                 entries
-                                |> List.tryFind (fun entry -> equals entry.Key key)
-                            with
+                                |> List.tryFind (fun entry -> liveEquals entry.Key key)
+
+                            ensureRegionLive ()
+
+                            match matched with
                             | Some entry -> Choice1Of2 (entry, value)
                             | None -> Choice2Of2 (key, value))
 
@@ -604,6 +658,7 @@ let rec mount (graph: Graph) (parentScope: Scope option) (report: exn list -> un
                             | Choice2Of2 (key, value) ->
                                 let entry = createEntry key value
                                 created.Add entry
+                                ensureRegionLive ()
                                 desired.Add (entry, value)
                     with original ->
                         let errors = ResizeArray<exn>()
@@ -625,10 +680,12 @@ let rec mount (graph: Graph) (parentScope: Scope option) (report: exn list -> un
                     try
                         moveToOrder regionParent nextEntries
                     with movementError ->
+                        ensureRegionLive ()
+
                         try
                             moveToOrder regionParent entries
                         with rollbackError ->
-                            regionScope.Dispose ()
+                            root.Dispose ()
                             raise (AggregateException ("Keyed reconciliation and rollback failed", [| movementError; rollbackError |]))
 
                         let errors = ResizeArray<exn>()
@@ -654,6 +711,7 @@ let rec mount (graph: Graph) (parentScope: Scope option) (report: exn list -> un
 
                     Api.batch (fun () ->
                         for entry, value in desired do
+                            ensureRegionLive ()
                             entry.Value.Value <- value
 
                         entries <- nextEntries
@@ -663,15 +721,47 @@ let rec mount (graph: Graph) (parentScope: Scope option) (report: exn list -> un
 
                 let reconcile () =
                     try
-                        reconcileCore ()
-                    with error ->
-                        reraise ()
+                        let items = read ()
+                        Api.untrack (fun () -> reconcileItems items)
+                    with
+                    | KeyedDisposed -> ()
+                    | error ->
+                        let errors =
+                            match error with
+                            | KeyedSetupFailed errors -> errors
+                            | _ -> [ error ]
+
+                        if initializing then
+                            setupFailure <-
+                                Some (
+                                    match errors with
+                                    | [ error ] -> error
+                                    | _ ->
+                                        AggregateException (
+                                            "Keyed row setup and cleanup failed: "
+                                            + String.concat "; " (errors |> List.map _.Message),
+                                            errors
+                                        )
+                                )
+                        else
+                            try
+                                Api.untrack (fun () -> report errors)
+                            with reporterError ->
+                                raise (AggregateException ("Keyed update and reporter failed", [| error; reporterError |]))
+
+                            reraise ()
 
                 Api.createRoot (fun owner ->
                     regionOwner <- Some owner
                     Api.onCleanup regionScope.Dispose
                     regionScope.OnCleanup owner.Dispose
                     Api.untrack (fun () -> Api.createEffect reconcile))
+
+                initializing <- false
+
+                match setupFailure with
+                | Some error -> raise error
+                | None -> ()
 
             member _.Component setup =
                 ensureSetup ()

@@ -125,7 +125,7 @@ Proposed binding input: reader, setter, equality, outcome policy, scope and sche
 
 ## Task 6 — Keyed branches and lists
 
-Experimental keyed-list checkpoint: retained values/identity, reorder, removal/reinsertion and app integration are implemented; branch selection, failure/reentry gates and list performance remain open. See the [current checkpoint](../../research/2026-10-11-view-poc-checkpoint.md).
+Experimental keyed-list checkpoint: retained values/identity, reorder, removal/reinsertion and app integration are implemented. The [correctness follow-on](../../research/2026-10-11-keyed-correctness.md) covers initial/live failures and recovery, rollback termination, callback-triggered disposal, nested composition and tracking isolation. Branch selection, broader comparer/focus cases and list performance remain open. See the [current checkpoint](../../research/2026-10-11-view-poc-checkpoint.md).
 
 Contracts: C05. Variant: V04. Risks: G05, G10, G15.
 

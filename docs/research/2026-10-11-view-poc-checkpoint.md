@@ -28,6 +28,8 @@ These are scoped DOM/portable gates. Whole-solution acceptance and production AP
 
 ## Remaining work
 
-This is a useful keyed-list correctness checkpoint, not completion of framework Task 6. Branch selection, duplicate-update error notification, failed live reconciliation recovery, reentrant disposal and nested keyed composition need focused contracts and tests. The implementation uses quadratic duplicate checks, retained-key lookup and removed-entry filtering; it has no list throughput or allocation budget yet. Large-list performance must be measured and optimized before claiming the intended performance target.
+Follow-on: the [keyed correctness repair](2026-10-11-keyed-correctness.md) adds coverage and fixes for the failure/reentry/nested-composition gaps below. The verification counts above describe the original checkpoint; consult the follow-on for its newer results.
+
+This was a useful keyed-list correctness checkpoint, not completion of framework Task 6. Its duplicate-update reporting, failed live reconciliation, reentrant disposal and nested-composition gaps are addressed by the follow-on within the tested contracts. Branch selection and broader comparer/focus cases remain open. The implementation uses quadratic duplicate checks, retained-key lookup and removed-entry filtering; it has no list throughput or allocation budget yet. Large-list performance must be measured and optimized before claiming the intended performance target.
 
 Bindings still need explicit pending/error/status policies and scheduling integration in Foundation. Broad typed HTML/SVG coverage, generated scaffolding, server request ownership, hydration and full ergonomic sugar remain unfinished. The instruction tree is provisional; no Ripple/Solid speed ranking is established by these tests.
