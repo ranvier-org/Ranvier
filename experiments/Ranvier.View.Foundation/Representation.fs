@@ -1,8 +1,5 @@
 module Ranvier.View.Foundation.Representation
 
-open Ranvier
-open Ranvier.View.Foundation.Binding
-
 type Tag =
     | Div
     | Button
@@ -24,12 +21,6 @@ type Backend() =
     abstract Text: string -> unit
     abstract Element: Tag * Token list * (unit -> unit) -> unit
     abstract Bind: (string -> string -> bool) * (unit -> string) -> unit
-    /// <summary>Renders text with explicit client outcome policies and the backend's scheduler.</summary>
-    abstract BindWith: Policy<string> * (unit -> Reading<string>) -> unit
-
-    default _.BindWith(_, _) =
-        raise (System.NotSupportedException "Backend does not support explicit outcome bindings")
-
     /// <summary>Interprets a keyed item snapshot and renders its items into this backend.</summary>
     abstract Keyed: (obj -> obj -> bool) * (unit -> (obj * obj) list) * ((unit -> obj) -> Backend -> unit) -> unit
     abstract Component: (Setup -> unit) -> unit
@@ -41,7 +32,6 @@ type Operations<'view> =
         Fragment: 'view list -> 'view
         Element: Tag -> Token list -> 'view list -> 'view
         Bind: (string -> string -> bool) -> (unit -> string) -> 'view
-        BindWith: Policy<string> -> (unit -> Reading<string>) -> 'view
         /// <summary>Creates the internal keyed-list representation used by <c>Keyed.list</c>.</summary>
         Keyed: (obj -> obj -> bool) -> (unit -> (obj * obj) list) -> ((unit -> obj) -> 'view) -> 'view
         Component: (Setup -> 'view) -> 'view
@@ -105,7 +95,6 @@ module Tree =
         | Fragment of View list
         | Element of Tag * Token list * View list
         | Bind of (string -> string -> bool) * (unit -> string)
-        | BindWith of Policy<string> * (unit -> Reading<string>)
         | Keyed of (obj -> obj -> bool) * (unit -> (obj * obj) list) * ((unit -> obj) -> View)
         | Component of (Setup -> View)
 
@@ -125,7 +114,6 @@ module Tree =
                         run child backend
             )
         | Bind (equals, read) -> backend.Bind (equals, read)
-        | BindWith (policy, read) -> backend.BindWith (policy, read)
         | Keyed (equals, read, render) -> backend.Keyed (equals, read, fun current target -> run (render current) target)
         | Component setup -> backend.Component (fun context -> run (setup context) backend)
 
@@ -136,7 +124,6 @@ module Tree =
             Fragment = Fragment
             Element = fun tag tokens children -> Element (tag, tokens, children)
             Bind = fun equals read -> Bind (equals, read)
-            BindWith = fun policy read -> BindWith (policy, read)
             Keyed = fun equals read render -> Keyed (equals, read, render)
             Component = Component
         }
@@ -170,7 +157,6 @@ module Program =
                                     run child backend
                         ))
             Bind = fun equals read -> View (fun backend -> backend.Bind (equals, read))
-            BindWith = fun policy read -> View (fun backend -> backend.BindWith (policy, read))
             Keyed = fun equals read render -> View (fun backend -> backend.Keyed (equals, read, fun current target -> run (render current) target))
             Component = fun setup -> View (fun backend -> backend.Component (fun context -> run (setup context) backend))
         }
@@ -194,7 +180,7 @@ module Html =
         else
             escaped
 
-    let private renderCore snapshot policy build =
+    let render policy build =
         let output = System.Text.StringBuilder ()
 
         let append (value: string) =
@@ -207,19 +193,6 @@ module Html =
 
                 member _.Bind(_, read) =
                     append (escape false (read ()))
-
-                member _.BindWith(_, read) =
-                    match snapshot with
-                    | None -> raise (System.NotSupportedException "Outcome bindings require an explicit HTML snapshot selector")
-                    | Some select ->
-                        let reading =
-                            try
-                                read ()
-                            with error ->
-                                Reading.Failed error
-
-                        select reading
-                        |> Option.iter (escape false >> append)
 
                 member this.Keyed(equals, read, render) =
                     let items = read ()
@@ -305,14 +278,6 @@ module Html =
 
         build backend
         output.ToString ()
-
-    let render policy build =
-        renderCore None policy build
-
-    /// <summary>Serializes outcome bindings using an explicit server snapshot selector.</summary>
-    /// <remarks>Client status, reporting and fallback callbacks are omitted.</remarks>
-    let renderBindings snapshot policy build =
-        renderCore (Some snapshot) policy build
 
 type FragmentBuilder<'view>(ops: Operations<'view>) =
     member _.Yield(view: 'view) = [ view ]

@@ -112,19 +112,6 @@ let mount (graph: Graph) (host: HTMLElement) (report: exn list -> unit) (counts:
             member _.Keyed(_, _, _) =
                 invalidOp "The baseline browser interpreter does not support keyed dynamic lists"
 
-            member _.BindWith(policy, read) =
-                let node = text ""
-                append node
-                let bindingScope = scope
-
-                count (fun c ->
-                    c.Owners <- c.Owners + 1
-                    c.Effects <- c.Effects + 1)
-
-                Binding.startChecked bindingScope.OnCleanup (fun () -> not bindingScope.IsDisposed) Scheduling.Synchronous policy read (fun value ->
-                    node.textContent <- Some value
-                    count (fun c -> c.Writes <- c.Writes + 1))
-
             member _.Component setup =
                 let previous = scope
                 let child = scope.Child ignore

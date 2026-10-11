@@ -1,5 +1,7 @@
 # Binding integration and measurement
 
+> Superseded by the [text/boundary repair](../../research/2026-10-11-text-boundary-repair.md). This document records the rejected per-binding outcome experiment. Its policies, extra roots and HTML snapshot selector have been removed.
+
 Continues framework Task 5 from `272b82b`, under the user's instruction to integrate and benchmark the policy proof. Execution is inline in the existing DOM worktree.
 
 1. Add an explicit policy-bearing text operation to Tree/Program and Backend. Keep `Bind` as the old comparison path. Expose a direct typed text helper. Views contain policies/readers; mounts choose scheduling.

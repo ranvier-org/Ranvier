@@ -50,7 +50,7 @@ Distinguish setup, attachment, mounted access and teardown capabilities. F# type
 
 Track the reader and execute DOM writes untracked. Supply binding equality explicitly, including an always-write option. Source equality, memo equality and DOM-write equality serve different purposes and remain separate choices.
 
-Pending reads and failures have an explicit outcome contract. No implicit stale-value retention, loading UI, suspension or recovery is inferred from a getter. The first release supports explicit status matching and error reporting; coordinated boundaries and reveal policies come later.
+Ordinary text bindings read strings and perform equality-checked writes. Pending/error presentation belongs to explicit boundaries. Core computation boundaries can produce fallback values for readers now; structural view boundaries and coordinated reveal require a separate renderer contract. An unhandled pending or failed read aborts the effect before writing; this mechanical behavior does not select application presentation. Per-binding outcome/status policy records are excluded from the minimal text API.
 
 ### C05 — Structural reactivity
 

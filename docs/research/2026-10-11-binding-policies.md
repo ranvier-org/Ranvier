@@ -1,5 +1,7 @@
 # Binding policies and scheduling proof — 2026-10-11
 
+> Superseded by the [text/boundary repair](2026-10-11-text-boundary-repair.md). This document records the rejected per-binding outcome experiment. Its policies, extra roots and HTML snapshot selector have been removed.
+
 Continues the DOM worktree from `79b9e96`. Foundation now has an additive binding runtime proof in `Binding.fs`, a portable commit queue in `Scheduling.fs`, and a separate browser `Microtask.fs`. Generated HTML bindings are not required for this work. Existing `Dom.fs`, `Backend.Bind`, view instruction types and public DSL signatures are unchanged.
 
 ## Selected contracts

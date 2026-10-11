@@ -28,10 +28,10 @@ The highest-risk seams are child-first cleanup over current core semantics, stat
 ## Proposed module boundaries
 
 - `src/Fable.Ranvier/Types/View.fs`: opaque definitions, component/prop contracts and backend-neutral composition.
-- `src/Fable.Ranvier/Types/Policies.fs`: explicit binding, outcome, scheduling and reporting policy types.
+- `src/Fable.Ranvier/Types/Policies.fs`: explicit scheduler and structural-boundary configuration types.
 - `src/Fable.Ranvier/Runtime/Scope.fs`: lifetime state machine, child registration, cleanup and capability validation.
 - `src/Fable.Ranvier/Runtime/Range.fs`: empty/single/multiple-node insertion, movement and removal.
-- `src/Fable.Ranvier/Runtime/Binding.fs`: tracked read/untracked write, committed equality and status handling.
+- `src/Fable.Ranvier/Runtime/Binding.fs`: tracked string read/untracked write and committed equality; outcome presentation belongs to boundaries.
 - `src/Fable.Ranvier/Runtime/Branch.fs` and `Runtime/KeyedList.fs`: retained identity and structural updates.
 - Existing `Types/DomScheduling.fs` and `Types/DomQueue.Microtask.fs`: scheduler interface and optional queue strategy, evolving after audit.
 - Existing `Dom.fs` and `Mount.fs`: audit and migrate existing responsibilities; avoid parallel competing component APIs. The empty `Types/Component.fs` placeholder was removed in the checkpoint.
@@ -107,25 +107,22 @@ Experimental proof completed 2026-10-09 in Components.fs; see [component evidenc
 
 **Exit:** no plugin, dynamic invocation trick or props proxy is required for a typed component example.
 
-## Task 5 — Bindings, status handling and scheduling
+## Task 5 — Minimal bindings, boundaries and scheduling
 
 Contracts: C04, C06. Variants: V02, V05. Risks: G06–G09.
 
-Proposed binding input: reader, setter, equality, outcome policy, scope and scheduler. Proposed committed cache changes only after a successful setter. Final status adapter design depends on the semantic audit of Ranvier's read APIs.
+Corrected 2026-10-11 after the user rejected per-binding outcome presentation. The [repair record](../../research/2026-10-11-text-boundary-repair.md) supersedes the policy proof and integration plan. Ordinary text takes a string reader and equality; it uses one effect owned by the enclosing mount/component. Core computation boundaries supply pending/error values. Deferred mounts add queue cancellation and version checks. Initial DOM setter failure unwinds setup.
 
-The [binding policy proof](../../research/2026-10-11-binding-policies.md) implements this seam experimentally with core `TryValue` observation, explicit fallbacks/reporting/equality, synchronous and separate microtask scheduling, versioned slots and mount-lifetime checks. At that checkpoint native tests used `BuildContext` directly. The checklist below remains a production integration gate; proof coverage and its selected per-reader-run cleanup semantics are recorded in the evidence note. Allocation/timing budgets and the complete callback/reentry matrix remain open.
+- [x] Remove per-text outcome policies, status/report callbacks, extra roots and server snapshot selector.
+- [x] Prove two text nodes share a core boundary through pending, failure, recovery and disposal in both representations and commit modes.
+- [x] Preserve queued coalescing, fixed snapshot waves, stale-value cancellation, recursive flush rejection, failure policies and disposal.
+- [x] Measure the corrected runtime beside a frozen original implementation with the same current core in Release Chromium.
+- [ ] Expand source/memo/binding equality and arbitrary setter/reentry coverage when typed properties are added.
+- [ ] Implement structural view boundaries and coordinated reveal semantics. Core computation boundaries do not catch descendant effect failures; this remains a separate renderer contract.
+- [ ] Define explicit handling of live synchronous DOM setter failures and deferred commit reporting for the production API.
+- [ ] Measure retained allocations, microtask latency and property workloads before public API freeze.
 
-The [integration follow-on](../../research/2026-10-11-binding-integration.md) now carries policy text through Tree/Program/Backend and `Typed.reactiveText`, with mount-owned queues, checked setup unwind, explicit server snapshots and a playground consumer. Its measured synchronous ready-update cost is 2.08–2.52× the old Foundation binding path. Optimize and measure before treating this as the performance target or a public API freeze; typed property operations and the full policy/reentry matrix remain open.
-
-- [ ] Add tests separating source equality, memo equality and binding equality, including always-write and a setter that reads another signal without subscribing to it.
-- [ ] Add explicit initial-pending, later-pending, initial-error, later-error and recovery cases. Verify status transitions are observable when the ordinary split-effect action would otherwise be skipped.
-- [ ] Implement policy-driven status handling and consistent reporting for initial and deferred writes.
-- [ ] Implement synchronous commits first, then adapt the separate microtask module to the same contracts.
-- [ ] Test coalescing, snapshot waves, manual flush ticket invalidation, recursive flush rejection, disposal midway through a snapshot and stale queued values after replacement.
-- [ ] Test setter failure under both commit failure policies. Define whether remaining entries are canceled or rescheduled under fail-fast; make the choice explicit before shipping.
-- [ ] Verify all policy combinations claimed as supported; do not silently convert a sync choice into a microtask to avoid reentrancy.
-
-**Exit:** scheduling and rendering outcomes are independently selectable and no unselected PoC retention behavior leaks into the core.
+**Exit:** minimal binding operations and independently selected boundary presentation/scheduling, backed by production coverage and measured budgets.
 
 ## Task 6 — Keyed branches and lists
 

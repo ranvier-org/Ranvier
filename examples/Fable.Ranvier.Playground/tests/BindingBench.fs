@@ -5,8 +5,13 @@ open Fable.Core
 open Fable.Core.TS.Dom
 open Ranvier.View.Foundation
 open Ranvier.View.Foundation.Representation
-open Ranvier.View.Foundation.Binding
 open Ranvier.View.Foundation.Scheduling
+
+type private BenchMount =
+    {
+        Dispose: unit -> unit
+        Flush: unit -> unit
+    }
 
 [<Emit("performance.now()")>]
 let private now () : float = jsNative
@@ -30,16 +35,6 @@ let sample path queued width phase iterations =
     use graph = new Graph ()
     let source = graph.Run (fun () -> Api.createSignal 0)
 
-    let policy =
-        {
-            Equals = (=)
-            Initial = Immediate
-            Pending = fun () -> None
-            Failed = fun _ -> None
-            Status = ignore
-            Report = fun error -> raise error
-        }
-
     let make () =
         Tree.ops.Element
             Div
@@ -48,15 +43,15 @@ let sample path queued width phase iterations =
                 for _ in 1..width do
                     match path with
                     | "legacy" -> Tree.ops.Bind (=) (fun () -> string source.Value)
-                    | "direct" -> Tree.ops.BindWith policy (fun () -> Reading.Ready (string source.Value))
-                    | "helper" -> Typed.reactiveText Tree.ops policy (fun () -> Reading.Ready (string source.Value))
+                    | "direct" -> Tree.ops.Bind (=) (fun () -> string source.Value)
+                    | "helper" -> Typed.reactiveText Tree.ops (fun () -> string source.Value)
                     | _ -> invalidArg "path" path
             ]
 
     let view = make ()
     let host = host ()
     attach host
-    let mounts = ResizeArray<Mounting.Mounted>()
+    let mounts = ResizeArray<BenchMount>()
 
     let mode =
         if queued then
@@ -65,7 +60,23 @@ let sample path queued width phase iterations =
             SynchronousCommits
 
     let mount () =
-        Mounting.mountWith mode graph None (fun errors -> failwithf "%A" errors) host None (fun context -> Tree.run view context.Backend)
+        if path = "legacy" then
+            let old =
+                BindingBaselineMounting.mount graph None (fun errors -> failwithf "%A" errors) host None (fun context ->
+                    Tree.run view context.Backend)
+
+            {
+                Dispose = old.Dispose
+                Flush = fun () -> graph.Run Api.flush
+            }
+        else
+            let mounted =
+                Mounting.mountWith mode graph None (fun errors -> failwithf "%A" errors) host None (fun context -> Tree.run view context.Backend)
+
+            {
+                Dispose = mounted.Dispose
+                Flush = mounted.Flush
+            }
 
     try
         match phase with

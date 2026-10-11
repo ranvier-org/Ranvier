@@ -1,5 +1,7 @@
 # Binding integration and measured overhead — 2026-10-11
 
+> Superseded by the [text/boundary repair](2026-10-11-text-boundary-repair.md). This document records the rejected per-binding outcome experiment. Its policies, extra roots and HTML snapshot selector have been removed.
+
 Continues `272b82b` and the [binding policy proof](2026-10-11-binding-policies.md). Tree/Program now carry `BindWith` policy bindings through Backend, and `Typed.reactiveText` supplies the direct typed helper. `Mounting.mountWith` selects synchronous or deferred commits; a top-level deferred mount owns its queue and nested keyed rows share it. `Mounted.Flush` settles work and `CommitErrors` exposes the latest queue errors. The original `Bind` is retained as the legacy synchronous comparison operation; it does not adopt deferred scheduling from `mountWith`.
 
 Views retain readers and outcome policies, not a graph-specific queue. Reusing a view across mounts gives independent binding roots/committed caches and queues. Removed keyed rows cancel their slots; disposing one mount does not stop another mount on the same graph. Binding policies remain explicit and introduce no automatic memo.

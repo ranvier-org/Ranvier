@@ -416,6 +416,7 @@ let rec private mountCore
 
     let mutable parent = range.Staging
     let mutable scope = root
+    let mutable bindingSetupFailure: exn option = None
 
     onRoot root
 
@@ -479,38 +480,41 @@ let rec private mountCore
                 ensureSetup ()
                 let node = text ""
                 append node
-                let mutable committed: string option = None
                 let bindingScope = scope
 
-                Api.createEffect (fun () ->
-                    let value = read ()
+                let live () =
+                    not root.IsDisposed && not bindingScope.IsDisposed
 
-                    if not root.IsDisposed && not bindingScope.IsDisposed then
-                        let changed =
-                            committed
-                            |> Option.forall (fun old -> not (equals old value))
+                match scheduling with
+                | Synchronous ->
+                    let mutable committed: string option = None
 
-                        if
-                            changed
-                            && not root.IsDisposed
-                            && not bindingScope.IsDisposed
-                        then
-                            Api.untrack (fun () -> node.textContent <- Some value)
-                            committed <- Some value)
+                    Api.createEffect (fun () ->
+                        let value = read ()
 
-            member _.BindWith(policy, read) =
-                ensureSetup ()
-                let node = text ""
-                append node
-                let bindingScope = scope
+                        if live () then
+                            Api.untrack (fun () ->
+                                let changed =
+                                    committed
+                                    |> Option.forall (fun old -> not (equals old value))
 
-                Binding.startChecked
-                    bindingScope.OnCleanup
-                    (fun () -> not root.IsDisposed && not bindingScope.IsDisposed)
-                    scheduling
-                    policy
-                    read
-                    (fun value -> node.textContent <- Some value)
+                                if changed && live () then
+                                    try
+                                        node.textContent <- Some value
+                                    with error when root.Phase = SettingUp ->
+                                        bindingSetupFailure <- Some error
+                                        reraise ()
+
+                                    committed <- Some value))
+                | Queued queue ->
+                    Binding.startQueued bindingScope.OnCleanup live queue equals read (fun value ->
+                        try
+                            node.textContent <- Some value
+                        with error when root.Phase = SettingUp ->
+                            bindingSetupFailure <- Some error
+                            reraise ())
+
+                bindingSetupFailure |> Option.iter raise
 
             member _.Keyed(equals, read, render) =
                 ensureSetup ()

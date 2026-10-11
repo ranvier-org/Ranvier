@@ -94,7 +94,7 @@ test("unmount removes listeners and repeated remount preserves state", async ({ 
   await expect(page.getByTestId("doubled")).toHaveText("4");
 });
 
-test("Foundation outcome text shows pending failure and recovery on retained nodes", async ({ page }) => {
+test("Foundation core boundary shows pending failure and recovery on retained nodes", async ({ page }) => {
   const result = page.locator("#foundation-load-result");
   const status = page.locator("#foundation-load-status");
   const retained = await result.elementHandle();

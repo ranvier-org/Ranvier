@@ -32,5 +32,6 @@ let button (ops: Operations<'view>) (modifiers: Modifier<HTMLButtonElement> list
 let input (ops: Operations<'view>) (modifiers: Modifier<HTMLInputElement> list) =
     ops.Element Input (tokens modifiers) []
 
-let reactiveText (ops: Operations<'view>) policy read =
-    ops.BindWith policy read
+/// <summary>Creates text updated from a tracked string reader, using string equality to skip unchanged writes.</summary>
+let reactiveText (ops: Operations<'view>) read =
+    ops.Bind (=) read

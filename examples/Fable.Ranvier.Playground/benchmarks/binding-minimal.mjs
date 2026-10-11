@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import os from "node:os";
 
 const cwd = fileURLToPath(new URL("../", import.meta.url));
-const out = fileURLToPath(new URL("../../../docs/research/binding-policies/", import.meta.url));
+const out = fileURLToPath(new URL("../../../docs/research/binding-minimal/", import.meta.url));
 const port = 5183;
 const server = spawn(process.execPath, ["node_modules/vite/bin/vite.js", "--config", "benchmarks/view-vite.config.mjs", "--host", "127.0.0.1", "--port", String(port), "--strictPort"], { cwd, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
 let output = "", browser;
@@ -62,7 +62,7 @@ try {
     const values = rows.map(row => row.ms);
     return { width, phase, ...mode, medianMs: quantile(values, .5), p95Ms: quantile(values, .95), replicateMediansMs: [0, 1, 2].map(replicate => quantile(rows.filter(row => row.replicate === replicate).map(row => row.ms), .5)) };
   })));
-  const result = { measuredAt: new Date().toISOString(), baseCommit: execFileSync("rtk", ["git", "rev-parse", "HEAD"], { cwd, encoding: "utf8" }).trim(), dirtyExperiment: true, node: process.version, chromium: version, cpu: os.cpus()[0].model, platform: `${os.platform()} ${os.release()}`, fable: "5.18.0", configuration: "Release", crossOriginIsolated: true, warmups: 3, rounds: 11, independentProcesses: 3, unit: "milliseconds per operation (batch elapsed / iterations); coalesce operation is 100 source writes", queuedTiming: "manual flush included; microtask latency excluded", samples, summaries };
+  const result = { baselineCommit: "79b9e96", baselineSource: "benchmarks/BindingBaselineMounting.fs (module name changed for side-by-side compilation)", measuredAt: new Date().toISOString(), baseCommit: execFileSync("rtk", ["git", "rev-parse", "HEAD"], { cwd, encoding: "utf8" }).trim(), dirtyExperiment: true, node: process.version, chromium: version, cpu: os.cpus()[0].model, platform: `${os.platform()} ${os.release()}`, fable: "5.18.0", configuration: "Release", crossOriginIsolated: true, warmups: 3, rounds: 11, independentProcesses: 3, unit: "milliseconds per operation (batch elapsed / iterations); coalesce operation is 100 source writes", queuedTiming: "manual flush included; microtask latency excluded", samples, summaries };
   await mkdir(out, { recursive: true });
   await writeFile(`${out}browser-results.json`, JSON.stringify(result, null, 2) + "\n");
   console.log(`Saved ${samples.length} samples to ${out}browser-results.json`);

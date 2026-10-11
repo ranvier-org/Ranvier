@@ -6,7 +6,6 @@ open Fable.Core
 open Fable.Core.TS.Dom
 open Ranvier.View.Foundation
 open Ranvier.View.Foundation.Representation
-open Ranvier.View.Foundation.Binding
 open Ranvier.View.Foundation.Scheduling
 open Ranvier.View.Foundation.Mounting
 
@@ -17,76 +16,120 @@ let private equal expected actual =
 [<Emit("document.createElement('div')")>]
 let private host () : HTMLElement = jsNative
 
-let private policy (statuses: ResizeArray<Reading<string>>) (errors: ResizeArray<string>) =
-    {
-        Equals = (=)
-        Initial = Immediate
-        Pending = fun () -> Some "loading"
-        Failed = fun _ -> Some "failed"
-        Status = fun reading -> statuses.Add reading
-        Report = fun error -> errors.Add error.Message
-    }
+[<Emit("(() => { const original = document.createTextNode; document.createTextNode = function(value) { const node = original.call(this, value); Object.defineProperty(node, 'textContent', { set() { throw new Error('setter'); }, configurable: true }); return node; }; return () => { document.createTextNode = original; }; })()")>]
+let private failTextWrites () : unit -> unit = jsNative
 
-let private outcomes (ops: Operations<'view>) run queued =
+let private setupFailure queued =
     use graph = new Graph ()
-    let source = graph.Run (fun () -> Api.createSignal Reading.Pending)
-    let statuses, errors = ResizeArray<Reading<string>>(), ResizeArray<string>()
-
-    let view =
-        Typed.div ops [] [ Typed.reactiveText ops (policy statuses errors) (fun () -> source.Value) ]
-
     let host = host ()
-    let posts = ResizeArray<unit -> unit>()
+    let mutable cleaned, rejected = false, false
+    let restore = failTextWrites ()
+
+    try
+        let mode =
+            if queued then
+                QueuedCommits (CollectAndContinue, ignore)
+            else
+                SynchronousCommits
+
+        let view =
+            Tree.ops.Component (fun setup ->
+                setup.OnCleanup (fun () -> cleaned <- true)
+                Typed.reactiveText Tree.ops (fun () -> "value"))
+
+        try
+            mountWith mode graph None ignore host None (fun context -> Tree.run view context.Backend)
+            |> ignore
+        with error ->
+            equal "setter" error.Message
+            rejected <- true
+
+        equal (true, true, "") (rejected, cleaned, host.textContent)
+    finally
+        restore ()
+
+let private boundary (ops: Operations<'view>) run queued =
+    use graph = new Graph ()
+
+    let flight =
+        graph.Run (fun () -> Api.createSignal (Api.createAsyncSource<string>()))
+
+    let mutable pending, failed, bodies = 0, 0, 0
+    let host = host ()
 
     let mode =
         if queued then
-            QueuedCommits (CollectAndContinue, posts.Add)
+            QueuedCommits (CollectAndContinue, ignore)
         else
             SynchronousCommits
+
+    let view =
+        ops.Component (fun _ ->
+            let result =
+                Api.createBoundary
+                    (fun _ ->
+                        pending <- pending + 1
+                        "loading")
+                    (fun _ _ ->
+                        failed <- failed + 1
+                        "failed")
+                    (fun () ->
+                        bodies <- bodies + 1
+                        flight.Value.Value)
+
+            Typed.div
+                ops
+                []
+                [
+                    Typed.reactiveText ops (fun () -> result.Value)
+                    Typed.reactiveText ops (fun () -> result.Value)
+                ])
 
     let mounted =
         mountWith mode graph None ignore host None (fun context -> run view context.Backend)
 
-    equal "loading" host.textContent
-    graph.Run (fun () -> source.Value <- Reading.Ready "ready")
-    equal (if queued then "loading" else "ready") host.textContent
+    equal "loadingloading" host.textContent
+    let nodes = host.firstChild.Value.childNodes
+    let first, second = nodes.item 0., nodes.item 1.
+    equal (1, 0, 1) (pending, failed, bodies)
+    graph.Run (fun () -> flight.Value.Settle "ready")
+
+    if queued then
+        equal "loadingloading" host.textContent
+
     mounted.Flush ()
-    equal "ready" host.textContent
-    graph.Run (fun () -> source.Value <- Reading.Failed (Exception "reader"))
+    equal "readyready" host.textContent
+    graph.Run (fun () -> flight.Value <- Api.createAsyncSource<string>())
     mounted.Flush ()
-    equal "failed" host.textContent
-    equal [ "reader" ] (List.ofSeq errors)
-    graph.Run (fun () -> source.Value <- Reading.Ready "recovered")
+    equal "loadingloading" host.textContent
+    graph.Run (fun () -> flight.Value.Fail (Exception "reader"))
     mounted.Flush ()
-    equal "recovered" host.textContent
-    equal 4 statuses.Count
-    graph.Run (fun () -> source.Value <- Reading.Ready "disposed")
+    equal "failedfailed" host.textContent
+    equal (2, 1, 4) (pending, failed, bodies)
+    graph.Run (fun () -> flight.Value.Settle "recovered")
+    mounted.Flush ()
+    equal "recoveredrecovered" host.textContent
+    equal true (obj.ReferenceEquals (first, nodes.item 0.))
+    equal true (obj.ReferenceEquals (second, nodes.item 1.))
+    graph.Run (fun () -> flight.Value.Settle "stale")
     mounted.Dispose ()
-    let before = statuses.Count
-    graph.Run (fun () -> source.Value <- Reading.Pending)
-
-    for post in posts do
-        post ()
-
+    let before = bodies
+    graph.Run (fun () -> flight.Value.Fail (Exception "disposed"))
     mounted.Flush ()
-    equal before statuses.Count
+    equal before bodies
     equal "" host.textContent
 
 let private nested (ops: Operations<'view>) run =
     use graph = new Graph ()
     let rows = graph.Run (fun () -> Api.createSignal [ 1, "one"; 2, "two" ])
-    let statuses, errors = ResizeArray<Reading<string>>(), ResizeArray<string>()
-    let policy = policy statuses errors
 
     let view =
-        Keyed.list ops (=) fst (fun () -> rows.Value) (fun current ->
-            ops.Component (fun _ -> Typed.reactiveText ops policy (fun () -> Reading.Ready (snd (current ())))))
+        Keyed.list ops (=) fst (fun () -> rows.Value) (fun current -> ops.Component (fun _ -> Typed.reactiveText ops (fun () -> snd (current ()))))
 
     let host = host ()
-    let posts = ResizeArray<unit -> unit>()
 
     let mounted =
-        mountWith (QueuedCommits (CollectAndContinue, posts.Add)) graph None ignore host None (fun context -> run view context.Backend)
+        mountWith (QueuedCommits (CollectAndContinue, ignore)) graph None ignore host None (fun context -> run view context.Backend)
 
     equal "onetwo" host.textContent
     graph.Run (fun () -> rows.Value <- [ 1, "ONE"; 2, "TWO" ])
@@ -99,169 +142,56 @@ let private nested (ops: Operations<'view>) run =
     equal "next" host.textContent
     mounted.Dispose ()
 
-    for post in posts do
-        post ()
-
-    equal "" host.textContent
-
-let private setupFailure (ops: Operations<'view>) run =
-    use graph = new Graph ()
-    let host = host ()
-    let mutable cleaned, rejected = false, false
-    let statuses, errors = ResizeArray<Reading<string>>(), ResizeArray<string>()
-
-    let failing =
-        { policy statuses errors with
-            Status = fun _ -> failwith "status"
-        }
-
-    let view =
-        ops.Component (fun setup ->
-            setup.OnCleanup (fun () -> cleaned <- true)
-            ops.BindWith failing (fun () -> Reading.Ready "value"))
-
-    try
-        mount graph None ignore host None (fun context -> run view context.Backend)
-        |> ignore
-    with error ->
-        equal "status" error.Message
-        rejected <- true
-
-    equal (true, true, "") (rejected, cleaned, host.textContent)
-    equal [ "status" ] (List.ofSeq errors)
-
 let private independentMounts () =
     use graph = new Graph ()
-    let source = graph.Run (fun () -> Api.createSignal (Reading.Ready "one"))
-    let statuses, errors = ResizeArray<Reading<string>>(), ResizeArray<string>()
-    let view = Tree.ops.BindWith (policy statuses errors) (fun () -> source.Value)
+    let source = graph.Run (fun () -> Api.createSignal "one")
+    let view = Typed.reactiveText Tree.ops (fun () -> source.Value)
     let a, b = host (), host ()
-    let posts = ResizeArray<unit -> unit>()
 
-    let mount host =
-        mountWith (QueuedCommits (CollectAndContinue, posts.Add)) graph None ignore host None (fun context -> Tree.run view context.Backend)
+    let attach host =
+        mountWith (QueuedCommits (CollectAndContinue, ignore)) graph None ignore host None (fun context -> Tree.run view context.Backend)
 
-    let first, second = mount a, mount b
-    graph.Run (fun () -> source.Value <- Reading.Ready "two")
+    let first, second = attach a, attach b
+    graph.Run (fun () -> source.Value <- "two")
     first.Dispose ()
     second.Flush ()
     equal ("", "two") (a.textContent, b.textContent)
-
-    for post in posts do
-        post ()
-
     second.Dispose ()
 
-let private portable (ops: Operations<'view>) run =
-    let clientOnly () =
-        failwith "client callback ran on server"
-
-    let policy =
-        {
-            Equals = (=)
-            Initial = Scheduled
-            Pending = clientOnly
-            Failed = fun _ -> clientOnly ()
-            Status = fun _ -> clientOnly ()
-            Report = fun _ -> clientOnly ()
-        }
-
-    let mutable reading = Reading.Ready "<&"
-    let view = ops.BindWith policy (fun () -> reading)
-
-    let snapshot =
-        function
-        | Reading.Ready text -> Some text
-        | Reading.Pending -> Some "<pending>"
-        | Reading.Failed _ -> None
-
-    equal "&lt;&amp;" (Html.renderBindings snapshot Reject (run view))
-    reading <- Reading.Pending
-    equal "&lt;pending&gt;" (Html.renderBindings snapshot Reject (run view))
-    reading <- Reading.Failed (Exception "reader")
-    equal "" (Html.renderBindings snapshot Reject (run view))
-    let mutable rejected = false
-
-    try
-        Html.render Reject (run view) |> ignore
-    with :? NotSupportedException ->
-        rejected <- true
-
-    equal true rejected
-
-let private checkedSetter queued scheduled =
+let private serverBoundary (ops: Operations<'view>) run =
     use graph = new Graph ()
-    let scope = Scope (ignore, ignore)
-    let queue = Queue (graph, CollectAndContinue, ignore)
-    let source = graph.Run (fun () -> Api.createSignal 1)
-    let errors, writes = ResizeArray<string>(), ResizeArray<int>()
-    let mutable reads, rejected = 0, false
 
-    let policy =
-        {
-            Equals = (=)
-            Initial = if scheduled then Scheduled else Immediate
-            Pending = fun () -> None
-            Failed = fun _ -> None
-            Status = ignore
-            Report = fun error -> errors.Add error.Message
-        }
+    graph.Run (fun () ->
+        Api.createRoot (fun _ ->
+            let source = Api.createAsyncSource<string>()
 
-    try
-        graph.Run (fun () ->
-            startChecked
-                scope.OnCleanup
-                (fun () -> not scope.IsDisposed)
-                (if queued then Queued queue else Synchronous)
-                policy
-                (fun () ->
-                    reads <- reads + 1
-                    Reading.Ready source.Value)
-                (fun value -> if value = 1 then failwith "setter" else writes.Add value))
-    with error ->
-        equal "setter" error.Message
-        rejected <- true
+            let result =
+                Api.createBoundary (fun _ -> "<pending>") (fun ex _ -> ex.Message) (fun () -> source.Value)
 
-    let deferred = queued && scheduled
-    equal (not deferred) rejected
-
-    if deferred then
-        queue.Flush ()
-
-        equal
-            [ "setter" ]
-            (queue.Errors
-             |> Array.map _.Message
-             |> Array.toList)
-
-    equal [ "setter" ] (List.ofSeq errors)
-    graph.Run (fun () -> source.Value <- 2)
-    queue.Flush ()
-    equal (if deferred then 2 else 1) reads
-    equal (if deferred then [ 2 ] else []) (List.ofSeq writes)
-    scope.Dispose ()
-    queue.Dispose ()
+            let view = Typed.reactiveText ops (fun () -> result.Value)
+            equal "&lt;pending&gt;" (Html.render Reject (run view))
+            source.Settle "<&"
+            equal "&lt;&amp;" (Html.render Reject (run view))
+            source.Fail (Exception "<failed>")
+            equal "&lt;failed&gt;" (Html.render Reject (run view))))
 
 let portableCases =
     [|
-        "tree outcome bindings require explicit escaped server snapshots", fun () -> portable Tree.ops Tree.run
-        "program outcome bindings require explicit escaped server snapshots", fun () -> portable Program.ops Program.run
-        "checked sync setters reject setup and release the binding", fun () -> checkedSetter false false
-        "checked immediate queued setters reject setup and release the binding", fun () -> checkedSetter true false
-        "checked scheduled setters report commit failure and recover", fun () -> checkedSetter true true
+        "tree HTML serializes the boundary's escaped result", fun () -> serverBoundary Tree.ops Tree.run
+        "program HTML serializes the boundary's escaped result", fun () -> serverBoundary Program.ops Program.run
     |]
 
 let cases =
     Array.append
         portableCases
         [|
-            "tree sync outcome text integrates through the view backend", fun () -> outcomes Tree.ops Tree.run false
-            "tree queued outcome text integrates through the view backend", fun () -> outcomes Tree.ops Tree.run true
-            "program sync outcome text integrates through the view backend", fun () -> outcomes Program.ops Program.run false
-            "program queued outcome text integrates through the view backend", fun () -> outcomes Program.ops Program.run true
-            "tree keyed components share the mount queue and cancel removed rows", fun () -> nested Tree.ops Tree.run
-            "program keyed components share the mount queue and cancel removed rows", fun () -> nested Program.ops Program.run
-            "tree initial callback failure unwinds mount setup", fun () -> setupFailure Tree.ops Tree.run
-            "program initial callback failure unwinds mount setup", fun () -> setupFailure Program.ops Program.run
-            "mounts on a shared graph own independent commit queues", independentMounts
+            "initial synchronous DOM setter failure unwinds setup", fun () -> setupFailure false
+            "initial queued DOM setter failure unwinds setup", fun () -> setupFailure true
+            "tree synchronous text shares core pending/error boundary", fun () -> boundary Tree.ops Tree.run false
+            "tree queued text shares core pending/error boundary", fun () -> boundary Tree.ops Tree.run true
+            "program synchronous text shares core pending/error boundary", fun () -> boundary Program.ops Program.run false
+            "program queued text shares core pending/error boundary", fun () -> boundary Program.ops Program.run true
+            "tree keyed components share queue and cancel removed rows", fun () -> nested Tree.ops Tree.run
+            "program keyed components share queue and cancel removed rows", fun () -> nested Program.ops Program.run
+            "mounts own independent queues on a shared graph", independentMounts
         |]

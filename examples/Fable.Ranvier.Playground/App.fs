@@ -10,7 +10,6 @@ open Ranvier.View.Foundation.Representation
 module FoundationMounting = Ranvier.View.Foundation.Mounting
 module FoundationTree = Ranvier.View.Foundation.Representation.Tree
 module FoundationTyped = Ranvier.View.Foundation.Typed
-module FoundationBinding = Ranvier.View.Foundation.Binding
 module FoundationMicrotask = Ranvier.View.Foundation.Microtask
 module FoundationScheduling = Ranvier.View.Foundation.Scheduling
 
@@ -325,36 +324,14 @@ let start () : unit -> unit =
 
         let foundationOps = FoundationTree.ops
 
-        let foundationPolicy: FoundationBinding.Policy<string> =
-            {
-                Equals = (=)
-                Initial = FoundationBinding.Immediate
-                Pending = fun () -> None
-                Failed = fun _ -> None
-                Status = ignore
-                Report = ignore
-            }
+        let loadSource =
+            foundationGraph.Run (fun () -> createSignal (createAsyncSource<string>()))
 
-        let loadState, loadStatus, loadError =
-            foundationGraph.Run (fun () -> createSignal (Reading.Ready "Loaded result"), createSignal "Ready", createSignal "")
+        let loadResult =
+            foundationGraph.Run (fun () ->
+                createBoundary (fun _ -> "Loading…") (fun _ _ -> "Could not load the result") (fun () -> loadSource.Value.Value))
 
-        let loadPolicy =
-            { foundationPolicy with
-                Pending = fun () -> Some "Loading…"
-                Failed = fun _ -> Some "Could not load the result"
-                Status =
-                    fun reading ->
-                        loadStatus.Value <-
-                            match reading with
-                            | Reading.Ready _ -> "Ready"
-                            | Reading.Pending -> "Pending"
-                            | Reading.Failed _ -> "Failed"
-
-                        match reading with
-                        | Reading.Ready _ -> loadError.Value <- ""
-                        | _ -> ()
-                Report = fun error -> loadError.Value <- error.Message
-            }
+        foundationGraph.Run (fun () -> loadSource.Value.Settle "Loaded result")
 
         let foundationRowsView =
             Keyed.list foundationOps (=) fst (fun () -> foundationRows.Value) (fun current ->
@@ -363,9 +340,7 @@ let start () : unit -> unit =
                 FoundationTyped.div
                     foundationOps
                     [ FoundationTyped.id ("foundation-row-" + string key) ]
-                    [
-                        FoundationTyped.reactiveText foundationOps foundationPolicy (fun () -> Reading.Ready (snd (current ())))
-                    ])
+                    [ FoundationTyped.reactiveText foundationOps (fun () -> snd (current ())) ])
 
         let foundationView =
             FoundationTyped.div
@@ -430,24 +405,33 @@ let start () : unit -> unit =
                                     foundationOps
                                     [ FoundationTyped.id "foundation-load-status" ]
                                     [
-                                        FoundationTyped.reactiveText foundationOps foundationPolicy (fun () -> Reading.Ready loadStatus.Value)
+                                        FoundationTyped.reactiveText foundationOps (fun () ->
+                                            loadResult.Value |> ignore
+
+                                            if loadResult.IsWaiting then "Pending"
+                                            elif not (isNull loadResult.Caught) then "Failed"
+                                            else "Ready")
                                     ]
                                 FoundationTyped.div
                                     foundationOps
                                     [ FoundationTyped.id "foundation-load-result" ]
-                                    [
-                                        FoundationTyped.reactiveText foundationOps loadPolicy (fun () -> loadState.Value)
-                                    ]
+                                    [ FoundationTyped.reactiveText foundationOps (fun () -> loadResult.Value) ]
                                 FoundationTyped.div
                                     foundationOps
                                     [ FoundationTyped.id "foundation-load-error" ]
                                     [
-                                        FoundationTyped.reactiveText foundationOps foundationPolicy (fun () -> Reading.Ready loadError.Value)
+                                        FoundationTyped.reactiveText foundationOps (fun () ->
+                                            loadResult.Value |> ignore
+
+                                            if isNull loadResult.Caught then
+                                                ""
+                                            else
+                                                loadResult.Caught.Message)
                                     ]
-                                action "foundation-pending" "Start loading" (fun () -> loadState.Value <- Reading.Pending)
-                                action "foundation-fail" "Simulate failure" (fun () ->
-                                    loadState.Value <- Reading.Failed (Exception "Connection unavailable"))
-                                action "foundation-recover" "Recover" (fun () -> loadState.Value <- Reading.Ready "Recovered result")
+                                action "foundation-pending" "Start loading" (fun () ->
+                                    foundationGraph.Run (fun () -> loadSource.Value <- createAsyncSource<string>()))
+                                action "foundation-fail" "Simulate failure" (fun () -> loadSource.Value.Fail (Exception "Connection unavailable"))
+                                action "foundation-recover" "Recover" (fun () -> loadSource.Value.Settle "Recovered result")
                             ]
 
                     FoundationTree.run statusPanel context.Backend)
