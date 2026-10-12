@@ -5,30 +5,55 @@ open System.Diagnostics
 open System.Text.Json
 open global.Ranvier
 
-let private sample mode width count =
+let private sample allowGc mode width count =
     use graph = new Graph ()
     let source = graph.Run (fun () -> Api.createSignal "a")
 
     let disabled =
         graph.Run (fun () -> Api.createMemo (fun _ -> source.Value = "blocked"))
 
-    let startBytes = GC.GetAllocatedBytesForCurrentThread ()
-    let started = Stopwatch.GetTimestamp ()
+    let noGcRegion = not allowGc
 
-    let definitions =
-        Array.init count (fun _ -> AuthoringPerfFixtures.create mode width source disabled ignore)
+    if
+        noGcRegion
+        && not (GC.TryStartNoGCRegion (64L * 1024L * 1024L))
+    then
+        failwith "Could not start the allocation-isolated construction sample"
 
-    let elapsed = Stopwatch.GetElapsedTime started
+    try
+        let beforeCollections =
+            [| for generation in 0..2 -> GC.CollectionCount generation |]
 
-    let bytes =
-        GC.GetAllocatedBytesForCurrentThread ()
-        - startBytes
+        let startBytes = GC.GetAllocatedBytesForCurrentThread ()
+        let started = Stopwatch.GetTimestamp ()
 
-    GC.KeepAlive definitions
-    elapsed.TotalMilliseconds / float count, float bytes / float count
+        let definitions =
+            Array.init count (fun _ -> AuthoringPerfFixtures.create mode width source disabled ignore)
+
+        let elapsed = Stopwatch.GetElapsedTime started
+
+        let bytes =
+            GC.GetAllocatedBytesForCurrentThread ()
+            - startBytes
+
+        GC.KeepAlive definitions
+
+        let collections =
+            Array.init 3 (fun generation ->
+                GC.CollectionCount generation
+                - beforeCollections[generation])
+
+        if noGcRegion && Array.exists ((<>) 0) collections then
+            failwith "Collection occurred during an allocation-isolated sample"
+
+        elapsed.TotalMilliseconds / float count, float bytes / float count, collections
+    finally
+        if noGcRegion then
+            GC.EndNoGCRegion ()
 
 [<EntryPoint>]
-let main _ =
+let main args =
+    let allowGc = Array.contains "--allow-gc" args
     let rows = ResizeArray<_>()
 
     for width in [ 1; 16 ] do
@@ -42,7 +67,7 @@ let main _ =
                     else
                         "overloaded"
 
-                let ms, bytes = sample mode width iterations
+                let ms, bytes, collections = sample allowGc mode width iterations
 
                 if round >= 0 then
                     rows.Add
@@ -53,6 +78,7 @@ let main _ =
                             iterations = iterations
                             ms = ms
                             bytes = bytes
+                            collections = collections
                         |}
 
     printfn
@@ -60,6 +86,7 @@ let main _ =
         (JsonSerializer.Serialize
             {|
                 runtime = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription
+                noGcRegion = not allowGc
                 samples = rows.ToArray ()
             |})
 

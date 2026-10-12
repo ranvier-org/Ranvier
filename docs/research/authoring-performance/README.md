@@ -1,5 +1,7 @@
 # Authoring performance checkpoint
 
+**Superseded timing interpretation:** the apparent .NET construction penalty below was caused by GC scheduling in the benchmark. See the [GC correction and current results](2026-10-12-gc-correction.md). This file preserves the initial checkpoint; its [original samples](before-gc-control.json) are retained separately.
+
 Measured on 2026-10-12 against base `368d36c`, with the benchmark additions uncommitted. [Raw results](browser-results.json) retain all samples, staged counters, native write counts, runtime/machine metadata and benchmark source hashes.
 
 The overloaded authoring path preserves resource and update costs in this workload. Browser timings do not show a consistent slowdown across processes. This is not evidence that every generated overload is universally free: .NET definition construction is consistently slower despite allocating exactly the same bytes.

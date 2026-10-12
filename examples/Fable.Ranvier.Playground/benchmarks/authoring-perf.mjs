@@ -117,6 +117,7 @@ try {
   for (const process of result.dotnet) for (const row of process.samples.filter(row => row.mode === "explicit")) {
     const other = process.samples.find(other => other.mode === "overloaded" && other.width === row.width && other.round === row.round);
     if (row.bytes !== other.bytes) throw Error("Authoring changed .NET definition allocation");
+    if (!process.noGcRegion || [...row.collections, ...other.collections].some(count => count !== 0)) throw Error(".NET timing has GC interference");
   }
   const median = values => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
   result.summaries = widths.flatMap(width => ["construct", "mount", "update", "dispose"].map(phase => {
