@@ -57,7 +57,7 @@ let private sizes () =
         [
             Tree.ops.Empty, ""
             Tree.ops.Text "one", "one"
-            Tree.ops.Fragment [ Tree.ops.Text "a"; Tree.ops.Empty; Tree.ops.Text "b" ], "ab"
+            Tree.ops.Fragment [| Tree.ops.Text "a"; Tree.ops.Empty; Tree.ops.Text "b" |], "ab"
         ] do
         let host = Dom.element "section" [] []
         let sibling = Dom.element "aside" [] []
@@ -81,7 +81,7 @@ let private sizes () =
 let private movement () =
     use graph = new Graph ()
     let host, other = Dom.element "section" [] [], Dom.element "section" [] []
-    let handle = tree graph host (Typed.button Tree.ops [] [ Tree.ops.Text "go" ])
+    let handle = tree graph host (Typed.button Tree.ops [||] [| Tree.ops.Text "go" |])
     let button = at host 1
     let sibling = Dom.element "aside" [] []
     other.appendChild sibling |> ignore
@@ -121,7 +121,7 @@ let private reparentedOwnership () =
     let host, other = Dom.element "section" [] [], Dom.element "section" [] []
 
     let handle =
-        tree graph host (Tree.ops.Fragment [ Tree.ops.Text "a"; Tree.ops.Text "b" ])
+        tree graph host (Tree.ops.Fragment [| Tree.ops.Text "a"; Tree.ops.Text "b" |])
 
     other.appendChild (at host 1) |> ignore
     handle.Dispose ()
@@ -183,12 +183,12 @@ let private failures attachFailure =
             mounted graph None host None (fun ctx ->
                 ctx.Backend.Element (
                     Button,
-                    [
-                        Browser (fun node ->
+                    [|
+                        browserModifier (fun node ->
                             let b = unbox<HTMLElement> node
                             button <- Some b
                             listen b (fun () -> calls <- calls + 1))
-                    ],
+                    |],
                     ignore
                 )
 
@@ -411,11 +411,11 @@ let private keyedReconciliation () =
 
                 Tree.ops.Element
                     Button
-                    [
+                    [|
                         Attribute ("id", "row-" + string key)
-                        Browser (fun node -> listen (unbox<HTMLElement> node) (fun () -> clicks.Add key))
-                    ]
-                    [ Tree.ops.Bind (=) (fun () -> string (snd (current ()))) ]))
+                        browserModifier (fun node -> listen (unbox<HTMLElement> node) (fun () -> clicks.Add key))
+                    |]
+                    [| Tree.ops.Bind (=) (fun () -> string (snd (current ()))) |]))
 
     let handle = tree graph host view
 
@@ -467,11 +467,11 @@ let private keyedRootMovement () =
 
     let view =
         Tree.ops.Fragment
-            [
+            [|
                 Tree.ops.Text "before:"
                 Keyed.list Tree.ops (=) fst (fun () -> rows.Value) (fun current -> Tree.ops.Bind (=) (fun () -> snd (current ())))
                 Tree.ops.Text ":after"
-            ]
+            |]
 
     let handle = tree graph host view
     equal "before:onetwo:after" host.textContent
@@ -698,7 +698,7 @@ let private reparentedGeneratedDescendants () =
     let host, other = Dom.element "section" [] [], Dom.element "section" [] []
 
     let handle =
-        tree graph host (Typed.div Tree.ops [] [ Typed.button Tree.ops [] [ Tree.ops.Text "x" ] ])
+        tree graph host (Typed.div Tree.ops [||] [| Typed.button Tree.ops [||] [| Tree.ops.Text "x" |] |])
 
     let wrapper = at host 1
     let button = at wrapper 0
@@ -869,10 +869,13 @@ let private keyedNestedMovement () =
                     ctx.OnCleanup (fun () -> cleanups.Add key)
 
                     Tree.ops.Fragment
-                        [
-                            Tree.ops.Element Button [ Attribute ("id", "nested-" + string key) ] [ Tree.ops.Bind (=) (fun () -> snd (inner ())) ]
+                        [|
+                            Tree.ops.Element
+                                Button
+                                [| Attribute ("id", "nested-" + string key) |]
+                                [| Tree.ops.Bind (=) (fun () -> snd (inner ())) |]
                             Tree.ops.Text "!"
-                        ])))
+                        |])))
 
     let handle = tree graph host view
     equal "a!b!c!" host.textContent

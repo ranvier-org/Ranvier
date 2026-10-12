@@ -20,7 +20,7 @@ let private equal expected actual =
 type private PanelProps =
     {
         Label: Prop<string>
-        Children: Program.View list
+        Children: Program.View array
         Changed: int -> unit
     }
 
@@ -37,25 +37,25 @@ let private mountedComponents () =
                 let count = Api.createSignal 0
 
                 Html.section
-                    []
-                    [
+                    [||]
+                    [|
                         propText props.Label
                         Html.button
-                            [
+                            [|
                                 Events.onClick (fun _ ->
                                     count.Value <- count.Value + 1
                                     props.Changed count.Value)
-                            ]
-                            [ reactiveText (fun () -> string count.Value) ]
+                            |]
+                            [| reactiveText (fun () -> string count.Value) |]
                         fragment props.Children
-                    ])
+                    |])
             props
 
     let view =
         panel
             {
                 Label = Prop.ofSignal label
-                Children = [ text " child" ]
+                Children = [| text " child" |]
                 Changed = fun value -> changes <- value
             }
 
@@ -94,14 +94,14 @@ let private mountedComponents () =
 let private portableAuthoring () =
     let view =
         Html.article
-            [ Attr.classStatic "panel" ]
-            [
+            [| Attr.classStatic "panel" |]
+            [|
                 propText (Constant "<&")
-                Html.br []
-                keyedArray (=) fst (fun () -> [| 1, "one"; 2, "two" |]) (fun current -> Html.p [] [ reactiveText (fun () -> snd (current ())) ])
+                Html.br [||]
+                keyedArray (=) fst (fun () -> [| 1, "one"; 2, "two" |]) (fun current -> Html.p [||] [| reactiveText (fun () -> snd (current ())) |])
                 branch (=) id (fun () -> "selected") (fun current -> text (current ()))
                 empty
-            ]
+            |]
 
     equal "<article class=\"panel\">&lt;&amp;<br><p>one</p><p>two</p>selected</article>" (Representation.Html.render Reject (Program.run view))
 
@@ -120,23 +120,28 @@ let private overloadedModifiers () =
         source.Value
 
     let values =
-        [
+        [|
             Props.Input.value "fixed"
             Props.Input.value read
             Props.Input.value source
             Props.Input.value memo
-        ]
+        |]
 
-    let titles: Typed.Modifier<HTMLInputElement> list =
-        [ Attrs.title "fixed"; Attrs.title read; Attrs.title source; Attrs.title memo ]
+    let titles: Typed.Modifier<HTMLInputElement> array =
+        [|
+            Attrs.title "fixed"
+            Attrs.title read
+            Attrs.title source
+            Attrs.title memo
+        |]
 
     let view =
         fragment
-            [
-                yield! List.map2 (fun value title -> Html.input [ value; title ]) values titles
-                Html.input [ Props.Input.value source; Attrs.Input.value optional; Attrs.ariaBusy busy ]
-                Html.button [ Props.Button.disabled disabled ] []
-            ]
+            [|
+                yield! Array.map2 (fun value title -> Html.input [| value; title |]) values titles
+                Html.input [| Props.Input.value source; Attrs.Input.value optional; Attrs.ariaBusy busy |]
+                Html.button [| Props.Button.disabled disabled |] [||]
+            |]
 
     equal 0 reads
     let host = Dom.element "section" [] []
@@ -196,12 +201,12 @@ let private portableOverloads () =
 
     let view =
         Html.button
-            [
+            [|
                 Attrs.title (fun () -> current)
                 Attrs.Button.disabled false
                 Attrs.ariaBusy false
-            ]
-            [ text "safe" ]
+            |]
+            [| text "safe" |]
 
     equal "<button title=\"&lt;&amp;\" aria-busy=\"false\">safe</button>" (Representation.Html.render Reject (Program.run view))
     current <- None

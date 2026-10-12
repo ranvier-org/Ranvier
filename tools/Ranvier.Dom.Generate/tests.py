@@ -18,6 +18,12 @@ with tempfile.TemporaryDirectory() as folder:
     assert "module Program =" in text, "generate the bound Program element authoring surface"
     program = text.split("module Program =", 1)[1]
     assert program.count("let inline ") == 112, "every HTML tag needs one inline Program constructor"
+    assert program.count("Typed.programElement ") == 112, "bound constructors must inline the typed Program path"
+    assert "Typed.Modifier<Dom.HTMLDivElement> array" in text
+    assert "Representation.Program.View array" in program
+    assert "Typed.Modifier<Dom.HTMLDivElement> list" not in text
+    assert "Representation.Program.View list" not in program
+    assert "Typed.programElement (HtmlTag \"br\") modifiers [||]" in program
     assert "Dom.HTMLInputElement" in text
     assert "Dom.InputEvent -> unit" in text
     assert "Dom.FileList option" in text

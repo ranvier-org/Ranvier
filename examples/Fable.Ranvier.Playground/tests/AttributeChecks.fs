@@ -31,14 +31,14 @@ let private exercise (ops: Operations<'view>) run queued =
     let view =
         H.button
             ops
-            [
+            [|
                 H.Attrs.classStatic "panel"
                 H.Attrs.titleReactive read
                 H.Attrs.dataReactive "item" read
                 H.Attrs.ariaExpandedReactive (fun () -> aria.Value)
                 H.Attrs.Button.disabledReactive (fun () -> flag.Value)
-            ]
-            []
+            |]
+            [||]
 
     let host, parsed = Dom.element "section" [] [], Dom.element "section" [] []
 
@@ -102,14 +102,14 @@ let private duplicateSnapshot (ops: Operations<'view>) run =
     let view =
         H.div
             ops
-            [
+            [|
                 H.Attrs.idStatic "first"
                 Typed.optionalAttribute "id" None
                 H.Attrs.titleStatic "title"
                 H.Attrs.idStatic "last"
                 H.Attrs.hiddenStatic false
-            ]
-            []
+            |]
+            [||]
 
     equal "<div title=\"title\" id=\"last\"></div>" (Html.render Reject (run view))
 
@@ -117,7 +117,9 @@ let private reflectedInput () =
     use graph = new Graph ()
     let source = graph.Run (fun () -> Api.createSignal (Some "initial"))
     let host = Dom.element "section" [] []
-    let view = H.input Tree.ops [ H.Attrs.Input.valueReactive (fun () -> source.Value) ]
+
+    let view =
+        H.input Tree.ops [| H.Attrs.Input.valueReactive (fun () -> source.Value) |]
 
     let mounted =
         mount graph None ignore host None (fun ctx -> Tree.run view ctx.Backend)
@@ -138,7 +140,7 @@ let private names () =
         let mutable rejected = false
 
         try
-            H.div Tree.ops [ Typed.attribute name "x" ] []
+            H.div Tree.ops [| Typed.attribute name "x" |] [||]
             |> ignore
         with :? System.ArgumentException ->
             rejected <- true
@@ -149,7 +151,7 @@ let private names () =
         let mutable rejected = false
 
         try
-            H.div Tree.ops [ H.Attrs.dataStatic suffix "x" ] []
+            H.div Tree.ops [| H.Attrs.dataStatic suffix "x" |] [||]
             |> ignore
         with :? System.ArgumentException ->
             rejected <- true

@@ -91,7 +91,12 @@ let private independentState (ops: Operations<'view>) run =
             (fun _ props ->
                 let local = Api.createSignal 0
                 props.Created local
-                ops.Fragment [ ops.Bind (=) (fun () -> string local.Value); Prop.text ops (=) props.Shared ])
+
+                ops.Fragment
+                    [|
+                        ops.Bind (=) (fun () -> string local.Value)
+                        Prop.text ops (=) props.Shared
+                    |])
             props
 
     equal 0 locals.Count
@@ -145,12 +150,12 @@ let private adapters (ops: Operations<'view>) run =
                 let snapshot = Prop.read props
 
                 ops.Fragment
-                    [
+                    [|
                         ops.Text snapshot
                         Prop.text ops (=) props
                         Prop.text ops (=) memoProp
                         Prop.text ops (=) reader
-                    ])
+                    |])
             signalProp
 
     equal 0 reads
@@ -173,7 +178,7 @@ type private ChildProps<'view> =
     {
         Label: string
         OnClick: unit -> unit
-        Children: 'view list
+        Children: 'view array
     }
 
 let private typedChildren (ops: Operations<'view>) run =
@@ -192,14 +197,14 @@ let private typedChildren (ops: Operations<'view>) run =
         {
             Label = "go:"
             OnClick = fun () -> calls <- calls + 1
-            Children = [ child ]
+            Children = [| child |]
         }
 
     let view =
         create
             ops
             (fun _ props ->
-                Typed.button ops [ Typed.browser (fun node -> listen node props.OnClick) ] [ ops.Text props.Label; ops.Fragment props.Children ])
+                Typed.button ops [| Typed.browser (fun node -> listen node props.OnClick) |] [| ops.Text props.Label; ops.Fragment props.Children |])
             props
 
     let a, b = Dom.element "section" [] [], Dom.element "section" [] []
@@ -234,19 +239,19 @@ let private setupFailure (ops: Operations<'view>) run =
                 context.OnCleanup (fun () -> childClean <- childClean + 1)
 
                 ops.Fragment
-                    [
+                    [|
                         Typed.button
                             ops
-                            [
+                            [|
                                 Typed.browser (fun node ->
                                     retained <- Some node
                                     listen node (fun () -> calls <- calls + 1))
-                            ]
-                            []
+                            |]
+                            [||]
                         ops.Bind (=) (fun () ->
                             reads <- reads + 1
                             source.Value)
-                    ])
+                    |])
             ()
 
     let parent =
@@ -254,7 +259,7 @@ let private setupFailure (ops: Operations<'view>) run =
             ops
             (fun context _ ->
                 context.OnCleanup (fun () -> parentClean <- parentClean + 1)
-                ops.Fragment [ child; create ops (fun _ _ -> raise original) () ])
+                ops.Fragment [| child; create ops (fun _ _ -> raise original) () |])
             ()
 
     let mutable caught = false
@@ -325,7 +330,7 @@ let private portable (ops: Operations<'view>) run =
             (fun ctx props ->
                 setups <- setups + 1
                 ctx.OnCleanup (fun () -> cleanups <- cleanups + 1)
-                ops.Element Div [] [ Prop.text ops (=) props ])
+                ops.Element Div [||] [| Prop.text ops (=) props |])
             (Reactive (fun () ->
                 reads <- reads + 1
                 "<&"))

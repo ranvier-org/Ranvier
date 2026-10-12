@@ -9,7 +9,7 @@ test("wide mount cleanup preserves ownership and isolates sibling mounts", async
     try { run(); return { name, passed: true }; }
     catch (error) { return { name, passed: false, error: String(error) }; }
   }));
-  expect(results).toHaveLength(3);
+  expect(results).toHaveLength(4);
   expect(results.filter(row => !row.passed)).toEqual([]);
   expect(errors).toEqual([]);
 });

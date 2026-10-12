@@ -79,11 +79,11 @@ let private boundary (ops: Operations<'view>) run queued =
 
             Typed.div
                 ops
-                []
-                [
+                [||]
+                [|
                     Typed.reactiveText ops (fun () -> result.Value)
                     Typed.reactiveText ops (fun () -> result.Value)
-                ])
+                |])
 
     let mounted =
         mountWith mode graph None ignore host None (fun context -> run view context.Backend)
@@ -200,11 +200,11 @@ let private structuralBoundary (ops: Operations<'view>) run queued =
 
                     Typed.div
                         ops
-                        []
-                        [
+                        [||]
+                        [|
                             Typed.reactiveText ops (fun () -> current () |> snd |> fst)
                             Typed.reactiveText ops (fun () -> current () |> snd |> snd)
-                        ])))
+                        |])))
 
     let mode =
         if queued then
@@ -321,11 +321,11 @@ let private serverStructuralBoundary (ops: Operations<'view>) run =
                 Branch.select ops (=) fst (fun () -> selected.Value) (fun current ->
                     Typed.div
                         ops
-                        []
-                        [
+                        [||]
+                        [|
                             Typed.reactiveText ops (fun () -> current () |> snd |> fst)
                             Typed.reactiveText ops (fun () -> current () |> snd |> snd)
-                        ])
+                        |])
 
             let render () =
                 Html.render Reject (run view)

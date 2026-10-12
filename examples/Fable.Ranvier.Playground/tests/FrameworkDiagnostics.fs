@@ -28,7 +28,8 @@ let parts (host: HTMLElement) width =
                 source, Api.createMemo (fun _ -> source.Value = "blocked")))
 
     let view =
-        measure "definition" (fun () -> Generated.Html.Program.section [] [ AuthoringPerfFixtures.create "overloaded" width source disabled ignore ])
+        measure "definition" (fun () ->
+            Generated.Html.Program.section [||] [| AuthoringPerfFixtures.create "overloaded" width source disabled ignore |])
 
     let mounted =
         measure "dom-mount" (fun () ->
@@ -117,7 +118,7 @@ let mountVariant (host: HTMLElement) width batched =
         graph.Run (fun () -> Api.createMemo (fun _ -> source.Value = "blocked"))
 
     let rows = AuthoringPerfFixtures.create "overloaded" width source disabled ignore
-    let view = Generated.Html.Program.section [] [ rows ]
+    let view = Generated.Html.Program.section [||] [| rows |]
 
     let mounted =
         Mounting.mount graph None (fun errors -> failwithf "%A" errors) host None (fun context -> Program.run view context.Backend)
@@ -141,9 +142,9 @@ let mountVariant (host: HTMLElement) width batched =
 
     update, dispose
 
-let private modifierTokens: Operations<Token list> =
+let private modifierTokens: Operations<ModifierAction array> =
     {
-        Empty = []
+        Empty = [||]
         Text = fun _ -> invalidOp "Token extraction requires an element"
         Fragment = fun _ -> invalidOp "Token extraction requires an element"
         Element = fun _ tokens _ -> tokens
@@ -166,30 +167,30 @@ let mountDirect (host: HTMLElement) width =
 
             backend.Element (
                 HtmlTag "section",
-                [],
+                [||],
                 fun () ->
                     for index in 1..width do
                         let container =
                             Generated.Html.div
                                 modifierTokens
-                                [
+                                [|
                                     Generated.Html.Attrs.idStatic ("row-" + string index)
                                     Generated.Html.Attrs.classStatic "panel"
                                     Generated.Html.Attrs.titleReactive (fun () -> Some source.Value)
-                                ]
-                                []
+                                |]
+                                [||]
 
                         let input =
                             Generated.Html.input
                                 modifierTokens
-                                [
+                                [|
                                     Generated.Html.Properties.HTMLInputElement.valueReactive (fun () -> source.Value)
-                                ]
+                                |]
 
                         let button =
-                            [
+                            [|
                                 Generated.Html.Properties.HTMLButtonElement.disabledReactive (fun () -> disabled.Value)
-                            ]
+                            |]
 
                         backend.Component (fun _ ->
                             let local = Api.createSignal 0
@@ -197,9 +198,8 @@ let mountDirect (host: HTMLElement) width =
                             let button =
                                 Generated.Html.button
                                     modifierTokens
-                                    (button
-                                     @ [ Generated.Html.Events.onClick (fun _ -> local.Value <- local.Value + 1) ])
-                                    []
+                                    (Array.append button [| Generated.Html.Events.onClick (fun _ -> local.Value <- local.Value + 1) |])
+                                    [||]
 
                             backend.Element (
                                 Div,

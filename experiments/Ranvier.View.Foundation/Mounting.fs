@@ -451,6 +451,8 @@ let rec private mountCore
     let mutable parent: Node = range.Staging
     let mutable scope = root
     let mutable bindingSetupFailure: exn option = None
+    let mutable modifierNode: HTMLElement = Unchecked.defaultof<_>
+    let mutable modifierTag = Div
 
     onRoot root
 
@@ -468,6 +470,29 @@ let rec private mountCore
             range.Add (node, Owned)
         else
             range.AppendGenerated (parent, node)
+
+    let currentElement () =
+        ensureSetup ()
+
+        if isNull (box modifierNode) then
+            invalid "Element modifiers require an active element"
+
+        modifierNode
+
+    let applyModifiers (backend: Backend) tag node modifiers =
+        let previousNode = modifierNode
+        let previousTag = modifierTag
+        modifierNode <- node
+        modifierTag <- tag
+
+        try
+            for apply in modifiers do
+                ensureSetup ()
+                apply backend
+                ensureSetup ()
+        finally
+            modifierNode <- previousNode
+            modifierTag <- previousTag
 
     let startBinding equals read write =
         let bindingScope = scope
@@ -492,8 +517,9 @@ let rec private mountCore
                 if live () then
                     Api.untrack (fun () ->
                         let changed =
-                            committed
-                            |> Option.forall (fun old -> not (equals old value))
+                            match committed with
+                            | None -> true
+                            | Some old -> not (equals old value)
 
                         if changed && live () then
                             write value
@@ -508,44 +534,53 @@ let rec private mountCore
                 ensureSetup ()
                 append (text value)
 
-            member _.Element(tag, tokens, children) =
+            member _.Attribute(key, value) =
+                let node = currentElement ()
+                validateAttribute key
+                node.setAttribute (key, value)
+
+            member _.OptionalAttribute(key, value) =
+                let node = currentElement ()
+                validateAttribute key
+                attributeValue node key value
+
+            member _.ReactiveAttribute(key, read) =
+                let node = currentElement ()
+                validateAttribute key
+                startBinding (=) read (attributeValue node key)
+
+            member _.InputValue value =
+                let node = currentElement ()
+
+                if modifierTag <> Input then
+                    invalidArg "modifiers" "Input value requires input"
+
+                inputValue (node :?> HTMLInputElement) value
+
+            member _.Browser hook =
+                let node = currentElement ()
+                let cleanup = hook (box node)
+
+                if scope.IsDisposed then
+                    cleanup ()
+                    ensureSetup ()
+
+                scope.OnCleanup cleanup
+
+            member _.Property write =
+                write (box (currentElement ()))
+
+            member _.ReactiveProperty(read, write) =
+                let node = currentElement ()
+                startBinding (=) read (fun value -> write (box node) value)
+
+            member this.Element(tag, modifiers, children) =
                 ensureSetup ()
                 let node = document.createElement (name tag)
                 append node
 
-                let applyToken token =
-                    ensureSetup ()
-
-                    match token with
-                    | Attribute (key, value) ->
-                        validateAttribute key
-                        node.setAttribute (key, value)
-                    | OptionalAttribute (key, value) ->
-                        validateAttribute key
-                        attributeValue node key value
-                    | ReactiveAttribute (key, read) ->
-                        validateAttribute key
-                        startBinding (=) read (attributeValue node key)
-                    | InputValue value ->
-                        if tag <> Input then
-                            invalidArg "tokens" "Input value requires input"
-
-                        inputValue (node :?> HTMLInputElement) value
-                    | Browser hook ->
-                        let cleanup = hook (box node)
-
-                        if scope.IsDisposed then
-                            cleanup ()
-                            ensureSetup ()
-
-                        scope.OnCleanup cleanup
-                    | ReactiveProperty bind ->
-                        let read, write = bind (box node)
-                        startBinding (=) read write
-
                 if tag <> Select then
-                    for token in tokens do
-                        applyToken token
+                    applyModifiers this tag node modifiers
 
                 if not (isVoid tag) then
                     let previous = parent
@@ -562,8 +597,7 @@ let rec private mountCore
                         parent <- previous
 
                 if tag = Select then
-                    for token in tokens do
-                        applyToken token
+                    applyModifiers this tag node modifiers
 
             member _.Bind(equals, read) =
                 ensureSetup ()

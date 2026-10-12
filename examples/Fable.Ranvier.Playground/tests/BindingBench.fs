@@ -40,10 +40,10 @@ let sample path queued width phase iterations =
         let contents read =
             Tree.ops.Element
                 Div
-                []
-                [
+                [||]
+                [|
                     for _ in 1..width -> Typed.reactiveText Tree.ops (fun () -> string (read ()))
-                ]
+                |]
 
         let key value =
             if phase = "replace" then value % 2 else 0
@@ -55,15 +55,15 @@ let sample path queued width phase iterations =
         else
             Tree.ops.Element
                 Div
-                []
-                [
+                [||]
+                [|
                     for _ in 1..width do
                         match path with
                         | "legacy" -> Tree.ops.Bind (=) (fun () -> string source.Value)
                         | "direct" -> Tree.ops.Bind (=) (fun () -> string source.Value)
                         | "helper" -> Typed.reactiveText Tree.ops (fun () -> string source.Value)
                         | _ -> invalidArg "path" path
-                ]
+                |]
 
     let view = make ()
     let host = host ()

@@ -57,13 +57,13 @@ let private exercise (ops: Operations<'view>) run =
 
             Typed.div
                 ops
-                [ Typed.id "root" ]
-                [
+                [| Typed.id "root" |]
+                [|
                     ops.Text (string snapshot)
-                    ops.Fragment [ ops.Empty; ops.Bind (=) (fun () -> string (source.Value / 2)) ]
-                    Typed.button ops [ Typed.browser (fun button -> listen button (fun () -> calls <- calls + 1)) ] [ ops.Text "go" ]
-                    Typed.input ops [ Typed.value "fixed" ]
-                ])
+                    ops.Fragment [| ops.Empty; ops.Bind (=) (fun () -> string (source.Value / 2)) |]
+                    Typed.button ops [| Typed.browser (fun button -> listen button (fun () -> calls <- calls + 1)) |] [| ops.Text "go" |]
+                    Typed.input ops [| Typed.value "fixed" |]
+                |])
 
     equal 0 setups
     let a, b = Browser.metrics (), Browser.metrics ()
@@ -116,7 +116,7 @@ let private staticAndFailure (ops: Operations<'view>) run =
     let counts = Browser.metrics ()
 
     let dispose =
-        Browser.mount graph host ignore (Some counts) (run (ops.Fragment [ ops.Empty; ops.Text "static"; ops.Text "second" ]))
+        Browser.mount graph host ignore (Some counts) (run (ops.Fragment [| ops.Empty; ops.Text "static"; ops.Text "second" |]))
 
     equal 0 counts.Effects
     equal 1 counts.Owners
@@ -149,7 +149,7 @@ let private portableModifiers (ops: Operations<'view>) run =
     let parsed = Dom.element "section" [] []
 
     let view =
-        Typed.div ops [ Typed.id "first"; Typed.id "last" ] [ Typed.input ops [ Typed.value "first"; Typed.value "last" ] ]
+        Typed.div ops [| Typed.id "first"; Typed.id "last" |] [| Typed.input ops [| Typed.value "first"; Typed.value "last" |] |]
 
     let dispose = Browser.mount graph host ignore None (run view)
 

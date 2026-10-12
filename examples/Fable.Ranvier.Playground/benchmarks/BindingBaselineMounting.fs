@@ -408,45 +408,83 @@ let rec mount (graph: Graph) (parentScope: Scope option) (report: exn list -> un
         else
             range.AppendGenerated (parent, node)
 
+    let mutable modifierNode: HTMLElement = Unchecked.defaultof<_>
+    let mutable modifierTag = Div
+
+    let currentElement () =
+        ensureSetup ()
+
+        if isNull (box modifierNode) then
+            invalid "Element modifiers require an active element"
+
+        modifierNode
+
+    let applyModifiers (backend: Backend) tag node modifiers =
+        let previousNode = modifierNode
+        let previousTag = modifierTag
+        modifierNode <- node
+        modifierTag <- tag
+
+        try
+            for apply in modifiers do
+                ensureSetup ()
+                apply backend
+                ensureSetup ()
+        finally
+            modifierNode <- previousNode
+            modifierTag <- previousTag
+
     let backend =
         { new Backend() with
             member _.Text value =
                 ensureSetup ()
                 append (text value)
 
-            member _.Element(tag, tokens, children) =
+            member _.Attribute(key, value) =
+                let node = currentElement ()
+                validateAttribute key
+                node.setAttribute (key, value)
+
+            member _.OptionalAttribute(key, value) =
+                let node = currentElement ()
+                validateAttribute key
+
+                match value with
+                | Some value -> node.setAttribute (key, value)
+                | None -> node.removeAttribute key
+
+            member _.ReactiveAttribute(_, _) =
+                invalidOp "Reactive attributes are outside the frozen text benchmark"
+
+            member _.InputValue value =
+                let node = currentElement ()
+
+                if modifierTag <> Input then
+                    invalidArg "modifiers" "Input value requires input"
+
+                inputValue node value
+
+            member _.Browser hook =
+                let cleanup = hook (box (currentElement ()))
+
+                if scope.IsDisposed then
+                    cleanup ()
+                    ensureSetup ()
+
+                scope.OnCleanup cleanup
+
+            member _.Property write =
+                write (box (currentElement ()))
+
+            member _.ReactiveProperty(_, _) =
+                invalidOp "Reactive properties are outside the frozen text benchmark"
+
+            member this.Element(tag, modifiers, children) =
                 ensureSetup ()
                 let node = element (name tag)
                 append node
 
-                for token in tokens do
-                    ensureSetup ()
-
-                    match token with
-                    | Attribute (key, value) ->
-                        validateAttribute key
-                        node.setAttribute (key, value)
-                    | OptionalAttribute (key, value) ->
-                        validateAttribute key
-
-                        match value with
-                        | Some value -> node.setAttribute (key, value)
-                        | None -> node.removeAttribute key
-                    | ReactiveAttribute _ -> invalidOp "Reactive attributes are outside the frozen text benchmark"
-                    | InputValue value ->
-                        if tag <> Input then
-                            invalidArg "tokens" "Input value requires input"
-
-                        inputValue node value
-                    | Browser hook ->
-                        let cleanup = hook (box node)
-
-                        if scope.IsDisposed then
-                            cleanup ()
-                            ensureSetup ()
-
-                        scope.OnCleanup cleanup
-                    | ReactiveProperty _ -> invalidOp "Reactive properties are outside the frozen text benchmark"
+                applyModifiers this tag node modifiers
 
                 if not (isVoid tag) then
                     let previous = parent

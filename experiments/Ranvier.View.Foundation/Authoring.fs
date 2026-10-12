@@ -8,11 +8,11 @@ let empty = Program.ops.Empty
 
 /// <summary>Creates a text node with a fixed value.</summary>
 let inline text value =
-    Program.ops.Text value
+    Program.text value
 
 /// <summary>Creates text updated from a tracked string reader.</summary>
 let inline reactiveText read =
-    Typed.reactiveText Program.ops read
+    Program.bind (=) read
 
 /// <summary>Renders a constant prop as fixed text and a reactive prop as tracked text.</summary>
 let inline propText prop =
@@ -20,12 +20,12 @@ let inline propText prop =
 
 /// <summary>Renders children in order under their current owner.</summary>
 let inline fragment children =
-    Program.ops.Fragment children
+    Program.fragment children
 
 /// <summary>Creates a component whose setup runs once per mounted instance.</summary>
 /// <remarks>Setup reads are snapshots; reactive readers update bindings under the component's owner.</remarks>
 let inline createComponent (setup: Setup -> 'props -> Program.View) (props: 'props) =
-    Components.create Program.ops setup props
+    Program.createComponent (fun context -> setup context props)
 
 /// <summary>Retains keyed rows and supplies readers for their current values.</summary>
 /// <remarks>The input array is copied before key callbacks run. Equal keys retain mounted rows.</remarks>

@@ -6,8 +6,9 @@ open Fable.Core.TS.Dom
 open Ranvier
 open Ranvier.View.Foundation.Representation
 
+/// <summary>An element modifier constrained to its native DOM type.</summary>
 [<Erase>]
-type Modifier<'native> = private Modifier of Token
+type Modifier<'native> = private Modifier of ModifierAction
 
 let attribute name value : Modifier<'native> =
     validateAttribute name
@@ -63,15 +64,21 @@ let value text : Modifier<HTMLInputElement> =
     Modifier (InputValue text)
 
 let browser (hook: 'native -> (unit -> unit)) : Modifier<'native> =
-    Modifier (Browser (fun node -> hook (unbox node)))
+    Modifier (browserModifier (fun node -> hook (unbox node)))
 
+/// <summary>Applies a fixed property value during element construction.</summary>
 let staticProperty (setter: 'native -> 'value -> unit) value : Modifier<'native> =
-    browser (fun node ->
-        setter node value
-        ignore)
+    Modifier (fun backend -> backend.Property (fun node -> setter (unbox node) value))
 
+/// <summary>Tracks a property reader and writes changed values to each mounted element.</summary>
 let reactiveProperty (setter: 'native -> 'value -> unit) (read: unit -> 'value) : Modifier<'native> =
-    Modifier (ReactiveProperty (fun node -> (fun () -> box (read ())), (fun value -> setter (unbox node) (unbox value))))
+    let readObject () =
+        box (read ())
+
+    let write node value =
+        setter (unbox node) (unbox value)
+
+    Modifier (fun backend -> backend.ReactiveProperty (readObject, write))
 
 let listener (eventName: string) (handler: Event -> unit) : Modifier<'native> =
     browser (fun native ->
@@ -88,21 +95,34 @@ let listener (eventName: string) (handler: Event -> unit) : Modifier<'native> =
         node.addEventListener (eventName, callback)
         fun () -> node.removeEventListener (eventName, callback))
 
-let private tokens modifiers =
+/// <summary>Unwraps typed modifiers for a backend; Fable reuses the erased modifier array.</summary>
+let modifierActions (modifiers: Modifier<'native> array) : ModifierAction array =
+#if FABLE_COMPILER
+    unbox modifiers
+#else
     modifiers
-    |> List.map (fun (Modifier token) -> token)
+    |> Array.map (fun (Modifier apply) -> apply)
+#endif
 
-let element (ops: Operations<'view>) tag (modifiers: Modifier<'native> list) children =
-    ops.Element tag (tokens modifiers) children
+/// <summary>Creates an element from typed modifier and child arrays.</summary>
+let element (ops: Operations<'view>) tag (modifiers: Modifier<'native> array) children =
+    ops.Element tag (modifierActions modifiers) children
 
-let div (ops: Operations<'view>) (modifiers: Modifier<HTMLDivElement> list) children =
-    ops.Element Div (tokens modifiers) children
+/// <summary>Creates a div with typed modifiers and ordered children.</summary>
+let div (ops: Operations<'view>) (modifiers: Modifier<HTMLDivElement> array) children =
+    ops.Element Div (modifierActions modifiers) children
 
-let button (ops: Operations<'view>) (modifiers: Modifier<HTMLButtonElement> list) children =
-    ops.Element Button (tokens modifiers) children
+/// <summary>Creates a button with typed modifiers and ordered children.</summary>
+let button (ops: Operations<'view>) (modifiers: Modifier<HTMLButtonElement> array) children =
+    ops.Element Button (modifierActions modifiers) children
 
-let input (ops: Operations<'view>) (modifiers: Modifier<HTMLInputElement> list) =
-    ops.Element Input (tokens modifiers) []
+/// <summary>Creates a void input element with typed modifiers.</summary>
+let input (ops: Operations<'view>) (modifiers: Modifier<HTMLInputElement> array) =
+    ops.Element Input (modifierActions modifiers) [||]
+
+/// <summary>Builds a Program element directly from typed modifier and child arrays.</summary>
+let inline programElement tag (modifiers: Modifier<'native> array) (children: Program.View array) : Program.View =
+    Program.element tag (modifierActions modifiers) children
 
 /// <summary>Creates text updated from a tracked string reader, using string equality to skip unchanged writes.</summary>
 let reactiveText (ops: Operations<'view>) read =

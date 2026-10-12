@@ -21,11 +21,11 @@ let exercise name (ops: Operations<'view>) render =
 
             ops.Element
                 Div
-                [ Attribute ("id", "\"&<>") ]
-                [
+                [| Attribute ("id", "\"&<>") |]
+                [|
                     ops.Text "<>&\"'"
-                    ops.Fragment [ ops.Empty; ops.Bind (=) (fun () -> "&live") ]
-                ])
+                    ops.Fragment [| ops.Empty; ops.Bind (=) (fun () -> "&live") |]
+                |])
 
     equal 0 setup
     let expected = "<div id=\"&quot;&amp;&lt;&gt;\">&lt;&gt;&amp;\"'&amp;live</div>"
@@ -35,7 +35,7 @@ let exercise name (ops: Operations<'view>) render =
     equal 2 clean
 
     let browser =
-        ops.Element Button [ Browser (fun _ -> failwith "browser hook executed on server") ] []
+        ops.Element Button [| browserModifier (fun _ -> failwith "browser hook executed on server") |] [||]
 
     equal "<button></button>" (render Omit browser)
     let mutable rejected = false
@@ -62,7 +62,7 @@ let exercise name (ops: Operations<'view>) render =
 
     equal true failed
     equal 3 clean
-    equal "<input value=\"&quot;&amp;\">" (render Reject (ops.Element Input [ InputValue "\"&" ] []))
+    equal "<input value=\"&quot;&amp;\">" (render Reject (ops.Element Input [| InputValue "\"&" |] [||]))
     printfn "PASS %s portable equivalence, reuse, browser policy and failure unwind" name
 
 exercise "tree" Tree.ops (fun policy view -> Html.render policy (Tree.run view))
@@ -94,10 +94,10 @@ let edgeChecks name (ops: Operations<'view>) run =
 
     check "last modifier wins" (fun () ->
         let view =
-            ops.Element Div [ Attribute ("id", "first"); Attribute ("id", "last") ] []
+            ops.Element Div [| Attribute ("id", "first"); Attribute ("id", "last") |] [||]
 
         equal "<div id=\"last\"></div>" (Html.render Reject (run view))
-        let input = ops.Element Input [ InputValue "first"; InputValue "last" ] []
+        let input = ops.Element Input [| InputValue "first"; InputValue "last" |] [||]
         equal "<input value=\"last\">" (Html.render Reject (run input)))
 
     check "setup and cleanup failures are preserved" (fun () ->

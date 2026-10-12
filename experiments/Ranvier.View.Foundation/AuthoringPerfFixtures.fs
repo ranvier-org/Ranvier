@@ -14,21 +14,21 @@ let create mode width (source: Signal<string>) (disabled: Memo<bool>) clicked =
         let container, input, button =
             match mode with
             | "explicit" ->
-                [
+                [|
                     H.Attrs.idStatic ("row-" + string index)
                     H.Attrs.classStatic "panel"
                     H.Attrs.titleReactive (fun () -> Some source.Value)
-                ],
-                [ H.Properties.HTMLInputElement.valueReactive (fun () -> source.Value) ],
-                [ H.Properties.HTMLButtonElement.disabledReactive (fun () -> disabled.Value) ]
+                |],
+                [| H.Properties.HTMLInputElement.valueReactive (fun () -> source.Value) |],
+                [| H.Properties.HTMLButtonElement.disabledReactive (fun () -> disabled.Value) |]
             | "overloaded" ->
-                [
+                [|
                     Attrs.id ("row-" + string index)
                     Attrs.className "panel"
                     Attrs.title source
-                ],
-                [ Props.Input.value source ],
-                [ Props.Button.disabled disabled ]
+                |],
+                [| Props.Input.value source |],
+                [| Props.Button.disabled disabled |]
             | _ -> invalidArg "mode" mode
 
         createComponent
@@ -37,17 +37,18 @@ let create mode width (source: Signal<string>) (disabled: Memo<bool>) clicked =
 
                 H.Program.div
                     container
-                    [
+                    [|
                         H.Program.input input
                         H.Program.button
-                            (button
-                             @ [
-                                 H.Events.onClick (fun _ ->
-                                     local.Value <- local.Value + 1
-                                     clicked ())
-                             ])
-                            [ reactiveText (fun () -> string local.Value) ]
-                    ])
+                            (Array.append
+                                button
+                                [|
+                                    H.Events.onClick (fun _ ->
+                                        local.Value <- local.Value + 1
+                                        clicked ())
+                                |])
+                            [| reactiveText (fun () -> string local.Value) |]
+                    |])
             ()
 
-    fragment [ for index in 1..width -> row index ]
+    fragment [| for index in 1..width -> row index |]

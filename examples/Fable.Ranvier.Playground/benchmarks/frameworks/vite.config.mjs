@@ -26,7 +26,7 @@ export default defineConfig({
   build: {
     minify: process.env.RANVIER_PERF_PROFILE === "true" ? false : true,
     sourcemap: true,
-    outDir: process.env.RANVIER_SHARED_BACKEND === "true" ? "generated-framework-shared" : "generated-framework-dist", emptyOutDir: true,
+    outDir: process.env.RANVIER_PERF_OUTPUT || (process.env.RANVIER_SHARED_BACKEND === "true" ? "generated-framework-shared" : "generated-framework-dist"), emptyOutDir: true,
     rollupOptions: { input: fileURLToPath(new URL("index.html", import.meta.url)) }
   },
   server: { headers }, preview: { headers }

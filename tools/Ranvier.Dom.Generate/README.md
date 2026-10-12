@@ -17,13 +17,13 @@ The tool's own project restores published Cloudsmith `Xantham.Fable.Core.TS` 0.2
 
 The generator checks descriptor/package/schema identity, the pinned Brotli payload and native assembly hashes, compatibility versions, compiler version/revision and every TypeScript library input hash from the catalogue. Brotli decoding is bounded at 128 MiB. Wire resolves the tag and event maps, members and readonly flags. Compiler declaration handles are normalized to the catalogue's package/version/file/position/kind handles, then resolved to one existing native binding. The native assembly supplies the final F# representation of selected properties, including optional references. Each reflected named type must resolve through the catalogue; unsupported shapes and missing/ambiguous identities stop generation.
 
-Generation covers all 112 entries in the pinned `HTMLElementTagNameMap`. Constructors preserve native element types; void constructors take no children. Shared inherited properties live under `Html.Properties.<native declaring type>` and common listeners under `Html.Events`. Tag modules expose their native-declared members and element-specific events, plus original five-tag compatibility helpers. Generated source is approximately 520 KB.
+Generation covers all 112 entries in the pinned `HTMLElementTagNameMap`. Constructors preserve native element types and accept modifier and child arrays; void constructors take no children. Bound Program constructors inline the typed element path. Shared inherited properties live under `Html.Properties.<native declaring type>` and common listeners under `Html.Events`. Tag modules expose their native-declared members and element-specific events, plus original five-tag compatibility helpers. Generated source is approximately 520 KB.
 
 ```fsharp
 Html.article Tree.ops
-    [ Html.Properties.HTMLElement.titleStatic "Article"
-      Html.Events.onClick (fun event -> printfn "%f" event.clientX) ]
-    [ Html.img Tree.ops [ Html.Img.altStatic "Illustration" ] ]
+    [| Html.Properties.HTMLElement.titleStatic "Article"
+      Html.Events.onClick (fun event -> printfn "%f" event.clientX) |]
+    [| Html.img Tree.ops [| Html.Img.altStatic "Illustration" |] |]
 ```
 
 Shared modifiers constrain their native type, so input properties cannot be used on a div. Getters preserve supported primitives, options, named native references and closed native generics. Setters support writable primitives and optional primitives. Native-object setters require explicit equality/ownership policy. Unsupported arrays, callbacks and unmapped aliases/unions are recorded in `Generated/Html.coverage.json`; they are not widened to `obj`. Methods and SVG are outside this scope.
@@ -34,11 +34,11 @@ Common attribute authoring is generated under `Html.Attrs` from the versioned `a
 
 ```fsharp
 Html.button Tree.ops
-    [ Html.Attrs.classStatic "primary"
+    [| Html.Attrs.classStatic "primary"
       Html.Attrs.Button.disabledReactive (fun () -> busy.Value)
       Html.Attrs.ariaExpandedReactive (fun () -> Some expanded.Value)
-      Html.Attrs.dataReactive "state" (fun () -> state.Value) ]
-    [ Tree.ops.Text "Open" ]
+      Html.Attrs.dataReactive "state" (fun () -> state.Value) |]
+    [| Tree.ops.Text "Open" |]
 ```
 
 Attributes and live properties are distinct. `Html.Attrs.Input.valueReactive` changes the default value attribute; use `Html.Input.valueReactive` for the live value. The same distinction applies to checked/defaultChecked and selected/defaultSelected. Event-handler attributes and srcdoc are rejected. This policy is a curated subset, not complete portable property metadata.

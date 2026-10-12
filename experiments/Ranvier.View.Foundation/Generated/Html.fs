@@ -4677,7 +4677,7 @@ module Events =
     let onWheel<'native when 'native :> Dom.HTMLElement> (handler: Dom.WheelEvent -> unit) : Typed.Modifier<'native> =
         Typed.listener "wheel" (fun event -> handler (unbox event))
 
-let ``a`` ops (modifiers: Typed.Modifier<Dom.HTMLAnchorElement> list) children =
+let ``a`` ops (modifiers: Typed.Modifier<Dom.HTMLAnchorElement> array) children =
     Typed.element ops (HtmlTag "a") modifiers children
 
 module A =
@@ -4807,7 +4807,7 @@ module A =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLAnchorElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``abbr`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``abbr`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "abbr") modifiers children
 
 module Abbr =
@@ -4817,7 +4817,7 @@ module Abbr =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``address`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``address`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "address") modifiers children
 
 module Address =
@@ -4827,8 +4827,8 @@ module Address =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``area`` ops (modifiers: Typed.Modifier<Dom.HTMLAreaElement> list) =
-    Typed.element ops (HtmlTag "area") modifiers []
+let ``area`` ops (modifiers: Typed.Modifier<Dom.HTMLAreaElement> array) =
+    Typed.element ops (HtmlTag "area") modifiers [||]
 
 module Area =
     let ``alt`` (node: Dom.HTMLAreaElement) : string =
@@ -4921,7 +4921,7 @@ module Area =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLAreaElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``article`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``article`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "article") modifiers children
 
 module Article =
@@ -4931,7 +4931,7 @@ module Article =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``aside`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``aside`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "aside") modifiers children
 
 module Aside =
@@ -4941,7 +4941,7 @@ module Aside =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``audio`` ops (modifiers: Typed.Modifier<Dom.HTMLAudioElement> list) children =
+let ``audio`` ops (modifiers: Typed.Modifier<Dom.HTMLAudioElement> array) children =
     Typed.element ops (HtmlTag "audio") modifiers children
 
 module Audio =
@@ -4957,7 +4957,7 @@ module Audio =
     let onWaitingforkey (handler: Dom.Event -> unit) : Typed.Modifier<Dom.HTMLAudioElement> =
         Typed.listener "waitingforkey" (fun event -> handler (unbox event))
 
-let ``b`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``b`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "b") modifiers children
 
 module B =
@@ -4967,8 +4967,8 @@ module B =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``base`` ops (modifiers: Typed.Modifier<Dom.HTMLBaseElement> list) =
-    Typed.element ops (HtmlTag "base") modifiers []
+let ``base`` ops (modifiers: Typed.Modifier<Dom.HTMLBaseElement> array) =
+    Typed.element ops (HtmlTag "base") modifiers [||]
 
 module Base =
     let ``href`` (node: Dom.HTMLBaseElement) : string =
@@ -4995,7 +4995,7 @@ module Base =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLBaseElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``bdi`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``bdi`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "bdi") modifiers children
 
 module Bdi =
@@ -5005,7 +5005,7 @@ module Bdi =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``bdo`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``bdo`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "bdo") modifiers children
 
 module Bdo =
@@ -5015,7 +5015,7 @@ module Bdo =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``blockquote`` ops (modifiers: Typed.Modifier<Dom.HTMLQuoteElement> list) children =
+let ``blockquote`` ops (modifiers: Typed.Modifier<Dom.HTMLQuoteElement> array) children =
     Typed.element ops (HtmlTag "blockquote") modifiers children
 
 module Blockquote =
@@ -5034,7 +5034,7 @@ module Blockquote =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLQuoteElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``body`` ops (modifiers: Typed.Modifier<Dom.HTMLBodyElement> list) children =
+let ``body`` ops (modifiers: Typed.Modifier<Dom.HTMLBodyElement> array) children =
     Typed.element ops (HtmlTag "body") modifiers children
 
 module Body =
@@ -5152,8 +5152,8 @@ module Body =
     let onUnload (handler: Dom.Event -> unit) : Typed.Modifier<Dom.HTMLBodyElement> =
         Typed.listener "unload" (fun event -> handler (unbox event))
 
-let ``br`` ops (modifiers: Typed.Modifier<Dom.HTMLBRElement> list) =
-    Typed.element ops (HtmlTag "br") modifiers []
+let ``br`` ops (modifiers: Typed.Modifier<Dom.HTMLBRElement> array) =
+    Typed.element ops (HtmlTag "br") modifiers [||]
 
 module Br =
     let ``clear`` (node: Dom.HTMLBRElement) : string =
@@ -5171,7 +5171,7 @@ module Br =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLBRElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``button`` ops (modifiers: Typed.Modifier<Dom.HTMLButtonElement> list) children =
+let ``button`` ops (modifiers: Typed.Modifier<Dom.HTMLButtonElement> array) children =
     Typed.element ops Button modifiers children
 
 module Button =
@@ -5289,7 +5289,7 @@ module Button =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLButtonElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``canvas`` ops (modifiers: Typed.Modifier<Dom.HTMLCanvasElement> list) children =
+let ``canvas`` ops (modifiers: Typed.Modifier<Dom.HTMLCanvasElement> array) children =
     Typed.element ops (HtmlTag "canvas") modifiers children
 
 module Canvas =
@@ -5317,7 +5317,7 @@ module Canvas =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLCanvasElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``caption`` ops (modifiers: Typed.Modifier<Dom.HTMLTableCaptionElement> list) children =
+let ``caption`` ops (modifiers: Typed.Modifier<Dom.HTMLTableCaptionElement> array) children =
     Typed.element ops (HtmlTag "caption") modifiers children
 
 module Caption =
@@ -5336,7 +5336,7 @@ module Caption =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLTableCaptionElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``cite`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``cite`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "cite") modifiers children
 
 module Cite =
@@ -5346,7 +5346,7 @@ module Cite =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``code`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``code`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "code") modifiers children
 
 module Code =
@@ -5356,8 +5356,8 @@ module Code =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``col`` ops (modifiers: Typed.Modifier<Dom.HTMLTableColElement> list) =
-    Typed.element ops (HtmlTag "col") modifiers []
+let ``col`` ops (modifiers: Typed.Modifier<Dom.HTMLTableColElement> array) =
+    Typed.element ops (HtmlTag "col") modifiers [||]
 
 module Col =
     let ``align`` (node: Dom.HTMLTableColElement) : string =
@@ -5420,7 +5420,7 @@ module Col =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLTableColElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``colgroup`` ops (modifiers: Typed.Modifier<Dom.HTMLTableColElement> list) children =
+let ``colgroup`` ops (modifiers: Typed.Modifier<Dom.HTMLTableColElement> array) children =
     Typed.element ops (HtmlTag "colgroup") modifiers children
 
 module Colgroup =
@@ -5484,7 +5484,7 @@ module Colgroup =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLTableColElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``data`` ops (modifiers: Typed.Modifier<Dom.HTMLDataElement> list) children =
+let ``data`` ops (modifiers: Typed.Modifier<Dom.HTMLDataElement> array) children =
     Typed.element ops (HtmlTag "data") modifiers children
 
 module Data =
@@ -5503,7 +5503,7 @@ module Data =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLDataElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``datalist`` ops (modifiers: Typed.Modifier<Dom.HTMLDataListElement> list) children =
+let ``datalist`` ops (modifiers: Typed.Modifier<Dom.HTMLDataListElement> array) children =
     Typed.element ops (HtmlTag "datalist") modifiers children
 
 module Datalist =
@@ -5516,7 +5516,7 @@ module Datalist =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLDataListElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``dd`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``dd`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "dd") modifiers children
 
 module Dd =
@@ -5526,7 +5526,7 @@ module Dd =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``del`` ops (modifiers: Typed.Modifier<Dom.HTMLModElement> list) children =
+let ``del`` ops (modifiers: Typed.Modifier<Dom.HTMLModElement> array) children =
     Typed.element ops (HtmlTag "del") modifiers children
 
 module Del =
@@ -5554,7 +5554,7 @@ module Del =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLModElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``details`` ops (modifiers: Typed.Modifier<Dom.HTMLDetailsElement> list) children =
+let ``details`` ops (modifiers: Typed.Modifier<Dom.HTMLDetailsElement> array) children =
     Typed.element ops (HtmlTag "details") modifiers children
 
 module Details =
@@ -5582,7 +5582,7 @@ module Details =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLDetailsElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``dfn`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``dfn`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "dfn") modifiers children
 
 module Dfn =
@@ -5592,7 +5592,7 @@ module Dfn =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``dialog`` ops (modifiers: Typed.Modifier<Dom.HTMLDialogElement> list) children =
+let ``dialog`` ops (modifiers: Typed.Modifier<Dom.HTMLDialogElement> array) children =
     Typed.element ops (HtmlTag "dialog") modifiers children
 
 module Dialog =
@@ -5629,7 +5629,7 @@ module Dialog =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLDialogElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``div`` ops (modifiers: Typed.Modifier<Dom.HTMLDivElement> list) children =
+let ``div`` ops (modifiers: Typed.Modifier<Dom.HTMLDivElement> array) children =
     Typed.element ops Div modifiers children
 
 module Div =
@@ -5657,7 +5657,7 @@ module Div =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLDivElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``dl`` ops (modifiers: Typed.Modifier<Dom.HTMLDListElement> list) children =
+let ``dl`` ops (modifiers: Typed.Modifier<Dom.HTMLDListElement> array) children =
     Typed.element ops (HtmlTag "dl") modifiers children
 
 module Dl =
@@ -5676,7 +5676,7 @@ module Dl =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLDListElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``dt`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``dt`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "dt") modifiers children
 
 module Dt =
@@ -5686,7 +5686,7 @@ module Dt =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``em`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``em`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "em") modifiers children
 
 module Em =
@@ -5696,8 +5696,8 @@ module Em =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``embed`` ops (modifiers: Typed.Modifier<Dom.HTMLEmbedElement> list) =
-    Typed.element ops (HtmlTag "embed") modifiers []
+let ``embed`` ops (modifiers: Typed.Modifier<Dom.HTMLEmbedElement> array) =
+    Typed.element ops (HtmlTag "embed") modifiers [||]
 
 module Embed =
     let ``align`` (node: Dom.HTMLEmbedElement) : string =
@@ -5760,7 +5760,7 @@ module Embed =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLEmbedElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``fieldset`` ops (modifiers: Typed.Modifier<Dom.HTMLFieldSetElement> list) children =
+let ``fieldset`` ops (modifiers: Typed.Modifier<Dom.HTMLFieldSetElement> array) children =
     Typed.element ops (HtmlTag "fieldset") modifiers children
 
 module Fieldset =
@@ -5806,7 +5806,7 @@ module Fieldset =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLFieldSetElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``figcaption`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``figcaption`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "figcaption") modifiers children
 
 module Figcaption =
@@ -5816,7 +5816,7 @@ module Figcaption =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``figure`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``figure`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "figure") modifiers children
 
 module Figure =
@@ -5826,7 +5826,7 @@ module Figure =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``footer`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``footer`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "footer") modifiers children
 
 module Footer =
@@ -5836,7 +5836,7 @@ module Footer =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``form`` ops (modifiers: Typed.Modifier<Dom.HTMLFormElement> list) children =
+let ``form`` ops (modifiers: Typed.Modifier<Dom.HTMLFormElement> array) children =
     Typed.element ops (HtmlTag "form") modifiers children
 
 module Form =
@@ -5939,7 +5939,7 @@ module Form =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLFormElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``h1`` ops (modifiers: Typed.Modifier<Dom.HTMLHeadingElement> list) children =
+let ``h1`` ops (modifiers: Typed.Modifier<Dom.HTMLHeadingElement> array) children =
     Typed.element ops (HtmlTag "h1") modifiers children
 
 module H1 =
@@ -5958,7 +5958,7 @@ module H1 =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLHeadingElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``h2`` ops (modifiers: Typed.Modifier<Dom.HTMLHeadingElement> list) children =
+let ``h2`` ops (modifiers: Typed.Modifier<Dom.HTMLHeadingElement> array) children =
     Typed.element ops (HtmlTag "h2") modifiers children
 
 module H2 =
@@ -5977,7 +5977,7 @@ module H2 =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLHeadingElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``h3`` ops (modifiers: Typed.Modifier<Dom.HTMLHeadingElement> list) children =
+let ``h3`` ops (modifiers: Typed.Modifier<Dom.HTMLHeadingElement> array) children =
     Typed.element ops (HtmlTag "h3") modifiers children
 
 module H3 =
@@ -5996,7 +5996,7 @@ module H3 =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLHeadingElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``h4`` ops (modifiers: Typed.Modifier<Dom.HTMLHeadingElement> list) children =
+let ``h4`` ops (modifiers: Typed.Modifier<Dom.HTMLHeadingElement> array) children =
     Typed.element ops (HtmlTag "h4") modifiers children
 
 module H4 =
@@ -6015,7 +6015,7 @@ module H4 =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLHeadingElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``h5`` ops (modifiers: Typed.Modifier<Dom.HTMLHeadingElement> list) children =
+let ``h5`` ops (modifiers: Typed.Modifier<Dom.HTMLHeadingElement> array) children =
     Typed.element ops (HtmlTag "h5") modifiers children
 
 module H5 =
@@ -6034,7 +6034,7 @@ module H5 =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLHeadingElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``h6`` ops (modifiers: Typed.Modifier<Dom.HTMLHeadingElement> list) children =
+let ``h6`` ops (modifiers: Typed.Modifier<Dom.HTMLHeadingElement> array) children =
     Typed.element ops (HtmlTag "h6") modifiers children
 
 module H6 =
@@ -6053,7 +6053,7 @@ module H6 =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLHeadingElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``head`` ops (modifiers: Typed.Modifier<Dom.HTMLHeadElement> list) children =
+let ``head`` ops (modifiers: Typed.Modifier<Dom.HTMLHeadElement> array) children =
     Typed.element ops (HtmlTag "head") modifiers children
 
 module Head =
@@ -6063,7 +6063,7 @@ module Head =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLHeadElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``header`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``header`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "header") modifiers children
 
 module Header =
@@ -6073,7 +6073,7 @@ module Header =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``hgroup`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``hgroup`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "hgroup") modifiers children
 
 module Hgroup =
@@ -6083,8 +6083,8 @@ module Hgroup =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``hr`` ops (modifiers: Typed.Modifier<Dom.HTMLHRElement> list) =
-    Typed.element ops (HtmlTag "hr") modifiers []
+let ``hr`` ops (modifiers: Typed.Modifier<Dom.HTMLHRElement> array) =
+    Typed.element ops (HtmlTag "hr") modifiers [||]
 
 module Hr =
     let ``align`` (node: Dom.HTMLHRElement) : string =
@@ -6138,7 +6138,7 @@ module Hr =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLHRElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``html`` ops (modifiers: Typed.Modifier<Dom.HTMLHtmlElement> list) children =
+let ``html`` ops (modifiers: Typed.Modifier<Dom.HTMLHtmlElement> array) children =
     Typed.element ops (HtmlTag "html") modifiers children
 
 module Html =
@@ -6157,7 +6157,7 @@ module Html =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLHtmlElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``i`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``i`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "i") modifiers children
 
 module I =
@@ -6167,7 +6167,7 @@ module I =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``iframe`` ops (modifiers: Typed.Modifier<Dom.HTMLIFrameElement> list) children =
+let ``iframe`` ops (modifiers: Typed.Modifier<Dom.HTMLIFrameElement> array) children =
     Typed.element ops (HtmlTag "iframe") modifiers children
 
 module Iframe =
@@ -6300,8 +6300,8 @@ module Iframe =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLIFrameElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``img`` ops (modifiers: Typed.Modifier<Dom.HTMLImageElement> list) =
-    Typed.element ops (HtmlTag "img") modifiers []
+let ``img`` ops (modifiers: Typed.Modifier<Dom.HTMLImageElement> array) =
+    Typed.element ops (HtmlTag "img") modifiers [||]
 
 module Img =
     let ``align`` (node: Dom.HTMLImageElement) : string =
@@ -6481,8 +6481,8 @@ module Img =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLImageElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``input`` ops (modifiers: Typed.Modifier<Dom.HTMLInputElement> list) =
-    Typed.element ops Input modifiers []
+let ``input`` ops (modifiers: Typed.Modifier<Dom.HTMLInputElement> array) =
+    Typed.element ops Input modifiers [||]
 
 module Input =
     let ``accept`` (node: Dom.HTMLInputElement) : string =
@@ -6866,7 +6866,7 @@ module Input =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLInputElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``ins`` ops (modifiers: Typed.Modifier<Dom.HTMLModElement> list) children =
+let ``ins`` ops (modifiers: Typed.Modifier<Dom.HTMLModElement> array) children =
     Typed.element ops (HtmlTag "ins") modifiers children
 
 module Ins =
@@ -6894,7 +6894,7 @@ module Ins =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLModElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``kbd`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``kbd`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "kbd") modifiers children
 
 module Kbd =
@@ -6904,7 +6904,7 @@ module Kbd =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``label`` ops (modifiers: Typed.Modifier<Dom.HTMLLabelElement> list) children =
+let ``label`` ops (modifiers: Typed.Modifier<Dom.HTMLLabelElement> array) children =
     Typed.element ops (HtmlTag "label") modifiers children
 
 module Label =
@@ -6929,7 +6929,7 @@ module Label =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLLabelElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``legend`` ops (modifiers: Typed.Modifier<Dom.HTMLLegendElement> list) children =
+let ``legend`` ops (modifiers: Typed.Modifier<Dom.HTMLLegendElement> array) children =
     Typed.element ops (HtmlTag "legend") modifiers children
 
 module Legend =
@@ -6951,7 +6951,7 @@ module Legend =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLLegendElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``li`` ops (modifiers: Typed.Modifier<Dom.HTMLLIElement> list) children =
+let ``li`` ops (modifiers: Typed.Modifier<Dom.HTMLLIElement> array) children =
     Typed.element ops (HtmlTag "li") modifiers children
 
 module Li =
@@ -6979,8 +6979,8 @@ module Li =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLLIElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``link`` ops (modifiers: Typed.Modifier<Dom.HTMLLinkElement> list) =
-    Typed.element ops (HtmlTag "link") modifiers []
+let ``link`` ops (modifiers: Typed.Modifier<Dom.HTMLLinkElement> array) =
+    Typed.element ops (HtmlTag "link") modifiers [||]
 
 module Link =
     let ``as`` (node: Dom.HTMLLinkElement) : string =
@@ -7133,7 +7133,7 @@ module Link =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLLinkElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``main`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``main`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "main") modifiers children
 
 module Main =
@@ -7143,7 +7143,7 @@ module Main =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``map`` ops (modifiers: Typed.Modifier<Dom.HTMLMapElement> list) children =
+let ``map`` ops (modifiers: Typed.Modifier<Dom.HTMLMapElement> array) children =
     Typed.element ops (HtmlTag "map") modifiers children
 
 module Map =
@@ -7165,7 +7165,7 @@ module Map =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLMapElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``mark`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``mark`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "mark") modifiers children
 
 module Mark =
@@ -7175,7 +7175,7 @@ module Mark =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``menu`` ops (modifiers: Typed.Modifier<Dom.HTMLMenuElement> list) children =
+let ``menu`` ops (modifiers: Typed.Modifier<Dom.HTMLMenuElement> array) children =
     Typed.element ops (HtmlTag "menu") modifiers children
 
 module Menu =
@@ -7194,8 +7194,8 @@ module Menu =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLMenuElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``meta`` ops (modifiers: Typed.Modifier<Dom.HTMLMetaElement> list) =
-    Typed.element ops (HtmlTag "meta") modifiers []
+let ``meta`` ops (modifiers: Typed.Modifier<Dom.HTMLMetaElement> array) =
+    Typed.element ops (HtmlTag "meta") modifiers [||]
 
 module Meta =
     let ``content`` (node: Dom.HTMLMetaElement) : string =
@@ -7249,7 +7249,7 @@ module Meta =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLMetaElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``meter`` ops (modifiers: Typed.Modifier<Dom.HTMLMeterElement> list) children =
+let ``meter`` ops (modifiers: Typed.Modifier<Dom.HTMLMeterElement> array) children =
     Typed.element ops (HtmlTag "meter") modifiers children
 
 module Meter =
@@ -7316,7 +7316,7 @@ module Meter =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLMeterElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``nav`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``nav`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "nav") modifiers children
 
 module Nav =
@@ -7326,7 +7326,7 @@ module Nav =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``noscript`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``noscript`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "noscript") modifiers children
 
 module Noscript =
@@ -7336,7 +7336,7 @@ module Noscript =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``object`` ops (modifiers: Typed.Modifier<Dom.HTMLObjectElement> list) children =
+let ``object`` ops (modifiers: Typed.Modifier<Dom.HTMLObjectElement> array) children =
     Typed.element ops (HtmlTag "object") modifiers children
 
 module Object =
@@ -7508,7 +7508,7 @@ module Object =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLObjectElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``ol`` ops (modifiers: Typed.Modifier<Dom.HTMLOListElement> list) children =
+let ``ol`` ops (modifiers: Typed.Modifier<Dom.HTMLOListElement> array) children =
     Typed.element ops (HtmlTag "ol") modifiers children
 
 module Ol =
@@ -7554,7 +7554,7 @@ module Ol =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLOListElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``optgroup`` ops (modifiers: Typed.Modifier<Dom.HTMLOptGroupElement> list) children =
+let ``optgroup`` ops (modifiers: Typed.Modifier<Dom.HTMLOptGroupElement> array) children =
     Typed.element ops (HtmlTag "optgroup") modifiers children
 
 module Optgroup =
@@ -7582,7 +7582,7 @@ module Optgroup =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLOptGroupElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``option`` ops (modifiers: Typed.Modifier<Dom.HTMLOptionElement> list) children =
+let ``option`` ops (modifiers: Typed.Modifier<Dom.HTMLOptionElement> array) children =
     Typed.element ops Option modifiers children
 
 module Option =
@@ -7661,7 +7661,7 @@ module Option =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLOptionElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``output`` ops (modifiers: Typed.Modifier<Dom.HTMLOutputElement> list) children =
+let ``output`` ops (modifiers: Typed.Modifier<Dom.HTMLOutputElement> array) children =
     Typed.element ops (HtmlTag "output") modifiers children
 
 module Output =
@@ -7719,7 +7719,7 @@ module Output =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLOutputElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``p`` ops (modifiers: Typed.Modifier<Dom.HTMLParagraphElement> list) children =
+let ``p`` ops (modifiers: Typed.Modifier<Dom.HTMLParagraphElement> array) children =
     Typed.element ops (HtmlTag "p") modifiers children
 
 module P =
@@ -7738,7 +7738,7 @@ module P =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLParagraphElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``picture`` ops (modifiers: Typed.Modifier<Dom.HTMLPictureElement> list) children =
+let ``picture`` ops (modifiers: Typed.Modifier<Dom.HTMLPictureElement> array) children =
     Typed.element ops (HtmlTag "picture") modifiers children
 
 module Picture =
@@ -7748,7 +7748,7 @@ module Picture =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLPictureElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``pre`` ops (modifiers: Typed.Modifier<Dom.HTMLPreElement> list) children =
+let ``pre`` ops (modifiers: Typed.Modifier<Dom.HTMLPreElement> array) children =
     Typed.element ops (HtmlTag "pre") modifiers children
 
 module Pre =
@@ -7767,7 +7767,7 @@ module Pre =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLPreElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``progress`` ops (modifiers: Typed.Modifier<Dom.HTMLProgressElement> list) children =
+let ``progress`` ops (modifiers: Typed.Modifier<Dom.HTMLProgressElement> array) children =
     Typed.element ops (HtmlTag "progress") modifiers children
 
 module Progress =
@@ -7801,7 +7801,7 @@ module Progress =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLProgressElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``q`` ops (modifiers: Typed.Modifier<Dom.HTMLQuoteElement> list) children =
+let ``q`` ops (modifiers: Typed.Modifier<Dom.HTMLQuoteElement> array) children =
     Typed.element ops (HtmlTag "q") modifiers children
 
 module Q =
@@ -7820,7 +7820,7 @@ module Q =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLQuoteElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``rp`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``rp`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "rp") modifiers children
 
 module Rp =
@@ -7830,7 +7830,7 @@ module Rp =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``rt`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``rt`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "rt") modifiers children
 
 module Rt =
@@ -7840,7 +7840,7 @@ module Rt =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``ruby`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``ruby`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "ruby") modifiers children
 
 module Ruby =
@@ -7850,7 +7850,7 @@ module Ruby =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``s`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``s`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "s") modifiers children
 
 module S =
@@ -7860,7 +7860,7 @@ module S =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``samp`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``samp`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "samp") modifiers children
 
 module Samp =
@@ -7870,7 +7870,7 @@ module Samp =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``script`` ops (modifiers: Typed.Modifier<Dom.HTMLScriptElement> list) children =
+let ``script`` ops (modifiers: Typed.Modifier<Dom.HTMLScriptElement> array) children =
     Typed.element ops (HtmlTag "script") modifiers children
 
 module Script =
@@ -7991,7 +7991,7 @@ module Script =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLScriptElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``search`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``search`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "search") modifiers children
 
 module Search =
@@ -8001,7 +8001,7 @@ module Search =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``section`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``section`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "section") modifiers children
 
 module Section =
@@ -8011,7 +8011,7 @@ module Section =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``select`` ops (modifiers: Typed.Modifier<Dom.HTMLSelectElement> list) children =
+let ``select`` ops (modifiers: Typed.Modifier<Dom.HTMLSelectElement> array) children =
     Typed.element ops Select modifiers children
 
 module Select =
@@ -8132,7 +8132,7 @@ module Select =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLSelectElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``slot`` ops (modifiers: Typed.Modifier<Dom.HTMLSlotElement> list) children =
+let ``slot`` ops (modifiers: Typed.Modifier<Dom.HTMLSlotElement> array) children =
     Typed.element ops (HtmlTag "slot") modifiers children
 
 module Slot =
@@ -8151,7 +8151,7 @@ module Slot =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLSlotElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``small`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``small`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "small") modifiers children
 
 module Small =
@@ -8161,8 +8161,8 @@ module Small =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``source`` ops (modifiers: Typed.Modifier<Dom.HTMLSourceElement> list) =
-    Typed.element ops (HtmlTag "source") modifiers []
+let ``source`` ops (modifiers: Typed.Modifier<Dom.HTMLSourceElement> array) =
+    Typed.element ops (HtmlTag "source") modifiers [||]
 
 module Source =
     let ``height`` (node: Dom.HTMLSourceElement) : float =
@@ -8234,7 +8234,7 @@ module Source =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLSourceElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``span`` ops (modifiers: Typed.Modifier<Dom.HTMLSpanElement> list) children =
+let ``span`` ops (modifiers: Typed.Modifier<Dom.HTMLSpanElement> array) children =
     Typed.element ops (HtmlTag "span") modifiers children
 
 module Span =
@@ -8244,7 +8244,7 @@ module Span =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLSpanElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``strong`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``strong`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "strong") modifiers children
 
 module Strong =
@@ -8254,7 +8254,7 @@ module Strong =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``style`` ops (modifiers: Typed.Modifier<Dom.HTMLStyleElement> list) children =
+let ``style`` ops (modifiers: Typed.Modifier<Dom.HTMLStyleElement> array) children =
     Typed.element ops (HtmlTag "style") modifiers children
 
 module Style =
@@ -8294,7 +8294,7 @@ module Style =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLStyleElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``sub`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``sub`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "sub") modifiers children
 
 module Sub =
@@ -8304,7 +8304,7 @@ module Sub =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``summary`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``summary`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "summary") modifiers children
 
 module Summary =
@@ -8314,7 +8314,7 @@ module Summary =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``sup`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``sup`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "sup") modifiers children
 
 module Sup =
@@ -8324,7 +8324,7 @@ module Sup =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``table`` ops (modifiers: Typed.Modifier<Dom.HTMLTableElement> list) children =
+let ``table`` ops (modifiers: Typed.Modifier<Dom.HTMLTableElement> array) children =
     Typed.element ops (HtmlTag "table") modifiers children
 
 module Table =
@@ -8430,7 +8430,7 @@ module Table =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLTableElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``tbody`` ops (modifiers: Typed.Modifier<Dom.HTMLTableSectionElement> list) children =
+let ``tbody`` ops (modifiers: Typed.Modifier<Dom.HTMLTableSectionElement> array) children =
     Typed.element ops (HtmlTag "tbody") modifiers children
 
 module Tbody =
@@ -8479,7 +8479,7 @@ module Tbody =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLTableSectionElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``td`` ops (modifiers: Typed.Modifier<Dom.HTMLTableCellElement> list) children =
+let ``td`` ops (modifiers: Typed.Modifier<Dom.HTMLTableCellElement> array) children =
     Typed.element ops (HtmlTag "td") modifiers children
 
 module Td =
@@ -8618,7 +8618,7 @@ module Td =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLTableCellElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``template`` ops (modifiers: Typed.Modifier<Dom.HTMLTemplateElement> list) children =
+let ``template`` ops (modifiers: Typed.Modifier<Dom.HTMLTemplateElement> array) children =
     Typed.element ops (HtmlTag "template") modifiers children
 
 module Template =
@@ -8676,7 +8676,7 @@ module Template =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLTemplateElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``textarea`` ops (modifiers: Typed.Modifier<Dom.HTMLTextAreaElement> list) children =
+let ``textarea`` ops (modifiers: Typed.Modifier<Dom.HTMLTextAreaElement> array) children =
     Typed.element ops (HtmlTag "textarea") modifiers children
 
 module Textarea =
@@ -8854,7 +8854,7 @@ module Textarea =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLTextAreaElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``tfoot`` ops (modifiers: Typed.Modifier<Dom.HTMLTableSectionElement> list) children =
+let ``tfoot`` ops (modifiers: Typed.Modifier<Dom.HTMLTableSectionElement> array) children =
     Typed.element ops (HtmlTag "tfoot") modifiers children
 
 module Tfoot =
@@ -8903,7 +8903,7 @@ module Tfoot =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLTableSectionElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``th`` ops (modifiers: Typed.Modifier<Dom.HTMLTableCellElement> list) children =
+let ``th`` ops (modifiers: Typed.Modifier<Dom.HTMLTableCellElement> array) children =
     Typed.element ops (HtmlTag "th") modifiers children
 
 module Th =
@@ -9042,7 +9042,7 @@ module Th =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLTableCellElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``thead`` ops (modifiers: Typed.Modifier<Dom.HTMLTableSectionElement> list) children =
+let ``thead`` ops (modifiers: Typed.Modifier<Dom.HTMLTableSectionElement> array) children =
     Typed.element ops (HtmlTag "thead") modifiers children
 
 module Thead =
@@ -9091,7 +9091,7 @@ module Thead =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLTableSectionElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``time`` ops (modifiers: Typed.Modifier<Dom.HTMLTimeElement> list) children =
+let ``time`` ops (modifiers: Typed.Modifier<Dom.HTMLTimeElement> array) children =
     Typed.element ops (HtmlTag "time") modifiers children
 
 module Time =
@@ -9110,7 +9110,7 @@ module Time =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLTimeElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``title`` ops (modifiers: Typed.Modifier<Dom.HTMLTitleElement> list) children =
+let ``title`` ops (modifiers: Typed.Modifier<Dom.HTMLTitleElement> array) children =
     Typed.element ops (HtmlTag "title") modifiers children
 
 module Title =
@@ -9129,7 +9129,7 @@ module Title =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLTitleElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``tr`` ops (modifiers: Typed.Modifier<Dom.HTMLTableRowElement> list) children =
+let ``tr`` ops (modifiers: Typed.Modifier<Dom.HTMLTableRowElement> array) children =
     Typed.element ops (HtmlTag "tr") modifiers children
 
 module Tr =
@@ -9193,8 +9193,8 @@ module Tr =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLTableRowElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``track`` ops (modifiers: Typed.Modifier<Dom.HTMLTrackElement> list) =
-    Typed.element ops (HtmlTag "track") modifiers []
+let ``track`` ops (modifiers: Typed.Modifier<Dom.HTMLTrackElement> array) =
+    Typed.element ops (HtmlTag "track") modifiers [||]
 
 module Track =
     let ``ERROR`` (node: Dom.HTMLTrackElement) : float =
@@ -9266,7 +9266,7 @@ module Track =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLTrackElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``u`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``u`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "u") modifiers children
 
 module U =
@@ -9276,7 +9276,7 @@ module U =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``ul`` ops (modifiers: Typed.Modifier<Dom.HTMLUListElement> list) children =
+let ``ul`` ops (modifiers: Typed.Modifier<Dom.HTMLUListElement> array) children =
     Typed.element ops (HtmlTag "ul") modifiers children
 
 module Ul =
@@ -9304,7 +9304,7 @@ module Ul =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLUListElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``var`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) children =
+let ``var`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) children =
     Typed.element ops (HtmlTag "var") modifiers children
 
 module Var =
@@ -9314,7 +9314,7 @@ module Var =
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
 
-let ``video`` ops (modifiers: Typed.Modifier<Dom.HTMLVideoElement> list) children =
+let ``video`` ops (modifiers: Typed.Modifier<Dom.HTMLVideoElement> array) children =
     Typed.element ops (HtmlTag "video") modifiers children
 
 module Video =
@@ -9387,8 +9387,8 @@ module Video =
     let onWaitingforkey (handler: Dom.Event -> unit) : Typed.Modifier<Dom.HTMLVideoElement> =
         Typed.listener "waitingforkey" (fun event -> handler (unbox event))
 
-let ``wbr`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> list) =
-    Typed.element ops (HtmlTag "wbr") modifiers []
+let ``wbr`` ops (modifiers: Typed.Modifier<Dom.HTMLElement> array) =
+    Typed.element ops (HtmlTag "wbr") modifiers [||]
 
 module Wbr =
     let onClick (handler: Dom.PointerEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
@@ -10227,559 +10227,607 @@ module Authoring =
 
 module Program =
     let inline ``a``
-        (modifiers: Typed.Modifier<Dom.HTMLAnchorElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLAnchorElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``a`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "a") modifiers children
 
-    let inline ``abbr`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
-        ``abbr`` Representation.Program.ops modifiers children
+    let inline ``abbr``
+        (modifiers: Typed.Modifier<Dom.HTMLElement> array)
+        (children: Representation.Program.View array)
+        : Representation.Program.View =
+        Typed.programElement (HtmlTag "abbr") modifiers children
 
     let inline ``address``
-        (modifiers: Typed.Modifier<Dom.HTMLElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``address`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "address") modifiers children
 
-    let inline ``area`` (modifiers: Typed.Modifier<Dom.HTMLAreaElement> list) : Representation.Program.View =
-        ``area`` Representation.Program.ops modifiers
+    let inline ``area`` (modifiers: Typed.Modifier<Dom.HTMLAreaElement> array) : Representation.Program.View =
+        Typed.programElement (HtmlTag "area") modifiers [||]
 
     let inline ``article``
-        (modifiers: Typed.Modifier<Dom.HTMLElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``article`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "article") modifiers children
 
     let inline ``aside``
-        (modifiers: Typed.Modifier<Dom.HTMLElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``aside`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "aside") modifiers children
 
     let inline ``audio``
-        (modifiers: Typed.Modifier<Dom.HTMLAudioElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLAudioElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``audio`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "audio") modifiers children
 
-    let inline ``b`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
-        ``b`` Representation.Program.ops modifiers children
+    let inline ``b`` (modifiers: Typed.Modifier<Dom.HTMLElement> array) (children: Representation.Program.View array) : Representation.Program.View =
+        Typed.programElement (HtmlTag "b") modifiers children
 
-    let inline ``base`` (modifiers: Typed.Modifier<Dom.HTMLBaseElement> list) : Representation.Program.View =
-        ``base`` Representation.Program.ops modifiers
+    let inline ``base`` (modifiers: Typed.Modifier<Dom.HTMLBaseElement> array) : Representation.Program.View =
+        Typed.programElement (HtmlTag "base") modifiers [||]
 
-    let inline ``bdi`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
-        ``bdi`` Representation.Program.ops modifiers children
+    let inline ``bdi``
+        (modifiers: Typed.Modifier<Dom.HTMLElement> array)
+        (children: Representation.Program.View array)
+        : Representation.Program.View =
+        Typed.programElement (HtmlTag "bdi") modifiers children
 
-    let inline ``bdo`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
-        ``bdo`` Representation.Program.ops modifiers children
+    let inline ``bdo``
+        (modifiers: Typed.Modifier<Dom.HTMLElement> array)
+        (children: Representation.Program.View array)
+        : Representation.Program.View =
+        Typed.programElement (HtmlTag "bdo") modifiers children
 
     let inline ``blockquote``
-        (modifiers: Typed.Modifier<Dom.HTMLQuoteElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLQuoteElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``blockquote`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "blockquote") modifiers children
 
     let inline ``body``
-        (modifiers: Typed.Modifier<Dom.HTMLBodyElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLBodyElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``body`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "body") modifiers children
 
-    let inline ``br`` (modifiers: Typed.Modifier<Dom.HTMLBRElement> list) : Representation.Program.View =
-        ``br`` Representation.Program.ops modifiers
+    let inline ``br`` (modifiers: Typed.Modifier<Dom.HTMLBRElement> array) : Representation.Program.View =
+        Typed.programElement (HtmlTag "br") modifiers [||]
 
     let inline ``button``
-        (modifiers: Typed.Modifier<Dom.HTMLButtonElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLButtonElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``button`` Representation.Program.ops modifiers children
+        Typed.programElement Button modifiers children
 
     let inline ``canvas``
-        (modifiers: Typed.Modifier<Dom.HTMLCanvasElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLCanvasElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``canvas`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "canvas") modifiers children
 
     let inline ``caption``
-        (modifiers: Typed.Modifier<Dom.HTMLTableCaptionElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLTableCaptionElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``caption`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "caption") modifiers children
 
-    let inline ``cite`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
-        ``cite`` Representation.Program.ops modifiers children
+    let inline ``cite``
+        (modifiers: Typed.Modifier<Dom.HTMLElement> array)
+        (children: Representation.Program.View array)
+        : Representation.Program.View =
+        Typed.programElement (HtmlTag "cite") modifiers children
 
-    let inline ``code`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
-        ``code`` Representation.Program.ops modifiers children
+    let inline ``code``
+        (modifiers: Typed.Modifier<Dom.HTMLElement> array)
+        (children: Representation.Program.View array)
+        : Representation.Program.View =
+        Typed.programElement (HtmlTag "code") modifiers children
 
-    let inline ``col`` (modifiers: Typed.Modifier<Dom.HTMLTableColElement> list) : Representation.Program.View =
-        ``col`` Representation.Program.ops modifiers
+    let inline ``col`` (modifiers: Typed.Modifier<Dom.HTMLTableColElement> array) : Representation.Program.View =
+        Typed.programElement (HtmlTag "col") modifiers [||]
 
     let inline ``colgroup``
-        (modifiers: Typed.Modifier<Dom.HTMLTableColElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLTableColElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``colgroup`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "colgroup") modifiers children
 
     let inline ``data``
-        (modifiers: Typed.Modifier<Dom.HTMLDataElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLDataElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``data`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "data") modifiers children
 
     let inline ``datalist``
-        (modifiers: Typed.Modifier<Dom.HTMLDataListElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLDataListElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``datalist`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "datalist") modifiers children
 
-    let inline ``dd`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
-        ``dd`` Representation.Program.ops modifiers children
+    let inline ``dd`` (modifiers: Typed.Modifier<Dom.HTMLElement> array) (children: Representation.Program.View array) : Representation.Program.View =
+        Typed.programElement (HtmlTag "dd") modifiers children
 
     let inline ``del``
-        (modifiers: Typed.Modifier<Dom.HTMLModElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLModElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``del`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "del") modifiers children
 
     let inline ``details``
-        (modifiers: Typed.Modifier<Dom.HTMLDetailsElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLDetailsElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``details`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "details") modifiers children
 
-    let inline ``dfn`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
-        ``dfn`` Representation.Program.ops modifiers children
+    let inline ``dfn``
+        (modifiers: Typed.Modifier<Dom.HTMLElement> array)
+        (children: Representation.Program.View array)
+        : Representation.Program.View =
+        Typed.programElement (HtmlTag "dfn") modifiers children
 
     let inline ``dialog``
-        (modifiers: Typed.Modifier<Dom.HTMLDialogElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLDialogElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``dialog`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "dialog") modifiers children
 
     let inline ``div``
-        (modifiers: Typed.Modifier<Dom.HTMLDivElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLDivElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``div`` Representation.Program.ops modifiers children
+        Typed.programElement Div modifiers children
 
     let inline ``dl``
-        (modifiers: Typed.Modifier<Dom.HTMLDListElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLDListElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``dl`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "dl") modifiers children
 
-    let inline ``dt`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
-        ``dt`` Representation.Program.ops modifiers children
+    let inline ``dt`` (modifiers: Typed.Modifier<Dom.HTMLElement> array) (children: Representation.Program.View array) : Representation.Program.View =
+        Typed.programElement (HtmlTag "dt") modifiers children
 
-    let inline ``em`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
-        ``em`` Representation.Program.ops modifiers children
+    let inline ``em`` (modifiers: Typed.Modifier<Dom.HTMLElement> array) (children: Representation.Program.View array) : Representation.Program.View =
+        Typed.programElement (HtmlTag "em") modifiers children
 
-    let inline ``embed`` (modifiers: Typed.Modifier<Dom.HTMLEmbedElement> list) : Representation.Program.View =
-        ``embed`` Representation.Program.ops modifiers
+    let inline ``embed`` (modifiers: Typed.Modifier<Dom.HTMLEmbedElement> array) : Representation.Program.View =
+        Typed.programElement (HtmlTag "embed") modifiers [||]
 
     let inline ``fieldset``
-        (modifiers: Typed.Modifier<Dom.HTMLFieldSetElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLFieldSetElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``fieldset`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "fieldset") modifiers children
 
     let inline ``figcaption``
-        (modifiers: Typed.Modifier<Dom.HTMLElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``figcaption`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "figcaption") modifiers children
 
     let inline ``figure``
-        (modifiers: Typed.Modifier<Dom.HTMLElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``figure`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "figure") modifiers children
 
     let inline ``footer``
-        (modifiers: Typed.Modifier<Dom.HTMLElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``footer`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "footer") modifiers children
 
     let inline ``form``
-        (modifiers: Typed.Modifier<Dom.HTMLFormElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLFormElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``form`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "form") modifiers children
 
     let inline ``h1``
-        (modifiers: Typed.Modifier<Dom.HTMLHeadingElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLHeadingElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``h1`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "h1") modifiers children
 
     let inline ``h2``
-        (modifiers: Typed.Modifier<Dom.HTMLHeadingElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLHeadingElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``h2`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "h2") modifiers children
 
     let inline ``h3``
-        (modifiers: Typed.Modifier<Dom.HTMLHeadingElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLHeadingElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``h3`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "h3") modifiers children
 
     let inline ``h4``
-        (modifiers: Typed.Modifier<Dom.HTMLHeadingElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLHeadingElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``h4`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "h4") modifiers children
 
     let inline ``h5``
-        (modifiers: Typed.Modifier<Dom.HTMLHeadingElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLHeadingElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``h5`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "h5") modifiers children
 
     let inline ``h6``
-        (modifiers: Typed.Modifier<Dom.HTMLHeadingElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLHeadingElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``h6`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "h6") modifiers children
 
     let inline ``head``
-        (modifiers: Typed.Modifier<Dom.HTMLHeadElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLHeadElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``head`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "head") modifiers children
 
     let inline ``header``
-        (modifiers: Typed.Modifier<Dom.HTMLElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``header`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "header") modifiers children
 
     let inline ``hgroup``
-        (modifiers: Typed.Modifier<Dom.HTMLElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``hgroup`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "hgroup") modifiers children
 
-    let inline ``hr`` (modifiers: Typed.Modifier<Dom.HTMLHRElement> list) : Representation.Program.View =
-        ``hr`` Representation.Program.ops modifiers
+    let inline ``hr`` (modifiers: Typed.Modifier<Dom.HTMLHRElement> array) : Representation.Program.View =
+        Typed.programElement (HtmlTag "hr") modifiers [||]
 
     let inline ``html``
-        (modifiers: Typed.Modifier<Dom.HTMLHtmlElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLHtmlElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``html`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "html") modifiers children
 
-    let inline ``i`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
-        ``i`` Representation.Program.ops modifiers children
+    let inline ``i`` (modifiers: Typed.Modifier<Dom.HTMLElement> array) (children: Representation.Program.View array) : Representation.Program.View =
+        Typed.programElement (HtmlTag "i") modifiers children
 
     let inline ``iframe``
-        (modifiers: Typed.Modifier<Dom.HTMLIFrameElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLIFrameElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``iframe`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "iframe") modifiers children
 
-    let inline ``img`` (modifiers: Typed.Modifier<Dom.HTMLImageElement> list) : Representation.Program.View =
-        ``img`` Representation.Program.ops modifiers
+    let inline ``img`` (modifiers: Typed.Modifier<Dom.HTMLImageElement> array) : Representation.Program.View =
+        Typed.programElement (HtmlTag "img") modifiers [||]
 
-    let inline ``input`` (modifiers: Typed.Modifier<Dom.HTMLInputElement> list) : Representation.Program.View =
-        ``input`` Representation.Program.ops modifiers
+    let inline ``input`` (modifiers: Typed.Modifier<Dom.HTMLInputElement> array) : Representation.Program.View =
+        Typed.programElement Input modifiers [||]
 
     let inline ``ins``
-        (modifiers: Typed.Modifier<Dom.HTMLModElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLModElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``ins`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "ins") modifiers children
 
-    let inline ``kbd`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
-        ``kbd`` Representation.Program.ops modifiers children
+    let inline ``kbd``
+        (modifiers: Typed.Modifier<Dom.HTMLElement> array)
+        (children: Representation.Program.View array)
+        : Representation.Program.View =
+        Typed.programElement (HtmlTag "kbd") modifiers children
 
     let inline ``label``
-        (modifiers: Typed.Modifier<Dom.HTMLLabelElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLLabelElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``label`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "label") modifiers children
 
     let inline ``legend``
-        (modifiers: Typed.Modifier<Dom.HTMLLegendElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLLegendElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``legend`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "legend") modifiers children
 
-    let inline ``li`` (modifiers: Typed.Modifier<Dom.HTMLLIElement> list) (children: Representation.Program.View list) : Representation.Program.View =
-        ``li`` Representation.Program.ops modifiers children
+    let inline ``li``
+        (modifiers: Typed.Modifier<Dom.HTMLLIElement> array)
+        (children: Representation.Program.View array)
+        : Representation.Program.View =
+        Typed.programElement (HtmlTag "li") modifiers children
 
-    let inline ``link`` (modifiers: Typed.Modifier<Dom.HTMLLinkElement> list) : Representation.Program.View =
-        ``link`` Representation.Program.ops modifiers
+    let inline ``link`` (modifiers: Typed.Modifier<Dom.HTMLLinkElement> array) : Representation.Program.View =
+        Typed.programElement (HtmlTag "link") modifiers [||]
 
-    let inline ``main`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
-        ``main`` Representation.Program.ops modifiers children
+    let inline ``main``
+        (modifiers: Typed.Modifier<Dom.HTMLElement> array)
+        (children: Representation.Program.View array)
+        : Representation.Program.View =
+        Typed.programElement (HtmlTag "main") modifiers children
 
     let inline ``map``
-        (modifiers: Typed.Modifier<Dom.HTMLMapElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLMapElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``map`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "map") modifiers children
 
-    let inline ``mark`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
-        ``mark`` Representation.Program.ops modifiers children
+    let inline ``mark``
+        (modifiers: Typed.Modifier<Dom.HTMLElement> array)
+        (children: Representation.Program.View array)
+        : Representation.Program.View =
+        Typed.programElement (HtmlTag "mark") modifiers children
 
     let inline ``menu``
-        (modifiers: Typed.Modifier<Dom.HTMLMenuElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLMenuElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``menu`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "menu") modifiers children
 
-    let inline ``meta`` (modifiers: Typed.Modifier<Dom.HTMLMetaElement> list) : Representation.Program.View =
-        ``meta`` Representation.Program.ops modifiers
+    let inline ``meta`` (modifiers: Typed.Modifier<Dom.HTMLMetaElement> array) : Representation.Program.View =
+        Typed.programElement (HtmlTag "meta") modifiers [||]
 
     let inline ``meter``
-        (modifiers: Typed.Modifier<Dom.HTMLMeterElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLMeterElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``meter`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "meter") modifiers children
 
-    let inline ``nav`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
-        ``nav`` Representation.Program.ops modifiers children
+    let inline ``nav``
+        (modifiers: Typed.Modifier<Dom.HTMLElement> array)
+        (children: Representation.Program.View array)
+        : Representation.Program.View =
+        Typed.programElement (HtmlTag "nav") modifiers children
 
     let inline ``noscript``
-        (modifiers: Typed.Modifier<Dom.HTMLElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``noscript`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "noscript") modifiers children
 
     let inline ``object``
-        (modifiers: Typed.Modifier<Dom.HTMLObjectElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLObjectElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``object`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "object") modifiers children
 
     let inline ``ol``
-        (modifiers: Typed.Modifier<Dom.HTMLOListElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLOListElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``ol`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "ol") modifiers children
 
     let inline ``optgroup``
-        (modifiers: Typed.Modifier<Dom.HTMLOptGroupElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLOptGroupElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``optgroup`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "optgroup") modifiers children
 
     let inline ``option``
-        (modifiers: Typed.Modifier<Dom.HTMLOptionElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLOptionElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``option`` Representation.Program.ops modifiers children
+        Typed.programElement Option modifiers children
 
     let inline ``output``
-        (modifiers: Typed.Modifier<Dom.HTMLOutputElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLOutputElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``output`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "output") modifiers children
 
     let inline ``p``
-        (modifiers: Typed.Modifier<Dom.HTMLParagraphElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLParagraphElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``p`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "p") modifiers children
 
     let inline ``picture``
-        (modifiers: Typed.Modifier<Dom.HTMLPictureElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLPictureElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``picture`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "picture") modifiers children
 
     let inline ``pre``
-        (modifiers: Typed.Modifier<Dom.HTMLPreElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLPreElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``pre`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "pre") modifiers children
 
     let inline ``progress``
-        (modifiers: Typed.Modifier<Dom.HTMLProgressElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLProgressElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``progress`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "progress") modifiers children
 
     let inline ``q``
-        (modifiers: Typed.Modifier<Dom.HTMLQuoteElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLQuoteElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``q`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "q") modifiers children
 
-    let inline ``rp`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
-        ``rp`` Representation.Program.ops modifiers children
+    let inline ``rp`` (modifiers: Typed.Modifier<Dom.HTMLElement> array) (children: Representation.Program.View array) : Representation.Program.View =
+        Typed.programElement (HtmlTag "rp") modifiers children
 
-    let inline ``rt`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
-        ``rt`` Representation.Program.ops modifiers children
+    let inline ``rt`` (modifiers: Typed.Modifier<Dom.HTMLElement> array) (children: Representation.Program.View array) : Representation.Program.View =
+        Typed.programElement (HtmlTag "rt") modifiers children
 
-    let inline ``ruby`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
-        ``ruby`` Representation.Program.ops modifiers children
+    let inline ``ruby``
+        (modifiers: Typed.Modifier<Dom.HTMLElement> array)
+        (children: Representation.Program.View array)
+        : Representation.Program.View =
+        Typed.programElement (HtmlTag "ruby") modifiers children
 
-    let inline ``s`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
-        ``s`` Representation.Program.ops modifiers children
+    let inline ``s`` (modifiers: Typed.Modifier<Dom.HTMLElement> array) (children: Representation.Program.View array) : Representation.Program.View =
+        Typed.programElement (HtmlTag "s") modifiers children
 
-    let inline ``samp`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
-        ``samp`` Representation.Program.ops modifiers children
+    let inline ``samp``
+        (modifiers: Typed.Modifier<Dom.HTMLElement> array)
+        (children: Representation.Program.View array)
+        : Representation.Program.View =
+        Typed.programElement (HtmlTag "samp") modifiers children
 
     let inline ``script``
-        (modifiers: Typed.Modifier<Dom.HTMLScriptElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLScriptElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``script`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "script") modifiers children
 
     let inline ``search``
-        (modifiers: Typed.Modifier<Dom.HTMLElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``search`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "search") modifiers children
 
     let inline ``section``
-        (modifiers: Typed.Modifier<Dom.HTMLElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``section`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "section") modifiers children
 
     let inline ``select``
-        (modifiers: Typed.Modifier<Dom.HTMLSelectElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLSelectElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``select`` Representation.Program.ops modifiers children
+        Typed.programElement Select modifiers children
 
     let inline ``slot``
-        (modifiers: Typed.Modifier<Dom.HTMLSlotElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLSlotElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``slot`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "slot") modifiers children
 
     let inline ``small``
-        (modifiers: Typed.Modifier<Dom.HTMLElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``small`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "small") modifiers children
 
-    let inline ``source`` (modifiers: Typed.Modifier<Dom.HTMLSourceElement> list) : Representation.Program.View =
-        ``source`` Representation.Program.ops modifiers
+    let inline ``source`` (modifiers: Typed.Modifier<Dom.HTMLSourceElement> array) : Representation.Program.View =
+        Typed.programElement (HtmlTag "source") modifiers [||]
 
     let inline ``span``
-        (modifiers: Typed.Modifier<Dom.HTMLSpanElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLSpanElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``span`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "span") modifiers children
 
     let inline ``strong``
-        (modifiers: Typed.Modifier<Dom.HTMLElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``strong`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "strong") modifiers children
 
     let inline ``style``
-        (modifiers: Typed.Modifier<Dom.HTMLStyleElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLStyleElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``style`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "style") modifiers children
 
-    let inline ``sub`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
-        ``sub`` Representation.Program.ops modifiers children
+    let inline ``sub``
+        (modifiers: Typed.Modifier<Dom.HTMLElement> array)
+        (children: Representation.Program.View array)
+        : Representation.Program.View =
+        Typed.programElement (HtmlTag "sub") modifiers children
 
     let inline ``summary``
-        (modifiers: Typed.Modifier<Dom.HTMLElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``summary`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "summary") modifiers children
 
-    let inline ``sup`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
-        ``sup`` Representation.Program.ops modifiers children
+    let inline ``sup``
+        (modifiers: Typed.Modifier<Dom.HTMLElement> array)
+        (children: Representation.Program.View array)
+        : Representation.Program.View =
+        Typed.programElement (HtmlTag "sup") modifiers children
 
     let inline ``table``
-        (modifiers: Typed.Modifier<Dom.HTMLTableElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLTableElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``table`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "table") modifiers children
 
     let inline ``tbody``
-        (modifiers: Typed.Modifier<Dom.HTMLTableSectionElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLTableSectionElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``tbody`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "tbody") modifiers children
 
     let inline ``td``
-        (modifiers: Typed.Modifier<Dom.HTMLTableCellElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLTableCellElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``td`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "td") modifiers children
 
     let inline ``template``
-        (modifiers: Typed.Modifier<Dom.HTMLTemplateElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLTemplateElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``template`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "template") modifiers children
 
     let inline ``textarea``
-        (modifiers: Typed.Modifier<Dom.HTMLTextAreaElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLTextAreaElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``textarea`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "textarea") modifiers children
 
     let inline ``tfoot``
-        (modifiers: Typed.Modifier<Dom.HTMLTableSectionElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLTableSectionElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``tfoot`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "tfoot") modifiers children
 
     let inline ``th``
-        (modifiers: Typed.Modifier<Dom.HTMLTableCellElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLTableCellElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``th`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "th") modifiers children
 
     let inline ``thead``
-        (modifiers: Typed.Modifier<Dom.HTMLTableSectionElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLTableSectionElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``thead`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "thead") modifiers children
 
     let inline ``time``
-        (modifiers: Typed.Modifier<Dom.HTMLTimeElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLTimeElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``time`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "time") modifiers children
 
     let inline ``title``
-        (modifiers: Typed.Modifier<Dom.HTMLTitleElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLTitleElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``title`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "title") modifiers children
 
     let inline ``tr``
-        (modifiers: Typed.Modifier<Dom.HTMLTableRowElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLTableRowElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``tr`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "tr") modifiers children
 
-    let inline ``track`` (modifiers: Typed.Modifier<Dom.HTMLTrackElement> list) : Representation.Program.View =
-        ``track`` Representation.Program.ops modifiers
+    let inline ``track`` (modifiers: Typed.Modifier<Dom.HTMLTrackElement> array) : Representation.Program.View =
+        Typed.programElement (HtmlTag "track") modifiers [||]
 
-    let inline ``u`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
-        ``u`` Representation.Program.ops modifiers children
+    let inline ``u`` (modifiers: Typed.Modifier<Dom.HTMLElement> array) (children: Representation.Program.View array) : Representation.Program.View =
+        Typed.programElement (HtmlTag "u") modifiers children
 
     let inline ``ul``
-        (modifiers: Typed.Modifier<Dom.HTMLUListElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLUListElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``ul`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "ul") modifiers children
 
-    let inline ``var`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
-        ``var`` Representation.Program.ops modifiers children
+    let inline ``var``
+        (modifiers: Typed.Modifier<Dom.HTMLElement> array)
+        (children: Representation.Program.View array)
+        : Representation.Program.View =
+        Typed.programElement (HtmlTag "var") modifiers children
 
     let inline ``video``
-        (modifiers: Typed.Modifier<Dom.HTMLVideoElement> list)
-        (children: Representation.Program.View list)
+        (modifiers: Typed.Modifier<Dom.HTMLVideoElement> array)
+        (children: Representation.Program.View array)
         : Representation.Program.View =
-        ``video`` Representation.Program.ops modifiers children
+        Typed.programElement (HtmlTag "video") modifiers children
 
-    let inline ``wbr`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) : Representation.Program.View =
-        ``wbr`` Representation.Program.ops modifiers
+    let inline ``wbr`` (modifiers: Typed.Modifier<Dom.HTMLElement> array) : Representation.Program.View =
+        Typed.programElement (HtmlTag "wbr") modifiers [||]

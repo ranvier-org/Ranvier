@@ -12,12 +12,12 @@ let private equal expected actual =
 type PanelProps<'view> =
     {
         Title: Prop<string>
-        Children: 'view list
+        Children: 'view array
         OnSelect: int -> unit
     }
 
 let panel (ops: Operations<'view>) (_: Setup) (props: PanelProps<'view>) =
-    ops.Element Div [] [ Prop.text ops (=) props.Title; ops.Fragment props.Children ]
+    ops.Element Div [||] [| Prop.text ops (=) props.Title; ops.Fragment props.Children |]
 
 let private typedExample () =
     let mutable selected = 0
@@ -25,7 +25,7 @@ let private typedExample () =
     let props =
         {
             Title = Constant "Title:"
-            Children = [ Tree.ops.Text "child" ]
+            Children = [| Tree.ops.Text "child" |]
             OnSelect = fun value -> selected <- value
         }
 

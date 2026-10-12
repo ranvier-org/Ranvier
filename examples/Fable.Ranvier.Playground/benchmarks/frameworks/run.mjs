@@ -10,7 +10,8 @@ const outputDirectory = fileURLToPath(new URL("../../../../docs/research/framewo
 const verifyOnly = process.argv.includes("--verify-only");
 const nativeDiagnostic = process.argv.includes("--native-diagnostic");
 const directDiagnostic = process.argv.includes("--direct-diagnostic");
-if (nativeDiagnostic && directDiagnostic) throw Error("Choose one diagnostic adapter set per run");
+const cleanupComparison = process.argv.includes("--cleanup-comparison");
+if ([nativeDiagnostic, directDiagnostic, cleanupComparison].filter(Boolean).length > 1) throw Error("Choose one diagnostic adapter set per run");
 const modes = directDiagnostic ? ["ranvier", "ranvier-direct", "solid", "ripple"] : nativeDiagnostic ? ["ranvier", "solid", "ripple", "native-create", "native-clone", "native-descendants"] : ["ranvier", "solid", "ripple", "react"], widths = [1, 16, 128];
 const port = 5186;
 if (process.argv.includes("--build")) {
@@ -91,6 +92,7 @@ try {
     })));
     const pkg = JSON.parse(await readFile(new URL("../../package.json", import.meta.url), "utf8"));
     const files = ["benchmarks/frameworks/run.mjs", "benchmarks/frameworks/page.mjs", "benchmarks/frameworks/contract.mjs", "benchmarks/frameworks/solid.jsx", "benchmarks/frameworks/react.mjs", "benchmarks/frameworks/vite.config.mjs", "benchmarks/ripple/RipplePerf.fs", "benchmarks/ripple/RipplePerf.fsproj", "tests/FrameworkPerf.fs", "../../experiments/Ranvier.View.Foundation/AuthoringPerfFixtures.fs", "package-lock.json"];
+    files.push(...["Representation.fs", "Typed.fs", "Mounting.fs", "Components.fs", "Authoring.fs", "Lifetime.fs", "Binding.fs", "Scheduling.fs", "Generated/Html.fs"].map(path => `../../experiments/Ranvier.View.Foundation/${path}`));
     if (directDiagnostic) files.push("tests/FrameworkDiagnostics.fs");
     if (nativeDiagnostic) files.push("benchmarks/frameworks/native.mjs");
     const sourceHashes = Object.fromEntries(await Promise.all(files.map(async path => [path, createHash("sha256").update(await readFile(new URL(path, new URL("../../", import.meta.url)))).digest("hex")])));
@@ -109,8 +111,8 @@ try {
         "Ranvier component/fragment ownership and anchors remain enabled; static view optimization is not implemented."
       ], sourceHashes, correctness, samples, summaries, heaps
     };
-    await mkdir(nativeDiagnostic || directDiagnostic ? `${outputDirectory}/investigation` : outputDirectory, { recursive: true });
-    await writeFile(`${outputDirectory}/${directDiagnostic ? "investigation/direct-results" : nativeDiagnostic ? "investigation/native-results" : "results"}.json`, JSON.stringify(result, null, 2) + "\n");
+    await mkdir(nativeDiagnostic || directDiagnostic || cleanupComparison ? `${outputDirectory}/investigation` : outputDirectory, { recursive: true });
+    await writeFile(`${outputDirectory}/${cleanupComparison ? "investigation/cleanup-framework-results" : directDiagnostic ? "investigation/direct-results" : nativeDiagnostic ? "investigation/native-results" : "results"}.json`, JSON.stringify(result, null, 2) + "\n");
     console.log(JSON.stringify(summaries));
   }
 } finally {

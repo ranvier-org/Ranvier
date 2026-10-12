@@ -12,7 +12,7 @@ let create (ops: Operations<'view>) workload sugar read =
         | _ -> invalidArg "workload" workload
 
     let children =
-        [
+        [|
             for i in 1..width do
                 let text = string i
 
@@ -20,13 +20,13 @@ let create (ops: Operations<'view>) workload sugar read =
                     match sugar with
                     | "functions" -> functionSugar ops text
                     | "direct"
-                    | "builder" -> ops.Element Div [ Attribute ("title", "sample") ] [ ops.Text text ]
+                    | "builder" -> ops.Element Div [| Attribute ("title", "sample") |] [| ops.Text text |]
                     | _ -> invalidArg "sugar" sugar
-        ]
+        |]
 
     let children =
         if workload = "reactive" then
-            children @ [ ops.Bind (=) read ]
+            Array.append children [| ops.Bind (=) read |]
         else
             children
 
@@ -39,7 +39,7 @@ let create (ops: Operations<'view>) workload sugar read =
                 yield! children
             }
         else
-            ops.Fragment ([ ops.Text "prefix" ] @ children)
+            ops.Fragment (Array.append [| ops.Text "prefix" |] children)
 
     let body =
         if workload = "fragments" then
@@ -47,11 +47,11 @@ let create (ops: Operations<'view>) workload sugar read =
                 if depth = 0 then
                     view
                 else
-                    nest (depth - 1) (ops.Fragment [ view ])
+                    nest (depth - 1) (ops.Fragment [| view |])
 
             nest 20 fragment
         else
             fragment
 
-    let view = ops.Element Div [ Attribute ("id", "fixture") ] [ body ]
+    let view = ops.Element Div [| Attribute ("id", "fixture") |] [| body |]
     ops.Component (fun _ -> view)

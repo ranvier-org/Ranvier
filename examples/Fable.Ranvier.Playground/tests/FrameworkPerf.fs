@@ -14,7 +14,7 @@ let mount (host: HTMLElement) width =
         graph.Run (fun () -> Api.createMemo (fun _ -> source.Value = "blocked"))
 
     let rows = AuthoringPerfFixtures.create "overloaded" width source disabled ignore
-    let view = Generated.Html.Program.section [] [ rows ]
+    let view = Generated.Html.Program.section [||] [| rows |]
 
     let mounted =
         Mounting.mount graph None (fun errors -> failwithf "%A" errors) host None (fun context -> Program.run view context.Backend)

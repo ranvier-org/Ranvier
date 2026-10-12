@@ -53,6 +53,27 @@ let mount (graph: Graph) (host: HTMLElement) (report: exn list -> unit) (counts:
     let mutable parent: Node = host
     let mutable scope = root
     let mutable rootOwner: Owner option = None
+    let mutable modifierNode: HTMLElement = Unchecked.defaultof<_>
+    let mutable modifierTag = Div
+
+    let currentElement () =
+        if isNull (box modifierNode) then
+            invalidOp "Element modifiers require an active element"
+
+        modifierNode
+
+    let applyModifiers (backend: Backend) tag node modifiers =
+        let previousNode = modifierNode
+        let previousTag = modifierTag
+        modifierNode <- node
+        modifierTag <- tag
+
+        try
+            for apply in modifiers do
+                apply backend
+        finally
+            modifierNode <- previousNode
+            modifierTag <- previousTag
 
     let count action =
         counts |> Option.iter action
@@ -68,29 +89,43 @@ let mount (graph: Graph) (host: HTMLElement) (report: exn list -> unit) (counts:
             member _.Text value =
                 append (text value)
 
-            member _.Element(tag, tokens, children) =
+            member _.Attribute(key, value) =
+                validateAttribute key
+                (currentElement ()).setAttribute(key, value)
+
+            member _.OptionalAttribute(key, value) =
+                validateAttribute key
+                let node = currentElement ()
+
+                match value with
+                | Some value -> node.setAttribute (key, value)
+                | None -> node.removeAttribute key
+
+            member _.ReactiveAttribute(_, _) =
+                invalidOp "Reactive attributes require the owned-range backend"
+
+            member _.InputValue value =
+                let node = currentElement ()
+
+                if modifierTag <> Input then
+                    invalidArg "modifiers" "Input value requires input"
+
+                inputValue (node :?> HTMLInputElement) value
+
+            member _.Browser hook =
+                scope.OnCleanup (hook (box (currentElement ())))
+
+            member _.Property write =
+                write (box (currentElement ()))
+
+            member _.ReactiveProperty(_, _) =
+                invalidOp "Reactive properties require the owned-range backend"
+
+            member this.Element(tag, modifiers, children) =
                 let node = element (name tag)
                 append node
 
-                for token in tokens do
-                    match token with
-                    | Attribute (key, value) ->
-                        validateAttribute key
-                        node.setAttribute (key, value)
-                    | OptionalAttribute (key, value) ->
-                        validateAttribute key
-
-                        match value with
-                        | Some value -> node.setAttribute (key, value)
-                        | None -> node.removeAttribute key
-                    | ReactiveAttribute _ -> invalidOp "Reactive attributes require the owned-range interpreter"
-                    | InputValue value ->
-                        if tag <> Input then
-                            invalidArg "tokens" "Input value requires input"
-
-                        inputValue (node :?> HTMLInputElement) value
-                    | Browser hook -> scope.OnCleanup (hook (box node))
-                    | ReactiveProperty _ -> invalidOp "Reactive properties require the owned-range interpreter"
+                applyModifiers this tag node modifiers
 
                 if not (isVoid tag) then
                     let previous = parent

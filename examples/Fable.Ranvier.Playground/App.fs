@@ -335,19 +335,19 @@ let start () : unit -> unit =
             View.keyedArray (=) fst (fun () -> foundationRows.Value) (fun current ->
                 let key = fst (current ())
 
-                Elements.div [ GeneratedAttrs.idStatic ("foundation-row-" + string key) ] [ View.reactiveText (fun () -> snd (current ())) ])
+                Elements.div [| GeneratedAttrs.idStatic ("foundation-row-" + string key) |] [| View.reactiveText (fun () -> snd (current ())) |])
 
         let foundationView =
             Elements.section
-                [
+                [|
                     GeneratedAttrs.idStatic "foundation-demo"
                     GeneratedAttrs.classStatic "panel"
                     GeneratedAttrs.dataReactive "row-count" (fun () -> Some (string foundationRows.Value.Length))
-                ]
-                [
+                |]
+                [|
                     View.text "Foundation implementation: keyed rows"
                     Elements.button
-                        [
+                        [|
                             GeneratedAttrs.idStatic "foundation-add"
                             GeneratedHtml.Button.onClick (fun _ ->
                                 let next =
@@ -357,16 +357,16 @@ let start () : unit -> unit =
                                     |> (+) 1
 
                                 foundationRows.Value <- Array.append foundationRows.Value [| next, "Item " + string next |])
-                        ]
-                        [ View.text "Add row" ]
+                        |]
+                        [| View.text "Add row" |]
                     Elements.button
-                        [
+                        [|
                             GeneratedAttrs.idStatic "foundation-reverse"
                             GeneratedHtml.Button.onClick (fun _ -> foundationRows.Value <- Array.rev foundationRows.Value)
-                        ]
-                        [ View.text "Reverse rows" ]
+                        |]
+                        [| View.text "Reverse rows" |]
                     foundationRowsView
-                ]
+                |]
 
         let foundation =
             FoundationMounting.mountWith
@@ -382,38 +382,40 @@ let start () : unit -> unit =
 
                     let action id label update =
                         Elements.button
-                            [
+                            [|
                                 GeneratedAttrs.idStatic id
                                 GeneratedHtml.Button.onClick (fun _ -> update ())
-                            ]
-                            [ View.text label ]
+                            |]
+                            [| View.text label |]
 
                     let statusPanel =
                         Elements.div
-                            [
+                            [|
                                 GeneratedAttrs.idStatic "foundation-load"
                                 GeneratedAttrs.roleStatic "region"
                                 GeneratedAttrs.ariaLabelStatic "Load result"
                                 GeneratedAttrs.ariaBusyReactive (fun () ->
                                     loadResult.Value |> ignore
                                     Some loadResult.IsWaiting)
-                            ]
-                            [
+                            |]
+                            [|
                                 View.text "Load result"
                                 Elements.div
-                                    [ GeneratedAttrs.idStatic "foundation-load-status" ]
-                                    [
+                                    [| GeneratedAttrs.idStatic "foundation-load-status" |]
+                                    [|
                                         View.reactiveText (fun () ->
                                             loadResult.Value |> ignore
 
                                             if loadResult.IsWaiting then "Pending"
                                             elif not (isNull loadResult.Caught) then "Failed"
                                             else "Ready")
-                                    ]
-                                Elements.div [ GeneratedAttrs.idStatic "foundation-load-result" ] [ View.reactiveText (fun () -> loadResult.Value) ]
+                                    |]
                                 Elements.div
-                                    [ GeneratedAttrs.idStatic "foundation-load-error" ]
-                                    [
+                                    [| GeneratedAttrs.idStatic "foundation-load-result" |]
+                                    [| View.reactiveText (fun () -> loadResult.Value) |]
+                                Elements.div
+                                    [| GeneratedAttrs.idStatic "foundation-load-error" |]
+                                    [|
                                         View.reactiveText (fun () ->
                                             loadResult.Value |> ignore
 
@@ -421,12 +423,12 @@ let start () : unit -> unit =
                                                 ""
                                             else
                                                 loadResult.Caught.Message)
-                                    ]
+                                    |]
                                 action "foundation-pending" "Start loading" (fun () ->
                                     foundationGraph.Run (fun () -> loadSource.Value <- createAsyncSource<string>()))
                                 action "foundation-fail" "Simulate failure" (fun () -> loadSource.Value.Fail (Exception "Connection unavailable"))
                                 action "foundation-recover" "Recover" (fun () -> loadSource.Value.Settle "Recovered result")
-                            ]
+                            |]
 
                     FoundationProgram.run statusPanel context.Backend)
 

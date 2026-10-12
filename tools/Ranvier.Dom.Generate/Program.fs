@@ -445,15 +445,15 @@ let generate compilerRoot packageRoot output =
         let expression = tagExpression tag
 
         if voidTags.Contains tag then
-            emit $"let ``{tag}`` ops (modifiers: Typed.Modifier<{name}> list) = Typed.element ops {expression} modifiers []"
+            emit $"let ``{tag}`` ops (modifiers: Typed.Modifier<{name}> array) = Typed.element ops {expression} modifiers [||]"
 
             programElements.Add
-                $"    let inline ``{tag}`` (modifiers: Typed.Modifier<{name}> list) : Representation.Program.View = ``{tag}`` Representation.Program.ops modifiers"
+                $"    let inline ``{tag}`` (modifiers: Typed.Modifier<{name}> array) : Representation.Program.View = Typed.programElement {expression} modifiers [||]"
         else
-            emit $"let ``{tag}`` ops (modifiers: Typed.Modifier<{name}> list) children = Typed.element ops {expression} modifiers children"
+            emit $"let ``{tag}`` ops (modifiers: Typed.Modifier<{name}> array) children = Typed.element ops {expression} modifiers children"
 
             programElements.Add
-                $"    let inline ``{tag}`` (modifiers: Typed.Modifier<{name}> list) (children: Representation.Program.View list) : Representation.Program.View = ``{tag}`` Representation.Program.ops modifiers children"
+                $"    let inline ``{tag}`` (modifiers: Typed.Modifier<{name}> array) (children: Representation.Program.View array) : Representation.Program.View = Typed.programElement {expression} modifiers children"
 
         emit ""
         emit $"module {moduleName tag} ="

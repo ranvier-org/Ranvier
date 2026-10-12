@@ -43,21 +43,21 @@ let private lifecycle (ops: Operations<'view>) run queued generated =
         if generated then
             H.input
                 ops
-                [
+                [|
                     H.Input.titleStatic "static"
                     H.Input.valueReactive read
                     H.Input.checkedReactive (fun () -> checkedValue.Value)
                     H.Input.onInput onInput
-                ]
+                |]
         else
             Typed.input
                 ops
-                [
+                [|
                     Typed.staticProperty (fun (node: HTMLInputElement) value -> node.title <- value) "static"
                     Typed.reactiveProperty (fun (node: HTMLInputElement) value -> node.value <- value) read
                     Typed.reactiveProperty (fun (node: HTMLInputElement) value -> node.``checked`` <- value) (fun () -> checkedValue.Value)
                     Typed.listener "input" (fun event -> onInput (unbox event))
-                ]
+                |]
 
     let hosts = [| Dom.element "section" [] []; Dom.element "section" [] [] |]
 
@@ -139,17 +139,17 @@ let private tagsAndSelect () =
     let view =
         H.div
             Tree.ops
-            []
-            [
-                H.button Tree.ops [] [ Tree.ops.Text "go" ]
+            [||]
+            [|
+                H.button Tree.ops [||] [| Tree.ops.Text "go" |]
                 H.select
                     Tree.ops
-                    [ H.Select.valueStatic "b" ]
-                    [
-                        H.option Tree.ops [ H.Option.valueStatic "a" ] [ Tree.ops.Text "A" ]
-                        H.option Tree.ops [ H.Option.valueStatic "b" ] [ Tree.ops.Text "B" ]
-                    ]
-            ]
+                    [| H.Select.valueStatic "b" |]
+                    [|
+                        H.option Tree.ops [| H.Option.valueStatic "a" |] [| Tree.ops.Text "A" |]
+                        H.option Tree.ops [| H.Option.valueStatic "b" |] [| Tree.ops.Text "B" |]
+                    |]
+            |]
 
     let mounted =
         mount graph None ignore host None (fun ctx -> Tree.run view ctx.Backend)
@@ -162,7 +162,7 @@ let private tagsAndSelect () =
 
 let private portable () =
     let view =
-        H.div Tree.ops [ Typed.id "generated" ] [ H.option Tree.ops [] [ Tree.ops.Text "<&" ] ]
+        H.div Tree.ops [| Typed.id "generated" |] [| H.option Tree.ops [||] [| Tree.ops.Text "<&" |] |]
 
     equal "<div id=\"generated\"><option>&lt;&amp;</option></div>" (Html.render Reject (Tree.run view))
 
@@ -173,13 +173,13 @@ let private expandedElements () =
     let view =
         H.article
             Tree.ops
-            [ H.Properties.HTMLElement.titleStatic "expanded" ]
-            [
-                H.br Tree.ops []
-                H.img Tree.ops [ H.Img.altStatic "sample" ]
-                H.textarea Tree.ops [ H.Textarea.rowsStatic 3. ] []
-                H.template Tree.ops [] [ H.span Tree.ops [] [ Tree.ops.Text "inert" ] ]
-            ]
+            [| H.Properties.HTMLElement.titleStatic "expanded" |]
+            [|
+                H.br Tree.ops [||]
+                H.img Tree.ops [| H.Img.altStatic "sample" |]
+                H.textarea Tree.ops [| H.Textarea.rowsStatic 3. |] [||]
+                H.template Tree.ops [||] [| H.span Tree.ops [||] [| Tree.ops.Text "inert" |] |]
+            |]
 
     let mounted =
         mount graph None ignore host None (fun ctx -> Tree.run view ctx.Backend)
@@ -200,12 +200,12 @@ let private expandedPortable () =
     let view =
         H.article
             Tree.ops
-            []
-            [
-                H.br Tree.ops []
-                H.img Tree.ops []
-                H.textarea Tree.ops [] [ Tree.ops.Text "<&" ]
-            ]
+            [||]
+            [|
+                H.br Tree.ops [||]
+                H.img Tree.ops [||]
+                H.textarea Tree.ops [||] [| Tree.ops.Text "<&" |]
+            |]
 
     equal "<article><br><img><textarea>&lt;&amp;</textarea></article>" (Html.render Reject (Tree.run view))
 
@@ -223,7 +223,7 @@ let private expandedPortable () =
         let mutable rejected = false
 
         try
-            Html.render Reject (Tree.run (Tree.ops.Element (HtmlTag tag) [] [ Tree.ops.Text "<&" ]))
+            Html.render Reject (Tree.run (Tree.ops.Element (HtmlTag tag) [||] [| Tree.ops.Text "<&" |]))
             |> ignore
         with :? System.InvalidOperationException ->
             rejected <- true
@@ -236,7 +236,7 @@ let private leadingNewlineRoundtrip (ops: Operations<'view>) run =
     for tag in [ "pre"; "textarea"; "listing" ] do
         for text in [ "\nhello"; "\r\nhello" ] do
             let view =
-                ops.Element (HtmlTag tag) [] [ ops.Text ""; ops.Bind (=) (fun () -> text) ]
+                ops.Element (HtmlTag tag) [||] [| ops.Text ""; ops.Bind (=) (fun () -> text) |]
 
             let parsed, direct = Dom.element "section" [] [], Dom.element "section" [] []
             let mounted = mount graph None ignore direct None (fun ctx -> run view ctx.Backend)

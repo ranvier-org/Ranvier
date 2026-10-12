@@ -8,14 +8,6 @@ type Tag =
     | Option
     | HtmlTag of string
 
-type Token =
-    | Attribute of string * string
-    | OptionalAttribute of string * string option
-    | ReactiveAttribute of string * (unit -> string option)
-    | InputValue of string
-    | Browser of (obj -> (unit -> unit))
-    | ReactiveProperty of (obj -> (unit -> obj) * (obj -> unit))
-
 type BrowserPolicy =
     | Reject
     | Omit
@@ -25,18 +17,55 @@ type Setup = { OnCleanup: (unit -> unit) -> unit }
 [<AbstractClass>]
 type Backend() =
     abstract Text: string -> unit
-    abstract Element: Tag * Token list * (unit -> unit) -> unit
+    abstract Element: Tag * (Backend -> unit) array * (unit -> unit) -> unit
+    /// <summary>Sets an attribute on the element currently receiving modifiers.</summary>
+    abstract Attribute: string * string -> unit
+    /// <summary>Sets or removes an attribute on the element currently receiving modifiers.</summary>
+    abstract OptionalAttribute: string * string option -> unit
+    /// <summary>Binds an attribute reader to the element currently receiving modifiers.</summary>
+    abstract ReactiveAttribute: string * (unit -> string option) -> unit
+    /// <summary>Sets the live input value of the element currently receiving modifiers.</summary>
+    abstract InputValue: string -> unit
+    /// <summary>Acquires browser resources for the element currently receiving modifiers.</summary>
+    abstract Browser: (obj -> (unit -> unit)) -> unit
+    /// <summary>Applies a static property writer to the element currently receiving modifiers.</summary>
+    abstract Property: (obj -> unit) -> unit
+    /// <summary>Binds a property reader and target-aware writer to the element currently receiving modifiers.</summary>
+    abstract ReactiveProperty: (unit -> obj) * (obj -> obj -> unit) -> unit
     abstract Bind: (string -> string -> bool) * (unit -> string) -> unit
     /// <summary>Interprets a keyed item snapshot and renders its items into this backend.</summary>
     abstract Keyed: (obj -> obj -> bool) * (unit -> (obj * obj) array) * ((unit -> obj) -> Backend -> unit) -> unit
     abstract Component: (Setup -> unit) -> unit
 
+/// <summary>Applies a modifier to the backend's current element.</summary>
+type ModifierAction = Backend -> unit
+
+/// <summary>Creates a static attribute modifier.</summary>
+let Attribute (key, value) : ModifierAction =
+    fun backend -> backend.Attribute (key, value)
+
+/// <summary>Creates an attribute modifier that removes its attribute for None.</summary>
+let OptionalAttribute (key, value) : ModifierAction =
+    fun backend -> backend.OptionalAttribute (key, value)
+
+/// <summary>Creates an attribute modifier from a tracked reader.</summary>
+let ReactiveAttribute (key, read) : ModifierAction =
+    fun backend -> backend.ReactiveAttribute (key, read)
+
+/// <summary>Creates a modifier for a live input value.</summary>
+let InputValue value : ModifierAction =
+    fun backend -> backend.InputValue value
+
+/// <summary>Creates a modifier that acquires browser resources and returns their cleanup.</summary>
+let browserModifier hook : ModifierAction =
+    fun backend -> backend.Browser hook
+
 type Operations<'view> =
     {
         Empty: 'view
         Text: string -> 'view
-        Fragment: 'view list -> 'view
-        Element: Tag -> Token list -> 'view list -> 'view
+        Fragment: 'view array -> 'view
+        Element: Tag -> ModifierAction array -> 'view array -> 'view
         Bind: (string -> string -> bool) -> (unit -> string) -> 'view
         /// <summary>Creates the internal keyed-list representation used by <c>Keyed.list</c>.</summary>
         Keyed: (obj -> obj -> bool) -> (unit -> (obj * obj) array) -> ((unit -> obj) -> 'view) -> 'view
@@ -135,8 +164,8 @@ module Tree =
         private
         | Empty
         | Text of string
-        | Fragment of View list
-        | Element of Tag * Token list * View list
+        | Fragment of View array
+        | Element of Tag * ModifierAction array * View array
         | Bind of (string -> string -> bool) * (unit -> string)
         | Keyed of (obj -> obj -> bool) * (unit -> (obj * obj) array) * ((unit -> obj) -> View)
         | Component of (Setup -> View)
@@ -172,37 +201,68 @@ module Tree =
         }
 
 module Program =
-#if FABLE_COMPILER
-    [<Fable.Core.Erase>]
-#endif
-    type View = private View of (Backend -> unit)
+    /// <summary>Builds a reusable view through its target backend.</summary>
+    type View = delegate of Backend -> unit
 
-    let run (View build) backend =
-        build backend
+    let inline run (build: View) (backend: Backend) =
+        build.Invoke backend
+
+    /// <summary>Builds fixed text.</summary>
+    let inline text value : View =
+        View (fun backend -> backend.Text value)
+
+    /// <summary>Builds children in array order.</summary>
+    let inline fragment (children: View array) : View =
+        View (fun backend ->
+            for child in children do
+                child.Invoke backend)
+
+    /// <summary>Builds an element with its modifier and child arrays.</summary>
+    let inline element tag (modifiers: ModifierAction array) (children: View array) : View =
+        View (fun backend ->
+            backend.Element (
+                tag,
+                modifiers,
+                fun () ->
+                    for child in children do
+                        child.Invoke backend
+            ))
+
+    /// <summary>Builds text from a tracked reader.</summary>
+    let inline bind equals read : View =
+        View (fun backend -> backend.Bind (equals, read))
+
+    /// <summary>Runs setup once for each mounted component instance.</summary>
+    let inline createComponent (setup: Setup -> View) : View =
+        View (fun backend -> backend.Component (fun context -> (setup context).Invoke backend))
 
     let ops =
         {
             Empty = View ignore
-            Text = fun value -> View (fun backend -> backend.Text value)
-            Fragment =
-                fun children ->
-                    View (fun backend ->
-                        for child in children do
-                            run child backend)
-            Element =
-                fun tag tokens children ->
-                    View (fun backend ->
-                        backend.Element (
-                            tag,
-                            tokens,
-                            fun () ->
-                                for child in children do
-                                    run child backend
-                        ))
-            Bind = fun equals read -> View (fun backend -> backend.Bind (equals, read))
-            Keyed = fun equals read render -> View (fun backend -> backend.Keyed (equals, read, fun current target -> run (render current) target))
-            Component = fun setup -> View (fun backend -> backend.Component (fun context -> run (setup context) backend))
+            Text = text
+            Fragment = fragment
+            Element = element
+            Bind = bind
+            Keyed = fun equals read render -> View (fun backend -> backend.Keyed (equals, read, fun current target -> (render current).Invoke target))
+            Component = createComponent
         }
+
+let private validNameCharacters underscore (value: string) =
+    let mutable valid = true
+    let mutable index = 0
+
+    while valid && index < value.Length do
+        let c = value[index]
+
+        valid <-
+            (c >= 'a' && c <= 'z')
+            || (c >= '0' && c <= '9')
+            || c = '-'
+            || (underscore && c = '_')
+
+        index <- index + 1
+
+    valid
 
 let name =
     function
@@ -216,13 +276,7 @@ let name =
             System.String.IsNullOrEmpty value
             || value[0] < 'a'
             || value[0] > 'z'
-            || not (
-                value
-                |> String.forall (fun c ->
-                    (c >= 'a' && c <= 'z')
-                    || (c >= '0' && c <= '9')
-                    || c = '-')
-            )
+            || not (validNameCharacters false value)
         then
             invalidArg "tag" "HTML tag names must contain lowercase letters, digits or hyphens"
 
@@ -253,14 +307,7 @@ let validateAttribute name =
         || name[0] > 'z'
         || name.StartsWith ("on", System.StringComparison.Ordinal)
         || name = "srcdoc"
-        || not (
-            name
-            |> String.forall (fun c ->
-                (c >= 'a' && c <= 'z')
-                || (c >= '0' && c <= '9')
-                || c = '-'
-                || c = '_')
-        )
+        || not (validNameCharacters true name)
     then
         raise (System.ArgumentException ("Attribute names must be lowercase and cannot contain event handlers or raw document content", "name"))
 
@@ -277,6 +324,56 @@ module Html =
     let render policy build =
         let output = System.Text.StringBuilder ()
         let mutable leadingLineFeed = false
+
+        let mutable attributeTarget: System.Collections.Generic.Dictionary<string, string> =
+            Unchecked.defaultof<_>
+
+        let mutable attributeKeys: ResizeArray<string> = Unchecked.defaultof<_>
+        let mutable attributeTag = Div
+
+        let ensureAttributes () =
+            if isNull (box attributeTarget) then
+                invalidOp "Element modifiers require an active element"
+
+        let set key value =
+            ensureAttributes ()
+
+            if not (attributeKeys.Contains key) then
+                attributeKeys.Add key
+
+            attributeTarget[key] <- value
+
+        let setOptional key value =
+            ensureAttributes ()
+            validateAttribute key
+
+            match value with
+            | Some value -> set key value
+            | None ->
+                attributeTarget.Remove key |> ignore
+                attributeKeys.Remove key |> ignore
+
+        let applyModifiers (backend: Backend) tag attributes keys modifiers =
+            let previousTarget = attributeTarget
+            let previousKeys = attributeKeys
+            let previousTag = attributeTag
+            attributeTarget <- attributes
+            attributeKeys <- keys
+            attributeTag <- tag
+
+            try
+                for apply in modifiers do
+                    apply backend
+            finally
+                attributeTarget <- previousTarget
+                attributeKeys <- previousKeys
+                attributeTag <- previousTag
+
+        let browserCapability () =
+            ensureAttributes ()
+
+            if policy = Reject then
+                invalidOp "Browser capability requires explicit Omit policy"
 
         let append (value: string) =
             if leadingLineFeed && value.Length > 0 then
@@ -302,7 +399,36 @@ module Html =
                     for _, item in items do
                         render (fun () -> item) this
 
-                member _.Element(tag, tokens, children) =
+                member _.Attribute(key, value) =
+                    validateAttribute key
+                    set key value
+
+                member _.OptionalAttribute(key, value) =
+                    setOptional key value
+
+                member _.ReactiveAttribute(key, read) =
+                    ensureAttributes ()
+                    validateAttribute key
+                    setOptional key (read ())
+
+                member _.InputValue value =
+                    ensureAttributes ()
+
+                    if attributeTag <> Input then
+                        invalidArg "modifiers" "Input value requires input"
+
+                    set "value" value
+
+                member _.Browser _ =
+                    browserCapability ()
+
+                member _.Property _ =
+                    browserCapability ()
+
+                member _.ReactiveProperty(_, _) =
+                    browserCapability ()
+
+                member this.Element(tag, modifiers, children) =
                     if
                         match name tag with
                         | "script"
@@ -321,39 +447,7 @@ module Html =
                     let attributes = System.Collections.Generic.Dictionary<string, string>()
                     let keys = ResizeArray<string>()
 
-                    let set key value =
-                        if not (keys.Contains key) then
-                            keys.Add key
-
-                        attributes[key] <- value
-
-                    let setOptional key value =
-                        validateAttribute key
-
-                        match value with
-                        | Some value -> set key value
-                        | None ->
-                            attributes.Remove key |> ignore
-                            keys.Remove key |> ignore
-
-                    for token in tokens do
-                        match token with
-                        | Attribute (key, value) ->
-                            validateAttribute key
-                            set key value
-                        | OptionalAttribute (key, value) -> setOptional key value
-                        | ReactiveAttribute (key, read) ->
-                            validateAttribute key
-                            setOptional key (read ())
-                        | InputValue value ->
-                            if tag <> Input then
-                                invalidArg "tokens" "Input value requires input"
-
-                            set "value" value
-                        | Browser _
-                        | ReactiveProperty _ ->
-                            if policy = Reject then
-                                invalidOp "Browser capability requires explicit Omit policy"
+                    applyModifiers this tag attributes keys modifiers
 
                     for key in keys do
                         match attributes.TryGetValue key with
@@ -410,17 +504,19 @@ module Html =
         output.ToString ()
 
 type FragmentBuilder<'view>(ops: Operations<'view>) =
-    member _.Yield(view: 'view) = [ view ]
-    member _.YieldFrom(views: 'view list) = views
-    member _.Zero() = []
+    member _.Yield(view: 'view) =
+        [| view |]
+
+    member _.YieldFrom(views: 'view array) = views
+    member _.Zero() = [||]
 
     member _.Combine(left, right) =
-        left @ right
+        Array.append left right
 
-    member _.Delay(body: unit -> 'view list) = body ()
+    member _.Delay(body: unit -> 'view array) = body ()
 
     member _.Run(children) =
         ops.Fragment children
 
 let functionSugar (ops: Operations<'view>) text =
-    ops.Element Div [ Attribute ("title", "sample") ] [ ops.Text text ]
+    ops.Element Div [| Attribute ("title", "sample") |] [| ops.Text text |]
