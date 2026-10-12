@@ -9619,6 +9619,556 @@ module Attrs =
         let valueReactive<'native when 'native :> Dom.HTMLOptionElement> (read: unit -> string option) : Typed.Modifier<'native> =
             Typed.reactiveAttribute "value" read
 
+module Authoring =
+    type Attrs =
+        static member inline ``id``<'native when 'native :> Dom.HTMLElement>(value: string) : Typed.Modifier<'native> =
+            Typed.attribute "id" value
+
+        static member inline ``id``<'native when 'native :> Dom.HTMLElement>(read: unit -> string) : Typed.Modifier<'native> =
+            Typed.reactiveAttribute "id" (fun () -> Some (read ()))
+
+        static member inline ``id``<'native when 'native :> Dom.HTMLElement>(source: global.Ranvier.Signal<string>) : Typed.Modifier<'native> =
+            if isNull (box source) then
+                raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+            let read () =
+                source.Value
+
+            Typed.reactiveAttribute "id" (fun () -> Some (read ()))
+
+        static member inline ``id``<'native when 'native :> Dom.HTMLElement>(source: global.Ranvier.Memo<string>) : Typed.Modifier<'native> =
+            if isNull (box source) then
+                raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+            let read () =
+                source.Value
+
+            Typed.reactiveAttribute "id" (fun () -> Some (read ()))
+
+        static member inline ``id``<'native when 'native :> Dom.HTMLElement>(value: string option) : Typed.Modifier<'native> =
+            Typed.optionalAttribute "id" value
+
+        static member inline ``id``<'native when 'native :> Dom.HTMLElement>(read: unit -> string option) : Typed.Modifier<'native> =
+            Typed.reactiveAttribute "id" read
+
+        static member inline ``id``<'native when 'native :> Dom.HTMLElement>(source: global.Ranvier.Signal<string option>) : Typed.Modifier<'native> =
+            if isNull (box source) then
+                raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+            let read () =
+                source.Value
+
+            Typed.reactiveAttribute "id" read
+
+        static member inline ``id``<'native when 'native :> Dom.HTMLElement>(source: global.Ranvier.Memo<string option>) : Typed.Modifier<'native> =
+            if isNull (box source) then
+                raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+            let read () =
+                source.Value
+
+            Typed.reactiveAttribute "id" read
+
+        static member inline ``className``<'native when 'native :> Dom.HTMLElement>(value: string) : Typed.Modifier<'native> =
+            Typed.attribute "class" value
+
+        static member inline ``className``<'native when 'native :> Dom.HTMLElement>(read: unit -> string) : Typed.Modifier<'native> =
+            Typed.reactiveAttribute "class" (fun () -> Some (read ()))
+
+        static member inline ``className``<'native when 'native :> Dom.HTMLElement>(source: global.Ranvier.Signal<string>) : Typed.Modifier<'native> =
+            if isNull (box source) then
+                raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+            let read () =
+                source.Value
+
+            Typed.reactiveAttribute "class" (fun () -> Some (read ()))
+
+        static member inline ``className``<'native when 'native :> Dom.HTMLElement>(source: global.Ranvier.Memo<string>) : Typed.Modifier<'native> =
+            if isNull (box source) then
+                raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+            let read () =
+                source.Value
+
+            Typed.reactiveAttribute "class" (fun () -> Some (read ()))
+
+        static member inline ``className``<'native when 'native :> Dom.HTMLElement>(value: string option) : Typed.Modifier<'native> =
+            Typed.optionalAttribute "class" value
+
+        static member inline ``className``<'native when 'native :> Dom.HTMLElement>(read: unit -> string option) : Typed.Modifier<'native> =
+            Typed.reactiveAttribute "class" read
+
+        static member inline ``className``<'native when 'native :> Dom.HTMLElement>
+            (source: global.Ranvier.Signal<string option>)
+            : Typed.Modifier<'native> =
+            if isNull (box source) then
+                raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+            let read () =
+                source.Value
+
+            Typed.reactiveAttribute "class" read
+
+        static member inline ``className``<'native when 'native :> Dom.HTMLElement>
+            (source: global.Ranvier.Memo<string option>)
+            : Typed.Modifier<'native> =
+            if isNull (box source) then
+                raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+            let read () =
+                source.Value
+
+            Typed.reactiveAttribute "class" read
+
+        static member inline ``title``<'native when 'native :> Dom.HTMLElement>(value: string) : Typed.Modifier<'native> =
+            Typed.attribute "title" value
+
+        static member inline ``title``<'native when 'native :> Dom.HTMLElement>(read: unit -> string) : Typed.Modifier<'native> =
+            Typed.reactiveAttribute "title" (fun () -> Some (read ()))
+
+        static member inline ``title``<'native when 'native :> Dom.HTMLElement>(source: global.Ranvier.Signal<string>) : Typed.Modifier<'native> =
+            if isNull (box source) then
+                raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+            let read () =
+                source.Value
+
+            Typed.reactiveAttribute "title" (fun () -> Some (read ()))
+
+        static member inline ``title``<'native when 'native :> Dom.HTMLElement>(source: global.Ranvier.Memo<string>) : Typed.Modifier<'native> =
+            if isNull (box source) then
+                raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+            let read () =
+                source.Value
+
+            Typed.reactiveAttribute "title" (fun () -> Some (read ()))
+
+        static member inline ``title``<'native when 'native :> Dom.HTMLElement>(value: string option) : Typed.Modifier<'native> =
+            Typed.optionalAttribute "title" value
+
+        static member inline ``title``<'native when 'native :> Dom.HTMLElement>(read: unit -> string option) : Typed.Modifier<'native> =
+            Typed.reactiveAttribute "title" read
+
+        static member inline ``title``<'native when 'native :> Dom.HTMLElement>
+            (source: global.Ranvier.Signal<string option>)
+            : Typed.Modifier<'native> =
+            if isNull (box source) then
+                raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+            let read () =
+                source.Value
+
+            Typed.reactiveAttribute "title" read
+
+        static member inline ``title``<'native when 'native :> Dom.HTMLElement>
+            (source: global.Ranvier.Memo<string option>)
+            : Typed.Modifier<'native> =
+            if isNull (box source) then
+                raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+            let read () =
+                source.Value
+
+            Typed.reactiveAttribute "title" read
+
+        static member inline ``ariaBusy``<'native when 'native :> Dom.HTMLElement>(value: bool) : Typed.Modifier<'native> =
+            Typed.ariaBooleanAttribute "aria-busy" value
+
+        static member inline ``ariaBusy``<'native when 'native :> Dom.HTMLElement>(read: unit -> bool) : Typed.Modifier<'native> =
+            Typed.reactiveAriaBooleanAttribute "aria-busy" (fun () -> Some (read ()))
+
+        static member inline ``ariaBusy``<'native when 'native :> Dom.HTMLElement>(source: global.Ranvier.Signal<bool>) : Typed.Modifier<'native> =
+            if isNull (box source) then
+                raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+            let read () =
+                source.Value
+
+            Typed.reactiveAriaBooleanAttribute "aria-busy" (fun () -> Some (read ()))
+
+        static member inline ``ariaBusy``<'native when 'native :> Dom.HTMLElement>(source: global.Ranvier.Memo<bool>) : Typed.Modifier<'native> =
+            if isNull (box source) then
+                raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+            let read () =
+                source.Value
+
+            Typed.reactiveAriaBooleanAttribute "aria-busy" (fun () -> Some (read ()))
+
+        static member inline ``ariaBusy``<'native when 'native :> Dom.HTMLElement>(value: bool option) : Typed.Modifier<'native> =
+            Typed.optionalAttribute
+                "aria-busy"
+                (value
+                 |> Option.map (fun enabled -> if enabled then "true" else "false"))
+
+        static member inline ``ariaBusy``<'native when 'native :> Dom.HTMLElement>(read: unit -> bool option) : Typed.Modifier<'native> =
+            Typed.reactiveAriaBooleanAttribute "aria-busy" read
+
+        static member inline ``ariaBusy``<'native when 'native :> Dom.HTMLElement>
+            (source: global.Ranvier.Signal<bool option>)
+            : Typed.Modifier<'native> =
+            if isNull (box source) then
+                raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+            let read () =
+                source.Value
+
+            Typed.reactiveAriaBooleanAttribute "aria-busy" read
+
+        static member inline ``ariaBusy``<'native when 'native :> Dom.HTMLElement>
+            (source: global.Ranvier.Memo<bool option>)
+            : Typed.Modifier<'native> =
+            if isNull (box source) then
+                raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+            let read () =
+                source.Value
+
+            Typed.reactiveAriaBooleanAttribute "aria-busy" read
+
+    module Attrs =
+        type Button =
+            static member inline ``disabled``<'native when 'native :> Dom.HTMLButtonElement>(value: bool) : Typed.Modifier<'native> =
+                Typed.booleanAttribute "disabled" value
+
+            static member inline ``disabled``<'native when 'native :> Dom.HTMLButtonElement>(read: unit -> bool) : Typed.Modifier<'native> =
+                Typed.reactiveBooleanAttribute "disabled" read
+
+            static member inline ``disabled``<'native when 'native :> Dom.HTMLButtonElement>
+                (source: global.Ranvier.Signal<bool>)
+                : Typed.Modifier<'native> =
+                if isNull (box source) then
+                    raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+                let read () =
+                    source.Value
+
+                Typed.reactiveBooleanAttribute "disabled" read
+
+            static member inline ``disabled``<'native when 'native :> Dom.HTMLButtonElement>
+                (source: global.Ranvier.Memo<bool>)
+                : Typed.Modifier<'native> =
+                if isNull (box source) then
+                    raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+                let read () =
+                    source.Value
+
+                Typed.reactiveBooleanAttribute "disabled" read
+
+            static member inline ``type``<'native when 'native :> Dom.HTMLButtonElement>(value: string) : Typed.Modifier<'native> =
+                Typed.attribute "type" value
+
+            static member inline ``type``<'native when 'native :> Dom.HTMLButtonElement>(read: unit -> string) : Typed.Modifier<'native> =
+                Typed.reactiveAttribute "type" (fun () -> Some (read ()))
+
+            static member inline ``type``<'native when 'native :> Dom.HTMLButtonElement>
+                (source: global.Ranvier.Signal<string>)
+                : Typed.Modifier<'native> =
+                if isNull (box source) then
+                    raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+                let read () =
+                    source.Value
+
+                Typed.reactiveAttribute "type" (fun () -> Some (read ()))
+
+            static member inline ``type``<'native when 'native :> Dom.HTMLButtonElement>
+                (source: global.Ranvier.Memo<string>)
+                : Typed.Modifier<'native> =
+                if isNull (box source) then
+                    raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+                let read () =
+                    source.Value
+
+                Typed.reactiveAttribute "type" (fun () -> Some (read ()))
+
+            static member inline ``type``<'native when 'native :> Dom.HTMLButtonElement>(value: string option) : Typed.Modifier<'native> =
+                Typed.optionalAttribute "type" value
+
+            static member inline ``type``<'native when 'native :> Dom.HTMLButtonElement>(read: unit -> string option) : Typed.Modifier<'native> =
+                Typed.reactiveAttribute "type" read
+
+            static member inline ``type``<'native when 'native :> Dom.HTMLButtonElement>
+                (source: global.Ranvier.Signal<string option>)
+                : Typed.Modifier<'native> =
+                if isNull (box source) then
+                    raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+                let read () =
+                    source.Value
+
+                Typed.reactiveAttribute "type" read
+
+            static member inline ``type``<'native when 'native :> Dom.HTMLButtonElement>
+                (source: global.Ranvier.Memo<string option>)
+                : Typed.Modifier<'native> =
+                if isNull (box source) then
+                    raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+                let read () =
+                    source.Value
+
+                Typed.reactiveAttribute "type" read
+
+        type Input =
+            static member inline ``value``<'native when 'native :> Dom.HTMLInputElement>(value: string) : Typed.Modifier<'native> =
+                Typed.attribute "value" value
+
+            static member inline ``value``<'native when 'native :> Dom.HTMLInputElement>(read: unit -> string) : Typed.Modifier<'native> =
+                Typed.reactiveAttribute "value" (fun () -> Some (read ()))
+
+            static member inline ``value``<'native when 'native :> Dom.HTMLInputElement>
+                (source: global.Ranvier.Signal<string>)
+                : Typed.Modifier<'native> =
+                if isNull (box source) then
+                    raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+                let read () =
+                    source.Value
+
+                Typed.reactiveAttribute "value" (fun () -> Some (read ()))
+
+            static member inline ``value``<'native when 'native :> Dom.HTMLInputElement>
+                (source: global.Ranvier.Memo<string>)
+                : Typed.Modifier<'native> =
+                if isNull (box source) then
+                    raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+                let read () =
+                    source.Value
+
+                Typed.reactiveAttribute "value" (fun () -> Some (read ()))
+
+            static member inline ``value``<'native when 'native :> Dom.HTMLInputElement>(value: string option) : Typed.Modifier<'native> =
+                Typed.optionalAttribute "value" value
+
+            static member inline ``value``<'native when 'native :> Dom.HTMLInputElement>(read: unit -> string option) : Typed.Modifier<'native> =
+                Typed.reactiveAttribute "value" read
+
+            static member inline ``value``<'native when 'native :> Dom.HTMLInputElement>
+                (source: global.Ranvier.Signal<string option>)
+                : Typed.Modifier<'native> =
+                if isNull (box source) then
+                    raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+                let read () =
+                    source.Value
+
+                Typed.reactiveAttribute "value" read
+
+            static member inline ``value``<'native when 'native :> Dom.HTMLInputElement>
+                (source: global.Ranvier.Memo<string option>)
+                : Typed.Modifier<'native> =
+                if isNull (box source) then
+                    raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+                let read () =
+                    source.Value
+
+                Typed.reactiveAttribute "value" read
+
+            static member inline ``checked``<'native when 'native :> Dom.HTMLInputElement>(value: bool) : Typed.Modifier<'native> =
+                Typed.booleanAttribute "checked" value
+
+            static member inline ``checked``<'native when 'native :> Dom.HTMLInputElement>(read: unit -> bool) : Typed.Modifier<'native> =
+                Typed.reactiveBooleanAttribute "checked" read
+
+            static member inline ``checked``<'native when 'native :> Dom.HTMLInputElement>
+                (source: global.Ranvier.Signal<bool>)
+                : Typed.Modifier<'native> =
+                if isNull (box source) then
+                    raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+                let read () =
+                    source.Value
+
+                Typed.reactiveBooleanAttribute "checked" read
+
+            static member inline ``checked``<'native when 'native :> Dom.HTMLInputElement>
+                (source: global.Ranvier.Memo<bool>)
+                : Typed.Modifier<'native> =
+                if isNull (box source) then
+                    raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+                let read () =
+                    source.Value
+
+                Typed.reactiveBooleanAttribute "checked" read
+
+            static member inline ``placeholder``<'native when 'native :> Dom.HTMLInputElement>(value: string) : Typed.Modifier<'native> =
+                Typed.attribute "placeholder" value
+
+            static member inline ``placeholder``<'native when 'native :> Dom.HTMLInputElement>(read: unit -> string) : Typed.Modifier<'native> =
+                Typed.reactiveAttribute "placeholder" (fun () -> Some (read ()))
+
+            static member inline ``placeholder``<'native when 'native :> Dom.HTMLInputElement>
+                (source: global.Ranvier.Signal<string>)
+                : Typed.Modifier<'native> =
+                if isNull (box source) then
+                    raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+                let read () =
+                    source.Value
+
+                Typed.reactiveAttribute "placeholder" (fun () -> Some (read ()))
+
+            static member inline ``placeholder``<'native when 'native :> Dom.HTMLInputElement>
+                (source: global.Ranvier.Memo<string>)
+                : Typed.Modifier<'native> =
+                if isNull (box source) then
+                    raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+                let read () =
+                    source.Value
+
+                Typed.reactiveAttribute "placeholder" (fun () -> Some (read ()))
+
+            static member inline ``placeholder``<'native when 'native :> Dom.HTMLInputElement>(value: string option) : Typed.Modifier<'native> =
+                Typed.optionalAttribute "placeholder" value
+
+            static member inline ``placeholder``<'native when 'native :> Dom.HTMLInputElement>
+                (read: unit -> string option)
+                : Typed.Modifier<'native> =
+                Typed.reactiveAttribute "placeholder" read
+
+            static member inline ``placeholder``<'native when 'native :> Dom.HTMLInputElement>
+                (source: global.Ranvier.Signal<string option>)
+                : Typed.Modifier<'native> =
+                if isNull (box source) then
+                    raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+                let read () =
+                    source.Value
+
+                Typed.reactiveAttribute "placeholder" read
+
+            static member inline ``placeholder``<'native when 'native :> Dom.HTMLInputElement>
+                (source: global.Ranvier.Memo<string option>)
+                : Typed.Modifier<'native> =
+                if isNull (box source) then
+                    raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+                let read () =
+                    source.Value
+
+                Typed.reactiveAttribute "placeholder" read
+
+    module Props =
+        type Element =
+            static member inline ``title``<'native when 'native :> Dom.HTMLElement>(value: string) : Typed.Modifier<'native> =
+                Properties.HTMLElement.titleStatic value
+
+            static member inline ``title``<'native when 'native :> Dom.HTMLElement>(read: unit -> string) : Typed.Modifier<'native> =
+                Properties.HTMLElement.titleReactive read
+
+            static member inline ``title``<'native when 'native :> Dom.HTMLElement>(source: global.Ranvier.Signal<string>) : Typed.Modifier<'native> =
+                if isNull (box source) then
+                    raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+                let read () =
+                    source.Value
+
+                Properties.HTMLElement.titleReactive read
+
+            static member inline ``title``<'native when 'native :> Dom.HTMLElement>(source: global.Ranvier.Memo<string>) : Typed.Modifier<'native> =
+                if isNull (box source) then
+                    raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+                let read () =
+                    source.Value
+
+                Properties.HTMLElement.titleReactive read
+
+        type Input =
+            static member inline ``value``<'native when 'native :> Dom.HTMLInputElement>(value: string) : Typed.Modifier<'native> =
+                Properties.HTMLInputElement.valueStatic value
+
+            static member inline ``value``<'native when 'native :> Dom.HTMLInputElement>(read: unit -> string) : Typed.Modifier<'native> =
+                Properties.HTMLInputElement.valueReactive read
+
+            static member inline ``value``<'native when 'native :> Dom.HTMLInputElement>
+                (source: global.Ranvier.Signal<string>)
+                : Typed.Modifier<'native> =
+                if isNull (box source) then
+                    raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+                let read () =
+                    source.Value
+
+                Properties.HTMLInputElement.valueReactive read
+
+            static member inline ``value``<'native when 'native :> Dom.HTMLInputElement>
+                (source: global.Ranvier.Memo<string>)
+                : Typed.Modifier<'native> =
+                if isNull (box source) then
+                    raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+                let read () =
+                    source.Value
+
+                Properties.HTMLInputElement.valueReactive read
+
+            static member inline ``checked``<'native when 'native :> Dom.HTMLInputElement>(value: bool) : Typed.Modifier<'native> =
+                Properties.HTMLInputElement.checkedStatic value
+
+            static member inline ``checked``<'native when 'native :> Dom.HTMLInputElement>(read: unit -> bool) : Typed.Modifier<'native> =
+                Properties.HTMLInputElement.checkedReactive read
+
+            static member inline ``checked``<'native when 'native :> Dom.HTMLInputElement>
+                (source: global.Ranvier.Signal<bool>)
+                : Typed.Modifier<'native> =
+                if isNull (box source) then
+                    raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+                let read () =
+                    source.Value
+
+                Properties.HTMLInputElement.checkedReactive read
+
+            static member inline ``checked``<'native when 'native :> Dom.HTMLInputElement>
+                (source: global.Ranvier.Memo<bool>)
+                : Typed.Modifier<'native> =
+                if isNull (box source) then
+                    raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+                let read () =
+                    source.Value
+
+                Properties.HTMLInputElement.checkedReactive read
+
+        type Button =
+            static member inline ``disabled``<'native when 'native :> Dom.HTMLButtonElement>(value: bool) : Typed.Modifier<'native> =
+                Properties.HTMLButtonElement.disabledStatic value
+
+            static member inline ``disabled``<'native when 'native :> Dom.HTMLButtonElement>(read: unit -> bool) : Typed.Modifier<'native> =
+                Properties.HTMLButtonElement.disabledReactive read
+
+            static member inline ``disabled``<'native when 'native :> Dom.HTMLButtonElement>
+                (source: global.Ranvier.Signal<bool>)
+                : Typed.Modifier<'native> =
+                if isNull (box source) then
+                    raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+                let read () =
+                    source.Value
+
+                Properties.HTMLButtonElement.disabledReactive read
+
+            static member inline ``disabled``<'native when 'native :> Dom.HTMLButtonElement>
+                (source: global.Ranvier.Memo<bool>)
+                : Typed.Modifier<'native> =
+                if isNull (box source) then
+                    raise (System.ArgumentException ("A reactive source cannot be null", "source"))
+
+                let read () =
+                    source.Value
+
+                Properties.HTMLButtonElement.disabledReactive read
+
 module Program =
     let inline ``a``
         (modifiers: Typed.Modifier<Dom.HTMLAnchorElement> list)

@@ -1,6 +1,8 @@
 {
   "attributeCount": 34,
   "attributePolicySha256": "80b960cf159b4358ed69db43f71ae5e4d11c0b31d9b77ffa5e782b528e7c3233",
+  "authoringHelperCount": 13,
+  "authoringPolicySha256": "bdfb966e675a1c776a157c7c294732d4a8daee6de6601b0d0c2e8aa188ab16c5",
   "omissions": [
     {
       "memberName": "ariaActiveDescendantElement",

@@ -19,4 +19,6 @@ test("authoring helpers inline into the existing operations", () => {
   const html = readFileSync(new URL("../generated-tests/experiments/Ranvier.View.Foundation/Generated/Html.js", import.meta.url), "utf8");
   assert.doesNotMatch(authoring, /export function /);
   assert.doesNotMatch(html, /export function Program_/);
+  const checks = readFileSync(new URL("../generated-tests/AuthoringChecks.js", import.meta.url), "utf8");
+  assert.doesNotMatch(checks, /\bAuthoring_(?:Attrs|Props)/);
 });

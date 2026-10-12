@@ -13,6 +13,8 @@ with tempfile.TemporaryDirectory() as folder:
         assert result.returncode == 0, result.stdout + result.stderr
     assert first.read_bytes() == second.read_bytes(), "regeneration must be byte-identical"
     text = first.read_text()
+    assert "module Authoring =" in text, "generate overloaded authoring helpers"
+    assert "static member inline" in text
     assert "module Program =" in text, "generate the bound Program element authoring surface"
     program = text.split("module Program =", 1)[1]
     assert program.count("let inline ") == 112, "every HTML tag needs one inline Program constructor"
@@ -30,6 +32,8 @@ with tempfile.TemporaryDirectory() as folder:
     assert first.with_suffix(".coverage.json").read_bytes() == second.with_suffix(".coverage.json").read_bytes()
     assert any("unsupported type" in item["reason"] for item in coverage["omissions"])
     assert coverage["attributeCount"] == 34
+    assert coverage["authoringHelperCount"] == 13
+    assert coverage["authoringPolicySha256"]
     assert coverage["attributePolicySha256"]
     assert "module Attrs =" in text and "let classReactive" in text
     assert "Typed.reactiveBooleanAttribute \"disabled\"" in text
@@ -56,4 +60,16 @@ with tempfile.TemporaryDirectory() as folder:
             assert first.read_bytes() == second.read_bytes(), "invalid policy must preserve existing output"
     finally:
         policy_path.write_bytes(original_policy)
+    authoring_path = root / "authoring.json"
+    original_authoring = authoring_path.read_bytes()
+    try:
+        for name in ("files", "form", "missingMember"):
+            policy = json.loads(original_authoring)
+            policy["properties"][1]["members"] = [name]
+            authoring_path.write_text(json.dumps(policy), encoding="utf-8")
+            result = subprocess.run(["rtk", "dotnet", "run", "--project", str(root / "Ranvier.Dom.Generate.fsproj"), "-c", "Release", "--no-build", "--", str(first)], capture_output=True, text=True)
+            assert result.returncode != 0, "unsafe, readonly and missing properties must be rejected"
+            assert first.read_bytes() == second.read_bytes(), "invalid authoring policy must preserve existing output"
+    finally:
+        authoring_path.write_bytes(original_authoring)
 print("PASS: deterministic full HTML output and coverage, typed native members/events, policy exclusions, corrupt catalogue rejection")

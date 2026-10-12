@@ -4,9 +4,10 @@ open global.Ranvier
 open Ranvier.View.Foundation.Authoring
 open Ranvier.View.Foundation.Components
 open Ranvier.View.Foundation.Representation
+open Ranvier.View.Foundation.Generated.Html.Authoring
+open Fable.Core.TS.Dom
 
 module Html = Ranvier.View.Foundation.Generated.Html.Program
-module Attr = Ranvier.View.Foundation.Generated.Html.Attrs
 module Events = Ranvier.View.Foundation.Generated.Html.Events
 
 /// <summary>Inputs to a counter instance, including its reactive label and projected child views.</summary>
@@ -26,15 +27,19 @@ let counter props =
             let count = Api.createSignal props.InitialCount
 
             Html.article
-                [ Attr.idStatic props.Id; Attr.classStatic "panel" ]
+                [
+                    Attrs.id props.Id
+                    Attrs.className "panel"
+                    Attrs.title (fun () -> Prop.read props.Label)
+                ]
                 [
                     Html.h2 [] [ propText props.Label ]
-                    Html.output [ Attr.idStatic (props.Id + "-count"); Attr.classStatic "count" ] [ reactiveText (fun () -> string count.Value) ]
+                    Html.output [ Attrs.id (props.Id + "-count"); Attrs.className "count" ] [ reactiveText (fun () -> string count.Value) ]
                     Html.button
                         [
-                            Attr.idStatic (props.Id + "-increment")
-                            Attr.classStatic "primary"
-                            Attr.Button.typeStatic "button"
+                            Attrs.id (props.Id + "-increment")
+                            Attrs.className "primary"
+                            Attrs.Button.``type`` "button"
                             Events.onClick (fun _ ->
                                 count.Value <- count.Value + 1
                                 props.Changed count.Value)
@@ -50,21 +55,30 @@ let view () =
         (fun _ () ->
             let label = Api.createSignal "Shared label"
             let changed = Api.createSignal "No changes yet"
+            let renamed = Api.createMemo (fun _ -> label.Value = "Renamed")
 
             Html.section
-                [ Attr.idStatic "component-example" ]
+                [ Attrs.id "component-example" ]
                 [
                     Html.h2 [] [ text "Reusable components" ]
+                    Html.input
+                        [
+                            Attrs.id "component-label"
+                            Attrs.Input.placeholder "Shared label"
+                            Props.Input.value label
+                            Events.onInput (fun event -> label.Value <- (unbox<HTMLInputElement> event.currentTarget.Value).value)
+                        ]
                     Html.button
                         [
-                            Attr.idStatic "component-rename"
-                            Attr.Button.typeStatic "button"
+                            Attrs.id "component-rename"
+                            Attrs.Button.``type`` "button"
+                            Props.Button.disabled renamed
                             Events.onClick (fun _ -> label.Value <- "Renamed")
                         ]
                         [ text "Rename both counters" ]
-                    Html.p [ Attr.idStatic "component-changed" ] [ reactiveText (fun () -> changed.Value) ]
+                    Html.p [ Attrs.id "component-changed" ] [ reactiveText (fun () -> changed.Value) ]
                     Html.div
-                        [ Attr.classStatic "demo-grid" ]
+                        [ Attrs.className "demo-grid" ]
                         [
                             counter
                                 {

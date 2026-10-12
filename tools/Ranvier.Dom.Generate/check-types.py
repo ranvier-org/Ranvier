@@ -9,6 +9,7 @@ prefix = """module GeneratedTypeCheck
 open Fable.Core.TS
 open Ranvier.View.Foundation.Representation
 module H = Ranvier.View.Foundation.Generated.Html
+open Ranvier.View.Foundation.Generated.Html.Authoring
 """
 examples = [
     ("valid helpers", "let view = H.div Tree.ops [ H.Properties.HTMLElement.titleStatic \"shared\"; H.Events.onClick (fun (_: Dom.PointerEvent) -> ()) ] [ H.input Tree.ops [ H.Input.checkedStatic true ]; H.select Tree.ops [] [ H.option Tree.ops [] [] ]; H.br Tree.ops [] ]", None),
@@ -28,6 +29,10 @@ examples = [
     ("bound input modifier rejects div", "let view = H.Program.div [ H.Input.checkedStatic true ] []", "FS0001"),
     ("bound void element rejects children", "let view = H.Program.br [] [ Program.ops.Text \"child\" ]", "FS0003"),
     ("bound Program rejects Tree children", "let view = H.Program.div [] [ Tree.ops.Text \"child\" ]", "FS0001"),
+    ("overload source shapes", "let view (signal: global.Ranvier.Signal<string>) (memo: global.Ranvier.Memo<string>) = H.Program.input [ Props.Input.value \"fixed\"; Props.Input.value (fun () -> \"read\"); Props.Input.value signal; Props.Input.value memo; Attrs.title signal; Attrs.Input.value (None: string option) ]", None),
+    ("overloaded input property rejects div", "let view = H.Program.div [ Props.Input.value \"input\" ] []", "FS0193"),
+    ("overloaded property rejects wrong source type", "let modifier (source: global.Ranvier.Signal<int>) = Props.Input.value source", "FS0041"),
+    ("overloaded attribute rejects wrong reader result", "let modifier = Attrs.title (fun () -> 123)", "FS0041"),
 ]
 
 with tempfile.TemporaryDirectory(prefix="ranvier-generated-types-") as directory:

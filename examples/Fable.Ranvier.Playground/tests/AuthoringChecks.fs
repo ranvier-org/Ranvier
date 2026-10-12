@@ -7,6 +7,7 @@ open Ranvier.View.Foundation
 open Ranvier.View.Foundation.Representation
 open Ranvier.View.Foundation.Components
 open Ranvier.View.Foundation.Authoring
+open Ranvier.View.Foundation.Generated.Html.Authoring
 
 module Html = Ranvier.View.Foundation.Generated.Html.Program
 module Attr = Ranvier.View.Foundation.Generated.Html.Attrs
@@ -104,8 +105,126 @@ let private portableAuthoring () =
 
     equal "<article class=\"panel\">&lt;&amp;<br><p>one</p><p>two</p>selected</article>" (Representation.Html.render Reject (Program.run view))
 
+let private overloadedModifiers () =
+    use graph = new Graph ()
+
+    let source, optional, busy =
+        graph.Run (fun () -> Api.createSignal "a", Api.createSignal (Some "default"), Api.createSignal (Some false))
+
+    let memo = graph.Run (fun () -> Api.createMemo (fun _ -> source.Value + "!"))
+    let disabled = graph.Run (fun () -> Api.createMemo (fun _ -> source.Value = "b"))
+    let mutable reads = 0
+
+    let read () =
+        reads <- reads + 1
+        source.Value
+
+    let values =
+        [
+            Props.Input.value "fixed"
+            Props.Input.value read
+            Props.Input.value source
+            Props.Input.value memo
+        ]
+
+    let titles: Typed.Modifier<HTMLInputElement> list =
+        [ Attrs.title "fixed"; Attrs.title read; Attrs.title source; Attrs.title memo ]
+
+    let view =
+        fragment
+            [
+                yield! List.map2 (fun value title -> Html.input [ value; title ]) values titles
+                Html.input [ Props.Input.value source; Attrs.Input.value optional; Attrs.ariaBusy busy ]
+                Html.button [ Props.Button.disabled disabled ] []
+            ]
+
+    equal 0 reads
+    let host = Dom.element "section" [] []
+
+    let mounted =
+        Mounting.mount graph None (fun errors -> failwithf "%A" errors) host None (fun context -> Program.run view context.Backend)
+
+    let inputs =
+        [
+            for i in 0..4 ->
+                host.querySelectorAll("input")[i]
+                |> unbox<HTMLInputElement>
+        ]
+
+    equal [ "fixed"; "a"; "a"; "a!"; "a" ] (inputs |> List.map _.value)
+
+    equal
+        [ Some "fixed"; Some "a"; Some "a"; Some "a!" ]
+        (inputs
+         |> List.take 4
+         |> List.map (fun input -> input.getAttribute "title"))
+
+    equal (Some "default") (inputs[4].getAttribute "value")
+    equal (Some "false") (inputs[4].getAttribute "aria-busy")
+    equal 2 reads
+
+    graph.Run (fun () ->
+        source.Value <- "b"
+        optional.Value <- None
+        busy.Value <- None)
+
+    equal [ "fixed"; "b"; "b"; "b!"; "b" ] (inputs |> List.map _.value)
+
+    equal
+        [ Some "fixed"; Some "b"; Some "b"; Some "b!" ]
+        (inputs
+         |> List.take 4
+         |> List.map (fun input -> input.getAttribute "title"))
+
+    equal None (inputs[4].getAttribute "value")
+    equal None (inputs[4].getAttribute "aria-busy")
+
+    equal
+        true
+        ((host.querySelector ("button")
+          |> unbox<HTMLButtonElement>)
+            .disabled)
+
+    equal 4 reads
+    mounted.Dispose ()
+    graph.Run (fun () -> source.Value <- "c")
+    equal 4 reads
+    equal "b" inputs[2].value
+
+let private portableOverloads () =
+    let mutable current = Some "<&"
+
+    let view =
+        Html.button
+            [
+                Attrs.title (fun () -> current)
+                Attrs.Button.disabled false
+                Attrs.ariaBusy false
+            ]
+            [ text "safe" ]
+
+    equal "<button title=\"&lt;&amp;\" aria-busy=\"false\">safe</button>" (Representation.Html.render Reject (Program.run view))
+    current <- None
+    equal "<button aria-busy=\"false\">safe</button>" (Representation.Html.render Reject (Program.run view))
+
+    for make in
+        [
+            (fun () -> Attrs.title (Unchecked.defaultof<Signal<string>>))
+            (fun () -> Attrs.title (Unchecked.defaultof<Memo<string>>))
+        ] do
+        let mutable rejected = false
+
+        try
+            make () |> ignore
+        with :? System.ArgumentException ->
+            rejected <- true
+
+        equal true rejected
+
 let cases =
     [|
         "authoring components retain independent state, reactive props and cleanup", mountedComponents
         "authoring elements, arrays and branches share the portable Program representation", portableAuthoring
+        "overloaded authoring preserves static values, tracked sources, removal and lifetime", overloadedModifiers
+        "overloaded attributes preserve escaped snapshots, boolean semantics and null-source rejection", portableOverloads
     |]

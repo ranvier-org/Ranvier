@@ -723,6 +723,184 @@ let generate compilerRoot packageRoot output =
             emit $"{indent}    Typed.{reactiveFunction} \"{attribute}\" read"
             emit ""
 
+    let authoringPath = Path.Combine (compilerRoot, "authoring.json")
+    use authoringPolicy = JsonDocument.Parse (File.ReadAllBytes authoringPath)
+    require (authoringPolicy.RootElement.GetProperty("schemaVersion").GetInt32() = 1) "Unsupported authoring policy schema"
+    let authoringCount = ref 0
+
+    let identifier (value: string) =
+        not (String.IsNullOrEmpty value)
+        && Char.IsAsciiLetter value[0]
+        && (value
+            |> Seq.forall (fun c -> Char.IsAsciiLetterOrDigit c || c = '_'))
+
+    let overloads indent helper native valueType staticExpression reactiveExpression =
+        let signature argument =
+            $"{indent}static member inline ``{helper}``<'native when 'native :> {native}> ({argument}) : Typed.Modifier<'native> ="
+
+        emit (signature $"value: {valueType}")
+        emit $"{indent}    {staticExpression}"
+        emit (signature $"read: unit -> {valueType}")
+        emit $"{indent}    {reactiveExpression}"
+
+        for sourceType in [ "Signal"; "Memo" ] do
+            emit (signature $"source: global.Ranvier.{sourceType}<{valueType}>")
+            emit $"{indent}    if isNull (box source) then raise (System.ArgumentException (\"A reactive source cannot be null\", \"source\"))"
+            emit $"{indent}    let read () = source.Value"
+            emit $"{indent}    {reactiveExpression}"
+
+        emit ""
+
+    emit "module Authoring ="
+
+    let selections =
+        authoringPolicy.RootElement.GetProperty("attributes").EnumerateArray()
+        |> Seq.toArray
+        |> Array.groupBy (str "group")
+        |> Array.sortBy fst
+
+    require
+        (selections
+         |> Array.exists (fun (group, _) -> group = ""))
+        "Authoring needs global attributes"
+
+    let authoringNames = System.Collections.Generic.HashSet<string>()
+
+    for groupName, entries in selections do
+        let group =
+            attributePolicy.RootElement.GetProperty("groups").EnumerateArray()
+            |> Seq.tryFind (fun group -> str "module" group = groupName)
+            |> Option.defaultWith (fun () -> fail $"Unknown authoring attribute group: {groupName}")
+
+        let native =
+            nativeType (catalogueFor (resolve (str "native" group)))
+            |> typeName declarations
+
+        let indent = if groupName = "" then "        " else "            "
+
+        if groupName = "" then
+            emit "    type Attrs ="
+        else
+            if
+                groupName =
+                    (selections
+                     |> Array.find (fun (name, _) -> name <> "")
+                     |> fst)
+            then
+                emit "    module Attrs ="
+
+            require (identifier groupName) "Invalid authoring group name"
+            emit $"        type {groupName} ="
+
+        for selection in entries do
+            let helper, name = str "helper" selection, str "name" selection
+
+            require
+                (identifier name
+                 && authoringNames.Add ($"Attrs.{groupName}.{name}"))
+                "Invalid or duplicate authoring helper"
+
+            let entry =
+                group.GetProperty("entries").EnumerateArray()
+                |> Seq.tryFind (fun entry -> str "helper" entry = helper)
+                |> Option.defaultWith (fun () -> fail $"Unknown authoring attribute: {groupName}.{helper}")
+
+            let attribute = str "name" entry
+
+            match str "kind" entry with
+            | "string" ->
+                overloads
+                    indent
+                    name
+                    native
+                    "string"
+                    $"Typed.attribute \"{attribute}\" value"
+                    $"Typed.reactiveAttribute \"{attribute}\" (fun () -> Some (read ()))"
+
+                overloads
+                    indent
+                    name
+                    native
+                    "string option"
+                    $"Typed.optionalAttribute \"{attribute}\" value"
+                    $"Typed.reactiveAttribute \"{attribute}\" read"
+            | "boolean" ->
+                overloads
+                    indent
+                    name
+                    native
+                    "bool"
+                    $"Typed.booleanAttribute \"{attribute}\" value"
+                    $"Typed.reactiveBooleanAttribute \"{attribute}\" read"
+            | "ariaBoolean" ->
+                overloads
+                    indent
+                    name
+                    native
+                    "bool"
+                    $"Typed.ariaBooleanAttribute \"{attribute}\" value"
+                    $"Typed.reactiveAriaBooleanAttribute \"{attribute}\" (fun () -> Some (read ()))"
+
+                overloads
+                    indent
+                    name
+                    native
+                    "bool option"
+                    $"Typed.optionalAttribute \"{attribute}\" (value |> Option.map (fun enabled -> if enabled then \"true\" else \"false\"))"
+                    $"Typed.reactiveAriaBooleanAttribute \"{attribute}\" read"
+            | kind -> fail $"Unknown authoring attribute kind: {kind}"
+
+            authoringCount.Value <- authoringCount.Value + 1
+
+    emit "    module Props ="
+
+    for group in authoringPolicy.RootElement.GetProperty("properties").EnumerateArray() do
+        let groupName = str "group" group
+
+        require
+            (identifier groupName
+             && authoringNames.Add ($"Props.{groupName}"))
+            "Invalid or duplicate authoring property group"
+
+        let symbol = resolve (str "native" group)
+        let native = nativeType (catalogueFor symbol)
+        require (typeof<Dom.HTMLElement>.IsAssignableFrom native) "Authoring property owner must be an HTML element"
+        let nativeName = typeName declarations native
+        let members = properties symbol
+        emit $"        type {groupName} ="
+
+        for memberName in
+            group.GetProperty("members").EnumerateArray()
+            |> Seq.map _.GetString() do
+            require
+                (identifier memberName
+                 && authoringNames.Add ($"Props.{groupName}.{memberName}"))
+                "Invalid or duplicate authoring property"
+
+            let memberInfo = memberSymbol members memberName
+            let nativeProperty = property native memberName
+
+            require
+                (nativeProperty.CanWrite
+                 && not (readonly memberInfo)
+                 && not (excluded.Contains memberName)
+                 && primitive nativeProperty.PropertyType)
+                $"Unsupported authoring property: {native.Name}.{memberName}"
+
+            let owner = nativeProperty.DeclaringType
+            require (emittedProperties.Contains (owner.FullName + "." + memberName)) "Authoring property has no generated binding"
+            let valueType = typeName declarations nativeProperty.PropertyType
+
+            overloads
+                "            "
+                memberName
+                nativeName
+                valueType
+                $"Properties.{owner.Name}.{memberName}Static value"
+                $"Properties.{owner.Name}.{memberName}Reactive read"
+
+            authoringCount.Value <- authoringCount.Value + 1
+
     emit "module Program ="
     lines.AddRange programElements
 
@@ -760,6 +938,8 @@ let generate compilerRoot packageRoot output =
                     |> Seq.toArray
                 attributePolicySha256 = hashFile policyPath
                 attributeCount = attributeCount.Value
+                authoringHelperCount = authoringCount.Value
+                authoringPolicySha256 = hashFile authoringPath
                 sharedPropertyCount = emittedProperties.Count
                 sharedEventCount = sharedEvents.Count
                 omissions =

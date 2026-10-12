@@ -1,5 +1,18 @@
 # View authoring
 
+Open `Ranvier.View.Foundation.Generated.Html.Authoring` for overloaded modifier helpers. The initial curated surface contains nine attributes and four live properties. Each accepts a fixed value, a `unit -> 'T` reader, `Signal<'T>`, or `Memo<'T>`, with native element constraints preserved. String and ARIA attributes also accept optional values/sources; `None` removes the attribute. The foundation's explicit helpers remain available for the broader generated surface.
+
+```fsharp
+open Ranvier.View.Foundation.Generated.Html.Authoring
+
+Html.input [ Props.Input.value nameSignal
+             Attrs.Input.placeholder "Your name"
+             Attrs.title (fun () -> "Hello, " + nameSignal.Value) ]
+Html.button [ Props.Button.disabled busyMemo ] [ text "Save" ]
+```
+
+`Props.Input.value` updates the live input value. `Attrs.Input.value` updates its default value attribute. Boolean attributes use presence/removal; ARIA booleans serialize `false`. Overloads select a binding at compile time and inline into the existing operations. Signal/memo overloads check for null and supply a deferred reader; they create no new owner or subscription mechanism. Annotate ambiguous literals such as `None` with their intended option type. These helpers are methods, not overloaded property setters.
+
 The playground's [reusable component example](../../examples/Fable.Ranvier.Playground/ComponentsExample.fs) mounts two counters with independent state, a shared reactive label, callbacks, and static or reactive child content.
 
 The foundation is an experimental view layer. `Authoring` binds the existing operations to `Program.View`; the generated `Html.Program` module provides all 112 typed HTML constructors without an `ops` argument.

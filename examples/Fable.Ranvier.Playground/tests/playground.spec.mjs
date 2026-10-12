@@ -92,10 +92,17 @@ test("authored components share reactive props and keep independent local state"
   await expect(page.locator("#component-first-count")).toHaveText("1");
   await expect(page.locator("#component-second-count")).toHaveText("10");
   await expect(page.locator("#component-changed")).toHaveText("First changed to 1");
+  await page.locator("#component-label").fill("Edited");
+  await expect(first.locator("h2")).toHaveText("Edited");
+  await expect(second.locator("h2")).toHaveText("Edited");
+  await expect(first).toHaveAttribute("title", "Edited");
+  await expect(page.locator("#component-first-count")).toHaveText("1");
   await page.locator("#component-rename").click();
   await expect(first.locator("h2")).toHaveText("Renamed");
   await expect(second.locator("h2")).toHaveText("Renamed");
   await expect(second).toContainText("Child sees Renamed");
+  await expect(page.locator("#component-rename")).toBeDisabled();
+  await expect(page.locator("#component-label")).toHaveValue("Renamed");
   await expect(page.locator("#component-first-count")).toHaveText("1");
   await page.locator("#component-second-increment").click();
   await expect(page.locator("#component-second-count")).toHaveText("11");
