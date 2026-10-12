@@ -3,6 +3,7 @@ generated-tests/
 generated-authoring-counters/
 generated-ripple/
 generated-framework-dist/
+generated-framework-shared/
 dist/
 node_modules/
 test-results/

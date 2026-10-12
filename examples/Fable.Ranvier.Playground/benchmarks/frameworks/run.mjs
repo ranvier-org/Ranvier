@@ -8,7 +8,10 @@ import os from "node:os";
 const cwd = fileURLToPath(new URL("../../", import.meta.url));
 const outputDirectory = fileURLToPath(new URL("../../../../docs/research/framework-performance/", import.meta.url));
 const verifyOnly = process.argv.includes("--verify-only");
-const modes = ["ranvier", "solid", "ripple", "react"], widths = [1, 16, 128];
+const nativeDiagnostic = process.argv.includes("--native-diagnostic");
+const directDiagnostic = process.argv.includes("--direct-diagnostic");
+if (nativeDiagnostic && directDiagnostic) throw Error("Choose one diagnostic adapter set per run");
+const modes = directDiagnostic ? ["ranvier", "ranvier-direct", "solid", "ripple"] : nativeDiagnostic ? ["ranvier", "solid", "ripple", "native-create", "native-clone", "native-descendants"] : ["ranvier", "solid", "ripple", "react"], widths = [1, 16, 128];
 const port = 5186;
 if (process.argv.includes("--build")) {
   for (const args of [
@@ -45,7 +48,7 @@ try {
       if (!crossOriginIsolated) throw Error("High resolution timer isolation missing");
       return widths.flatMap(width => modes.map(mode => ({ mode, replicate, ...window.frameworkPerf.verify(mode, width) })));
     }, { modes, widths, replicate }));
-    console.log(`Verified all four frameworks, Chromium process ${replicate + 1}`);
+    console.log(`Verified ${modes.length} adapters, Chromium process ${replicate + 1}`);
     if (!verifyOnly) {
       // Each independent process rotates variant order; warmups are discarded.
       for (const width of widths) for (const phase of ["mount", "update", "dispose"]) {
@@ -88,6 +91,8 @@ try {
     })));
     const pkg = JSON.parse(await readFile(new URL("../../package.json", import.meta.url), "utf8"));
     const files = ["benchmarks/frameworks/run.mjs", "benchmarks/frameworks/page.mjs", "benchmarks/frameworks/contract.mjs", "benchmarks/frameworks/solid.jsx", "benchmarks/frameworks/react.mjs", "benchmarks/frameworks/vite.config.mjs", "benchmarks/ripple/RipplePerf.fs", "benchmarks/ripple/RipplePerf.fsproj", "tests/FrameworkPerf.fs", "../../experiments/Ranvier.View.Foundation/AuthoringPerfFixtures.fs", "package-lock.json"];
+    if (directDiagnostic) files.push("tests/FrameworkDiagnostics.fs");
+    if (nativeDiagnostic) files.push("benchmarks/frameworks/native.mjs");
     const sourceHashes = Object.fromEntries(await Promise.all(files.map(async path => [path, createHash("sha256").update(await readFile(new URL(path, new URL("../../", import.meta.url)))).digest("hex")])));
     const result = {
       measuredAt: new Date().toISOString(), baseCommit: execFileSync("rtk", ["git", "rev-parse", "HEAD"], { cwd, encoding: "utf8" }).trim(), dirtyExperiment: true,
@@ -99,13 +104,13 @@ try {
         "Each update alternates a/blocked and synchronously commits title, input.value and disabled for every row; React uses flushSync.",
         "Mount and disposal are batch averages across 256/128/32 independent roots at widths 1/16/128; paint/layout and asynchronous throughput are excluded.",
         "CDP measures GC-stabilized retained JavaScript heap per mounted root, including adapter/host references, not allocation rate or total DOM memory.",
-        "All implementations use their public authoring paths; compiled Solid JSX includes its template optimization.",
+        directDiagnostic ? "ranvier-direct bypasses Program views through the existing owned backend, retaining typed token lists; compiled Solid JSX includes template optimization." : nativeDiagnostic ? "Native adapters are handwritten DOM lower bounds without Ranvier lifecycle/ownership guarantees; Solid JSX includes template optimization." : "All implementations use their public authoring paths; compiled Solid JSX includes its template optimization.",
         "React uses controlled input with onChange and maintains an extra default value attribute; semantic live DOM state is checked, HTML byte equality is not required.",
         "Ranvier component/fragment ownership and anchors remain enabled; static view optimization is not implemented."
       ], sourceHashes, correctness, samples, summaries, heaps
     };
-    await mkdir(outputDirectory, { recursive: true });
-    await writeFile(`${outputDirectory}/results.json`, JSON.stringify(result, null, 2) + "\n");
+    await mkdir(nativeDiagnostic || directDiagnostic ? `${outputDirectory}/investigation` : outputDirectory, { recursive: true });
+    await writeFile(`${outputDirectory}/${directDiagnostic ? "investigation/direct-results" : nativeDiagnostic ? "investigation/native-results" : "results"}.json`, JSON.stringify(result, null, 2) + "\n");
     console.log(JSON.stringify(summaries));
   }
 } finally {
