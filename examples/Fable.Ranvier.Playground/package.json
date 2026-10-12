@@ -17,6 +17,7 @@
     "bench:dom": "npm run compile:tests && node benchmarks/dom-scheduling.mjs",
     "bench:view": "npm run compile:tests && node benchmarks/view-representation.mjs",
     "bench:binding": "npm run compile:tests && node benchmarks/binding-minimal.mjs",
+    "bench:authoring": "node benchmarks/authoring-perf.mjs --build",
     "bench:branch": "npm run compile:tests && node benchmarks/branch-snapshots.mjs",
     "bench:snapshot:dotnet": "pwsh -NoProfile -File benchmarks/snapshot-dotnet.ps1"
   },

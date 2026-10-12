@@ -24,6 +24,7 @@
     <Project Path="experiments/Ranvier.View.Foundation/Ranvier.View.Foundation.fsproj" />
     <Project Path="experiments/Ranvier.View.Foundation/RepresentationChecks.fsproj" />
     <Project Path="experiments/Ranvier.View.Foundation/SnapshotBench/SnapshotBench.fsproj" />
+    <Project Path="experiments/Ranvier.View.Foundation/AuthoringPerf/AuthoringPerf.fsproj" />
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/Ranvier.Dom.Generate/Ranvier.Dom.Generate.fsproj" />

@@ -5,6 +5,9 @@
     <IsPackable>false</IsPackable>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(RanvierCounters)' == 'true'">
+    <DefineConstants>$(DefineConstants);RANVIER_COUNTERS</DefineConstants>
+  </PropertyGroup>
   <ItemGroup>
     <Compile Include="Global.fs" />
     <Compile Include="../../../tests/Ranvier.Tests/ComparerCases.fs" Link="ComparerCases.fs" />
@@ -33,6 +36,8 @@
     <Compile Include="../../../experiments/Ranvier.View.Foundation/ComponentPortableChecks.fs" Link="ComponentPortableChecks.fs" />
     <Compile Include="ComponentChecks.fs" />
     <Compile Include="AuthoringChecks.fs" />
+    <Compile Include="../../../experiments/Ranvier.View.Foundation/AuthoringPerfFixtures.fs" Link="AuthoringPerfFixtures.fs" />
+    <Compile Include="AuthoringPerf.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/ComponentBench.fs" Link="ComponentBench.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Fixtures.fs" Link="Fixtures.fs" />
     <Compile Include="RepresentationBench.fs" />
