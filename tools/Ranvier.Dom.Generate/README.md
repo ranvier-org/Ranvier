@@ -1,4 +1,4 @@
-# Narrow DOM generator
+# HTML DOM generator
 
 Run from the repository root:
 
@@ -13,7 +13,20 @@ The tool's own project restores published Cloudsmith `Xantham.Fable.Core.TS` 0.2
 
 The generator checks descriptor/package/schema identity, the pinned Brotli payload and native assembly hashes, compatibility versions, compiler version/revision and every TypeScript library input hash from the catalogue. Brotli decoding is bounded at 128 MiB. Wire resolves the tag and event maps, members and readonly flags. Compiler declaration handles are normalized to the catalogue's package/version/file/position/kind handles, then resolved to one existing native binding. The native assembly supplies the final F# representation of selected properties, including optional references. Each reflected named type must resolve through the catalogue; unsupported shapes and missing/ambiguous identities stop generation.
 
-The selected vocabulary is policy: five tags, inherited `title`, relevant `value`, input `checked`, `files` and readonly `form` getters, and typed input listeners. `files` is writable upstream; Ranvier intentionally emits only its getter. `form` is readonly according to Wire and receives no setter. This tool does not infer HTML attribute or live form behavior from declarations; generated setters/listeners delegate to handwritten `Typed` runtime operations. It is a narrow adapter, not a general TypeScript-to-F# mapper or complete DOM catalogue authenticator.
+Generation covers all 112 entries in the pinned `HTMLElementTagNameMap`. Constructors preserve native element types; void constructors take no children. Shared inherited properties live under `Html.Properties.<native declaring type>` and common listeners under `Html.Events`. Tag modules expose their native-declared members and element-specific events, plus original five-tag compatibility helpers. Generated source is approximately 520 KB.
+
+```fsharp
+Html.article Tree.ops
+    [ Html.Properties.HTMLElement.titleStatic "Article"
+      Html.Events.onClick (fun event -> printfn "%f" event.clientX) ]
+    [ Html.img Tree.ops [ Html.Img.altStatic "Illustration" ] ]
+```
+
+Shared modifiers constrain their native type, so input properties cannot be used on a div. Getters preserve supported primitives, options, named native references and closed native generics. Setters support writable primitives and optional primitives. Native-object setters require explicit equality/ownership policy. Unsupported arrays, callbacks and unmapped aliases/unions are recorded in `Generated/Html.coverage.json`; they are not widened to `obj`. Methods and SVG are outside this scope.
+
+Files is writable upstream but getter-only by Ranvier policy; form is readonly upstream. DOM replacement properties and iframe srcdoc receive no setters. Generated helpers delegate ownership/scheduling to handwritten `Typed` operations. Templates mount children into content; selects apply modifiers after options. HTML snapshots reject raw-text/context-sensitive elements without explicit serialization policy and preserve initial newlines in pre/textarea. These distinctions follow the [HTML syntax model](https://html.spec.whatwg.org/multipage/syntax.html); legacy param retains void compatibility. Attribute/portable property metadata remains separate work.
+
+The tool remains a pinned adapter, not a general TypeScript-to-F# mapper or complete catalogue authenticator. Tests verify deterministic code/coverage and corrupt-input rejection; compiler checks cover inherited constraints, properties/events, readonly and void-child failures.
 
 Published artifact evidence inspected on 2026-10-11:
 

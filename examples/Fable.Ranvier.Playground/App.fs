@@ -10,11 +10,9 @@ open Ranvier.View.Foundation.Representation
 module FoundationMounting = Ranvier.View.Foundation.Mounting
 module FoundationTree = Ranvier.View.Foundation.Representation.Tree
 module FoundationTyped = Ranvier.View.Foundation.Typed
+module GeneratedHtml = Ranvier.View.Foundation.Generated.Html
 module FoundationMicrotask = Ranvier.View.Foundation.Microtask
 module FoundationScheduling = Ranvier.View.Foundation.Scheduling
-
-[<Emit("(() => { const f = () => $1(); $0.addEventListener('click', f); return () => $0.removeEventListener('click', f); })()")>]
-let private listen (node: HTMLElement) (handler: unit -> unit) : unit -> unit = jsNative
 
 let private node tag modifiers children : Node =
     Dom.element tag modifiers children
@@ -320,7 +318,7 @@ let start () : unit -> unit =
         mountDemo ()
 
         let foundationRows =
-            foundationGraph.Run (fun () -> createSignal [ 1, "Alpha"; 2, "Beta" ])
+            foundationGraph.Run (fun () -> createSignal [| 1, "Alpha"; 2, "Beta" |])
 
         let foundationOps = FoundationTree.ops
 
@@ -334,42 +332,39 @@ let start () : unit -> unit =
         foundationGraph.Run (fun () -> loadSource.Value.Settle "Loaded result")
 
         let foundationRowsView =
-            Keyed.list foundationOps (=) fst (fun () -> foundationRows.Value) (fun current ->
+            Keyed.array foundationOps (=) fst (fun () -> foundationRows.Value) (fun current ->
                 let key = fst (current ())
 
-                FoundationTyped.div
+                GeneratedHtml.div
                     foundationOps
                     [ FoundationTyped.id ("foundation-row-" + string key) ]
                     [ FoundationTyped.reactiveText foundationOps (fun () -> snd (current ())) ])
 
         let foundationView =
-            FoundationTyped.div
+            GeneratedHtml.section
                 foundationOps
                 [ FoundationTyped.id "foundation-demo" ]
                 [
                     foundationOps.Text "Foundation implementation: keyed rows"
-                    FoundationTyped.button
+                    GeneratedHtml.button
                         foundationOps
                         [
                             FoundationTyped.id "foundation-add"
-                            FoundationTyped.browser (fun button ->
-                                listen button (fun () ->
-                                    let next =
-                                        foundationRows.Value
-                                        |> List.map fst
-                                        |> List.max
-                                        |> (+) 1
+                            GeneratedHtml.Button.onClick (fun _ ->
+                                let next =
+                                    foundationRows.Value
+                                    |> Array.map fst
+                                    |> Array.max
+                                    |> (+) 1
 
-                                    foundationRows.Value <-
-                                        foundationRows.Value
-                                        @ [ next, "Item " + string next ]))
+                                foundationRows.Value <- Array.append foundationRows.Value [| next, "Item " + string next |])
                         ]
                         [ foundationOps.Text "Add row" ]
-                    FoundationTyped.button
+                    GeneratedHtml.button
                         foundationOps
                         [
                             FoundationTyped.id "foundation-reverse"
-                            FoundationTyped.browser (fun button -> listen button (fun () -> foundationRows.Value <- List.rev foundationRows.Value))
+                            GeneratedHtml.Button.onClick (fun _ -> foundationRows.Value <- Array.rev foundationRows.Value)
                         ]
                         [ foundationOps.Text "Reverse rows" ]
                     foundationRowsView
@@ -387,21 +382,18 @@ let start () : unit -> unit =
                     FoundationTree.run foundationView context.Backend
 
                     let action id label update =
-                        FoundationTyped.button
+                        GeneratedHtml.button
                             foundationOps
-                            [
-                                FoundationTyped.id id
-                                FoundationTyped.browser (fun button -> listen button update)
-                            ]
+                            [ FoundationTyped.id id; GeneratedHtml.Button.onClick (fun _ -> update ()) ]
                             [ foundationOps.Text label ]
 
                     let statusPanel =
-                        FoundationTyped.div
+                        GeneratedHtml.div
                             foundationOps
                             [ FoundationTyped.id "foundation-load" ]
                             [
                                 foundationOps.Text "Load result"
-                                FoundationTyped.div
+                                GeneratedHtml.div
                                     foundationOps
                                     [ FoundationTyped.id "foundation-load-status" ]
                                     [
@@ -412,11 +404,11 @@ let start () : unit -> unit =
                                             elif not (isNull loadResult.Caught) then "Failed"
                                             else "Ready")
                                     ]
-                                FoundationTyped.div
+                                GeneratedHtml.div
                                     foundationOps
                                     [ FoundationTyped.id "foundation-load-result" ]
                                     [ FoundationTyped.reactiveText foundationOps (fun () -> loadResult.Value) ]
-                                FoundationTyped.div
+                                GeneratedHtml.div
                                     foundationOps
                                     [ FoundationTyped.id "foundation-load-error" ]
                                     [

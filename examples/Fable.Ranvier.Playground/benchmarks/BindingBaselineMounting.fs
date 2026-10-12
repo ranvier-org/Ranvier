@@ -441,9 +441,14 @@ let rec mount (graph: Graph) (parentScope: Scope option) (report: exn list -> un
                         scope.OnCleanup cleanup
                     | ReactiveProperty _ -> invalidOp "Reactive properties are outside the frozen text benchmark"
 
-                if tag <> Input then
+                if not (isVoid tag) then
                     let previous = parent
-                    parent <- node
+
+                    parent <-
+                        if name tag = "template" then
+                            (node :?> HTMLTemplateElement).content :> Node
+                        else
+                            node
 
                     try
                         children ()

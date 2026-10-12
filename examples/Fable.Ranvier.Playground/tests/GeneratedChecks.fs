@@ -20,6 +20,9 @@ let private query (host: Node) (selector: string) : HTMLElement = jsNative
 [<Emit("$0.dispatchEvent(new ($0.ownerDocument.defaultView.InputEvent)('input', { bubbles: true, data: 'x', inputType: 'insertText' }))")>]
 let private dispatchInput (node: Node) : unit = jsNative
 
+[<Emit("$0.innerHTML = $1")>]
+let private parseHtml (host: HTMLElement) (html: string) : unit = jsNative
+
 let private lifecycle (ops: Operations<'view>) run queued generated =
     use graph = new Graph ()
     let value = graph.Run (fun () -> Api.createSignal "first")
@@ -163,6 +166,88 @@ let private portable () =
 
     equal "<div id=\"generated\"><option>&lt;&amp;</option></div>" (Html.render Reject (Tree.run view))
 
+let private expandedElements () =
+    use graph = new Graph ()
+    let host = Dom.element "section" [] []
+
+    let view =
+        H.article
+            Tree.ops
+            [ H.Properties.HTMLElement.titleStatic "expanded" ]
+            [
+                H.br Tree.ops []
+                H.img Tree.ops [ H.Img.altStatic "sample" ]
+                H.textarea Tree.ops [ H.Textarea.rowsStatic 3. ] []
+                H.template Tree.ops [] [ H.span Tree.ops [] [ Tree.ops.Text "inert" ] ]
+            ]
+
+    let mounted =
+        mount graph None ignore host None (fun ctx -> Tree.run view ctx.Backend)
+
+    try
+        equal "expanded" ((query host "article").title)
+        equal "sample" ((query host "img" :?> HTMLImageElement).alt)
+        equal 3. ((query host "textarea" :?> HTMLTextAreaElement).rows)
+        let template = query host "template" :?> HTMLTemplateElement
+        equal "inert" template.content.textContent
+        equal 0. template.childNodes.length
+    finally
+        mounted.Dispose ()
+
+    equal 0. host.childNodes.length
+
+let private expandedPortable () =
+    let view =
+        H.article
+            Tree.ops
+            []
+            [
+                H.br Tree.ops []
+                H.img Tree.ops []
+                H.textarea Tree.ops [] [ Tree.ops.Text "<&" ]
+            ]
+
+    equal "<article><br><img><textarea>&lt;&amp;</textarea></article>" (Html.render Reject (Tree.run view))
+
+    for tag in
+        [
+            "script"
+            "style"
+            "iframe"
+            "noscript"
+            "xmp"
+            "noembed"
+            "noframes"
+            "plaintext"
+        ] do
+        let mutable rejected = false
+
+        try
+            Html.render Reject (Tree.run (Tree.ops.Element (HtmlTag tag) [] [ Tree.ops.Text "<&" ]))
+            |> ignore
+        with :? System.InvalidOperationException ->
+            rejected <- true
+
+        equal true rejected
+
+let private leadingNewlineRoundtrip (ops: Operations<'view>) run =
+    use graph = new Graph ()
+
+    for tag in [ "pre"; "textarea"; "listing" ] do
+        for text in [ "\nhello"; "\r\nhello" ] do
+            let view =
+                ops.Element (HtmlTag tag) [] [ ops.Text ""; ops.Bind (=) (fun () -> text) ]
+
+            let parsed, direct = Dom.element "section" [] [], Dom.element "section" [] []
+            let mounted = mount graph None ignore direct None (fun ctx -> run view ctx.Backend)
+
+            try
+                parseHtml parsed (Html.render Reject (run view))
+                equal direct.textContent parsed.textContent
+                equal text parsed.textContent
+            finally
+                mounted.Dispose ()
+
 let cases =
     [|
         for queued in [ false; true ] do
@@ -182,4 +267,8 @@ let cases =
                     fun () -> lifecycle Program.ops Program.run queued generated
         yield "generated five-tag subset and select initialization", tagsAndSelect
         yield "generated tags render portable escaped HTML", portable
+        yield "expanded tags mount void elements and template content", expandedElements
+        yield "expanded HTML snapshots preserve void and raw-text policies", expandedPortable
+        yield "tree initial line feeds roundtrip through the HTML parser", fun () -> leadingNewlineRoundtrip Tree.ops Tree.run
+        yield "program initial line feeds roundtrip through the HTML parser", fun () -> leadingNewlineRoundtrip Program.ops Program.run
     |]

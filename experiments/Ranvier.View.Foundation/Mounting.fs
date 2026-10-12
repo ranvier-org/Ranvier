@@ -536,9 +536,14 @@ let rec private mountCore
                     for token in tokens do
                         applyToken token
 
-                if tag <> Input then
+                if not (isVoid tag) then
                     let previous = parent
-                    parent <- node
+
+                    parent <-
+                        if name tag = "template" then
+                            (node :?> HTMLTemplateElement).content :> Node
+                        else
+                            node
 
                     try
                         children ()

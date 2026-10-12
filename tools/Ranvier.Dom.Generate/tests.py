@@ -1,6 +1,7 @@
 import pathlib
 import subprocess
 import tempfile
+import json
 import shutil
 
 root = pathlib.Path(__file__).resolve().parent
@@ -15,10 +16,17 @@ with tempfile.TemporaryDirectory() as folder:
     assert "Dom.HTMLInputElement" in text
     assert "Dom.InputEvent -> unit" in text
     assert "Dom.FileList option" in text
-    assert "let files (" in text
+    assert "let ``files`` (" in text
     assert "let filesStatic" not in text
     assert "let formStatic" not in text
-    assert all("let " + tag + " " in text for tag in ["div", "button", "input", "select", "option"])
+    coverage = json.loads(first.with_suffix(".coverage.json").read_text())
+    assert len(coverage["tags"]) > 100, "full HTML tag map must be generated"
+    assert any(tag["tag"] == "br" and tag["isVoid"] for tag in coverage["tags"])
+    assert all("let ``" + tag + "`` " in text for tag in ["div", "button", "input", "select", "option", "textarea", "img", "br", "article"])
+    assert "let onClick " in text and "Dom.MouseEvent -> unit" in text
+    assert first.with_suffix(".coverage.json").read_bytes() == second.with_suffix(".coverage.json").read_bytes()
+    assert any("unsupported type" in item["reason"] for item in coverage["omissions"])
+    assert "let innerHTMLStatic" not in text and "let outerHTMLStatic" not in text
     tampered = pathlib.Path(folder) / "tampered"
     shutil.copytree(root / "bin/Release/net10.0/xantham", tampered / "xantham")
     payload = tampered / "xantham/declarations.json.br"
@@ -28,4 +36,4 @@ with tempfile.TemporaryDirectory() as folder:
     result = subprocess.run(["rtk", "dotnet", "run", "--project", str(root / "Ranvier.Dom.Generate.fsproj"), "-c", "Release", "--no-build", "--", str(first), str(tampered)], capture_output=True, text=True)
     assert result.returncode != 0 and "Catalogue hash mismatch" in result.stderr, result.stdout + result.stderr
     assert first.read_bytes() == second.read_bytes(), "rejection must preserve existing output"
-print("PASS: deterministic output, native event/files types, five tags, suppressed files/form setters, corrupt catalogue rejection")
+print("PASS: deterministic full HTML output and coverage, typed native members/events, policy exclusions, corrupt catalogue rejection")

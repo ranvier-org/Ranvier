@@ -11,11 +11,16 @@ open Ranvier.View.Foundation.Representation
 module H = Ranvier.View.Foundation.Generated.Html
 """
 examples = [
-    ("valid helpers", "let view = H.div Tree.ops [] [ H.input Tree.ops [ H.Input.checkedStatic true ]; H.select Tree.ops [] [ H.option Tree.ops [] [] ] ]", None),
+    ("valid helpers", "let view = H.div Tree.ops [ H.Properties.HTMLElement.titleStatic \"shared\"; H.Events.onClick (fun (_: Dom.PointerEvent) -> ()) ] [ H.input Tree.ops [ H.Input.checkedStatic true ]; H.select Tree.ops [] [ H.option Tree.ops [] [] ]; H.br Tree.ops [] ]", None),
     ("input modifier on div", "let view = H.div Tree.ops [ H.Input.checkedStatic true ] []", "FS0001"),
     ("wrong property value", 'let modifier = H.Input.checkedStatic "true"', "FS0001"),
     ("readonly native property", "let write (node: Dom.HTMLInputElement) = node.form <- None", "FS0810"),
     ("files setter excluded by policy", "let modifier = H.Input.filesStatic None", "FS0039"),
+    ("void element rejects children", "let view = H.br Tree.ops [] [ Tree.ops.Text \"child\" ]", "FS0001"),
+    ("wrong expanded property value", "let modifier = H.Textarea.rowsStatic \"3\"", "FS0001"),
+    ("DOM replacement setter excluded", "let modifier = H.Div.innerHTMLStatic \"markup\"", "FS0039"),
+    ("shared input property rejects div", "let view = H.div Tree.ops [ H.Properties.HTMLInputElement.checkedStatic true ] []", "FS0001"),
+    ("wrong mapped event type", "let modifier = H.Events.onClick (fun (_: Dom.KeyboardEvent) -> ())", "FS0001"),
 ]
 
 with tempfile.TemporaryDirectory(prefix="ranvier-generated-types-") as directory:

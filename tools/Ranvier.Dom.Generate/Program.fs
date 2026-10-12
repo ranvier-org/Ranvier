@@ -135,9 +135,19 @@ let loadCatalogue root =
 let nativeAssembly = typeof<Dom.HTMLInputElement>.Assembly
 
 let nativeType (declaration: Declaration) =
-    require (declaration.Arity = 0) $"Unsupported generic native type: {declaration.Name}"
     require (declaration.Name.StartsWith ("Fable.Core.TS.Dom.", StringComparison.Ordinal)) $"Unsupported native module: {declaration.Name}"
-    nativeAssembly.GetType (declaration.Name.Replace ("Fable.Core.TS.Dom.", "Fable.Core.TS+Dom+"), true)
+
+    let suffix =
+        if declaration.Arity = 0 then
+            ""
+        else
+            "`" + string declaration.Arity
+
+    nativeAssembly.GetType (
+        declaration.Name.Replace ("Fable.Core.TS.Dom.", "Fable.Core.TS+Dom+")
+        + suffix,
+        true
+    )
 
 let allProperties (native: Type) =
     Array.append [| native |] (native.GetInterfaces ())
@@ -163,15 +173,32 @@ let typeName (declarations: Declaration array) (native: Type) =
         then
             $"{render (native.GetGenericArguments()[0])} option"
         else
-            let name = native.FullName.Replace ("Fable.Core.TS+Dom+", "Fable.Core.TS.Dom.")
+            let definition =
+                if native.IsGenericType then
+                    native.GetGenericTypeDefinition ()
+                else
+                    native
+
+            let name =
+                (definition.FullName.Split('`')[0]).Replace("Fable.Core.TS+Dom+", "Fable.Core.TS.Dom.")
 
             let declaration =
                 declarations
                 |> Array.tryFind (fun d -> d.Name = name)
                 |> Option.defaultWith (fun () -> fail $"Unsupported native type shape: {native}")
 
-            require (nativeType declaration = native) $"Native representation mismatch: {name}"
-            "Dom." + native.Name
+            require (nativeType declaration = definition) $"Native representation mismatch: {name}"
+            let basic = "Dom." + definition.Name.Split('`')[0]
+
+            if native.IsGenericType then
+                basic
+                + "<"
+                + (native.GetGenericArguments ()
+                   |> Array.map render
+                   |> String.concat ", ")
+                + ">"
+            else
+                basic
 
     render native
 
@@ -310,7 +337,6 @@ let generate compilerRoot packageRoot output =
     let eventDeclaration = symbolOfType eventType |> catalogueFor
     let eventNative = property eventMapNative "input"
     require (nativeType eventDeclaration = eventNative.PropertyType) "Event-map native type mismatch"
-    let eventName = typeName declarations eventNative.PropertyType
     let lines = ResizeArray<string>()
 
     let emit text =
@@ -324,15 +350,82 @@ let generate compilerRoot packageRoot output =
     emit "open Ranvier.View.Foundation"
     emit ""
 
-    for tag, caseName, writable, getters in
-        [
-            "div", "Div", [ "title" ], []
-            "button", "Button", [ "title"; "value" ], []
-            "input", "Input", [ "title"; "value"; "checked" ], [ "files"; "form" ]
-            "select", "Select", [ "title"; "value" ], []
-            "option", "Option", [ "title"; "value" ], []
-        ] do
-        let tagSymbol = memberSymbol tags tag
+    let omissions = ResizeArray<string * string * string>()
+    let counts = ResizeArray<string * int * int * int>()
+
+    let sharedProperties =
+        System.Collections.Generic.SortedDictionary<string, ResizeArray<string>>()
+
+    let emittedProperties = System.Collections.Generic.HashSet<string>()
+    let sharedEvents = System.Collections.Generic.SortedDictionary<string, Type>()
+
+    let commonEvents =
+        properties eventMap
+        |> Array.map _.Name
+        |> Set.ofArray
+
+    let voidTags =
+        set
+            [
+                "area"
+                "base"
+                "br"
+                "col"
+                "embed"
+                "hr"
+                "img"
+                "input"
+                "link"
+                "meta"
+                "param"
+                "source"
+                "track"
+                "wbr"
+            ]
+
+    let excluded =
+        set
+            [
+                "innerHTML"
+                "outerHTML"
+                "textContent"
+                "innerText"
+                "outerText"
+                "srcdoc"
+                "files"
+            ]
+
+    let tryType native =
+        try
+            Some (typeName declarations native)
+        with :? InvalidOperationException ->
+            None
+
+    let rec primitive (native: Type) =
+        native = typeof<string>
+        || native = typeof<bool>
+        || native = typeof<float>
+        || (native.IsGenericType
+            && native.GetGenericTypeDefinition () = typedefof<option<_>>
+            && primitive (native.GetGenericArguments()[0]))
+
+    let moduleName (tag: string) =
+        Char.ToUpperInvariant(tag[0]).ToString()
+        + tag.Substring (1)
+
+    let tagExpression tag =
+        match tag with
+        | "div" -> "Div"
+        | "button" -> "Button"
+        | "input" -> "Input"
+        | "select" -> "Select"
+        | "option" -> "Option"
+        | _ -> "(HtmlTag \"" + tag + "\")"
+
+    let tagMapNative = nativeType (catalogueFor tagMap)
+
+    for tagSymbol in tags |> Array.sortBy _.Name do
+        let tag = tagSymbol.Name
 
         let tagType =
             Api.getTypeOfSymbol
@@ -347,41 +440,208 @@ let generate compilerRoot packageRoot output =
         let declaration = catalogueFor symbol
         let native = nativeType declaration
         let name = typeName declarations native
-        require ((property (nativeType (catalogueFor tagMap)) tag).PropertyType = native) $"Tag-map native type mismatch: {tag}"
+        require ((property tagMapNative tag).PropertyType = native) $"Tag-map native type mismatch: {tag}"
+        let expression = tagExpression tag
 
-        if tag = "input" then
-            emit $"let {tag} ops (modifiers: Typed.Modifier<{name}> list) = Typed.element ops {caseName} modifiers []"
+        if voidTags.Contains tag then
+            emit $"let ``{tag}`` ops (modifiers: Typed.Modifier<{name}> list) = Typed.element ops {expression} modifiers []"
         else
-            emit $"let {tag} ops (modifiers: Typed.Modifier<{name}> list) children = Typed.element ops {caseName} modifiers children"
+            emit $"let ``{tag}`` ops (modifiers: Typed.Modifier<{name}> list) children = Typed.element ops {expression} modifiers children"
 
         emit ""
-        emit $"module {caseName} ="
+        emit $"module {moduleName tag} ="
         let members = properties symbol
+        let mutable getters, setters, listeners = 0, 0, 0
 
-        for memberName in writable do
-            let memberInfo = memberSymbol members memberName
-            require (not (readonly memberInfo)) $"Refusing setter for readonly compiler property: {native.Name}.{memberName}"
-            let nativeProperty = property native memberName
-            require nativeProperty.CanWrite $"Native property is not writable: {native.Name}.{memberName}"
-            let valueType = typeName declarations nativeProperty.PropertyType
-            emit $"    let {memberName}Static (value: {valueType}) : Typed.Modifier<{name}> ="
-            emit $"        Typed.staticProperty (fun (node: {name}) value -> node.``{memberName}`` <- value) value"
-            emit $"    let {memberName}Reactive (read: unit -> {valueType}) : Typed.Modifier<{name}> ="
-            emit $"        Typed.reactiveProperty (fun (node: {name}) value -> node.``{memberName}`` <- value) read"
+        for memberInfo in members |> Array.sortBy _.Name do
+            let memberName = memberInfo.Name
 
-        for memberName in getters do
-            let memberInfo = memberSymbol members memberName
+            let nativeProperties =
+                Array.append [| native |] (native.GetInterfaces ())
+                |> Array.collect _.GetProperties()
+                |> Array.filter (fun property -> property.Name = memberName)
 
-            if memberName = "form" then
-                require (readonly memberInfo) "Expected readonly form property"
+            if nativeProperties.Length > 0 then
+                let own =
+                    native.GetProperties ()
+                    |> Array.filter (fun property -> property.Name = memberName)
 
-            let nativeProperty = property native memberName
-            let valueType = typeName declarations nativeProperty.PropertyType
-            emit $"    let {memberName} (node: {name}) : {valueType} = node.{memberName}"
+                let candidates =
+                    if own.Length > 0 then
+                        own
+                    else
+                        nativeProperties
+                        |> Array.filter (fun candidate ->
+                            not (
+                                nativeProperties
+                                |> Array.exists (fun other ->
+                                    candidate.DeclaringType <> other.DeclaringType
+                                    && candidate.DeclaringType.IsAssignableFrom other.DeclaringType)
+                            ))
 
-        emit $"    let onInput (handler: {eventName} -> unit) : Typed.Modifier<{name}> ="
-        emit "        Typed.listener \"input\" (fun event -> handler (unbox event))"
-        emit ""
+                let signatures =
+                    candidates
+                    |> Array.map _.PropertyType
+                    |> Array.distinct
+
+                require (signatures.Length = 1) $"Conflicting inherited native property: {native.Name}.{memberName}"
+
+                let nativeProperty =
+                    candidates
+                    |> Array.tryFind _.CanWrite
+                    |> Option.defaultValue candidates[0]
+
+                match tryType nativeProperty.PropertyType with
+                | None -> omissions.Add (tag, memberName, $"unsupported type: {nativeProperty.PropertyType}")
+                | Some valueType ->
+                    let owner = nativeProperty.DeclaringType
+                    let ownerName = typeName declarations owner
+
+                    let canSet =
+                        not (readonly memberInfo)
+                        && nativeProperty.CanWrite
+                        && not (excluded.Contains memberName)
+                        && primitive nativeProperty.PropertyType
+
+                    if emittedProperties.Add (owner.FullName + "." + memberName) then
+                        if not (sharedProperties.ContainsKey owner.Name) then
+                            sharedProperties.Add (owner.Name, ResizeArray<string>())
+
+                        let shared = sharedProperties[owner.Name]
+                        shared.Add $"        let ``{memberName}`` (node: #{ownerName}) : {valueType} = node.``{memberName}``"
+
+                        if canSet then
+                            shared.Add
+                                $"        let {memberName}Static<'native when 'native :> {ownerName}> (value: {valueType}) : Typed.Modifier<'native> ="
+
+                            shared.Add
+                                $"            Typed.staticProperty (fun (node: 'native) value -> (node :> {ownerName}).``{memberName}`` <- value) value"
+
+                            shared.Add
+                                $"        let {memberName}Reactive<'native when 'native :> {ownerName}> (read: unit -> {valueType}) : Typed.Modifier<'native> ="
+
+                            shared.Add
+                                $"            Typed.reactiveProperty (fun (node: 'native) value -> (node :> {ownerName}).``{memberName}`` <- value) read"
+
+                        shared.Add ""
+
+                    let compatibility =
+                        (Set.ofList [ "div"; "button"; "input"; "select"; "option" ]).Contains tag
+                        && (Set.ofList [ "title"; "value"; "checked"; "files"; "form" ]).Contains memberName
+
+                    let expose =
+                        (native.Name <> "HTMLElement" && owner = native)
+                        || compatibility
+
+                    if expose then
+                        getters <- getters + 1
+                        emit $"    let ``{memberName}`` (node: {name}) : {valueType} = node.``{memberName}``"
+
+                        if canSet then
+                            setters <- setters + 1
+                            emit $"    let {memberName}Static (value: {valueType}) : Typed.Modifier<{name}> ="
+                            emit $"        Typed.staticProperty (fun (node: {name}) value -> node.``{memberName}`` <- value) value"
+                            emit $"    let {memberName}Reactive (read: unit -> {valueType}) : Typed.Modifier<{name}> ="
+                            emit $"        Typed.reactiveProperty (fun (node: {name}) value -> node.``{memberName}`` <- value) read"
+
+                        emit ""
+
+                    if
+                        not (readonly memberInfo)
+                        && nativeProperty.CanWrite
+                    then
+                        if excluded.Contains memberName then
+                            omissions.Add (tag, memberName, "setter excluded by Ranvier ownership/form policy")
+                        elif not (primitive nativeProperty.PropertyType) then
+                            omissions.Add (tag, memberName, "setter requires explicit native-object equality/ownership policy")
+
+
+        let eventMaps =
+            Array.append [| native |] (native.GetInterfaces ())
+            |> Array.choose (fun candidate ->
+                let fullName = $"Fable.Core.TS.Dom.{candidate.Name}EventMap"
+
+                declarations
+                |> Array.tryFind (fun d -> d.Name = fullName))
+            |> Array.distinctBy _.Name
+
+        let events = System.Collections.Generic.Dictionary<string, Type>()
+
+        for mapDeclaration in eventMaps |> Array.sortBy _.Name do
+            let mapNative = nativeType mapDeclaration
+            let mapSymbol = resolve mapNative.Name
+            require (nativeType (catalogueFor mapSymbol) = mapNative) "Event map identity mismatch"
+
+            for eventInfo in properties mapSymbol |> Array.sortBy _.Name do
+                let eventProperty = property mapNative eventInfo.Name
+
+                match tryType eventProperty.PropertyType with
+                | None -> omissions.Add (tag, "event:" + eventInfo.Name, $"unsupported event type: {eventProperty.PropertyType}")
+                | Some _ ->
+                    let response =
+                        Api.getTypeOfSymbol
+                            channel
+                            {
+                                Snapshot = snapshot
+                                Project = project
+                                Symbol = eventInfo.Id
+                            }
+
+                    let eventDeclaration = symbolOfType response |> catalogueFor
+
+                    let eventDefinition =
+                        if eventProperty.PropertyType.IsGenericType then
+                            eventProperty.PropertyType.GetGenericTypeDefinition ()
+                        else
+                            eventProperty.PropertyType
+
+                    require (nativeType eventDeclaration = eventDefinition) $"Event-map native type mismatch: {eventInfo.Name}"
+
+                    match events.TryGetValue eventInfo.Name with
+                    | true, previous ->
+                        require (previous = eventProperty.PropertyType) $"Conflicting inherited event type: {native.Name}.{eventInfo.Name}"
+                    | _ -> events.Add (eventInfo.Name, eventProperty.PropertyType)
+
+        for event in events |> Seq.sortBy _.Key do
+            let eventType = typeName declarations event.Value
+
+            if commonEvents.Contains event.Key then
+                match sharedEvents.TryGetValue event.Key with
+                | true, previous -> require (previous = event.Value) $"Conflicting common event: {event.Key}"
+                | _ -> sharedEvents.Add (event.Key, event.Value)
+
+            if
+                not (commonEvents.Contains event.Key)
+                || event.Key = "input"
+                || event.Key = "click"
+            then
+                listeners <- listeners + 1
+                emit $"    let on{moduleName event.Key} (handler: {eventType} -> unit) : Typed.Modifier<{name}> ="
+                emit $"        Typed.listener \"{event.Key}\" (fun event -> handler (unbox event))"
+                emit ""
+
+        require (getters + listeners > 0) $"No usable members for tag: {tag}"
+        counts.Add (tag, getters, setters, listeners)
+
+    let shared = ResizeArray<string>()
+    shared.Add "module Properties ="
+
+    for owner in sharedProperties do
+        shared.Add $"    module {owner.Key} ="
+        shared.AddRange owner.Value
+
+    shared.Add "module Events ="
+
+    for event in sharedEvents do
+        let eventType = typeName declarations event.Value
+
+        shared.Add
+            $"    let on{moduleName event.Key}<'native when 'native :> Dom.HTMLElement> (handler: {eventType} -> unit) : Typed.Modifier<'native> ="
+
+        shared.Add $"        Typed.listener \"{event.Key}\" (fun event -> handler (unbox event))"
+        shared.Add ""
+
+    lines.InsertRange (7, shared)
 
     let format =
         { Fantomas.Core.FormatConfig.Default with
@@ -400,8 +660,39 @@ let generate compilerRoot packageRoot output =
     Directory.CreateDirectory (Path.GetDirectoryName (Path.GetFullPath output))
     |> ignore
 
+    let coverage =
+        JsonSerializer.Serialize (
+            {|
+                package = "Xantham.Fable.Core.TS@0.2.1"
+                tags =
+                    counts
+                    |> Seq.map (fun (tag, getters, setters, events) ->
+                        {|
+                            tag = tag
+                            getters = getters
+                            setters = setters
+                            events = events
+                            isVoid = voidTags.Contains tag
+                        |})
+                    |> Seq.toArray
+                sharedPropertyCount = emittedProperties.Count
+                sharedEventCount = sharedEvents.Count
+                omissions =
+                    omissions
+                    |> Seq.map (fun (tag, memberName, reason) ->
+                        {|
+                            tag = tag
+                            memberName = memberName
+                            reason = reason
+                        |})
+                    |> Seq.toArray
+            |},
+            JsonSerializerOptions (WriteIndented = true)
+        )
+
     File.WriteAllText (output, contents, UTF8Encoding (false))
-    printfn "Generated five HTML tags from Core.TS 0.2.1 catalogue + Wire 0.3.0 + pinned TypeScript; SHA256 %s" (hashFile output)
+    File.WriteAllText (Path.ChangeExtension (output, ".coverage.json"), coverage + "\n", UTF8Encoding (false))
+    printfn "Generated %d HTML tags from Core.TS 0.2.1 catalogue + Wire 0.3.0 + pinned TypeScript; SHA256 %s" counts.Count (hashFile output)
 
 [<EntryPoint>]
 let main args =

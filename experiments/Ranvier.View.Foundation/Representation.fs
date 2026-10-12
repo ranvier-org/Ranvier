@@ -6,6 +6,7 @@ type Tag =
     | Input
     | Select
     | Option
+    | HtmlTag of string
 
 type Token =
     | Attribute of string * string
@@ -208,6 +209,40 @@ let name =
     | Input -> "input"
     | Select -> "select"
     | Option -> "option"
+    | HtmlTag value ->
+        if
+            System.String.IsNullOrEmpty value
+            || value[0] < 'a'
+            || value[0] > 'z'
+            || not (
+                value
+                |> String.forall (fun c ->
+                    (c >= 'a' && c <= 'z')
+                    || (c >= '0' && c <= '9')
+                    || c = '-')
+            )
+        then
+            invalidArg "tag" "HTML tag names must contain lowercase letters, digits or hyphens"
+
+        value
+
+let isVoid tag =
+    match name tag with
+    | "area"
+    | "base"
+    | "br"
+    | "col"
+    | "embed"
+    | "hr"
+    | "img"
+    | "input"
+    | "link"
+    | "meta"
+    | "param"
+    | "source"
+    | "track"
+    | "wbr" -> true
+    | _ -> false
 
 let validateAttribute name =
     if name <> "id" && name <> "title" then
@@ -215,7 +250,8 @@ let validateAttribute name =
 
 module Html =
     let private escape attribute (value: string) =
-        let escaped = value.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;")
+        let escaped =
+            value.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\r", "&#13;")
 
         if attribute then
             escaped.Replace ("\"", "&quot;")
@@ -224,8 +260,15 @@ module Html =
 
     let render policy build =
         let output = System.Text.StringBuilder ()
+        let mutable leadingLineFeed = false
 
         let append (value: string) =
+            if leadingLineFeed && value.Length > 0 then
+                leadingLineFeed <- false
+
+                if value[0] = '\n' then
+                    output.Append '\n' |> ignore
+
             output.Append value |> ignore
 
         let backend =
@@ -244,6 +287,20 @@ module Html =
                         render (fun () -> item) this
 
                 member _.Element(tag, tokens, children) =
+                    if
+                        match name tag with
+                        | "script"
+                        | "style"
+                        | "iframe"
+                        | "noscript"
+                        | "xmp"
+                        | "noembed"
+                        | "noframes"
+                        | "plaintext" -> true
+                        | _ -> false
+                    then
+                        raise (System.InvalidOperationException "Raw-text elements require an explicit HTML serialization policy")
+
                     append ("<" + name tag)
                     let attributes = System.Collections.Generic.Dictionary<string, string>()
                     let keys = ResizeArray<string>()
@@ -280,7 +337,12 @@ module Html =
 
                     append ">"
 
-                    if tag <> Input then
+                    if not (isVoid tag) then
+                        leadingLineFeed <-
+                            name tag = "pre"
+                            || name tag = "textarea"
+                            || name tag = "listing"
+
                         children ()
                         append ("</" + name tag + ">")
 

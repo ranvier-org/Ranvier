@@ -82,9 +82,14 @@ let mount (graph: Graph) (host: HTMLElement) (report: exn list -> unit) (counts:
                     | Browser hook -> scope.OnCleanup (hook (box node))
                     | ReactiveProperty _ -> invalidOp "Reactive properties require the owned-range interpreter"
 
-                if tag <> Input then
+                if not (isVoid tag) then
                     let previous = parent
-                    parent <- node
+
+                    parent <-
+                        if name tag = "template" then
+                            (node :?> HTMLTemplateElement).content :> Node
+                        else
+                            node
 
                     try
                         children ()
