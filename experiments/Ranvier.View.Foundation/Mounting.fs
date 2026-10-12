@@ -36,6 +36,11 @@ let private comment (value: string) =
 let private text (value: string) =
     document.createTextNode (value)
 
+let private propertyEquals = Func<obj, obj, bool>(fun left right -> left = right)
+
+let private attributeEquals =
+    Func<string option, string option, bool>(fun left right -> left = right)
+
 let inline private insert (parent: #Node) (node: #Node) (before: #Node option) : unit =
     let before: Node option = before |> Option.map (fun x -> x :> Node)
 
@@ -494,37 +499,47 @@ let rec private mountCore
             modifierNode <- previousNode
             modifierTag <- previousTag
 
-    let startBinding equals read write =
+    let startBinding (equals: Func<_, _, bool>) read write =
         let bindingScope = scope
-
-        let live () =
-            not root.IsDisposed && not bindingScope.IsDisposed
-
-        let write value =
-            try
-                write value
-            with error when root.Phase = SettingUp ->
-                bindingSetupFailure <- Some error
-                reraise ()
 
         match scheduling with
         | Synchronous ->
-            let mutable committed = None
+            let mutable hasCommitted = false
+            let mutable committed = Unchecked.defaultof<_>
 
             Api.createEffect (fun () ->
                 let value = read ()
 
-                if live () then
+                if not root.IsDisposed && not bindingScope.IsDisposed then
                     Api.untrack (fun () ->
                         let changed =
-                            match committed with
-                            | None -> true
-                            | Some old -> not (equals old value)
+                            not hasCommitted
+                            || not (equals.Invoke (committed, value))
 
-                        if changed && live () then
-                            write value
-                            committed <- Some value))
-        | Queued queue -> Binding.startQueued bindingScope.OnCleanup live queue equals read write
+                        if
+                            changed
+                            && not root.IsDisposed
+                            && not bindingScope.IsDisposed
+                        then
+                            try
+                                write value
+                                committed <- value
+                                hasCommitted <- true
+                            with error when root.Phase = SettingUp ->
+                                bindingSetupFailure <- Some error
+                                reraise ()))
+        | Queued queue ->
+            let live () =
+                not root.IsDisposed && not bindingScope.IsDisposed
+
+            let guardedWrite value =
+                try
+                    write value
+                with error when root.Phase = SettingUp ->
+                    bindingSetupFailure <- Some error
+                    reraise ()
+
+            Binding.startQueued bindingScope.OnCleanup live queue (fun left right -> equals.Invoke (left, right)) read guardedWrite
 
         bindingSetupFailure |> Option.iter raise
 
@@ -547,7 +562,7 @@ let rec private mountCore
             member _.ReactiveAttribute(key, read) =
                 let node = currentElement ()
                 validateAttribute key
-                startBinding (=) read (attributeValue node key)
+                startBinding attributeEquals read (attributeValue node key)
 
             member _.InputValue value =
                 let node = currentElement ()
@@ -572,7 +587,7 @@ let rec private mountCore
 
             member _.ReactiveProperty(read, write) =
                 let node = currentElement ()
-                startBinding (=) read (fun value -> write (box node) value)
+                startBinding propertyEquals read (fun value -> write (box node) value)
 
             member this.Element(tag, modifiers, children) =
                 ensureSetup ()
@@ -603,7 +618,7 @@ let rec private mountCore
                 ensureSetup ()
                 let node = text ""
                 append node
-                startBinding equals read (fun value -> node.textContent <- value)
+                startBinding (Func<_, _, _>(fun left right -> equals left right)) read (fun value -> node.textContent <- value)
 
             member _.Keyed(equals, read, render) =
                 ensureSetup ()

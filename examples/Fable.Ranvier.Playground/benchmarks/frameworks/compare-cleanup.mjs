@@ -7,10 +7,11 @@ import { fileURLToPath } from "node:url";
 const cwd = fileURLToPath(new URL("../../", import.meta.url));
 const out = fileURLToPath(new URL("../../../../docs/research/framework-performance/investigation/", import.meta.url));
 const variants = ["before", "after"], samples = [], checks = [], heaps = [], servers = [], bundleHashes = {};
+const bindingComparison = process.argv.includes("--binding-comparison");
 const median = values => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
 let browser, chromiumVersion;
 try {
-  const dirs = ["generated-framework-before", "generated-framework-dist"];
+  const dirs = [bindingComparison ? "generated-framework-binding-before" : "generated-framework-before", "generated-framework-dist"];
   for (const dir of dirs) await readdir(`${cwd}/${dir}/assets`);
   execFileSync("rtk", ["node", "node_modules/vite/bin/vite.js", "build", "--config", "benchmarks/frameworks/vite.config.mjs"], { cwd, stdio: "inherit", windowsHide: true, env: { ...process.env, RANVIER_SHARED_BACKEND: "false", RANVIER_PERF_PROFILE: "false", RANVIER_PERF_OUTPUT: dirs[1] } });
   for (let index = 0; index < 2; index++) {
@@ -75,7 +76,7 @@ try {
     return { width, phase, variant, medianUs: median(rows.map(row => row.ms)) * 1000, byProcessUs: [0, 1, 2].map(replicate => median(rows.filter(row => row.replicate === replicate).map(row => row.ms)) * 1000) };
   })));
   await mkdir(out, { recursive: true });
-  await writeFile(`${out}/cleanup-results.json`, JSON.stringify({ measuredAt: new Date().toISOString(), chromium: chromiumVersion, baselineCommit: "48bbfd4", configuration: "counter-free Release Fable, minified production; saved baseline bundle and rebuilt cleanup bundle, alternating variant order in three independent browser processes", warmups: 3, rounds: 11, independentProcesses: 3, unit: "milliseconds per operation", note: "Batch averages include GC, exclude host setup and paint/layout. Retained heap is JavaScript only. Baseline bundle must be prepared from the stated commit before compiling changed adapters.", bundleHashes, checks, samples, summaries, heaps }, null, 2) + "\n");
+  await writeFile(`${out}/${bindingComparison ? "binding" : "cleanup"}-results.json`, JSON.stringify({ measuredAt: new Date().toISOString(), chromium: chromiumVersion, baselineCommit: bindingComparison ? "b175b68" : "48bbfd4", configuration: "counter-free Release Fable, minified production; saved baseline bundle and rebuilt changed bundle, alternating variant order in three independent browser processes", warmups: 3, rounds: 11, independentProcesses: 3, unit: "milliseconds per operation", note: "Batch averages include GC, exclude host setup and paint/layout. Retained heap is JavaScript only. Baseline bundle must be prepared from the stated commit before compiling changed adapters.", bundleHashes, checks, samples, summaries, heaps }, null, 2) + "\n");
   console.log(JSON.stringify(summaries.filter(row => row.width === 128)));
 } finally {
   if (browser) await browser.close();

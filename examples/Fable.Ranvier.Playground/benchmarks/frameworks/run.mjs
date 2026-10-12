@@ -11,7 +11,8 @@ const verifyOnly = process.argv.includes("--verify-only");
 const nativeDiagnostic = process.argv.includes("--native-diagnostic");
 const directDiagnostic = process.argv.includes("--direct-diagnostic");
 const cleanupComparison = process.argv.includes("--cleanup-comparison");
-if ([nativeDiagnostic, directDiagnostic, cleanupComparison].filter(Boolean).length > 1) throw Error("Choose one diagnostic adapter set per run");
+const bindingComparison = process.argv.includes("--binding-comparison");
+if ([nativeDiagnostic, directDiagnostic, cleanupComparison, bindingComparison].filter(Boolean).length > 1) throw Error("Choose one diagnostic adapter set per run");
 const modes = directDiagnostic ? ["ranvier", "ranvier-direct", "solid", "ripple"] : nativeDiagnostic ? ["ranvier", "solid", "ripple", "native-create", "native-clone", "native-descendants"] : ["ranvier", "solid", "ripple", "react"], widths = [1, 16, 128];
 const port = 5186;
 if (process.argv.includes("--build")) {
@@ -111,8 +112,8 @@ try {
         "Ranvier component/fragment ownership and anchors remain enabled; static view optimization is not implemented."
       ], sourceHashes, correctness, samples, summaries, heaps
     };
-    await mkdir(nativeDiagnostic || directDiagnostic || cleanupComparison ? `${outputDirectory}/investigation` : outputDirectory, { recursive: true });
-    await writeFile(`${outputDirectory}/${cleanupComparison ? "investigation/cleanup-framework-results" : directDiagnostic ? "investigation/direct-results" : nativeDiagnostic ? "investigation/native-results" : "results"}.json`, JSON.stringify(result, null, 2) + "\n");
+    await mkdir(nativeDiagnostic || directDiagnostic || cleanupComparison || bindingComparison ? `${outputDirectory}/investigation` : outputDirectory, { recursive: true });
+    await writeFile(`${outputDirectory}/${bindingComparison ? "investigation/binding-framework-results" : cleanupComparison ? "investigation/cleanup-framework-results" : directDiagnostic ? "investigation/direct-results" : nativeDiagnostic ? "investigation/native-results" : "results"}.json`, JSON.stringify(result, null, 2) + "\n");
     console.log(JSON.stringify(summaries));
   }
 } finally {

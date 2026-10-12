@@ -5,6 +5,7 @@ generated-ripple/
 generated-framework-dist/
 generated-framework-shared/
 generated-framework-before/
+generated-framework-binding-before/
 dist/
 node_modules/
 test-results/

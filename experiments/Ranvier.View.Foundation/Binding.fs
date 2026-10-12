@@ -10,7 +10,8 @@ let internal startQueued registerCleanup isLive (queue: Queue) equals read write
     let slot = queue.Reserve ()
     let mutable first = true
     let mutable version = 0
-    let mutable committed = None
+    let mutable hasCommitted = false
+    let mutable committed = Unchecked.defaultof<_>
     registerCleanup (fun () -> queue.Cancel slot)
 
     Api.createEffect (fun () ->
@@ -29,9 +30,7 @@ let internal startQueued registerCleanup isLive (queue: Queue) equals read write
             then
                 Api.runWithOwner owner (fun () ->
                     Api.untrack (fun () ->
-                        let changed =
-                            committed
-                            |> Option.forall (fun old -> not (equals old value))
+                        let changed = not hasCommitted || not (equals committed value)
 
                         if
                             changed
@@ -42,7 +41,8 @@ let internal startQueued registerCleanup isLive (queue: Queue) equals read write
                             write value
 
                             if version = current then
-                                committed <- Some value))
+                                committed <- value
+                                hasCommitted <- true))
 
         if first then
             first <- false
