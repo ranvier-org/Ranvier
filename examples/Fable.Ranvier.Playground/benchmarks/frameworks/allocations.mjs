@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { TraceMap, originalPositionFor } from "@jridgewell/trace-mapping";
 
 const cwd = fileURLToPath(new URL("../../", import.meta.url));
-const out = fileURLToPath(new URL("../../../../docs/research/framework-performance/investigation/", import.meta.url));
+const out = fileURLToPath(new URL(process.argv.includes("--cleanup") ? "../../../../docs/research/framework-performance/investigation/cleanup-profile/" : "../../../../docs/research/framework-performance/investigation/", import.meta.url));
 const assets = fileURLToPath(new URL("../../generated-framework-dist/assets/", import.meta.url));
 execFileSync("rtk", ["node", "node_modules/vite/bin/vite.js", "build", "--config", "benchmarks/frameworks/vite.config.mjs"], { cwd, stdio: "inherit", windowsHide: true, env: { ...process.env, RANVIER_PERF_PROFILE: "true", RANVIER_SHARED_BACKEND: "false" } });
 const mapFile = (await readdir(assets)).find(name => name.endsWith(".js.map"));
