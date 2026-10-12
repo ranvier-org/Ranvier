@@ -643,6 +643,79 @@ let generate compilerRoot packageRoot output =
 
     lines.InsertRange (7, shared)
 
+    let policyPath = Path.Combine (compilerRoot, "attributes.json")
+    use attributePolicy = JsonDocument.Parse (File.ReadAllBytes policyPath)
+    require (attributePolicy.RootElement.GetProperty("schemaVersion").GetInt32() = 1) "Unsupported attribute policy schema"
+    let attributeCount = ref 0
+    emit "module Attrs ="
+    emit "    let dataStatic<'native when 'native :> Dom.HTMLElement> suffix value : Typed.Modifier<'native> ="
+    emit "        Typed.attribute (Typed.prefixedAttributeName \"data-\" suffix) value"
+    emit "    let dataReactive<'native when 'native :> Dom.HTMLElement> suffix read : Typed.Modifier<'native> ="
+    emit "        Typed.reactiveAttribute (Typed.prefixedAttributeName \"data-\" suffix) read"
+    emit "    let ariaStatic<'native when 'native :> Dom.HTMLElement> suffix value : Typed.Modifier<'native> ="
+    emit "        Typed.attribute (Typed.prefixedAttributeName \"aria-\" suffix) value"
+    emit "    let ariaReactive<'native when 'native :> Dom.HTMLElement> suffix read : Typed.Modifier<'native> ="
+    emit "        Typed.reactiveAttribute (Typed.prefixedAttributeName \"aria-\" suffix) read"
+    emit ""
+    let groupNames = System.Collections.Generic.HashSet<string>()
+
+    for group in attributePolicy.RootElement.GetProperty("groups").EnumerateArray() do
+        let groupName = str "module" group
+        require (groupNames.Add groupName) "Duplicate attribute policy module"
+        let nativeName = str "native" group
+        let symbol = resolve nativeName
+        let native = nativeType (catalogueFor symbol)
+        require (typeof<Dom.HTMLElement>.IsAssignableFrom native) $"Attribute owner is not an HTML element: {nativeName}"
+        let nativeName = typeName declarations native
+        let nativeMembers = properties symbol
+        let indent = if groupName = "" then "    " else "        "
+
+        if groupName <> "" then
+            emit $"    module {groupName} ="
+
+        let helperNames = System.Collections.Generic.HashSet<string>()
+
+        for entry in group.GetProperty("entries").EnumerateArray() do
+            let helper = str "helper" entry
+            let attribute = str "name" entry
+            let kind = str "kind" entry
+            require (helperNames.Add helper) "Duplicate attribute helper name"
+
+            require
+                (attribute <> "srcdoc"
+                 && not (attribute.StartsWith ("on", StringComparison.Ordinal)))
+                "Unsafe attribute policy entry"
+
+            require
+                (not (String.IsNullOrEmpty attribute)
+                 && Char.IsAsciiLetterLower attribute[0]
+                 && (attribute
+                     |> Seq.forall (fun c ->
+                         Char.IsAsciiLetterLower c
+                         || (c >= '0' && c <= '9')
+                         || c = '-'
+                         || c = '_')))
+                "Invalid attribute policy name"
+
+            memberSymbol nativeMembers (str "member" entry)
+            |> ignore
+
+            property native (str "member" entry) |> ignore
+
+            let staticType, readType, staticFunction, reactiveFunction =
+                match kind with
+                | "string" -> "string", "string option", "attribute", "reactiveAttribute"
+                | "boolean" -> "bool", "bool", "booleanAttribute", "reactiveBooleanAttribute"
+                | "ariaBoolean" -> "bool", "bool option", "ariaBooleanAttribute", "reactiveAriaBooleanAttribute"
+                | _ -> fail $"Unknown attribute policy kind: {kind}"
+
+            attributeCount.Value <- attributeCount.Value + 1
+            emit $"{indent}let {helper}Static<'native when 'native :> {nativeName}> (value: {staticType}) : Typed.Modifier<'native> ="
+            emit $"{indent}    Typed.{staticFunction} \"{attribute}\" value"
+            emit $"{indent}let {helper}Reactive<'native when 'native :> {nativeName}> (read: unit -> {readType}) : Typed.Modifier<'native> ="
+            emit $"{indent}    Typed.{reactiveFunction} \"{attribute}\" read"
+            emit ""
+
     let format =
         { Fantomas.Core.FormatConfig.Default with
             MaxLineLength = 150
@@ -675,6 +748,8 @@ let generate compilerRoot packageRoot output =
                             isVoid = voidTags.Contains tag
                         |})
                     |> Seq.toArray
+                attributePolicySha256 = hashFile policyPath
+                attributeCount = attributeCount.Value
                 sharedPropertyCount = emittedProperties.Count
                 sharedEventCount = sharedEvents.Count
                 omissions =

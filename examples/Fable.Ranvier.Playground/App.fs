@@ -11,6 +11,7 @@ module FoundationMounting = Ranvier.View.Foundation.Mounting
 module FoundationTree = Ranvier.View.Foundation.Representation.Tree
 module FoundationTyped = Ranvier.View.Foundation.Typed
 module GeneratedHtml = Ranvier.View.Foundation.Generated.Html
+module GeneratedAttrs = GeneratedHtml.Attrs
 module FoundationMicrotask = Ranvier.View.Foundation.Microtask
 module FoundationScheduling = Ranvier.View.Foundation.Scheduling
 
@@ -337,19 +338,23 @@ let start () : unit -> unit =
 
                 GeneratedHtml.div
                     foundationOps
-                    [ FoundationTyped.id ("foundation-row-" + string key) ]
+                    [ GeneratedAttrs.idStatic ("foundation-row-" + string key) ]
                     [ FoundationTyped.reactiveText foundationOps (fun () -> snd (current ())) ])
 
         let foundationView =
             GeneratedHtml.section
                 foundationOps
-                [ FoundationTyped.id "foundation-demo" ]
+                [
+                    GeneratedAttrs.idStatic "foundation-demo"
+                    GeneratedAttrs.classStatic "panel"
+                    GeneratedAttrs.dataReactive "row-count" (fun () -> Some (string foundationRows.Value.Length))
+                ]
                 [
                     foundationOps.Text "Foundation implementation: keyed rows"
                     GeneratedHtml.button
                         foundationOps
                         [
-                            FoundationTyped.id "foundation-add"
+                            GeneratedAttrs.idStatic "foundation-add"
                             GeneratedHtml.Button.onClick (fun _ ->
                                 let next =
                                     foundationRows.Value
@@ -363,7 +368,7 @@ let start () : unit -> unit =
                     GeneratedHtml.button
                         foundationOps
                         [
-                            FoundationTyped.id "foundation-reverse"
+                            GeneratedAttrs.idStatic "foundation-reverse"
                             GeneratedHtml.Button.onClick (fun _ -> foundationRows.Value <- Array.rev foundationRows.Value)
                         ]
                         [ foundationOps.Text "Reverse rows" ]
@@ -384,18 +389,28 @@ let start () : unit -> unit =
                     let action id label update =
                         GeneratedHtml.button
                             foundationOps
-                            [ FoundationTyped.id id; GeneratedHtml.Button.onClick (fun _ -> update ()) ]
+                            [
+                                GeneratedAttrs.idStatic id
+                                GeneratedHtml.Button.onClick (fun _ -> update ())
+                            ]
                             [ foundationOps.Text label ]
 
                     let statusPanel =
                         GeneratedHtml.div
                             foundationOps
-                            [ FoundationTyped.id "foundation-load" ]
+                            [
+                                GeneratedAttrs.idStatic "foundation-load"
+                                GeneratedAttrs.roleStatic "region"
+                                GeneratedAttrs.ariaLabelStatic "Load result"
+                                GeneratedAttrs.ariaBusyReactive (fun () ->
+                                    loadResult.Value |> ignore
+                                    Some loadResult.IsWaiting)
+                            ]
                             [
                                 foundationOps.Text "Load result"
                                 GeneratedHtml.div
                                     foundationOps
-                                    [ FoundationTyped.id "foundation-load-status" ]
+                                    [ GeneratedAttrs.idStatic "foundation-load-status" ]
                                     [
                                         FoundationTyped.reactiveText foundationOps (fun () ->
                                             loadResult.Value |> ignore
@@ -406,11 +421,11 @@ let start () : unit -> unit =
                                     ]
                                 GeneratedHtml.div
                                     foundationOps
-                                    [ FoundationTyped.id "foundation-load-result" ]
+                                    [ GeneratedAttrs.idStatic "foundation-load-result" ]
                                     [ FoundationTyped.reactiveText foundationOps (fun () -> loadResult.Value) ]
                                 GeneratedHtml.div
                                     foundationOps
-                                    [ FoundationTyped.id "foundation-load-error" ]
+                                    [ GeneratedAttrs.idStatic "foundation-load-error" ]
                                     [
                                         FoundationTyped.reactiveText foundationOps (fun () ->
                                             loadResult.Value |> ignore

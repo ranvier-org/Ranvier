@@ -24,9 +24,22 @@ Html.article Tree.ops
 
 Shared modifiers constrain their native type, so input properties cannot be used on a div. Getters preserve supported primitives, options, named native references and closed native generics. Setters support writable primitives and optional primitives. Native-object setters require explicit equality/ownership policy. Unsupported arrays, callbacks and unmapped aliases/unions are recorded in `Generated/Html.coverage.json`; they are not widened to `obj`. Methods and SVG are outside this scope.
 
-Files is writable upstream but getter-only by Ranvier policy; form is readonly upstream. DOM replacement properties and iframe srcdoc receive no setters. Generated helpers delegate ownership/scheduling to handwritten `Typed` operations. Templates mount children into content; selects apply modifiers after options. HTML snapshots reject raw-text/context-sensitive elements without explicit serialization policy and preserve initial newlines in pre/textarea. These distinctions follow the [HTML syntax model](https://html.spec.whatwg.org/multipage/syntax.html); legacy param retains void compatibility. Attribute/portable property metadata remains separate work.
+Files is writable upstream but getter-only by Ranvier policy; form is readonly upstream. DOM replacement properties and iframe srcdoc receive no setters. Generated helpers delegate ownership/scheduling to handwritten `Typed` operations. Templates mount children into content; selects apply modifiers after options. HTML snapshots reject raw-text/context-sensitive elements without explicit serialization policy and preserve initial newlines in pre/textarea. These distinctions follow the [HTML syntax model](https://html.spec.whatwg.org/multipage/syntax.html); legacy param retains void compatibility. Complete portable property metadata remains separate work.
 
-The tool remains a pinned adapter, not a general TypeScript-to-F# mapper or complete catalogue authenticator. Tests verify deterministic code/coverage and corrupt-input rejection; compiler checks cover inherited constraints, properties/events, readonly and void-child failures.
+Common attribute authoring is generated under `Html.Attrs` from the versioned `attributes.json` policy: 34 named attributes plus static/reactive `data-*` and `aria-*` helpers. Wire and the published catalogue validate native owner/member identities; Ranvier chooses attribute names and semantics. Coverage records the policy hash. Boolean attributes use presence/removal; ARIA booleans retain literal `false`. Optional string readers remove an attribute on `None`. All reactive helpers reuse the existing binding/queue ownership path, and HTML snapshots serialize their current values with escaping.
+
+```fsharp
+Html.button Tree.ops
+    [ Html.Attrs.classStatic "primary"
+      Html.Attrs.Button.disabledReactive (fun () -> busy.Value)
+      Html.Attrs.ariaExpandedReactive (fun () -> Some expanded.Value)
+      Html.Attrs.dataReactive "state" (fun () -> state.Value) ]
+    [ Tree.ops.Text "Open" ]
+```
+
+Attributes and live properties are distinct. `Html.Attrs.Input.valueReactive` changes the default value attribute; use `Html.Input.valueReactive` for the live value. The same distinction applies to checked/defaultChecked and selected/defaultSelected. Event-handler attributes and srcdoc are rejected. This policy is a curated subset, not complete portable property metadata.
+
+The tool remains a pinned adapter, not a general TypeScript-to-F# mapper or complete catalogue authenticator. Tests verify deterministic code/coverage, malformed-policy and corrupt-input rejection; compiler checks cover inherited constraints, properties/events/attributes, readonly and void-child failures.
 
 Published artifact evidence inspected on 2026-10-11:
 

@@ -21,6 +21,9 @@ examples = [
     ("DOM replacement setter excluded", "let modifier = H.Div.innerHTMLStatic \"markup\"", "FS0039"),
     ("shared input property rejects div", "let view = H.div Tree.ops [ H.Properties.HTMLInputElement.checkedStatic true ] []", "FS0001"),
     ("wrong mapped event type", "let modifier = H.Events.onClick (fun (_: Dom.KeyboardEvent) -> ())", "FS0001"),
+    ("attribute helper rejects incompatible element", "let view = H.div Tree.ops [ H.Attrs.Input.checkedStatic true ] []", "FS0001"),
+    ("boolean attribute rejects string value", "let modifier = H.Attrs.Button.disabledStatic \"false\"", "FS0001"),
+    ("reactive attribute requires removal option", "let modifier = H.Attrs.classReactive (fun () -> \"panel\")", "FS0001"),
 ]
 
 with tempfile.TemporaryDirectory(prefix="ranvier-generated-types-") as directory:

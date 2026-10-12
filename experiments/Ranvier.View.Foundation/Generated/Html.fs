@@ -9396,3 +9396,225 @@ module Wbr =
 
     let onInput (handler: Dom.InputEvent -> unit) : Typed.Modifier<Dom.HTMLElement> =
         Typed.listener "input" (fun event -> handler (unbox event))
+
+module Attrs =
+    let dataStatic<'native when 'native :> Dom.HTMLElement> suffix value : Typed.Modifier<'native> =
+        Typed.attribute (Typed.prefixedAttributeName "data-" suffix) value
+
+    let dataReactive<'native when 'native :> Dom.HTMLElement> suffix read : Typed.Modifier<'native> =
+        Typed.reactiveAttribute (Typed.prefixedAttributeName "data-" suffix) read
+
+    let ariaStatic<'native when 'native :> Dom.HTMLElement> suffix value : Typed.Modifier<'native> =
+        Typed.attribute (Typed.prefixedAttributeName "aria-" suffix) value
+
+    let ariaReactive<'native when 'native :> Dom.HTMLElement> suffix read : Typed.Modifier<'native> =
+        Typed.reactiveAttribute (Typed.prefixedAttributeName "aria-" suffix) read
+
+    let idStatic<'native when 'native :> Dom.HTMLElement> (value: string) : Typed.Modifier<'native> =
+        Typed.attribute "id" value
+
+    let idReactive<'native when 'native :> Dom.HTMLElement> (read: unit -> string option) : Typed.Modifier<'native> =
+        Typed.reactiveAttribute "id" read
+
+    let classStatic<'native when 'native :> Dom.HTMLElement> (value: string) : Typed.Modifier<'native> =
+        Typed.attribute "class" value
+
+    let classReactive<'native when 'native :> Dom.HTMLElement> (read: unit -> string option) : Typed.Modifier<'native> =
+        Typed.reactiveAttribute "class" read
+
+    let titleStatic<'native when 'native :> Dom.HTMLElement> (value: string) : Typed.Modifier<'native> =
+        Typed.attribute "title" value
+
+    let titleReactive<'native when 'native :> Dom.HTMLElement> (read: unit -> string option) : Typed.Modifier<'native> =
+        Typed.reactiveAttribute "title" read
+
+    let roleStatic<'native when 'native :> Dom.HTMLElement> (value: string) : Typed.Modifier<'native> =
+        Typed.attribute "role" value
+
+    let roleReactive<'native when 'native :> Dom.HTMLElement> (read: unit -> string option) : Typed.Modifier<'native> =
+        Typed.reactiveAttribute "role" read
+
+    let langStatic<'native when 'native :> Dom.HTMLElement> (value: string) : Typed.Modifier<'native> =
+        Typed.attribute "lang" value
+
+    let langReactive<'native when 'native :> Dom.HTMLElement> (read: unit -> string option) : Typed.Modifier<'native> =
+        Typed.reactiveAttribute "lang" read
+
+    let dirStatic<'native when 'native :> Dom.HTMLElement> (value: string) : Typed.Modifier<'native> =
+        Typed.attribute "dir" value
+
+    let dirReactive<'native when 'native :> Dom.HTMLElement> (read: unit -> string option) : Typed.Modifier<'native> =
+        Typed.reactiveAttribute "dir" read
+
+    let hiddenStatic<'native when 'native :> Dom.HTMLElement> (value: bool) : Typed.Modifier<'native> =
+        Typed.booleanAttribute "hidden" value
+
+    let hiddenReactive<'native when 'native :> Dom.HTMLElement> (read: unit -> bool) : Typed.Modifier<'native> =
+        Typed.reactiveBooleanAttribute "hidden" read
+
+    let inertStatic<'native when 'native :> Dom.HTMLElement> (value: bool) : Typed.Modifier<'native> =
+        Typed.booleanAttribute "inert" value
+
+    let inertReactive<'native when 'native :> Dom.HTMLElement> (read: unit -> bool) : Typed.Modifier<'native> =
+        Typed.reactiveBooleanAttribute "inert" read
+
+    let ariaLabelStatic<'native when 'native :> Dom.HTMLElement> (value: string) : Typed.Modifier<'native> =
+        Typed.attribute "aria-label" value
+
+    let ariaLabelReactive<'native when 'native :> Dom.HTMLElement> (read: unit -> string option) : Typed.Modifier<'native> =
+        Typed.reactiveAttribute "aria-label" read
+
+    let ariaLabelledByStatic<'native when 'native :> Dom.HTMLElement> (value: string) : Typed.Modifier<'native> =
+        Typed.attribute "aria-labelledby" value
+
+    let ariaLabelledByReactive<'native when 'native :> Dom.HTMLElement> (read: unit -> string option) : Typed.Modifier<'native> =
+        Typed.reactiveAttribute "aria-labelledby" read
+
+    let ariaDescribedByStatic<'native when 'native :> Dom.HTMLElement> (value: string) : Typed.Modifier<'native> =
+        Typed.attribute "aria-describedby" value
+
+    let ariaDescribedByReactive<'native when 'native :> Dom.HTMLElement> (read: unit -> string option) : Typed.Modifier<'native> =
+        Typed.reactiveAttribute "aria-describedby" read
+
+    let ariaExpandedStatic<'native when 'native :> Dom.HTMLElement> (value: bool) : Typed.Modifier<'native> =
+        Typed.ariaBooleanAttribute "aria-expanded" value
+
+    let ariaExpandedReactive<'native when 'native :> Dom.HTMLElement> (read: unit -> bool option) : Typed.Modifier<'native> =
+        Typed.reactiveAriaBooleanAttribute "aria-expanded" read
+
+    let ariaBusyStatic<'native when 'native :> Dom.HTMLElement> (value: bool) : Typed.Modifier<'native> =
+        Typed.ariaBooleanAttribute "aria-busy" value
+
+    let ariaBusyReactive<'native when 'native :> Dom.HTMLElement> (read: unit -> bool option) : Typed.Modifier<'native> =
+        Typed.reactiveAriaBooleanAttribute "aria-busy" read
+
+    let ariaDisabledStatic<'native when 'native :> Dom.HTMLElement> (value: bool) : Typed.Modifier<'native> =
+        Typed.ariaBooleanAttribute "aria-disabled" value
+
+    let ariaDisabledReactive<'native when 'native :> Dom.HTMLElement> (read: unit -> bool option) : Typed.Modifier<'native> =
+        Typed.reactiveAriaBooleanAttribute "aria-disabled" read
+
+    module Button =
+        let disabledStatic<'native when 'native :> Dom.HTMLButtonElement> (value: bool) : Typed.Modifier<'native> =
+            Typed.booleanAttribute "disabled" value
+
+        let disabledReactive<'native when 'native :> Dom.HTMLButtonElement> (read: unit -> bool) : Typed.Modifier<'native> =
+            Typed.reactiveBooleanAttribute "disabled" read
+
+        let typeStatic<'native when 'native :> Dom.HTMLButtonElement> (value: string) : Typed.Modifier<'native> =
+            Typed.attribute "type" value
+
+        let typeReactive<'native when 'native :> Dom.HTMLButtonElement> (read: unit -> string option) : Typed.Modifier<'native> =
+            Typed.reactiveAttribute "type" read
+
+    module Input =
+        let disabledStatic<'native when 'native :> Dom.HTMLInputElement> (value: bool) : Typed.Modifier<'native> =
+            Typed.booleanAttribute "disabled" value
+
+        let disabledReactive<'native when 'native :> Dom.HTMLInputElement> (read: unit -> bool) : Typed.Modifier<'native> =
+            Typed.reactiveBooleanAttribute "disabled" read
+
+        let requiredStatic<'native when 'native :> Dom.HTMLInputElement> (value: bool) : Typed.Modifier<'native> =
+            Typed.booleanAttribute "required" value
+
+        let requiredReactive<'native when 'native :> Dom.HTMLInputElement> (read: unit -> bool) : Typed.Modifier<'native> =
+            Typed.reactiveBooleanAttribute "required" read
+
+        let readOnlyStatic<'native when 'native :> Dom.HTMLInputElement> (value: bool) : Typed.Modifier<'native> =
+            Typed.booleanAttribute "readonly" value
+
+        let readOnlyReactive<'native when 'native :> Dom.HTMLInputElement> (read: unit -> bool) : Typed.Modifier<'native> =
+            Typed.reactiveBooleanAttribute "readonly" read
+
+        let multipleStatic<'native when 'native :> Dom.HTMLInputElement> (value: bool) : Typed.Modifier<'native> =
+            Typed.booleanAttribute "multiple" value
+
+        let multipleReactive<'native when 'native :> Dom.HTMLInputElement> (read: unit -> bool) : Typed.Modifier<'native> =
+            Typed.reactiveBooleanAttribute "multiple" read
+
+        let checkedStatic<'native when 'native :> Dom.HTMLInputElement> (value: bool) : Typed.Modifier<'native> =
+            Typed.booleanAttribute "checked" value
+
+        let checkedReactive<'native when 'native :> Dom.HTMLInputElement> (read: unit -> bool) : Typed.Modifier<'native> =
+            Typed.reactiveBooleanAttribute "checked" read
+
+        let valueStatic<'native when 'native :> Dom.HTMLInputElement> (value: string) : Typed.Modifier<'native> =
+            Typed.attribute "value" value
+
+        let valueReactive<'native when 'native :> Dom.HTMLInputElement> (read: unit -> string option) : Typed.Modifier<'native> =
+            Typed.reactiveAttribute "value" read
+
+        let typeStatic<'native when 'native :> Dom.HTMLInputElement> (value: string) : Typed.Modifier<'native> =
+            Typed.attribute "type" value
+
+        let typeReactive<'native when 'native :> Dom.HTMLInputElement> (read: unit -> string option) : Typed.Modifier<'native> =
+            Typed.reactiveAttribute "type" read
+
+        let placeholderStatic<'native when 'native :> Dom.HTMLInputElement> (value: string) : Typed.Modifier<'native> =
+            Typed.attribute "placeholder" value
+
+        let placeholderReactive<'native when 'native :> Dom.HTMLInputElement> (read: unit -> string option) : Typed.Modifier<'native> =
+            Typed.reactiveAttribute "placeholder" read
+
+    module Select =
+        let disabledStatic<'native when 'native :> Dom.HTMLSelectElement> (value: bool) : Typed.Modifier<'native> =
+            Typed.booleanAttribute "disabled" value
+
+        let disabledReactive<'native when 'native :> Dom.HTMLSelectElement> (read: unit -> bool) : Typed.Modifier<'native> =
+            Typed.reactiveBooleanAttribute "disabled" read
+
+        let requiredStatic<'native when 'native :> Dom.HTMLSelectElement> (value: bool) : Typed.Modifier<'native> =
+            Typed.booleanAttribute "required" value
+
+        let requiredReactive<'native when 'native :> Dom.HTMLSelectElement> (read: unit -> bool) : Typed.Modifier<'native> =
+            Typed.reactiveBooleanAttribute "required" read
+
+        let multipleStatic<'native when 'native :> Dom.HTMLSelectElement> (value: bool) : Typed.Modifier<'native> =
+            Typed.booleanAttribute "multiple" value
+
+        let multipleReactive<'native when 'native :> Dom.HTMLSelectElement> (read: unit -> bool) : Typed.Modifier<'native> =
+            Typed.reactiveBooleanAttribute "multiple" read
+
+    module Textarea =
+        let disabledStatic<'native when 'native :> Dom.HTMLTextAreaElement> (value: bool) : Typed.Modifier<'native> =
+            Typed.booleanAttribute "disabled" value
+
+        let disabledReactive<'native when 'native :> Dom.HTMLTextAreaElement> (read: unit -> bool) : Typed.Modifier<'native> =
+            Typed.reactiveBooleanAttribute "disabled" read
+
+        let requiredStatic<'native when 'native :> Dom.HTMLTextAreaElement> (value: bool) : Typed.Modifier<'native> =
+            Typed.booleanAttribute "required" value
+
+        let requiredReactive<'native when 'native :> Dom.HTMLTextAreaElement> (read: unit -> bool) : Typed.Modifier<'native> =
+            Typed.reactiveBooleanAttribute "required" read
+
+        let readOnlyStatic<'native when 'native :> Dom.HTMLTextAreaElement> (value: bool) : Typed.Modifier<'native> =
+            Typed.booleanAttribute "readonly" value
+
+        let readOnlyReactive<'native when 'native :> Dom.HTMLTextAreaElement> (read: unit -> bool) : Typed.Modifier<'native> =
+            Typed.reactiveBooleanAttribute "readonly" read
+
+        let placeholderStatic<'native when 'native :> Dom.HTMLTextAreaElement> (value: string) : Typed.Modifier<'native> =
+            Typed.attribute "placeholder" value
+
+        let placeholderReactive<'native when 'native :> Dom.HTMLTextAreaElement> (read: unit -> string option) : Typed.Modifier<'native> =
+            Typed.reactiveAttribute "placeholder" read
+
+    module Option =
+        let disabledStatic<'native when 'native :> Dom.HTMLOptionElement> (value: bool) : Typed.Modifier<'native> =
+            Typed.booleanAttribute "disabled" value
+
+        let disabledReactive<'native when 'native :> Dom.HTMLOptionElement> (read: unit -> bool) : Typed.Modifier<'native> =
+            Typed.reactiveBooleanAttribute "disabled" read
+
+        let selectedStatic<'native when 'native :> Dom.HTMLOptionElement> (value: bool) : Typed.Modifier<'native> =
+            Typed.booleanAttribute "selected" value
+
+        let selectedReactive<'native when 'native :> Dom.HTMLOptionElement> (read: unit -> bool) : Typed.Modifier<'native> =
+            Typed.reactiveBooleanAttribute "selected" read
+
+        let valueStatic<'native when 'native :> Dom.HTMLOptionElement> (value: string) : Typed.Modifier<'native> =
+            Typed.attribute "value" value
+
+        let valueReactive<'native when 'native :> Dom.HTMLOptionElement> (read: unit -> string option) : Typed.Modifier<'native> =
+            Typed.reactiveAttribute "value" read

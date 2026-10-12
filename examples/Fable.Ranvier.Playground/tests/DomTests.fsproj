@@ -24,6 +24,7 @@
     <Compile Include="BindingChecks.fs" />
     <Compile Include="BindingIntegrationChecks.fs" />
     <Compile Include="GeneratedChecks.fs" />
+    <Compile Include="AttributeChecks.fs" />
     <Compile Include="../benchmarks/BindingBaselineMounting.fs" Link="BindingBaselineMounting.fs" />
     <Compile Include="BindingBench.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Components.fs" Link="Components.fs" />

@@ -66,10 +66,12 @@ test("Foundation keyed views are consumed by the playground app", async ({ page 
   const beta = page.locator("#foundation-row-2");
   await expect(alpha).toHaveText("Alpha");
   await expect(beta).toHaveText("Beta");
+  await expect(page.locator("#foundation-demo")).toHaveAttribute("data-row-count", "2");
 
   const retainedAlpha = await alpha.elementHandle();
   await page.locator("#foundation-add").click();
   await expect(page.locator("#foundation-row-3")).toHaveText("Item 3");
+  await expect(page.locator("#foundation-demo")).toHaveAttribute("data-row-count", "3");
   await page.locator("#foundation-reverse").click();
 
   expect(await retainedAlpha.evaluate(element => element === document.querySelector("#foundation-row-1"))).toBe(true);
@@ -99,9 +101,11 @@ test("Foundation core boundary shows pending failure and recovery on retained no
   const status = page.locator("#foundation-load-status");
   const retained = await result.elementHandle();
   await expect(result).toHaveText("Loaded result");
+  await expect(page.locator("#foundation-load")).toHaveAttribute("aria-busy", "false");
   await page.locator("#foundation-pending").click();
   await expect(result).toHaveText("Loading…");
   await expect(status).toHaveText("Pending");
+  await expect(page.locator("#foundation-load")).toHaveAttribute("aria-busy", "true");
   await page.locator("#foundation-fail").click();
   await expect(result).toHaveText("Could not load the result");
   await expect(status).toHaveText("Failed");
@@ -109,6 +113,7 @@ test("Foundation core boundary shows pending failure and recovery on retained no
   await page.locator("#foundation-recover").click();
   await expect(result).toHaveText("Recovered result");
   await expect(status).toHaveText("Ready");
+  await expect(page.locator("#foundation-load")).toHaveAttribute("aria-busy", "false");
   await expect(page.locator("#foundation-load-error")).toBeEmpty();
   expect(await retained.evaluate(node => node === document.querySelector("#foundation-load-result"))).toBe(true);
 });

@@ -426,6 +426,13 @@ let rec mount (graph: Graph) (parentScope: Scope option) (report: exn list -> un
                     | Attribute (key, value) ->
                         validateAttribute key
                         node.setAttribute (key, value)
+                    | OptionalAttribute (key, value) ->
+                        validateAttribute key
+
+                        match value with
+                        | Some value -> node.setAttribute (key, value)
+                        | None -> node.removeAttribute key
+                    | ReactiveAttribute _ -> invalidOp "Reactive attributes are outside the frozen text benchmark"
                     | InputValue value ->
                         if tag <> Input then
                             invalidArg "tokens" "Input value requires input"

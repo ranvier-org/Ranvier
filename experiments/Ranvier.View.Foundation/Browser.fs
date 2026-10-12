@@ -74,6 +74,13 @@ let mount (graph: Graph) (host: HTMLElement) (report: exn list -> unit) (counts:
                     | Attribute (key, value) ->
                         validateAttribute key
                         node.setAttribute (key, value)
+                    | OptionalAttribute (key, value) ->
+                        validateAttribute key
+
+                        match value with
+                        | Some value -> node.setAttribute (key, value)
+                        | None -> node.removeAttribute key
+                    | ReactiveAttribute _ -> invalidOp "Reactive attributes require the owned-range interpreter"
                     | InputValue value ->
                         if tag <> Input then
                             invalidArg "tokens" "Input value requires input"

@@ -10,6 +10,8 @@ type Tag =
 
 type Token =
     | Attribute of string * string
+    | OptionalAttribute of string * string option
+    | ReactiveAttribute of string * (unit -> string option)
     | InputValue of string
     | Browser of (obj -> (unit -> unit))
     | ReactiveProperty of (obj -> (unit -> obj) * (obj -> unit))
@@ -245,8 +247,22 @@ let isVoid tag =
     | _ -> false
 
 let validateAttribute name =
-    if name <> "id" && name <> "title" then
-        invalidArg "name" "Only id/title are supported in this experiment"
+    if
+        System.String.IsNullOrEmpty name
+        || name[0] < 'a'
+        || name[0] > 'z'
+        || name.StartsWith ("on", System.StringComparison.Ordinal)
+        || name = "srcdoc"
+        || not (
+            name
+            |> String.forall (fun c ->
+                (c >= 'a' && c <= 'z')
+                || (c >= '0' && c <= '9')
+                || c = '-'
+                || c = '_')
+        )
+    then
+        raise (System.ArgumentException ("Attribute names must be lowercase and cannot contain event handlers or raw document content", "name"))
 
 module Html =
     let private escape attribute (value: string) =
@@ -306,16 +322,29 @@ module Html =
                     let keys = ResizeArray<string>()
 
                     let set key value =
-                        if not (attributes.ContainsKey key) then
+                        if not (keys.Contains key) then
                             keys.Add key
 
                         attributes[key] <- value
+
+                    let setOptional key value =
+                        validateAttribute key
+
+                        match value with
+                        | Some value -> set key value
+                        | None ->
+                            attributes.Remove key |> ignore
+                            keys.Remove key |> ignore
 
                     for token in tokens do
                         match token with
                         | Attribute (key, value) ->
                             validateAttribute key
                             set key value
+                        | OptionalAttribute (key, value) -> setOptional key value
+                        | ReactiveAttribute (key, read) ->
+                            validateAttribute key
+                            setOptional key (read ())
                         | InputValue value ->
                             if tag <> Input then
                                 invalidArg "tokens" "Input value requires input"
@@ -327,13 +356,9 @@ module Html =
                                 invalidOp "Browser capability requires explicit Omit policy"
 
                     for key in keys do
-                        append (
-                            " "
-                            + key
-                            + "=\""
-                            + escape true attributes[key]
-                            + "\""
-                        )
+                        match attributes.TryGetValue key with
+                        | false, _ -> ()
+                        | true, value -> append (" " + key + "=\"" + escape true value + "\"")
 
                     append ">"
 

@@ -61,6 +61,11 @@ let private sameDocument (a: Node) (b: Node) : bool =
 let private inputValue (node: HTMLInputElement) (value: string) : unit =
     node.value <- value
 
+let private attributeValue (node: Element) name =
+    function
+    | Some value -> node.setAttribute (name, value)
+    | None -> node.removeAttribute name
+
 let private isDocumentFragment (node: Node) : bool =
     node.nodeType = 11.
 
@@ -515,6 +520,12 @@ let rec private mountCore
                     | Attribute (key, value) ->
                         validateAttribute key
                         node.setAttribute (key, value)
+                    | OptionalAttribute (key, value) ->
+                        validateAttribute key
+                        attributeValue node key value
+                    | ReactiveAttribute (key, read) ->
+                        validateAttribute key
+                        startBinding (=) read (attributeValue node key)
                     | InputValue value ->
                         if tag <> Input then
                             invalidArg "tokens" "Input value requires input"

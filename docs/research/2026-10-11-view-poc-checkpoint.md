@@ -42,4 +42,6 @@ The [DOM array migration](2026-10-12-dom-array-migration.md) implements the subs
 
 The [published catalogue integration](2026-10-12-catalogue-dom-generation.md) adds the five-tag Wire-backed generator and typed static/reactive property and listener helpers over handwritten runtime operations. Latest scoped acceptance passes 176 Node cases and 18 Chromium tests. Broad generation, application migration, portable property metadata and runtime error/reveal work remain open.
 
-The [HTML expansion](2026-10-12-full-html-generation.md) covers 112 tag constructors, supported properties and typed events, with shared inherited helpers and explicit omission metadata. Foundation's playground uses generated helpers and arrays. Latest acceptance passes 180 Node cases and 18 Chromium tests. SVG, methods, additional type shapes, portable property metadata and runtime error/reveal work remain open.
+The [HTML expansion](2026-10-12-full-html-generation.md) covers 112 tag constructors, supported properties and typed events, with shared inherited helpers and explicit omission metadata. Foundation's playground uses generated helpers and arrays. Its acceptance passes 180 Node cases and 18 Chromium tests.
+
+The [common attribute authoring](2026-10-12-attribute-authoring.md) adds 34 generated static/reactive attributes plus data-/aria- helpers over the existing owned binding path. Latest scoped acceptance passes 188 Node cases and 18 Chromium tests. SVG, methods, additional type shapes, complete portable property metadata and runtime error/reveal work remain open.
