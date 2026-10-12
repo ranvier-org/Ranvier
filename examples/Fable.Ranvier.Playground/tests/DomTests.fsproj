@@ -38,6 +38,7 @@
     <Compile Include="AuthoringChecks.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/AuthoringPerfFixtures.fs" Link="AuthoringPerfFixtures.fs" />
     <Compile Include="AuthoringPerf.fs" />
+    <Compile Include="FrameworkPerf.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/ComponentBench.fs" Link="ComponentBench.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Fixtures.fs" Link="Fixtures.fs" />
     <Compile Include="RepresentationBench.fs" />

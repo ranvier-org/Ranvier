@@ -16,6 +16,7 @@
   <Folder Name="/examples/Fable.Ranvier.Playground/">
     <Project Path="examples/Fable.Ranvier.Playground/Playground.fsproj" />
     <Project Path="examples/Fable.Ranvier.Playground/tests/DomTests.fsproj" />
+    <Project Path="examples/Fable.Ranvier.Playground/benchmarks/ripple/RipplePerf.fsproj" />
   </Folder>
   <Folder Name="/experiments/">
     <File Path="experiments/Ranvier.View.Foundation/Generated/Html.fs" />

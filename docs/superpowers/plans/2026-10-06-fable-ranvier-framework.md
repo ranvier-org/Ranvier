@@ -166,6 +166,8 @@ Generation follow-on, implemented subset 2026-10-12: the [published catalogue in
 
 ## Task 8 — Performance and release acceptance
 
+2026-10-12 comparison checkpoint: the [production DOM framework comparison](../../research/framework-performance/README.md) measures Ranvier against compiled Solid JSX, published Fable.Ripple.Dom and React synchronous commits on equivalent component workloads. Updates are close to the fine-grained libraries; mounting, disposal and retained JavaScript heap show larger gaps. Profile those paths before setting release budgets. This fixture does not complete the keyed-list, branch, async or integrated-release performance gates.
+
 Contracts: all first-release contracts. Variants: V01–V05. No predetermined parity claim.
 
 - [ ] Extend `examples/Fable.Ranvier.Playground/benchmarks/` with mount, update, reorder and disposal workloads; preserve the scheduling benchmark as a baseline.
