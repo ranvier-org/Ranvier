@@ -22,17 +22,20 @@ let metrics () =
         Writes = 0
     }
 
-[<Emit("document.createElement($0)")>]
-let private element (tag: string) : HTMLElement = jsNative
+[<Global>]
+let globalThis: TS.Es.GlobalThis = jsNative
 
-[<Emit("document.createTextNode($0)")>]
-let private text (value: string) : Node = jsNative
+let private element (tag: string) : HTMLElement =
+    globalThis.document.createElement tag
 
-[<Emit("$0.remove()")>]
-let private remove (node: Node) : unit = jsNative
+let private text (value: string) : Node =
+    globalThis.document.createTextNode value
 
-[<Emit("$0.value = $1")>]
-let private inputValue (node: HTMLElement) (value: string) : unit = jsNative
+let private remove (node: #ChildNode) : unit =
+    node.remove ()
+
+let private inputValue (node: HTMLInputElement) (value: string) : unit =
+    node.value <- value
 
 let mount (graph: Graph) (host: HTMLElement) (report: exn list -> unit) (counts: Metrics option) (build: Backend -> unit) : unit -> unit =
     let roots = ResizeArray<Node>()
@@ -42,7 +45,7 @@ let mount (graph: Graph) (host: HTMLElement) (report: exn list -> unit) (counts:
             report,
             fun () ->
                 for node in roots do
-                    remove node
+                    remove (node :?> ChildNode)
 
                 roots.Clear ()
         )
@@ -85,7 +88,7 @@ let mount (graph: Graph) (host: HTMLElement) (report: exn list -> unit) (counts:
                         if tag <> Input then
                             invalidArg "tokens" "Input value requires input"
 
-                        inputValue node value
+                        inputValue (node :?> HTMLInputElement) value
                     | Browser hook -> scope.OnCleanup (hook (box node))
                     | ReactiveProperty _ -> invalidOp "Reactive properties require the owned-range interpreter"
 

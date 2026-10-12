@@ -13,8 +13,8 @@ let private equal expected actual =
     if expected <> actual then
         failwithf "Expected %A; got %A" expected actual
 
-[<Emit("document.createElement('div')")>]
-let private host () : HTMLElement = jsNative
+let private host () : HTMLElement =
+    globalThis.document.createElement "div"
 
 [<Emit("(() => { const original = document.createTextNode; document.createTextNode = function(value) { const node = original.call(this, value); Object.defineProperty(node, 'textContent', { set() { throw new Error('setter'); }, configurable: true }); return node; }; return () => { document.createTextNode = original; }; })()")>]
 let private failTextWrites () : unit -> unit = jsNative

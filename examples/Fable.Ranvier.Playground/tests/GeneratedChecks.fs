@@ -14,14 +14,14 @@ let private equal expected actual =
     if expected <> actual then
         failwithf "Expected %A; got %A" expected actual
 
-[<Emit("$0.querySelector($1)")>]
-let private query (host: Node) (selector: string) : HTMLElement = jsNative
+let private query (host: Element) (selector: string) : HTMLElement =
+    host.querySelector (selector) |> Option.get
 
 [<Emit("$0.dispatchEvent(new ($0.ownerDocument.defaultView.InputEvent)('input', { bubbles: true, data: 'x', inputType: 'insertText' }))")>]
 let private dispatchInput (node: Node) : unit = jsNative
 
-[<Emit("$0.innerHTML = $1")>]
-let private parseHtml (host: HTMLElement) (html: string) : unit = jsNative
+let private parseHtml (host: HTMLElement) (html: string) : unit =
+    host.innerHTML <- html
 
 let private lifecycle (ops: Operations<'view>) run queued generated =
     use graph = new Graph ()

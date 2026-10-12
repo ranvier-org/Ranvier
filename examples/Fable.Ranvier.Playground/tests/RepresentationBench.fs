@@ -7,14 +7,15 @@ open Fable.Ranvier
 open Ranvier.View.Foundation
 open Ranvier.View.Foundation.Representation
 
-[<Emit("performance.now()")>]
-let private now () : float = jsNative
+let private now () : float =
+    globalThis.performance.now ()
 
-[<Emit("document.body.appendChild($0)")>]
-let private attach (node: Node) : unit = jsNative
+let private attach (node: Node) : unit =
+    globalThis.document.body.appendChild (node)
+    |> ignore
 
-[<Emit("$0.remove()")>]
-let private remove (node: Node) : unit = jsNative
+let private remove (node: #ChildNode) : unit =
+    node.remove ()
 
 [<Emit("globalThis.__ranvierViewSink = $0")>]
 let private consume (value: obj) : unit = jsNative

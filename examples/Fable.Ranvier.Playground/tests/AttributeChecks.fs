@@ -14,8 +14,8 @@ let private equal expected actual =
     if expected <> actual then
         failwithf "Expected %A; got %A" expected actual
 
-[<Emit("$0.querySelector($1)")>]
-let private query (host: HTMLElement) (selector: string) : HTMLElement = jsNative
+let private query (host: HTMLElement) (selector: string) : HTMLElement =
+    host.querySelector (selector) |> Option.get
 
 let private exercise (ops: Operations<'view>) run queued =
     use graph = new Graph ()

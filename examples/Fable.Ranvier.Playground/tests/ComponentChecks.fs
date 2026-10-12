@@ -13,14 +13,16 @@ let private equal expected actual =
     if expected <> actual then
         failwithf "Expected %A; got %A" expected actual
 
-[<Emit("$0.childNodes[$1]")>]
-let private at (node: Node) (index: int) : Node = jsNative
+let private at (node: Node) (index: int) : ChildNode =
+    node.childNodes[index]
 
-[<Emit("(() => { const f = () => $1(); $0.addEventListener('click',f); return () => $0.removeEventListener('click',f); })()")>]
-let private listen (node: HTMLElement) (action: unit -> unit) : unit -> unit = jsNative
+let private listen (node: HTMLElement) (action: unit -> unit) : unit -> unit =
+    let fn: Event -> obj = fun _ -> action ()
+    node.addEventListener ("click", fn)
+    fun () -> node.removeEventListener ("click", fn)
 
-[<Emit("$0.querySelector('button')")>]
-let private button (node: HTMLElement) : HTMLElement = jsNative
+let private button (node: HTMLElement) : HTMLElement =
+    node.querySelector ("button") |> unbox
 
 let private mountView graph host run view =
     Mounting.mount graph None (fun errors -> failwithf "%A" errors) host None (fun ctx -> run view ctx.Backend)

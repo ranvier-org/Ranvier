@@ -15,14 +15,17 @@ let private same expected actual =
     if not (obj.ReferenceEquals (expected, actual)) then
         failwith "Node identity changed"
 
-[<Emit("$0.remove()")>]
-let private remove (node: Node) : unit = jsNative
+let private remove (node: ChildNode) : unit =
+    node.remove ()
 
-[<Emit("document.body.appendChild($0)")>]
-let private attach (node: Node) : unit = jsNative
+let private attach (node: Node) : unit =
+    globalThis.document.body.appendChild node
+    |> ignore
 
-[<Emit("(() => { const listener = () => $1(); $0.addEventListener('click', listener); return () => $0.removeEventListener('click', listener); })()")>]
-let private listen (node: HTMLElement) (handler: unit -> unit) : unit -> unit = jsNative
+let private listen (node: HTMLElement) (handler: unit -> unit) : unit -> unit =
+    let fn: Event -> obj = fun _ -> handler ()
+    node.addEventListener ("click", fn)
+    fun () -> node.removeEventListener ("click", fn)
 
 type private Config =
     {
