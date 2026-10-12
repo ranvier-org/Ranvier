@@ -1,5 +1,7 @@
 # View authoring
 
+The playground's [reusable component example](../../examples/Fable.Ranvier.Playground/ComponentsExample.fs) mounts two counters with independent state, a shared reactive label, callbacks, and static or reactive child content.
+
 The foundation is an experimental view layer. `Authoring` binds the existing operations to `Program.View`; the generated `Html.Program` module provides all 112 typed HTML constructors without an `ops` argument.
 
 ```fsharp
@@ -40,3 +42,5 @@ Setup runs once per mounted instance. Use `context.OnCleanup` for external resou
 The authoring functions and generated bound constructors are inline. Fable expands them to the existing operations and helpers. The emitted-JavaScript check verifies the wrapper functions disappear; it is not a throughput benchmark. Existing representation-neutral constructors remain available under `Generated.Html` for `Tree` and other operation sets.
 
 Run `Program.run view context.Backend` inside the existing `Mounting` callback, or pass `Program.run view` to `Representation.Html.render` for a snapshot. Browser properties and listeners require the snapshot renderer's explicit `Omit` policy.
+
+Static text and attributes create no reactive observers; mounted updates target explicit bindings. Static definition hoisting, prepared DOM templates and compiler specialization remain later browser optimisation work. Server pre-rendering and hydration are separate follow-ons. The current Program interpreter still constructs each instance's DOM during mounting.

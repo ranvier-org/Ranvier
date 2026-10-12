@@ -6,6 +6,7 @@
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="ComponentsExample.fs" />
     <Compile Include="App.fs" />
     <ProjectReference Include="../../src/Fable.Ranvier/Fable.Ranvier.fsproj" />
     <PackageReference Update="FSharp.Core" Version="10.1.401" />

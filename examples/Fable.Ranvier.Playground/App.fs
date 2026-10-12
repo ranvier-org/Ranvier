@@ -378,6 +378,7 @@ let start () : unit -> unit =
                 None
                 (fun context ->
                     FoundationProgram.run foundationView context.Backend
+                    FoundationProgram.run (ComponentsExample.view ()) context.Backend
 
                     let action id label update =
                         Elements.button

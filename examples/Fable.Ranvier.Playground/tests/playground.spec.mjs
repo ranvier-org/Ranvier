@@ -78,6 +78,31 @@ test("Foundation keyed views are consumed by the playground app", async ({ page 
   await expect(page.locator("#foundation-demo")).toHaveText("Foundation implementation: keyed rowsAdd rowReverse rowsItem 3BetaAlpha");
 });
 
+test("authored components share reactive props and keep independent local state", async ({ page }) => {
+  const first = page.locator("#component-first");
+  const second = page.locator("#component-second");
+  await expect(first.locator("h2")).toHaveText("Shared label");
+  await expect(second.locator("h2")).toHaveText("Shared label");
+  await expect(page.locator("#component-first-count")).toHaveText("0");
+  await expect(page.locator("#component-second-count")).toHaveText("10");
+  await expect(first).toContainText("First counter child content");
+  await expect(second).toContainText("Child sees Shared label");
+  const retained = await page.locator("#component-first-count").elementHandle();
+  await page.locator("#component-first-increment").click();
+  await expect(page.locator("#component-first-count")).toHaveText("1");
+  await expect(page.locator("#component-second-count")).toHaveText("10");
+  await expect(page.locator("#component-changed")).toHaveText("First changed to 1");
+  await page.locator("#component-rename").click();
+  await expect(first.locator("h2")).toHaveText("Renamed");
+  await expect(second.locator("h2")).toHaveText("Renamed");
+  await expect(second).toContainText("Child sees Renamed");
+  await expect(page.locator("#component-first-count")).toHaveText("1");
+  await page.locator("#component-second-increment").click();
+  await expect(page.locator("#component-second-count")).toHaveText("11");
+  await expect(page.locator("#component-changed")).toHaveText("Second changed to 11");
+  expect(await retained.evaluate(node => node === document.querySelector("#component-first-count"))).toBe(true);
+});
+
 test("unmount removes listeners and repeated remount preserves state", async ({ page }) => {
   await page.getByTestId("increment").click();
   const detachedButton = await page.getByTestId("increment").elementHandle();
