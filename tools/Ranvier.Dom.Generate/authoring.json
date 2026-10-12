@@ -9,7 +9,8 @@
     { "group": "Button", "helper": "type", "name": "type" },
     { "group": "Input", "helper": "value", "name": "value" },
     { "group": "Input", "helper": "checked", "name": "checked" },
-    { "group": "Input", "helper": "placeholder", "name": "placeholder" }
+    { "group": "Input", "helper": "placeholder", "name": "placeholder" },
+    { "group": "Input", "helper": "type", "name": "type" }
   ],
   "properties": [
     { "group": "Element", "native": "HTMLElement", "members": [ "title" ] },

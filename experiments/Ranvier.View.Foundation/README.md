@@ -1,6 +1,6 @@
 # View authoring
 
-Open `Ranvier.View.Foundation.Generated.Html.Authoring` for overloaded modifier helpers. The initial curated surface contains nine attributes and four live properties. Each accepts a fixed value, a `unit -> 'T` reader, `Signal<'T>`, or `Memo<'T>`, with native element constraints preserved. String and ARIA attributes also accept optional values/sources; `None` removes the attribute. The foundation's explicit helpers remain available for the broader generated surface.
+Open `Ranvier.View.Foundation.Generated.Html.Authoring` for overloaded modifier helpers. The initial curated surface contains ten attributes and four live properties. Each accepts a fixed value, a `unit -> 'T` reader, `Signal<'T>`, or `Memo<'T>`, with native element constraints preserved. String and ARIA attributes also accept optional values/sources; `None` removes the attribute. The foundation's explicit helpers remain available for the broader generated surface.
 
 ```fsharp
 open Ranvier.View.Foundation.Generated.Html.Authoring

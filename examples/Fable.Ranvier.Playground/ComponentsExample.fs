@@ -56,6 +56,7 @@ let view () =
             let label = Api.createSignal "Shared label"
             let changed = Api.createSignal "No changes yet"
             let renamed = Api.createMemo (fun _ -> label.Value = "Renamed")
+            let selected = Api.createSignal false
 
             Html.section
                 [ Attrs.id "component-example" ]
@@ -77,6 +78,23 @@ let view () =
                         ]
                         [ text "Rename both counters" ]
                     Html.p [ Attrs.id "component-changed" ] [ reactiveText (fun () -> changed.Value) ]
+                    Html.input
+                        [
+                            Attrs.id "component-checkbox"
+                            Attrs.Input.``type`` "checkbox"
+                            Props.Input.``checked`` selected
+                            Events.onChange (fun event -> selected.Value <- (unbox<HTMLInputElement> event.currentTarget.Value).``checked``)
+                        ]
+                    Html.output
+                        [ Attrs.id "component-checkbox-state" ]
+                        [ reactiveText (fun () -> if selected.Value then "Checked" else "Unchecked") ]
+                    Html.button
+                        [
+                            Attrs.id "component-toggle-checkbox"
+                            Attrs.Button.``type`` "button"
+                            Events.onClick (fun _ -> selected.Value <- not selected.Value)
+                        ]
+                        [ text "Toggle checkbox" ]
                     Html.div
                         [ Attrs.className "demo-grid" ]
                         [

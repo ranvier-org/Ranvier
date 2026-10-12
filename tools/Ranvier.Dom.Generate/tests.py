@@ -32,7 +32,7 @@ with tempfile.TemporaryDirectory() as folder:
     assert first.with_suffix(".coverage.json").read_bytes() == second.with_suffix(".coverage.json").read_bytes()
     assert any("unsupported type" in item["reason"] for item in coverage["omissions"])
     assert coverage["attributeCount"] == 34
-    assert coverage["authoringHelperCount"] == 13
+    assert coverage["authoringHelperCount"] == 14
     assert coverage["authoringPolicySha256"]
     assert coverage["attributePolicySha256"]
     assert "module Attrs =" in text and "let classReactive" in text

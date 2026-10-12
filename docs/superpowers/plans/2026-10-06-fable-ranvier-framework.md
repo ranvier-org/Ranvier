@@ -145,6 +145,8 @@ Current experimental branch input: selection reader, key selector, equality and 
 
 ## Task 7 — Typed DOM, events, lifecycle and owned async helpers
 
+2026-10-12 follow-on: the [authoring performance check-in](../../research/authoring-performance/2026-10-12-gc-correction.md) establishes exact resource and construction-allocation parity for the overloaded pilot; timing budgets remain open. The [authored form contracts](../../research/2026-10-12-authoring-form-contracts.md) exercise focused composition echo and checkbox event/programmatic updates in Chromium through the same renderer. These advance the form proof without completing the whole task.
+
 Contracts: C07, C08. Risks: G08, G10, G11, G13.
 
 Generation follow-on, implemented subset 2026-10-12: the [published catalogue integration](../../research/2026-10-12-catalogue-dom-generation.md) consumes Cloudsmith Core.TS 0.2.1 with Wire 0.3.0 and pins Core 0.2.0 in the consumer. The five-tag generated surface passes compiler and DOM checks; broader generation, attributes/portable property metadata, application migration and performance gates remain open.

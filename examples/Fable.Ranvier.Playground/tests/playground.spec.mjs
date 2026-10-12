@@ -110,6 +110,48 @@ test("authored components share reactive props and keep independent local state"
   expect(await retained.evaluate(node => node === document.querySelector("#component-first-count"))).toBe(true);
 });
 
+test("authored input composition preserves node focus and caret", async ({ page }) => {
+  const input = page.locator("#component-label");
+  const retained = await input.elementHandle();
+  expect(await input.evaluate(async element => {
+    element.focus();
+    element.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }));
+    element.value = "編集中";
+    element.setSelectionRange(2, 2);
+    element.dispatchEvent(new InputEvent("input", { bubbles: true, data: "中", isComposing: true }));
+    await Promise.resolve(); await Promise.resolve();
+    const during = [document.activeElement === element, element.selectionStart, element.selectionEnd, element.value];
+    element.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true, data: "中" }));
+    element.dispatchEvent(new InputEvent("input", { bubbles: true, data: "中", isComposing: false }));
+    await Promise.resolve(); await Promise.resolve();
+    return [during, [document.activeElement === element, element.selectionStart, element.selectionEnd, element.value]];
+  })).toEqual([[true, 2, 2, "編集中"], [true, 2, 2, "編集中"]]);
+  await expect(page.locator("#component-first h2")).toHaveText("編集中");
+  await expect(page.locator("#component-second h2")).toHaveText("編集中");
+  await page.locator("#component-rename").evaluate(button => button.click());
+  await expect(input).toHaveValue("Renamed");
+  expect(await retained.evaluate(element => element === document.querySelector("#component-label") && document.activeElement === element)).toBe(true);
+});
+
+test("authored checkbox handles DOM events and programmatic signal changes", async ({ page }) => {
+  const input = page.locator("#component-checkbox");
+  await expect(input).not.toBeChecked();
+  expect(await input.getAttribute("checked")).toBeNull();
+  const retained = await input.elementHandle();
+  await input.check();
+  await expect(page.locator("#component-checkbox-state")).toHaveText("Checked");
+  expect(await input.getAttribute("checked")).toBeNull();
+  await page.locator("#component-toggle-checkbox").click();
+  await expect(input).not.toBeChecked();
+  await expect(page.locator("#component-checkbox-state")).toHaveText("Unchecked");
+  expect(await input.getAttribute("checked")).toBeNull();
+  await page.locator("#component-toggle-checkbox").click();
+  await expect(input).toBeChecked();
+  await expect(page.locator("#component-checkbox-state")).toHaveText("Checked");
+  expect(await retained.evaluate(element => element === document.querySelector("#component-checkbox"))).toBe(true);
+  expect(await input.getAttribute("checked")).toBeNull();
+});
+
 test("unmount removes listeners and repeated remount preserves state", async ({ page }) => {
   await page.getByTestId("increment").click();
   const detachedButton = await page.getByTestId("increment").elementHandle();
