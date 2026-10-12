@@ -352,6 +352,7 @@ let generate compilerRoot packageRoot output =
 
     let omissions = ResizeArray<string * string * string>()
     let counts = ResizeArray<string * int * int * int>()
+    let programElements = ResizeArray<string>()
 
     let sharedProperties =
         System.Collections.Generic.SortedDictionary<string, ResizeArray<string>>()
@@ -445,8 +446,14 @@ let generate compilerRoot packageRoot output =
 
         if voidTags.Contains tag then
             emit $"let ``{tag}`` ops (modifiers: Typed.Modifier<{name}> list) = Typed.element ops {expression} modifiers []"
+
+            programElements.Add
+                $"    let inline ``{tag}`` (modifiers: Typed.Modifier<{name}> list) : Representation.Program.View = ``{tag}`` Representation.Program.ops modifiers"
         else
             emit $"let ``{tag}`` ops (modifiers: Typed.Modifier<{name}> list) children = Typed.element ops {expression} modifiers children"
+
+            programElements.Add
+                $"    let inline ``{tag}`` (modifiers: Typed.Modifier<{name}> list) (children: Representation.Program.View list) : Representation.Program.View = ``{tag}`` Representation.Program.ops modifiers children"
 
         emit ""
         emit $"module {moduleName tag} ="
@@ -715,6 +722,9 @@ let generate compilerRoot packageRoot output =
             emit $"{indent}let {helper}Reactive<'native when 'native :> {nativeName}> (read: unit -> {readType}) : Typed.Modifier<'native> ="
             emit $"{indent}    Typed.{reactiveFunction} \"{attribute}\" read"
             emit ""
+
+    emit "module Program ="
+    lines.AddRange programElements
 
     let format =
         { Fantomas.Core.FormatConfig.Default with

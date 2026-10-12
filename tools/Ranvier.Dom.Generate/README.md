@@ -1,5 +1,7 @@
 # HTML DOM generator
 
+The generated `Html.Program` module supplies inline constructors bound to `Program.View`. See the [view authoring example](../../experiments/Ranvier.View.Foundation/README.md) for component setup, text, props and modifiers.
+
 Run from the repository root:
 
 ```powershell

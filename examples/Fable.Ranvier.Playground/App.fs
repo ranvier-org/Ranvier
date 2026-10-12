@@ -8,9 +8,10 @@ open global.Ranvier
 open Ranvier.View.Foundation.Representation
 
 module FoundationMounting = Ranvier.View.Foundation.Mounting
-module FoundationTree = Ranvier.View.Foundation.Representation.Tree
-module FoundationTyped = Ranvier.View.Foundation.Typed
+module FoundationProgram = Ranvier.View.Foundation.Representation.Program
+module View = Ranvier.View.Foundation.Authoring
 module GeneratedHtml = Ranvier.View.Foundation.Generated.Html
+module Elements = GeneratedHtml.Program
 module GeneratedAttrs = GeneratedHtml.Attrs
 module FoundationMicrotask = Ranvier.View.Foundation.Microtask
 module FoundationScheduling = Ranvier.View.Foundation.Scheduling
@@ -321,8 +322,6 @@ let start () : unit -> unit =
         let foundationRows =
             foundationGraph.Run (fun () -> createSignal [| 1, "Alpha"; 2, "Beta" |])
 
-        let foundationOps = FoundationTree.ops
-
         let loadSource =
             foundationGraph.Run (fun () -> createSignal (createAsyncSource<string>()))
 
@@ -333,26 +332,21 @@ let start () : unit -> unit =
         foundationGraph.Run (fun () -> loadSource.Value.Settle "Loaded result")
 
         let foundationRowsView =
-            Keyed.array foundationOps (=) fst (fun () -> foundationRows.Value) (fun current ->
+            View.keyedArray (=) fst (fun () -> foundationRows.Value) (fun current ->
                 let key = fst (current ())
 
-                GeneratedHtml.div
-                    foundationOps
-                    [ GeneratedAttrs.idStatic ("foundation-row-" + string key) ]
-                    [ FoundationTyped.reactiveText foundationOps (fun () -> snd (current ())) ])
+                Elements.div [ GeneratedAttrs.idStatic ("foundation-row-" + string key) ] [ View.reactiveText (fun () -> snd (current ())) ])
 
         let foundationView =
-            GeneratedHtml.section
-                foundationOps
+            Elements.section
                 [
                     GeneratedAttrs.idStatic "foundation-demo"
                     GeneratedAttrs.classStatic "panel"
                     GeneratedAttrs.dataReactive "row-count" (fun () -> Some (string foundationRows.Value.Length))
                 ]
                 [
-                    foundationOps.Text "Foundation implementation: keyed rows"
-                    GeneratedHtml.button
-                        foundationOps
+                    View.text "Foundation implementation: keyed rows"
+                    Elements.button
                         [
                             GeneratedAttrs.idStatic "foundation-add"
                             GeneratedHtml.Button.onClick (fun _ ->
@@ -364,14 +358,13 @@ let start () : unit -> unit =
 
                                 foundationRows.Value <- Array.append foundationRows.Value [| next, "Item " + string next |])
                         ]
-                        [ foundationOps.Text "Add row" ]
-                    GeneratedHtml.button
-                        foundationOps
+                        [ View.text "Add row" ]
+                    Elements.button
                         [
                             GeneratedAttrs.idStatic "foundation-reverse"
                             GeneratedHtml.Button.onClick (fun _ -> foundationRows.Value <- Array.rev foundationRows.Value)
                         ]
-                        [ foundationOps.Text "Reverse rows" ]
+                        [ View.text "Reverse rows" ]
                     foundationRowsView
                 ]
 
@@ -384,20 +377,18 @@ let start () : unit -> unit =
                 foundationHost
                 None
                 (fun context ->
-                    FoundationTree.run foundationView context.Backend
+                    FoundationProgram.run foundationView context.Backend
 
                     let action id label update =
-                        GeneratedHtml.button
-                            foundationOps
+                        Elements.button
                             [
                                 GeneratedAttrs.idStatic id
                                 GeneratedHtml.Button.onClick (fun _ -> update ())
                             ]
-                            [ foundationOps.Text label ]
+                            [ View.text label ]
 
                     let statusPanel =
-                        GeneratedHtml.div
-                            foundationOps
+                        Elements.div
                             [
                                 GeneratedAttrs.idStatic "foundation-load"
                                 GeneratedAttrs.roleStatic "region"
@@ -407,27 +398,22 @@ let start () : unit -> unit =
                                     Some loadResult.IsWaiting)
                             ]
                             [
-                                foundationOps.Text "Load result"
-                                GeneratedHtml.div
-                                    foundationOps
+                                View.text "Load result"
+                                Elements.div
                                     [ GeneratedAttrs.idStatic "foundation-load-status" ]
                                     [
-                                        FoundationTyped.reactiveText foundationOps (fun () ->
+                                        View.reactiveText (fun () ->
                                             loadResult.Value |> ignore
 
                                             if loadResult.IsWaiting then "Pending"
                                             elif not (isNull loadResult.Caught) then "Failed"
                                             else "Ready")
                                     ]
-                                GeneratedHtml.div
-                                    foundationOps
-                                    [ GeneratedAttrs.idStatic "foundation-load-result" ]
-                                    [ FoundationTyped.reactiveText foundationOps (fun () -> loadResult.Value) ]
-                                GeneratedHtml.div
-                                    foundationOps
+                                Elements.div [ GeneratedAttrs.idStatic "foundation-load-result" ] [ View.reactiveText (fun () -> loadResult.Value) ]
+                                Elements.div
                                     [ GeneratedAttrs.idStatic "foundation-load-error" ]
                                     [
-                                        FoundationTyped.reactiveText foundationOps (fun () ->
+                                        View.reactiveText (fun () ->
                                             loadResult.Value |> ignore
 
                                             if isNull loadResult.Caught then
@@ -441,7 +427,7 @@ let start () : unit -> unit =
                                 action "foundation-recover" "Recover" (fun () -> loadSource.Value.Settle "Recovered result")
                             ]
 
-                    FoundationTree.run statusPanel context.Backend)
+                    FoundationProgram.run statusPanel context.Backend)
 
         let mutable stopped = false
 

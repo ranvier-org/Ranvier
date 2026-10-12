@@ -13,6 +13,9 @@ with tempfile.TemporaryDirectory() as folder:
         assert result.returncode == 0, result.stdout + result.stderr
     assert first.read_bytes() == second.read_bytes(), "regeneration must be byte-identical"
     text = first.read_text()
+    assert "module Program =" in text, "generate the bound Program element authoring surface"
+    program = text.split("module Program =", 1)[1]
+    assert program.count("let inline ") == 112, "every HTML tag needs one inline Program constructor"
     assert "Dom.HTMLInputElement" in text
     assert "Dom.InputEvent -> unit" in text
     assert "Dom.FileList option" in text

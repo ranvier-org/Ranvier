@@ -15,6 +15,7 @@
         <Compile Include="Generated/Html.fs" />
         <Compile Include="Mounting.fs" />
         <Compile Include="Components.fs" />
+        <Compile Include="Authoring.fs" />
         <ProjectReference Include="../../src/Fable.Ranvier/Fable.Ranvier.fsproj" />
         <PackageReference Update="FSharp.Core" Version="10.1.401" />
     </ItemGroup>

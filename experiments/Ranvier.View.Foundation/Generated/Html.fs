@@ -9618,3 +9618,562 @@ module Attrs =
 
         let valueReactive<'native when 'native :> Dom.HTMLOptionElement> (read: unit -> string option) : Typed.Modifier<'native> =
             Typed.reactiveAttribute "value" read
+
+module Program =
+    let inline ``a``
+        (modifiers: Typed.Modifier<Dom.HTMLAnchorElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``a`` Representation.Program.ops modifiers children
+
+    let inline ``abbr`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
+        ``abbr`` Representation.Program.ops modifiers children
+
+    let inline ``address``
+        (modifiers: Typed.Modifier<Dom.HTMLElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``address`` Representation.Program.ops modifiers children
+
+    let inline ``area`` (modifiers: Typed.Modifier<Dom.HTMLAreaElement> list) : Representation.Program.View =
+        ``area`` Representation.Program.ops modifiers
+
+    let inline ``article``
+        (modifiers: Typed.Modifier<Dom.HTMLElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``article`` Representation.Program.ops modifiers children
+
+    let inline ``aside``
+        (modifiers: Typed.Modifier<Dom.HTMLElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``aside`` Representation.Program.ops modifiers children
+
+    let inline ``audio``
+        (modifiers: Typed.Modifier<Dom.HTMLAudioElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``audio`` Representation.Program.ops modifiers children
+
+    let inline ``b`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
+        ``b`` Representation.Program.ops modifiers children
+
+    let inline ``base`` (modifiers: Typed.Modifier<Dom.HTMLBaseElement> list) : Representation.Program.View =
+        ``base`` Representation.Program.ops modifiers
+
+    let inline ``bdi`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
+        ``bdi`` Representation.Program.ops modifiers children
+
+    let inline ``bdo`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
+        ``bdo`` Representation.Program.ops modifiers children
+
+    let inline ``blockquote``
+        (modifiers: Typed.Modifier<Dom.HTMLQuoteElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``blockquote`` Representation.Program.ops modifiers children
+
+    let inline ``body``
+        (modifiers: Typed.Modifier<Dom.HTMLBodyElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``body`` Representation.Program.ops modifiers children
+
+    let inline ``br`` (modifiers: Typed.Modifier<Dom.HTMLBRElement> list) : Representation.Program.View =
+        ``br`` Representation.Program.ops modifiers
+
+    let inline ``button``
+        (modifiers: Typed.Modifier<Dom.HTMLButtonElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``button`` Representation.Program.ops modifiers children
+
+    let inline ``canvas``
+        (modifiers: Typed.Modifier<Dom.HTMLCanvasElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``canvas`` Representation.Program.ops modifiers children
+
+    let inline ``caption``
+        (modifiers: Typed.Modifier<Dom.HTMLTableCaptionElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``caption`` Representation.Program.ops modifiers children
+
+    let inline ``cite`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
+        ``cite`` Representation.Program.ops modifiers children
+
+    let inline ``code`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
+        ``code`` Representation.Program.ops modifiers children
+
+    let inline ``col`` (modifiers: Typed.Modifier<Dom.HTMLTableColElement> list) : Representation.Program.View =
+        ``col`` Representation.Program.ops modifiers
+
+    let inline ``colgroup``
+        (modifiers: Typed.Modifier<Dom.HTMLTableColElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``colgroup`` Representation.Program.ops modifiers children
+
+    let inline ``data``
+        (modifiers: Typed.Modifier<Dom.HTMLDataElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``data`` Representation.Program.ops modifiers children
+
+    let inline ``datalist``
+        (modifiers: Typed.Modifier<Dom.HTMLDataListElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``datalist`` Representation.Program.ops modifiers children
+
+    let inline ``dd`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
+        ``dd`` Representation.Program.ops modifiers children
+
+    let inline ``del``
+        (modifiers: Typed.Modifier<Dom.HTMLModElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``del`` Representation.Program.ops modifiers children
+
+    let inline ``details``
+        (modifiers: Typed.Modifier<Dom.HTMLDetailsElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``details`` Representation.Program.ops modifiers children
+
+    let inline ``dfn`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
+        ``dfn`` Representation.Program.ops modifiers children
+
+    let inline ``dialog``
+        (modifiers: Typed.Modifier<Dom.HTMLDialogElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``dialog`` Representation.Program.ops modifiers children
+
+    let inline ``div``
+        (modifiers: Typed.Modifier<Dom.HTMLDivElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``div`` Representation.Program.ops modifiers children
+
+    let inline ``dl``
+        (modifiers: Typed.Modifier<Dom.HTMLDListElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``dl`` Representation.Program.ops modifiers children
+
+    let inline ``dt`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
+        ``dt`` Representation.Program.ops modifiers children
+
+    let inline ``em`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
+        ``em`` Representation.Program.ops modifiers children
+
+    let inline ``embed`` (modifiers: Typed.Modifier<Dom.HTMLEmbedElement> list) : Representation.Program.View =
+        ``embed`` Representation.Program.ops modifiers
+
+    let inline ``fieldset``
+        (modifiers: Typed.Modifier<Dom.HTMLFieldSetElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``fieldset`` Representation.Program.ops modifiers children
+
+    let inline ``figcaption``
+        (modifiers: Typed.Modifier<Dom.HTMLElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``figcaption`` Representation.Program.ops modifiers children
+
+    let inline ``figure``
+        (modifiers: Typed.Modifier<Dom.HTMLElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``figure`` Representation.Program.ops modifiers children
+
+    let inline ``footer``
+        (modifiers: Typed.Modifier<Dom.HTMLElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``footer`` Representation.Program.ops modifiers children
+
+    let inline ``form``
+        (modifiers: Typed.Modifier<Dom.HTMLFormElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``form`` Representation.Program.ops modifiers children
+
+    let inline ``h1``
+        (modifiers: Typed.Modifier<Dom.HTMLHeadingElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``h1`` Representation.Program.ops modifiers children
+
+    let inline ``h2``
+        (modifiers: Typed.Modifier<Dom.HTMLHeadingElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``h2`` Representation.Program.ops modifiers children
+
+    let inline ``h3``
+        (modifiers: Typed.Modifier<Dom.HTMLHeadingElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``h3`` Representation.Program.ops modifiers children
+
+    let inline ``h4``
+        (modifiers: Typed.Modifier<Dom.HTMLHeadingElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``h4`` Representation.Program.ops modifiers children
+
+    let inline ``h5``
+        (modifiers: Typed.Modifier<Dom.HTMLHeadingElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``h5`` Representation.Program.ops modifiers children
+
+    let inline ``h6``
+        (modifiers: Typed.Modifier<Dom.HTMLHeadingElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``h6`` Representation.Program.ops modifiers children
+
+    let inline ``head``
+        (modifiers: Typed.Modifier<Dom.HTMLHeadElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``head`` Representation.Program.ops modifiers children
+
+    let inline ``header``
+        (modifiers: Typed.Modifier<Dom.HTMLElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``header`` Representation.Program.ops modifiers children
+
+    let inline ``hgroup``
+        (modifiers: Typed.Modifier<Dom.HTMLElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``hgroup`` Representation.Program.ops modifiers children
+
+    let inline ``hr`` (modifiers: Typed.Modifier<Dom.HTMLHRElement> list) : Representation.Program.View =
+        ``hr`` Representation.Program.ops modifiers
+
+    let inline ``html``
+        (modifiers: Typed.Modifier<Dom.HTMLHtmlElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``html`` Representation.Program.ops modifiers children
+
+    let inline ``i`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
+        ``i`` Representation.Program.ops modifiers children
+
+    let inline ``iframe``
+        (modifiers: Typed.Modifier<Dom.HTMLIFrameElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``iframe`` Representation.Program.ops modifiers children
+
+    let inline ``img`` (modifiers: Typed.Modifier<Dom.HTMLImageElement> list) : Representation.Program.View =
+        ``img`` Representation.Program.ops modifiers
+
+    let inline ``input`` (modifiers: Typed.Modifier<Dom.HTMLInputElement> list) : Representation.Program.View =
+        ``input`` Representation.Program.ops modifiers
+
+    let inline ``ins``
+        (modifiers: Typed.Modifier<Dom.HTMLModElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``ins`` Representation.Program.ops modifiers children
+
+    let inline ``kbd`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
+        ``kbd`` Representation.Program.ops modifiers children
+
+    let inline ``label``
+        (modifiers: Typed.Modifier<Dom.HTMLLabelElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``label`` Representation.Program.ops modifiers children
+
+    let inline ``legend``
+        (modifiers: Typed.Modifier<Dom.HTMLLegendElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``legend`` Representation.Program.ops modifiers children
+
+    let inline ``li`` (modifiers: Typed.Modifier<Dom.HTMLLIElement> list) (children: Representation.Program.View list) : Representation.Program.View =
+        ``li`` Representation.Program.ops modifiers children
+
+    let inline ``link`` (modifiers: Typed.Modifier<Dom.HTMLLinkElement> list) : Representation.Program.View =
+        ``link`` Representation.Program.ops modifiers
+
+    let inline ``main`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
+        ``main`` Representation.Program.ops modifiers children
+
+    let inline ``map``
+        (modifiers: Typed.Modifier<Dom.HTMLMapElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``map`` Representation.Program.ops modifiers children
+
+    let inline ``mark`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
+        ``mark`` Representation.Program.ops modifiers children
+
+    let inline ``menu``
+        (modifiers: Typed.Modifier<Dom.HTMLMenuElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``menu`` Representation.Program.ops modifiers children
+
+    let inline ``meta`` (modifiers: Typed.Modifier<Dom.HTMLMetaElement> list) : Representation.Program.View =
+        ``meta`` Representation.Program.ops modifiers
+
+    let inline ``meter``
+        (modifiers: Typed.Modifier<Dom.HTMLMeterElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``meter`` Representation.Program.ops modifiers children
+
+    let inline ``nav`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
+        ``nav`` Representation.Program.ops modifiers children
+
+    let inline ``noscript``
+        (modifiers: Typed.Modifier<Dom.HTMLElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``noscript`` Representation.Program.ops modifiers children
+
+    let inline ``object``
+        (modifiers: Typed.Modifier<Dom.HTMLObjectElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``object`` Representation.Program.ops modifiers children
+
+    let inline ``ol``
+        (modifiers: Typed.Modifier<Dom.HTMLOListElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``ol`` Representation.Program.ops modifiers children
+
+    let inline ``optgroup``
+        (modifiers: Typed.Modifier<Dom.HTMLOptGroupElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``optgroup`` Representation.Program.ops modifiers children
+
+    let inline ``option``
+        (modifiers: Typed.Modifier<Dom.HTMLOptionElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``option`` Representation.Program.ops modifiers children
+
+    let inline ``output``
+        (modifiers: Typed.Modifier<Dom.HTMLOutputElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``output`` Representation.Program.ops modifiers children
+
+    let inline ``p``
+        (modifiers: Typed.Modifier<Dom.HTMLParagraphElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``p`` Representation.Program.ops modifiers children
+
+    let inline ``picture``
+        (modifiers: Typed.Modifier<Dom.HTMLPictureElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``picture`` Representation.Program.ops modifiers children
+
+    let inline ``pre``
+        (modifiers: Typed.Modifier<Dom.HTMLPreElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``pre`` Representation.Program.ops modifiers children
+
+    let inline ``progress``
+        (modifiers: Typed.Modifier<Dom.HTMLProgressElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``progress`` Representation.Program.ops modifiers children
+
+    let inline ``q``
+        (modifiers: Typed.Modifier<Dom.HTMLQuoteElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``q`` Representation.Program.ops modifiers children
+
+    let inline ``rp`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
+        ``rp`` Representation.Program.ops modifiers children
+
+    let inline ``rt`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
+        ``rt`` Representation.Program.ops modifiers children
+
+    let inline ``ruby`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
+        ``ruby`` Representation.Program.ops modifiers children
+
+    let inline ``s`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
+        ``s`` Representation.Program.ops modifiers children
+
+    let inline ``samp`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
+        ``samp`` Representation.Program.ops modifiers children
+
+    let inline ``script``
+        (modifiers: Typed.Modifier<Dom.HTMLScriptElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``script`` Representation.Program.ops modifiers children
+
+    let inline ``search``
+        (modifiers: Typed.Modifier<Dom.HTMLElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``search`` Representation.Program.ops modifiers children
+
+    let inline ``section``
+        (modifiers: Typed.Modifier<Dom.HTMLElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``section`` Representation.Program.ops modifiers children
+
+    let inline ``select``
+        (modifiers: Typed.Modifier<Dom.HTMLSelectElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``select`` Representation.Program.ops modifiers children
+
+    let inline ``slot``
+        (modifiers: Typed.Modifier<Dom.HTMLSlotElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``slot`` Representation.Program.ops modifiers children
+
+    let inline ``small``
+        (modifiers: Typed.Modifier<Dom.HTMLElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``small`` Representation.Program.ops modifiers children
+
+    let inline ``source`` (modifiers: Typed.Modifier<Dom.HTMLSourceElement> list) : Representation.Program.View =
+        ``source`` Representation.Program.ops modifiers
+
+    let inline ``span``
+        (modifiers: Typed.Modifier<Dom.HTMLSpanElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``span`` Representation.Program.ops modifiers children
+
+    let inline ``strong``
+        (modifiers: Typed.Modifier<Dom.HTMLElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``strong`` Representation.Program.ops modifiers children
+
+    let inline ``style``
+        (modifiers: Typed.Modifier<Dom.HTMLStyleElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``style`` Representation.Program.ops modifiers children
+
+    let inline ``sub`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
+        ``sub`` Representation.Program.ops modifiers children
+
+    let inline ``summary``
+        (modifiers: Typed.Modifier<Dom.HTMLElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``summary`` Representation.Program.ops modifiers children
+
+    let inline ``sup`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
+        ``sup`` Representation.Program.ops modifiers children
+
+    let inline ``table``
+        (modifiers: Typed.Modifier<Dom.HTMLTableElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``table`` Representation.Program.ops modifiers children
+
+    let inline ``tbody``
+        (modifiers: Typed.Modifier<Dom.HTMLTableSectionElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``tbody`` Representation.Program.ops modifiers children
+
+    let inline ``td``
+        (modifiers: Typed.Modifier<Dom.HTMLTableCellElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``td`` Representation.Program.ops modifiers children
+
+    let inline ``template``
+        (modifiers: Typed.Modifier<Dom.HTMLTemplateElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``template`` Representation.Program.ops modifiers children
+
+    let inline ``textarea``
+        (modifiers: Typed.Modifier<Dom.HTMLTextAreaElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``textarea`` Representation.Program.ops modifiers children
+
+    let inline ``tfoot``
+        (modifiers: Typed.Modifier<Dom.HTMLTableSectionElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``tfoot`` Representation.Program.ops modifiers children
+
+    let inline ``th``
+        (modifiers: Typed.Modifier<Dom.HTMLTableCellElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``th`` Representation.Program.ops modifiers children
+
+    let inline ``thead``
+        (modifiers: Typed.Modifier<Dom.HTMLTableSectionElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``thead`` Representation.Program.ops modifiers children
+
+    let inline ``time``
+        (modifiers: Typed.Modifier<Dom.HTMLTimeElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``time`` Representation.Program.ops modifiers children
+
+    let inline ``title``
+        (modifiers: Typed.Modifier<Dom.HTMLTitleElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``title`` Representation.Program.ops modifiers children
+
+    let inline ``tr``
+        (modifiers: Typed.Modifier<Dom.HTMLTableRowElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``tr`` Representation.Program.ops modifiers children
+
+    let inline ``track`` (modifiers: Typed.Modifier<Dom.HTMLTrackElement> list) : Representation.Program.View =
+        ``track`` Representation.Program.ops modifiers
+
+    let inline ``u`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
+        ``u`` Representation.Program.ops modifiers children
+
+    let inline ``ul``
+        (modifiers: Typed.Modifier<Dom.HTMLUListElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``ul`` Representation.Program.ops modifiers children
+
+    let inline ``var`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) (children: Representation.Program.View list) : Representation.Program.View =
+        ``var`` Representation.Program.ops modifiers children
+
+    let inline ``video``
+        (modifiers: Typed.Modifier<Dom.HTMLVideoElement> list)
+        (children: Representation.Program.View list)
+        : Representation.Program.View =
+        ``video`` Representation.Program.ops modifiers children
+
+    let inline ``wbr`` (modifiers: Typed.Modifier<Dom.HTMLElement> list) : Representation.Program.View =
+        ``wbr`` Representation.Program.ops modifiers

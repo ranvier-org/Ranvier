@@ -24,6 +24,10 @@ examples = [
     ("attribute helper rejects incompatible element", "let view = H.div Tree.ops [ H.Attrs.Input.checkedStatic true ] []", "FS0001"),
     ("boolean attribute rejects string value", "let modifier = H.Attrs.Button.disabledStatic \"false\"", "FS0001"),
     ("reactive attribute requires removal option", "let modifier = H.Attrs.classReactive (fun () -> \"panel\")", "FS0001"),
+    ("bound Program helpers", "let view = H.Program.article [ H.Attrs.classStatic \"panel\"; H.Events.onClick ignore ] [ H.Program.input [ H.Input.checkedStatic true ]; H.Program.br [] ]", None),
+    ("bound input modifier rejects div", "let view = H.Program.div [ H.Input.checkedStatic true ] []", "FS0001"),
+    ("bound void element rejects children", "let view = H.Program.br [] [ Program.ops.Text \"child\" ]", "FS0003"),
+    ("bound Program rejects Tree children", "let view = H.Program.div [] [ Tree.ops.Text \"child\" ]", "FS0001"),
 ]
 
 with tempfile.TemporaryDirectory(prefix="ranvier-generated-types-") as directory:
