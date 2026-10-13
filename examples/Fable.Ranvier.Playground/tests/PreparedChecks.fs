@@ -120,18 +120,19 @@ let private moved () =
 
     outside.appendChild input |> ignore
 
-    rejected (fun () ->
-        Mounting.mount graph None ignore outside None (fun context -> context.Native (input, Mounting.Borrowed))
-        |> ignore)
-
-    mounted.Dispose ()
-    equal None input.parentNode
-    equal 0. outside.childNodes.length
-
-    let reclaimed =
+    let adopted =
         Mounting.mount graph None ignore outside None (fun context -> context.Native (input, Mounting.Owned))
 
-    reclaimed.Dispose ()
+    mounted.Dispose ()
+    equal 0. host.childNodes.length
+
+    equal
+        true
+        (input.parentNode
+         |> Option.exists (fun parent -> obj.ReferenceEquals (parent, outside)))
+
+    adopted.Dispose ()
+    equal 0. outside.childNodes.length
 
 let private rollback dispose =
     use graph = new Graph ()
@@ -222,7 +223,7 @@ let private staticOnly () =
 
 let private templateContent () =
     use graph = new Graph ()
-    let host, outside = document.createElement "main", document.createElement "main"
+    let host = document.createElement "main"
     let template = Prepared.prepare (H.Program.template [||] [| H.Program.input [||] |])
 
     let view =
@@ -240,14 +241,9 @@ let private templateContent () =
 
     let input = root.content.firstChild.Value :?> HTMLInputElement
     equal "a" input.value
-    outside.appendChild input |> ignore
-
-    rejected (fun () ->
-        Mounting.mount graph None ignore outside None (fun context -> context.Native (input, Mounting.Borrowed))
-        |> ignore)
-
     mounted.Dispose ()
-    equal None input.parentNode
+    equal 0. host.childNodes.length
+    equal true (obj.ReferenceEquals (input, root.content.firstChild.Value))
 
 /// <summary>Checks clone reuse, ownership, rollback and static preparation restrictions.</summary>
 let cases =
@@ -255,10 +251,10 @@ let cases =
         "prepared components reuse skeletons with independent synchronous bindings", fun () -> reuse Scheduling.SynchronousCommits
         "prepared components reuse skeletons with independent queued bindings",
         fun () -> reuse (Scheduling.QueuedCommits (Scheduling.CollectAndContinue, ignore))
-        "prepared descendants retain ownership after external movement", moved
+        "moved prepared descendants can be adopted and outlive their mount", moved
         "prepared setter failure rolls back and cleans up", fun () -> rollback false
         "prepared setter disposal cannot attach a dead component", fun () -> rollback true
         "prepared operations reject foreign nodes and element text targets", invalidTargets
         "preparation rejects reactive callbacks and server serialization", staticOnly
-        "prepared template content is bound and retains ownership", templateContent
+        "prepared template content is bound and leaves with its root", templateContent
     |]

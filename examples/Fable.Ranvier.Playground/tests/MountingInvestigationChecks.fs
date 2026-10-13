@@ -81,7 +81,7 @@ let wideCleanup width =
         equal (2 * width) reads
         mounted.Dispose ()
         mounted.Dispose ()
-        equal [| 1..width |] (cleaned.ToArray ())
+        equal [| width .. -1 .. 1 |] (cleaned.ToArray ())
         equal 0. host.childNodes.length
 
         for button in buttons do
@@ -98,7 +98,7 @@ let wideCleanup width =
         mounted.Dispose ()
         other.Dispose ()
 
-/// <summary>Checks that moved generated descendants remain claimed and are released independently of their original parent.</summary>
+/// <summary>Checks that a moved generated descendant can be adopted by another mount and outlives its original mount.</summary>
 let movedDescendant () =
     use graph = new Graph ()
     let host = globalThis.document.createElement "main"
@@ -120,33 +120,25 @@ let movedDescendant () =
         |> unbox<HTMLInputElement>
 
     externalHost.appendChild input |> ignore
-    let mutable rejected = false
+
+    let adopted =
+        Mounting.mount graph None ignore externalHost None (fun context -> context.Native (input, Mounting.Owned))
 
     try
-        try
-            Mounting.mount graph None ignore externalHost None (fun context -> context.Native (input, Mounting.Borrowed))
-            |> ignore
-        with :? InvalidOperationException ->
-            rejected <- true
-
-        equal true rejected
+        mounted.Dispose ()
+        equal 0. host.childNodes.length
 
         equal
             true
             (input.parentNode
              |> Option.exists (fun parent -> obj.ReferenceEquals (parent, externalHost)))
 
-        mounted.Dispose ()
-        equal None input.parentNode
-        equal 0. host.childNodes.length
-        equal 0. externalHost.childNodes.length
-
-        let reclaimed =
-            Mounting.mount graph None ignore externalHost None (fun context -> context.Native (input, Mounting.Owned))
-
-        reclaimed.Dispose ()
+        graph.Run (fun () -> source.Value <- "b")
+        equal "a" input.value
+        adopted.Dispose ()
         equal 0. externalHost.childNodes.length
     finally
+        adopted.Dispose ()
         mounted.Dispose ()
 
 let private setterDisposal () =
@@ -188,6 +180,6 @@ let cases =
     [|
         "128 components clean up without stopping a sibling mount", fun () -> wideCleanup 128
         "512 components clean up without stopping a sibling mount", fun () -> wideCleanup 512
-        "moved generated descendants reject overlap and become reusable after disposal", movedDescendant
+        "moved generated descendants can be adopted and outlive their mount", movedDescendant
         "static property setter disposal cannot attach a dead component", setterDisposal
     |]

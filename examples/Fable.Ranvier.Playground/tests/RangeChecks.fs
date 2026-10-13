@@ -703,16 +703,16 @@ let private reparentedGeneratedDescendants () =
     let wrapper = at host 1
     let button = at wrapper 0
     other.appendChild button |> ignore
+    let adopted = mounted graph None other None (fun ctx -> ctx.Native (button, Owned))
 
     try
-        rejected (fun () ->
-            mounted graph None other None (fun ctx -> ctx.Native (button, Owned))
-            |> ignore)
-
         handle.Dispose ()
         equal 0. host.childNodes.length
+        equal "x" other.textContent
+        adopted.Dispose ()
         equal 0. other.childNodes.length
     finally
+        adopted.Dispose ()
         handle.Dispose ()
 
 let private keyedReportsAndRecovery () =
@@ -1157,7 +1157,7 @@ let allCases =
             "equality-triggered disposal prevents a late DOM write", equalityDisposal
             "direct child mount disposal uses its explicit reporter", childReporter
             "failed movement rollback disposes resources instead of stranding bindings", failedMovementRollback
-            "generated descendants remain owned after external reparenting", reparentedGeneratedDescendants
+            "reparented generated descendants can be adopted and outlive their mount", reparentedGeneratedDescendants
             "duplicate keyed updates report once and recover without replacing retained rows", keyedReportsAndRecovery
             "initial keyed row setup failure unwinds the entire mount", fun () -> keyedSetupRecovery true
             "failed live row setup retains prior rows and permits recovery", fun () -> keyedSetupRecovery false

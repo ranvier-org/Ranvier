@@ -222,14 +222,6 @@ type private OwnedRange(host: Node) =
         insert staging node (Some last)
 
 #endif
-    member _.TrackPrepared(root: Node) =
-        walkPrepared
-            (fun node ->
-                if not (same node root) then
-                    generatedDescendants.Add node
-                    claim claims node)
-            root
-
     member _.Add(node: ChildNode, ownership) =
         if contains node host || contains node staging then
             invalid "A native node cannot contain its mount host or range"
@@ -493,7 +485,6 @@ let rec private mountCore
     =
     let range = OwnedRange host
 
-#if LADDER_OWNER_LIFETIME
     let cleanupErrors = ResizeArray<exn>()
 
     let release () =
@@ -524,15 +515,8 @@ let rec private mountCore
         match parentScope with
         | Some parent -> parent.Child (report, release)
         | None -> Scope (report, release)
-#else
-    let root =
-        match parentScope with
-        | Some parent -> parent.Child (report, range.Release)
-        | None -> Scope (report, range.Release)
-#endif
 
     let mutable parent: Node = range.Staging
-    let mutable scope = root
     let mutable bindingSetupFailure: exn option = None
     let mutable modifierNode: HTMLElement = Unchecked.defaultof<_>
     let mutable modifierTag = Div
@@ -543,10 +527,7 @@ let rec private mountCore
 #if LADDER_NAIVE_CHECKS
         ()
 #else
-        if
-            root.Phase <> SettingUp
-            || scope.Phase <> SettingUp
-        then
+        if root.Phase <> SettingUp then
             invalid "View construction is only valid during live setup"
 #endif
 
@@ -559,17 +540,10 @@ let rec private mountCore
         else
             parent.appendChild node |> ignore
 #else
-#if LADDER_OWNER_LIFETIME
         if same parent range.Staging then
             range.Add (node, Owned)
         else
             parent.appendChild node |> ignore
-#else
-        if same parent range.Staging then
-            range.Add (node, Owned)
-        else
-            range.AppendGenerated (parent, node)
-#endif
 #endif
 
     let currentElement () =
@@ -601,8 +575,6 @@ let rec private mountCore
 #if LADDER_NAIVE_BINDINGS
         Api.createEffect (fun () -> write (read ()))
 #else
-        let bindingScope = scope
-
         match scheduling with
         | Synchronous ->
             let mutable hasCommitted = false
@@ -611,17 +583,13 @@ let rec private mountCore
             Api.createEffect (fun () ->
                 let value = read ()
 
-                if not root.IsDisposed && not bindingScope.IsDisposed then
+                if not root.IsDisposed then
                     Api.untrack (fun () ->
                         let changed =
                             not hasCommitted
                             || not (equals.Invoke (committed, value))
 
-                        if
-                            changed
-                            && not root.IsDisposed
-                            && not bindingScope.IsDisposed
-                        then
+                        if changed && not root.IsDisposed then
                             try
                                 write value
                                 committed <- value
@@ -631,7 +599,7 @@ let rec private mountCore
                                 reraise ()))
         | Queued queue ->
             let live () =
-                not root.IsDisposed && not bindingScope.IsDisposed
+                not root.IsDisposed
 
             let guardedWrite value =
                 try
@@ -640,7 +608,7 @@ let rec private mountCore
                     bindingSetupFailure <- Some error
                     reraise ()
 
-            Binding.startQueued bindingScope.OnCleanup live queue (fun left right -> equals.Invoke (left, right)) read guardedWrite
+            Binding.startQueued root.OnCleanup live queue (fun left right -> equals.Invoke (left, right)) read guardedWrite
 
         bindingSetupFailure |> Option.iter raise
 #endif
@@ -671,7 +639,6 @@ let rec private mountCore
                 ensureSetup ()
                 let node = template.cloneNode true :?> HTMLElement
                 append node
-                range.TrackPrepared node
                 let previous = preparedRoot
                 preparedRoot <- node
 
@@ -738,15 +705,11 @@ let rec private mountCore
                 let node = currentElement ()
                 let cleanup = hook (box node)
 
-                if scope.IsDisposed then
+                if root.IsDisposed then
                     cleanup ()
                     ensureSetup ()
 
-#if LADDER_OWNER_LIFETIME
                 ownedCleanup (Api.getOwner ()) cleanup
-#else
-                scope.OnCleanup cleanup
-#endif
 
             member _.Property write =
                 write (box (currentElement ()))
@@ -796,7 +759,7 @@ let rec private mountCore
                     range.AppendGenerated (parent, regionStart)
                     range.AppendGenerated (parent, regionEnd)
 
-                let regionScope = scope.Child (report, ignore)
+                let regionScope = root.Child (report, ignore)
                 let mutable entries: KeyedEntry array = [||]
                 let mutable regionOwner: Owner option = None
                 let mutable initializing = true
@@ -1071,27 +1034,16 @@ let rec private mountCore
             member _.Component setup =
                 ensureSetup ()
 #if LADDER_NAIVE_COMPONENTS
-                setup { OnCleanup = scope.OnCleanup }
+                setup
+                    {
+                        OnCleanup = ownedCleanup (Api.getOwner ())
+                    }
 #else
-#if LADDER_OWNER_LIFETIME
                 Api.createRoot (fun owner ->
                     Api.untrack (fun () -> setup { OnCleanup = ownedCleanup owner })
 
                     if owner.IsDisposed then
                         invalid "View construction is only valid during live setup")
-#else
-                let previous = scope
-                let child = scope.Child ignore
-                scope <- child
-
-                try
-                    Api.createRoot (fun owner ->
-                        Api.onCleanup child.Dispose
-                        child.OnCleanup owner.Dispose
-                        Api.untrack (fun () -> setup { OnCleanup = child.OnCleanup }))
-                finally
-                    scope <- previous
-#endif
 #endif
         }
 
@@ -1113,12 +1065,7 @@ let rec private mountCore
     try
         graph.Run (fun () ->
             Api.createRoot (fun owner ->
-#if LADDER_OWNER_LIFETIME
-                // Created first so DOM release runs after every component cleanup.
-                Api.createRoot (fun _ -> Api.onCleanup root.Dispose)
-#else
                 Api.onCleanup root.Dispose
-#endif
                 root.OnCleanup owner.Dispose
                 Api.untrack (fun () -> build context)))
 

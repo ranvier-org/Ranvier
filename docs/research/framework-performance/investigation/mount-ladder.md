@@ -1,6 +1,8 @@
 # Mount cost ladder
 
-This follows the prepared-template checkpoint at `f64a227`. The ladder attributes production mount and disposal time to individual renderer steps. Four compile-time gates in `Mounting.fs` replace one step each with its naive equivalent; a fifth replaces the renderer lifetime model with core owners. Without defines, the emitted `Mounting.js` is byte-identical to the ungated source.
+This follows the prepared-template checkpoint at `a431b14`. The ladder attributes production mount and disposal time to individual renderer steps. Four compile-time gates in `Mounting.fs` replace one step each with its naive equivalent; a fifth replaced the renderer lifetime model with core owners. Without defines, the emitted `Mounting.js` is byte-identical to the ungated source.
+
+The owner-lifetime variant has since become production; see [owner lifetime](../../2026-10-13-owner-lifetime.md). The R4 production figures below measure the earlier renderer-scope model, and the R5 variant is no longer built by `ladder.mjs`.
 
 | Step | Production | Naive replacement (`LADDER_NAIVE_*`) |
 |---|---|---|

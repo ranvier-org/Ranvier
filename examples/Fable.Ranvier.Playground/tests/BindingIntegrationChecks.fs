@@ -261,8 +261,13 @@ let private structuralBoundary (ops: Operations<'view>) run queued =
     graph.Run (fun () -> flight.Value <- fresh ())
     mounted.Flush ()
     equal "loading" host.textContent
-    equal "" ready.textContent
     equal None ready.parentNode
+
+    equal
+        true
+        (first.parentNode
+         |> Option.exists (fun parent -> obj.ReferenceEquals (parent, ready)))
+
     equal (Some (if queued then "ONE" else "stale")) first.textContent
     equal (Some "two") second.textContent
     equal [ 0; 2 ] (List.ofSeq cleanups)
