@@ -8,6 +8,7 @@
   <ItemGroup>
     <Compile Include="Representation.fs" />
     <Compile Include="Typed.fs" />
+    <Compile Include="Template.fs" />
     <Compile Include="Fixtures.fs" />
     <Compile Include="RepresentationChecks.fsx" />
     <ProjectReference Include="../../src/Fable.Ranvier/Fable.Ranvier.fsproj" />

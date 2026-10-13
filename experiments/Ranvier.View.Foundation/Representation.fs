@@ -52,6 +52,23 @@ type Backend() =
     abstract Keyed: (obj -> obj -> bool) * (unit -> (obj * obj) array) * ((unit -> obj) -> Backend -> unit) -> unit
     abstract Component: (Setup -> unit) -> unit
 
+    /// <summary>Renders a template component definition with its props.</summary>
+    abstract Template: TemplateDefinition * obj -> unit
+
+    default this.Template(definition, props) =
+        definition.Expand (this, props)
+
+/// <summary>A component definition whose template is built once and compiled lazily per backend.</summary>
+and [<AbstractClass>] TemplateDefinition() =
+    /// <summary>Renders the definition through ordinary backend operations.</summary>
+    abstract Expand: Backend * obj -> unit
+
+    /// <summary>Renders an instance as HTML markup; a <c>true</c> flag rejects browser-only parts.</summary>
+    abstract RenderHtml: Setup * obj * bool -> string
+
+    /// <summary>The DOM backend's compiled form, or null before the first DOM render.</summary>
+    member val Compiled: obj = null with get, set
+
 /// <summary>Applies a modifier to the backend's current element.</summary>
 type ModifierAction = Backend -> unit
 
@@ -332,7 +349,8 @@ let validateAttribute name =
         raise (System.ArgumentException ("Attribute names must be lowercase and cannot contain event handlers or raw document content", "name"))
 
 module Html =
-    let private escape attribute (value: string) =
+    /// <summary>Escapes text for HTML; a <c>true</c> flag also escapes double quotes for attribute values.</summary>
+    let escape attribute (value: string) =
         let escaped =
             value.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\r", "&#13;")
 
@@ -521,6 +539,9 @@ module Html =
                         errors.Insert (0, error)
                         raise (System.AggregateException errors)
                     | None, _ -> raise (System.AggregateException errors)
+
+                member this.Template(definition, props) =
+                    this.Component (fun context -> append (definition.RenderHtml (context, props, (policy = Reject))))
             }
 
         build backend

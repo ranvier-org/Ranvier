@@ -12,6 +12,7 @@
         <Compile Include="Microtask.fs" />
         <Compile Include="Representation.fs" />
         <Compile Include="Typed.fs" />
+        <Compile Include="Template.fs" />
         <Compile Include="Generated/Html.fs" />
         <Compile Include="Prepared.fs" />
         <Compile Include="Mounting.fs" />

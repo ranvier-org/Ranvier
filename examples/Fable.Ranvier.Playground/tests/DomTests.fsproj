@@ -20,6 +20,7 @@
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Microtask.fs" Link="Microtask.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Representation.fs" Link="Representation.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Typed.fs" Link="Typed.fs" />
+    <Compile Include="../../../experiments/Ranvier.View.Foundation/Template.fs" Link="Template.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Generated/Html.fs" Link="Generated/Html.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Browser.fs" Link="Browser.fs" />
     <Compile Include="RepresentationChecks.fs" />

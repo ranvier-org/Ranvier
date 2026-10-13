@@ -177,3 +177,62 @@ then
     measure "tree" Tree.ops
     measure "program" Program.ops
 #endif
+
+open Ranvier.View.Foundation.Template
+
+type GreetingProps = { Title: string; Name: string }
+
+let greeting =
+    Component.define (fun _ (props: GreetingProps) -> props) (fun t ->
+        t.div
+            [| t.Attrs.className "panel"; t.Attrs.title (fun r -> r.Title) |]
+            [| t.text "Hello "; t.text (fun r -> r.Name); t.text (fun _ -> "!") |])
+
+let greetingProps = { Title = "T &"; Name = "<Ada>" }
+
+let render policy view =
+    Html.render policy (Program.run view)
+
+// Separators keep adjacent texts distinct; values are escaped as the HTML backend escapes them.
+equal "<div class=\"panel\" title=\"T &amp;\">Hello <!--!-->&lt;Ada&gt;<!--!-->!</div>" (render Omit (Component.render greeting greetingProps))
+
+let named =
+    Component.define (fun _ (props: GreetingProps) -> props) (fun t ->
+        t.div [| t.Attrs.className "panel"; t.Attrs.title (fun r -> r.Title) |] [| t.span [||] [| t.text (fun r -> r.Name) |] |])
+
+let namedTwin (props: GreetingProps) =
+    Program.createComponent (fun _ ->
+        Program.element
+            Div
+            [|
+                Attribute ("class", "panel")
+                ReactiveAttribute ("title", fun () -> Some props.Title)
+            |]
+            [|
+                Program.element (HtmlTag "span") [||] [| Program.bind (=) (fun () -> props.Name) |]
+            |])
+
+// A template and its createComponent twin produce identical server HTML.
+equal (render Omit (namedTwin greetingProps)) (render Omit (Component.render named greetingProps))
+
+let clicking =
+    Component.define (fun _ (props: GreetingProps) -> props) (fun t -> t.button [| t.Events.on ("click", fun _ _ -> ()) |] [||])
+
+equal "<button></button>" (render Omit (Component.render clicking greetingProps))
+
+let mutable rejected = false
+
+try
+    render Reject (Component.render clicking greetingProps)
+    |> ignore
+with :? System.InvalidOperationException ->
+    rejected <- true
+
+equal true rejected
+
+// The tree representation renders a template through the default expansion.
+equal
+    "<div class=\"panel\" title=\"T &amp;\"><span>&lt;Ada&gt;</span></div>"
+    (Html.render Omit (Tree.run (Component.renderWith Tree.ops named greetingProps)))
+
+printfn "PASS template portable rendering"
