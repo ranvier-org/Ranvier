@@ -38,15 +38,15 @@ type Scope private (report: exn list -> unit, release: unit -> unit, parent: Sco
         if not disposed then
             disposed <- true
 
-            for child in children do
-                child.Collect order
+            for index in 0 .. children.Count - 1 do
+                children[index].Collect order
 
             order.Add this
 
     member private _.Clean(errors: ResizeArray<exn>) =
-        for callback in callbacks do
+        for index in 0 .. callbacks.Count - 1 do
             try
-                callback ()
+                callbacks[index]()
             with error ->
                 errors.Add error
 
@@ -86,7 +86,8 @@ type Scope private (report: exn list -> unit, release: unit -> unit, parent: Sco
                         order[released].Release errors
                         released <- released + 1
 
-                    failures <- List.ofSeq errors
+                    if errors.Count > 0 then
+                        failures <- List.ofSeq errors
                 finally
                     drain.Value <- None
 
