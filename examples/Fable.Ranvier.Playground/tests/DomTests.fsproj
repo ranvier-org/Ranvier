@@ -44,6 +44,7 @@
     <Compile Include="FrameworkSemantics.fs" />
     <Compile Include="MountingInvestigationChecks.fs" />
     <Compile Include="PreparedChecks.fs" />
+    <Compile Include="DelegationChecks.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/ComponentBench.fs" Link="ComponentBench.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Fixtures.fs" Link="Fixtures.fs" />
     <Compile Include="RepresentationBench.fs" />

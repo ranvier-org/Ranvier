@@ -13,8 +13,7 @@ const rungs = [
   { name: "r2-range", adds: "range ownership", defines: [naive.components, naive.bindings] },
   { name: "r3-components", adds: "component ownership", defines: [naive.bindings] },
   { name: "r4-production", adds: "binding guards", defines: [] },
-  { name: "r5-unchecked-attributes", variantOf: "r4-production", adds: "attribute validation skipped", defines: ["LADDER_UNCHECKED_ATTRIBUTES"] },
-  { name: "r6-delegated-events", variantOf: "r4-production", adds: "delegated event listeners", defines: ["LADDER_DELEGATED_EVENTS"] }
+  { name: "r5-unchecked-attributes", variantOf: "r4-production", adds: "attribute validation skipped", defines: ["LADDER_UNCHECKED_ATTRIBUTES"] }
 ];
 const ladder = rungs.filter(rung => !rung.variantOf), phases = ["mount", "dispose"];
 // native-create and reactive-native bypass the gated renderer, so they are identical in every bundle and serve as page-variance controls.

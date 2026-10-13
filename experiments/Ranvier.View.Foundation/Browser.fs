@@ -115,6 +115,9 @@ let mount (graph: Graph) (host: HTMLElement) (report: exn list -> unit) (counts:
             member _.Browser hook =
                 scope.OnCleanup (hook (box (currentElement ())))
 
+            member _.Listen(eventName, handler) =
+                scope.OnCleanup (Typed.listenDirect (box (currentElement ())) eventName (Typed.ownedHandler handler))
+
             member _.Property write =
                 write (box (currentElement ()))
 

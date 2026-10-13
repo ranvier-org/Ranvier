@@ -104,6 +104,31 @@ let private createClaims () : WeakSet<Node> =
 
 let private claims = createClaims ()
 
+[<Emit("new Set(['beforeinput', 'click', 'contextmenu', 'dblclick', 'focusin', 'focusout', 'input', 'keydown', 'keyup', 'mousedown', 'mousemove', 'mouseout', 'mouseover', 'mouseup', 'pointerdown', 'pointermove', 'pointerout', 'pointerover', 'pointerup', 'touchend', 'touchmove', 'touchstart'])")>]
+let private createDelegatedEvents () : obj = jsNative
+
+/// <summary>Bubbling events dispatched from one listener per mount host.</summary>
+let private delegatedEvents = createDelegatedEvents ()
+
+[<Emit("$0.has($1)")>]
+let private isDelegated (events: obj) (eventName: string) : bool = jsNative
+
+[<Emit("$0['$$ranvier:' + $1] = $2")>]
+let private setDelegatedHandler (node: Node) (eventName: string) (handler: obj -> unit) : unit = jsNative
+
+[<Emit("new WeakMap()")>]
+let private createHostListeners () : obj = jsNative
+
+/// <summary>Per host and event name: the delegating listener and the number of mounts using it.</summary>
+let private hostListeners = createHostListeners ()
+
+// The listener walks from the target to its host, presenting each handled node as currentTarget. An inner host records itself on the event, so an outer host resumes above it.
+[<Emit("""(() => { let names = $0.get($1); if (!names) $0.set($1, names = new Map()); let entry = names.get($2); if (!entry) { const key = '$$ranvier:' + $2; const host = $1; const listener = event => { let node = event.$$ranvierHost ? event.$$ranvierHost.parentNode : event.target; Object.defineProperty(event, 'currentTarget', { configurable: true, get: () => node }); while (node) { const handler = node[key]; if (handler) { handler(event); if (event.cancelBubble) break; } if (node === host) break; node = node.parentNode; } event.$$ranvierHost = host; }; host.addEventListener($2, listener); names.set($2, entry = { listener, count: 0 }); } entry.count++; })()""")>]
+let private delegateFrom (listeners: obj) (host: Node) (eventName: string) : unit = jsNative
+
+[<Emit("(() => { const names = $0.get($1); const entry = names && names.get($2); if (entry && --entry.count === 0) { $1.removeEventListener($2, entry.listener); names.delete($2); } })()")>]
+let private undelegateFrom (listeners: obj) (host: Node) (eventName: string) : unit = jsNative
+
 let private claim (registry: WeakSet<Node>) (node: Node) : unit =
     registry.add node |> ignore
 
@@ -613,6 +638,24 @@ let rec private mountCore
         bindingSetupFailure |> Option.iter raise
 #endif
 
+    let delegatedNames = ResizeArray<string>()
+    let mutable delegatedHost: Node = Unchecked.defaultof<_>
+
+    let delegateAt (target: Node) =
+        for index in 0 .. delegatedNames.Count - 1 do
+            let eventName = delegatedNames[index]
+            delegateFrom hostListeners target eventName
+
+        delegatedHost <- target
+
+    let releaseDelegation () =
+        if not (isNull (box delegatedHost)) then
+            for index in 0 .. delegatedNames.Count - 1 do
+                let eventName = delegatedNames[index]
+                undelegateFrom hostListeners delegatedHost eventName
+
+            delegatedHost <- Unchecked.defaultof<_>
+
     let mutable preparedRoot: Node = Unchecked.defaultof<_>
 
     let ensurePrepared (node: Node) =
@@ -705,20 +748,29 @@ let rec private mountCore
                 let node = currentElement ()
                 let cleanup = hook (box node)
 
-#if LADDER_DELEGATED_EVENTS
-                if not (isNull (box cleanup)) then
-                    if root.IsDisposed then
-                        cleanup ()
-                        ensureSetup ()
-
-                    ownedCleanup (Api.getOwner ()) cleanup
-#else
                 if root.IsDisposed then
                     cleanup ()
                     ensureSetup ()
 
                 ownedCleanup (Api.getOwner ()) cleanup
-#endif
+
+            member _.Listen(eventName, handler) =
+                let node = currentElement ()
+                let invoke = Typed.ownedHandler handler
+
+                if isDelegated delegatedEvents eventName then
+                    setDelegatedHandler node eventName invoke
+
+                    if not (delegatedNames.Contains eventName) then
+                        delegatedNames.Add eventName
+                else
+                    let cleanup = Typed.listenDirect (box node) eventName invoke
+
+                    if root.IsDisposed then
+                        cleanup ()
+                        ensureSetup ()
+
+                    ownedCleanup (Api.getOwner ()) cleanup
 
             member _.Property write =
                 write (box (currentElement ()))
@@ -1081,10 +1133,17 @@ let rec private mountCore
         ensureSetup ()
         range.Attach (host, before)
         root.MarkAttached ()
+        delegateAt host
+        root.OnCleanup releaseDelegation
 
         Mounted (
             root,
-            (fun (parent, before) -> range.Move (parent, before, root.Dispose)),
+            (fun (parent, before) ->
+                range.Move (parent, before, root.Dispose)
+
+                if not (same parent delegatedHost) then
+                    releaseDelegation ()
+                    delegateAt parent),
             (fun () -> range.Validate ()),
             (fun () -> range.Relocate ()),
             (fun () ->

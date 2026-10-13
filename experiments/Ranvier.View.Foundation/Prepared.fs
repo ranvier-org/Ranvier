@@ -79,6 +79,9 @@ let private build (view: Program.View) =
             member _.Browser _ =
                 unsupported ()
 
+            member _.Listen(_, _) =
+                unsupported ()
+
             member _.Property _ =
                 unsupported ()
 

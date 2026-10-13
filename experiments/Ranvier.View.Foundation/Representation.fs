@@ -28,6 +28,9 @@ type Backend() =
     abstract InputValue: string -> unit
     /// <summary>Acquires browser resources for the element currently receiving modifiers.</summary>
     abstract Browser: (obj -> (unit -> unit)) -> unit
+    /// <summary>Handles a named DOM event on the element currently receiving modifiers.</summary>
+    /// <remarks>The handler receives the event object. A backend may dispatch it through a listener on an ancestor.</remarks>
+    abstract Listen: string * (obj -> unit) -> unit
     /// <summary>Applies a static property writer to the element currently receiving modifiers.</summary>
     abstract Property: (obj -> unit) -> unit
     /// <summary>Binds a property reader and target-aware writer to the element currently receiving modifiers.</summary>
@@ -59,6 +62,10 @@ let InputValue value : ModifierAction =
 /// <summary>Creates a modifier that acquires browser resources and returns their cleanup.</summary>
 let browserModifier hook : ModifierAction =
     fun backend -> backend.Browser hook
+
+/// <summary>Creates a modifier that handles a named DOM event.</summary>
+let listenModifier eventName handler : ModifierAction =
+    fun backend -> backend.Listen (eventName, handler)
 
 type Operations<'view> =
     {
@@ -420,6 +427,9 @@ module Html =
                     set "value" value
 
                 member _.Browser _ =
+                    browserCapability ()
+
+                member _.Listen(_, _) =
                     browserCapability ()
 
                 member _.Property _ =
