@@ -1758,3 +1758,166 @@ rtk dotnet fantomas examples/Fable.Ranvier.Playground/tests/FrameworkPerf.fs exp
 rtk git add examples/Fable.Ranvier.Playground experiments/Ranvier.View.Foundation/Prepared.fs docs/research
 rtk git commit -m "test(bench): measure component templates against Solid 2"
 ```
+
+---
+
+### Task 8: Report binding reader failures from every path
+
+This task was added during execution. Today a reader that throws inside an ordinary binding is recorded on the binding's effect (`Status`, `Error`), and nothing the mount owner sees receives it: `createEffect` returns `unit`, and the renderer never reads that state. Templates (Task 3) catch each slot's failure so the other slots keep running. That also hides the failure from the effect, so the template path sends it to the mount's `report` sink instead. This task makes every binding path behave the same way: the effect records the failure, and `report` receives it once.
+
+**Files:**
+- Modify: `experiments/Ranvier.View.Foundation/Mounting.fs` (in `mountCore`: a reporting helper, and `startBinding` in both scheduling branches)
+- Modify: `experiments/Ranvier.View.Foundation/TemplateDom.fs` (`read`, the render effect and the isolated effects)
+- Test: `examples/Fable.Ranvier.Playground/tests/BindingIntegrationChecks.fs`, `examples/Fable.Ranvier.Playground/tests/TemplateChecks.fs`
+
+**Interfaces:**
+- Consumes: `MountServices.ReportFailure` (from the Task 3 fix round), `startBinding`, `Binding.startQueued`, and core's `NotReadyException`.
+- Produces: `reportReaderFailure: exn -> unit` in `mountCore`. `MountServices.ReportFailure` is bound to it.
+
+**Contract:**
+- A reader failure other than `NotReadyException` goes to `report` as `[ error ]`, untracked, and is then rethrown, so the binding's effect records it and tracing shows it. `NotReadyException` is rethrown without a report.
+- The same exception object reported twice in a row by one mount is reported once, so a failed memo read by many bindings produces one report rather than one per binding. The mount keeps the last reported exception by reference. A different exception is reported, and so is the same one after a successful run has cleared it.
+- A template slot failure keeps the slot's previous value and lets the other slots commit. After the commit, the render effect (or the isolated effect) rethrows the run's first failure, so the effect records it.
+- A reporter that throws propagates the way the keyed region's reporter does today: wrapped with the reader failure in an `AggregateException`.
+
+- [ ] **Step 1: Write the failing tests**
+
+In `BindingIntegrationChecks.fs`, add a mount helper that collects reports, and add the following cases. Where the file already has helpers that do the same job, use those names instead.
+
+```fsharp
+let private collectingMount graph host (reported: ResizeArray<exn>) view =
+    Mounting.mount graph None reported.AddRange host None (fun context -> Program.run view context.Backend)
+
+let private bindingReaderFailure () =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal "a")
+    let reported = ResizeArray<exn> ()
+    let host = globalThis.document.createElement "main"
+
+    let view =
+        Program.element
+            Div
+            [| ReactiveAttribute ("title", fun () -> if source.Value = "bad" then failwith "reader" else Some source.Value) |]
+            [| Program.bind (=) (fun () -> source.Value) |]
+
+    let mounted = collectingMount graph host reported view
+    equal 0 reported.Count
+    graph.Run (fun () -> source.Value <- "bad")
+    equal [ "reader" ] [ for error in reported -> error.Message ]
+    equal "bad" host.textContent
+    graph.Run (fun () -> source.Value <- "c")
+    equal 1 reported.Count
+    mounted.Dispose ()
+
+let private sharedMemoFailure () =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal 1)
+    let failing = graph.Run (fun () -> Api.createMemo (fun _ -> if source.Value = 2 then failwith "memo" else string source.Value))
+    let reported = ResizeArray<exn> ()
+    let host = globalThis.document.createElement "main"
+    let view = Program.fragment [| Program.bind (=) (fun () -> failing.Value); Program.bind (=) (fun () -> failing.Value) |]
+    let mounted = collectingMount graph host reported view
+    graph.Run (fun () -> source.Value <- 2)
+    equal [ "memo" ] [ for error in reported -> error.Message ]
+    mounted.Dispose ()
+
+let private queuedReaderFailure () =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal "a")
+    let reported = ResizeArray<exn> ()
+    let host = globalThis.document.createElement "main"
+
+    let mounted =
+        Mounting.mountWith
+            (Scheduling.QueuedCommits (Scheduling.CollectAndContinue, ignore))
+            graph
+            None
+            reported.AddRange
+            host
+            None
+            (fun context -> Program.run (Program.bind (=) (fun () -> if source.Value = "bad" then failwith "reader" else source.Value)) context.Backend)
+
+    mounted.Flush ()
+    graph.Run (fun () -> source.Value <- "bad")
+    mounted.Flush ()
+    equal [ "reader" ] [ for error in reported -> error.Message ]
+    equal "a" host.textContent
+    mounted.Dispose ()
+```
+
+Register them as `"a throwing binding reader is reported once and other bindings update"`, `"a failed memo read by two bindings is reported once"` and `"a throwing reader is reported under queued commits"`.
+
+In `TemplateChecks.fs`, extend `readerFailure`. After the existing assertions, set the source to `"c"`, then assert that the title is `"c"`, the text is `"c"`, and the report count is still 1.
+
+- [ ] **Step 2: Run them to verify they fail**
+
+Run: `npm run test:dom`
+Expected: the three binding cases fail with `Expected ["reader"]; got []` (or `["memo"]`), and the template case passes.
+
+- [ ] **Step 3: Implement**
+
+In `mountCore`, before `startBinding`:
+
+```fsharp
+    let mutable lastReported: exn = null
+
+    let reportReaderFailure (error: exn) =
+        match error with
+        | NotReadyException _ -> ()
+        | _ when obj.ReferenceEquals (error, lastReported) -> ()
+        | _ ->
+            lastReported <- error
+
+            try
+                Api.untrack (fun () -> report [ error ])
+            with reporterError ->
+                raise (AggregateException ("Binding reader and reporter failed", [| error; reporterError |]))
+```
+
+In the `Synchronous` branch of `startBinding`, replace `let value = read ()` with:
+
+```fsharp
+                let value =
+                    try
+                        read ()
+                    with error ->
+                        reportReaderFailure error
+                        reraise ()
+```
+
+In the `Queued` branch, create a wrapped reader once per binding and pass it to `Binding.startQueued`:
+
+```fsharp
+            let reportingRead () =
+                try
+                    read ()
+                with error ->
+                    reportReaderFailure error
+                    reraise ()
+```
+
+Bind `MountServices.ReportFailure` to `reportReaderFailure`.
+
+In `TemplateDom.fs`, change `read` so it hands the failure back to the effect instead of reporting it inline:
+- Keep the run's first non-pending failure in a local of the effect.
+- Call `services.ReportFailure` for that failure.
+- Commit as before.
+- Then `raise` the failure, after `Api.untrack commitAll` in the render effect and after the slot's commit in an isolated effect.
+- `NotReadyException` still returns `unset`, with no report and no rethrow.
+
+Keep the per-instance closure count from Task 3. Check the emitted `TemplateDom.js` and `Mounting.js` for new per-run closures or curry adapters.
+
+Leave the `LADDER_NAIVE_BINDINGS` branch unchanged; it is a measurement baseline.
+
+- [ ] **Step 4: Run the suites**
+
+Run: `npm run test:dom`, `npm run test:browser`, and the portable checks.
+Expected: all pass. Any existing test that mounts with a `failwithf` reporter and provokes a reader failure will now fail. Switch each one to a collecting reporter, assert the report, and list each such test in the report.
+
+- [ ] **Step 5: Commit**
+
+```bash
+rtk dotnet fantomas experiments/Ranvier.View.Foundation/Mounting.fs experiments/Ranvier.View.Foundation/TemplateDom.fs examples/Fable.Ranvier.Playground/tests/BindingIntegrationChecks.fs examples/Fable.Ranvier.Playground/tests/TemplateChecks.fs
+rtk git add experiments/Ranvier.View.Foundation examples/Fable.Ranvier.Playground/tests
+rtk git commit -m "fix(view): report binding reader failures to the mount"
+```
