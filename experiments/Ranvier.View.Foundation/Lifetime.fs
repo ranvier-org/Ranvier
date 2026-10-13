@@ -118,7 +118,9 @@ type Scope private (report: exn list -> unit, release: unit -> unit, parent: Sco
 
         attached <- true
 
-        for child in children do
+        for index in 0 .. children.Count - 1 do
+            let child = children[index]
+
             if not child.IsDisposed && child.Phase = SettingUp then
                 child.MarkAttached ()
 
