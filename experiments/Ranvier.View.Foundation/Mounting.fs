@@ -493,10 +493,43 @@ let rec private mountCore
     =
     let range = OwnedRange host
 
+#if LADDER_OWNER_LIFETIME
+    let cleanupErrors = ResizeArray<exn>()
+
+    let release () =
+        range.Release ()
+
+        if cleanupErrors.Count > 0 then
+            let errors = cleanupErrors.ToArray ()
+            cleanupErrors.Clear ()
+
+            if errors.Length = 1 then
+                raise errors[0]
+            else
+                raise (AggregateException ("Component cleanup failed", errors))
+
+    let reporting (callback: unit -> unit) () =
+        try
+            callback ()
+        with error ->
+            cleanupErrors.Add error
+
+    let ownedCleanup (owner: Owner) callback =
+        if owner.IsDisposed then
+            invalid "Component cleanup registration requires a live component"
+
+        owner.OnCleanup (Action (reporting callback))
+
+    let root =
+        match parentScope with
+        | Some parent -> parent.Child (report, release)
+        | None -> Scope (report, release)
+#else
     let root =
         match parentScope with
         | Some parent -> parent.Child (report, range.Release)
         | None -> Scope (report, range.Release)
+#endif
 
     let mutable parent: Node = range.Staging
     let mutable scope = root
@@ -526,10 +559,17 @@ let rec private mountCore
         else
             parent.appendChild node |> ignore
 #else
+#if LADDER_OWNER_LIFETIME
+        if same parent range.Staging then
+            range.Add (node, Owned)
+        else
+            parent.appendChild node |> ignore
+#else
         if same parent range.Staging then
             range.Add (node, Owned)
         else
             range.AppendGenerated (parent, node)
+#endif
 #endif
 
     let currentElement () =
@@ -702,7 +742,11 @@ let rec private mountCore
                     cleanup ()
                     ensureSetup ()
 
+#if LADDER_OWNER_LIFETIME
+                ownedCleanup (Api.getOwner ()) cleanup
+#else
                 scope.OnCleanup cleanup
+#endif
 
             member _.Property write =
                 write (box (currentElement ()))
@@ -1029,6 +1073,13 @@ let rec private mountCore
 #if LADDER_NAIVE_COMPONENTS
                 setup { OnCleanup = scope.OnCleanup }
 #else
+#if LADDER_OWNER_LIFETIME
+                Api.createRoot (fun owner ->
+                    Api.untrack (fun () -> setup { OnCleanup = ownedCleanup owner })
+
+                    if owner.IsDisposed then
+                        invalid "View construction is only valid during live setup")
+#else
                 let previous = scope
                 let child = scope.Child ignore
                 scope <- child
@@ -1040,6 +1091,7 @@ let rec private mountCore
                         Api.untrack (fun () -> setup { OnCleanup = child.OnCleanup }))
                 finally
                     scope <- previous
+#endif
 #endif
         }
 
@@ -1061,7 +1113,12 @@ let rec private mountCore
     try
         graph.Run (fun () ->
             Api.createRoot (fun owner ->
+#if LADDER_OWNER_LIFETIME
+                // Created first so DOM release runs after every component cleanup.
+                Api.createRoot (fun _ -> Api.onCleanup root.Dispose)
+#else
                 Api.onCleanup root.Dispose
+#endif
                 root.OnCleanup owner.Dispose
                 Api.untrack (fun () -> build context)))
 
