@@ -732,6 +732,7 @@ let rec private mountCore
                     IsDelegated = fun eventName -> isDelegated delegatedEvents eventName
                     Delegate = registerDelegated
                     ListenDirect = listenDirect
+                    ReportFailure = fun error -> Api.untrack (fun () -> report [ error ])
                 }
 
         templateServices

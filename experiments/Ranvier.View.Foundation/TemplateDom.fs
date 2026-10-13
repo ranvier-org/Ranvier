@@ -164,6 +164,7 @@ type MountServices =
         IsDelegated: string -> bool
         Delegate: string -> unit
         ListenDirect: Node -> string -> (obj -> unit) -> unit
+        ReportFailure: exn -> unit
     }
 
 let private unset = obj ()
@@ -184,10 +185,13 @@ let private write (slot: Slot) (node: obj) (value: obj) =
     | PropertyTarget writer -> writer.Invoke (node, value)
     | TextTarget -> setData node value
 
-let private read (slot: Slot) (instance: obj) =
+let private read (services: MountServices) (slot: Slot) (instance: obj) =
     try
         slot.Read.Invoke instance
-    with _ ->
+    with
+    | NotReadyException _ -> unset
+    | error ->
+        services.ReportFailure error
         unset
 
 let private commit (services: MountServices) (state: obj array) (slot: Slot) (nodeIndex: int) (previousIndex: int) (value: obj) =
@@ -261,7 +265,7 @@ let materialise (definition: TemplateDefinition) (props: obj) (services: MountSe
         Api.createEffect (fun () ->
             for k in 0 .. renderCount - 1 do
                 let _, slot = compiled.RenderSlots[k]
-                state[pendingBase + k] <- read slot instance
+                state[pendingBase + k] <- read services slot instance
 
             Api.untrack commitAll)
 
@@ -272,7 +276,7 @@ let materialise (definition: TemplateDefinition) (props: obj) (services: MountSe
         let previousIndex = previousBase + renderCount + k
 
         Api.createEffect (fun () ->
-            let value = read slot instance
+            let value = read services slot instance
             Api.untrack (fun () -> commit services state slot nodeIndex previousIndex value))
 
         services.RaiseSetupFailure ()

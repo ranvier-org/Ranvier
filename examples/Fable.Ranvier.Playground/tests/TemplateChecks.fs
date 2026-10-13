@@ -202,9 +202,15 @@ let private readerFailure () =
                 [| t.text (fun s -> s.Value) |])
 
     let host = host ()
-    let mounted = mount graph host (Component.render failing source)
+    let reported = ResizeArray<exn>()
+
+    let mounted =
+        Mounting.mount graph None reported.AddRange host None (fun context -> Program.run (Component.render failing source) context.Backend)
+
+    equal 0 reported.Count
     graph.Run (fun () -> source.Value <- "bad")
     equal (Some "a", "bad") ((host.querySelector "div" |> unbox<HTMLElement>).getAttribute "title", host.textContent)
+    equal [ "reader" ] [ for error in reported -> error.Message ]
     mounted.Dispose ()
 
 let private setterRollback () =
