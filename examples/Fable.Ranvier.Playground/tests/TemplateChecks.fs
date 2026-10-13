@@ -814,6 +814,67 @@ let private laterSetterFailure () =
     equal ([ "a"; "c" ], "c") (List.ofSeq written, host.textContent)
     mounted.Dispose ()
 
+let private textRoot () =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal "a")
+
+    let only = Component.define (fun _ () -> source) (fun t -> t.text (t.from id))
+
+    let host = host ()
+    let mounted = mount graph host (Component.render only ())
+    equal "a" host.textContent
+    graph.Run (fun () -> source.Value <- "b")
+    equal "b" host.textContent
+    mounted.Dispose ()
+    equal 0. host.childNodes.length
+
+let private fragmentRoot () =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal "a")
+
+    let wrapped =
+        Component.define (fun _ () -> source) (fun t -> t.fragment [| t.div [||] [| t.text (t.from id) |] |])
+
+    let host = host ()
+    let mounted = mount graph host (Component.render wrapped ())
+    equal 1. host.children.length
+    equal "a" host.textContent
+    graph.Run (fun () -> source.Value <- "b")
+    equal "b" host.textContent
+    mounted.Dispose ()
+    equal 0. host.childNodes.length
+
+let private movedRoots () =
+    use graph = new Graph ()
+    let first, second = host (), host ()
+
+    let mounted =
+        mount graph first (Component.render greeting { Title = "T"; Name = "Ada" })
+
+    equal 2. first.children.length
+    mounted.MoveBefore (second, None)
+    equal 0. first.children.length
+    equal 2. second.children.length
+    equal "Hello Ada!Ada" second.textContent
+    mounted.Dispose ()
+    equal 0. second.childNodes.length
+
+let private walkProgramEmptyPath () =
+    equal [| 3; 0; 1; 3 |] (TemplateDom.walkProgram [| [||]; [| 1 |] |])
+
+let private singleRootCompiled () =
+    let single =
+        Component.define (fun _ () -> ()) (fun t -> t.div [| t.Attrs.title (fun _ -> "x") |] [||])
+
+    let compiled = TemplateDom.compile single
+    equal 1 compiled.RootCount
+    equal 1. compiled.Skeleton.nodeType
+
+    equal
+        true
+        (compiled.Walk.Length = 0
+         || compiled.Walk[0] <> TemplateDom.FirstChild)
+
 /// <summary>Checks template compilation and DOM materialisation.</summary>
 let cases =
     [|
@@ -845,4 +906,9 @@ let cases =
         "a pending or failed text slot renders empty", unsetText
         "null attribute values remove the attribute", nullAttributes
         "a later setter failure is reported and keeps the other slots", laterSetterFailure
+        "a template whose single root is a text slot mounts, updates and disposes", textRoot
+        "a single root reached through a fragment mounts, updates and disposes", fragmentRoot
+        "a multi-root template moves together and disposes empty", movedRoots
+        "walk programs begin with a collect for the empty path", walkProgramEmptyPath
+        "a single-root definition compiles to an element skeleton", singleRootCompiled
     |]
