@@ -36,10 +36,7 @@ let StateOwner = 2
 let StateGraph = 3
 
 [<Literal>]
-let StateFailure = 4
-
-[<Literal>]
-let StateNodes = 5
+let StateNodes = 4
 
 /// <summary>A definition compiled for the DOM: a skeleton, the walk to its dynamic nodes, and its slot tables.</summary>
 [<NoEquality; NoComparison>]
@@ -189,27 +186,6 @@ let private write (slot: Slot) (node: obj) (value: obj) =
     | PropertyTarget writer -> writer.Invoke (node, value)
     | TextTarget -> setData node value
 
-let private read (services: MountServices) (state: obj array) (slot: Slot) (instance: obj) =
-    try
-        slot.Read.Invoke instance
-    with
-    | NotReadyException _ -> unset
-    | error ->
-        services.ReportFailure error
-
-        if isNull state[StateFailure] then
-            state[StateFailure] <- error
-
-        unset
-
-let private takeFailure (state: obj array) : exn =
-    let failure = state[StateFailure]
-
-    if not (isNull failure) then
-        state[StateFailure] <- null
-
-    unbox failure
-
 let private commit (services: MountServices) (state: obj array) (slot: Slot) (nodeIndex: int) (previousIndex: int) (value: obj) =
     if not (obj.ReferenceEquals (value, unset)) then
         let previous = state[previousIndex]
@@ -281,11 +257,27 @@ let materialise (definition: TemplateDefinition) (props: obj) (services: MountSe
         let mutable failed = false
 
         Api.createEffect (fun () ->
+            let mutable failure: exn = null
+
             for k in 0 .. renderCount - 1 do
                 let _, slot = compiled.RenderSlots[k]
-                state[pendingBase + k] <- read services state slot instance
 
-            let failure = takeFailure state
+                let value =
+                    try
+                        slot.Read.Invoke instance
+                    with
+                    | NotReadyException _ -> unset
+                    | error ->
+                        failed <- true
+                        services.ReportFailure error
+
+                        if isNull failure then
+                            failure <- error
+
+                        unset
+
+                state[pendingBase + k] <- value
+
             Api.untrack commitAll
 
             if not (isNull failure) then
@@ -304,8 +296,19 @@ let materialise (definition: TemplateDefinition) (props: obj) (services: MountSe
         let mutable failed = false
 
         Api.createEffect (fun () ->
-            let value = read services state slot instance
-            let failure = takeFailure state
+            let mutable failure: exn = null
+
+            let value =
+                try
+                    slot.Read.Invoke instance
+                with
+                | NotReadyException _ -> unset
+                | error ->
+                    failed <- true
+                    services.ReportFailure error
+                    failure <- error
+                    unset
+
             Api.untrack (fun () -> commit services state slot nodeIndex previousIndex value)
 
             if not (isNull failure) then

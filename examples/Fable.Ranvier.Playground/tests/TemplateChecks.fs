@@ -243,6 +243,47 @@ let private recoveredFailureRecurs () =
     equal 2 reported.Count
     mounted.Dispose ()
 
+let private throwingReporter () =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal "a")
+
+    let failing =
+        Component.define (fun _ (source: Signal<string>) -> source) (fun t ->
+            t.div
+                [|
+                    t.Attrs.title (fun s -> if s.Value = "bad" then failwith "title" else s.Value)
+                |]
+                [|
+                    t.text (fun s -> if s.Value = "bad" then failwith "text" else s.Value)
+                    t.span [||] [| t.isolated (t.text (fun s -> s.Value + "!")) |]
+                |])
+
+    let host = host ()
+    let reported = ResizeArray<exn>()
+
+    let reporter (errors: exn list) =
+        reported.AddRange errors
+        failwith "reporter"
+
+    let mounted =
+        Mounting.mount graph None reporter host None (fun context -> Program.run (Component.render failing source) context.Backend)
+
+    let run value =
+        try
+            graph.Run (fun () -> source.Value <- value)
+            None
+        with error ->
+            Some error
+
+    let surfaced = run "bad"
+    equal None surfaced
+    equal [ "title" ] [ for error in reported -> error.Message ]
+    equal (Some "a", "abad!") ((host.querySelector "div" |> unbox<HTMLElement>).getAttribute "title", host.textContent)
+    equal None (run "ok")
+    equal 1 reported.Count
+    equal (Some "ok", "okok!") ((host.querySelector "div" |> unbox<HTMLElement>).getAttribute "title", host.textContent)
+    mounted.Dispose ()
+
 let private initialReaderFailure () =
     use graph = new Graph ()
     let source = graph.Run (fun () -> Api.createSignal "bad")
@@ -654,6 +695,7 @@ let cases =
         "slot writes happen only for changed values", changedSlotsOnly
         "a throwing reader fails only its slot", readerFailure
         "a slot failing on first render is reported without failing the mount", initialReaderFailure
+        "a throwing reporter leaves no failure for the next successful run", throwingReporter
         "a recurring slot failure object is reported again after the slot recovers", recoveredFailureRecurs
         "a throwing setter rolls back the mount", setterRollback
         "template cleanups run in use order without an instance owner", cleanupOrder
