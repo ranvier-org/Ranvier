@@ -214,4 +214,23 @@ let tests =
                 s.Value <- "b"
                 Expect.sequenceEqual target [ "a"; "b" ] "target received the writes"
             }
+
+            test "bindSignal and bindMemo bind under the current graph and owner" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let s = createSignal 1
+                let m = createMemo (fun _ -> s.Value * 2)
+                let log = ResizeArray<int>()
+
+                let owner =
+                    createRoot (fun owner ->
+                        bindSignal s log (fun t v -> t.Add v)
+                        bindMemo m log (fun t v -> t.Add v)
+                        owner)
+
+                s.Value <- 2
+                owner.Dispose ()
+                s.Value <- 3
+                Expect.sequenceEqual (Seq.sort log) [ 1; 2; 2; 4 ] "both bound, both disposed with the owner"
+            }
         ]
