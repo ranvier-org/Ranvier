@@ -4,16 +4,19 @@ import { readFile, readdir, mkdir, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
-// Each rung adds one renderer step to the previous rung; the last rung is production.
+// Each ladder rung adds one renderer step to the previous rung; the last ladder rung is production.
+// A variant rung changes one production step and is compared against its base rung.
 const naive = { checks: "LADDER_NAIVE_CHECKS", range: "LADDER_NAIVE_RANGE", components: "LADDER_NAIVE_COMPONENTS", bindings: "LADDER_NAIVE_BINDINGS" };
 const rungs = [
   { name: "r0-floor", adds: null, defines: [naive.checks, naive.range, naive.components, naive.bindings] },
   { name: "r1-checks", adds: "setup checks", defines: [naive.range, naive.components, naive.bindings] },
   { name: "r2-range", adds: "range ownership", defines: [naive.components, naive.bindings] },
   { name: "r3-components", adds: "component ownership", defines: [naive.bindings] },
-  { name: "r4-production", adds: "binding guards", defines: [] }
+  { name: "r4-production", adds: "binding guards", defines: [] },
+  { name: "r5-unchecked-attributes", variantOf: "r4-production", adds: "attribute validation skipped", defines: ["LADDER_UNCHECKED_ATTRIBUTES"] },
+  { name: "r6-delegated-events", variantOf: "r4-production", adds: "delegated event listeners", defines: ["LADDER_DELEGATED_EVENTS"] }
 ];
-const ladder = rungs, phases = ["mount", "dispose"];
+const ladder = rungs.filter(rung => !rung.variantOf), phases = ["mount", "dispose"];
 // native-create and reactive-native bypass the gated renderer, so they are identical in every bundle and serve as page-variance controls.
 const modes = ["ranvier", "ranvier-direct", "reactive-native", "native-create"], widths = [16, 128], basePort = 5200;
 const cwd = fileURLToPath(new URL("../../", import.meta.url));
@@ -95,6 +98,10 @@ try {
     const total = find(ladder.at(-1).name, mode, width, phase).medianUs;
     return ladder.slice(1).map((rung, index) => ({ width, phase, mode, step: rung.adds, from: ladder[index].name, to: rung.name, ...delta(find(rung.name, mode, width, phase), find(ladder[index].name, mode, width, phase), total) }));
   })));
+  const variants = widths.flatMap(width => phases.flatMap(phase => ["ranvier", "ranvier-direct"].flatMap(mode => rungs.filter(rung => rung.variantOf).map(rung => {
+    const base = find(rung.variantOf, mode, width, phase), variant = find(rung.name, mode, width, phase);
+    return { width, phase, mode, variant: rung.adds, from: rung.variantOf, to: rung.name, baseUs: base.medianUs, variantUs: variant.medianUs, ...delta(variant, base, base.medianUs) };
+  }))));
   // The floor splits along adapters that each add one layer on the R0 page.
   const floorChain = [["native-create", null], ["reactive-native", "reactive core"], ["ranvier-direct", "backend dispatch and mount"], ["ranvier", "authoring layer"]];
   const floor = widths.flatMap(width => phases.flatMap(phase => {
@@ -112,11 +119,12 @@ try {
       "Each rung adds one renderer step to the previous rung, so step deltas sum to production minus the floor. A step's delta depends on its position in this order.",
       "native-create and reactive-native are identical code in every bundle; their spread across rungs bounds page-to-page variance.",
       "The floor split compares adapters on the R0 page: native DOM, then bare effects and signals, then the gated backend through direct calls, then public authoring.",
-      "ranvier-direct bypasses Program views and authoring helpers through the same gated backend."
+      "ranvier-direct bypasses Program views and authoring helpers through the same gated backend.",
+      "Variant rungs change one production step and are compared against r4-production, not added to the ladder."
     ],
-    rungs, sourceHashes, bundleHashes, checks, samples, summaries, steps, floor
+    rungs, sourceHashes, bundleHashes, checks, samples, summaries, steps, floor, variants
   }, null, 2) + "\n");
-  console.log(JSON.stringify({ steps: steps.filter(row => row.width === 128), floor: floor.filter(row => row.width === 128) }));
+  console.log(JSON.stringify({ variants: variants.filter(row => row.width === 128), steps: steps.filter(row => row.width === 128), floor: floor.filter(row => row.width === 128) }));
 } finally {
   if (browser) await browser.close();
   for (const server of servers) if (server.exitCode === null) { const stopped = new Promise(resolve => server.once("exit", resolve)); server.kill(); await stopped; }

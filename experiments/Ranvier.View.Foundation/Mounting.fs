@@ -674,21 +674,21 @@ let rec private mountCore
 
             member _.Attribute(key, value) =
                 let node = currentElement ()
-#if !LADDER_NAIVE_CHECKS
+#if !LADDER_NAIVE_CHECKS && !LADDER_UNCHECKED_ATTRIBUTES
                 validateAttribute key
 #endif
                 node.setAttribute (key, value)
 
             member _.OptionalAttribute(key, value) =
                 let node = currentElement ()
-#if !LADDER_NAIVE_CHECKS
+#if !LADDER_NAIVE_CHECKS && !LADDER_UNCHECKED_ATTRIBUTES
                 validateAttribute key
 #endif
                 attributeValue node key value
 
             member _.ReactiveAttribute(key, read) =
                 let node = currentElement ()
-#if !LADDER_NAIVE_CHECKS
+#if !LADDER_NAIVE_CHECKS && !LADDER_UNCHECKED_ATTRIBUTES
                 validateAttribute key
 #endif
                 startBinding attributeEquals read (attributeValue node key)
@@ -705,11 +705,20 @@ let rec private mountCore
                 let node = currentElement ()
                 let cleanup = hook (box node)
 
+#if LADDER_DELEGATED_EVENTS
+                if not (isNull (box cleanup)) then
+                    if root.IsDisposed then
+                        cleanup ()
+                        ensureSetup ()
+
+                    ownedCleanup (Api.getOwner ()) cleanup
+#else
                 if root.IsDisposed then
                     cleanup ()
                     ensureSetup ()
 
                 ownedCleanup (Api.getOwner ()) cleanup
+#endif
 
             member _.Property write =
                 write (box (currentElement ()))

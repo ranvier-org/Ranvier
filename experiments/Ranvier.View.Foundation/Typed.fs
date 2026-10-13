@@ -80,6 +80,11 @@ let reactiveProperty (setter: 'native -> 'value -> unit) (read: unit -> 'value) 
 
     Modifier (fun backend -> backend.ReactiveProperty (readObject, write))
 
+#if LADDER_DELEGATED_EVENTS
+[<Emit("(() => { const key = '$$ranvier:' + $0; const names = globalThis.__ranvierDelegated ??= new Set(); if (!names.has($0)) { names.add($0); document.addEventListener($0, event => { for (let node = event.target; node; node = node.parentNode) { const handler = node[key]; if (handler) handler(event); } }); } $1[key] = $2; })()")>]
+let private delegateListener (eventName: string) (node: obj) (invoke: EventListener) : unit = jsNative
+
+#endif
 let listener (eventName: string) (handler: Event -> unit) : Modifier<'native> =
     browser (fun native ->
         let node = unbox<EventTarget>(box native)
@@ -91,9 +96,14 @@ let listener (eventName: string) (handler: Event -> unit) : Modifier<'native> =
                 if not owner.IsDisposed then
                     graph.Run (fun () -> Api.runWithOwner owner (fun () -> Api.untrack (fun () -> handler event)))
 
+#if LADDER_DELEGATED_EVENTS
+        delegateListener eventName (box node) invoke
+        Unchecked.defaultof<_>)
+#else
         let callback: EventListenerOrEventListenerObject = !^invoke
         node.addEventListener (eventName, callback)
         fun () -> node.removeEventListener (eventName, callback))
+#endif
 
 /// <summary>Unwraps typed modifiers for a backend; Fable reuses the erased modifier array.</summary>
 let modifierActions (modifiers: Modifier<'native> array) : ModifierAction array =
