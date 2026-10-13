@@ -13,8 +13,8 @@ const rungs = [
   { name: "r3-components", adds: "component ownership", defines: [naive.bindings] },
   { name: "r4-production", adds: "binding guards", defines: [] }
 ];
-// native-create is identical in every bundle and serves as a page-variance control.
-const modes = ["ranvier", "ranvier-direct", "native-create"], widths = [16, 128], basePort = 5200;
+// native-create and reactive-native bypass the gated renderer, so they are identical in every bundle and serve as page-variance controls.
+const modes = ["ranvier", "ranvier-direct", "reactive-native", "native-create"], widths = [16, 128], basePort = 5200;
 const cwd = fileURLToPath(new URL("../../", import.meta.url));
 const out = fileURLToPath(new URL("../../../../docs/research/framework-performance/investigation/", import.meta.url));
 const testsDir = rung => `generated-ladder/${rung.name}`, distDir = rung => `generated-ladder-dist/${rung.name}`;
@@ -97,6 +97,16 @@ try {
       return { width, mode, step: rung.adds, from: rungs[index].name, to: rung.name, deltaUs, shareOfProduction: deltaUs / total, byProcessDeltaUs: current.byProcessUs.map((value, replicate) => value - previous.byProcessUs[replicate]) };
     });
   }));
+  // The floor splits along adapters that each add one layer on the R0 page.
+  const floorChain = [["native-create", null], ["reactive-native", "reactive core"], ["ranvier-direct", "backend dispatch and mount"], ["ranvier", "authoring layer"]];
+  const floor = widths.flatMap(width => {
+    const total = find(rungs.at(-1).name, "ranvier", width).medianUs;
+    return floorChain.slice(1).map(([mode, step], index) => {
+      const current = find(rungs[0].name, mode, width), previous = find(rungs[0].name, floorChain[index][0], width);
+      const deltaUs = current.medianUs - previous.medianUs;
+      return { width, step, from: floorChain[index][0], to: mode, deltaUs, shareOfProduction: deltaUs / total, byProcessDeltaUs: current.byProcessUs.map((value, replicate) => value - previous.byProcessUs[replicate]) };
+    });
+  });
   const files = ["benchmarks/frameworks/ladder.mjs", "benchmarks/frameworks/page.mjs", "benchmarks/frameworks/contract.mjs", "benchmarks/frameworks/native.mjs", "benchmarks/frameworks/vite.config.mjs", "tests/FrameworkPerf.fs", "tests/FrameworkDiagnostics.fs", "../../experiments/Ranvier.View.Foundation/Mounting.fs", "../../experiments/Ranvier.View.Foundation/AuthoringPerfFixtures.fs"];
   const sourceHashes = Object.fromEntries(await Promise.all(files.map(async path => [path, createHash("sha256").update(await readFile(`${cwd}/${path}`)).digest("hex")])));
   await mkdir(out, { recursive: true });
@@ -106,12 +116,13 @@ try {
     warmups: 3, rounds: 11, independentProcesses: 3, unit: "milliseconds per mount",
     notes: [
       "Each rung adds one renderer step to the previous rung, so step deltas sum to production minus the floor. A step's delta depends on its position in this order.",
-      "native-create is identical code in every bundle; its spread across rungs bounds page-to-page variance.",
+      "native-create and reactive-native are identical code in every bundle; their spread across rungs bounds page-to-page variance.",
+      "The floor split compares adapters on the R0 page: native DOM, then bare effects and signals, then the gated backend through direct calls, then public authoring.",
       "ranvier-direct bypasses Program views and authoring helpers through the same gated backend."
     ],
-    rungs, sourceHashes, bundleHashes, checks, samples, summaries, steps
+    rungs, sourceHashes, bundleHashes, checks, samples, summaries, steps, floor
   }, null, 2) + "\n");
-  console.log(JSON.stringify({ summaries: summaries.filter(row => row.width === 128), steps: steps.filter(row => row.width === 128) }));
+  console.log(JSON.stringify({ summaries: summaries.filter(row => row.width === 128), steps: steps.filter(row => row.width === 128), floor: floor.filter(row => row.width === 128) }));
 } finally {
   if (browser) await browser.close();
   for (const server of servers) if (server.exitCode === null) { const stopped = new Promise(resolve => server.once("exit", resolve)); server.kill(); await stopped; }

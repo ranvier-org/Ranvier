@@ -11,36 +11,47 @@ This follows the prepared-template checkpoint at `f64a227`. The ladder attribute
 
 Each rung adds one step to the previous rung. R0 defines all four symbols; R4 defines none and is production. Step costs therefore sum exactly to R4 minus R0. A step's cost depends on its position in this order; gates interact, and a different order would assign shared costs differently.
 
+## Floor split
+
+Below R0, the floor splits along adapters measured on the R0 page, each adding one layer to the previous:
+
+| Adapter | Adds |
+|---|---|
+| `native-create` | handwritten DOM construction, listeners, no reactivity |
+| `reactive-native` | graph, a local signal per row, one bare effect per binding, one shared root; no renderer |
+| `ranvier-direct` | gated backend through direct `Backend` calls: mount scope, range staging and attach, modifier closures, typed listeners with cleanup registration |
+| `ranvier` | public authoring: `Program.View` closures, overloaded helpers, modifier arrays |
+
+`native-create` and `reactive-native` bypass the gated renderer and are identical in every bundle, so they also bound page-to-page variance.
+
 ## Validation
 
-Every rung passes the framework contract for `ranvier`, `ranvier-direct` and `native-create` at widths 1, 16 and 128 in all three processes: 135 checks. The ungated full playground suite passes 205 Node tests and 22 Chromium tests. Naive rungs are not run against the full suite; they deliberately omit ownership guarantees.
+Every rung passes the framework contract for all four adapters at widths 1, 16 and 128 in all three processes: 180 checks. The ungated full playground suite passes 205 Node tests and 22 Chromium tests. Naive rungs are not run against the full suite; they deliberately omit ownership guarantees.
 
 ## Measurements
 
-`ladder-results.json` contains one bundle per rung in three independent Chromium processes, three warmups and eleven measured rounds, with rung and adapter order rotated each round. `native-create` is identical in every bundle; its spread across rungs bounds page-to-page variance. At 128 rows it ranges 381–421 µs pooled and 305–457 µs per process. Deltas below roughly 40 µs are not resolved.
+`ladder-results.json` contains one bundle per rung in three independent Chromium processes, three warmups and eleven measured rounds, with rung and adapter order rotated each round. At 128 rows, the control adapters range 409–431 µs (`native-create`) and 510–547 µs (`reactive-native`) pooled across rungs, and 355–461 µs per process. Pooled deltas below roughly 40 µs, and single-process deltas below roughly 100 µs, are not resolved. Absolute levels also shift between runs: an earlier run of the same gates measured R0 at 774 µs and R4 at 1,044 µs.
 
-At 128 rows, public authoring path (`ranvier`), µs per mount:
+At 128 rows, public authoring path, µs per mount:
 
-| Rung | Median | Process medians |
-|---|---|---|
-| R0 floor | 774 | 733 / 728 / 825 |
-| R1 + setup checks | 840 | 860 / 838 / 828 |
-| R2 + range ownership | 967 | 967 / 938 / 986 |
-| R3 + component ownership | 994 | 988 / 1032 / 994 |
-| R4 production | 1044 | 1003 / 1044 / 1049 |
-
-| Step | Δ µs | Share of R4 | Process deltas |
+| Layer or step | Δ µs | Share of R4 | Process deltas |
 |---|---|---|---|
-| Setup checks | 66 | 6.3% | 127 / 110 / 4 |
-| Range ownership | 127 | 12.2% | 107 / 100 / 158 |
-| Component ownership | 27 | 2.6% | 21 / 94 / 8 |
-| Binding guards | 50 | 4.8% | 14 / 12 / 55 |
+| Native DOM (`native-create`) | 419 | 38.7% | 435 / 415 / 411 |
+| + reactive core | 112 | 10.3% | 104 / 125 / 91 |
+| + backend dispatch and mount | 260 | 24.0% | 251 / 238 / 307 |
+| + authoring layer | 82 | 7.5% | 125 / 129 / 29 |
+| = R0 floor | 872 | | 915 / 906 / 837 |
+| + setup checks | 26 | 2.4% | 20 / −38 / 69 |
+| + range ownership | 115 | 10.6% | 79 / 5 / 110 |
+| + component ownership | 16 | 1.5% | 172 / 124 / −14 |
+| + binding guards | 56 | 5.1% | −73 / −7 / 65 |
+| = R4 production | 1,084 | | 1,112 / 991 / 1,067 |
 
-The `ranvier-direct` adapter assigns 58, 103, 156 and 75 µs to the same steps. Range ownership is the only step resolved consistently above the noise bound in both adapters and all processes. Component ownership disagrees between adapters by 129 µs; direct construction builds button modifier arrays inside each component, so the adapters do not perform identical work per step.
+Backend dispatch and mount is the largest attributable layer, about 2 µs per row, and is resolved in every process. The reactive core is also consistent, about 0.9 µs per row for one signal and four effects. Range ownership is the largest gated step in both runs: 127 then 115 µs through public authoring, and 103 then 139 µs through direct calls. Setup checks, component ownership and binding guards remain within noise in at least one process in each run. The `ranvier-direct` gated deltas are 111, 139, 12 and 42 µs.
 
-The four gated steps account for 270 µs, 26% of production. The R0 floor accounts for the remaining 774 µs. It still contains the graph, 128 local signals, 512 naive effects, `Program.View` closures, modifier arrays and backend dispatch. `native-create`, which performs the same DOM work without reactivity, takes about 400 µs. About 370 µs of the floor is therefore reactive core and authoring/dispatch cost, the largest unattributed bucket. Ripple's complete mount at 128 rows was 556 µs in the prepared comparison.
+Renderer-specific work above the reactive core totals 555 µs of the 1,084: dispatch 260, authoring 82 and the four gated steps 213. Ripple's complete mount at 128 rows was 556 µs in the prepared comparison.
 
-At 16 rows every step is below 10 µs and within noise; total production is 105 µs against an 87 µs floor.
+At 16 rows every gated step is within noise; total production is 114 µs against a 48 µs native mount.
 
 ## Reproduction
 
@@ -50,4 +61,4 @@ From `examples/Fable.Ranvier.Playground`:
 rtk node benchmarks/frameworks/ladder.mjs --build
 ```
 
-`--build` compiles each rung's Fable output into the ignored `generated-ladder/<rung>` directory and bundles it into `generated-ladder-dist/<rung>`; Vite redirects the page's `generated-tests` imports through `RANVIER_LADDER_TESTS`. Without `--build`, the script reuses existing bundles. The artifact records each rung's defines, source and bundle hashes, every raw sample, per-rung summaries and per-step deltas.
+`--build` compiles each rung's Fable output into the ignored `generated-ladder/<rung>` directory and bundles it into `generated-ladder-dist/<rung>`; Vite redirects the page's `generated-tests` imports through `RANVIER_LADDER_TESTS`. Without `--build`, the script reuses existing bundles. The artifact records each rung's defines, source and bundle hashes, every raw sample, per-rung summaries, per-step deltas and the floor split.

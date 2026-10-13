@@ -2,6 +2,7 @@ module FrameworkDiagnostics
 
 open global.Ranvier
 open Fable.Core
+open Fable.Core.JsInterop
 open Fable.Core.TS.Dom
 open Ranvier.View.Foundation
 open Ranvier.View.Foundation.Representation
@@ -220,6 +221,61 @@ let mountDirect (host: HTMLElement) width =
         if live then
             live <- false
             mounted.Dispose ()
+            graph.Dispose ()
+
+    update, dispose
+
+[<Global "document">]
+let private document: Document = jsNative
+
+/// <summary>Mounts the comparison fixture through direct DOM construction and one bare effect per binding.</summary>
+/// <remarks>Excludes renderer scopes, range ownership, backend dispatch and authoring; all reactive state shares one root.</remarks>
+let mountReactiveNative (host: HTMLElement) width =
+    let graph = new Graph ()
+    let section = document.createElement "section"
+
+    let source =
+        graph.Run (fun () ->
+            let source = Api.createSignal "a"
+            let disabled = Api.createMemo (fun _ -> source.Value = "blocked")
+
+            Api.createRoot (fun _ ->
+                for index in 1..width do
+                    let local = Api.createSignal 0
+                    let row = document.createElement "div"
+                    let input = document.createElement "input" :?> HTMLInputElement
+                    let button = document.createElement "button" :?> HTMLButtonElement
+                    let text = document.createTextNode ""
+                    row.setAttribute ("id", "row-" + string index)
+                    row.setAttribute ("class", "panel")
+                    Api.createEffect (fun () -> row.setAttribute ("title", source.Value))
+                    Api.createEffect (fun () -> input.value <- source.Value)
+                    Api.createEffect (fun () -> button.disabled <- disabled.Value)
+                    Api.createEffect (fun () -> text.textContent <- string local.Value)
+
+                    let clicked: EventListener =
+                        fun _ -> graph.Run (fun () -> local.Value <- local.Value + 1)
+
+                    let callback: EventListenerOrEventListenerObject = !^clicked
+                    (button :> EventTarget).addEventListener("click", callback)
+                    button.appendChild text |> ignore
+                    row.appendChild input |> ignore
+                    row.appendChild button |> ignore
+                    section.appendChild row |> ignore)
+
+            source)
+
+    host.appendChild section |> ignore
+    let mutable live = true
+
+    let update value =
+        if live then
+            graph.Run (fun () -> source.Value <- value)
+
+    let dispose () =
+        if live then
+            live <- false
+            section.remove ()
             graph.Dispose ()
 
     update, dispose

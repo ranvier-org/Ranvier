@@ -1,5 +1,5 @@
 import { mount as ranvierMount, mountPrepared } from "../../generated-tests/FrameworkPerf.js";
-import { parts, scopes, core, coreOwners, mountVariant, mountDirect } from "../../generated-tests/FrameworkDiagnostics.js";
+import { parts, scopes, core, coreOwners, mountVariant, mountDirect, mountReactiveNative } from "../../generated-tests/FrameworkDiagnostics.js";
 import { mount as rippleMount } from "../../generated-ripple/RipplePerf.js";
 import { mount as solidMount } from "./solid.jsx";
 import { mount as reactMount } from "./react.mjs";
@@ -16,6 +16,7 @@ const adapters = {
   "ranvier-prepared": adapt(mountPrepared),
   "ranvier-batched": adapt((host, width) => mountVariant(host, width, true)),
   "ranvier-direct": adapt(mountDirect),
+  "reactive-native": adapt(mountReactiveNative),
   "ranvier-unbatched": adapt((host, width) => mountVariant(host, width, false)),
   "native-create": (host, width) => mountNative(host, width),
   "native-clone": (host, width) => mountNative(host, width, true),
