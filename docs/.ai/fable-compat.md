@@ -21,7 +21,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Tests.fs | 7 | 7 | 7 | 7 | 7 | 7 | 0 | 0 |
 | Effects.fs | 14 | 14 | 14 | 14 | 14 | 14 | 0 | 0 |
-| Bindings.fs | 15 | 15 | 15 | 15 | 15 | 15 | 0 | 0 |
+| Bindings.fs | 17 | 17 | 17 | 17 | 17 | 17 | 0 | 0 |
 | EffectSplit.fs | 26 | 26 | 21 | 26 | 26 | 21 | 0 | 0 |
 | AmbientGraph.fs | 6 | 6 | 6 | 6 | 6 | 6 | 0 | 0 |
 | Owners.fs | 14 | 14 | 14 | 14 | 14 | 14 | 0 | 0 |
@@ -68,7 +68,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | QueryDictionary.fs | 2 | 2 | 2 | 2 | 2 | 2 | 0 | 0 |
 | QueryErgonomics.fs | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | QueryNavigationTests.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 874 | 856 | 812 | 958 | 936 | 887 | 87 | 1 |
+| **Total** | 876 | 858 | 814 | 960 | 938 | 889 | 87 | 1 |
 
 ## Tests.fs
 
@@ -107,7 +107,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## Bindings.fs
 
-<details><summary>15 passed in every build and delivery that runs them</summary>
+<details><summary>17 passed in every build and delivery that runs them</summary>
 
 - a signal binding writes the current value on creation
 - a signal write writes again
@@ -121,6 +121,8 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - disposing a binding stops it
 - a binding disposed while queued does not write
 - a binding under a disposed owner never writes
+- a binding created in a pure memo body never writes and leaves no observer
+- a binding created in createEffectOn's compute never writes and leaves no observer
 - a binding created in an effect body is disposed when the effect re-runs
 - the target is passed to the write
 - bindSignal and bindMemo bind under the current graph and owner

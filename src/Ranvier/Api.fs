@@ -317,25 +317,27 @@ module Api =
         |> ignore
 
     /// <summary>
-    /// Writes a signal's value to <c>target</c> immediately and after every change, with no dependency tracking.
-    /// Disposed with the enclosing scope.
+    /// Writes a signal's value to <c>target</c> on the next flush and after every change. Disposed with the enclosing
+    /// scope.
     /// </summary>
     /// <remarks>
-    /// The signal is the only dependency. <c>write</c> runs in the flush, untracked, and must not create reactive
-    /// nodes. A throwing <c>write</c> is recorded on the binding and leaves other queued work running.
+    /// The signal is the only dependency; reads in <c>write</c> are untracked. <c>write</c> runs in the flush and must
+    /// not create reactive nodes. A throwing <c>write</c> leaves other queued work running, and the next change writes
+    /// again.
     /// </remarks>
     let bindSignal (source: Signal<'T>) (target: 'Target) (write: 'Target -> 'T -> unit) =
         Binding<'Target, 'T>.OfSignal(Graph.Current, source, target, write)
         |> ignore
 
     /// <summary>
-    /// Writes a memo's value to <c>target</c> immediately and after every change, with no dependency tracking.
-    /// Disposed with the enclosing scope.
+    /// Writes a memo's value to <c>target</c> on the next flush and after every change. Disposed with the enclosing
+    /// scope.
     /// </summary>
     /// <remarks>
-    /// The memo is the only dependency; a recomputation to an equal value writes nothing. While the memo is pending
-    /// or failed, <c>target</c> keeps its last value. <c>write</c> runs in the flush, untracked, and must not create
-    /// reactive nodes.
+    /// The memo is the only dependency; reads in <c>write</c> are untracked, and a recomputation to an equal value
+    /// writes nothing. While the memo is pending or failed, <c>target</c> keeps its last value. <c>write</c> runs in
+    /// the flush and must not create reactive nodes. A throwing <c>write</c> leaves other queued work running, and the
+    /// next change writes again.
     /// </remarks>
     let bindMemo (source: Memo<'T>) (target: 'Target) (write: 'Target -> 'T -> unit) =
         Binding<'Target, 'T>.OfMemo(Graph.Current, source, target, write)

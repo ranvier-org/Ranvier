@@ -1,6 +1,5 @@
 module Ranvier.Tests.Bindings
 
-open System
 open Expecto
 open Ranvier
 open Ranvier.Tests.Support
@@ -174,6 +173,59 @@ let tests =
 
                 s.Value <- 2
                 Expect.isEmpty log "never written"
+                Expect.equal s.ObserverCount 0 "no observer"
+#if RANVIER_TRACE
+                let snapshot = Trace.snapshot g
+                let sid = (s :> INode).Id
+                Expect.isFalse (snapshot.Observers.ContainsKey sid) "no traced observer edge on the source"
+
+                Expect.isTrue
+                    (snapshot.Sources
+                     |> Map.forall (fun _ sources -> not (List.contains sid sources)))
+                    "no traced source edge"
+
+                Expect.isEmpty (Trace.reconcile g) "the traced edges fold to the live lists"
+#endif
+            }
+
+            test "a binding created in a pure memo body never writes and leaves no observer" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let trigger = createSignal 0
+                let s = createSignal 1
+                let log = ResizeArray<int>()
+
+                let m =
+                    createMemo (fun _ ->
+                        trigger.Value |> ignore
+                        bindSignal s log (fun t v -> t.Add v)
+                        0)
+
+                Expect.throwsT<System.InvalidOperationException> (fun () -> m.Value |> ignore) "the memo fails"
+                trigger.Value <- 1
+
+                Expect.throwsT<System.InvalidOperationException> (fun () -> m.Value |> ignore) "the recompute fails"
+
+                s.Value <- 2
+                Expect.isEmpty log "never written"
+                Expect.equal s.ObserverCount 0 "no observer left"
+            }
+
+            test "a binding created in createEffectOn's compute never writes and leaves no observer" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let s = createSignal 1
+                let log = ResizeArray<int>()
+
+                createEffectOn
+                    (fun () ->
+                        bindSignal s log (fun t v -> t.Add v)
+                        0)
+                    ignore
+
+                s.Value <- 2
+                Expect.isEmpty log "never written"
+                Expect.equal s.ObserverCount 0 "no observer left"
             }
 
             test "a binding created in an effect body is disposed when the effect re-runs" {

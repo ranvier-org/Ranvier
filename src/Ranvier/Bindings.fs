@@ -2,8 +2,36 @@ namespace Ranvier
 
 open System
 
+#if RANVIER_TRACE
+/// <summary>A binding's single source edge, as a traced source list.</summary>
+[<Sealed>]
+type internal BindingEdge(source: ISource) =
+    let mutable live = false
+    let mutable traceLog: TraceLog = null
+    let mutable traceId = 0
+
+    /// <summary>Whether the binding observes the source.</summary>
+    member _.Live
+        with get () = live
+        and set value = live <- value
+
+    interface ITraced with
+        member _.TraceLog
+            with get () = traceLog
+            and set log = traceLog <- log
+
+        member _.TraceId
+            with get () = traceId
+            and set id = traceId <- id
+
+    interface ITracedEdges with
+        member _.Owner = traceId
+        member _.IsSources = true
+        member _.Ids = if live then [| source.Id |] else [||]
+#endif
+
 /// <summary>
-/// Writes a source's value to a target whenever the source changes, without dependency tracking.
+/// Writes a source's value to a target on the next flush and after every change of the source.
 /// </summary>
 /// <remarks>
 /// The source is fixed at creation. Writes run in the flush, untracked, and must not create reactive nodes. A pending
@@ -11,7 +39,8 @@ open System
 /// <c>Dispose</c>.
 /// </remarks>
 [<Sealed>]
-type Binding<'Target, 'T> private (graph: Graph, source: ISource, signal: Signal<'T>, memo: Memo<'T>, target: 'Target, write: 'Target -> 'T -> unit) =
+type internal Binding<'Target, 'T>
+    private (graph: Graph, source: ISource, signal: Signal<'T>, memo: Memo<'T>, target: 'Target, write: 'Target -> 'T -> unit) =
     let id = graph.NextId ()
     let mutable freshness = Freshness.Clean
     let mutable status = Status.Uninitialized
@@ -20,6 +49,10 @@ type Binding<'Target, 'T> private (graph: Graph, source: ISource, signal: Signal
     let mutable disposed = false
     let mutable link: OwnerLink = null
     let mutable runs = 0
+#if RANVIER_TRACE
+    let edge = BindingEdge source
+    do Tracer.Bind (edge, graph, id)
+#endif
 
     static member internal OfSignal(graph: Graph, source: Signal<'T>, target: 'Target, write: 'Target -> 'T -> unit) =
         let binding =
@@ -36,11 +69,17 @@ type Binding<'Target, 'T> private (graph: Graph, source: ISource, signal: Signal
         binding
 
     member private this.Start() =
-        source.AddObserver (this :> IComputation)
         link <- graph.CurrentOwner.AttachLinked this
         Tracer.BindingNew (graph, id, link.Owner)
-        (this :> IComputation).MarkDirty()
-        graph.RequestFlush ()
+
+        if not disposed then
+#if RANVIER_TRACE
+            edge.Live <- true
+            Tracer.EdgeAdd (edge, source, 0)
+#endif
+            source.AddObserver (this :> IComputation)
+            (this :> IComputation).MarkDirty()
+            graph.RequestFlush ()
 
     member private this.Run() =
         runs <- runs + 1
@@ -91,6 +130,10 @@ type Binding<'Target, 'T> private (graph: Graph, source: ISource, signal: Signal
                         link.Detach ()
                         link <- null
 
+#if RANVIER_TRACE
+                    Tracer.EdgesRemove (edge, 0)
+                    edge.Live <- false
+#endif
                     source.RemoveObserver (this :> IComputation)
         )
 
@@ -132,8 +175,8 @@ type Binding<'Target, 'T> private (graph: Graph, source: ISource, signal: Signal
             if disposed then
                 queued <- false
             else
-                // Every path brings the source current before `queued` clears; a memo that recomputes here marks
-                // this binding Dirty without re-queueing it.
+                // `queued` stays set until the source is current: a memo recomputing during `UpdateIfNecessary`
+                // marks this binding Dirty without re-queueing it.
                 if freshness = Freshness.Check then
                     Tracer.CheckStart (graph, id)
                     source.UpdateIfNecessary ()

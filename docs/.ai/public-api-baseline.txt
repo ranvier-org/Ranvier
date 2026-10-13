@@ -76,10 +76,6 @@ member Ranvier.AsyncSource`1 get_ErrorOrigin() : Ranvier.INode
 member Ranvier.AsyncSource`1 get_Status() : Ranvier.Status
 member Ranvier.AsyncSource`1 get_TryValue() : Ranvier.Reading`1<!0>
 member Ranvier.AsyncSource`1 get_Value() : !0
-member Ranvier.Binding`2 Dispose() : Void
-member Ranvier.Binding`2 get_Error() : System.Exception
-member Ranvier.Binding`2 get_Runs() : Int32
-member Ranvier.Binding`2 get_Status() : Ranvier.Status
 member Ranvier.Boundary`1 Dispose() : Void
 member Ranvier.Boundary`1 get_Caught() : System.Exception
 member Ranvier.Boundary`1 get_CaughtFrom() : Ranvier.INode
@@ -378,12 +374,6 @@ type Ranvier.AsyncMemo`1 implements System.IDisposable
 type Ranvier.AsyncSource`1 : System.Object
 type Ranvier.AsyncSource`1 implements Ranvier.INode
 type Ranvier.AsyncSource`1 implements Ranvier.ISource
-type Ranvier.Binding`2 : System.Object
-type Ranvier.Binding`2 implements Ranvier.IComputation
-type Ranvier.Binding`2 implements Ranvier.INode
-type Ranvier.Binding`2 implements Ranvier.IOwned
-type Ranvier.Binding`2 implements Ranvier.IScheduled
-type Ranvier.Binding`2 implements System.IDisposable
 type Ranvier.Boundary`1 : System.Object
 type Ranvier.Boundary`1 implements Ranvier.IComputation
 type Ranvier.Boundary`1 implements Ranvier.INode
