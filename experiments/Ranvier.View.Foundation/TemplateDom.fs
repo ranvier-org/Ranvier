@@ -39,7 +39,7 @@ let StateGraph = 3
 let StateNodes = 4
 
 /// <summary>A definition compiled for the DOM: a skeleton, the walk to its dynamic nodes, and its slot tables.</summary>
-/// <remarks>A single-root skeleton is the root node itself and its walk starts at that root; otherwise the skeleton is a fragment of <c>RootCount</c> roots.</remarks>
+/// <remarks>A single-root skeleton is the root node itself and its walk starts at the root; otherwise the skeleton is a fragment of <c>RootCount</c> roots.</remarks>
 [<NoEquality; NoComparison>]
 type Compiled =
     {
@@ -260,11 +260,11 @@ let private unset = obj ()
 [<Emit("new Array($0)")>]
 let private allocate (length: int) : obj array = jsNative
 
-/// <summary>Reads an element without a bounds check.</summary>
+/// <summary>Reads the element at an index; an index past the end reads <c>undefined</c>.</summary>
 [<Emit("$0[$1]")>]
 let private at (array: 'T array) (index: int) : 'T = jsNative
 
-/// <summary>Writes an element without a bounds check.</summary>
+/// <summary>Writes the element at an index; an index past the end grows the array.</summary>
 [<Emit("$0[$1] = $2")>]
 let private store (array: obj array) (index: int) (value: obj) : unit = jsNative
 
@@ -461,5 +461,6 @@ let materialise (definition: TemplateDefinition) (props: obj) (services: MountSe
         let mutable root: Node = unbox clone.firstChild
 
         while not (isNull (box root)) do
+            let next: Node = unbox root.nextSibling
             services.Append root
-            root <- unbox clone.firstChild
+            root <- next
