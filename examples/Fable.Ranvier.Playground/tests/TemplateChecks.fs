@@ -444,6 +444,90 @@ let private sourceSlots () =
     equal (Some "b", "bb") ((host.querySelector "div" |> unbox<HTMLElement>).getAttribute "title", host.textContent)
     mounted.Dispose ()
 
+[<Emit("$0.dispatchEvent(new FocusEvent('focus'))")>]
+let private dispatchFocus (node: HTMLElement) : unit = jsNative
+
+let private clicks () =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal "a")
+    let disabled = graph.Run (fun () -> Api.createMemo (fun _ -> false))
+    let host = host ()
+
+    let mounted =
+        mount
+            graph
+            host
+            (Component.render
+                row
+                {
+                    Index = 1
+                    Source = source
+                    Disabled = disabled
+                })
+
+    let button =
+        host.querySelector "button"
+        |> unbox<HTMLButtonElement>
+
+    button.click ()
+    button.click ()
+    equal "2" button.textContent
+    mounted.Dispose ()
+    button.click ()
+    equal "2" button.textContent
+
+let private movedClicks () =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal "a")
+    let disabled = graph.Run (fun () -> Api.createMemo (fun _ -> false))
+    let first, second = host (), host ()
+
+    let mounted =
+        mount
+            graph
+            first
+            (Component.render
+                row
+                {
+                    Index = 1
+                    Source = source
+                    Disabled = disabled
+                })
+
+    let button =
+        first.querySelector "button"
+        |> unbox<HTMLButtonElement>
+
+    mounted.MoveBefore (second, None)
+    button.click ()
+    equal "1" button.textContent
+    mounted.Dispose ()
+
+let private focusBesideClick () =
+    use graph = new Graph ()
+    let log = ResizeArray<string>()
+
+    let both =
+        Component.define (fun _ () -> log) (fun t ->
+            t.input
+                [|
+                    t.Events.onFocus (fun l _ -> l.Add "focus")
+                    t.Events.onClick (fun l _ -> l.Add "click")
+                |])
+
+    let host = host ()
+    let mounted = mount graph host (Component.render both ())
+
+    let input =
+        host.querySelector "input"
+        |> unbox<HTMLInputElement>
+
+    dispatchFocus input
+    input.click ()
+    mounted.Dispose ()
+    dispatchFocus input
+    equal [ "focus"; "click" ] (List.ofSeq log)
+
 /// <summary>Checks template compilation and DOM materialisation.</summary>
 let cases =
     [|
@@ -461,4 +545,7 @@ let cases =
         "a static template mounts without effects", staticTemplate
         "an isolated slot re-runs only on its own source", isolatedSlots
         "source slots follow their signal and memo", sourceSlots
+        "template click handlers receive the instance and stop after disposal", clicks
+        "template handlers dispatch after a move", movedClicks
+        "focus uses a direct listener beside a delegated click", focusBesideClick
     |]
