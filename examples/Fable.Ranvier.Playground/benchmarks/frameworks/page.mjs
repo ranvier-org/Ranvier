@@ -6,6 +6,9 @@ import { mount as reactMount } from "./react.mjs";
 import { verify, expectState } from "./contract.mjs";
 import { allCases as rangeCases } from "../../generated-tests/RangeChecks.js";
 import { mountNative } from "./native.mjs";
+import * as ranvierSemantics from "../../generated-tests/FrameworkSemantics.js";
+import * as solidSemantics from "./semantics-solid.jsx";
+import * as rippleSemantics from "../../generated-ripple/RippleSemantics.js";
 
 const adapt = (mount, id = false) => (host, width) => {
   const [update, dispose] = mount(id ? host.id : host, width);
@@ -29,6 +32,14 @@ function host() {
   document.body.append(node);
   return node;
 }
+
+// Probes take the host element, except Ripple, which mounts by host ID.
+window.frameworkSemantics = {
+  ranvier: { caret: host => ranvierSemantics.caret(host), failure: (host, kind) => ranvierSemantics.failure(host, kind) },
+  solid: { caret: host => solidSemantics.caret(host), failure: (host, kind) => solidSemantics.failure(host, kind) },
+  ripple: { caret: host => rippleSemantics.caret(host.id), failure: (host, kind) => rippleSemantics.failure(host.id, kind) },
+  host
+};
 
 window.frameworkPerf = {
   parts, scopes, core, coreOwners,

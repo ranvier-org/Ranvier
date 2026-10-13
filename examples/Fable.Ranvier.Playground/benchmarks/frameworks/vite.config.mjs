@@ -19,7 +19,7 @@ export default defineConfig({
           filename: id, babelrc: false, configFile: false, plugins: [sharedBackendProbe]
         });
       }
-      if (!id.endsWith("/frameworks/solid.jsx")) return;
+      if (!/\/frameworks\/(semantics-)?solid\.jsx$/.test(id)) return;
       return await transformAsync(code, {
         filename: id, babelrc: false, configFile: false,
         presets: [["babel-preset-solid", { generate: "dom", hydratable: false }]]

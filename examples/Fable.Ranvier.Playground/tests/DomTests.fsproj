@@ -41,6 +41,7 @@
     <Compile Include="AuthoringPerf.fs" />
     <Compile Include="FrameworkPerf.fs" />
     <Compile Include="FrameworkDiagnostics.fs" />
+    <Compile Include="FrameworkSemantics.fs" />
     <Compile Include="MountingInvestigationChecks.fs" />
     <Compile Include="PreparedChecks.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/ComponentBench.fs" Link="ComponentBench.fs" />

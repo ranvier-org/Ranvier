@@ -6,6 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="RipplePerf.fs" />
+    <Compile Include="RippleSemantics.fs" />
     <PackageReference Include="Fable.Ripple.Dom" Version="1.0.0-beta.9" />
   </ItemGroup>
 </Project>
