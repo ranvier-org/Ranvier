@@ -145,6 +145,9 @@ let private overlaps (registry: WeakSet<Node>) (node: Node) : bool = jsNative
 [<Emit("$0.parentNode === $1")>]
 let private isChildOf (node: Node) (parent: Node) : bool = jsNative
 
+[<Emit("$0.parentNode == null")>]
+let private isDetached (node: Node) : bool = jsNative
+
 /// <summary>The node's next sibling, or <c>null</c> after the last child.</summary>
 [<Emit("$0.nextSibling")>]
 let private nextOrNull (node: Node) : Node = jsNative
@@ -170,6 +173,8 @@ type private OwnedRange(host: Node) =
     let entries = ResizeArray<Entry>()
     let generatedDescendants = ResizeArray<Node>()
     let mutable placement: Node = staging
+    // Until a keyed region or a native node needs a shared parent, the roots stay detached and attach one by one.
+    let mutable staged = false
 #if LADDER_NAIVE_RANGE
     let naiveRoots = ResizeArray<Node>()
 #endif
@@ -204,10 +209,15 @@ type private OwnedRange(host: Node) =
 
         intact
 
-    do
-        staging.appendChild first |> ignore
-        staging.appendChild last |> ignore
+    let stage () =
+        if not staged then
+            staged <- true
 
+            for index in 0 .. entries.Count - 1 do
+                staging.appendChild (at entries index).Node
+                |> ignore
+
+    do
         entries.Add
             {
                 Node = first
@@ -232,6 +242,8 @@ type private OwnedRange(host: Node) =
     member _.Staging = staging
 
     member _.AddRegion(start: Node, finish: Node, validate: unit -> unit, relocate: unit -> unit) =
+        stage ()
+
         entries.Insert (
             entries.Count - 1,
             {
@@ -255,11 +267,12 @@ type private OwnedRange(host: Node) =
 
 #if LADDER_NAIVE_RANGE
     member _.AddNaive(node: Node) =
+        stage ()
         naiveRoots.Add node
         insert staging node (Some last)
 
 #endif
-    /// <summary>Adds a detached, unclaimed root node created by the mount.</summary>
+    /// <summary>Adds an unclaimed root node created by the mount, either detached or a child of a cloned fragment.</summary>
     member _.AddCreated(node: Node) =
         entries.Insert (
             entries.Count - 1,
@@ -273,7 +286,10 @@ type private OwnedRange(host: Node) =
         )
 
         claim claims node
-        insert staging node (Some last)
+
+        if staged || not (isDetached node) then
+            stage ()
+            insert staging node (Some last)
 
     member _.Add(node: ChildNode, ownership) =
         if contains node host || contains node staging then
@@ -310,10 +326,15 @@ type private OwnedRange(host: Node) =
         )
 
         claim claims node
+        stage ()
         insert staging node (Some last)
 
     member _.Validate() =
-        if intactAt placement then
+        if not staged && same placement staging then
+            for index in 0 .. entries.Count - 1 do
+                if not (isDetached (at entries index).Node) then
+                    invalid "Range boundaries or owned roots were externally mutated"
+        elif intactAt placement then
             ()
         elif
             isDocumentFragment placement
@@ -364,7 +385,12 @@ type private OwnedRange(host: Node) =
         this.Validate ()
         this.ValidateDestination (parent, before)
 #endif
-        insert parent staging before
+        if staged then
+            insert parent staging before
+        else
+            for index in 0 .. entries.Count - 1 do
+                insert parent (at entries index).Node before
+
         placement <- parent
 
     member _.Relocate() =
