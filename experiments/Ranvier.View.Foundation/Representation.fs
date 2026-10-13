@@ -59,7 +59,7 @@ type Backend() =
         definition.Expand (this, props)
 
 /// <summary>A component definition whose template is built once and compiled lazily per backend.</summary>
-and [<AbstractClass>] TemplateDefinition() =
+and [<AbstractClass>] TemplateDefinition internal () =
     /// <summary>Renders the definition through ordinary backend operations.</summary>
     abstract Expand: Backend * obj -> unit
 

@@ -36,7 +36,8 @@ let private walkPrograms () =
 
 let private compiledSkeleton () =
     let compiled = TemplateDom.compile greeting
-    let markup, targets = skeletonMarkup (greeting :> TemplateComponent).Root
+    let markup, targets, rootCount = skeletonMarkup (greeting :> TemplateComponent).Root
+    equal 2 rootCount
     equal "<div class=\"panel\">Hello <!--!--> <!--!--> </div><span> </span>" markup
     equal true (roundTrips markup)
     equal 4 targets.Length
@@ -686,6 +687,133 @@ let private serverMarkup () =
         "<div class=\"panel\" title=\"T &amp;\">Hello <!--!-->&lt;Ada&gt;<!--!-->!</div><span>&lt;Ada&gt;</span>"
         (Html.render Omit (Program.run (Component.render greeting { Title = "T &"; Name = "<Ada>" })))
 
+let private mountFailure (view: Program.View) =
+    use graph = new Graph ()
+
+    try
+        (mount graph (host ()) view).Dispose()
+        []
+    with error ->
+        [ error.Message ]
+
+let private restructuredMarkup () =
+    let tableCell =
+        Component.define (fun _ () -> ()) (fun t ->
+            t.element
+                (HtmlTag "table")
+                [||]
+                [|
+                    t.element (HtmlTag "tr") [||] [| t.element (HtmlTag "td") [||] [| t.text (fun _ -> "x") |] |]
+                |])
+
+    let paragraph =
+        Component.define (fun _ () -> ()) (fun t -> t.element (HtmlTag "p") [||] [| t.div [||] [| t.text "x" |] |])
+
+    let cellFailure = mountFailure (Component.render tableCell ())
+    equal (true, true) (cellFailure.Length > 0, cellFailure |> List.exists _.Contains("td"))
+    equal true (isNull (tableCell :> TemplateDefinition).Compiled)
+    let paragraphFailure = mountFailure (Component.render paragraph ())
+    equal true (paragraphFailure |> List.exists _.Contains("root"))
+
+let private unsetText () =
+    use graph = new Graph ()
+    let flight = graph.Run (fun () -> Api.createAsyncSource<string>())
+
+    let viewOf (read: unit -> string) =
+        Component.define (fun _ () -> ()) (fun t -> t.span [||] [| t.text (fun _ -> read ()) |])
+
+    let pendingHost, failedHost = host (), host ()
+
+    let pending =
+        mount graph pendingHost (Component.render (viewOf (fun () -> flight.Value)) ())
+
+    let failed =
+        Mounting.mount graph None ignore failedHost None (fun context ->
+            Program.run (Component.render (viewOf (fun () -> failwith "reader")) ()) context.Backend)
+
+    equal ("", "") (pendingHost.textContent, failedHost.textContent)
+    graph.Run (fun () -> flight.Settle "ready")
+    equal "ready" pendingHost.textContent
+    pending.Dispose ()
+    failed.Dispose ()
+
+let private nullAttributes () =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal (null: string))
+    let other = graph.Run (fun () -> Api.createSignal 0)
+
+    let nulls =
+        Component.define (fun _ () -> ()) (fun t ->
+            t.div
+                [|
+                    t.Attrs.title (fun _ ->
+                        other.Value |> ignore
+                        (null: string))
+                    t.Attrs.id (t.from (fun _ -> source))
+                    t.Attrs.className (fun _ -> source.Value)
+                |]
+                [| t.text (fun _ -> string other.Value) |])
+
+    let host = host ()
+    let mounted = mount graph host (Component.render nulls ())
+    let div = host.querySelector "div" |> unbox<HTMLElement>
+    let mutable writes = 0
+    let setAttribute = div?setAttribute
+
+    div?setAttribute <-
+        fun (name: string) (value: string) ->
+            writes <- writes + 1
+            setAttribute?call (div, name, value)
+
+    equal (None, None, None) (div.getAttribute "title", div.getAttribute "id", div.getAttribute "class")
+    graph.Run (fun () -> other.Value <- 1)
+    equal (0, None, "1") (writes, div.getAttribute "title", host.textContent)
+    graph.Run (fun () -> source.Value <- "set")
+    equal (Some "set", Some "set") (div.getAttribute "id", div.getAttribute "class")
+    mounted.Dispose ()
+
+    let server =
+        Component.define (fun _ () -> ()) (fun t -> t.div [| t.Attrs.title (fun _ -> (null: string)) |] [| t.text (fun _ -> "0") |])
+
+    equal "<div>0</div>" (Html.render Omit (Program.run (Component.render server ())))
+
+type Setter = { Current: Signal<string> }
+
+let private laterSetterFailure () =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal "a")
+    let written = ResizeArray<string>()
+
+    let failing =
+        Component.define (fun _ () -> { Current = source }) (fun t ->
+            t.button
+                [|
+                    t.Props.propertyWith (
+                        (fun (_: HTMLButtonElement) (value: string) ->
+                            if value = "bad" then
+                                failwith "setter"
+
+                            written.Add value),
+                        (fun s -> s.Current.Value),
+                        primitiveSame
+                    )
+                    t.Attrs.title (fun s -> s.Current.Value)
+                |]
+                [| t.text (fun s -> s.Current.Value) |])
+
+    let host = host ()
+    let reported = ResizeArray<exn>()
+
+    let mounted =
+        Mounting.mount graph None reported.AddRange host None (fun context -> Program.run (Component.render failing ()) context.Backend)
+
+    graph.Run (fun () -> source.Value <- "bad")
+    let button = host.querySelector "button" |> unbox<HTMLElement>
+    equal ([ "setter" ], Some "bad", "bad") ([ for error in reported -> error.Message ], button.getAttribute "title", host.textContent)
+    graph.Run (fun () -> source.Value <- "c")
+    equal ([ "a"; "c" ], "c") (List.ofSeq written, host.textContent)
+    mounted.Dispose ()
+
 /// <summary>Checks template compilation and DOM materialisation.</summary>
 let cases =
     [|
@@ -713,4 +841,8 @@ let cases =
         "the Browser interpreter renders templates through expansion", browserInterpreter
         "prepared skeletons reject templates", preparedRejects
         "server markup under Fable matches the portable expectation", serverMarkup
+        "markup restructured by the HTML parser fails compilation", restructuredMarkup
+        "a pending or failed text slot renders empty", unsetText
+        "null attribute values remove the attribute", nullAttributes
+        "a later setter failure is reported and keeps the other slots", laterSetterFailure
     |]

@@ -49,6 +49,7 @@ type Compiled =
         IsolatedSlots: (int * Slot) array
         Properties: (int * Func<obj, obj, unit> * obj) array
         Events: (int * string * Func<obj, obj, unit>) array
+        EventNames: string array
         Dispatch: Func<obj array, Node, obj, unit>
     }
 
@@ -89,30 +90,97 @@ let walkProgram (paths: int array array) : int array =
 
     ops.ToArray ()
 
-let private dispatchFor (nodeCount: int) (events: (int * string * Func<obj, obj, unit>) array) =
+let private dispatchFor (nodeCount: int) (events: (int * string * Func<obj, obj, unit>) array) (eventNames: string array) =
     Func<obj array, Node, obj, unit>(fun state node event ->
-        let mutable index = -1
+        let eventType: string = event?``type``
+        let mutable handled = false
 
-        for i in 0 .. nodeCount - 1 do
-            if obj.ReferenceEquals (state[StateNodes + i], node) then
-                index <- i
+        for eventName in eventNames do
+            if eventName = eventType then
+                handled <- true
 
-        if index >= 0 then
-            let owner = state[StateOwner] :?> Owner
+        if handled then
+            let mutable index = -1
+            let mutable i = 0
 
-            if not owner.IsDisposed then
-                let graph = state[StateGraph] :?> Graph
-                let eventType: string = event?``type``
+            while index < 0 && i < nodeCount do
+                if obj.ReferenceEquals (state[StateNodes + i], node) then
+                    index <- i
 
-                for target, eventName, handler in events do
-                    if target = index && eventName = eventType then
-                        graph.Run (fun () -> Api.runWithOwner owner (fun () -> Api.untrack (fun () -> handler.Invoke (state[StateInstance], event)))))
+                i <- i + 1
+
+            if index >= 0 then
+                let owner = state[StateOwner] :?> Owner
+
+                if not owner.IsDisposed then
+                    let graph = state[StateGraph] :?> Graph
+
+                    for target, eventName, handler in events do
+                        if target = index && eventName = eventType then
+                            graph.Run (fun () ->
+                                Api.runWithOwner owner (fun () -> Api.untrack (fun () -> handler.Invoke (state[StateInstance], event)))))
+
+/// <summary>Dispatches a delegated event to the template instance whose state is attached to the node.</summary>
+let dispatch =
+    Func<obj array, Node, obj, unit>(fun state node event -> (state[StateCompiled] :?> Compiled).Dispatch.Invoke(state, node, event))
+
+let private restructured (detail: string) =
+    InvalidOperationException (
+        "The HTML parser restructured the template markup: "
+        + detail
+    )
+
+let private validateParsed (content: DocumentFragment) (walk: int array) (targets: (TemplateNode * int array) array) (rootCount: int) =
+    let parsedRoots = int content.childNodes.length
+
+    if parsedRoots <> rootCount then
+        raise (restructured $"expected %d{rootCount} root nodes, parsed %d{parsedRoots}")
+
+    let mutable cursor: Node = content :> Node
+    let mutable count = 0
+
+    for op in walk do
+        if op = Collect then
+            let target, path = targets[count]
+
+            let expected, matches =
+                match target with
+                | ElementNode (tag, _, _, _, _, _) ->
+                    let tagName = name tag
+
+                    "<" + tagName + ">",
+                    not (isNull (box cursor))
+                    && cursor.nodeType = 1.
+                    && cursor.nodeName.ToLowerInvariant () = tagName.ToLowerInvariant ()
+                | _ -> "a text node", not (isNull (box cursor)) && cursor.nodeType = 3.
+
+            if not matches then
+                let found =
+                    if isNull (box cursor) then
+                        "absent"
+                    else
+                        cursor.nodeName.ToLowerInvariant ()
+
+                let at = path |> Array.map string |> String.concat "/"
+                raise (restructured $"the dynamic node at path {at} should be {expected} but is {found}")
+
+            count <- count + 1
+        elif not (isNull (box cursor)) then
+            if op = FirstChild then
+                cursor <- unbox cursor.firstChild
+            elif op = NextSibling then
+                cursor <- unbox cursor.nextSibling
+            else
+                cursor <- unbox cursor.parentNode
 
 /// <summary>Compiles a definition once: parses its skeleton markup and builds its walk and slot tables.</summary>
+/// <exception cref="T:System.InvalidOperationException">The HTML parser restructures the markup, moving a dynamic node or changing the root count.</exception>
 let compile (definition: TemplateComponent) : Compiled =
-    let markup, targets = skeletonMarkup definition.Root
+    let markup, targets, rootCount = skeletonMarkup definition.Root
     let template = document.createElement "template" :?> HTMLTemplateElement
     template.innerHTML <- markup
+    let walk = walkProgram (Array.map snd targets)
+    validateParsed template.content walk targets rootCount
     let renderSlots = ResizeArray ()
     let isolatedSlots = ResizeArray ()
     let properties = ResizeArray ()
@@ -141,15 +209,21 @@ let compile (definition: TemplateComponent) : Compiled =
 
     let eventArray = events.ToArray ()
 
+    let eventNames =
+        eventArray
+        |> Array.map (fun (_, eventName, _) -> eventName)
+        |> Array.distinct
+
     {
         Skeleton = template.content
-        Walk = walkProgram (Array.map snd targets)
+        Walk = walk
         NodeCount = targets.Length
         RenderSlots = renderSlots.ToArray ()
         IsolatedSlots = isolatedSlots.ToArray ()
         Properties = properties.ToArray ()
         Events = eventArray
-        Dispatch = dispatchFor targets.Length eventArray
+        EventNames = eventNames
+        Dispatch = dispatchFor targets.Length eventArray eventNames
     }
 
 /// <summary>The mount-owned operations a template instance uses.</summary>
@@ -186,20 +260,29 @@ let private write (slot: Slot) (node: obj) (value: obj) =
     | PropertyTarget writer -> writer.Invoke (node, value)
     | TextTarget -> setData node value
 
+// A failed write keeps the slot's previous value. During setup the failure aborts the mount; afterwards it is reported.
 let private commit (services: MountServices) (state: obj array) (slot: Slot) (nodeIndex: int) (previousIndex: int) (value: obj) =
-    if not (obj.ReferenceEquals (value, unset)) then
-        let previous = state[previousIndex]
+    let previous = state[previousIndex]
 
-        if
-            obj.ReferenceEquals (previous, unset)
-            || not (slot.Same.Invoke (previous, value))
-        then
-            try
-                write slot state[StateNodes + nodeIndex] value
-                state[previousIndex] <- value
-            with error when services.SettingUp () ->
+    if obj.ReferenceEquals (value, unset) then
+        match slot.Target with
+        | TextTarget when obj.ReferenceEquals (previous, unset) ->
+            setData state[StateNodes + nodeIndex] ""
+            state[previousIndex] <- box ""
+        | _ -> ()
+    elif
+        obj.ReferenceEquals (previous, unset)
+        || not (slot.Same.Invoke (previous, value))
+    then
+        try
+            write slot state[StateNodes + nodeIndex] value
+            state[previousIndex] <- value
+        with error ->
+            if services.SettingUp () then
                 services.SetupFailed error
                 reraise ()
+            else
+                services.ReportFailure error
 
 let private collect (root: Node) (walk: int array) (state: obj array) =
     let mutable cursor = root
@@ -320,11 +403,16 @@ let materialise (definition: TemplateDefinition) (props: obj) (services: MountSe
 
         services.RaiseSetupFailure ()
 
+    let mutable attached = -1
+
     for nodeIndex, eventName, handler in compiled.Events do
         let node = state[StateNodes + nodeIndex]
 
         if services.IsDelegated eventName then
-            attachState node state
+            if attached <> nodeIndex then
+                attachState node state
+                attached <- nodeIndex
+
             services.Delegate eventName
         else
             let owner = state[StateOwner] :?> Owner

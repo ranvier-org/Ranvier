@@ -235,4 +235,11 @@ equal
     "<div class=\"panel\" title=\"T &amp;\"><span>&lt;Ada&gt;</span></div>"
     (Html.render Omit (Tree.run (Component.renderWith Tree.ops named greetingProps)))
 
+let nullTitle =
+    Component.define (fun _ (props: GreetingProps) -> props) (fun t -> t.div [| t.Attrs.title (fun _ -> (null: string)) |] [||])
+
+// A null attribute value omits the attribute.
+equal "<div></div>" (render Omit (Component.render nullTitle greetingProps))
+equal "<div></div>" (Html.render Omit (Tree.run (Component.renderWith Tree.ops nullTitle greetingProps)))
+
 printfn "PASS template portable rendering"

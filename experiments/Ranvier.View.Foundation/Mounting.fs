@@ -122,9 +122,9 @@ let private createHostListeners () : obj = jsNative
 /// <summary>Per host and event name: the delegating listener and the number of mounts using it.</summary>
 let private hostListeners = createHostListeners ()
 
-// The listener walks from the target to its host, presenting each handled node as currentTarget. An inner host records itself on the event, so an outer host resumes above it.
-[<Emit("""(() => { let names = $0.get($1); if (!names) $0.set($1, names = new Map()); let entry = names.get($2); if (!entry) { const key = '$$ranvier:' + $2; const host = $1; const listener = event => { let node = event.$$ranvierHost ? event.$$ranvierHost.parentNode : event.target; Object.defineProperty(event, 'currentTarget', { configurable: true, get: () => node }); while (node) { const handler = node[key]; if (handler) { handler(event); if (event.cancelBubble) break; } else if (node.$$ranvier !== undefined) { const state = node.$$ranvier; state[0].Dispatch(state, node, event); if (event.cancelBubble) break; } if (node === host) break; node = node.parentNode; } event.$$ranvierHost = host; }; host.addEventListener($2, listener); names.set($2, entry = { listener, count: 0 }); } entry.count++; })()""")>]
-let private delegateFrom (listeners: obj) (host: Node) (eventName: string) : unit = jsNative
+// The listener walks from the target to its host, presenting each handled node as currentTarget. A node with a handler runs it; a template event node passes its instance state to `dispatchTemplate`. An inner host records itself on the event, so an outer host resumes above it.
+[<Emit("""(() => { let names = $0.get($1); if (!names) $0.set($1, names = new Map()); let entry = names.get($2); if (!entry) { const key = '$$ranvier:' + $2; const host = $1; const listener = event => { let node = event.$$ranvierHost ? event.$$ranvierHost.parentNode : event.target; Object.defineProperty(event, 'currentTarget', { configurable: true, get: () => node }); while (node) { const handler = node[key]; if (handler) { handler(event); if (event.cancelBubble) break; } else if (node.$$ranvier !== undefined) { $3(node.$$ranvier, node, event); if (event.cancelBubble) break; } if (node === host) break; node = node.parentNode; } event.$$ranvierHost = host; }; host.addEventListener($2, listener); names.set($2, entry = { listener, count: 0 }); } entry.count++; })()""")>]
+let private delegateFrom (listeners: obj) (host: Node) (eventName: string) (dispatchTemplate: Func<obj array, Node, obj, unit>) : unit = jsNative
 
 [<Emit("(() => { const names = $0.get($1); const entry = names && names.get($2); if (entry && --entry.count === 0) { $1.removeEventListener($2, entry.listener); names.delete($2); } })()")>]
 let private undelegateFrom (listeners: obj) (host: Node) (eventName: string) : unit = jsNative
@@ -615,7 +615,7 @@ let rec private mountCore
     let mutable lastReported: exn = null
 
     // Sends a reader failure to `report`, untracked, once per exception object until `clearReported` runs.
-    // A pending read (`NotReadyException`) stays with the effect.
+    // A pending read (`NotReadyException`) is not reported.
     let reportReaderFailure (error: exn) =
         match error with
         | NotReadyException _ -> ()
@@ -713,7 +713,7 @@ let rec private mountCore
     let delegateAt (target: Node) =
         for index in 0 .. delegatedNames.Count - 1 do
             let eventName = delegatedNames[index]
-            delegateFrom hostListeners target eventName
+            delegateFrom hostListeners target eventName TemplateDom.dispatch
 
         delegatedHost <- target
 
@@ -1033,7 +1033,7 @@ let rec private mountCore
                         regionOwner
                         |> Option.defaultWith (fun () -> invalid "Keyed-list owner is unavailable")
 
-                    let mounted =
+                    let mounted: Mounted =
                         rowSetupErrors <- Some setupErrors
 
                         try
@@ -1049,6 +1049,22 @@ let rec private mountCore
                                 reraise ()
                         finally
                             rowSetupErrors <- previousErrors
+
+                    if setupErrors.Count > 0 then
+                        let errors = List.ofSeq setupErrors
+
+                        try
+                            Api.untrack (fun () -> report errors)
+                        with reporterError ->
+                            let failures = ResizeArray<exn>(errors)
+                            failures.Add reporterError
+
+                            try
+                                mounted.Dispose ()
+                            with cleanupError ->
+                                failures.Add cleanupError
+
+                            raise (AggregateException ("Keyed row reader and reporter failed", failures))
 
                     let first =
                         staging.firstChild

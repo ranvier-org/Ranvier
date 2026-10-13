@@ -94,8 +94,11 @@ let private sourceSlot target (Source read: Source<'inst, 'value>) same =
         Same = same
     }
 
+let private present (value: string) =
+    if isNull value then None else Some value
+
 let private someOf (Source read: Source<'inst, string>) : Source<'inst, string option> =
-    Source (Func<obj, obj>(fun instance -> box (Some (unbox<string>(read.Invoke instance)))))
+    Source (Func<obj, obj>(fun instance -> box (present (unbox<string>(read.Invoke instance)))))
 
 let private writer (write: 'native -> 'value -> unit) =
     Func<obj, obj, unit>(fun node value -> write (unbox node) (unbox value))
@@ -137,7 +140,7 @@ type AttributeBuilder<'inst> internal () =
         this.attribute ("class", value)
 
     member this.className(read: 'inst -> string) : Part<'native, 'inst> =
-        this.attribute ("class", fun instance -> Some (read instance))
+        this.attribute ("class", fun instance -> present (read instance))
 
     member this.className(source: Source<'inst, string>) : Part<'native, 'inst> =
         this.attribute ("class", someOf source)
@@ -146,7 +149,7 @@ type AttributeBuilder<'inst> internal () =
         this.attribute ("id", value)
 
     member this.id(read: 'inst -> string) : Part<'native, 'inst> =
-        this.attribute ("id", fun instance -> Some (read instance))
+        this.attribute ("id", fun instance -> present (read instance))
 
     member this.id(source: Source<'inst, string>) : Part<'native, 'inst> =
         this.attribute ("id", someOf source)
@@ -155,7 +158,7 @@ type AttributeBuilder<'inst> internal () =
         this.attribute ("title", value)
 
     member this.title(read: 'inst -> string) : Part<'native, 'inst> =
-        this.attribute ("title", fun instance -> Some (read instance))
+        this.attribute ("title", fun instance -> present (read instance))
 
     member this.title(source: Source<'inst, string>) : Part<'native, 'inst> =
         this.attribute ("title", someOf source)
@@ -322,6 +325,8 @@ let private writeMarkup (output: StringBuilder) mode (targets: ResizeArray<Templ
             index <- index + 1
             previousText <- text
 
+        index
+
     and writeNode node path =
         match node with
         | TextNode value -> append (Html.escape false value)
@@ -372,18 +377,18 @@ let private writeMarkup (output: StringBuilder) mode (targets: ResizeArray<Templ
             append ">"
 
             if not (isVoid tag) then
-                writeChildren children path
+                writeChildren children path |> ignore
                 append ("</" + name tag + ">")
 
     writeChildren [| root |] []
 
-/// <summary>The skeleton markup of a template and the path of every dynamic node, in document order.</summary>
+/// <summary>The skeleton markup of a template, the path of every dynamic node in document order, and the number of root nodes.</summary>
 /// <remarks>A path lists child indexes from the skeleton's root fragment.</remarks>
 let skeletonMarkup (root: TemplateNode) =
     let output = StringBuilder ()
     let targets = ResizeArray ()
-    writeMarkup output Skeleton targets root
-    output.ToString (), targets.ToArray ()
+    let rootCount = writeMarkup output Skeleton targets root
+    output.ToString (), targets.ToArray (), rootCount
 
 /// <summary>A template component definition without its props type.</summary>
 [<AbstractClass>]
@@ -396,7 +401,10 @@ type TemplateComponent internal (setup: Func<Setup, obj, obj>, root: TemplateNod
 let renderHtml (definition: TemplateComponent) (setup: Setup) (props: obj) (rejectBrowser: bool) =
     let instance = definition.Setup.Invoke (setup, props)
     let output = StringBuilder ()
+
     writeMarkup output (Server (instance, rejectBrowser)) (ResizeArray ()) definition.Root
+    |> ignore
+
     output.ToString ()
 
 let rec private expandNode (ops: Operations<'view>) (instance: obj) (node: TemplateNode) : 'view =

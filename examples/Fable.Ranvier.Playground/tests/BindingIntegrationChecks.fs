@@ -499,6 +499,30 @@ let private recoveredFailureRecurs () =
     equal 2 reported.Count
     mounted.Dispose ()
 
+let private keyedRowReaderFailure () =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal 2)
+
+    let failing =
+        graph.Run (fun () ->
+            Api.createMemo (fun _ ->
+                if source.Value = 2 then
+                    failwith "memo"
+                else
+                    string source.Value))
+
+    let rows = graph.Run (fun () -> Api.createSignal [ 1; 2 ])
+    let reported = ResizeArray<exn>()
+
+    let view =
+        Keyed.list Program.ops (=) id (fun () -> rows.Value) (fun _ -> Program.bind (=) (fun () -> failing.Value))
+
+    let mounted = collectingMount graph (host ()) reported view
+    equal [ "memo"; "memo" ] [ for error in reported -> error.Message ]
+    graph.Run (fun () -> rows.Value <- [ 1; 2; 3 ])
+    equal [ "memo"; "memo"; "memo" ] [ for error in reported -> error.Message ]
+    mounted.Dispose ()
+
 let portableCases =
     [|
         "tree HTML serializes the boundary's escaped result", fun () -> serverBoundary Tree.ops Tree.run
@@ -530,4 +554,5 @@ let cases =
             "a failed memo read by two bindings is reported once", sharedMemoFailure
             "a throwing reader is reported under queued commits", queuedReaderFailure
             "a recurring failure object is reported again after its binding recovers", recoveredFailureRecurs
+            "a keyed row reading a failed memo reports the failure", keyedRowReaderFailure
         |]
