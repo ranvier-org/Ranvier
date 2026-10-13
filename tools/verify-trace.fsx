@@ -396,7 +396,7 @@ let forbiddenInArgs =
     ]
     |> List.map Regex
 
-let engineFiles = [ "Core.fs"; "Projections.fs"; "Combinators.fs"; "Api.fs"; "Timed.fs"; "TimedClock.fs" ]
+let engineFiles = [ "Core.fs"; "Projections.fs"; "Combinators.fs"; "Api.fs"; "Timed.fs"; "TimedClock.fs"; "Bindings.fs" ]
 
 let declarationStart =
     Regex @"^(let|val|member|abstract|default|override|interface|static member|static val|new|\[<)\b"
@@ -748,7 +748,7 @@ let mergeBaseIlGate () =
     git [ "worktree"; "add"; "--detach"; baseTree; mergeBase ] |> ignore
 
     try
-        runChecked baseTree [] "dotnet" [ "build"; "src/Ranvier"; "-c"; "Release"; "-o"; out ] |> ignore
+        runChecked baseTree [] "dotnet" [ "build"; "src/Ranvier"; "-c"; "Release"; "-f"; "net10.0"; "-o"; out ] |> ignore
     finally
         run root [] "git" [ "worktree"; "remove"; "--force"; baseTree ] |> ignore
 
@@ -1125,7 +1125,7 @@ if args.Contains "--baseline" then
     let out = Path.Combine (work, "baseline")
 
     try
-        runChecked baseTree [] "dotnet" [ "build"; "src/Ranvier"; "-c"; "Release"; "-o"; out ] |> ignore
+        runChecked baseTree [] "dotnet" [ "build"; "src/Ranvier"; "-c"; "Release"; "-f"; "net10.0"; "-o"; out ] |> ignore
     finally
         run root [] "git" [ "worktree"; "remove"; "--force"; baseTree ] |> ignore
 
