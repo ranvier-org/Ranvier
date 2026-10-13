@@ -9,6 +9,10 @@ const cwd = fileURLToPath(new URL("../../", import.meta.url));
 const outName = process.argv.find(arg => arg.startsWith("--out="))?.slice(6);
 const out = fileURLToPath(new URL(outName ? `../../../../docs/research/framework-performance/investigation/${outName}/` : process.argv.includes("--cleanup") ? "../../../../docs/research/framework-performance/investigation/cleanup-profile/" : "../../../../docs/research/framework-performance/investigation/", import.meta.url));
 const port = 5187;
+// `--modes=a,b` and `--phases=mount` narrow the profiled adapters; `--roots=<n>` sets the roots per profiled run.
+const listArg = (flag, fallback) => process.argv.find(arg => arg.startsWith(`--${flag}=`))?.slice(flag.length + 3).split(",") || fallback;
+const modes = listArg("modes", ["ranvier", "solid", "ripple", "react"]), phases = listArg("phases", ["mount", "dispose"]);
+const roots = Number(listArg("roots", ["256"])[0]);
 if (process.argv.includes("--build")) execFileSync("rtk", ["node", "node_modules/vite/bin/vite.js", "build", "--config", "benchmarks/frameworks/vite.config.mjs"], { cwd, stdio: "inherit", windowsHide: true, env: { ...process.env, RANVIER_PERF_PROFILE: "true" } });
 const server = spawn(process.execPath, ["node_modules/vite/bin/vite.js", "preview", "--config", "benchmarks/frameworks/vite.config.mjs", "--host", "127.0.0.1", "--port", String(port), "--strictPort"], { cwd, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
 let output = "", browser;
@@ -39,14 +43,14 @@ try {
   const maps = (await readdir(assets)).filter(file => file.endsWith(".js.map"));
   if (maps.length !== 1) throw Error(`Expected one benchmark source map, found ${maps.length}`);
   await writeFile(`${out}/profile-source-map.json.gz`, gzipSync(await readFile(`${assets}/${maps[0]}`)));
-  for (const mode of ["ranvier", "solid", "ripple", "react"]) {
+  for (const mode of modes) {
     await page.evaluate(mode => window.frameworkPerf.verify(mode, 128), mode);
-    for (const phase of ["mount", "dispose"]) {
+    for (const phase of phases) {
       const timings = await page.evaluate(({ mode, phase }) => {
         for (let i = 0; i < 3; i++) window.frameworkPerf.sample(mode, 128, phase, 32);
         return Array.from({ length: 7 }, () => window.frameworkPerf.sample(mode, 128, phase, 32) * 1000);
       }, { mode, phase });
-      await page.evaluate(({ mode, phase }) => { window.preparedProfile = window.frameworkPerf.prepare(mode, 128, phase, 256); }, { mode, phase });
+      await page.evaluate(({ mode, phase, roots }) => { window.preparedProfile = window.frameworkPerf.prepare(mode, 128, phase, roots); }, { mode, phase, roots });
       await cdp.send("HeapProfiler.collectGarbage");
       await cdp.send("Profiler.start");
       const profiledRunMs = await page.evaluate(() => {
@@ -66,11 +70,11 @@ try {
       }
       const hotspots = [...self].sort((a, b) => b[1] - a[1]).slice(0, 25).map(([functionName, us]) => ({ functionName, ms: us / 1000 }));
       const operations = await page.evaluate(({ mode, phase }) => window.frameworkPerf.operations(mode, 128, phase), { mode, phase });
-      results.push({ mode, phase, width: 128, timingsUs: timings, operations, profiledRoots: 256, profiledRunMs, hotspots });
+      results.push({ mode, phase, width: 128, timingsUs: timings, operations, profiledRoots: roots, profiledRunMs, hotspots });
       console.log(JSON.stringify({ mode, phase, hotspots: hotspots.slice(0, 8) }));
     }
   }
-  const probes = await page.evaluate(() => {
+  const probes = process.argv.some(arg => arg.startsWith("--modes=")) ? [] : await page.evaluate(() => {
     const rows = [];
     for (const phase of ["mount", "dispose"]) for (let round = -3; round < 11; round++) {
       const modes = phase === "mount" ? ["baseline", "claims-disabled"] : ["baseline", "root-removal-only", "detach-first", "remove-disabled", "unclaim-disabled"];
@@ -83,7 +87,7 @@ try {
     return rows;
   });
   if (errors.length) throw Error(errors.join("\n"));
-  await writeFile(`${out}/profiles.json`, JSON.stringify({ measuredAt: new Date().toISOString(), chromium: browser.version(), sourceMap: maps[0], configuration: "production unminified diagnostic bundle; sampling enabled only for CPU profiles", results, probes }, null, 2) + "\n");
+  await writeFile(`${out}/profiles.json`, JSON.stringify({ measuredAt: new Date().toISOString(), chromium: browser.version(), sourceMap: maps[0], configuration: "production unminified diagnostic bundle; sampling enabled only for CPU profiles", modes, phases, results, probes }, null, 2) + "\n");
 } finally {
   if (browser) await browser.close();
   if (server.exitCode === null) { const stopped = new Promise(resolve => server.once("exit", resolve)); server.kill(); await stopped; }

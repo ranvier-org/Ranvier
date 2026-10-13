@@ -11,7 +11,7 @@ if (!metadata.sourceMap) throw Error("Profile source map was not archived. Run d
 const mapPath = metadata.sourceMap;
 const sourceMap = new TraceMap(JSON.parse(gunzipSync(await readFile(`${output}/profile-source-map.json.gz`)).toString("utf8")));
 const results = [];
-for (const mode of ["ranvier", "solid", "ripple", "react"]) for (const phase of ["mount", "dispose"]) {
+for (const mode of metadata.modes || ["ranvier", "solid", "ripple", "react"]) for (const phase of metadata.phases || ["mount", "dispose"]) {
   const profile = JSON.parse(await readFile(`${output}/${mode}-${phase}.cpuprofile`, "utf8"));
   for (const node of profile.nodes) {
     const url = node.callFrame.url;
@@ -42,4 +42,4 @@ for (const mode of ["ranvier", "solid", "ripple", "react"]) for (const phase of 
   results.push({ mode, phase, self: top(self), inclusive: top(inclusive), sources: top(sourceTotals) });
 }
 await writeFile(`${output}/mapped-profiles.json`, JSON.stringify({ map: mapPath, results }, null, 2) + "\n");
-console.log(JSON.stringify(results.filter(row => row.mode === "ranvier")));
+console.log(JSON.stringify(results.filter(row => row.mode.startsWith("ranvier"))));
