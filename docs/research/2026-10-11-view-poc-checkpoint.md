@@ -53,3 +53,5 @@ Event handlers now use [delegated listeners](2026-10-13-delegated-listeners.md):
 Mount-path allocation is reduced by [allocation cuts](2026-10-13-allocation-cuts.md): children arrays, pass-through handlers and setters, and shared binding commits. Its acceptance passes 211 Node cases and 22 Chromium tests.
 
 Components can be written as [component templates](2026-10-14-component-templates.md): a component type builds its view once, and each instance clones a shared skeleton with one state array and one render effect. At 128 rows, in one run on this machine, a template mount is 1.42× Solid 2 and allocates 1.11× Solid 2, against 2.09× and 3.62× for authored components; the mount target of 1.3× is not met. Its acceptance passes 244 Node tests and 22 Chromium tests.
+
+Binding `T.from` slots directly with the core fixed-dependency binding was [measured against the render effect](2026-10-14-direct-binding-spike.md): for the benchmark row it makes mount 2.16×, allocation 1.88× and update 1.58× slower, so `T.from` slots stay in the render effect.
