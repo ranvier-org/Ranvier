@@ -123,7 +123,7 @@ let private createHostListeners () : obj = jsNative
 let private hostListeners = createHostListeners ()
 
 // The listener walks from the target to its host, presenting each handled node as currentTarget. An inner host records itself on the event, so an outer host resumes above it.
-[<Emit("""(() => { let names = $0.get($1); if (!names) $0.set($1, names = new Map()); let entry = names.get($2); if (!entry) { const key = '$$ranvier:' + $2; const host = $1; const listener = event => { let node = event.$$ranvierHost ? event.$$ranvierHost.parentNode : event.target; Object.defineProperty(event, 'currentTarget', { configurable: true, get: () => node }); while (node) { const handler = node[key]; if (handler) { handler(event); if (event.cancelBubble) break; } if (node === host) break; node = node.parentNode; } event.$$ranvierHost = host; }; host.addEventListener($2, listener); names.set($2, entry = { listener, count: 0 }); } entry.count++; })()""")>]
+[<Emit("""(() => { let names = $0.get($1); if (!names) $0.set($1, names = new Map()); let entry = names.get($2); if (!entry) { const key = '$$ranvier:' + $2; const host = $1; const listener = event => { let node = event.$$ranvierHost ? event.$$ranvierHost.parentNode : event.target; Object.defineProperty(event, 'currentTarget', { configurable: true, get: () => node }); while (node) { const handler = node[key]; if (handler) { handler(event); if (event.cancelBubble) break; } else if (node.$$ranvier !== undefined) { const state = node.$$ranvier; state[0].Dispatch(state, node, event); if (event.cancelBubble) break; } if (node === host) break; node = node.parentNode; } event.$$ranvierHost = host; }; host.addEventListener($2, listener); names.set($2, entry = { listener, count: 0 }); } entry.count++; })()""")>]
 let private delegateFrom (listeners: obj) (host: Node) (eventName: string) : unit = jsNative
 
 [<Emit("(() => { const names = $0.get($1); const entry = names && names.get($2); if (entry && --entry.count === 0) { $1.removeEventListener($2, entry.listener); names.delete($2); } })()")>]
@@ -696,6 +696,46 @@ let rec private mountCore
         if not belongs then
             invalid "Prepared node operations require a node from the current clone"
 
+    let registerDelegated (eventName: string) =
+        let mutable known = false
+
+        for index in 0 .. delegatedNames.Count - 1 do
+            if delegatedNames[index] = eventName then
+                known <- true
+
+        if not known then
+            delegatedNames.Add eventName
+
+    let listenDirect (node: Node) eventName (invoke: obj -> unit) =
+        let cleanup = Typed.listenDirect (box node) eventName invoke
+
+        if root.IsDisposed then
+            cleanup ()
+            ensureSetup ()
+
+        ownedCleanup (Api.getOwner ()) cleanup
+
+    let mutable templateServices: TemplateDom.MountServices = Unchecked.defaultof<_>
+
+    let getTemplateServices () =
+        if isNull (box templateServices) then
+            templateServices <-
+                {
+                    Append = fun node -> append (node :?> ChildNode)
+                    Setup =
+                        {
+                            OnCleanup = fun callback -> ownedCleanup (Api.getOwner ()) callback
+                        }
+                    SettingUp = fun () -> root.Phase = SettingUp
+                    SetupFailed = fun error -> bindingSetupFailure <- Some error
+                    RaiseSetupFailure = fun () -> bindingSetupFailure |> Option.iter raise
+                    IsDelegated = fun eventName -> isDelegated delegatedEvents eventName
+                    Delegate = registerDelegated
+                    ListenDirect = listenDirect
+                }
+
+        templateServices
+
     let backend =
         { new Prepared.Backend() with
             member this.Clone(template, setup) =
@@ -780,23 +820,9 @@ let rec private mountCore
 
                 if isDelegated delegatedEvents eventName then
                     setDelegatedHandler node eventName invoke
-
-                    let mutable known = false
-
-                    for index in 0 .. delegatedNames.Count - 1 do
-                        if delegatedNames[index] = eventName then
-                            known <- true
-
-                    if not known then
-                        delegatedNames.Add eventName
+                    registerDelegated eventName
                 else
-                    let cleanup = Typed.listenDirect (box node) eventName invoke
-
-                    if root.IsDisposed then
-                        cleanup ()
-                        ensureSetup ()
-
-                    ownedCleanup (Api.getOwner ()) cleanup
+                    listenDirect node eventName invoke
 
             member _.Property write =
                 write (box (currentElement ()))
@@ -1142,6 +1168,13 @@ let rec private mountCore
                     if owner.IsDisposed then
                         invalid "View construction is only valid during live setup")
 #endif
+
+            member this.Template(definition, props) =
+                ensureSetup ()
+
+                match scheduling with
+                | Synchronous -> TemplateDom.materialise definition props (getTemplateServices ())
+                | Queued _ -> definition.Expand (this, props)
         }
 
     let context =

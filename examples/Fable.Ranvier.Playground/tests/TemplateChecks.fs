@@ -2,6 +2,7 @@ module TemplateChecks
 
 open global.Ranvier
 open Fable.Core
+open Fable.Core.JsInterop
 open Fable.Core.TS.Dom
 open Ranvier.View.Foundation
 open Ranvier.View.Foundation.Representation
@@ -43,9 +44,346 @@ let private compiledSkeleton () =
     equal 4 compiled.RenderSlots.Length
     equal 2. compiled.Skeleton.childNodes.length
 
+module H = Ranvier.View.Foundation.Generated.Html
+
+type RowProps =
+    {
+        Index: int
+        Source: Signal<string>
+        Disabled: Memo<bool>
+    }
+
+type Row =
+    {
+        Index: int
+        Source: Signal<string>
+        Disabled: Memo<bool>
+        Local: Signal<int>
+        Log: ResizeArray<string>
+    }
+
+let private rowLog = ResizeArray<string>()
+
+let private row =
+    Component.define
+        (fun setup (props: RowProps) ->
+            let row =
+                {
+                    Index = props.Index
+                    Source = props.Source
+                    Disabled = props.Disabled
+                    Local = Api.createSignal 0
+                    Log = rowLog
+                }
+
+            setup.OnCleanup (fun () -> rowLog.Add ("cleanup " + string row.Index))
+            row)
+        (fun t ->
+            t.div
+                [|
+                    t.Attrs.className "panel"
+                    t.Attrs.id (fun r -> "row-" + string r.Index)
+                    t.Attrs.title (fun r -> r.Source.Value)
+                |]
+                [|
+                    t.input [| t.Props.value (fun r -> r.Source.Value) |]
+                    t.button
+                        [|
+                            t.Props.disabled (fun r -> r.Disabled.Value)
+                            t.Events.onClick (fun r _ -> r.Local.Value <- r.Local.Value + 1)
+                        |]
+                        [| t.text (fun r -> string r.Local.Value) |]
+                |])
+
+let private host () =
+    globalThis.document.createElement "main"
+
+let private mount graph (host: HTMLElement) view =
+    Mounting.mount graph None (fun errors -> failwithf "%A" errors) host None (fun context -> Program.run view context.Backend)
+
+let private state (host: HTMLElement) =
+    let div = host.querySelector "div" |> unbox<HTMLElement>
+
+    let input =
+        host.querySelector "input"
+        |> unbox<HTMLInputElement>
+
+    let button =
+        host.querySelector "button"
+        |> unbox<HTMLButtonElement>
+
+    div.getAttribute "class", div.getAttribute "id", div.getAttribute "title", input.value, button.disabled, button.textContent
+
+let private twinEquality () =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal "a")
+
+    let disabled =
+        graph.Run (fun () -> Api.createMemo (fun _ -> source.Value = "blocked"))
+
+    let first, second = host (), host ()
+
+    let props =
+        {
+            Index = 1
+            Source = source
+            Disabled = disabled
+        }
+
+    let templateMount = mount graph first (Component.render row props)
+
+    let twin =
+        H.Program.div
+            [|
+                H.Attrs.classStatic "panel"
+                H.Attrs.idStatic "row-1"
+                H.Attrs.titleReactive (fun () -> Some source.Value)
+            |]
+            [|
+                H.Program.input [| H.Properties.HTMLInputElement.valueReactive (fun () -> source.Value) |]
+                H.Program.button [| H.Properties.HTMLButtonElement.disabledReactive (fun () -> disabled.Value) |] [| Program.text "0" |]
+            |]
+
+    let twinMount = mount graph second twin
+    equal (state second) (state first)
+    graph.Run (fun () -> source.Value <- "blocked")
+    equal (state second) (state first)
+    templateMount.Dispose ()
+    twinMount.Dispose ()
+
+let private changedSlotsOnly () =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal "a")
+    let disabled = graph.Run (fun () -> Api.createMemo (fun _ -> false))
+    let host = host ()
+
+    let mounted =
+        mount
+            graph
+            host
+            (Component.render
+                row
+                {
+                    Index = 1
+                    Source = source
+                    Disabled = disabled
+                })
+
+    let div = host.querySelector "div" |> unbox<HTMLElement>
+    let mutable titleWrites = 0
+    let setAttribute = div?setAttribute
+
+    div?setAttribute <-
+        fun (name: string) (value: string) ->
+            if name = "title" then
+                titleWrites <- titleWrites + 1
+
+            setAttribute?call (div, name, value)
+
+    (host.querySelector "button"
+     |> unbox<HTMLButtonElement>)
+        .click()
+
+    equal 0 titleWrites
+    graph.Run (fun () -> source.Value <- "b")
+    equal 1 titleWrites
+    mounted.Dispose ()
+
+let private readerFailure () =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal "a")
+
+    let failing =
+        Component.define (fun _ (source: Signal<string>) -> source) (fun t ->
+            t.div
+                [|
+                    t.Attrs.title (fun s -> if s.Value = "bad" then failwith "reader" else s.Value)
+                |]
+                [| t.text (fun s -> s.Value) |])
+
+    let host = host ()
+    let mounted = mount graph host (Component.render failing source)
+    graph.Run (fun () -> source.Value <- "bad")
+    equal (Some "a", "bad") ((host.querySelector "div" |> unbox<HTMLElement>).getAttribute "title", host.textContent)
+    mounted.Dispose ()
+
+let private setterRollback () =
+    use graph = new Graph ()
+    let host = host ()
+    host.innerHTML <- "<span>keep</span>"
+    let log = ResizeArray<string>()
+
+    let failing =
+        Component.define
+            (fun setup () ->
+                setup.OnCleanup (fun () -> log.Add "cleanup")
+                ())
+            (fun t ->
+                t.button
+                    [|
+                        t.Props.propertyWith ((fun (_: HTMLButtonElement) (_: bool) -> failwith "setter"), (fun _ -> true), primitiveSame)
+                    |]
+                    [||])
+
+    let mutable failed = false
+
+    try
+        mount graph host (Component.render failing ())
+        |> ignore
+    with _ ->
+        failed <- true
+
+    equal (true, [ "cleanup" ], "<span>keep</span>") (failed, List.ofSeq log, host.innerHTML)
+
+let private cleanupOrder () =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal "a")
+    let disabled = graph.Run (fun () -> Api.createMemo (fun _ -> false))
+    rowLog.Clear ()
+    let host = host ()
+
+    let view =
+        Program.fragment
+            [|
+                for index in 1..2 ->
+                    Component.render
+                        row
+                        {
+                            Index = index
+                            Source = source
+                            Disabled = disabled
+                        }
+            |]
+
+    let mounted = mount graph host view
+    mounted.Dispose ()
+    equal [ "cleanup 2"; "cleanup 1" ] (List.ofSeq rowLog)
+    equal 0. host.childNodes.length
+
+let private adjacentTexts () =
+    use graph = new Graph ()
+    let host = host ()
+
+    let mounted =
+        mount graph host (Component.render greeting { Title = "T"; Name = "Ada" })
+
+    equal "Hello Ada!Ada" host.textContent
+    mounted.Dispose ()
+    equal 0. host.childNodes.length
+
+let private compiledOnce () =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal "a")
+    let disabled = graph.Run (fun () -> Api.createMemo (fun _ -> false))
+    let first, second = host (), host ()
+
+    let a =
+        mount
+            graph
+            first
+            (Component.render
+                row
+                {
+                    Index = 1
+                    Source = source
+                    Disabled = disabled
+                })
+
+    let compiled = (row :> TemplateDefinition).Compiled
+
+    let b =
+        mount
+            graph
+            second
+            (Component.render
+                row
+                {
+                    Index = 2
+                    Source = source
+                    Disabled = disabled
+                })
+
+    equal true (obj.ReferenceEquals (compiled, (row :> TemplateDefinition).Compiled))
+
+    (first.querySelector "button"
+     |> unbox<HTMLButtonElement>)
+        .click()
+
+    equal ("1", "0") ((first.querySelector "button").Value.textContent, (second.querySelector "button").Value.textContent)
+    a.Dispose ()
+    b.Dispose ()
+
+let private keyedRows () =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal "a")
+    let disabled = graph.Run (fun () -> Api.createMemo (fun _ -> false))
+    let rows = graph.Run (fun () -> Api.createSignal [ 1; 2 ])
+    let host = host ()
+
+    let view =
+        Keyed.list Program.ops (=) id (fun () -> rows.Value) (fun current ->
+            Component.render
+                row
+                {
+                    Index = current ()
+                    Source = source
+                    Disabled = disabled
+                })
+
+    let mounted = mount graph host view
+
+    let removed =
+        host.querySelectorAll("div").item 1.
+        |> unbox<HTMLElement>
+
+    graph.Run (fun () -> rows.Value <- [ 1 ])
+    graph.Run (fun () -> source.Value <- "b")
+    equal (Some "a") (removed.getAttribute "title")
+    equal (Some "b") ((host.querySelector "div" |> unbox<HTMLElement>).getAttribute "title")
+    mounted.Dispose ()
+
+let private nullText () =
+    use graph = new Graph ()
+
+    let nothing =
+        Component.define (fun _ () -> ()) (fun t -> t.span [||] [| t.text (fun _ -> (null: string)) |])
+
+    let host = host ()
+    let mounted = mount graph host (Component.render nothing ())
+    equal "" host.textContent
+    mounted.Dispose ()
+
+let private staticTemplate () =
+    use graph = new Graph ()
+
+    let fixedView =
+        Component.define (fun _ () -> ()) (fun t -> t.div [| t.Attrs.className "fixed" |] [| t.text "static" |])
+
+    let first, second = host (), host ()
+    let a = mount graph first (Component.render fixedView ())
+    let b = mount graph second (Component.render fixedView ())
+
+    let shape (host: HTMLElement) =
+        (host.querySelector "div.fixed").Value.textContent
+
+    equal ("static", "static") (shape first, shape second)
+    equal 0 ((fixedView :> TemplateDefinition).Compiled :?> TemplateDom.Compiled).RenderSlots.Length
+    a.Dispose ()
+    b.Dispose ()
+
 /// <summary>Checks template compilation and DOM materialisation.</summary>
 let cases =
     [|
         "walk programs reach dynamic nodes in document order", walkPrograms
         "a compiled skeleton round-trips and records every dynamic node", compiledSkeleton
+        "a template renders the same DOM as its createComponent twin", twinEquality
+        "slot writes happen only for changed values", changedSlotsOnly
+        "a throwing reader fails only its slot", readerFailure
+        "a throwing setter rolls back the mount", setterRollback
+        "template cleanups run in use order without an instance owner", cleanupOrder
+        "adjacent text slots keep separate nodes", adjacentTexts
+        "a definition mounted twice keeps instances independent", compiledOnce
+        "a template inside a removed keyed row stops updating", keyedRows
+        "a null text value renders empty", nullText
+        "a static template mounts without effects", staticTemplate
     |]

@@ -151,3 +151,151 @@ let compile (definition: TemplateComponent) : Compiled =
         Events = eventArray
         Dispatch = dispatchFor targets.Length eventArray
     }
+
+/// <summary>The mount-owned operations a template instance uses.</summary>
+[<NoEquality; NoComparison>]
+type MountServices =
+    {
+        Append: Node -> unit
+        Setup: Setup
+        SettingUp: unit -> bool
+        SetupFailed: exn -> unit
+        RaiseSetupFailure: unit -> unit
+        IsDelegated: string -> bool
+        Delegate: string -> unit
+        ListenDirect: Node -> string -> (obj -> unit) -> unit
+    }
+
+let private unset = obj ()
+
+[<Emit("$0.data = $1 == null ? '' : $1")>]
+let private setData (node: obj) (value: obj) : unit = jsNative
+
+[<Emit("$1 == null ? $0.removeAttribute($2) : $0.setAttribute($2, $1)")>]
+let private setAttribute (node: obj) (value: obj) (name: string) : unit = jsNative
+
+/// <summary>Marks a node as an event node of a template instance.</summary>
+[<Emit("$0.$$ranvier = $1")>]
+let attachState (node: obj) (state: obj array) : unit = jsNative
+
+let private write (slot: Slot) (node: obj) (value: obj) =
+    match slot.Target with
+    | AttributeTarget name -> setAttribute node value name
+    | PropertyTarget writer -> writer.Invoke (node, value)
+    | TextTarget -> setData node value
+
+let private read (slot: Slot) (instance: obj) =
+    try
+        slot.Read.Invoke instance
+    with _ ->
+        unset
+
+let private commit (services: MountServices) (state: obj array) (slot: Slot) (nodeIndex: int) (previousIndex: int) (value: obj) =
+    if not (obj.ReferenceEquals (value, unset)) then
+        let previous = state[previousIndex]
+
+        if
+            obj.ReferenceEquals (previous, unset)
+            || not (slot.Same.Invoke (previous, value))
+        then
+            try
+                write slot state[StateNodes + nodeIndex] value
+                state[previousIndex] <- value
+            with error when services.SettingUp () ->
+                services.SetupFailed error
+                reraise ()
+
+let private collect (root: Node) (walk: int array) (state: obj array) =
+    let mutable cursor = root
+    let mutable count = 0
+
+    for op in walk do
+        if op = FirstChild then
+            cursor <- unbox cursor.firstChild
+        elif op = NextSibling then
+            cursor <- unbox cursor.nextSibling
+        elif op = Parent then
+            cursor <- unbox cursor.parentNode
+        else
+            state[StateNodes + count] <- box cursor
+            count <- count + 1
+
+/// <summary>Materialises one instance: runs setup, clones the skeleton, binds its slots and events, and appends it.</summary>
+let materialise (definition: TemplateDefinition) (props: obj) (services: MountServices) =
+    let template = definition :?> TemplateComponent
+
+    if isNull definition.Compiled then
+        definition.Compiled <- box (compile template)
+
+    let compiled = definition.Compiled :?> Compiled
+    let instance = Api.untrack (fun () -> template.Setup.Invoke (services.Setup, props))
+    let fragment = compiled.Skeleton.cloneNode true
+    let renderCount = compiled.RenderSlots.Length
+    let isolatedCount = compiled.IsolatedSlots.Length
+    let previousBase = StateNodes + compiled.NodeCount
+    let pendingBase = previousBase + renderCount + isolatedCount
+    let state: obj array = Array.zeroCreate (pendingBase + renderCount)
+    state[StateCompiled] <- box compiled
+    state[StateInstance] <- instance
+    state[StateOwner] <- box (Api.getOwner ())
+    state[StateGraph] <- box Graph.Current
+
+    for index in previousBase .. pendingBase - 1 do
+        state[index] <- unset
+
+    collect fragment compiled.Walk state
+
+    for nodeIndex, writer, value in compiled.Properties do
+        try
+            writer.Invoke (state[StateNodes + nodeIndex], value)
+        with error when services.SettingUp () ->
+            services.SetupFailed error
+            reraise ()
+
+    if renderCount > 0 then
+        let commitAll () =
+            for k in 0 .. renderCount - 1 do
+                let nodeIndex, slot = compiled.RenderSlots[k]
+                commit services state slot nodeIndex (previousBase + k) state[pendingBase + k]
+
+        Api.createEffect (fun () ->
+            for k in 0 .. renderCount - 1 do
+                let _, slot = compiled.RenderSlots[k]
+                state[pendingBase + k] <- read slot instance
+
+            Api.untrack commitAll)
+
+        services.RaiseSetupFailure ()
+
+    for k in 0 .. isolatedCount - 1 do
+        let nodeIndex, slot = compiled.IsolatedSlots[k]
+        let previousIndex = previousBase + renderCount + k
+
+        Api.createEffect (fun () ->
+            let value = read slot instance
+            Api.untrack (fun () -> commit services state slot nodeIndex previousIndex value))
+
+        services.RaiseSetupFailure ()
+
+    for nodeIndex, eventName, handler in compiled.Events do
+        let node = state[StateNodes + nodeIndex]
+
+        if services.IsDelegated eventName then
+            attachState node state
+            services.Delegate eventName
+        else
+            let owner = state[StateOwner] :?> Owner
+            let graph = state[StateGraph] :?> Graph
+
+            services.ListenDirect (unbox node) eventName (fun event ->
+                if not owner.IsDisposed then
+                    graph.Run (fun () -> Api.runWithOwner owner (fun () -> Api.untrack (fun () -> handler.Invoke (instance, event)))))
+
+    let rootCount = int fragment.childNodes.length
+    let roots: Node array = Array.zeroCreate rootCount
+
+    for index in 0 .. rootCount - 1 do
+        roots[index] <- fragment.childNodes.item (float index)
+
+    for root in roots do
+        services.Append root
