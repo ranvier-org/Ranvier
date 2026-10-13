@@ -6,7 +6,7 @@ open System.Diagnostics
 open System
 open System.Collections.Generic
 
-/// <summary>A node's live observer set or source list, read by edge reconciliation.</summary>
+/// <summary>A node's live observer set or source list, or a binding's single source edge, read by edge reconciliation.</summary>
 type internal ITracedEdges =
     /// <summary>The owning node id.</summary>
     abstract Owner: int
@@ -471,7 +471,7 @@ type internal ITraced =
 
 /// <summary>Traced state carried by a lookup.</summary>
 type internal ITracedHost =
-    /// <summary>The node id the lookup's cells are recorded as parts of.</summary>
+    /// <summary>The node id recorded as the host of the lookup's cells.</summary>
     abstract TraceHost: int with get, set
 #endif
 
@@ -654,7 +654,7 @@ type internal Tracer =
 #endif
 
     /// <summary>
-    /// Binds <c>set</c>, a node's <c>ObserverSet</c> or <c>SourceList</c>, to <c>graph</c>'s log and node <c>id</c>.
+    /// Binds <c>set</c>, a node's <c>ObserverSet</c> or <c>SourceList</c> or a <c>Binding</c>, to <c>graph</c>'s log and node <c>id</c>.
     /// </summary>
     [<Conditional("RANVIER_TRACE")>]
     static member Bind(set: obj, graph: obj, id: int) =

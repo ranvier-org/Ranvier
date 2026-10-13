@@ -671,7 +671,7 @@ let isElevated () =
 
 let lint () =
     let violations, blocks = lintEngine ()
-    let appendix = appendixA () |> Set.add ("Timed.fs", "Timed")
+    let appendix = appendixA ()
 
     let unlisted =
         blocks - appendix
