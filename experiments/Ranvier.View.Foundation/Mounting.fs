@@ -691,16 +691,16 @@ let rec private mountCore
 #endif
         modifierNode
 
-    let applyModifiers (backend: Backend) tag node modifiers =
+    let applyModifiers (backend: Backend) tag node (modifiers: ModifierAction array) =
         let previousNode = modifierNode
         let previousTag = modifierTag
         modifierNode <- node
         modifierTag <- tag
 
         try
-            for apply in modifiers do
+            for index in 0 .. modifiers.Length - 1 do
                 ensureSetup ()
-                apply backend
+                modifiers[index] backend
                 ensureSetup ()
         finally
             modifierNode <- previousNode
