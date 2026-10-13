@@ -38,7 +38,7 @@ type Binding<'Target, 'T> private (graph: Graph, source: ISource, signal: Signal
     member private this.Start() =
         source.AddObserver (this :> IComputation)
         link <- graph.CurrentOwner.AttachLinked this
-        Tracer.EffectNew (graph, id, link.Owner)
+        Tracer.BindingNew (graph, id, link.Owner)
         (this :> IComputation).MarkDirty()
         graph.RequestFlush ()
 

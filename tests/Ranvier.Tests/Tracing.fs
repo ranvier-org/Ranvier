@@ -1385,5 +1385,13 @@ let tests =
 
                 Expect.stringContains (Trace.render g (Trace.waitingOn g a)) "dropped #" "render shows the drop"
             }
+
+            test "a binding is traced as a binding" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let s = Signal (g, 1)
+                bindSignal s null (fun (_: obj) (_: int) -> ())
+                Expect.equal (idsOf TraceNodeKind.Binding g |> Array.length) 1 "one binding node"
+            }
 #endif
         ]
