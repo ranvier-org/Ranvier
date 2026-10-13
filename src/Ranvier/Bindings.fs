@@ -3,7 +3,7 @@ namespace Ranvier
 open System
 
 /// <summary>
-/// Writes one source's value to a target whenever the source changes, without dependency tracking.
+/// Writes a source's value to a target whenever the source changes, without dependency tracking.
 /// </summary>
 /// <remarks>
 /// The source is fixed at creation. Writes run in the flush, untracked, and must not create reactive nodes. A pending
@@ -132,19 +132,18 @@ type Binding<'Target, 'T> private (graph: Graph, source: ISource, signal: Signal
             if disposed then
                 queued <- false
             else
-                // The source is brought current while `queued` is still set, so a memo source that recomputes to a
-                // new value marks this binding Dirty without queueing it again. A Dirty binding updates its source
-                // too: the memo's first computation notifies its observers.
+                // Every path brings the source current before `queued` clears; a memo that recomputes here marks
+                // this binding Dirty without re-queueing it.
                 if freshness = Freshness.Check then
                     Tracer.CheckStart (graph, id)
                     source.UpdateIfNecessary ()
                     Tracer.CheckResolved (graph, id, (freshness = Freshness.Dirty))
-                else
+                elif not (isNull (box memo)) then
                     source.UpdateIfNecessary ()
 
                 let shouldRun = freshness = Freshness.Dirty
                 queued <- false
                 freshness <- Freshness.Clean
 
-                if shouldRun then
+                if shouldRun && not disposed then
                     this.Run ()

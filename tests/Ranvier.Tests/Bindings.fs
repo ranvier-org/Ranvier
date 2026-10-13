@@ -147,6 +147,19 @@ let tests =
                 Expect.sequenceEqual log [ 1 ] "stopped"
             }
 
+            test "a binding disposed while queued does not write" {
+                let g = new Graph ()
+                let s = Signal (g, 1)
+                let log = ResizeArray ()
+                let b = Binding<obj, int>.OfSignal(g, s, null, record log)
+
+                g.Batch (fun () ->
+                    s.Value <- 2
+                    b.Dispose ())
+
+                Expect.sequenceEqual log [ 1 ] "no write after disposal"
+            }
+
             test "a binding under a disposed owner never writes" {
                 use g = new Graph ()
                 use _ = g.Activate ()
