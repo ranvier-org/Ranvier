@@ -14,7 +14,7 @@ The benchmark row is the existing framework row written as a template: a `div` w
 
 ## Measurements
 
-All numbers below are from one run on this machine (AMD Ryzen 9 9900X, Chromium 153.0.8010.12), measured against Solid 2.0.0-rc.14 compiled with `@solidjs/compiler`. The machine has had slow phases, so the comparisons are ratios between frameworks measured in the same processes; absolute values are not comparable with earlier notes.
+All numbers below are from one run on this machine (AMD Ryzen 9 9900X, Chromium 153.0.8010.12) at commit `b934a13`, measured against Solid 2.0.0-rc.14 compiled with `@solidjs/compiler`. The machine has had slow phases, and the second process of this run was one: the comparisons are ratios between frameworks measured in the same processes; absolute values are not comparable with earlier notes.
 
 The measured code includes binding reader-failure reporting: every synchronous binding and template effect wraps its reads in a `try`/`catch` and checks a failure flag on each run. It also includes the parse validation in `compile`, which runs once per definition.
 
@@ -22,43 +22,69 @@ The measured code includes binding reader-failure reporting: every synchronous b
 
 | | Ranvier (authored) | Ranvier template | Solid 2 | Ripple | React |
 |---|---|---|---|---|---|
-| Mount | 913 | 621 | 436 | 637 | 772 |
-| | 899 / 868 / 985 | 623 / 588 / 660 | 440 / 421 / 450 | 658 / 651 / 601 | 798 / 734 / 854 |
-| Update | 169 | 170 | 151 | 170 | 385 |
-| | 179 / 164 / 167 | 180 / 163 / 170 | 161 / 147 / 148 | 171 / 164 / 168 | 395 / 368 / 381 |
-| Dispose | 146 | 66 | 44 | 80 | 132 |
-| | 185 / 134 / 142 | 80 / 55 / 66 | 48 / 38 / 39 | 90 / 68 / 66 | 142 / 111 / 126 |
-| Retained JS heap per mount | 344 KiB | 112 KiB | 115 KiB | 163 KiB | 189 KiB |
+| Mount | 1145 | 625 | 516 | 883 | 1003 |
+| | 1145 / 2013 / 945 | 591 / 944 / 571 | 490 / 724 / 472 | 883 / 1163 / 678 | 1005 / 1154 / 807 |
+| Update | 186 | 191 | 177 | 186 | 424 |
+| | 181 / 198 / 181 | 184 / 216 / 191 | 172 / 200 / 168 | 188 / 201 / 182 | 425 / 469 / 397 |
+| Dispose | 168 | 74 | 52 | 94 | 146 |
+| | 174 / 164 / 167 | 80 / 69 / 73 | 59 / 45 / 52 | 100 / 90 / 84 | 152 / 153 / 139 |
+| Retained JS heap per mount | 343 KiB | 112 KiB | 115 KiB | 163 KiB | 189 KiB |
 
-Against the authored path in the same processes, templates mount in 0.68× the time, dispose in 0.46× and retain 0.33× the heap; updates are equal within noise (1.01×). Against Solid 2, template mounting is 1.42× (1.42 / 1.40 / 1.47 per process), down from 2.09× for the authored path; disposal is 1.52×, down from 3.34×; updates are 1.12×. Template mounting is 0.97× Ripple. Templates retain 0.97× Solid 2's heap per mount.
+Against the authored path in the same processes, templates mount in 0.55× the time, dispose in 0.44× and retain 0.33× the heap; updates are 1.03×. Against Solid 2, template mounting is 1.21× (1.21 / 1.30 / 1.21 per process), down from 1.42× at `5e69af2`; the authored path is 2.22×. Disposal is 1.43×, updates 1.08×. Template mounting is 0.71× Ripple. Templates retain 0.97× Solid 2's heap per mount.
 
 [Allocation sampling](framework-performance/investigation/template-profile/allocations.json), one browser process, 4096-byte interval, per 128-row mount:
 
 | | Ranvier (authored) | Ranvier template | Solid 2 | Ripple |
 |---|---|---|---|---|
-| Allocated | 506 KiB | 156 KiB | 140 KiB | 367 KiB |
+| Allocated | 513 KiB | 149 KiB | 138 KiB | 373 KiB |
 
-Templates allocate 1.11× Solid 2 and 0.31× the authored path; the authored path allocates 3.62× Solid 2.
+Templates allocate 1.08× Solid 2 and 0.29× the authored path; the authored path allocates 3.73× Solid 2.
+
+## CPU profile
+
+[The mount profile](framework-performance/investigation/template-mount-cpu-profile.json) (`diagnose.mjs --modes=ranvier-template,solid --phases=mount --roots=1024`, then mapped through the bundle's source map) samples one run of 1024 128-row mounts per framework at 100 µs, in one Chromium process. Busy time excludes idle and unattributed `(program)` samples.
+
+At `5e69af2` the template mount was busy for 1167 ms against Solid 2's 722 ms. Ranked by self time:
+
+| Cost | ms | Share | Solid 2 |
+|---|---|---|---|
+| `cloneNode` | 199 | 17.0% | 166 |
+| Garbage collection | 173 | 14.9% | 109 |
+| `input.value` writer (native setter) | 166 | 14.2% | inside the row's template function, 152 in total |
+| `materialise` | 99 | 8.5% | |
+| `appendChild` of each row into the section | 84 | 7.2% | 18 (`insertBefore`) |
+| `insertBefore` of the section into the host | 64 | 5.4% | 48 (`appendChild`) |
+| `collect` | 50 | 4.3% | |
+| `setAttribute` | 47 | 4.1% | 54 |
+| `SourceList.Add` (core) | 39 | 3.3% | |
+| `write` | 31 | 2.6% | |
+| `Array.fill` for the state array | 24 | 2.1% | |
+
+Inclusive, the render effects took 358 ms (30.7%), of which 249 ms were slot writes. Two template-path costs exceeded Solid 2's equivalents. A row cloned from the skeleton fragment is still a fragment child: appending it costs 2.3× appending a cloned element, which a separate Chromium micro-measurement reproduced (about 56 against 33 µs per 128 rows). The bounds-checked `item`/`setItem` calls and the `fill` kept `materialise` at 99 ms of self time.
+
+Two commits address them: a single-root template clones its root node and walks from it, appending the clone without a roots array; multi-root templates append the fragment's children directly (`51d0783`). State-array and slot-table accesses compile to plain indexing, and the state array is allocated without a fill pass (`19ea929`). After both, the template mount was busy for 686 ms against Solid 2's 679 ms in the same profiling session: `materialise` self time fell to 12 ms, `collect` to 36 ms, `fill` disappeared, and row insertion fell to 50 ms (`appendChild`) and 37 ms (`insertBefore`), against Solid 2's 46 and 25 ms.
+
+Two variants were measured and rejected. `document.importNode` in place of `cloneNode` raised the mount ratio from about 1.3× to 1.56× in a five-process spot check. Hoisting the commit closure out of the render effect does not change the emitted JavaScript: Fable inlines a single-use lambda binding, including a `Func`, back into the effect body.
 
 ## Spec targets
 
-- **Mount within 1.3× Solid 2: not met.** The 128-row template mount is 1.42× Solid 2 (621 against 436 µs); each process measured between 1.40× and 1.47×.
-- **Allocation within 1.5× Solid 2: met.** The 128-row template mount allocates 1.11× Solid 2 (155.7 against 139.7 KiB), within the spec's bound of 1.5 × 139.7 = 209.6 KiB.
+- **Mount within 1.3× Solid 2: met.** The 128-row template mount is 1.21× Solid 2 (625 against 516 µs); each process measured between 1.21× and 1.30×.
+- **Allocation within 1.5× Solid 2: met.** The 128-row template mount allocates 1.08× Solid 2 (149.0 against 137.8 KiB), within the spec's bound of 1.5 × 137.8 = 206.7 KiB.
 
 ## Next costs
 
-The largest self-allocating functions in the template profile, per 128-row mount: `materialise` 49.0 KiB (392 B per instance), `SourceList.Add` 17.5 KiB, the `Effect` constructor 17.4 KiB (one render effect per instance), runtime `set` 11.1 KiB, the fixture's `Array.init` 9.3 KiB (the per-row `Component.render` views), `collect` 7.5 KiB (DOM wrappers created by the walk), the per-row `Local` signal 6.9 KiB.
+After the two commits, the template mount's self time is dominated by native DOM work that Solid 2 also pays: `cloneNode` 135 ms, the `input.value` setter 125 ms, `appendChild` and `insertBefore` 86 ms, `setAttribute` 37 ms. The remaining Ranvier-side costs:
 
-Four further costs in the materialise path:
-
-| Cost | What the profile shows |
+| Cost | Profile share after `19ea929` |
 |---|---|
-| The render effect allocates an `untrack` arrow per run: Fable inlines `commitAll` into the effect body as an arrow | The effect body's self-allocation is 4.2 KiB per mount, 33 B per instance, one closure per run. It recurs on every update. |
-| Every state-array access emits Fable's bounds-checked `item`/`setItem` | CPU only; the allocation profile does not attribute it. A CPU profile is needed to size it. |
-| `Array.zeroCreate` emits a `fill` and a second loop writes the unset sentinel | CPU only: the state array itself is required. This row's state array has 18 entries (4 header, 4 nodes, 5 previous values, 5 pending values), about 96 B per instance and 12 KiB per mount, inside `materialise`'s 49.0 KiB. |
-| A per-instance roots array | A one-element array, about 32 B per instance and 4 KiB per mount by object-layout estimate, inside `materialise`'s 49.0 KiB; the sampler does not separate it. |
+| Core effect creation and first run outside the slot reads and writes: the `Effect` constructor, `RunFlush`, `RunBody`, `Graph.Ambient` (`src/Ranvier`) | about 61 ms inclusive, 8.8% |
+| `SourceList.Add` and `ObserverSet.Add` for each slot read (`src/Ranvier`) | 29 ms inclusive, 4.2% |
+| `collect`, the DOM walk to the dynamic nodes | 36 ms, 5.2% |
+| `write`, the slot-target dispatch including the text node's `data` setter | 26 ms, 3.7% |
 
-The allocation target is met with 53.8 KiB of headroom, so the mount gap to Solid 2 is CPU time rather than allocation volume. The next round needs a CPU profile of the template mount to rank the bounds checks, the double initialisation, the reader-failure `try`/`catch` and the walk against the reactive-graph costs (`SourceList.Add`, `Effect`, observer sets).
+The render effect still allocates an `untrack` arrow per run; it recurs on updates, not on mount. Removing it needs a value Fable does not inline, or an untracked entry point in core that takes no closure.
+
+The largest self-allocating functions per 128-row mount: `materialise` 43.5 KiB, `SourceList.Add` 18.9 KiB, the `Effect` constructor 16.6 KiB, runtime `set` 10.9 KiB, the fixture's `Array.init` 9.0 KiB, the per-row `Local` signal 7.1 KiB, `ObserverSet.Add` 7.0 KiB.
 
 ## Acceptance
 
