@@ -80,6 +80,25 @@ let private invalid message =
 let private same a b =
     obj.ReferenceEquals (a, b)
 
+let rec private walkPrepared visit (node: Node) =
+    visit node
+
+    let children =
+        if
+            node.nodeType = 1.
+            && (node :?> Element).tagName = "TEMPLATE"
+        then
+            (node :?> HTMLTemplateElement).content :> Node
+        else
+            node
+
+    let mutable child = children.firstChild
+
+    while child.IsSome do
+        let current = child.Value
+        child <- current.nextSibling
+        walkPrepared visit current
+
 let private createClaims () : WeakSet<Node> =
     globalThis.WeakSet.Create ()
 
@@ -193,6 +212,14 @@ type private OwnedRange(host: Node) =
         generatedDescendants.Add node
         claim claims node
         parent.appendChild node |> ignore
+
+    member _.TrackPrepared(root: Node) =
+        walkPrepared
+            (fun node ->
+                if not (same node root) then
+                    generatedDescendants.Add node
+                    claim claims node)
+            root
 
     member _.Add(node: ChildNode, ownership) =
         if contains node host || contains node staging then
@@ -543,8 +570,62 @@ let rec private mountCore
 
         bindingSetupFailure |> Option.iter raise
 
+    let mutable preparedRoot: Node = Unchecked.defaultof<_>
+
+    let ensurePrepared (node: Node) =
+        ensureSetup ()
+
+        if isNull (box preparedRoot) then
+            invalid "Prepared node operations require active clone setup"
+
+        let mutable belongs = contains preparedRoot node
+
+        if not belongs then
+            walkPrepared
+                (fun current ->
+                    if same current node then
+                        belongs <- true)
+                preparedRoot
+
+        if not belongs then
+            invalid "Prepared node operations require a node from the current clone"
+
     let backend =
-        { new Backend() with
+        { new Prepared.Backend() with
+            member this.Clone(template, setup) =
+                ensureSetup ()
+                let node = template.cloneNode true :?> HTMLElement
+                append node
+                range.TrackPrepared node
+                let previous = preparedRoot
+                preparedRoot <- node
+
+                try
+                    setup node
+                    ensureSetup ()
+                finally
+                    preparedRoot <- previous
+
+            member this.Apply(node, modifiers) =
+                ensurePrepared node
+
+                let tag =
+                    if node.tagName = "INPUT" then
+                        Input
+                    else
+                        HtmlTag node.localName
+
+                applyModifiers this tag node modifiers
+
+            member _.BindText(node, read) =
+                ensurePrepared node
+
+                if node.nodeType <> 3. then
+                    raise (ArgumentException ("Prepared text bindings require a text node", "node"))
+
+                startBinding (Func<_, _, _>(fun left right -> left = right)) read (fun value -> node.textContent <- Some value)
+                ensureSetup ()
+
             member _.Text value =
                 ensureSetup ()
                 append (text value)

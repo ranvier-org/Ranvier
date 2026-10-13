@@ -12,8 +12,9 @@ const nativeDiagnostic = process.argv.includes("--native-diagnostic");
 const directDiagnostic = process.argv.includes("--direct-diagnostic");
 const cleanupComparison = process.argv.includes("--cleanup-comparison");
 const bindingComparison = process.argv.includes("--binding-comparison");
-if ([nativeDiagnostic, directDiagnostic, cleanupComparison, bindingComparison].filter(Boolean).length > 1) throw Error("Choose one diagnostic adapter set per run");
-const modes = directDiagnostic ? ["ranvier", "ranvier-direct", "solid", "ripple"] : nativeDiagnostic ? ["ranvier", "solid", "ripple", "native-create", "native-clone", "native-descendants"] : ["ranvier", "solid", "ripple", "react"], widths = [1, 16, 128];
+const preparedComparison = process.argv.includes("--prepared-comparison");
+if ([nativeDiagnostic, directDiagnostic, cleanupComparison, bindingComparison, preparedComparison].filter(Boolean).length > 1) throw Error("Choose one diagnostic adapter set per run");
+const modes = preparedComparison ? ["ranvier", "ranvier-prepared", "solid", "ripple", "react"] : directDiagnostic ? ["ranvier", "ranvier-direct", "solid", "ripple"] : nativeDiagnostic ? ["ranvier", "solid", "ripple", "native-create", "native-clone", "native-descendants"] : ["ranvier", "solid", "ripple", "react"], widths = [1, 16, 128];
 const port = 5186;
 if (process.argv.includes("--build")) {
   for (const args of [
@@ -94,6 +95,7 @@ try {
     const pkg = JSON.parse(await readFile(new URL("../../package.json", import.meta.url), "utf8"));
     const files = ["benchmarks/frameworks/run.mjs", "benchmarks/frameworks/page.mjs", "benchmarks/frameworks/contract.mjs", "benchmarks/frameworks/solid.jsx", "benchmarks/frameworks/react.mjs", "benchmarks/frameworks/vite.config.mjs", "benchmarks/ripple/RipplePerf.fs", "benchmarks/ripple/RipplePerf.fsproj", "tests/FrameworkPerf.fs", "../../experiments/Ranvier.View.Foundation/AuthoringPerfFixtures.fs", "package-lock.json"];
     files.push(...["Representation.fs", "Typed.fs", "Mounting.fs", "Components.fs", "Authoring.fs", "Lifetime.fs", "Binding.fs", "Scheduling.fs", "Generated/Html.fs"].map(path => `../../experiments/Ranvier.View.Foundation/${path}`));
+    files.push("../../experiments/Ranvier.View.Foundation/Prepared.fs");
     if (directDiagnostic) files.push("tests/FrameworkDiagnostics.fs");
     if (nativeDiagnostic) files.push("benchmarks/frameworks/native.mjs");
     const sourceHashes = Object.fromEntries(await Promise.all(files.map(async path => [path, createHash("sha256").update(await readFile(new URL(path, new URL("../../", import.meta.url)))).digest("hex")])));
@@ -109,11 +111,11 @@ try {
         "CDP measures GC-stabilized retained JavaScript heap per mounted root, including adapter/host references, not allocation rate or total DOM memory.",
         directDiagnostic ? "ranvier-direct bypasses Program views through the existing owned backend, retaining typed token lists; compiled Solid JSX includes template optimization." : nativeDiagnostic ? "Native adapters are handwritten DOM lower bounds without Ranvier lifecycle/ownership guarantees; Solid JSX includes template optimization." : "All implementations use their public authoring paths; compiled Solid JSX includes its template optimization.",
         "React uses controlled input with onChange and maintains an extra default value attribute; semantic live DOM state is checked, HTML byte equality is not required.",
-        "Ranvier component/fragment ownership and anchors remain enabled; static view optimization is not implemented."
+        preparedComparison ? "ranvier-prepared clones a shared static skeleton and applies shared modifier recipes; both Ranvier adapters retain component/fragment ownership, descendant claims and anchors." : "The ordinary Ranvier adapter uses element construction; the opt-in prepared adapter is excluded from this run."
       ], sourceHashes, correctness, samples, summaries, heaps
     };
-    await mkdir(nativeDiagnostic || directDiagnostic || cleanupComparison || bindingComparison ? `${outputDirectory}/investigation` : outputDirectory, { recursive: true });
-    await writeFile(`${outputDirectory}/${bindingComparison ? "investigation/binding-framework-results" : cleanupComparison ? "investigation/cleanup-framework-results" : directDiagnostic ? "investigation/direct-results" : nativeDiagnostic ? "investigation/native-results" : "results"}.json`, JSON.stringify(result, null, 2) + "\n");
+    await mkdir(nativeDiagnostic || directDiagnostic || cleanupComparison || bindingComparison || preparedComparison ? `${outputDirectory}/investigation` : outputDirectory, { recursive: true });
+    await writeFile(`${outputDirectory}/${preparedComparison ? "investigation/prepared-framework-results" : bindingComparison ? "investigation/binding-framework-results" : cleanupComparison ? "investigation/cleanup-framework-results" : directDiagnostic ? "investigation/direct-results" : nativeDiagnostic ? "investigation/native-results" : "results"}.json`, JSON.stringify(result, null, 2) + "\n");
     console.log(JSON.stringify(summaries));
   }
 } finally {

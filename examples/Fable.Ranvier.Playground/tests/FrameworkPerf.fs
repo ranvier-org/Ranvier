@@ -4,16 +4,45 @@ open global.Ranvier
 open Fable.Core.TS.Dom
 open Ranvier.View.Foundation
 open Ranvier.View.Foundation.Representation
+open Ranvier.View.Foundation.Generated.Html.Authoring
 
-/// <summary>Mounts the overloaded fixture with its own graph and returns update and disposal callbacks.</summary>
-let mount (host: HTMLElement) width =
+module H = Ranvier.View.Foundation.Generated.Html
+
+let private rowTemplate =
+    Prepared.prepare (H.Program.div [| H.Attrs.classStatic "panel" |] [| H.Program.input [||]; H.Program.button [||] [| Program.text "0" |] |])
+
+let private preparedRows width (source: Signal<string>) (disabled: Memo<bool>) =
+    let title = Attrs.title source
+    let inputModifiers = [| Props.Input.value source |]
+    let disabledModifier = Props.Button.disabled disabled
+
+    let setup _ index (root: Fable.Core.TS.Dom.HTMLElement) backend =
+        let local = Api.createSignal 0
+        let input = root.firstChild.Value :?> Fable.Core.TS.Dom.HTMLInputElement
+        let button = input.nextSibling.Value :?> Fable.Core.TS.Dom.HTMLButtonElement
+        Prepared.apply root [| Attrs.id ("row-" + string index); title |] backend
+        Prepared.apply input inputModifiers backend
+
+        Prepared.apply
+            button
+            [|
+                disabledModifier
+                H.Events.onClick (fun _ -> local.Value <- local.Value + 1)
+            |]
+            backend
+
+        Prepared.text button.firstChild.Value (fun () -> string local.Value) backend
+
+    Program.fragment (Array.init width (fun index -> Prepared.createComponent rowTemplate setup (index + 1)))
+
+let private mountCore rows (host: HTMLElement) width =
     let graph = new Graph ()
     let source = graph.Run (fun () -> Api.createSignal "a")
 
     let disabled =
         graph.Run (fun () -> Api.createMemo (fun _ -> source.Value = "blocked"))
 
-    let rows = AuthoringPerfFixtures.create "overloaded" width source disabled ignore
+    let rows = rows width source disabled
     let view = Generated.Html.Program.section [||] [| rows |]
 
     let mounted =
@@ -32,3 +61,11 @@ let mount (host: HTMLElement) width =
             graph.Dispose ()
 
     update, dispose
+
+/// <summary>Mounts the overloaded fixture with its own graph and returns update and disposal callbacks.</summary>
+let mount host width =
+    mountCore (fun width source disabled -> AuthoringPerfFixtures.create "overloaded" width source disabled ignore) host width
+
+/// <summary>Mounts equivalent components through a shared static skeleton and instance bindings.</summary>
+let mountPrepared host width =
+    mountCore preparedRows host width

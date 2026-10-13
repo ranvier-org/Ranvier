@@ -6,6 +6,7 @@ generated-framework-dist/
 generated-framework-shared/
 generated-framework-before/
 generated-framework-binding-before/
+generated-framework-prepared-before/
 dist/
 node_modules/
 test-results/
