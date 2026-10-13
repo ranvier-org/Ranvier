@@ -138,6 +138,19 @@ let private unclaim (registry: WeakSet<Node>) (node: Node) : unit =
 [<Emit("(() => { for (let p = $1; p; p = p.parentNode) { if ($0.has(p)) return true; } if (!$1.firstChild) return false; const pending = Array.from($1.childNodes); while (pending.length) { const n = pending.pop(); if ($0.has(n)) return true; for (let c = n.firstChild; c; c = c.nextSibling) pending.push(c); } return false; })()")>]
 let private overlaps (registry: WeakSet<Node>) (node: Node) : bool = jsNative
 
+[<Emit("$0.parentNode === $1")>]
+let private isChildOf (node: Node) (parent: Node) : bool = jsNative
+
+/// <summary>The node's next sibling, or <c>null</c> after the last child.</summary>
+[<Emit("$0.nextSibling")>]
+let private nextOrNull (node: Node) : Node = jsNative
+
+/// <summary>Reads an element without a bounds check.</summary>
+[<Emit("$0[$1]")>]
+let private at (items: ResizeArray<'T>) (index: int) : 'T = jsNative
+
+let private skip: unit -> unit = JsInterop.emitJsExpr () "() => {}"
+
 type private Entry =
     {
         Node: Node
@@ -157,38 +170,33 @@ type private OwnedRange(host: Node) =
     let naiveRoots = ResizeArray<Node>()
 #endif
 
-    let intactAt parent =
-        let mutable cursor = Some (first :> ChildNode)
+    let intactAt (parent: Node) =
+        let mutable cursor: Node = first
         let mutable intact = true
 
-        for entry in entries do
+        for index in 0 .. entries.Count - 1 do
+            let entry = at entries index
             entry.Validate ()
 
             if
-                not (
-                    entry.Node.parentNode
-                    |> Option.exists (same parent)
-                )
-                || not (cursor |> Option.exists (same entry.Node))
+                not (isChildOf entry.Node parent)
+                || not (same cursor entry.Node)
             then
                 intact <- false
 
-            let mutable spanCursor = Some entry.Node
+            let mutable spanCursor = entry.Node
 
-            while spanCursor
-                  |> Option.exists (fun node -> not (same node entry.EndNode)) do
-                spanCursor <- spanCursor |> Option.bind nextSiblingNode
+            while not (isNull (box spanCursor))
+                  && not (same spanCursor entry.EndNode) do
+                spanCursor <- nextOrNull spanCursor
 
             if
-                spanCursor.IsNone
-                || not (
-                    entry.EndNode.parentNode
-                    |> Option.exists (same parent)
-                )
+                isNull (box spanCursor)
+                || not (isChildOf entry.EndNode parent)
             then
                 intact <- false
 
-            cursor <- entry.EndNode.nextSibling
+            cursor <- nextOrNull entry.EndNode
 
         intact
 
@@ -200,8 +208,8 @@ type private OwnedRange(host: Node) =
             {
                 Node = first
                 EndNode = first
-                Validate = ignore
-                Relocate = ignore
+                Validate = skip
+                Relocate = skip
                 Restore = None
             }
 
@@ -209,8 +217,8 @@ type private OwnedRange(host: Node) =
             {
                 Node = last
                 EndNode = last
-                Validate = ignore
-                Relocate = ignore
+                Validate = skip
+                Relocate = skip
                 Restore = None
             }
 
@@ -247,6 +255,22 @@ type private OwnedRange(host: Node) =
         insert staging node (Some last)
 
 #endif
+    /// <summary>Adds a detached, unclaimed root node created by the mount.</summary>
+    member _.AddCreated(node: Node) =
+        entries.Insert (
+            entries.Count - 1,
+            {
+                Node = node
+                EndNode = node
+                Validate = skip
+                Relocate = skip
+                Restore = None
+            }
+        )
+
+        claim claims node
+        insert staging node (Some last)
+
     member _.Add(node: ChildNode, ownership) =
         if contains node host || contains node staging then
             invalid "A native node cannot contain its mount host or range"
@@ -275,8 +299,8 @@ type private OwnedRange(host: Node) =
             {
                 Node = node
                 EndNode = node
-                Validate = ignore
-                Relocate = ignore
+                Validate = skip
+                Relocate = skip
                 Restore = restore
             }
         )
@@ -306,31 +330,30 @@ type private OwnedRange(host: Node) =
         if not (sameDocument first parent) then
             invalid "Cross-document movement requires an explicit adoption policy"
 
-        match before with
-        | Some anchor when not (anchor.parentNode |> Option.exists (same parent)) -> invalid "Insertion anchor does not belong to the destination"
-        | _ -> ()
+        let anchor: Node =
+            match before with
+            | Some anchor when not (isChildOf anchor parent) -> invalid "Insertion anchor does not belong to the destination"
+            | Some anchor -> anchor
+            | None -> Unchecked.defaultof<_>
 
-        for entry in entries do
-            let mutable cursor = Some entry.Node
+        for index in 0 .. entries.Count - 1 do
+            let entry = at entries index
+            let mutable cursor = entry.Node
 
-            while cursor.IsSome do
-                let node = cursor.Value
+            while not (isNull (box cursor)) do
+                let node = cursor
 
                 if contains node parent then
                     invalid "Cannot move a range into itself"
 
-                if
-                    before
-                    |> Option.exists (fun anchor -> same node anchor && not (same first anchor))
-                then
+                if same node anchor && not (same first anchor) then
                     invalid "Cannot insert a range inside its own boundaries"
 
                 cursor <-
                     if same node entry.EndNode then
-                        None
+                        Unchecked.defaultof<_>
                     else
-                        node.nextSibling
-                        |> Option.map (fun x -> x :> Node)
+                        nextOrNull node
 
     member this.Attach(parent, before) =
 #if !LADDER_NAIVE_RANGE
@@ -414,7 +437,7 @@ type private OwnedRange(host: Node) =
 
 #endif
         for index in generatedDescendants.Count - 1 .. -1 .. 0 do
-            let node = generatedDescendants[index]
+            let node = at generatedDescendants index
 
             try
                 remove (node :?> ChildNode)
@@ -426,24 +449,31 @@ type private OwnedRange(host: Node) =
         generatedDescendants.Clear ()
 
         for index in entries.Count - 1 .. -1 .. 0 do
-            let entry = entries[index]
+            let entry = at entries index
+            let spans = not (same entry.Node entry.EndNode)
 
-            let attempt action =
+            match entry.Restore with
+            | Some restore ->
                 try
-                    action ()
+                    restore ()
+                with error ->
+                    errors.Add error
+            | None ->
+                try
+                    remove (entry.Node :?> ChildNode)
                 with error ->
                     errors.Add error
 
-            match entry.Restore with
-            | Some restore -> attempt restore
-            | None ->
-                attempt (fun () -> remove (entry.Node :?> ChildNode))
-
-                if not (same entry.Node entry.EndNode) then
-                    attempt (fun () -> remove (entry.EndNode :?> ChildNode))
+                if spans then
+                    try
+                        remove (entry.EndNode :?> ChildNode)
+                    with error ->
+                        errors.Add error
 
             unclaim claims entry.Node
-            unclaim claims entry.EndNode
+
+            if spans then
+                unclaim claims entry.EndNode
 
         entries.Clear ()
 
@@ -566,7 +596,7 @@ let rec private mountCore
             parent.appendChild node |> ignore
 #else
         if same parent range.Staging then
-            range.Add (node, Owned)
+            range.AddCreated node
         else
             parent.appendChild node |> ignore
 #endif
