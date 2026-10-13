@@ -99,7 +99,7 @@ A template instance has no owner of its own. It cannot outlive or be disposed ap
 
 A direct binding is a computation with exactly one source, fixed when it is created. It re-collects no dependencies, allocates no tracking scope, and is scheduled with effects, so it honours batching, queued commits and `flush()`. It is owned by the enclosing owner and disposed with it. A `Memo` source that is pending or failed leaves the bound value unchanged, as a failed reader does in the render effect.
 
-Ranvier's core exposes no such primitive: sources notify observers through the internal `IComputation` interface, and the public consumers, effects and memos, re-collect their dependencies on every run. The fixed-dependency binding is a core addition, made in its own change to `master` before this work depends on it, with its own tests and benchmarks.
+Ranvier's core exposes no such primitive: sources notify observers through the internal `IComputation` interface, and the public consumers, effects and memos, re-collect their dependencies on every run. The fixed-dependency binding is a core addition, made in its own change to `master` before this work depends on it, with its own tests and benchmarks. That change starts with a core benchmark of creation, disposal and update for a binding against an equivalent effect. The binding is added only if the benchmark shows a gain; otherwise `T.from` remains an alias for a render-effect slot and core is unchanged.
 
 ## Non-DOM backends
 
