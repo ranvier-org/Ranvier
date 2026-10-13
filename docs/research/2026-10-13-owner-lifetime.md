@@ -27,16 +27,16 @@ The suites encode these rules. Ten checks were rewritten: four structural-select
 
 ## Measurements
 
-[Raw results](framework-performance/investigation/owner-lifetime-framework-results.json) use the framework harness: three Chromium processes, Release Fable, minified production bundles, all 36 correctness checks passing. At 128 rows, µs per operation:
+[Raw results](framework-performance/investigation/owner-lifetime-framework-results.json) use the framework harness: three Chromium processes, Release Fable, minified production bundles, all 36 correctness checks passing. Solid is 2.0.0-rc.14 compiled by `@solidjs/compiler` 2.0.0-rc.14. At 128 rows, µs per operation:
 
-| | Ranvier | Solid | Ripple | React |
+| | Ranvier | Solid 2 | Ripple | React |
 |---|---|---|---|---|
-| Mount | 886 | 370 | 540 | 621 |
-| Update | 135 | 134 | 134 | 297 |
-| Dispose | 176 | 57 | 60 | 105 |
-| Retained JS heap | 397 KiB | 130 KiB | 163 KiB | 189 KiB |
+| Mount | 884 | 353 | 512 | 661 |
+| Update | 133 | 122 | 130 | 283 |
+| Dispose | 168 | 37 | 59 | 102 |
+| Retained JS heap | 397 KiB | 115 KiB | 163 KiB | 189 KiB |
 
-The renderer-scope model measured 961 µs mount, 359 µs disposal and 427 KiB retained heap in the [prepared comparison](framework-performance/investigation/prepared-templates.md). Disposal falls by about half, to 3.1× Solid and 2.9× Ripple. Mounting remains 2.4× Solid and 1.6× Ripple; the ladder attributes most of the remaining mount cost to backend dispatch.
+The renderer-scope model measured 961 µs mount, 359 µs disposal and 427 KiB retained heap in the [prepared comparison](framework-performance/investigation/prepared-templates.md). Disposal falls by about half, to 4.5× Solid 2 and 2.8× Ripple. Mounting remains 2.5× Solid 2 and 1.7× Ripple; the ladder attributes most of the remaining mount cost to backend dispatch.
 
 ## Reproduction
 

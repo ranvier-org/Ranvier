@@ -1,5 +1,5 @@
 {
-  "map": "index-CRulMCv-.js.map",
+  "map": "index-C_9r4XmA.js.map",
   "results": [
     {
       "mode": "ranvier",
@@ -7,327 +7,327 @@
       "self": [
         {
           "name": "(runtime):0 (program)",
-          "ms": 628.51
+          "ms": 749.064
         },
         {
           "name": "(runtime):0 (garbage collector)",
-          "ms": 63.273
+          "ms": 79.963
         },
         {
           "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Generated/Html.js:3960 (anonymous)",
-          "ms": 44.238
-        },
-        {
-          "name": "(runtime):0 appendChild",
-          "ms": 27.865
+          "ms": 44.723
         },
         {
           "name": "../../generated-tests/fable_modules/fable-library-js.5.18.0/Util.js:582 uncurry2",
-          "ms": 15.226
+          "ms": 21.775
         },
         {
           "name": "(runtime):0 createElement",
-          "ms": 14.197
+          "ms": 21.474
         },
         {
-          "name": "(runtime):0 setAttribute",
-          "ms": 12.421
-        },
-        {
-          "name": "(runtime):0 (idle)",
-          "ms": 10.969
-        },
-        {
-          "name": "(runtime):0 addEventListener",
-          "ms": 9.51
+          "name": "(runtime):0 appendChild",
+          "ms": 20.852
         },
         {
           "name": "(runtime):0 insertBefore",
-          "ms": 7.225
+          "ms": 14.228
         },
         {
-          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Mounting.js:849 Ranvier.View.Foundation.Representation.Backend.ElementZ4C49CC3F",
-          "ms": 7.021
+          "name": "(runtime):0 (idle)",
+          "ms": 12.714
         },
         {
-          "name": "../../generated-tests/fable_modules/fable-library-js.5.18.0/Types.js:169 FSharpRef$1",
-          "ms": 6.277
+          "name": "(runtime):0 setAttribute",
+          "ms": 11.102
         },
         {
-          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Generated/Html.js:8023 Events_onClick",
-          "ms": 5.979
+          "name": "(runtime):0 addEventListener",
+          "ms": 8.37
         },
         {
           "name": "../../generated-tests/fable_modules/fable-library-js.5.18.0/Util.js:366 equals$1",
-          "ms": 4.462
+          "ms": 7.553
+        },
+        {
+          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Mounting.js:849 Ranvier.View.Foundation.Representation.Backend.ElementZ4C49CC3F",
+          "ms": 7.52
+        },
+        {
+          "name": "../../generated-tests/src/Ranvier/Core.js:68 ObserverSet__Add_7E1B59FA",
+          "ms": 7.117
+        },
+        {
+          "name": "../../generated-tests/fable_modules/fable-library-js.5.18.0/Types.js:76 Equals",
+          "ms": 5.558
         },
         {
           "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Mounting.js:875 (anonymous)",
+          "ms": 5.511
+        },
+        {
+          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/AuthoringPerfFixtures.js:22 (anonymous)",
+          "ms": 4.993
+        },
+        {
+          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Generated/Html.js:8023 Events_onClick",
+          "ms": 4.962
+        },
+        {
+          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Mounting.js:656 ensureSetup",
+          "ms": 4.951
+        },
+        {
+          "name": "../../generated-tests/src/Ranvier/Core.js:1088 Graph_get_Current",
+          "ms": 4.242
+        },
+        {
+          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Mounting.js:621 mountCore$1",
+          "ms": 4.061
+        },
+        {
+          "name": "../../generated-tests/src/Ranvier/Api.js:407 Api_untrack",
+          "ms": 3.997
+        },
+        {
+          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Mounting.js:677 applyModifiers",
           "ms": 3.976
         },
         {
           "name": "../../generated-tests/fable_modules/fable-library-js.5.18.0/Seq.js:930 (anonymous)",
-          "ms": 3.473
+          "ms": 3.851
         },
         {
-          "name": "../../generated-tests/fable_modules/fable-library-js.5.18.0/Types.js:76 Equals",
-          "ms": 3.262
-        },
-        {
-          "name": "(runtime):0 createTextNode",
-          "ms": 3.152
-        },
-        {
-          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Representation.js:357 validateAttribute",
-          "ms": 3.017
-        },
-        {
-          "name": "../../generated-tests/src/Ranvier/Core.js:1088 Graph_get_Current",
-          "ms": 3.014
+          "name": "../../generated-tests/fable_modules/fable-library-js.5.18.0/Types.js:169 FSharpRef$1",
+          "ms": 3.377
         },
         {
           "name": "../../generated-tests/fable_modules/fable-library-js.5.18.0/Util.js:89 Enumerator$1",
-          "ms": 2.967
+          "ms": 3.024
+        },
+        {
+          "name": "../../generated-tests/src/Ranvier/Core.js:2679 Effect_$ctor_Z2C5AF67C",
+          "ms": 2.99
         },
         {
           "name": "../../generated-tests/src/Ranvier/Core.js:1119 Graph_get_Ambient",
-          "ms": 2.889
+          "ms": 2.527
         },
         {
-          "name": "../../generated-tests/src/Ranvier/Core.js:68 ObserverSet__Add_7E1B59FA",
-          "ms": 2.329
+          "name": "(runtime):0 createTextNode",
+          "ms": 2.45
         },
         {
-          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Mounting.js:1153 (anonymous)",
-          "ms": 2.133
-        },
-        {
-          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Mounting.js:677 applyModifiers",
-          "ms": 2.047
-        },
-        {
-          "name": "../../generated-tests/src/Ranvier/Core.js:551 Owner__Append_ZE530460",
-          "ms": 2.005
-        },
-        {
-          "name": "../../generated-tests/src/Ranvier/Api.js:407 Api_untrack",
-          "ms": 2.001
-        },
-        {
-          "name": "../../generated-tests/fable_modules/fable-library-js.5.18.0/Array.js:30 fill",
-          "ms": 2
+          "name": "../../benchmarks/frameworks/page.mjs:55 run",
+          "ms": 2.282
         },
         {
           "name": "../../generated-tests/experiments/Ranvier.View.Foundation/AuthoringPerfFixtures.js:64 (anonymous)",
-          "ms": 1.839
-        },
-        {
-          "name": "../../generated-tests/src/Ranvier/Core.js:2576 Effect$1",
-          "ms": 1.688
+          "ms": 2.191
         }
       ],
       "inclusive": [
         {
           "name": "(runtime):0 (root)",
-          "ms": 962.922
+          "ms": 1138.585
         },
         {
           "name": "(runtime):0 (program)",
-          "ms": 628.51
-        },
-        {
-          "name": "../../benchmarks/frameworks/page.mjs:55 run",
-          "ms": 260.17
+          "ms": 749.064
         },
         {
           "name": "(runtime):1 (anonymous)",
-          "ms": 260.17
+          "ms": 296.844
         },
         {
           "name": "(runtime):305 evaluate",
-          "ms": 260.17
+          "ms": 296.844
+        },
+        {
+          "name": "../../benchmarks/frameworks/page.mjs:55 run",
+          "ms": 296.357
         },
         {
           "name": "../../generated-tests/FrameworkPerf.js:123 mount$3",
-          "ms": 258.679
+          "ms": 294.075
         },
         {
           "name": "../../benchmarks/frameworks/page.mjs:13 (anonymous)",
-          "ms": 258.679
+          "ms": 294.075
         },
         {
           "name": "../../generated-tests/FrameworkPerf.js:85 mountCore",
-          "ms": 258.191
-        },
-        {
-          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Mounting.js:621 mountCore$1",
-          "ms": 241.185
+          "ms": 293.061
         },
         {
           "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Mounting.js:1216 mountWith",
-          "ms": 241.185
+          "ms": 275.318
         },
         {
           "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Mounting.js:1237 mount$4",
-          "ms": 241.185
+          "ms": 275.318
+        },
+        {
+          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Mounting.js:621 mountCore$1",
+          "ms": 274.818
         },
         {
           "name": "../../generated-tests/src/Ranvier/Api.js:654 Ranvier_Graph__Graph_Run_FCFD9EF",
-          "ms": 230.339
+          "ms": 254.586
         },
         {
           "name": "../../generated-tests/src/Ranvier/Core.js:1887 Graph__RunUntracked_FCFD9EF",
-          "ms": 229.335
+          "ms": 253.579
         },
         {
           "name": "../../generated-tests/src/Ranvier/Api.js:407 Api_untrack",
-          "ms": 229.335
+          "ms": 253.579
         },
         {
           "name": "../../generated-tests/src/Ranvier/Core.js:1206 Graph__RunRoot_Z6EC41034",
-          "ms": 229.335
+          "ms": 253.579
         },
         {
           "name": "../../generated-tests/src/Ranvier/Api.js:454 Api_createRoot",
-          "ms": 229.335
+          "ms": 253.579
         },
         {
           "name": "../../generated-tests/FrameworkPerf.js:92 view",
-          "ms": 229.335
+          "ms": 253.579
         },
         {
           "name": "../../generated-tests/FrameworkPerf.js:101 (anonymous)",
-          "ms": 229.335
+          "ms": 253.579
         },
         {
           "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Mounting.js:1180 (anonymous)",
-          "ms": 229.335
+          "ms": 253.579
         },
         {
           "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Mounting.js:1173 (anonymous)",
-          "ms": 229.335
+          "ms": 253.579
         },
         {
           "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Mounting.js:1172 (anonymous)",
-          "ms": 229.335
+          "ms": 253.579
         },
         {
           "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Mounting.js:849 Ranvier.View.Foundation.Representation.Backend.ElementZ4C49CC3F",
-          "ms": 227.837
+          "ms": 252.573
         },
         {
           "name": "../../generated-tests/experiments/Ranvier.View.Foundation/AuthoringPerfFixtures.js:74 (anonymous)",
-          "ms": 225.617
+          "ms": 249.495
         },
         {
           "name": "../../generated-tests/FrameworkPerf.js:93 (anonymous)",
-          "ms": 225.617
-        },
-        {
-          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/AuthoringPerfFixtures.js:44 (anonymous)",
-          "ms": 224.133
+          "ms": 249.495
         },
         {
           "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Mounting.js:1150 Ranvier.View.Foundation.Representation.Backend.Component41B8881A",
-          "ms": 223.272
+          "ms": 249.006
         },
         {
-          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Mounting.js:1153 (anonymous)",
-          "ms": 219.483
+          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/AuthoringPerfFixtures.js:44 (anonymous)",
+          "ms": 249.006
         },
         {
           "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Mounting.js:1152 (anonymous)",
-          "ms": 219.483
+          "ms": 246.36
+        },
+        {
+          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Mounting.js:1153 (anonymous)",
+          "ms": 244.875
         },
         {
           "name": "../../generated-tests/experiments/Ranvier.View.Foundation/AuthoringPerfFixtures.js:45 (anonymous)",
-          "ms": 216.856
+          "ms": 243.772
         },
         {
           "name": "../../generated-tests/experiments/Ranvier.View.Foundation/AuthoringPerfFixtures.js:64 (anonymous)",
-          "ms": 204.344
+          "ms": 227.38
         }
       ],
       "sources": [
         {
           "name": "(runtime)",
-          "ms": 778.623
+          "ms": 920.704
         },
         {
           "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Generated/Html.js",
-          "ms": 51.232
-        },
-        {
-          "name": "../../generated-tests/src/Ranvier/Core.js",
-          "ms": 28.862
+          "ms": 49.685
         },
         {
           "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Mounting.js",
-          "ms": 27.329
+          "ms": 43.23
+        },
+        {
+          "name": "../../generated-tests/src/Ranvier/Core.js",
+          "ms": 35.985
         },
         {
           "name": "../../generated-tests/fable_modules/fable-library-js.5.18.0/Util.js",
-          "ms": 26.276
-        },
-        {
-          "name": "../../generated-tests/fable_modules/fable-library-js.5.18.0/Types.js",
-          "ms": 11.077
+          "ms": 34.851
         },
         {
           "name": "../../generated-tests/experiments/Ranvier.View.Foundation/AuthoringPerfFixtures.js",
-          "ms": 8.033
+          "ms": 12.654
+        },
+        {
+          "name": "../../generated-tests/fable_modules/fable-library-js.5.18.0/Types.js",
+          "ms": 9.981
         },
         {
           "name": "../../generated-tests/fable_modules/fable-library-js.5.18.0/Seq.js",
-          "ms": 7.444
-        },
-        {
-          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Representation.js",
-          "ms": 6.484
-        },
-        {
-          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Typed.js",
-          "ms": 2.966
-        },
-        {
-          "name": "../../generated-tests/fable_modules/fable-library-js.5.18.0/Array.js",
-          "ms": 2.508
-        },
-        {
-          "name": "../../generated-tests/fable_modules/fable-library-js.5.18.0/Option.js",
-          "ms": 2.073
-        },
-        {
-          "name": "../../generated-tests/FrameworkPerf.js",
-          "ms": 2.002
+          "ms": 5.726
         },
         {
           "name": "../../generated-tests/src/Ranvier/Api.js",
-          "ms": 2.001
+          "ms": 5.004
         },
         {
-          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Lifetime.js",
-          "ms": 1.544
+          "name": "../../generated-tests/fable_modules/fable-library-js.5.18.0/Array.js",
+          "ms": 3.915
+        },
+        {
+          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Typed.js",
+          "ms": 3.321
+        },
+        {
+          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Representation.js",
+          "ms": 3.044
         },
         {
           "name": "../../benchmarks/frameworks/page.mjs",
-          "ms": 1.491
+          "ms": 2.282
         },
         {
-          "name": "../../generated-tests/fable_modules/fable-library-js.5.18.0/Range.js",
-          "ms": 0.993
+          "name": "../../generated-tests/FrameworkPerf.js",
+          "ms": 2.02
         },
         {
           "name": "../../generated-tests/fable_modules/fable-library-js.5.18.0/FSharp.Core.js",
-          "ms": 0.984
+          "ms": 1.686
         },
         {
-          "name": "../../generated-tests/src/Ranvier/Platform.js",
-          "ms": 0.502
+          "name": "../../generated-tests/fable_modules/fable-library-js.5.18.0/Range.js",
+          "ms": 1.497
         },
         {
-          "name": "../../generated-tests/fable_modules/fable-library-js.5.18.0/String.js",
-          "ms": 0.498
+          "name": "../../generated-tests/fable_modules/fable-library-js.5.18.0/Option.js",
+          "ms": 1.024
+        },
+        {
+          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Prepared.js",
+          "ms": 0.999
+        },
+        {
+          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Lifetime.js",
+          "ms": 0.501
+        },
+        {
+          "name": "../../generated-tests/fable_modules/fable-library-js.5.18.0/System.Collections.Generic.js",
+          "ms": 0.476
         }
       ]
     },
@@ -337,199 +337,179 @@
       "self": [
         {
           "name": "(runtime):0 (program)",
-          "ms": 117.931
+          "ms": 129.726
         },
         {
           "name": "(runtime):0 remove",
-          "ms": 67.669
+          "ms": 67.792
         },
         {
           "name": "../../generated-tests/src/Ranvier/Core.js:104 ObserverSet__Remove_7E1B59FA",
-          "ms": 15.009
-        },
-        {
-          "name": "../../generated-tests/src/Ranvier/Core.js:645 Owner__DisposeScope",
-          "ms": 8.859
+          "ms": 25.704
         },
         {
           "name": "(runtime):0 removeEventListener",
-          "ms": 8.304
+          "ms": 10.088
         },
         {
-          "name": "../../generated-tests/src/Ranvier/Core.js:621 (anonymous)",
-          "ms": 3.994
-        },
-        {
-          "name": "../../generated-tests/src/Ranvier/Core.js:315 SourceList__Clear_7E1B59FA",
-          "ms": 3.035
-        },
-        {
-          "name": "(runtime):0 (idle)",
-          "ms": 1.989
-        },
-        {
-          "name": "../../generated-tests/fable_modules/fable-library-js.5.18.0/Util.js:561 clear$1",
-          "ms": 1.443
-        },
-        {
-          "name": "../../generated-tests/src/Ranvier/Core.js:1631 Graph__Detached_Z12158FD7",
-          "ms": 1.172
-        },
-        {
-          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Lifetime.js:133 Scope__Dispose",
-          "ms": 0.617
-        },
-        {
-          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Mounting.js:1177 (anonymous)",
-          "ms": 0.525
-        },
-        {
-          "name": "(runtime):0 (garbage collector)",
-          "ms": 0.499
-        }
-      ],
-      "inclusive": [
-        {
-          "name": "(runtime):0 (root)",
-          "ms": 231.046
-        },
-        {
-          "name": "(runtime):0 (program)",
-          "ms": 117.931
-        },
-        {
-          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Lifetime.js:133 Scope__Dispose",
-          "ms": 110.627
-        },
-        {
-          "name": "../../generated-tests/FrameworkPerf.js:111 (anonymous)",
-          "ms": 110.627
-        },
-        {
-          "name": "../../benchmarks/frameworks/page.mjs:55 run",
-          "ms": 110.627
-        },
-        {
-          "name": "(runtime):1 (anonymous)",
-          "ms": 110.627
-        },
-        {
-          "name": "(runtime):305 evaluate",
-          "ms": 110.627
-        },
-        {
-          "name": "(runtime):0 remove",
-          "ms": 67.669
+          "name": "../../generated-tests/src/Ranvier/Core.js:645 Owner__DisposeScope",
+          "ms": 9.578
         },
         {
           "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Mounting.js:449 OwnedRange__Release",
-          "ms": 67.669
-        },
-        {
-          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Mounting.js:624 release",
-          "ms": 67.669
-        },
-        {
-          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Lifetime.js:117 Scope__Release_Z11D86880",
-          "ms": 67.669
-        },
-        {
-          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Mounting.js:1177 (anonymous)",
-          "ms": 42.341
-        },
-        {
-          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Lifetime.js:98 Scope__Clean_Z11D86880",
-          "ms": 42.341
-        },
-        {
-          "name": "../../generated-tests/src/Ranvier/Core.js:645 Owner__DisposeScope",
-          "ms": 41.816
-        },
-        {
-          "name": "../../generated-tests/src/Ranvier/Core.js:1631 Graph__Detached_Z12158FD7",
-          "ms": 41.816
-        },
-        {
-          "name": "../../generated-tests/src/Ranvier/Core.js:1011 RunDetached",
-          "ms": 41.816
-        },
-        {
-          "name": "../../generated-tests/src/Ranvier/Core.js:714 Owner__TearDown_6ED947BB",
-          "ms": 41.816
-        },
-        {
-          "name": "../../generated-tests/src/Ranvier/Core.js:692 Owner__Dispose",
-          "ms": 41.816
-        },
-        {
-          "name": "../../generated-tests/src/Ranvier/Core.js:315 SourceList__Clear_7E1B59FA",
-          "ms": 18.044
-        },
-        {
-          "name": "../../generated-tests/src/Ranvier/Core.js:2697 Effect__DetachSources",
-          "ms": 18.044
-        },
-        {
-          "name": "../../generated-tests/src/Ranvier/Core.js:2755 Effect__Dispose",
-          "ms": 18.044
-        },
-        {
-          "name": "../../generated-tests/src/Ranvier/Core.js:104 ObserverSet__Remove_7E1B59FA",
-          "ms": 15.009
-        },
-        {
-          "name": "../../generated-tests/src/Ranvier/Core.js:338 SourceList__trimFrom",
-          "ms": 15.009
-        },
-        {
-          "name": "../../generated-tests/src/Ranvier/Core.js:2248 RemoveObserver",
-          "ms": 12.679
+          "ms": 2.47
         },
         {
           "name": "../../generated-tests/src/Ranvier/Core.js:621 (anonymous)",
-          "ms": 12.298
+          "ms": 2.244
         },
         {
-          "name": "(runtime):0 removeEventListener",
-          "ms": 8.304
-        },
-        {
-          "name": "../../generated-tests/src/Ranvier/Core.js:1983 RemoveObserver",
-          "ms": 2.33
+          "name": "../../generated-tests/src/Ranvier/Core.js:315 SourceList__Clear_7E1B59FA",
+          "ms": 1.772
         },
         {
           "name": "(runtime):0 (idle)",
-          "ms": 1.989
+          "ms": 1.742
         },
         {
           "name": "../../generated-tests/fable_modules/fable-library-js.5.18.0/Util.js:561 clear$1",
-          "ms": 1.443
+          "ms": 1.484
+        }
+      ],
+      "inclusive": [
+        {
+          "name": "(runtime):0 (root)",
+          "ms": 252.6
         },
         {
-          "name": "(runtime):0 (garbage collector)",
-          "ms": 0.499
+          "name": "(runtime):0 (program)",
+          "ms": 129.726
+        },
+        {
+          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Lifetime.js:133 Scope__Dispose",
+          "ms": 121.132
+        },
+        {
+          "name": "../../generated-tests/FrameworkPerf.js:111 (anonymous)",
+          "ms": 121.132
+        },
+        {
+          "name": "../../benchmarks/frameworks/page.mjs:55 run",
+          "ms": 121.132
+        },
+        {
+          "name": "(runtime):1 (anonymous)",
+          "ms": 121.132
+        },
+        {
+          "name": "(runtime):305 evaluate",
+          "ms": 121.132
+        },
+        {
+          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Mounting.js:449 OwnedRange__Release",
+          "ms": 70.262
+        },
+        {
+          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Mounting.js:624 release",
+          "ms": 70.262
+        },
+        {
+          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Lifetime.js:117 Scope__Release_Z11D86880",
+          "ms": 70.262
+        },
+        {
+          "name": "(runtime):0 remove",
+          "ms": 67.792
+        },
+        {
+          "name": "../../generated-tests/src/Ranvier/Core.js:645 Owner__DisposeScope",
+          "ms": 50.87
+        },
+        {
+          "name": "../../generated-tests/src/Ranvier/Core.js:1631 Graph__Detached_Z12158FD7",
+          "ms": 50.87
+        },
+        {
+          "name": "../../generated-tests/src/Ranvier/Core.js:1011 RunDetached",
+          "ms": 50.87
+        },
+        {
+          "name": "../../generated-tests/src/Ranvier/Core.js:714 Owner__TearDown_6ED947BB",
+          "ms": 50.87
+        },
+        {
+          "name": "../../generated-tests/src/Ranvier/Core.js:692 Owner__Dispose",
+          "ms": 50.87
+        },
+        {
+          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Mounting.js:1177 (anonymous)",
+          "ms": 50.87
+        },
+        {
+          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Lifetime.js:98 Scope__Clean_Z11D86880",
+          "ms": 50.87
+        },
+        {
+          "name": "../../generated-tests/src/Ranvier/Core.js:315 SourceList__Clear_7E1B59FA",
+          "ms": 27.476
+        },
+        {
+          "name": "../../generated-tests/src/Ranvier/Core.js:2697 Effect__DetachSources",
+          "ms": 27.476
+        },
+        {
+          "name": "../../generated-tests/src/Ranvier/Core.js:2755 Effect__Dispose",
+          "ms": 27.476
+        },
+        {
+          "name": "../../generated-tests/src/Ranvier/Core.js:104 ObserverSet__Remove_7E1B59FA",
+          "ms": 25.704
+        },
+        {
+          "name": "../../generated-tests/src/Ranvier/Core.js:338 SourceList__trimFrom",
+          "ms": 25.704
+        },
+        {
+          "name": "../../generated-tests/src/Ranvier/Core.js:2248 RemoveObserver",
+          "ms": 22.205
+        },
+        {
+          "name": "../../generated-tests/src/Ranvier/Core.js:621 (anonymous)",
+          "ms": 12.332
+        },
+        {
+          "name": "(runtime):0 removeEventListener",
+          "ms": 10.088
+        },
+        {
+          "name": "../../generated-tests/src/Ranvier/Core.js:1983 RemoveObserver",
+          "ms": 3.499
+        },
+        {
+          "name": "(runtime):0 (idle)",
+          "ms": 1.742
+        },
+        {
+          "name": "../../generated-tests/fable_modules/fable-library-js.5.18.0/Util.js:561 clear$1",
+          "ms": 1.484
         }
       ],
       "sources": [
         {
           "name": "(runtime)",
-          "ms": 196.392
+          "ms": 209.348
         },
         {
           "name": "../../generated-tests/src/Ranvier/Core.js",
-          "ms": 32.069
-        },
-        {
-          "name": "../../generated-tests/fable_modules/fable-library-js.5.18.0/Util.js",
-          "ms": 1.443
-        },
-        {
-          "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Lifetime.js",
-          "ms": 0.617
+          "ms": 39.298
         },
         {
           "name": "../../generated-tests/experiments/Ranvier.View.Foundation/Mounting.js",
-          "ms": 0.525
+          "ms": 2.47
+        },
+        {
+          "name": "../../generated-tests/fable_modules/fable-library-js.5.18.0/Util.js",
+          "ms": 1.484
         }
       ]
     },
@@ -539,247 +519,259 @@
       "self": [
         {
           "name": "(runtime):0 (program)",
-          "ms": 667.025
+          "ms": 608.554
         },
         {
           "name": "(runtime):0 cloneNode",
-          "ms": 35.743
+          "ms": 28.185
         },
         {
-          "name": "../../benchmarks/frameworks/solid.jsx:32 (anonymous)",
-          "ms": 31.194
+          "name": "../../benchmarks/frameworks/solid.jsx:6 (anonymous)",
+          "ms": 27.983
         },
         {
           "name": "(runtime):0 (garbage collector)",
-          "ms": 23.121
-        },
-        {
-          "name": "(runtime):0 setAttribute",
-          "ms": 11.015
+          "ms": 21.727
         },
         {
           "name": "(runtime):0 (idle)",
-          "ms": 8.947
+          "ms": 9.767
+        },
+        {
+          "name": "(runtime):0 setAttribute",
+          "ms": 8.375
+        },
+        {
+          "name": "../../node_modules/@solidjs/web/dist/web.js:1671 insertExpression",
+          "ms": 7.709
         },
         {
           "name": "(runtime):0 appendChild",
-          "ms": 6.312
-        },
-        {
-          "name": "../../benchmarks/frameworks/solid.jsx:13 (anonymous)",
-          "ms": 5.091
-        },
-        {
-          "name": "../../node_modules/solid-js/dist/solid.js:737 createComputation",
-          "ms": 4.976
-        },
-        {
-          "name": "../../node_modules/solid-js/web/dist/web.js:533 insertExpression",
-          "ms": 4.694
+          "ms": 6.004
         },
         {
           "name": "(runtime):0 insertBefore",
-          "ms": 3.545
+          "ms": 5.872
         },
         {
-          "name": "../../node_modules/solid-js/dist/solid.js:619 readSignal",
-          "ms": 3.453
+          "name": "../../node_modules/@solidjs/signals/dist/prod/core/core.js:108 recompute",
+          "ms": 4.792
         },
         {
-          "name": "../../node_modules/solid-js/dist/solid.js:701 runComputation",
-          "ms": 2.526
+          "name": "../../node_modules/@solidjs/signals/dist/prod/core/core.js:865 untrack",
+          "ms": 4.081
         },
         {
-          "name": "../../benchmarks/frameworks/solid.jsx:19 Row$1.createRenderEffect.e",
-          "ms": 2.232
+          "name": "../../node_modules/@solidjs/signals/dist/prod/core/effect.js:17 effect$1",
+          "ms": 2.488
         },
         {
-          "name": "../../benchmarks/frameworks/solid.jsx:11 Row$1",
-          "ms": 2.035
+          "name": "../../node_modules/@solidjs/signals/dist/prod/core/core.js:678 createEffectNode",
+          "ms": 2.174
         },
         {
-          "name": "../../benchmarks/frameworks/solid.jsx:44 (anonymous)",
-          "ms": 1.988
+          "name": "../../node_modules/@solidjs/signals/dist/prod/core/graph.js:112 link",
+          "ms": 1.994
         },
         {
-          "name": "../../node_modules/solid-js/web/dist/web.js:211 fn",
-          "ms": 1.927
+          "name": "../../benchmarks/frameworks/solid.jsx:19 (anonymous)",
+          "ms": 1.652
         },
         {
-          "name": "../../node_modules/solid-js/web/dist/web.js:327 insert",
-          "ms": 1.277
+          "name": "../../node_modules/@solidjs/web/dist/web.js:874 insert",
+          "ms": 1.502
         },
         {
-          "name": "../../node_modules/solid-js/dist/solid.js:685 updateComputation",
-          "ms": 0.989
+          "name": "../../node_modules/@solidjs/web/dist/web.js:541 setAttribute",
+          "ms": 1.021
         },
         {
-          "name": "../../node_modules/solid-js/dist/solid.js:198 createSignal",
-          "ms": 0.987
+          "name": "../../node_modules/@solidjs/signals/dist/prod/core/core.js:1018 read",
+          "ms": 0.998
         },
         {
-          "name": "../../node_modules/solid-js/dist/solid.js:177 createRoot$1",
-          "ms": 0.513
+          "name": "../../benchmarks/frameworks/solid.jsx:6 Row$1.effect.e.e",
+          "ms": 0.988
         },
         {
-          "name": "../../benchmarks/frameworks/solid.jsx:46 (anonymous)",
-          "ms": 0.509
+          "name": "../../node_modules/@solidjs/signals/dist/prod/core/owner.js:166 inheritId",
+          "ms": 0.586
         },
         {
-          "name": "../../node_modules/solid-js/web/dist/web.js:616 normalizeIncomingArray",
-          "ms": 0.501
+          "name": "../../node_modules/@solidjs/web/dist/web.js:906 accessor.$s.options",
+          "ms": 0.556
         },
         {
-          "name": "../../node_modules/solid-js/dist/solid.js:1287 (anonymous)",
-          "ms": 0.5
+          "name": "../../node_modules/@solidjs/web/dist/web.js:61 effect",
+          "ms": 0.526
         },
         {
-          "name": "../../node_modules/solid-js/dist/solid.js:946 cleanNode",
-          "ms": 0.498
+          "name": "../../node_modules/@solidjs/signals/dist/prod/core/scheduler.js:596 enqueue",
+          "ms": 0.517
         },
         {
-          "name": "../../node_modules/solid-js/dist/solid.js:455 untrack",
-          "ms": 0.048
+          "name": "../../node_modules/@solidjs/signals/dist/prod/core/effect.js:57 runEffect",
+          "ms": 0.499
+        },
+        {
+          "name": "../../node_modules/@solidjs/signals/dist/prod/core/core.js:745 statusNotifierOf",
+          "ms": 0.499
         }
       ],
       "inclusive": [
         {
           "name": "(runtime):0 (root)",
-          "ms": 821.646
+          "ms": 749.049
         },
         {
           "name": "(runtime):0 (program)",
-          "ms": 667.025
+          "ms": 608.554
         },
         {
-          "name": "../../node_modules/solid-js/dist/solid.js:177 createRoot$1",
-          "ms": 122.553
+          "name": "../../node_modules/@solidjs/web/dist/web.js:398 render",
+          "ms": 109.001
         },
         {
-          "name": "../../node_modules/solid-js/web/dist/web.js:193 render",
-          "ms": 122.553
-        },
-        {
-          "name": "../../benchmarks/frameworks/solid.jsx:36 mount$1",
-          "ms": 122.553
+          "name": "../../benchmarks/frameworks/solid.jsx:13 mount$1",
+          "ms": 109.001
         },
         {
           "name": "../../benchmarks/frameworks/page.mjs:55 run",
-          "ms": 122.553
+          "ms": 109.001
         },
         {
           "name": "(runtime):1 (anonymous)",
-          "ms": 122.553
+          "ms": 109.001
         },
         {
           "name": "(runtime):305 evaluate",
-          "ms": 122.553
+          "ms": 109.001
         },
         {
-          "name": "../../node_modules/solid-js/web/dist/web.js:195 (anonymous)",
-          "ms": 122.04
+          "name": "../../node_modules/@solidjs/signals/dist/prod/core/effect.js:17 effect$1",
+          "ms": 102.492
         },
         {
-          "name": "../../node_modules/solid-js/dist/solid.js:188 updateFn",
-          "ms": 122.04
+          "name": "../../node_modules/@solidjs/signals/dist/prod/signals.js:197 createRenderEffect$1",
+          "ms": 102.492
         },
         {
-          "name": "../../node_modules/solid-js/dist/solid.js:819 runUpdates",
-          "ms": 122.04
+          "name": "../../node_modules/solid-js/dist/solid.js:935 createRenderEffect",
+          "ms": 102.492
         },
         {
-          "name": "../../node_modules/solid-js/web/dist/web.js:327 insert",
-          "ms": 121.556
+          "name": "../../node_modules/@solidjs/web/dist/web.js:61 effect",
+          "ms": 102.492
         },
         {
-          "name": "../../benchmarks/frameworks/solid.jsx:42 (anonymous)",
-          "ms": 115.728
+          "name": "../../node_modules/@solidjs/web/dist/web.js:874 insert",
+          "ms": 102.492
         },
         {
-          "name": "../../benchmarks/frameworks/solid.jsx:38 (anonymous)",
-          "ms": 115.728
+          "name": "../../node_modules/@solidjs/web/dist/web.js:402 createRoot$1.id",
+          "ms": 102.492
         },
         {
-          "name": "../../node_modules/solid-js/web/dist/web.js:330 (anonymous)",
-          "ms": 115.244
+          "name": "../../node_modules/@solidjs/signals/dist/prod/core/owner.js:325 (anonymous)",
+          "ms": 102.492
         },
         {
-          "name": "../../node_modules/solid-js/dist/solid.js:701 runComputation",
-          "ms": 115.244
+          "name": "../../node_modules/@solidjs/signals/dist/prod/core/core.js:1323 runWithOwner",
+          "ms": 102.492
         },
         {
-          "name": "../../node_modules/solid-js/dist/solid.js:685 updateComputation",
-          "ms": 115.244
+          "name": "../../node_modules/@solidjs/signals/dist/prod/core/owner.js:323 createRoot$2",
+          "ms": 102.492
         },
         {
-          "name": "../../benchmarks/frameworks/solid.jsx:44 (anonymous)",
-          "ms": 111.198
+          "name": "../../node_modules/solid-js/dist/solid.js:934 createRoot$1",
+          "ms": 102.492
         },
         {
-          "name": "../../benchmarks/frameworks/solid.jsx:46 (anonymous)",
-          "ms": 109.21
+          "name": "../../benchmarks/frameworks/solid.jsx:15 (anonymous)",
+          "ms": 101.975
         },
         {
-          "name": "../../node_modules/solid-js/dist/solid.js:1277 createComponent",
-          "ms": 108.701
+          "name": "../../benchmarks/frameworks/solid.jsx:19 (anonymous)",
+          "ms": 96.103
         },
         {
-          "name": "../../benchmarks/frameworks/solid.jsx:11 Row$1",
-          "ms": 108.153
+          "name": "../../node_modules/@solidjs/web/dist/web.js:893 (anonymous)",
+          "ms": 96.103
         },
         {
-          "name": "../../benchmarks/frameworks/solid.jsx:13 (anonymous)",
-          "ms": 105.131
+          "name": "../../node_modules/@solidjs/signals/dist/prod/core/core.js:108 recompute",
+          "ms": 96.103
         },
         {
-          "name": "../../node_modules/solid-js/dist/solid.js:455 untrack",
-          "ms": 71.181
+          "name": "../../node_modules/@solidjs/signals/dist/prod/core/core.js:865 untrack",
+          "ms": 94.451
         },
         {
-          "name": "../../node_modules/solid-js/dist/solid.js:1287 (anonymous)",
-          "ms": 71.133
+          "name": "../../node_modules/solid-js/dist/solid.js:1298 createComponent",
+          "ms": 94.451
         },
         {
-          "name": "../../node_modules/solid-js/dist/solid.js:218 createRenderEffect",
-          "ms": 54.87
+          "name": "../../node_modules/@solidjs/signals/dist/prod/core/effect.js:57 runEffect",
+          "ms": 58.019
         },
         {
-          "name": "../../node_modules/solid-js/web/dist/web.js:211 fn",
-          "ms": 37.67
+          "name": "../../benchmarks/frameworks/solid.jsx:6 (anonymous)",
+          "ms": 37.379
         },
         {
           "name": "(runtime):0 cloneNode",
-          "ms": 35.743
-        },
-        {
-          "name": "../../benchmarks/frameworks/solid.jsx:32 (anonymous)",
-          "ms": 31.692
+          "ms": 28.185
         },
         {
           "name": "(runtime):0 (garbage collector)",
-          "ms": 23.121
+          "ms": 21.727
         },
         {
-          "name": "../../node_modules/solid-js/web/dist/web.js:533 insertExpression",
-          "ms": 15.052
+          "name": "../../node_modules/@solidjs/web/dist/web.js:906 accessor.$s.options",
+          "ms": 20.141
+        },
+        {
+          "name": "../../node_modules/@solidjs/web/dist/web.js:1671 insertExpression",
+          "ms": 19.585
+        },
+        {
+          "name": "(runtime):0 (idle)",
+          "ms": 9.767
         }
       ],
       "sources": [
         {
           "name": "(runtime)",
-          "ms": 755.708
+          "ms": 688.484
         },
         {
           "name": "../../benchmarks/frameworks/solid.jsx",
-          "ms": 43.049
+          "ms": 30.623
         },
         {
-          "name": "../../node_modules/solid-js/dist/solid.js",
-          "ms": 14.49
+          "name": "../../node_modules/@solidjs/signals/dist/prod/core/core.js",
+          "ms": 12.544
         },
         {
-          "name": "../../node_modules/solid-js/web/dist/web.js",
-          "ms": 8.399
+          "name": "../../node_modules/@solidjs/web/dist/web.js",
+          "ms": 11.314
+        },
+        {
+          "name": "../../node_modules/@solidjs/signals/dist/prod/core/effect.js",
+          "ms": 2.987
+        },
+        {
+          "name": "../../node_modules/@solidjs/signals/dist/prod/core/graph.js",
+          "ms": 1.994
+        },
+        {
+          "name": "../../node_modules/@solidjs/signals/dist/prod/core/owner.js",
+          "ms": 0.586
+        },
+        {
+          "name": "../../node_modules/@solidjs/signals/dist/prod/core/scheduler.js",
+          "ms": 0.517
         }
       ]
     },
@@ -788,84 +780,76 @@
       "phase": "dispose",
       "self": [
         {
-          "name": "../../benchmarks/frameworks/solid.jsx:58 dispose",
-          "ms": 57.134
+          "name": "../../benchmarks/frameworks/solid.jsx:27 dispose",
+          "ms": 62.951
         },
         {
           "name": "(runtime):0 (program)",
-          "ms": 39.622
+          "ms": 34.303
         },
         {
-          "name": "../../node_modules/solid-js/dist/solid.js:946 cleanNode",
-          "ms": 3.956
+          "name": "../../node_modules/@solidjs/signals/dist/prod/core/graph.js:19 unlinkSubs",
+          "ms": 3.542
         },
         {
           "name": "(runtime):0 (idle)",
-          "ms": 0.967
-        },
-        {
-          "name": "../../benchmarks/frameworks/page.mjs:55 run",
-          "ms": 0.493
+          "ms": 0.745
         }
       ],
       "inclusive": [
         {
           "name": "(runtime):0 (root)",
-          "ms": 102.172
+          "ms": 101.541
+        },
+        {
+          "name": "../../benchmarks/frameworks/solid.jsx:27 dispose",
+          "ms": 66.493
         },
         {
           "name": "../../benchmarks/frameworks/page.mjs:55 run",
-          "ms": 61.583
+          "ms": 66.493
         },
         {
           "name": "(runtime):1 (anonymous)",
-          "ms": 61.583
+          "ms": 66.493
         },
         {
           "name": "(runtime):305 evaluate",
-          "ms": 61.583
-        },
-        {
-          "name": "../../benchmarks/frameworks/solid.jsx:58 dispose",
-          "ms": 61.09
+          "ms": 66.493
         },
         {
           "name": "(runtime):0 (program)",
-          "ms": 39.622
+          "ms": 34.303
         },
         {
-          "name": "../../node_modules/solid-js/dist/solid.js:946 cleanNode",
-          "ms": 3.956
+          "name": "../../node_modules/@solidjs/signals/dist/prod/core/graph.js:19 unlinkSubs",
+          "ms": 3.542
         },
         {
-          "name": "../../node_modules/solid-js/dist/solid.js:188 (anonymous)",
-          "ms": 3.956
+          "name": "../../node_modules/@solidjs/signals/dist/prod/core/graph.js:59 clearDeps",
+          "ms": 3.542
         },
         {
-          "name": "../../node_modules/solid-js/dist/solid.js:455 untrack",
-          "ms": 3.956
+          "name": "../../node_modules/@solidjs/signals/dist/prod/core/owner.js:38 disposeChildren",
+          "ms": 3.542
         },
         {
           "name": "(runtime):0 (idle)",
-          "ms": 0.967
+          "ms": 0.745
         }
       ],
       "sources": [
         {
           "name": "../../benchmarks/frameworks/solid.jsx",
-          "ms": 57.134
+          "ms": 62.951
         },
         {
           "name": "(runtime)",
-          "ms": 40.589
+          "ms": 35.048
         },
         {
-          "name": "../../node_modules/solid-js/dist/solid.js",
-          "ms": 3.956
-        },
-        {
-          "name": "../../benchmarks/frameworks/page.mjs",
-          "ms": 0.493
+          "name": "../../node_modules/@solidjs/signals/dist/prod/core/graph.js",
+          "ms": 3.542
         }
       ]
     },
@@ -875,307 +859,319 @@
       "self": [
         {
           "name": "(runtime):0 (program)",
-          "ms": 651.694
-        },
-        {
-          "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Base.fs.js:344 (anonymous)",
-          "ms": 47.88
+          "ms": 647.498
         },
         {
           "name": "(runtime):0 (garbage collector)",
-          "ms": 30.792
+          "ms": 42.69
+        },
+        {
+          "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Base.fs.js:344 (anonymous)",
+          "ms": 40.632
         },
         {
           "name": "(runtime):0 appendChild",
-          "ms": 26.874
+          "ms": 32.032
         },
         {
           "name": "(runtime):0 createElement",
-          "ms": 17.978
+          "ms": 21.702
         },
         {
           "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Base.fs.js:158 Base_applyItems",
-          "ms": 14.275
-        },
-        {
-          "name": "(runtime):0 addEventListener",
-          "ms": 9.361
-        },
-        {
-          "name": "(runtime):0 (idle)",
-          "ms": 7.231
+          "ms": 13.338
         },
         {
           "name": "(runtime):0 setAttribute",
-          "ms": 7.197
+          "ms": 8.655
         },
         {
-          "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Base.fs.js:186 Base_createElement",
-          "ms": 5.017
+          "name": "(runtime):0 (idle)",
+          "ms": 8.143
+        },
+        {
+          "name": "(runtime):0 addEventListener",
+          "ms": 7.475
         },
         {
           "name": "../../generated-ripple/fable_modules/fable-library-js.5.18.0/Types.js:169 FSharpRef",
-          "ms": 4.824
-        },
-        {
-          "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Html.fs.js:44 (anonymous)",
-          "ms": 4.516
-        },
-        {
-          "name": "(runtime):0 createTextNode",
-          "ms": 3.012
+          "ms": 4.995
         },
         {
           "name": "../../generated-ripple/fable_modules/fable-library-js.5.18.0/Option.js:42 value",
-          "ms": 2.973
+          "ms": 3.544
         },
         {
-          "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/Api.fs.js:109 Signal_autorun",
-          "ms": 2.828
+          "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Base.fs.js:236 (anonymous)",
+          "ms": 3.248
         },
         {
-          "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/Internal/Tracking.fs.js:148 probe",
-          "ms": 2.058
+          "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Base.fs.js:186 Base_createElement",
+          "ms": 2.811
         },
         {
-          "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/Internal/Scope.fs.js:245 ScopeModule_root",
-          "ms": 2.018
-        },
-        {
-          "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Base.fs.js:337 (anonymous)",
-          "ms": 1.988
-        },
-        {
-          "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Base.fs.js:252 (anonymous)",
-          "ms": 1.486
-        },
-        {
-          "name": "../../generated-ripple/fable_modules/fable-library-js.5.18.0/Util.js:204 int32ToString",
-          "ms": 1.187
-        },
-        {
-          "name": "../../benchmarks/frameworks/page.mjs:55 run",
-          "ms": 1.105
-        },
-        {
-          "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/Types.fs.js:19 Var$1",
-          "ms": 1.012
-        },
-        {
-          "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Html.fs.js:37 Html_text_5106B011",
-          "ms": 1.012
-        },
-        {
-          "name": "../../generated-ripple/RipplePerf.js:21 (anonymous)",
-          "ms": 1.012
+          "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Html.fs.js:44 (anonymous)",
+          "ms": 2.528
         },
         {
           "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/Types.fs.js:120 Effect",
-          "ms": 1.011
+          "ms": 2.507
         },
         {
-          "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Base.fs.js:369 Base_listen",
-          "ms": 0.999
+          "name": "(runtime):0 createTextNode",
+          "ms": 2.484
         },
         {
-          "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/Internal/Scope.fs.js:200 ScopeModule_register",
-          "ms": 0.996
+          "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/Internal/Scope.fs.js:211 ScopeModule_onCleanup",
+          "ms": 2.007
         },
         {
-          "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Base.fs.js:245 Base_bindAttribute",
-          "ms": 0.995
+          "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/Internal/Scope.fs.js:245 ScopeModule_root",
+          "ms": 1.988
+        },
+        {
+          "name": "../../generated-ripple/fable_modules/fable-library-js.5.18.0/Option.js:53 some",
+          "ms": 1.877
+        },
+        {
+          "name": "../../generated-ripple/RipplePerf.js:21 (anonymous)",
+          "ms": 1.48
+        },
+        {
+          "name": "../../generated-ripple/RipplePerf.js:25 (anonymous)",
+          "ms": 1.34
+        },
+        {
+          "name": "../../generated-ripple/fable_modules/fable-library-js.5.18.0/List.js:10 FSharpList",
+          "ms": 1.008
+        },
+        {
+          "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/Internal/Graph.fs.js:119 addObserver",
+          "ms": 1.007
+        },
+        {
+          "name": "../../benchmarks/frameworks/page.mjs:13 (anonymous)",
+          "ms": 1.004
+        },
+        {
+          "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Html.fs.js:37 Html_text_5106B011",
+          "ms": 0.99
+        },
+        {
+          "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Base.fs.js:337 (anonymous)",
+          "ms": 0.989
         },
         {
           "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/ReactiveNode.fs.js:20 ReactiveNode",
-          "ms": 0.992
+          "ms": 0.988
         },
         {
-          "name": "../../generated-ripple/fable_modules/fable-library-js.5.18.0/Seq.js:236 Enumerator_generateWhileSome.started",
-          "ms": 0.99
+          "name": "../../generated-ripple/fable_modules/fable-library-js.5.18.0/Array.js:925 item",
+          "ms": 0.961
+        },
+        {
+          "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/Internal/Tracking.fs.js:18 track",
+          "ms": 0.822
+        },
+        {
+          "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Attributes.fs.js:147 attr_disabled_Z31F02BA3",
+          "ms": 0.673
         }
       ],
       "inclusive": [
         {
           "name": "(runtime):0 (root)",
-          "ms": 866.3
+          "ms": 871.545
         },
         {
           "name": "(runtime):0 (program)",
-          "ms": 651.694
-        },
-        {
-          "name": "../../benchmarks/frameworks/page.mjs:55 run",
-          "ms": 176.583
-        },
-        {
-          "name": "(runtime):1 (anonymous)",
-          "ms": 176.583
+          "ms": 647.498
         },
         {
           "name": "(runtime):305 evaluate",
-          "ms": 176.583
+          "ms": 173.214
         },
         {
-          "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Html.fs.js:797 Html_mount",
-          "ms": 175.478
-        },
-        {
-          "name": "../../generated-ripple/RipplePerf.js:16 mount$2",
-          "ms": 175.478
+          "name": "(runtime):1 (anonymous)",
+          "ms": 173.214
         },
         {
           "name": "../../benchmarks/frameworks/page.mjs:13 (anonymous)",
-          "ms": 175.478
+          "ms": 172.707
         },
         {
-          "name": "../../generated-ripple/RipplePerf.js:18 (anonymous)",
-          "ms": 169.654
+          "name": "../../benchmarks/frameworks/page.mjs:55 run",
+          "ms": 172.707
         },
         {
-          "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Html.fs.js:806 (anonymous)",
-          "ms": 169.654
+          "name": "../../generated-ripple/RipplePerf.js:16 mount$2",
+          "ms": 171.703
+        },
+        {
+          "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Html.fs.js:797 Html_mount",
+          "ms": 171.2
         },
         {
           "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/Internal/Scope.fs.js:245 ScopeModule_root",
-          "ms": 169.654
+          "ms": 165.158
         },
         {
           "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/Api.fs.js:158 Signal_root",
-          "ms": 169.654
+          "ms": 165.158
         },
         {
-          "name": "../../generated-ripple/fable_modules/fable-library-js.5.18.0/Seq.js:339 toList",
-          "ms": 163.735
+          "name": "../../generated-ripple/RipplePerf.js:18 (anonymous)",
+          "ms": 165.158
+        },
+        {
+          "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Html.fs.js:806 (anonymous)",
+          "ms": 165.158
         },
         {
           "name": "../../generated-ripple/fable_modules/fable-library-js.5.18.0/List.js:490 ofSeq",
-          "ms": 163.238
+          "ms": 151.562
         },
         {
-          "name": "../../generated-ripple/fable_modules/fable-library-js.5.18.0/Seq.js:246 (anonymous)",
-          "ms": 161.77
-        },
-        {
-          "name": "../../generated-ripple/fable_modules/fable-library-js.5.18.0/Seq.js:87 System.Collections.IEnumerator.MoveNext",
-          "ms": 161.745
+          "name": "../../generated-ripple/fable_modules/fable-library-js.5.18.0/Seq.js:339 toList",
+          "ms": 151.562
         },
         {
           "name": "../../generated-ripple/fable_modules/fable-library-js.5.18.0/Seq.js:930 (anonymous)",
-          "ms": 161.273
+          "ms": 150.56
+        },
+        {
+          "name": "../../generated-ripple/fable_modules/fable-library-js.5.18.0/Seq.js:246 (anonymous)",
+          "ms": 150.066
+        },
+        {
+          "name": "../../generated-ripple/fable_modules/fable-library-js.5.18.0/Seq.js:87 System.Collections.IEnumerator.MoveNext",
+          "ms": 150.066
         },
         {
           "name": "../../generated-ripple/RipplePerf.js:20 (anonymous)",
-          "ms": 160.248
+          "ms": 148.687
         },
         {
           "name": "../../generated-ripple/RipplePerf.js:21 (anonymous)",
-          "ms": 157.726
+          "ms": 143.686
         },
         {
           "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Base.fs.js:186 Base_createElement",
-          "ms": 139.016
+          "ms": 133.874
         },
         {
           "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Base.fs.js:158 Base_applyItems",
-          "ms": 118.638
+          "ms": 113.493
         },
         {
           "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/Api.fs.js:109 Signal_autorun",
-          "ms": 71.895
+          "ms": 59.954
         },
         {
           "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Html.fs.js:522 Html_input_Z714D7FBE",
-          "ms": 68.306
+          "ms": 58.107
         },
         {
           "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/Internal/Tracking.fs.js:148 probe",
-          "ms": 61.782
+          "ms": 52.43
         },
         {
           "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Base.fs.js:337 (anonymous)",
-          "ms": 57.635
+          "ms": 49.088
         },
         {
           "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Base.fs.js:344 (anonymous)",
-          "ms": 49.844
-        },
-        {
-          "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Html.fs.js:158 Html_div_Z714D7FBE",
-          "ms": 36.229
-        },
-        {
-          "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Html.fs.js:526 Html_button_Z714D7FBE",
-          "ms": 31.672
+          "ms": 43.071
         },
         {
           "name": "(runtime):0 (garbage collector)",
-          "ms": 30.792
+          "ms": 42.69
+        },
+        {
+          "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Html.fs.js:158 Html_div_Z714D7FBE",
+          "ms": 38.18
         },
         {
           "name": "(runtime):0 appendChild",
-          "ms": 26.874
+          "ms": 32.032
+        },
+        {
+          "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Html.fs.js:526 Html_button_Z714D7FBE",
+          "ms": 28.624
         }
       ],
       "sources": [
         {
           "name": "(runtime)",
-          "ms": 754.139
+          "ms": 771.186
         },
         {
           "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Base.fs.js",
-          "ms": 73.463
-        },
-        {
-          "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Html.fs.js",
-          "ms": 6.375
-        },
-        {
-          "name": "../../generated-ripple/fable_modules/fable-library-js.5.18.0/Types.js",
-          "ms": 6.323
-        },
-        {
-          "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/Api.fs.js",
-          "ms": 3.652
+          "ms": 62.512
         },
         {
           "name": "../../generated-ripple/fable_modules/fable-library-js.5.18.0/Option.js",
-          "ms": 3.489
+          "ms": 5.421
+        },
+        {
+          "name": "../../generated-ripple/fable_modules/fable-library-js.5.18.0/Types.js",
+          "ms": 4.995
         },
         {
           "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/Internal/Scope.fs.js",
-          "ms": 3.014
+          "ms": 4.491
         },
         {
-          "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/Internal/Tracking.fs.js",
-          "ms": 3.014
-        },
-        {
-          "name": "../../generated-ripple/fable_modules/fable-library-js.5.18.0/Seq.js",
-          "ms": 2.955
-        },
-        {
-          "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/Types.fs.js",
-          "ms": 2.533
-        },
-        {
-          "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/ReactiveNode.fs.js",
-          "ms": 2.015
-        },
-        {
-          "name": "../../generated-ripple/fable_modules/fable-library-js.5.18.0/Util.js",
-          "ms": 1.728
+          "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Html.fs.js",
+          "ms": 4.019
         },
         {
           "name": "../../generated-ripple/RipplePerf.js",
-          "ms": 1.497
+          "ms": 3.816
         },
         {
-          "name": "../../benchmarks/frameworks/page.mjs",
-          "ms": 1.105
+          "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/Types.fs.js",
+          "ms": 3.178
+        },
+        {
+          "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/ReactiveNode.fs.js",
+          "ms": 1.999
+        },
+        {
+          "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Attributes.fs.js",
+          "ms": 1.662
+        },
+        {
+          "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/Internal/Graph.fs.js",
+          "ms": 1.494
+        },
+        {
+          "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/Api.fs.js",
+          "ms": 1.014
         },
         {
           "name": "../../generated-ripple/fable_modules/fable-library-js.5.18.0/List.js",
-          "ms": 0.998
+          "ms": 1.008
+        },
+        {
+          "name": "../../benchmarks/frameworks/page.mjs",
+          "ms": 1.004
+        },
+        {
+          "name": "../../generated-ripple/fable_modules/fable-library-js.5.18.0/Seq.js",
+          "ms": 0.992
+        },
+        {
+          "name": "../../generated-ripple/fable_modules/fable-library-js.5.18.0/Util.js",
+          "ms": 0.971
+        },
+        {
+          "name": "../../generated-ripple/fable_modules/fable-library-js.5.18.0/Array.js",
+          "ms": 0.961
+        },
+        {
+          "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/Internal/Tracking.fs.js",
+          "ms": 0.822
         }
       ]
     },
@@ -1185,123 +1181,119 @@
       "self": [
         {
           "name": "(runtime):0 removeChild",
-          "ms": 62.07
+          "ms": 66.407
         },
         {
           "name": "(runtime):0 (program)",
-          "ms": 56.49
+          "ms": 64.798
+        },
+        {
+          "name": "../../benchmarks/frameworks/page.mjs:55 run",
+          "ms": 1.508
         },
         {
           "name": "(runtime):0 (idle)",
-          "ms": 1.094
+          "ms": 1.035
         },
         {
           "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/ReactiveNode.fs.js:101 ReactiveNode__set_Disposed_Z1FBCCD16",
-          "ms": 0.52
+          "ms": 0.494
+        },
+        {
+          "name": "../../generated-ripple/fable_modules/fable-library-js.5.18.0/Util.js:54 disposeSafe",
+          "ms": 0.491
         },
         {
           "name": "../../generated-ripple/RipplePerf.js:27 (anonymous)",
-          "ms": 0.508
+          "ms": 0.491
         },
         {
-          "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/ReactiveNode.fs.js:91 ReactiveNode__get_Disposed",
-          "ms": 0.496
-        },
-        {
-          "name": "(runtime):0 (garbage collector)",
-          "ms": 0.49
-        },
-        {
-          "name": "../../generated-ripple/fable_modules/fable-library-js.5.18.0/Array.js:925 item",
-          "ms": 0.477
+          "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Html.fs.js:811 Dispose",
+          "ms": 0.359
         }
       ],
       "inclusive": [
         {
           "name": "(runtime):0 (root)",
-          "ms": 122.145
-        },
-        {
-          "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Html.fs.js:811 Dispose",
-          "ms": 64.071
-        },
-        {
-          "name": "../../generated-ripple/fable_modules/fable-library-js.5.18.0/Util.js:54 disposeSafe",
-          "ms": 64.071
-        },
-        {
-          "name": "../../generated-ripple/RipplePerf.js:37 (anonymous)",
-          "ms": 64.071
+          "ms": 135.583
         },
         {
           "name": "../../benchmarks/frameworks/page.mjs:55 run",
-          "ms": 64.071
+          "ms": 69.75
         },
         {
           "name": "(runtime):1 (anonymous)",
-          "ms": 64.071
+          "ms": 69.75
         },
         {
           "name": "(runtime):305 evaluate",
-          "ms": 64.071
+          "ms": 69.75
+        },
+        {
+          "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Html.fs.js:811 Dispose",
+          "ms": 68.242
+        },
+        {
+          "name": "../../generated-ripple/fable_modules/fable-library-js.5.18.0/Util.js:54 disposeSafe",
+          "ms": 68.242
+        },
+        {
+          "name": "../../generated-ripple/RipplePerf.js:37 (anonymous)",
+          "ms": 68.242
         },
         {
           "name": "(runtime):0 removeChild",
-          "ms": 62.07
+          "ms": 66.407
         },
         {
           "name": "(runtime):0 (program)",
-          "ms": 56.49
+          "ms": 64.798
         },
         {
           "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/Internal/Scope.fs.js:139 Scope__TearDown",
-          "ms": 2.001
+          "ms": 1.476
         },
         {
           "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/Internal/Scope.fs.js:21 Dispose",
-          "ms": 2.001
+          "ms": 1.476
         },
         {
           "name": "(runtime):0 (idle)",
-          "ms": 1.094
-        },
-        {
-          "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/ReactiveNode.fs.js:101 ReactiveNode__set_Disposed_Z1FBCCD16",
-          "ms": 0.52
+          "ms": 1.035
         },
         {
           "name": "../../generated-ripple/RipplePerf.js:27 (anonymous)",
-          "ms": 0.508
+          "ms": 0.982
         },
         {
-          "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/ReactiveNode.fs.js:91 ReactiveNode__get_Disposed",
-          "ms": 0.496
-        },
-        {
-          "name": "(runtime):0 (garbage collector)",
-          "ms": 0.49
-        },
-        {
-          "name": "../../generated-ripple/fable_modules/fable-library-js.5.18.0/Array.js:925 item",
-          "ms": 0.477
+          "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/ReactiveNode.fs.js:101 ReactiveNode__set_Disposed_Z1FBCCD16",
+          "ms": 0.494
         }
       ],
       "sources": [
         {
           "name": "(runtime)",
-          "ms": 120.144
+          "ms": 132.24
+        },
+        {
+          "name": "../../benchmarks/frameworks/page.mjs",
+          "ms": 1.508
         },
         {
           "name": "../../generated-ripple/fable_modules/Fable.Ripple.1.0.0-beta.8/ReactiveNode.fs.js",
-          "ms": 1.016
+          "ms": 0.494
+        },
+        {
+          "name": "../../generated-ripple/fable_modules/fable-library-js.5.18.0/Util.js",
+          "ms": 0.491
         },
         {
           "name": "../../generated-ripple/RipplePerf.js",
-          "ms": 0.508
+          "ms": 0.491
         },
         {
-          "name": "../../generated-ripple/fable_modules/fable-library-js.5.18.0/Array.js",
-          "ms": 0.477
+          "name": "../../generated-ripple/fable_modules/Fable.Ripple.Dom.1.0.0-beta.9/Html.fs.js",
+          "ms": 0.359
         }
       ]
     },
@@ -1311,267 +1303,263 @@
       "self": [
         {
           "name": "(runtime):0 (program)",
-          "ms": 662.493
+          "ms": 684.934
         },
         {
           "name": "(runtime):0 set value",
-          "ms": 40.736
-        },
-        {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:8359 completeWork",
-          "ms": 27.971
-        },
-        {
-          "name": "(runtime):0 appendChild",
-          "ms": 24.777
+          "ms": 41.549
         },
         {
           "name": "(runtime):0 (garbage collector)",
-          "ms": 24.574
+          "ms": 31.532
+        },
+        {
+          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:8359 completeWork",
+          "ms": 23.816
+        },
+        {
+          "name": "(runtime):0 appendChild",
+          "ms": 20.341
         },
         {
           "name": "(runtime):0 addEventListener",
-          "ms": 14.664
+          "ms": 19.271
         },
         {
           "name": "(runtime):0 createElement",
-          "ms": 14.535
+          "ms": 18.358
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:12815 completeUnitOfWork",
-          "ms": 13.981
-        },
-        {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:1195 trackValueOnNode",
-          "ms": 12.082
-        },
-        {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:14406 setProp",
-          "ms": 11.104
-        },
-        {
-          "name": "(runtime):0 (idle)",
-          "ms": 8.968
+          "ms": 16.223
         },
         {
           "name": "(runtime):0 setAttribute",
-          "ms": 8.362
+          "ms": 12.892
+        },
+        {
+          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:14406 setProp",
+          "ms": 12.63
+        },
+        {
+          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:1195 trackValueOnNode",
+          "ms": 11.173
+        },
+        {
+          "name": "(runtime):0 (idle)",
+          "ms": 9.918
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:1025 getClosestInstanceFromNode",
-          "ms": 7.141
-        },
-        {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:1315 initInput",
-          "ms": 6.653
-        },
-        {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:14803 setInitialProperties",
-          "ms": 5.868
-        },
-        {
-          "name": "../../node_modules/react/cjs/react.production.js:453 exports.createElement",
-          "ms": 5.636
+          "ms": 7.834
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:1588 getEventTarget",
-          "ms": 4.633
-        },
-        {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:39 getNearestMountedFiber",
-          "ms": 4.486
-        },
-        {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:13803 listenToNonDelegatedEvent",
-          "ms": 4.358
-        },
-        {
-          "name": "../../benchmarks/frameworks/react.mjs:5 Row",
-          "ms": 3.92
+          "ms": 6.78
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:1420 setTextContent",
-          "ms": 3.755
+          "ms": 6.194
+        },
+        {
+          "name": "../../node_modules/react/cjs/react.production.js:453 exports.createElement",
+          "ms": 6.052
+        },
+        {
+          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:1315 initInput",
+          "ms": 4.488
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:1187 isCheckable",
-          "ms": 3.515
-        },
-        {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:4078 reconcileChildFibersImpl",
-          "ms": 2.514
+          "ms": 4.165
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:12522 renderRootSync",
-          "ms": 2.347
+          "ms": 3.323
         },
         {
-          "name": "(runtime):0 get value",
-          "ms": 1.987
+          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:14803 setInitialProperties",
+          "ms": 3.267
         },
         {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:1125 setValueForAttribute",
-          "ms": 1.886
-        },
-        {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:13843 addTrappedEventListener",
-          "ms": 1.723
-        },
-        {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:3905 reconcileChildrenArray",
-          "ms": 1.705
+          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:6791 updateFunctionComponent",
+          "ms": 2.501
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:7768 beginWork",
-          "ms": 1.641
+          "ms": 2.439
+        },
+        {
+          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:13803 listenToNonDelegatedEvent",
+          "ms": 2.198
+        },
+        {
+          "name": "../../benchmarks/frameworks/react.mjs:5 Row",
+          "ms": 2.037
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:15438 getOwnerDocumentFromRootContainer",
-          "ms": 1.59
+          "ms": 2.022
+        },
+        {
+          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:2664 shouldConstruct",
+          "ms": 1.994
+        },
+        {
+          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:39 getNearestMountedFiber",
+          "ms": 1.957
+        },
+        {
+          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:13843 addTrappedEventListener",
+          "ms": 1.843
+        },
+        {
+          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:18025 getEventPriority",
+          "ms": 1.5
+        },
+        {
+          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:3905 reconcileChildrenArray",
+          "ms": 1.482
         }
       ],
       "inclusive": [
         {
           "name": "(runtime):0 (root)",
-          "ms": 949.533
+          "ms": 982.939
         },
         {
           "name": "(runtime):0 (program)",
-          "ms": 662.493
+          "ms": 684.934
         },
         {
           "name": "(runtime):1 (anonymous)",
-          "ms": 234.437
+          "ms": 236.978
         },
         {
           "name": "(runtime):305 evaluate",
-          "ms": 234.437
+          "ms": 236.473
         },
         {
           "name": "../../benchmarks/frameworks/react.mjs:12 mount",
-          "ms": 233.952
+          "ms": 235.978
         },
         {
           "name": "../../benchmarks/frameworks/page.mjs:55 run",
-          "ms": 233.952
+          "ms": 235.978
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom.production.js:89 exports.flushSync",
-          "ms": 222.744
+          "ms": 219.634
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:13408 flushSyncWorkAcrossRoots_impl",
-          "ms": 221.752
+          "ms": 218.463
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:12402 flushSyncWork$1",
-          "ms": 221.752
+          "ms": 218.463
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:16914 flushSyncWork",
-          "ms": 221.752
+          "ms": 218.463
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:12069 performWorkOnRoot",
-          "ms": 221.275
+          "ms": 217.597
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:13574 performSyncWorkOnRoot",
-          "ms": 221.275
+          "ms": 217.597
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:12522 renderRootSync",
-          "ms": 211.112
+          "ms": 212.307
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:12815 completeUnitOfWork",
-          "ms": 186.845
+          "ms": 188.005
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:8359 completeWork",
-          "ms": 172.864
+          "ms": 171.791
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:14803 setInitialProperties",
-          "ms": 109.927
+          "ms": 108.194
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:1315 initInput",
-          "ms": 65.455
+          "ms": 62.698
         },
         {
           "name": "(runtime):0 set value",
-          "ms": 40.736
+          "ms": 41.549
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:14406 setProp",
-          "ms": 26.594
-        },
-        {
-          "name": "(runtime):0 appendChild",
-          "ms": 24.777
+          "ms": 31.716
         },
         {
           "name": "(runtime):0 (garbage collector)",
-          "ms": 24.574
-        },
-        {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:7768 beginWork",
-          "ms": 21.342
-        },
-        {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:17873 dispatchDiscreteEvent",
-          "ms": 19.061
-        },
-        {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:17907 dispatchEvent",
-          "ms": 18.966
-        },
-        {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:1235 track",
-          "ms": 16.581
+          "ms": 31.532
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:13843 addTrappedEventListener",
-          "ms": 16.387
+          "ms": 22.614
         },
         {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:17992 findInstanceBlockingEvent",
-          "ms": 15.426
+          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:7768 beginWork",
+          "ms": 20.983
+        },
+        {
+          "name": "(runtime):0 appendChild",
+          "ms": 20.341
         },
         {
           "name": "(runtime):0 addEventListener",
-          "ms": 14.664
+          "ms": 19.271
+        },
+        {
+          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:17873 dispatchDiscreteEvent",
+          "ms": 19.079
+        },
+        {
+          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:17907 dispatchEvent",
+          "ms": 19.064
         },
         {
           "name": "(runtime):0 createElement",
-          "ms": 14.535
+          "ms": 18.358
         },
         {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:6791 updateFunctionComponent",
-          "ms": 12.741
+          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:1235 track",
+          "ms": 16.661
+        },
+        {
+          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:18577 exports.createRoot",
+          "ms": 16.344
+        },
+        {
+          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:17992 findInstanceBlockingEvent",
+          "ms": 15.603
         }
       ],
       "sources": [
         {
           "name": "(runtime)",
-          "ms": 802.076
+          "ms": 841.117
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js",
-          "ms": 135.703
+          "ms": 132.742
         },
         {
           "name": "../../node_modules/react/cjs/react.production.js",
-          "ms": 5.636
+          "ms": 6.052
         },
         {
           "name": "../../benchmarks/frameworks/react.mjs",
-          "ms": 5.615
-        },
-        {
-          "name": "../../node_modules/react-dom/cjs/react-dom.production.js",
-          "ms": 0.503
+          "ms": 3.028
         }
       ]
     },
@@ -1581,195 +1569,179 @@
       "self": [
         {
           "name": "(runtime):0 removeChild",
-          "ms": 102.752
+          "ms": 65.601
         },
         {
           "name": "(runtime):0 (program)",
-          "ms": 63.686
+          "ms": 47.25
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:11912 commitPassiveUnmountEffectsInsideOfDeletedTree_begin",
-          "ms": 17.96
-        },
-        {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:10192 recursivelyTraverseDeletionEffects",
-          "ms": 5.005
+          "ms": 17.768
         },
         {
           "name": "(runtime):0 (garbage collector)",
-          "ms": 4.992
+          "ms": 3.534
+        },
+        {
+          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:10192 recursivelyTraverseDeletionEffects",
+          "ms": 2.531
         },
         {
           "name": "(runtime):0 (idle)",
-          "ms": 0.826
+          "ms": 1.356
         },
         {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:2354 getActiveElementDeep",
-          "ms": 0.537
+          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:391 pushHostContainer",
+          "ms": 0.633
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:10201 commitDeletionEffectsOnFiber",
-          "ms": 0.529
+          "ms": 0.503
         },
         {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:382 push",
-          "ms": 0.502
+          "name": "../../node_modules/scheduler/cjs/scheduler.production.js:121 performWorkUntilDeadline",
+          "ms": 0.487
         },
         {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:798 getEntangledLanes",
-          "ms": 0.501
-        },
-        {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:13134 flushSpawnedWork",
-          "ms": 0.498
-        },
-        {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:11830 recursivelyTraversePassiveUnmountEffects",
-          "ms": 0.493
-        },
-        {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:4374 processUpdateQueue",
-          "ms": 0.488
-        },
-        {
-          "name": "(runtime):0 now",
-          "ms": 0.488
-        },
-        {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:12815 completeUnitOfWork",
-          "ms": 0.446
+          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:4296 enqueueUpdate",
+          "ms": 0.476
         }
       ],
       "inclusive": [
         {
           "name": "(runtime):0 (root)",
-          "ms": 199.703
-        },
-        {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:12069 performWorkOnRoot",
-          "ms": 130.199
-        },
-        {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:13574 performSyncWorkOnRoot",
-          "ms": 130.199
-        },
-        {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:13408 flushSyncWorkAcrossRoots_impl",
-          "ms": 130.199
-        },
-        {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:12402 flushSyncWork$1",
-          "ms": 130.199
+          "ms": 140.139
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:18500 ReactDOMHydrationRoot.unmount.ReactDOMRoot.unmount",
-          "ms": 130.199
+          "ms": 87.512
         },
         {
           "name": "../../benchmarks/frameworks/react.mjs:27 dispose",
-          "ms": 130.199
+          "ms": 87.512
         },
         {
           "name": "../../benchmarks/frameworks/page.mjs:55 run",
-          "ms": 130.199
+          "ms": 87.512
         },
         {
           "name": "(runtime):1 (anonymous)",
-          "ms": 130.199
+          "ms": 87.512
         },
         {
           "name": "(runtime):305 evaluate",
-          "ms": 130.199
+          "ms": 87.512
+        },
+        {
+          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:12069 performWorkOnRoot",
+          "ms": 87.036
+        },
+        {
+          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:13574 performSyncWorkOnRoot",
+          "ms": 87.036
+        },
+        {
+          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:13408 flushSyncWorkAcrossRoots_impl",
+          "ms": 87.036
+        },
+        {
+          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:12402 flushSyncWork$1",
+          "ms": 87.036
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:12906 commitRoot",
-          "ms": 128.262
+          "ms": 86.403
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:12867 completeRoot",
-          "ms": 128.262
+          "ms": 86.403
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:12240 completeRootWhenReady",
-          "ms": 128.262
+          "ms": 86.403
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:10201 commitDeletionEffectsOnFiber",
-          "ms": 108.286
+          "ms": 68.635
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:10192 recursivelyTraverseDeletionEffects",
-          "ms": 108.286
+          "ms": 68.635
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:10454 recursivelyTraverseMutationEffects",
-          "ms": 108.286
+          "ms": 68.635
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:10497 commitMutationEffectsOnFiber",
-          "ms": 108.286
+          "ms": 68.635
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:12986 flushMutationEffects",
-          "ms": 108.286
+          "ms": 68.635
         },
         {
           "name": "(runtime):0 removeChild",
-          "ms": 102.752
+          "ms": 65.601
         },
         {
           "name": "(runtime):0 (program)",
-          "ms": 63.686
-        },
-        {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:13134 flushSpawnedWork",
-          "ms": 18.951
-        },
-        {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:11830 recursivelyTraversePassiveUnmountEffects",
-          "ms": 18.453
-        },
-        {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:11849 commitPassiveUnmountOnFiber",
-          "ms": 18.453
-        },
-        {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:13229 flushPassiveEffects",
-          "ms": 18.453
-        },
-        {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:13221 flushPendingEffects",
-          "ms": 18.453
+          "ms": 47.25
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:11912 commitPassiveUnmountEffectsInsideOfDeletedTree_begin",
-          "ms": 17.96
+          "ms": 17.768
+        },
+        {
+          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:11830 recursivelyTraversePassiveUnmountEffects",
+          "ms": 17.768
+        },
+        {
+          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:11849 commitPassiveUnmountOnFiber",
+          "ms": 17.768
+        },
+        {
+          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:13229 flushPassiveEffects",
+          "ms": 17.768
+        },
+        {
+          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:13221 flushPendingEffects",
+          "ms": 17.768
+        },
+        {
+          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:13134 flushSpawnedWork",
+          "ms": 17.768
         },
         {
           "name": "(runtime):0 (garbage collector)",
-          "ms": 4.992
-        },
-        {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:12522 renderRootSync",
-          "ms": 1.937
-        },
-        {
-          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:7768 beginWork",
-          "ms": 0.99
+          "ms": 3.534
         },
         {
           "name": "(runtime):0 (idle)",
-          "ms": 0.826
+          "ms": 1.356
+        },
+        {
+          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:391 pushHostContainer",
+          "ms": 0.633
+        },
+        {
+          "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js:7768 beginWork",
+          "ms": 0.633
         }
       ],
       "sources": [
         {
           "name": "(runtime)",
-          "ms": 172.744
+          "ms": 117.741
         },
         {
           "name": "../../node_modules/react-dom/cjs/react-dom-client.production.js",
-          "ms": 26.959
+          "ms": 21.911
+        },
+        {
+          "name": "../../node_modules/scheduler/cjs/scheduler.production.js",
+          "ms": 0.487
         }
       ]
     }

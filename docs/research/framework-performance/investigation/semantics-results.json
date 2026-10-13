@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-10-13T05:10:23.361Z",
+  "measuredAt": "2026-10-13T05:41:00.730Z",
   "chromium": "153.0.8010.12",
   "results": [
     {
@@ -60,13 +60,15 @@
       "threw": true,
       "message": "setter",
       "afterMount": "<span>keep</span>",
-      "cleanedAtMount": 0,
-      "laterReads": 3,
+      "cleanedAtMount": 3,
+      "laterReads": 0,
       "updateError": null,
-      "cleanedAfterDispose": 0,
+      "cleanedAfterDispose": 3,
       "disposeError": null,
       "afterDispose": "<span>keep</span>",
-      "pageErrors": []
+      "pageErrors": [
+        "setter"
+      ]
     },
     {
       "framework": "solid",
@@ -74,13 +76,15 @@
       "threw": true,
       "message": "reader",
       "afterMount": "<span>keep</span>",
-      "cleanedAtMount": 0,
-      "laterReads": 2,
+      "cleanedAtMount": 3,
+      "laterReads": 0,
       "updateError": null,
-      "cleanedAfterDispose": 0,
+      "cleanedAfterDispose": 3,
       "disposeError": null,
       "afterDispose": "<span>keep</span>",
-      "pageErrors": []
+      "pageErrors": [
+        "reader"
+      ]
     },
     {
       "framework": "ripple",

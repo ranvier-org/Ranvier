@@ -1,5 +1,7 @@
 # Mounting and disposal investigation
 
+> Solid figures in this directory before the [mount cost rationale](mount-rationale.md) are Solid 1.9.17 and are kept as earlier measurements; that rationale and later records measure Solid 2.
+
 This records the baseline investigation at `ca3a5d5`. The subsequent [array and modifier-function cleanup](cleanup.md) removes the intermediate token model and updates the performance checkpoint.
 
 The original comparison identifies a real problem: at 128 rows Ranvier mounts twice as slowly as Ripple and disposes about eight times as slowly. The investigation finds excess intermediate construction, JavaScript allocation and unnecessarily fine DOM removal. It does **not** establish that ownership guarantees intrinsically require this gap, or that replacing the view representation alone will close it. Production renderer code is unchanged in this checkpoint.

@@ -1,7 +1,7 @@
 {
-  "measuredAt": "2026-10-13T05:20:01.392Z",
+  "measuredAt": "2026-10-13T05:42:36.050Z",
   "chromium": "153.0.8010.12",
-  "sourceMap": "index-CRulMCv-.js.map",
+  "sourceMap": "index-C_9r4XmA.js.map",
   "configuration": "production unminified diagnostic bundle; sampling enabled only for CPU profiles",
   "results": [
     {
@@ -9,13 +9,13 @@
       "phase": "mount",
       "width": 128,
       "timingsUs": [
-        1492.1875,
-        734.375,
-        895.9375023841858,
-        832.03125,
-        853.4374982118607,
-        850.1562476158142,
-        997.0312491059303
+        1506.8750008940697,
+        871.2499961256981,
+        960.6250002980232,
+        972.0312505960464,
+        1003.2812505960464,
+        898.4375,
+        931.8749979138374
       ],
       "operations": {
         "createDocumentFragment": 1,
@@ -28,107 +28,107 @@
         "createTextNode": 128
       },
       "profiledRoots": 256,
-      "profiledRunMs": 314.1300001144409,
+      "profiledRunMs": 363.95500016212463,
       "hotspots": [
         {
           "functionName": "(program):0",
-          "ms": 628.51
+          "ms": 749.064
         },
         {
           "functionName": "(garbage collector):0",
-          "ms": 63.273
+          "ms": 79.963
         },
         {
           "functionName": "(anonymous):4526",
-          "ms": 44.238
-        },
-        {
-          "functionName": "appendChild:0",
-          "ms": 27.865
+          "ms": 44.723
         },
         {
           "functionName": "uncurry2:286",
-          "ms": 15.226
+          "ms": 21.775
         },
         {
           "functionName": "createElement:0",
-          "ms": 14.197
+          "ms": 21.474
         },
         {
-          "functionName": "setAttribute:0",
-          "ms": 12.421
-        },
-        {
-          "functionName": "(idle):0",
-          "ms": 10.969
-        },
-        {
-          "functionName": "addEventListener:0",
-          "ms": 9.51
+          "functionName": "appendChild:0",
+          "ms": 20.852
         },
         {
           "functionName": "insertBefore:0",
-          "ms": 7.225
+          "ms": 14.228
         },
         {
-          "functionName": "Ranvier.View.Foundation.Representation.Backend.ElementZ4C49CC3F:5568",
-          "ms": 7.021
+          "functionName": "(idle):0",
+          "ms": 12.714
         },
         {
-          "functionName": "FSharpRef$1:425",
-          "ms": 6.277
+          "functionName": "setAttribute:0",
+          "ms": 11.102
         },
         {
-          "functionName": "Events_onClick:4530",
-          "ms": 5.979
+          "functionName": "addEventListener:0",
+          "ms": 8.37
         },
         {
           "functionName": "equals$1:212",
-          "ms": 4.462
+          "ms": 7.553
+        },
+        {
+          "functionName": "Ranvier.View.Foundation.Representation.Backend.ElementZ4C49CC3F:5568",
+          "ms": 7.52
+        },
+        {
+          "functionName": "ObserverSet__Add_7E1B59FA:2662",
+          "ms": 7.117
+        },
+        {
+          "functionName": "Equals:355",
+          "ms": 5.558
         },
         {
           "functionName": "(anonymous):5589",
+          "ms": 5.511
+        },
+        {
+          "functionName": "(anonymous):5896",
+          "ms": 4.993
+        },
+        {
+          "functionName": "Events_onClick:4530",
+          "ms": 4.962
+        },
+        {
+          "functionName": "ensureSetup:5414",
+          "ms": 4.951
+        },
+        {
+          "functionName": "Graph_get_Current:3351",
+          "ms": 4.242
+        },
+        {
+          "functionName": "mountCore$1:5386",
+          "ms": 4.061
+        },
+        {
+          "functionName": "Api_untrack:4229",
+          "ms": 3.997
+        },
+        {
+          "functionName": "applyModifiers:5427",
           "ms": 3.976
         },
         {
           "functionName": "(anonymous):1632",
-          "ms": 3.473
+          "ms": 3.851
         },
         {
-          "functionName": "Equals:355",
-          "ms": 3.262
-        },
-        {
-          "functionName": "createTextNode:0",
-          "ms": 3.152
-        },
-        {
-          "functionName": "validateAttribute:2225",
-          "ms": 3.017
-        },
-        {
-          "functionName": "Graph_get_Current:3351",
-          "ms": 3.014
+          "functionName": "FSharpRef$1:425",
+          "ms": 3.377
         },
         {
           "functionName": "Enumerator$1:88",
-          "ms": 2.967
-        },
-        {
-          "functionName": "Graph_get_Ambient:3371",
-          "ms": 2.889
-        },
-        {
-          "functionName": "ObserverSet__Add_7E1B59FA:2662",
-          "ms": 2.329
-        },
-        {
-          "functionName": "(anonymous):5802",
-          "ms": 2.133
-        },
-        {
-          "functionName": "applyModifiers:5427",
-          "ms": 2.047
+          "ms": 3.024
         }
       ]
     },
@@ -137,13 +137,13 @@
       "phase": "dispose",
       "width": 128,
       "timingsUs": [
-        178.2812550663948,
-        172.81249910593033,
-        166.7187511920929,
-        135.3124976158142,
-        142.65625178813934,
-        112.81250417232513,
-        165.62500596046448
+        201.8750011920929,
+        201.7187550663948,
+        178.90624701976776,
+        191.87499582767487,
+        192.6562488079071,
+        185.31250208616257,
+        175.46875029802322
       ],
       "operations": {
         "removeEventListener": 128,
@@ -151,59 +151,47 @@
         "unclaim": 6
       },
       "profiledRoots": 256,
-      "profiledRunMs": 111.25500011444092,
+      "profiledRunMs": 121.0550000667572,
       "hotspots": [
         {
           "functionName": "(program):0",
-          "ms": 117.931
+          "ms": 129.726
         },
         {
           "functionName": "remove:0",
-          "ms": 67.669
+          "ms": 67.792
         },
         {
           "functionName": "ObserverSet__Remove_7E1B59FA:2687",
-          "ms": 15.009
-        },
-        {
-          "functionName": "Owner__DisposeScope:3075",
-          "ms": 8.859
+          "ms": 25.704
         },
         {
           "functionName": "removeEventListener:0",
-          "ms": 8.304
+          "ms": 10.088
+        },
+        {
+          "functionName": "Owner__DisposeScope:3075",
+          "ms": 9.578
+        },
+        {
+          "functionName": "OwnedRange__Release:5271",
+          "ms": 2.47
         },
         {
           "functionName": "(anonymous):3055",
-          "ms": 3.994
+          "ms": 2.244
         },
         {
           "functionName": "SourceList__Clear_7E1B59FA:2845",
-          "ms": 3.035
+          "ms": 1.772
         },
         {
           "functionName": "(idle):0",
-          "ms": 1.989
+          "ms": 1.742
         },
         {
           "functionName": "clear$1:279",
-          "ms": 1.443
-        },
-        {
-          "functionName": "Graph__Detached_Z12158FD7:3626",
-          "ms": 1.172
-        },
-        {
-          "functionName": "Scope__Dispose:4656",
-          "ms": 0.617
-        },
-        {
-          "functionName": "(anonymous):5821",
-          "ms": 0.525
-        },
-        {
-          "functionName": "(garbage collector):0",
-          "ms": 0.499
+          "ms": 1.484
         }
       ]
     },
@@ -212,121 +200,122 @@
       "phase": "mount",
       "width": 128,
       "timingsUs": [
-        889.5312547683716,
-        375.46874582767487,
-        387.34374940395355,
-        359.0625002980232,
-        285.3125035762787,
-        358.90624672174454,
-        402.0312502980232
+        994.375005364418,
+        335.15624701976776,
+        381.7187547683716,
+        353.74999791383743,
+        314.53124433755875,
+        380.4687485098839,
+        321.7187449336052
       ],
       "operations": {
+        "addEventListener": 2,
         "cloneNode": 129,
         "insertBefore": 128,
         "appendChild": 1
       },
       "profiledRoots": 256,
-      "profiledRunMs": 145.83500003814697,
+      "profiledRunMs": 124.0550000667572,
       "hotspots": [
         {
           "functionName": "(program):0",
-          "ms": 667.025
+          "ms": 608.554
         },
         {
           "functionName": "cloneNode:0",
-          "ms": 35.743
+          "ms": 28.185
         },
         {
-          "functionName": "(anonymous):9358",
-          "ms": 31.194
+          "functionName": "(anonymous):11438",
+          "ms": 27.983
         },
         {
           "functionName": "(garbage collector):0",
-          "ms": 23.121
-        },
-        {
-          "functionName": "setAttribute:0",
-          "ms": 11.015
+          "ms": 21.727
         },
         {
           "functionName": "(idle):0",
-          "ms": 8.947
+          "ms": 9.767
+        },
+        {
+          "functionName": "setAttribute:0",
+          "ms": 8.375
+        },
+        {
+          "functionName": "insertExpression:11300",
+          "ms": 7.709
         },
         {
           "functionName": "appendChild:0",
-          "ms": 6.312
-        },
-        {
-          "functionName": "(anonymous):9343",
-          "ms": 5.091
-        },
-        {
-          "functionName": "createComputation:8814",
-          "ms": 4.976
-        },
-        {
-          "functionName": "insertExpression:9218",
-          "ms": 4.694
+          "ms": 6.004
         },
         {
           "functionName": "insertBefore:0",
-          "ms": 3.545
+          "ms": 5.872
         },
         {
-          "functionName": "readSignal:8700",
-          "ms": 3.453
+          "functionName": "recompute:10010",
+          "ms": 4.792
         },
         {
-          "functionName": "runComputation:8780",
-          "ms": 2.526
+          "functionName": "untrack:10414",
+          "ms": 4.081
         },
         {
-          "functionName": "(anonymous):9370",
-          "ms": 2.497
+          "functionName": "effect$1:10724",
+          "ms": 2.488
         },
         {
-          "functionName": "Row$1.createRenderEffect.e:9347",
-          "ms": 2.232
+          "functionName": "createEffectNode:10290",
+          "ms": 2.174
         },
         {
-          "functionName": "Row$1:9341",
-          "ms": 2.035
+          "functionName": "link:9557",
+          "ms": 1.994
         },
         {
-          "functionName": "fn:9139",
-          "ms": 1.927
+          "functionName": "(anonymous):11453",
+          "ms": 1.509
         },
         {
-          "functionName": "insert:9158",
-          "ms": 1.277
+          "functionName": "insert:11187",
+          "ms": 1.502
         },
         {
-          "functionName": "updateComputation:8766",
-          "ms": 0.989
+          "functionName": "setAttribute:11171",
+          "ms": 1.021
         },
         {
-          "functionName": "createSignal:8616",
-          "ms": 0.987
+          "functionName": "read:10514",
+          "ms": 0.998
         },
         {
-          "functionName": "createRoot$1:8600",
-          "ms": 0.513
+          "functionName": "Row$1.effect.e.e:11431",
+          "ms": 0.988
         },
         {
-          "functionName": "normalizeIncomingArray:9295",
-          "ms": 0.501
+          "functionName": "inheritId:9376",
+          "ms": 0.586
         },
         {
-          "functionName": "(anonymous):9069",
-          "ms": 0.5
+          "functionName": "accessor.$s.options:11218",
+          "ms": 0.556
         },
         {
-          "functionName": "cleanNode:8999",
-          "ms": 0.498
+          "functionName": "effect:10967",
+          "ms": 0.526
         },
         {
-          "functionName": "untrack:8653",
-          "ms": 0.048
+          "functionName": "enqueue:9019",
+          "ms": 0.517
+        },
+        {
+          "functionName": "runEffect:10747",
+          "ms": 0.499
+        },
+        {
+          "functionName": "statusNotifierOf:10344",
+          "ms": 0.499
         }
       ]
     },
@@ -335,37 +324,35 @@
       "phase": "dispose",
       "width": 128,
       "timingsUs": [
-        72.81249761581421,
-        46.71874642372131,
-        44.37500238418579,
-        42.03125089406967,
-        43.75000298023224,
-        61.250001192092896,
-        40.312498807907104
+        32.499998807907104,
+        37.968747317790985,
+        26.874996721744537,
+        39.21875357627869,
+        45.781247317790985,
+        30.781254172325134,
+        27.96875685453415
       ],
-      "operations": {},
+      "operations": {
+        "removeEventListener": 2
+      },
       "profiledRoots": 256,
-      "profiledRunMs": 61.25499987602234,
+      "profiledRunMs": 66.47000002861023,
       "hotspots": [
         {
-          "functionName": "dispose:9382",
-          "ms": 57.134
+          "functionName": "dispose:11472",
+          "ms": 62.951
         },
         {
           "functionName": "(program):0",
-          "ms": 39.622
+          "ms": 34.303
         },
         {
-          "functionName": "cleanNode:8999",
-          "ms": 3.956
+          "functionName": "unlinkSubs:9488",
+          "ms": 3.542
         },
         {
           "functionName": "(idle):0",
-          "ms": 0.967
-        },
-        {
-          "functionName": "run:22842",
-          "ms": 0.493
+          "ms": 0.745
         }
       ]
     },
@@ -374,13 +361,13 @@
       "phase": "mount",
       "width": 128,
       "timingsUs": [
-        666.7187511920929,
-        578.2812535762787,
-        469.21874582767487,
-        507.9687535762787,
-        375.46875327825546,
-        540.9374982118607,
-        420.9375008940697
+        555.4687455296516,
+        582.03125,
+        485.7812523841858,
+        487.187497317791,
+        435.1562485098839,
+        559.3749955296516,
+        430.9375062584877
       ],
       "operations": {
         "createElement": 385,
@@ -389,107 +376,107 @@
         "appendChild": 513
       },
       "profiledRoots": 256,
-      "profiledRunMs": 200.15000009536743,
+      "profiledRunMs": 203.18499994277954,
       "hotspots": [
         {
           "functionName": "(program):0",
-          "ms": 651.694
-        },
-        {
-          "functionName": "(anonymous):8370",
-          "ms": 47.88
+          "ms": 647.498
         },
         {
           "functionName": "(garbage collector):0",
-          "ms": 30.792
+          "ms": 42.69
+        },
+        {
+          "functionName": "(anonymous):8370",
+          "ms": 40.632
         },
         {
           "functionName": "appendChild:0",
-          "ms": 26.874
+          "ms": 32.032
         },
         {
           "functionName": "createElement:0",
-          "ms": 17.978
+          "ms": 21.702
         },
         {
           "functionName": "Base_applyItems:8296",
-          "ms": 14.275
-        },
-        {
-          "functionName": "addEventListener:0",
-          "ms": 9.361
-        },
-        {
-          "functionName": "(idle):0",
-          "ms": 7.231
+          "ms": 13.338
         },
         {
           "functionName": "setAttribute:0",
-          "ms": 7.197
+          "ms": 8.655
         },
         {
-          "functionName": "Base_createElement:8313",
-          "ms": 5.017
+          "functionName": "(idle):0",
+          "ms": 8.143
+        },
+        {
+          "functionName": "addEventListener:0",
+          "ms": 7.475
         },
         {
           "functionName": "FSharpRef:6656",
-          "ms": 4.824
-        },
-        {
-          "functionName": "(anonymous):8417",
-          "ms": 4.516
-        },
-        {
-          "functionName": "createTextNode:0",
-          "ms": 3.012
+          "ms": 4.995
         },
         {
           "functionName": "value:6692",
-          "ms": 2.973
+          "ms": 3.544
         },
         {
-          "functionName": "Signal_autorun:7735",
-          "ms": 2.828
+          "functionName": "(anonymous):8329",
+          "ms": 3.248
         },
         {
-          "functionName": "probe:7505",
-          "ms": 2.058
+          "functionName": "Base_createElement:8313",
+          "ms": 2.811
         },
         {
-          "functionName": "ScopeModule_root:7376",
-          "ms": 2.018
-        },
-        {
-          "functionName": "(anonymous):8365",
-          "ms": 1.988
-        },
-        {
-          "functionName": "(anonymous):8342",
-          "ms": 1.486
-        },
-        {
-          "functionName": "int32ToString:6414",
-          "ms": 1.187
-        },
-        {
-          "functionName": "run:22842",
-          "ms": 1.105
-        },
-        {
-          "functionName": "Var$1:7616",
-          "ms": 1.012
-        },
-        {
-          "functionName": "Html_text_5106B011:8412",
-          "ms": 1.012
-        },
-        {
-          "functionName": "(anonymous):8522",
-          "ms": 1.012
+          "functionName": "(anonymous):8417",
+          "ms": 2.528
         },
         {
           "functionName": "Effect:7682",
-          "ms": 1.011
+          "ms": 2.507
+        },
+        {
+          "functionName": "createTextNode:0",
+          "ms": 2.484
+        },
+        {
+          "functionName": "ScopeModule_onCleanup:7356",
+          "ms": 2.007
+        },
+        {
+          "functionName": "ScopeModule_root:7376",
+          "ms": 1.988
+        },
+        {
+          "functionName": "some:6696",
+          "ms": 1.877
+        },
+        {
+          "functionName": "(anonymous):8522",
+          "ms": 1.48
+        },
+        {
+          "functionName": "(anonymous):8534",
+          "ms": 1.34
+        },
+        {
+          "functionName": "FSharpList:8028",
+          "ms": 1.008
+        },
+        {
+          "functionName": "addObserver:7044",
+          "ms": 1.007
+        },
+        {
+          "functionName": "(anonymous):24880",
+          "ms": 1.004
+        },
+        {
+          "functionName": "Html_text_5106B011:8412",
+          "ms": 0.99
         }
       ]
     },
@@ -498,51 +485,51 @@
       "phase": "dispose",
       "width": 128,
       "timingsUs": [
-        54.84374612569809,
-        71.24999910593033,
-        115.15624821186066,
-        85.46874672174454,
-        79.84374463558197,
-        83.2812488079071,
-        37.968747317790985
+        54.53125387430191,
+        39.21874612569809,
+        58.74999612569809,
+        51.71874910593033,
+        54.375000298023224,
+        52.34374850988388,
+        43.12500357627869
       ],
       "operations": {
         "removeChild": 1
       },
       "profiledRoots": 256,
-      "profiledRunMs": 64.08000016212463,
+      "profiledRunMs": 69.5699999332428,
       "hotspots": [
         {
           "functionName": "removeChild:0",
-          "ms": 62.07
+          "ms": 66.407
         },
         {
           "functionName": "(program):0",
-          "ms": 56.49
+          "ms": 64.798
+        },
+        {
+          "functionName": "run:24941",
+          "ms": 1.508
         },
         {
           "functionName": "(idle):0",
-          "ms": 1.094
+          "ms": 1.035
         },
         {
           "functionName": "ReactiveNode__set_Disposed_Z1FBCCD16:6782",
-          "ms": 0.52
+          "ms": 0.494
+        },
+        {
+          "functionName": "disposeSafe:6366",
+          "ms": 0.491
         },
         {
           "functionName": "(anonymous):8538",
-          "ms": 0.508
+          "ms": 0.491
         },
         {
-          "functionName": "ReactiveNode__get_Disposed:6773",
-          "ms": 0.496
-        },
-        {
-          "functionName": "(garbage collector):0",
-          "ms": 0.49
-        },
-        {
-          "functionName": "item:6975",
-          "ms": 0.477
+          "functionName": "Dispose:8456",
+          "ms": 0.359
         }
       ]
     },
@@ -551,13 +538,13 @@
       "phase": "mount",
       "width": 128,
       "timingsUs": [
-        822.3437443375587,
-        723.2812494039536,
-        635.7812508940697,
-        636.71875,
-        743.1249991059303,
-        623.7500011920929,
-        2010.624997317791
+        794.2187562584877,
+        774.531252682209,
+        654.0625020861626,
+        660.0000038743019,
+        852.0312532782555,
+        671.875,
+        2449.3750035762787
       ],
       "operations": {
         "addEventListener": 270,
@@ -565,107 +552,107 @@
         "appendChild": 385
       },
       "profiledRoots": 256,
-      "profiledRunMs": 251.55499982833862,
+      "profiledRunMs": 259.960000038147,
       "hotspots": [
         {
           "functionName": "(program):0",
-          "ms": 662.493
+          "ms": 684.934
         },
         {
           "functionName": "set value:0",
-          "ms": 40.736
-        },
-        {
-          "functionName": "completeWork:15174",
-          "ms": 27.971
-        },
-        {
-          "functionName": "appendChild:0",
-          "ms": 24.777
+          "ms": 41.549
         },
         {
           "functionName": "(garbage collector):0",
-          "ms": 24.574
+          "ms": 31.532
+        },
+        {
+          "functionName": "completeWork:17264",
+          "ms": 23.816
+        },
+        {
+          "functionName": "appendChild:0",
+          "ms": 20.341
         },
         {
           "functionName": "addEventListener:0",
-          "ms": 14.664
+          "ms": 19.271
         },
         {
           "functionName": "createElement:0",
-          "ms": 14.535
+          "ms": 18.358
         },
         {
-          "functionName": "completeUnitOfWork:17534",
-          "ms": 13.981
-        },
-        {
-          "functionName": "trackValueOnNode:11050",
-          "ms": 12.082
-        },
-        {
-          "functionName": "setProp:18399",
-          "ms": 11.104
-        },
-        {
-          "functionName": "(idle):0",
-          "ms": 8.968
+          "functionName": "completeUnitOfWork:19624",
+          "ms": 16.223
         },
         {
           "functionName": "setAttribute:0",
-          "ms": 8.362
+          "ms": 12.892
         },
         {
-          "functionName": "getClosestInstanceFromNode:10919",
-          "ms": 7.141
+          "functionName": "setProp:20489",
+          "ms": 12.63
         },
         {
-          "functionName": "initInput:11113",
-          "ms": 6.653
+          "functionName": "trackValueOnNode:13140",
+          "ms": 11.173
         },
         {
-          "functionName": "setInitialProperties:18633",
-          "ms": 5.868
+          "functionName": "(idle):0",
+          "ms": 9.918
         },
         {
-          "functionName": "exports.createElement:9678",
-          "ms": 5.636
+          "functionName": "getClosestInstanceFromNode:13009",
+          "ms": 7.834
         },
         {
-          "functionName": "getEventTarget:11305",
-          "ms": 4.633
+          "functionName": "getEventTarget:13395",
+          "ms": 6.78
         },
         {
-          "functionName": "getNearestMountedFiber:10236",
-          "ms": 4.486
+          "functionName": "setTextContent:13271",
+          "ms": 6.194
         },
         {
-          "functionName": "listenToNonDelegatedEvent:18088",
-          "ms": 4.358
+          "functionName": "exports.createElement:11768",
+          "ms": 6.052
         },
         {
-          "functionName": "Row:20804",
-          "ms": 3.92
+          "functionName": "initInput:13203",
+          "ms": 4.488
         },
         {
-          "functionName": "setTextContent:11181",
-          "ms": 3.755
+          "functionName": "isCheckable:13136",
+          "ms": 4.165
         },
         {
-          "functionName": "isCheckable:11046",
-          "ms": 3.515
+          "functionName": "renderRootSync:19428",
+          "ms": 3.323
         },
         {
-          "functionName": "reconcileChildFibersImpl:12802",
-          "ms": 2.514
+          "functionName": "setInitialProperties:20723",
+          "ms": 3.267
         },
         {
-          "functionName": "renderRootSync:17338",
-          "ms": 2.347
+          "functionName": "updateFunctionComponent:16653",
+          "ms": 2.501
         },
         {
-          "functionName": "get value:0",
-          "ms": 1.987
+          "functionName": "beginWork:17075",
+          "ms": 2.439
+        },
+        {
+          "functionName": "listenToNonDelegatedEvent:20178",
+          "ms": 2.198
+        },
+        {
+          "functionName": "Row:22894",
+          "ms": 2.037
+        },
+        {
+          "functionName": "getOwnerDocumentFromRootContainer:21073",
+          "ms": 2.022
         }
       ]
     },
@@ -674,79 +661,59 @@
       "phase": "dispose",
       "width": 128,
       "timingsUs": [
-        87.1874988079071,
-        102.49999910593033,
-        86.24999970197678,
-        77.34374701976776,
-        87.96875178813934,
-        87.03124523162842,
-        84.21874791383743
+        88.28124403953552,
+        106.24999552965164,
+        97.50000387430191,
+        88.28125149011612,
+        277.34375,
+        125.46875327825546,
+        90.46874940395355
       ],
       "operations": {
         "removeChild": 1
       },
       "profiledRoots": 256,
-      "profiledRunMs": 134.57999992370605,
+      "profiledRunMs": 91.1100001335144,
       "hotspots": [
         {
           "functionName": "removeChild:0",
-          "ms": 102.752
+          "ms": 65.601
         },
         {
           "functionName": "(program):0",
-          "ms": 63.686
+          "ms": 47.25
         },
         {
-          "functionName": "commitPassiveUnmountEffectsInsideOfDeletedTree_begin:17025",
-          "ms": 17.96
-        },
-        {
-          "functionName": "recursivelyTraverseDeletionEffects:16190",
-          "ms": 5.005
+          "functionName": "commitPassiveUnmountEffectsInsideOfDeletedTree_begin:19115",
+          "ms": 17.768
         },
         {
           "functionName": "(garbage collector):0",
-          "ms": 4.992
+          "ms": 3.534
+        },
+        {
+          "functionName": "recursivelyTraverseDeletionEffects:18280",
+          "ms": 2.531
         },
         {
           "functionName": "(idle):0",
-          "ms": 0.826
+          "ms": 1.356
         },
         {
-          "functionName": "getActiveElementDeep:11820",
-          "ms": 0.537
+          "functionName": "pushHostContainer:12589",
+          "ms": 0.633
         },
         {
-          "functionName": "commitDeletionEffectsOnFiber:16193",
-          "ms": 0.529
+          "functionName": "commitDeletionEffectsOnFiber:18283",
+          "ms": 0.503
         },
         {
-          "functionName": "push:10490",
-          "ms": 0.502
+          "functionName": "performWorkUntilDeadline:11963",
+          "ms": 0.487
         },
         {
-          "functionName": "getEntangledLanes:10742",
-          "ms": 0.501
-        },
-        {
-          "functionName": "flushSpawnedWork:17709",
-          "ms": 0.498
-        },
-        {
-          "functionName": "recursivelyTraversePassiveUnmountEffects:16964",
-          "ms": 0.493
-        },
-        {
-          "functionName": "processUpdateQueue:12987",
-          "ms": 0.488
-        },
-        {
-          "functionName": "now:0",
-          "ms": 0.488
-        },
-        {
-          "functionName": "completeUnitOfWork:17534",
-          "ms": 0.446
+          "functionName": "enqueueUpdate:15012",
+          "ms": 0.476
         }
       ]
     }
@@ -756,463 +723,463 @@
       "probe": "claims-disabled",
       "phase": "mount",
       "round": 0,
-      "ms": 0.9840625002980232
+      "ms": 0.6462500020861626
     },
     {
       "probe": "baseline",
       "phase": "mount",
       "round": 0,
-      "ms": 1.1135937497019768
+      "ms": 0.8106250017881393
     },
     {
       "probe": "baseline",
       "phase": "mount",
       "round": 1,
-      "ms": 1.3081250041723251
+      "ms": 0.9156249985098839
     },
     {
       "probe": "claims-disabled",
       "phase": "mount",
       "round": 1,
-      "ms": 0.9412499964237213
+      "ms": 0.6423437520861626
     },
     {
       "probe": "claims-disabled",
       "phase": "mount",
       "round": 2,
-      "ms": 0.9525000005960464
+      "ms": 0.7754687517881393
     },
     {
       "probe": "baseline",
       "phase": "mount",
       "round": 2,
-      "ms": 1.0903125032782555
+      "ms": 0.8607812449336052
     },
     {
       "probe": "baseline",
       "phase": "mount",
       "round": 3,
-      "ms": 2.0385937467217445
+      "ms": 1.100312501192093
     },
     {
       "probe": "claims-disabled",
       "phase": "mount",
       "round": 3,
-      "ms": 0.9742187485098839
+      "ms": 0.8187500014901161
     },
     {
       "probe": "claims-disabled",
       "phase": "mount",
       "round": 4,
-      "ms": 1.23828125
+      "ms": 0.9917187541723251
     },
     {
       "probe": "baseline",
       "phase": "mount",
       "round": 4,
-      "ms": 1.248281255364418
+      "ms": 1.0114062428474426
     },
     {
       "probe": "baseline",
       "phase": "mount",
       "round": 5,
-      "ms": 1.2820312455296516
+      "ms": 0.955937497317791
     },
     {
       "probe": "claims-disabled",
       "phase": "mount",
       "round": 5,
-      "ms": 0.9695312455296516
+      "ms": 0.7626562491059303
     },
     {
       "probe": "claims-disabled",
       "phase": "mount",
       "round": 6,
-      "ms": 1.1973437517881393
+      "ms": 0.9954687505960464
     },
     {
       "probe": "baseline",
       "phase": "mount",
       "round": 6,
-      "ms": 1.2429687455296516
+      "ms": 0.9231249988079071
     },
     {
       "probe": "baseline",
       "phase": "mount",
       "round": 7,
-      "ms": 0.9817187488079071
+      "ms": 0.7229687497019768
     },
     {
       "probe": "claims-disabled",
       "phase": "mount",
       "round": 7,
-      "ms": 1.1343749985098839
+      "ms": 0.735468752682209
     },
     {
       "probe": "claims-disabled",
       "phase": "mount",
       "round": 8,
-      "ms": 1.3123437464237213
+      "ms": 0.8100000023841858
     },
     {
       "probe": "baseline",
       "phase": "mount",
       "round": 8,
-      "ms": 0.9226562455296516
+      "ms": 0.8496875017881393
     },
     {
       "probe": "baseline",
       "phase": "mount",
       "round": 9,
-      "ms": 1.156406246125698
+      "ms": 0.6581249982118607
     },
     {
       "probe": "claims-disabled",
       "phase": "mount",
       "round": 9,
-      "ms": 1.2759374976158142
+      "ms": 1.0410937517881393
     },
     {
       "probe": "claims-disabled",
       "phase": "mount",
       "round": 10,
-      "ms": 1.3337500020861626
+      "ms": 0.8456250056624413
     },
     {
       "probe": "baseline",
       "phase": "mount",
       "round": 10,
-      "ms": 1.239375002682209
+      "ms": 0.6357812508940697
     },
     {
       "probe": "baseline",
       "phase": "dispose",
       "round": 0,
-      "ms": 0.31703124940395355
+      "ms": 0.16999999433755875
     },
     {
       "probe": "root-removal-only",
       "phase": "dispose",
       "round": 0,
-      "ms": 0.28218749910593033
+      "ms": 0.19874999672174454
     },
     {
       "probe": "detach-first",
       "phase": "dispose",
       "round": 0,
-      "ms": 0.3121875002980232
+      "ms": 0.18953125178813934
     },
     {
       "probe": "remove-disabled",
       "phase": "dispose",
       "round": 0,
-      "ms": 0.2684375047683716
+      "ms": 0.12328124791383743
     },
     {
       "probe": "unclaim-disabled",
       "phase": "dispose",
       "round": 0,
-      "ms": 0.26093750447034836
+      "ms": 0.15031249821186066
     },
     {
       "probe": "root-removal-only",
       "phase": "dispose",
       "round": 1,
-      "ms": 0.2642187476158142
+      "ms": 2.5996875017881393
     },
     {
       "probe": "detach-first",
       "phase": "dispose",
       "round": 1,
-      "ms": 0.28984375298023224
+      "ms": 0.19921875
     },
     {
       "probe": "remove-disabled",
       "phase": "dispose",
       "round": 1,
-      "ms": 0.28828125447034836
+      "ms": 0.21578124910593033
     },
     {
       "probe": "unclaim-disabled",
       "phase": "dispose",
       "round": 1,
-      "ms": 0.305781252682209
+      "ms": 0.20093750208616257
     },
     {
       "probe": "baseline",
       "phase": "dispose",
       "round": 1,
-      "ms": 0.2932812497019768
+      "ms": 0.21062500029802322
     },
     {
       "probe": "detach-first",
       "phase": "dispose",
       "round": 2,
-      "ms": 0.24046875536441803
+      "ms": 0.1693749949336052
     },
     {
       "probe": "remove-disabled",
       "phase": "dispose",
       "round": 2,
-      "ms": 0.2535937502980232
+      "ms": 0.15625
     },
     {
       "probe": "unclaim-disabled",
       "phase": "dispose",
       "round": 2,
-      "ms": 0.31968750059604645
+      "ms": 0.2134374976158142
     },
     {
       "probe": "baseline",
       "phase": "dispose",
       "round": 2,
-      "ms": 0.2904687449336052
+      "ms": 0.23531249910593033
     },
     {
       "probe": "root-removal-only",
       "phase": "dispose",
       "round": 2,
-      "ms": 0.2854687497019768
+      "ms": 0.19703125208616257
     },
     {
       "probe": "remove-disabled",
       "phase": "dispose",
       "round": 3,
-      "ms": 0.24546875059604645
+      "ms": 0.20468749850988388
     },
     {
       "probe": "unclaim-disabled",
       "phase": "dispose",
       "round": 3,
-      "ms": 0.3043750002980232
+      "ms": 0.21578124910593033
     },
     {
       "probe": "baseline",
       "phase": "dispose",
       "round": 3,
-      "ms": 0.32984374463558197
+      "ms": 0.2770312502980232
     },
     {
       "probe": "root-removal-only",
       "phase": "dispose",
       "round": 3,
-      "ms": 0.3126562535762787
+      "ms": 0.23390625417232513
     },
     {
       "probe": "detach-first",
       "phase": "dispose",
       "round": 3,
-      "ms": 0.2510937452316284
+      "ms": 0.1720312535762787
     },
     {
       "probe": "unclaim-disabled",
       "phase": "dispose",
       "round": 4,
-      "ms": 0.2737499997019768
+      "ms": 0.17484375089406967
     },
     {
       "probe": "baseline",
       "phase": "dispose",
       "round": 4,
-      "ms": 0.24374999850988388
+      "ms": 0.17625000327825546
     },
     {
       "probe": "root-removal-only",
       "phase": "dispose",
       "round": 4,
-      "ms": 1.9276562482118607
+      "ms": 0.16843749582767487
     },
     {
       "probe": "detach-first",
       "phase": "dispose",
       "round": 4,
-      "ms": 0.27531249821186066
+      "ms": 0.17359375208616257
     },
     {
       "probe": "remove-disabled",
       "phase": "dispose",
       "round": 4,
-      "ms": 0.23015625029802322
+      "ms": 0.16906249523162842
     },
     {
       "probe": "baseline",
       "phase": "dispose",
       "round": 5,
-      "ms": 0.28734375536441803
+      "ms": 0.20890624821186066
     },
     {
       "probe": "root-removal-only",
       "phase": "dispose",
       "round": 5,
-      "ms": 0.29734374582767487
+      "ms": 0.21374999731779099
     },
     {
       "probe": "detach-first",
       "phase": "dispose",
       "round": 5,
-      "ms": 0.3121875002980232
+      "ms": 0.20781249552965164
     },
     {
       "probe": "remove-disabled",
       "phase": "dispose",
       "round": 5,
-      "ms": 0.23640625178813934
+      "ms": 0.21781250089406967
     },
     {
       "probe": "unclaim-disabled",
       "phase": "dispose",
       "round": 5,
-      "ms": 0.2970312535762787
+      "ms": 0.18593750149011612
     },
     {
       "probe": "root-removal-only",
       "phase": "dispose",
       "round": 6,
-      "ms": 0.31687500327825546
+      "ms": 0.19234374910593033
     },
     {
       "probe": "detach-first",
       "phase": "dispose",
       "round": 6,
-      "ms": 0.26390624791383743
+      "ms": 0.23874999582767487
     },
     {
       "probe": "remove-disabled",
       "phase": "dispose",
       "round": 6,
-      "ms": 0.19031250476837158
+      "ms": 0.22578124701976776
     },
     {
       "probe": "unclaim-disabled",
       "phase": "dispose",
       "round": 6,
-      "ms": 0.20281250029802322
+      "ms": 0.22156249731779099
     },
     {
       "probe": "baseline",
       "phase": "dispose",
       "round": 6,
-      "ms": 0.2501562535762787
+      "ms": 0.21718750149011612
     },
     {
       "probe": "detach-first",
       "phase": "dispose",
       "round": 7,
-      "ms": 0.28296875208616257
+      "ms": 0.22468750178813934
     },
     {
       "probe": "remove-disabled",
       "phase": "dispose",
       "round": 7,
-      "ms": 0.4176562502980232
+      "ms": 0.21937499940395355
     },
     {
       "probe": "unclaim-disabled",
       "phase": "dispose",
       "round": 7,
-      "ms": 0.2654687538743019
+      "ms": 0.22749999910593033
     },
     {
       "probe": "baseline",
       "phase": "dispose",
       "round": 7,
-      "ms": 0.2459375038743019
+      "ms": 0.1887499988079071
     },
     {
       "probe": "root-removal-only",
       "phase": "dispose",
       "round": 7,
-      "ms": 0.2029687538743019
+      "ms": 0.19968750327825546
     },
     {
       "probe": "remove-disabled",
       "phase": "dispose",
       "round": 8,
-      "ms": 0.21187499910593033
+      "ms": 0.19343750178813934
     },
     {
       "probe": "unclaim-disabled",
       "phase": "dispose",
       "round": 8,
-      "ms": 0.2084374949336052
+      "ms": 0.17359374463558197
     },
     {
       "probe": "baseline",
       "phase": "dispose",
       "round": 8,
-      "ms": 0.2420312464237213
+      "ms": 0.19203124940395355
     },
     {
       "probe": "root-removal-only",
       "phase": "dispose",
       "round": 8,
-      "ms": 0.31343749910593033
+      "ms": 0.2395312488079071
     },
     {
       "probe": "detach-first",
       "phase": "dispose",
       "round": 8,
-      "ms": 0.3151562511920929
+      "ms": 0.21906249970197678
     },
     {
       "probe": "unclaim-disabled",
       "phase": "dispose",
       "round": 9,
-      "ms": 0.21765625476837158
+      "ms": 0.18640625476837158
     },
     {
       "probe": "baseline",
       "phase": "dispose",
       "round": 9,
-      "ms": 0.24718749523162842
+      "ms": 0.19343750178813934
     },
     {
       "probe": "root-removal-only",
       "phase": "dispose",
       "round": 9,
-      "ms": 0.2593749985098839
+      "ms": 0.2212499976158142
     },
     {
       "probe": "detach-first",
       "phase": "dispose",
       "round": 9,
-      "ms": 0.25187499821186066
+      "ms": 0.2615625038743019
     },
     {
       "probe": "remove-disabled",
       "phase": "dispose",
       "round": 9,
-      "ms": 0.17484374344348907
+      "ms": 0.16796875
     },
     {
       "probe": "baseline",
       "phase": "dispose",
       "round": 10,
-      "ms": 0.2487500011920929
+      "ms": 0.20093750208616257
     },
     {
       "probe": "root-removal-only",
       "phase": "dispose",
       "round": 10,
-      "ms": 0.31812499463558197
+      "ms": 0.24640624970197678
     },
     {
       "probe": "detach-first",
       "phase": "dispose",
       "round": 10,
-      "ms": 0.3278125002980232
+      "ms": 0.276249997317791
     },
     {
       "probe": "remove-disabled",
       "phase": "dispose",
       "round": 10,
-      "ms": 0.45234374701976776
+      "ms": 0.22578124701976776
     },
     {
       "probe": "unclaim-disabled",
       "phase": "dispose",
       "round": 10,
-      "ms": 0.3200000002980232
+      "ms": 0.20140624791383743
     }
   ]
 }
