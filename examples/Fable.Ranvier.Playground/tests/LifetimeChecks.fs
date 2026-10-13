@@ -106,7 +106,6 @@ let private createFixture (graph: Graph) (host: HTMLElement) (trace: ResizeArray
             graph.Run (fun () ->
                 Api.createRoot (fun owner ->
                     ownerForFailure <- Some owner
-                    Api.onCleanup scope.Dispose
                     let unsubscribe = listen child (fun () -> calls <- calls + 1)
 
                     childScope.OnCleanup (fun () ->
@@ -134,6 +133,8 @@ let private createFixture (graph: Graph) (host: HTMLElement) (trace: ResizeArray
                             writes <- writes + 1
                             child.textContent <- string value))
 
+                    // Acquired after the child root, so the registry drains while the child DOM is attached.
+                    Api.onCleanup scope.Dispose
                     config.Acquired child (fun () -> calls) (fun value -> signal.Value <- value) (fun () -> writes)
 
                     match config.SetupFailure with
