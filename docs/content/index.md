@@ -9,7 +9,7 @@ layout: splash
 <span class="rv-hero__status"><span class="rv-badge">Preview</span> APIs may change.</span>
 <h1 class="rv-hero__title">ranvier</h1>
 <p class="rv-hero__line">Fine-grained reactive computation for .NET.</p>
-<p class="rv-hero__sub">Signals, memos and effects where loading and failure are part of the graph. An async value's pending and failed states reach every value derived from it and stop at a boundary, so no view model tracks <code>IsBusy</code> by hand. Glitch-free, owned and inspired by <a href="https://www.solidjs.com/blog/solid-2-0-rc-the-big-reveal">Solid</a>.<br/>A traced build lets people and <b>agents</b> ask why anything ran; a release build compiles the tracing out.</p>
+<p class="rv-hero__sub">Signals, memos and effects where loading and failure are part of the graph. Pending and failed states propagate through dependent <code>Value</code> reads to a boundary, so loading UI can be derived from the graph. Glitch-free, owned and inspired by <a href="https://www.solidjs.com/blog/solid-2-0-rc-the-big-reveal">Solid</a>.<br/>A traced build lets people and <b>agents</b> ask why anything ran; an untraced release build compiles the tracing out.</p>
 <div class="rv-hero__actions">
 <a class="rv-btn rv-btn--primary" href="/Ranvier/guide/getting-started/">Get started <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></a>
 <a class="rv-btn rv-btn--secondary" href="/Ranvier/guide/async-and-pending/">Async and pending</a>
@@ -303,30 +303,68 @@ StateDial ()
 
 ## Watch the graph think
 
-A traced build records every write, mark, run and flight, with the source line that caused it. This is the example from the top of the page, running on the real engine compiled to JavaScript with tracing on. Press a button and follow the event along the edges; hover a node for its state, click it for why it last ran. [How to read a map](guide/signal-maps.md#reading-a-map).
+A cart changes faster than its shipping service can answer. Watch debounce hold a request until the edits stop, trailing throttle refresh a preview at its fixed deadline, and a superseded quote drop. Switch to pickup and the total stops reading shipping: that edge disappears.
 
-```fsharp map timeline
-let price = createAsyncSource<int> ()
-let total = createMemo (fun _ -> price.Value * 3)
+This runs the real engine compiled to JavaScript with tracing on. Start with **Rapid cart edits**, then advance the example clock by **20 ms** and **80 ms**. The preview moves first; shipping waits for quiet. Fail the quote, switch to pickup, then retry delivery and settle it. Hover a node for its state; click it for why it last ran. **Play**, **Step** and the scrub bar replay your recorded events. [How to read a map](guide/signal-maps.md#reading-a-map).
+
+```fsharp map timeline code=collapsed code-max-height=28rem
+let graph = Graph.Current
+let clock = MapClock()
+let options = { Clock = clock; Comparer = None }
+let interval = System.TimeSpan.FromMilliseconds 100.
+let desk = Desk<int>()
+let qty = createSignal 1
+let pickup = createSignal false
+let subtotal = createMemo (fun _ -> 4 * qty.Value)
+let admitted = debounceWith options interval (fun () -> subtotal.Value) graph
+let preview = throttleLastWith options interval (fun () -> subtotal.Value) graph
+let shipping = createAsync (fun _ _ -> desk.Quote admitted.Value)
+let total =
+    createMemo (fun _ ->
+        subtotal.Value + (if pickup.Value then 0 else shipping.Value))
 
 let view =
     createBoundary
         (fun _ -> "Loading…")
-        (fun ex _ -> "Unavailable: " + ex.Message)
+        (fun _ _ -> "Quote offline")
         (fun () -> sprintf "Total %d" total.Value)
 
-createEffect (fun () -> printfn "%s" view.Value)
-
-let offline = exn "feed offline"
+createEffect (fun () -> printfn "%s / preview %d" view.Value preview.Value)
 
 controls [
-    button "Settle 4" (fun () -> price.Settle 4)
-    button "Fail" (fun () -> price.Fail offline)
-    button "Settle 5" (fun () -> price.Settle 5)
+    button "Rapid cart edits" (fun () ->
+        qty.Value <- 2
+        clock.Advance 40.
+        qty.Value <- 3
+        clock.Advance 40.
+        qty.Value <- 4)
+    |> describe "Three captures. Both timed outputs still publish 4; shipping has one request."
+    |> expect "captures do not start shipping requests" (fun () -> admitted.Peek = 4 && preview.Peek = 4 && shipping.Runs = 1)
+    button "Advance 20 ms" (fun () -> clock.Advance 20.)
+    |> describe "At 100 ms the preview publishes 16. Debounce's quiet period ends at 180 ms."
+    |> expect "throttle moves before debounce" (fun () -> preview.Peek = 16 && admitted.Peek = 4 && shipping.Runs = 1)
+    button "Advance 80 ms" (fun () -> clock.Advance 80.)
+    |> describe "Debounce admits 16. A new shipping flight supersedes the initial quote."
+    |> expect "one new request follows the burst" (fun () -> admitted.Peek = 16 && shipping.Runs = 2 && desk.Pending = 1)
+    button "Fail quote" (fun () -> desk.Fail "service offline")
+    |> describe "The boundary turns the shipping failure into a visible fallback."
+    |> expect "failure reaches the boundary" (fun () -> view.Peek = "Quote offline")
+    toggleSignal "Pickup" pickup [ true ]
+    |> describe "Pickup skips shipping. The dependency edge disappears and the total recovers."
+    |> expect "pickup ignores the failed quote" (fun () -> view.Peek = "Total 16")
+    button "Retry delivery" (fun () ->
+        pickup.Value <- false
+        qty.Value <- 5
+        clock.Advance 100.)
+    |> describe "Delivery reads shipping again. A changed cart starts a fresh quote after quiet."
+    |> expect "delivery waits for the new quote" (fun () -> not pickup.Peek && admitted.Peek = 20 && view.Peek = "Loading…" && desk.Pending = 1)
+    button "Settle quote" (fun () -> desk.Settle 5)
+    |> describe "The latest shipping quote settles. The boundary publishes the delivered total."
+    |> expect "delivery recovers" (fun () -> view.Peek = "Total 25" && preview.Peek = 20)
 ]
 ```
 
-<p class="rv-map-edit"><a href="/Ranvier/guide/signal-maps/#edit-a-map">Edit this map in your browser</a></p>
+<p class="rv-map-edit"><a href="/Ranvier/guide/timing/">Explore debounce and throttle</a> · <a href="/Ranvier/guide/signal-maps/#edit-a-map">Build your own map in the browser</a></p>
 
 <div class="rv-trace">
 <p class="rv-trace__lead">The same log answers questions a call stack cannot. An untraced build compiles it out, IL for IL.</p>
@@ -347,11 +385,11 @@ The parts of reactive state that .NET developers most often rebuild by hand, bui
 
 <div class="rv-cards">
 <a class="rv-card" href="/Ranvier/guide/pending/"><strong class="rv-card__title">Loading and errors, derived</strong><p>Pending and failure travel on their own channel. They pass from an async source through every memo that reads it to the nearest boundary, which shows a fallback or a recovered value. A flight policy decides what happens to superseded work: cancel it, keep only the latest, queue it, or finish it and run once more. During a refresh <code>Peek</code> keeps the last value.</p></a>
-<a class="rv-card" href="/Ranvier/concepts/contracts/#error-recovery"><strong class="rv-card__title">Errors are state, not the end of the stream</strong><p>A failure is a value that readers see and a boundary recovers from. The next successful run clears it, and every dependency stays live. <code>ErrorOrigin</code> names the node the failure started in.</p></a>
-<a class="rv-card" href="/Ranvier/concepts/contracts/#ownership"><strong class="rv-card__title">Owners instead of leaks</strong><p>Every memo, effect and projection row belongs to an owner. Disposing the owner disposes them, in a fixed order. Lifetimes are deterministic and never depend on the garbage collector or on a forgotten unsubscribe.</p></a>
-<a class="rv-card" href="/Ranvier/concepts/ecosystem/#diamonds-without-glitches"><strong class="rv-card__title">Glitch-free diamonds</strong><p>A value that reads two paths from one source runs once per write, and both paths it reads come from that write. It never sees one path updated and the other stale.</p></a>
+<a class="rv-card" href="/Ranvier/concepts/contracts/#error-recovery"><strong class="rv-card__title">Recoverable error state</strong><p>A failed node stores an exception; a boundary can show a recovered value. Dependencies read during the failed run remain tracked, and a later successful run clears the failure. <code>ErrorOrigin</code> names the node it started in.</p></a>
+<a class="rv-card" href="/Ranvier/concepts/contracts/#ownership"><strong class="rv-card__title">Owned lifetimes</strong><p>Memos, effects and projection rows belong to owners. Disposing an owner disposes its nodes in a defined order. Register external resources with <code>onCleanup</code>, and dispose the enclosing scope when its lifetime ends.</p></a>
+<a class="rv-card" href="/Ranvier/concepts/ecosystem/#diamonds-without-glitches"><strong class="rv-card__title">Glitch-free diamonds</strong><p>Derived reads settle both paths from a shared source before combining them. Use <code>batch</code> when several source writes belong to one update.</p></a>
 <a class="rv-card" href="/Ranvier/guide/csharp/#binding-to-xaml"><strong class="rv-card__title">Built for C# and XAML</strong><p><code>ReactiveBindings</code> raises <code>PropertyChanged</code> for derived properties with no dependency attributes. <code>ReactiveCommand</code> derives <code>CanExecute</code> and <code>IsRunning</code> from the graph. C# callers need no F# option types.</p></a>
-<a class="rv-card" href="/Ranvier/guide/projections/#reading-changes"><strong class="rv-card__title">Incremental collections</strong><p>Keyed projections give each row its own reactive value. A key reader reports only the keys added, removed or replaced since its last read. A bound <code>ObservableCollection</code> receives individual adds, removes and moves instead of a reset.</p></a>
+<a class="rv-card" href="/Ranvier/guide/projections/#reading-changes"><strong class="rv-card__title">Incremental collections</strong><p>Editable keyed sources update rows directly. Map membership consumes key deltas; value readers report unequal settled rows. A bound <code>ObservableCollection</code> applies individual changes after population, with resets for initialization and recovery. The guide documents which view paths still scan or sort keys.</p></a>
 <a class="rv-card" href="/Ranvier/concepts/contracts/#threading"><strong class="rv-card__title">A written threading contract</strong><p>A graph checks that it is called from its own thread, and the contract lists which calls may come from other threads. <code>Serialised</code> mode accepts a Blazor Server circuit's changing threads and raises on genuine concurrency.</p></a>
 <a class="rv-card" href="/Ranvier/guide/testing/"><strong class="rv-card__title">Deterministic async tests</strong><p><code>ManualDispatcher</code> and <code>Settle</code> let a test decide when each flight lands. Loading, failure and cancellation are tested with no timers, sleeps or polling.</p></a>
 <a class="rv-card" href="/Ranvier/guide/installation/#native-aot-and-trimming"><strong class="rv-card__title">Portable, with no platform package</strong><p>One core for <code>net10.0</code>, <code>net8.0</code> and <code>netstandard2.1</code>, with no UI-framework dependency. The untraced build is Native AOT and trim clean, and the library compiles to JavaScript with Fable.</p></a>

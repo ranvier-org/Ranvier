@@ -18,7 +18,7 @@ enclosing effect, owning memo or boundary.
 In this replay, disposing the root removes its effect's dependency. The signal remains available,
 but later writes no longer run that effect.
 
-```fsharp map replay show=output
+```fsharp map replay code=collapsed
 let count = createSignal 0
 let mutable runs = 0
 let owner =
@@ -45,8 +45,8 @@ controls [
 
 :::details Disposal order and nested roots
 
-An owner runs its cleanups first, then disposes its children. Each group runs in reverse creation
-order.
+An owner tears down its cleanups and children together in reverse acquisition order, as `use` bindings
+are disposed. A cleanup registered after a node is created runs before that node is disposed.
 
 A root created inside an effect belongs to that effect's current run. It is disposed before the
 effect's next run.

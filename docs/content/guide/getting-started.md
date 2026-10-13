@@ -9,6 +9,9 @@ Preview — Ranvier is pre-release; its APIs may change.
 Create a graph, store state in signals, derive values with memos, and use effects to connect
 that state to your application.
 
+Starting a desktop app, or comparing this with FSharp.Data.Adaptive? Read
+[Ranvier or Adaptive for a desktop app?](../blog/desktop-adaptive.md) for a complete window and practical workflows.
+
 ## A first graph
 
 ```fsharp
@@ -32,7 +35,7 @@ graph.Run (fun () ->
     doubled)
 ```
 
-```fsharp map replay show=output
+```fsharp map replay code=collapsed
 let count = createSignal 1
 let doubled = createMemo (fun _ -> count.Value * 2)
 

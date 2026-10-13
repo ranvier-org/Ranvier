@@ -5,16 +5,16 @@
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 const root = join(import.meta.dirname, "..", "..");
 const suite = join(root, "tests", "Ranvier.Tests");
-const output = join(root, "docs", ".ai", "fable-compat.md");
+const output = process.argv[4] ?? join(root, "docs", ".ai", "fable-compat.md");
 
 // The compiled builds: Release, and Release with the trace log compiled in.
 const builds = [
-    { name: "untraced", dir: "dist/tests" },
-    { name: "traced", dir: "dist/tests-traced" },
+    { name: "untraced", entry: process.argv[2] ?? "dist/tests/Main.fs.js" },
+    { name: "traced", entry: process.argv[3] ?? "dist/tests-traced/Main.fs.js" },
 ];
 const deliveries = ["inline", "promise"];
 
@@ -58,7 +58,7 @@ function run(build, mode) {
     const file = join(mkdtempSync(join(tmpdir(), "ranvier-fable-")), `${build.name}-${mode}.json`);
     const mocha = spawnSync(
         process.execPath,
-        [join(root, "node_modules", "mocha", "bin", "mocha.js"), `${build.dir}/Main.fs.js`, "--timeout", "10000",
+        [join(root, "node_modules", "mocha", "bin", "mocha.js"), build.entry, "--timeout", "10000",
          "--reporter", "fable/Ranvier.Tests.Fable/Reporter.cjs", "--reporter-option", `output=${file}`],
         { cwd: root, env: { ...process.env, RANVIER_FABLE_DELIVERY: mode }, stdio: "inherit" });
     if (mocha.error) throw mocha.error;
@@ -66,14 +66,18 @@ function run(build, mode) {
 }
 
 // The files of the suite in compile order.
-const files = [...readFileSync(join(suite, "TestFiles.props"), "utf8").matchAll(/Link="([^"]+)"/g)].map(m => m[1]);
+const sources = new Map(
+    [...readFileSync(join(suite, "TestFiles.props"), "utf8")
+        .matchAll(/<Compile Include="\$\(MSBuildThisFileDirectory\)([^"]+)" Link="([^"]+)"/g)]
+        .map(m => [m[2], resolve(suite, m[1])]));
+const files = [...sources.keys()];
 
 // Tests compiled out under Fable: each `#if !FABLE_COMPILER` block that opens with a `// .NET only: <reason>` line.
 // A block holding no test and sitting inside one excludes part of that test; a block of helpers is skipped.
 const declaration = /^\s*(?:<\| )?(?:test|testCase|testCaseAsync)\s+\$?"([^"]+)"/;
 
 function exclusions(file) {
-    const lines = readFileSync(join(suite, file), "utf8").split(/\r?\n/);
+    const lines = readFileSync(sources.get(file), "utf8").split(/\r?\n/);
     const found = [];
     let enclosing = null;
     for (let i = 0; i < lines.length; i++) {

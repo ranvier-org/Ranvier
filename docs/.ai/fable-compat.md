@@ -23,7 +23,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Effects.fs | 14 | 14 | 14 | 14 | 14 | 14 | 0 | 0 |
 | EffectSplit.fs | 26 | 26 | 21 | 26 | 26 | 21 | 0 | 0 |
 | AmbientGraph.fs | 6 | 6 | 6 | 6 | 6 | 6 | 0 | 0 |
-| Owners.fs | 12 | 12 | 12 | 12 | 12 | 12 | 0 | 0 |
+| Owners.fs | 14 | 14 | 14 | 14 | 14 | 14 | 0 | 0 |
 | Equality.fs | 25 | 24 | 24 | 25 | 24 | 24 | 8 | 0 |
 | Async.fs | 30 | 22 | 7 | 30 | 22 | 7 | 2 | 0 |
 | Boundaries.fs | 27 | 27 | 23 | 27 | 27 | 23 | 1 | 0 |
@@ -54,12 +54,20 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | MapSemantics.fs | 42 | 42 | 41 | 42 | 42 | 41 | 0 | 1 |
 | Lenses.fs | 23 | 20 | 20 | 23 | 20 | 20 | 0 | 0 |
 | Combinators.fs | 126 | 126 | 126 | 126 | 126 | 126 | 1 | 0 |
+| Timed.fs | 31 | 31 | 31 | 38 | 38 | 38 | 0 | 0 |
 | PreviousValues.fs | 11 | 11 | 11 | 11 | 11 | 11 | 14 | 0 |
 | Texts.fs | 5 | 5 | 5 | 5 | 5 | 5 | 1 | 0 |
 | FailureOrigins.fs | 16 | 16 | 15 | 16 | 16 | 15 | 2 | 0 |
 | Editables.fs | 17 | 17 | 17 | 17 | 17 | 17 | 1 | 0 |
 | MvuBridge.fs | 7 | 7 | 7 | 7 | 7 | 7 | 1 | 0 |
-| **Total** | 784 | 766 | 722 | 860 | 838 | 789 | 87 | 1 |
+| QueryComposition.fs | 2 | 2 | 2 | 2 | 2 | 2 | 0 | 0 |
+| Queries.fs | 12 | 12 | 12 | 12 | 12 | 12 | 0 | 0 |
+| QueryReconciliation.fs | 6 | 6 | 6 | 6 | 6 | 6 | 0 | 0 |
+| QueryMutations.fs | 7 | 7 | 7 | 7 | 7 | 7 | 0 | 0 |
+| QueryDictionary.fs | 2 | 2 | 2 | 2 | 2 | 2 | 0 | 0 |
+| QueryErgonomics.fs | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
+| QueryNavigationTests.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
+| **Total** | 859 | 841 | 797 | 942 | 920 | 871 | 87 | 1 |
 
 ## Tests.fs
 
@@ -152,11 +160,13 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## Owners.fs
 
-<details><summary>12 passed in every build and delivery that runs them</summary>
+<details><summary>14 passed in every build and delivery that runs them</summary>
 
 - disposing a root disposes the effects created inside it
 - a cleanup runs before the next run of the same effect
 - a cleanup runs on disposal
+- a cleanup registered after a child runs while the child is live
+- a cleanup registered after an attached disposable runs before it is disposed
 - nested roots are torn down depth-first
 - teardown order is last-created-first
 - a throwing cleanup does not strand the rest of the scope
@@ -1315,6 +1325,51 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 </details>
 
+## Timed.fs
+
+<details><summary>38 passed in every build and delivery that runs them</summary>
+
+- system timer rejects a negative wait
+- system timer can disarm and dispose an unarmed long wait
+- computed input extends the quiet deadline on every change
+- zero delay uses normal graph propagation without a timer
+- leading throttle never replays suppressed input and creates no timers
+- trailing throttle admits latest at the first input deadline
+- leading plus trailing sustains windows without catch-up bursts
+- debounce rejects negative durations
+- debounce cancels stale wakes on disposal
+- debounce makes failures visible and can recover
+- first rejects negative durations
+- first cancels stale wakes on disposal
+- first makes failures visible and can recover
+- last rejects negative durations
+- last cancels stale wakes on disposal
+- last makes failures visible and can recover
+- both rejects negative durations
+- both cancels stale wakes on disposal
+- both makes failures visible and can recover
+- pending retains the published value and cancels a candidate
+- first ready value after pending is immediate
+- pending after an initial failure replaces that failure and notifies readers
+- unchanged check does not extend a debounce deadline
+- batched writes returning to the captured input do not extend the deadline
+- an expiry inside a batch cannot publish before its last source write
+- conditional capture detaches unused dependencies before admission
+- reentrant downstream writes preserve the next candidate
+- equal admission does not rerun downstream
+- swallowed pure-scope violation still fails capture
+- throwing comparer publishes a failure and recovers on the next capture
+- owner disposal cancels unpublished work and detaches its input
+- independent clock origins do not alter deterministic dumps (traced only)
+- admission comparer failure retains the winning source cause (traced only)
+- leading suppression retains the published winning capture (traced only)
+- admission names the winning capture and reports the held window (traced only)
+- recorded timing distinguishes pending capture and failure from published state (traced only)
+- timing rejects another graph with colliding node identifiers (traced only)
+- manual-clock traces and schema roundtrip are deterministic (traced only)
+
+</details>
+
 ## PreviousValues.fs
 
 | Excluded | Reason |
@@ -1441,5 +1496,96 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - commands run after the write, with Dispatch
 - initial commands run before withCmd returns
 - a dispatch from an effect leaves the effect unsubscribed from the model
+
+</details>
+
+## QueryComposition.fs
+
+<details><summary>2 passed in every build and delivery that runs them</summary>
+
+- initial query value suspends and settles through a boundary
+- failed initial query can explicitly retry
+
+</details>
+
+## Queries.fs
+
+<details><summary>12 passed in every build and delivery that runs them</summary>
+
+- one hundred definitions perform no IO
+- comparer refresh reentry retires the completion being compared
+- same family key shares a request and independent leases
+- unit keys and custom equality deduplicate
+- families and clients isolate identical keys
+- client disposal cancels requests and lease disposal remains idempotent
+- page owner disposal releases just its lease
+- refresh ignores retired success and failure
+- refresh retains data and only wakes state readers
+- evicted pending entry cannot affect reacquired key
+- synchronous throws and null query tasks are request failures
+- cancellation reentry cannot give two requests the same generation
+
+</details>
+
+## QueryReconciliation.fs
+
+<details><summary>6 passed in every build and delivery that runs them</summary>
+
+- equal patches retire requests and failed commits preserve requests
+- throwing data comparisons happen before any publication
+- staging failure is atomic and repeated edits compose
+- empty pending entry retires while absent key stays absent
+- predicate failure and foreign edits leave all entries untouched
+- invalidation keeps data and waits for explicit demand
+
+</details>
+
+## QueryMutations.fs
+
+<details><summary>7 passed in every build and delivery that runs them</summary>
+
+- outcome continuation joins the existing client FIFO
+- closing editor leaves client save alive and Home isolates a new session
+- reconciliation reentry fails locally and queue continues
+- heterogeneous writes serialize through reconciliation
+- remote success with failed reconciliation retains receipt and invalidates
+- failed request skips reconciliation and allows next write
+- client disposal cancels callers and never starts queued requests
+
+</details>
+
+## QueryDictionary.fs
+
+<details><summary>2 passed in every build and delivery that runs them</summary>
+
+- save reconciles retained pages without loading unvisited dictionary data
+- paged membership is invalidated only for loaded matching pages
+
+</details>
+
+## QueryErgonomics.fs
+
+<details><summary>10 passed in every build and delivery that runs them</summary>
+
+- default keys share requests and replacement is an edit
+- explicit page owner survives a temporary view owner
+- awaiters join the current request and see published data
+- refresh supersedes and cancels older waiters
+- disposing one lease cancels only its own waiters
+- refresh failure faults the waiter and retains accepted data
+- reconciliation cancels pending awaiters after publishing replacement
+- invalidation cancels pending awaiters without fetching
+- client disposal cancels outstanding load waiters
+- client disposal during publication cancels the load result
+
+</details>
+
+## QueryNavigationTests.fs
+
+<details><summary>3 passed in every build and delivery that runs them</summary>
+
+- Back disposes the editor while its client-owned save reconciles retained pages
+- adding a word stores the saved draft without fetching full detail
+- Home cancels the old load and ignores messages for removed pages
 
 </details>

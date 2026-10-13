@@ -82,19 +82,23 @@ Dispatchers move work from other threads onto the graph thread.
 
 - [Installation](installation.md): preview packages, supported targets and Native AOT.
 - [Getting started](getting-started.md): a short walkthrough of a reactive graph.
+- [Ranvier or Adaptive for a desktop app?](../blog/desktop-adaptive.md): a blog walkthrough with a complete F# window and comparisons of state, bindings, collections, async work and lifetime.
 - [Graphs](graph.fsx), [Signals](signals.fsx), [Memos](memos.md) and [Effects](effects.md): the core primitives.
+- [Equality](equality.md): graph defaults and typed comparers for individual nodes.
 - [Roots and owners](roots.md), [Cleanup](cleanup.md), [Untrack](untrack.md) and [Batch](batch.md): lifetime and tracking controls.
 - [Editable values](editable.md) and [Drafts](drafts.md): local edits over upstream state.
 - [Async and pending](async-and-pending.md): in-flight values, async memos, boundaries, and threading.
+- [Debounce and throttle](timing.md): control admission before downstream or async work starts.
 - [Testing async state](testing.md): deterministic tests that decide when each flight lands.
 - [Blazor Server](blazor-server.md): one graph per circuit, with `ThreadAffinity.Serialised`.
-- [Collections](collections.fsx): an overview linking to projections, lookups, selectors and collection views.
+- [Collections](collections.fsx): projections, editable keyed sources, change readers, lookups and collection views.
 - [Aggregates](aggregates.fsx): totals, counts and folds over collection rows.
 - [Forms](forms.md): records of reactive fields and batched resets.
 - [Tracing](tracing.md): why a node ran or did not run, where it was created, and the graph as it stands.
 - [Signal maps](signal-maps.md): how to read the live graph maps beneath the examples, and how to write one.
 - [Troubleshooting](troubleshooting.md): each exception message and common symptom, with its cause and fix.
 - [Migrating from Elmish](elmish.md): an MVU model read through selector memos, one view at a time.
+- [Queries and mutations](queries.md): shared remote queries, page leases and atomic reconciliation of partial data.
 - [C#](csharp.md): C# factories, XAML bindings and reactive commands.
 
 ## Status
@@ -104,6 +108,8 @@ Dispatchers move work from other threads onto the graph thread.
 | Area | Status |
 | --- | --- |
 | Core graph (signal, memo, effect, owners, batching) | Implemented and tested. |
+| Per-node typed comparers | Implemented for signals, memos, split effects and boundaries; see [Equality](equality.md). |
+| Editable keyed collections and value readers | Implemented, with direct row edits and bounded change cursors; see [Direct edits](collection-updates.fsx#direct-edits) and [Reading changes](projections.fsx#reading-changes). |
 | Async and boundaries | Implemented. A pending `.Value` read throws `NotReadyException`; `TryValue` reads without throwing. |
 | Projections, lookups and selectors | Implemented, with factory map semantics. A node created inside a memo pulled by a projection row belongs to that memo. |
 | Fable/JavaScript | Implemented and tested under Node.js; no package published yet. See [Fable (JavaScript) target](../fable/index.md). |

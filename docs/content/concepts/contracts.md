@@ -102,8 +102,10 @@ same context at once. Under Fable, `Serialised` behaves as `Unchecked`.
 
 *Implemented.*
 
-A failure is a state of a node, and the node stays in the graph with its edges. In Rx, `OnError` ends the
-subscription and the pipeline has to be rebuilt. In Ranvier, a failed node recovers when an input changes.
+A failure is a state of a node, and dependencies read during the failed run remain tracked. A subsequent
+input change can trigger recovery. System.Reactive's `OnError` terminates a subscription, but operators
+such as `Catch` and `Retry` can provide recovery; R3's `OnErrorResume` is nonterminal. See the
+[ecosystem comparison](ecosystem.md).
 
 ### What a reader sees
 
@@ -219,6 +221,8 @@ run: an owning memo first read by an effect keeps its nodes when the effect re-r
 | `createEffect`, `createEffectOn` | Current owner | With the owner. Construct `Effect` directly for a handle. |
 | `createSuspense`, `createErrorBoundary`, `createBoundary` | Current owner | With the owner, or by `Dispose`. |
 | `createProjection`, `createProjectionWith`, the index forms, and the views built on a projection | Current owner | With the owner, or by `Dispose`. Each key's scope is disposed when the key leaves. |
+| `createKeyedCollection` | Current owner | With the owner, or by `Dispose`. Its row nodes are retired when their key leaves. |
+| `NewKeyReader`, `NewValueReader` | Caller-managed reader handle | By `Dispose`; readers also stop following a disposed projection. Value readers release shared row observation when the last reader detaches. |
 | `AsObservableCollection ()` | Current owner | The collection stops following when the owner re-runs or is disposed, or when the projection is disposed. |
 | `createLookup`, `createSelector` | Current owner | With the owner, or by `Dispose`. |
 | `createRoot` | Current owner | With the owner, or by `owner.Dispose ()`. |
@@ -248,9 +252,10 @@ An async value created and read in the same owning body restarts its flight on e
 
 ### Teardown order
 
-Disposing a scope, or ending a computation's run, runs its cleanups last-registered-first, then disposes its
-children last-created-first. Each child scope does the same, so a scope's own cleanups run before its
-children's. Cleanups run untracked. Disposal is idempotent.
+Disposing a scope, or ending a computation's run, tears down its cleanups and children together in reverse
+acquisition order, as `use` bindings are disposed. A cleanup runs while every node created before its
+registration is still live. Each child scope is torn down the same way. Cleanups run untracked. Disposal is
+idempotent.
 
 - A disposed memo keeps its last value and stops recomputing.
 - Disposing an async value cancels its flight's token.

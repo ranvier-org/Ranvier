@@ -17,6 +17,10 @@ the [trace log](tracing.md).
 Maps appear throughout these docs beneath the examples they draw. This page explains how to read one
 and how to write one.
 
+Use **Example code** to expand or collapse a map's code. The graph and its controls stay visible.
+Authors can choose the initial state and cap the code area's height; taller code scrolls, including
+any F#/JSX tabs. These disclosures work with keyboard controls and with JavaScript disabled.
+
 ## Reading a map
 
 Press **Add tea**, then **Settle quote**. A cart's subtotal feeds a shipping quote, which the buttons
@@ -49,6 +53,7 @@ read it. The value above a node is its latest value.
 | Solid circle | Signal |
 | Dashed circle | Async source or async memo |
 | Rounded rectangle | Memo, boundary or projection |
+| Thick rounded rectangle | Debounce or throttle |
 | Diamond | Effect |
 
 | Look | State |
@@ -58,12 +63,19 @@ read it. The value above a node is its latest value.
 | Spinning ring | A flight is in progress |
 | Dotted outline, dimmed value | Waiting on a pending source |
 | Red outline and value | Failed; the value is the error |
+| Dashed thick outline, clock caption | A timed admission window is open; the value above stays published output |
 
 A dot travelling an edge is a mark: the source tells its observer it may be stale. A bright dot means
 the source's value moved. A ring that fades is a dropped flight.
 
 Hover or focus a node for its path, state, value and run count. Click it for the cause chain of its
 last run, as `Trace.why` renders it. The log beneath the buttons lists the latest events.
+
+Timed nodes show captures, window changes, suppression, cancellation and publication in the log.
+Their caption shows the captured input while a window is open; hover or focus for the mode and
+remaining time recorded at that event. Pending capture can retain a ready or failed publication,
+so it does not automatically dim the published value. Timing windows use their own mark and never
+spin an async flight ring. Try the [debounce and throttle maps](timing.md#watch-admission-on-the-signal-map).
 
 ## Timelines and replays
 
@@ -157,6 +169,12 @@ A `map` fence holds plain Ranvier code and ends with `controls`. The page shows 
 The compiled copy labels each top-level `let x = create…` binding with its name and runs the code
 against a fresh traced graph.
 
+Bindings returned by `debounce`, `throttleFirst`, `throttleLast`, `throttle` and their `With`
+factories also receive their names. Their final graph argument can use `Graph.Current` inside a
+map fence. `MapClock()` supplies a manual clock for deterministic examples: a control calling
+`clock.Advance milliseconds` runs due callbacks in deadline order. It replaces wall-clock waits
+for replay; playback speed does not change these example deadlines.
+
 Top-level projection aggregates also receive their binding's name: `Projection.sumBy`, `countBy`,
 `exists`, `forall`, `fold` and `foldGroup`, called directly or at the end of a pipeline. For example:
 
@@ -178,6 +196,8 @@ a callback or by a custom helper, use `Trace.named "name" (fun () -> …)` expli
 | `speed=` | Initial playback multiplier from `0.25` to `4`, such as `speed=0.5`; defaults to `1`. Readers can change it with **Speed**. |
 | `policy=` | The graph's flight policy: `cancel-previous` (default), `keep-latest`, `queue` or `finish-current`. |
 | `groups=` | How collections draw: `expand` (default), a box with a row per key, or `collapse`, one node. |
+| `code=` | The code disclosure's initial state: `open` (default) or `collapsed`. The map stays visible in either state. |
+| `code-max-height=` | Optional positive length in `px`, `rem`, `em` or `vh`, such as `code-max-height=24rem`. Taller code scrolls; omitted means unrestricted height. |
 | `id=`, `show=` | As on `solid` fences. |
 
 :::
@@ -211,7 +231,7 @@ Write the map as ordinary F# after a literate annotation. Its functions and prop
 completion, tooltips and compiler diagnostics:
 
 ```fsharp
-(*** map replay speed=0.5 show=output ***)
+(*** map replay speed=0.5 code=collapsed ***)
 let count = createSignal 1
 let doubled = createMemo (fun _ -> count.Value * 2)
 createEffect (fun () -> doubled.Value |> ignore)
@@ -262,7 +282,7 @@ The helpers in scope:
 Change the fields, then press **Load another order**. The button changes all four signals and their
 widgets follow. **Reset** rebuilds the graph and restores the initial fields.
 
-```fsharp map timeline show=output
+```fsharp map timeline code=collapsed
 let qty = createSignal 1
 let price = createSignal 4.5
 let name = createSignal "Tea"
@@ -314,7 +334,7 @@ Use `expect` to check the state after an action. `dotnet fsi build.fsx -- docs` 
 expectations under Fable and Node.js; a failed check stops the build and reports the page, fence line, control
 and your message. Replays also report failures in the map itself.
 
-```fsharp map replay speed=0.5 show=output
+```fsharp map replay speed=0.5 code=collapsed
 let count = createSignal 1
 let doubled = createMemo (fun _ -> count.Value * 2)
 createEffect (fun () -> doubled.Value |> ignore)
@@ -471,8 +491,8 @@ module Thermo =
 ## Edit a map
 
 This map runs in your browser: change the code and press **Run** to compile it again and redraw the
-graph. It is the example from the [home page](../index.md#watch-the-graph-think). Try adding a memo
-or a button.
+graph. Start with this small boundary example, then try the timed values and conditional reads
+from the [home page's cart](../index.md#watch-the-graph-think). Try adding a memo or a button.
 
 ```fsharp live
 open Ranvier

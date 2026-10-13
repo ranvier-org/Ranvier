@@ -8,7 +8,7 @@ open Partas.Nacara.Theme
 
 let versions = [ SiteVersion.root "1.0" ]
 
-/// The public API of the Ranvier, Ranvier.CSharp and Ranvier.Elmish assemblies, built beside the site.
+/// <summary>The public API of the assemblies built beside the site.</summary>
 let apiOptions =
     let beside =
         System.Reflection.Assembly.GetExecutingAssembly().Location
@@ -19,7 +19,8 @@ let apiOptions =
         Title = "API reference"
         Sources =
             [
-                for name in [ "Ranvier"; "Ranvier.CSharp"; "Ranvier.Elmish" ] -> FSharpApiSource.create (Path.Combine (beside, $"%s{name}.dll"))
+                for name in [ "Ranvier"; "Ranvier.CSharp"; "Ranvier.Elmish"; "Ranvier.Query" ] ->
+                    FSharpApiSource.create (Path.Combine (beside, $"%s{name}.dll"))
             ]
     }
 
@@ -29,6 +30,7 @@ let theme =
             [
                 NavbarSection ("Guide", "guide", "/guide/")
                 NavbarSection ("Concepts", "concepts", "/concepts/")
+                NavbarSection ("Blog", "blog", "/blog/")
                 NavbarSection ("Benchmarks", "benchmarks", "/benchmarks/")
                 NavbarSection ("Fable", "fable", "/fable/")
                 NavbarDivider
@@ -45,46 +47,56 @@ let theme =
                         Menu.page "guide/getting-started.md"
                         Menu.page "guide/csharp.md"
                         Menu.page "guide/blazor-server.md"
-                        Menu.page "guide/elmish.md"
                     ]
                 Menu.section
-                    "Core concepts"
+                    "Core"
                     [
-                        Menu.page "guide/graph.fsx"
-                        Menu.page "guide/signals.fsx"
-                        Menu.page "guide/memos.md"
-                        Menu.page "guide/effects.md"
-                        Menu.page "guide/roots.md"
-                        Menu.page "guide/cleanup.md"
-                        Menu.page "guide/untrack.md"
-                        Menu.page "guide/batch.md"
-                        Menu.page "guide/editable.md"
-                        Menu.page "guide/drafts.md"
-                        Menu.page "guide/equality.md"
+                        Menu.section
+                            "Core concepts"
+                            [
+                                Menu.page "guide/graph.fsx"
+                                Menu.page "guide/signals.fsx"
+                                Menu.page "guide/memos.md"
+                                Menu.page "guide/timing.md"
+                                Menu.page "guide/effects.md"
+                                Menu.page "guide/roots.md"
+                                Menu.page "guide/cleanup.md"
+                                Menu.page "guide/untrack.md"
+                                Menu.page "guide/batch.md"
+                                Menu.page "guide/editable.md"
+                                Menu.page "guide/drafts.md"
+                                Menu.page "guide/equality.md"
+                            ]
+                        Menu.section
+                            "Async and pending"
+                            [
+                                Menu.page "guide/async-and-pending.md"
+                                Menu.page "guide/pending.md"
+                                Menu.page "guide/async-sources.md"
+                                Menu.page "guide/async-memos.md"
+                                Menu.page "guide/boundaries.md"
+                                Menu.page "guide/threading.md"
+                                Menu.page "guide/testing.md"
+                            ]
+                        Menu.section
+                            "Collections"
+                            [
+                                Menu.page "guide/collections.fsx"
+                                Menu.page "guide/projections.fsx"
+                                Menu.page "guide/lookups.fsx"
+                                Menu.page "guide/selectors.fsx"
+                                Menu.page "guide/collection-updates.fsx"
+                                Menu.page "guide/collection-views.fsx"
+                                Menu.page "guide/aggregates.fsx"
+                            ]
+                        Menu.section "Recipes" [ Menu.page "guide/forms.md" ]
                     ]
                 Menu.section
-                    "Async and pending"
+                    "Extensions"
                     [
-                        Menu.page "guide/async-and-pending.md"
-                        Menu.page "guide/pending.md"
-                        Menu.page "guide/async-sources.md"
-                        Menu.page "guide/async-memos.md"
-                        Menu.page "guide/boundaries.md"
-                        Menu.page "guide/threading.md"
-                        Menu.page "guide/testing.md"
+                        Menu.section "Ranvier.Query" [ Menu.page "guide/queries.md"; Menu.page "guide/query-navigation.md" ]
+                        Menu.section "Ranvier.Elmish" [ Menu.page "guide/elmish.md" ]
                     ]
-                Menu.section
-                    "Collections"
-                    [
-                        Menu.page "guide/collections.fsx"
-                        Menu.page "guide/projections.fsx"
-                        Menu.page "guide/lookups.fsx"
-                        Menu.page "guide/selectors.fsx"
-                        Menu.page "guide/collection-updates.fsx"
-                        Menu.page "guide/collection-views.fsx"
-                        Menu.page "guide/aggregates.fsx"
-                    ]
-                Menu.section "Recipes" [ Menu.page "guide/forms.md" ]
                 Menu.section
                     "Reference"
                     [
@@ -122,8 +134,14 @@ let theme =
                         Menu.page "benchmarks/suspension.md"
                         Menu.page "benchmarks/counters.md"
                     ]
+                Menu.section "Ranvier.Query" [ Menu.page "benchmarks/queries.md" ]
             ]
         >> Theme.menu "fable" [ Menu.section "Fable" [ Menu.page "fable/index.md" ] ]
+        >> Theme.menu
+            "blog"
+            [
+                Menu.section "Blog" [ Menu.page "blog/index.md"; Menu.page "blog/desktop-adaptive.md" ]
+            ]
         >> Theme.navbarEnd
             [
                 NavbarIcon ("GitHub", "https://github.com/shayanhabibi/Ranvier", Icons.github)
@@ -157,6 +175,7 @@ let private ogCards =
         "async-and-pending", "async", "Async and pending: boundary states along a nerve fibre"
         "tracing", "tracing", "Tracing: a cause chain traced back along a nerve fibre"
         "signal-maps", "signal-maps", "Signal maps: a traced graph drawn live, a write travelling its edges"
+        "timing", "timing", "Debounce and throttle: capture changes now, admit them after quiet or at a fixed deadline"
         "guide", "guide", "Ranvier guide: build with signals"
         "concepts", "concepts", "Ranvier concepts: how the graph works"
         "fable", "fable", "Ranvier on Fable: the JavaScript target"
@@ -233,6 +252,7 @@ let site =
     )
     |> LightningCss.register
     |> Esbuild.register
+    |> Maps.register
     |> Nuglify.minifyHtml
     |> Versions.register versions
     |> Theme.register theme
