@@ -5,14 +5,25 @@ type ScopePhase =
     | Attached
     | Disposed
 
-type Scope private (report: exn list -> unit, release: unit -> unit, parent: Scope option, drain: ResizeArray<Scope> option ref) =
+type Scope private (report: exn list -> unit, release: unit -> unit, parent: Scope option) =
     let children = ResizeArray<Scope>()
     let callbacks = ResizeArray<unit -> unit>()
     let mutable disposed = false
     let mutable attached = false
     let mutable failures: exn list = []
+    // The active disposal order of this scope's tree. Set only on the topmost scope; null outside a disposal.
+    let mutable draining: ResizeArray<Scope> = null
 
-    new(report, release) = Scope (report, release, None, ref None)
+    new(report, release) = Scope (report, release, None)
+
+    member private this.Top: Scope =
+        match parent with
+        | Some owner -> owner.Top
+        | None -> this
+
+    member private _.Draining
+        with get () = draining
+        and set value = draining <- value
 
     member private _.RemoveChild(child) =
         children.Remove child |> ignore
@@ -23,7 +34,7 @@ type Scope private (report: exn list -> unit, release: unit -> unit, parent: Sco
 
     member this.Child(childReport: exn list -> unit, childRelease: unit -> unit) =
         this.EnsureLive ()
-        let child = Scope (childReport, childRelease, Some this, drain)
+        let child = Scope (childReport, childRelease, Some this)
         children.Add child
         child
 
@@ -66,12 +77,13 @@ type Scope private (report: exn list -> unit, release: unit -> unit, parent: Sco
 
     member this.Dispose() =
         if not disposed then
-            match drain.Value with
-            | Some order -> this.Collect order
-            | None ->
+            let top = this.Top
+
+            match top.Draining with
+            | null ->
                 let order = ResizeArray<Scope>()
                 let errors = ResizeArray<exn>()
-                drain.Value <- Some order
+                top.Draining <- order
 
                 try
                     this.Collect order
@@ -89,13 +101,14 @@ type Scope private (report: exn list -> unit, release: unit -> unit, parent: Sco
                     if errors.Count > 0 then
                         failures <- List.ofSeq errors
                 finally
-                    drain.Value <- None
+                    top.Draining <- null
 
                 if errors.Count > 0 then
                     try
                         report failures
                     with error ->
                         failures <- failures @ [ error ]
+            | order -> this.Collect order
 
     member this.MarkAttached() =
         this.EnsureLive ()
