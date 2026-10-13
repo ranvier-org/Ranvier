@@ -256,6 +256,18 @@ type MountServices =
 
 let private unset = obj ()
 
+/// <summary>An array of <c>length</c> unassigned elements.</summary>
+[<Emit("new Array($0)")>]
+let private allocate (length: int) : obj array = jsNative
+
+/// <summary>Reads an element without a bounds check.</summary>
+[<Emit("$0[$1]")>]
+let private at (array: 'T array) (index: int) : 'T = jsNative
+
+/// <summary>Writes an element without a bounds check.</summary>
+[<Emit("$0[$1] = $2")>]
+let private store (array: obj array) (index: int) (value: obj) : unit = jsNative
+
 [<Emit("$0.data = $1 == null ? '' : $1")>]
 let private setData (node: obj) (value: obj) : unit = jsNative
 
@@ -274,21 +286,21 @@ let private write (slot: Slot) (node: obj) (value: obj) =
 
 // A failed write keeps the slot's previous value. During setup the failure aborts the mount; afterwards it is reported.
 let private commit (services: MountServices) (state: obj array) (slot: Slot) (nodeIndex: int) (previousIndex: int) (value: obj) =
-    let previous = state[previousIndex]
+    let previous = at state previousIndex
 
     if obj.ReferenceEquals (value, unset) then
         match slot.Target with
         | TextTarget when obj.ReferenceEquals (previous, unset) ->
-            setData state[StateNodes + nodeIndex] ""
-            state[previousIndex] <- box ""
+            setData (at state (StateNodes + nodeIndex)) ""
+            store state previousIndex (box "")
         | _ -> ()
     elif
         obj.ReferenceEquals (previous, unset)
         || not (slot.Same.Invoke (previous, value))
     then
         try
-            write slot state[StateNodes + nodeIndex] value
-            state[previousIndex] <- value
+            write slot (at state (StateNodes + nodeIndex)) value
+            store state previousIndex value
         with error ->
             if services.SettingUp () then
                 services.SetupFailed error
@@ -300,7 +312,9 @@ let private collect (root: Node) (walk: int array) (state: obj array) =
     let mutable cursor = root
     let mutable count = 0
 
-    for op in walk do
+    for i in 0 .. walk.Length - 1 do
+        let op = at walk i
+
         if op = FirstChild then
             cursor <- unbox cursor.firstChild
         elif op = NextSibling then
@@ -308,7 +322,7 @@ let private collect (root: Node) (walk: int array) (state: obj array) =
         elif op = Parent then
             cursor <- unbox cursor.parentNode
         else
-            state[StateNodes + count] <- box cursor
+            store state (StateNodes + count) (box cursor)
             count <- count + 1
 
 /// <summary>Materialises one instance: runs setup, clones the skeleton, binds its slots and events, and appends it.</summary>
@@ -325,20 +339,24 @@ let materialise (definition: TemplateDefinition) (props: obj) (services: MountSe
     let isolatedCount = compiled.IsolatedSlots.Length
     let previousBase = StateNodes + compiled.NodeCount
     let pendingBase = previousBase + renderCount + isolatedCount
-    let state: obj array = Array.zeroCreate (pendingBase + renderCount)
-    state[StateCompiled] <- box compiled
-    state[StateInstance] <- instance
-    state[StateOwner] <- box (Api.getOwner ())
-    state[StateGraph] <- box Graph.Current
+    let state = allocate (pendingBase + renderCount)
+    store state StateCompiled (box compiled)
+    store state StateInstance instance
+    store state StateOwner (box (Api.getOwner ()))
+    store state StateGraph (box Graph.Current)
 
     for index in previousBase .. pendingBase - 1 do
-        state[index] <- unset
+        store state index unset
 
     collect clone compiled.Walk state
 
-    for nodeIndex, writer, value in compiled.Properties do
+    let properties = compiled.Properties
+
+    for i in 0 .. properties.Length - 1 do
+        let nodeIndex, writer, value = at properties i
+
         try
-            writer.Invoke (state[StateNodes + nodeIndex], value)
+            writer.Invoke (at state (StateNodes + nodeIndex), value)
         with error when services.SettingUp () ->
             services.SetupFailed error
             reraise ()
@@ -346,8 +364,8 @@ let materialise (definition: TemplateDefinition) (props: obj) (services: MountSe
     if renderCount > 0 then
         let commitAll () =
             for k in 0 .. renderCount - 1 do
-                let nodeIndex, slot = compiled.RenderSlots[k]
-                commit services state slot nodeIndex (previousBase + k) state[pendingBase + k]
+                let nodeIndex, slot = at compiled.RenderSlots k
+                commit services state slot nodeIndex (previousBase + k) (at state (pendingBase + k))
 
         let mutable failed = false
 
@@ -355,7 +373,7 @@ let materialise (definition: TemplateDefinition) (props: obj) (services: MountSe
             let mutable failure: exn = null
 
             for k in 0 .. renderCount - 1 do
-                let _, slot = compiled.RenderSlots[k]
+                let _, slot = at compiled.RenderSlots k
 
                 let value =
                     try
@@ -371,7 +389,7 @@ let materialise (definition: TemplateDefinition) (props: obj) (services: MountSe
 
                         unset
 
-                state[pendingBase + k] <- value
+                store state (pendingBase + k) value
 
             Api.untrack commitAll
 
@@ -385,7 +403,7 @@ let materialise (definition: TemplateDefinition) (props: obj) (services: MountSe
         services.RaiseSetupFailure ()
 
     for k in 0 .. isolatedCount - 1 do
-        let nodeIndex, slot = compiled.IsolatedSlots[k]
+        let nodeIndex, slot = at compiled.IsolatedSlots k
         let previousIndex = previousBase + renderCount + k
 
         let mutable failed = false
@@ -417,8 +435,11 @@ let materialise (definition: TemplateDefinition) (props: obj) (services: MountSe
 
     let mutable attached = -1
 
-    for nodeIndex, eventName, handler in compiled.Events do
-        let node = state[StateNodes + nodeIndex]
+    let events = compiled.Events
+
+    for i in 0 .. events.Length - 1 do
+        let nodeIndex, eventName, handler = at events i
+        let node = at state (StateNodes + nodeIndex)
 
         if services.IsDelegated eventName then
             if attached <> nodeIndex then
@@ -427,8 +448,8 @@ let materialise (definition: TemplateDefinition) (props: obj) (services: MountSe
 
             services.Delegate eventName
         else
-            let owner = state[StateOwner] :?> Owner
-            let graph = state[StateGraph] :?> Graph
+            let owner = at state StateOwner :?> Owner
+            let graph = at state StateGraph :?> Graph
 
             services.ListenDirect (unbox node) eventName (fun event ->
                 if not owner.IsDisposed then
