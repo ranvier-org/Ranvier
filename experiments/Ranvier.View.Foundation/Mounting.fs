@@ -596,6 +596,22 @@ let rec private mountCore
             modifierNode <- previousNode
             modifierTag <- previousTag
 
+    let openElement (backend: Backend) tag modifiers =
+        ensureSetup ()
+        let node = document.createElement (name tag)
+        append node
+
+        if tag <> Select then
+            applyModifiers backend tag node modifiers
+
+        node
+
+    let childParent tag (node: HTMLElement) : Node =
+        if name tag = "template" then
+            (node :?> HTMLTemplateElement).content :> Node
+        else
+            node
+
     let startBinding (equals: Func<_, _, bool>) read write =
 #if LADDER_NAIVE_BINDINGS
         Api.createEffect (fun () -> write (read ()))
@@ -604,24 +620,28 @@ let rec private mountCore
         | Synchronous ->
             let mutable hasCommitted = false
             let mutable committed = Unchecked.defaultof<_>
+            let mutable pending = Unchecked.defaultof<_>
+
+            let commit () =
+                let changed =
+                    not hasCommitted
+                    || not (equals.Invoke (committed, pending))
+
+                if changed && not root.IsDisposed then
+                    try
+                        write pending
+                        committed <- pending
+                        hasCommitted <- true
+                    with error when root.Phase = SettingUp ->
+                        bindingSetupFailure <- Some error
+                        reraise ()
 
             Api.createEffect (fun () ->
                 let value = read ()
 
                 if not root.IsDisposed then
-                    Api.untrack (fun () ->
-                        let changed =
-                            not hasCommitted
-                            || not (equals.Invoke (committed, value))
-
-                        if changed && not root.IsDisposed then
-                            try
-                                write value
-                                committed <- value
-                                hasCommitted <- true
-                            with error when root.Phase = SettingUp ->
-                                bindingSetupFailure <- Some error
-                                reraise ()))
+                    pending <- value
+                    Api.untrack commit)
         | Queued queue ->
             let live () =
                 not root.IsDisposed
@@ -761,7 +781,13 @@ let rec private mountCore
                 if isDelegated delegatedEvents eventName then
                     setDelegatedHandler node eventName invoke
 
-                    if not (delegatedNames.Contains eventName) then
+                    let mutable known = false
+
+                    for index in 0 .. delegatedNames.Count - 1 do
+                        if delegatedNames[index] = eventName then
+                            known <- true
+
+                    if not known then
                         delegatedNames.Add eventName
                 else
                     let cleanup = Typed.listenDirect (box node) eventName invoke
@@ -777,27 +803,33 @@ let rec private mountCore
 
             member _.ReactiveProperty(read, write) =
                 let node = currentElement ()
-                startBinding propertyEquals read (fun value -> write (box node) value)
+                startBinding propertyEquals read (fun value -> write.Invoke (box node, value))
 
             member this.Element(tag, modifiers, children) =
-                ensureSetup ()
-                let node = document.createElement (name tag)
-                append node
-
-                if tag <> Select then
-                    applyModifiers this tag node modifiers
+                let node = openElement this tag modifiers
 
                 if not (isVoid tag) then
                     let previous = parent
-
-                    parent <-
-                        if name tag = "template" then
-                            (node :?> HTMLTemplateElement).content :> Node
-                        else
-                            node
+                    parent <- childParent tag node
 
                     try
                         children ()
+                    finally
+                        parent <- previous
+
+                if tag = Select then
+                    applyModifiers this tag node modifiers
+
+            member this.ElementWith(tag, modifiers, children) =
+                let node = openElement this tag modifiers
+
+                if not (isVoid tag) then
+                    let previous = parent
+                    parent <- childParent tag node
+
+                    try
+                        for index in 0 .. children.Length - 1 do
+                            children[index] this
                     finally
                         parent <- previous
 
@@ -1101,7 +1133,11 @@ let rec private mountCore
                     }
 #else
                 Api.createRoot (fun owner ->
-                    Api.untrack (fun () -> setup { OnCleanup = ownedCleanup owner })
+                    Api.untrack (fun () ->
+                        setup
+                            {
+                                OnCleanup = fun callback -> ownedCleanup owner callback
+                            })
 
                     if owner.IsDisposed then
                         invalid "View construction is only valid during live setup")

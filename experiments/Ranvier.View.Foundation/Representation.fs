@@ -18,6 +18,18 @@ type Setup = { OnCleanup: (unit -> unit) -> unit }
 type Backend() =
     abstract Text: string -> unit
     abstract Element: Tag * (Backend -> unit) array * (unit -> unit) -> unit
+    /// <summary>Creates an element whose children run against this backend in order.</summary>
+    abstract ElementWith: Tag * (Backend -> unit) array * (Backend -> unit) array -> unit
+
+    default this.ElementWith(tag, modifiers, children) =
+        this.Element (
+            tag,
+            modifiers,
+            fun () ->
+                for child in children do
+                    child this
+        )
+
     /// <summary>Sets an attribute on the element currently receiving modifiers.</summary>
     abstract Attribute: string * string -> unit
     /// <summary>Sets or removes an attribute on the element currently receiving modifiers.</summary>
@@ -34,7 +46,7 @@ type Backend() =
     /// <summary>Applies a static property writer to the element currently receiving modifiers.</summary>
     abstract Property: (obj -> unit) -> unit
     /// <summary>Binds a property reader and target-aware writer to the element currently receiving modifiers.</summary>
-    abstract ReactiveProperty: (unit -> obj) * (obj -> obj -> unit) -> unit
+    abstract ReactiveProperty: (unit -> obj) * System.Func<obj, obj, unit> -> unit
     abstract Bind: (string -> string -> bool) * (unit -> string) -> unit
     /// <summary>Interprets a keyed item snapshot and renders its items into this backend.</summary>
     abstract Keyed: (obj -> obj -> bool) * (unit -> (obj * obj) array) * ((unit -> obj) -> Backend -> unit) -> unit
@@ -225,15 +237,16 @@ module Program =
                 child.Invoke backend)
 
     /// <summary>Builds an element with its modifier and child arrays.</summary>
+    /// <summary>Presents views as backend actions; Fable reuses the erased view array.</summary>
+    let childActions (children: View array) : (Backend -> unit) array =
+#if FABLE_COMPILER
+        unbox children
+#else
+        children |> Array.map (fun child -> child.Invoke)
+#endif
+
     let inline element tag (modifiers: ModifierAction array) (children: View array) : View =
-        View (fun backend ->
-            backend.Element (
-                tag,
-                modifiers,
-                fun () ->
-                    for child in children do
-                        child.Invoke backend
-            ))
+        View (fun backend -> backend.ElementWith (tag, modifiers, childActions children))
 
     /// <summary>Builds text from a tracked reader.</summary>
     let inline bind equals read : View =

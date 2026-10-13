@@ -70,15 +70,31 @@ let browser (hook: 'native -> (unit -> unit)) : Modifier<'native> =
 let staticProperty (setter: 'native -> 'value -> unit) value : Modifier<'native> =
     Modifier (fun backend -> backend.Property (fun node -> setter (unbox node) value))
 
+#if FABLE_COMPILER
+// Each presents a function as an untyped function of the same arity; the JavaScript representations are identical.
+[<Emit("$0")>]
+let private asUntypedReader (read: unit -> 'value) : unit -> obj = jsNative
+
+[<Emit("$0")>]
+let private asUntypedWriter (setter: 'native -> 'value -> unit) : System.Func<obj, obj, unit> = jsNative
+
+[<Emit("$0")>]
+let private asUntypedHandler (handler: Event -> unit) : obj -> unit = jsNative
+
+#endif
 /// <summary>Tracks a property reader and writes changed values to each mounted element.</summary>
 let reactiveProperty (setter: 'native -> 'value -> unit) (read: unit -> 'value) : Modifier<'native> =
     let readObject () =
         box (read ())
 
-    let write node value =
-        setter (unbox node) (unbox value)
+    let write =
+        System.Func<obj, obj, unit>(fun node value -> setter (unbox node) (unbox value))
 
+#if FABLE_COMPILER
+    Modifier (fun backend -> backend.ReactiveProperty (asUntypedReader read, asUntypedWriter setter))
+#else
     Modifier (fun backend -> backend.ReactiveProperty (readObject, write))
+#endif
 
 /// <summary>Wraps an event handler to run in the current graph and owner, untracked, until that owner is disposed.</summary>
 let ownedHandler (handler: obj -> unit) : obj -> unit =
@@ -95,7 +111,11 @@ let listenDirect (node: obj) (eventName: string) (handler: obj -> unit) : unit -
 
 /// <summary>Handles a named DOM event through the backend's listener.</summary>
 let listener (eventName: string) (handler: Event -> unit) : Modifier<'native> =
+#if FABLE_COMPILER
+    Modifier (listenModifier eventName (asUntypedHandler handler))
+#else
     Modifier (listenModifier eventName (fun event -> handler (unbox event)))
+#endif
 
 /// <summary>Unwraps typed modifiers for a backend; Fable reuses the erased modifier array.</summary>
 let modifierActions (modifiers: Modifier<'native> array) : ModifierAction array =
