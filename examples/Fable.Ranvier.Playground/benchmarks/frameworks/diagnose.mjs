@@ -9,10 +9,11 @@ const cwd = fileURLToPath(new URL("../../", import.meta.url));
 const outName = process.argv.find(arg => arg.startsWith("--out="))?.slice(6);
 const out = fileURLToPath(new URL(outName ? `../../../../docs/research/framework-performance/investigation/${outName}/` : process.argv.includes("--cleanup") ? "../../../../docs/research/framework-performance/investigation/cleanup-profile/" : "../../../../docs/research/framework-performance/investigation/", import.meta.url));
 const port = 5187;
-// `--modes=a,b` and `--phases=mount` narrow the profiled adapters; `--roots=<n>` sets the roots per profiled run.
+// `--modes=a,b` and `--phases=mount` narrow the profiled adapters; `--roots=<n>` sets the roots per profiled run and `--width=<n>` the rows per root.
+// `--repeat=<n>` profiles n prepared runs in sequence; preparation and cleanup run inside the profile, outside `run`.
 const listArg = (flag, fallback) => process.argv.find(arg => arg.startsWith(`--${flag}=`))?.slice(flag.length + 3).split(",") || fallback;
 const modes = listArg("modes", ["ranvier", "solid", "ripple", "react"]), phases = listArg("phases", ["mount", "dispose"]);
-const roots = Number(listArg("roots", ["256"])[0]);
+const roots = Number(listArg("roots", ["256"])[0]), width = Number(listArg("width", ["128"])[0]), repeat = Number(listArg("repeat", ["1"])[0]);
 if (process.argv.includes("--build")) execFileSync("rtk", ["node", "node_modules/vite/bin/vite.js", "build", "--config", "benchmarks/frameworks/vite.config.mjs"], { cwd, stdio: "inherit", windowsHide: true, env: { ...process.env, RANVIER_PERF_PROFILE: "true" } });
 const server = spawn(process.execPath, ["node_modules/vite/bin/vite.js", "preview", "--config", "benchmarks/frameworks/vite.config.mjs", "--host", "127.0.0.1", "--port", String(port), "--strictPort"], { cwd, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
 let output = "", browser;
@@ -44,22 +45,26 @@ try {
   if (maps.length !== 1) throw Error(`Expected one benchmark source map, found ${maps.length}`);
   await writeFile(`${out}/profile-source-map.json.gz`, gzipSync(await readFile(`${assets}/${maps[0]}`)));
   for (const mode of modes) {
-    await page.evaluate(mode => window.frameworkPerf.verify(mode, 128), mode);
+    await page.evaluate(({ mode, width }) => window.frameworkPerf.verify(mode, width), { mode, width });
     for (const phase of phases) {
-      const timings = await page.evaluate(({ mode, phase }) => {
-        for (let i = 0; i < 3; i++) window.frameworkPerf.sample(mode, 128, phase, 32);
-        return Array.from({ length: 7 }, () => window.frameworkPerf.sample(mode, 128, phase, 32) * 1000);
-      }, { mode, phase });
-      await page.evaluate(({ mode, phase, roots }) => { window.preparedProfile = window.frameworkPerf.prepare(mode, 128, phase, roots); }, { mode, phase, roots });
+      const timings = await page.evaluate(({ mode, phase, width }) => {
+        for (let i = 0; i < 3; i++) window.frameworkPerf.sample(mode, width, phase, 32);
+        return Array.from({ length: 7 }, () => window.frameworkPerf.sample(mode, width, phase, 32) * 1000);
+      }, { mode, phase, width });
       await cdp.send("HeapProfiler.collectGarbage");
       await cdp.send("Profiler.start");
-      const profiledRunMs = await page.evaluate(() => {
-        const start = performance.now();
-        window.preparedProfile.run();
-        return performance.now() - start;
-      });
+      const profiledRunMs = await page.evaluate(({ mode, phase, roots, width, repeat }) => {
+        let ms = 0;
+        for (let i = 0; i < repeat; i++) {
+          const prepared = window.frameworkPerf.prepare(mode, width, phase, roots);
+          const start = performance.now();
+          prepared.run();
+          ms += performance.now() - start;
+          prepared.cleanup();
+        }
+        return ms;
+      }, { mode, phase, roots, width, repeat });
       const { profile } = await cdp.send("Profiler.stop");
-      await page.evaluate(() => { window.preparedProfile.cleanup(); delete window.preparedProfile; });
       await writeFile(`${out}/${mode}-${phase}.cpuprofile`, JSON.stringify(profile));
       const nodes = new Map(profile.nodes.map(node => [node.id, node]));
       const self = new Map();
@@ -69,8 +74,8 @@ try {
         self.set(key, (self.get(key) || 0) + profile.timeDeltas[i]);
       }
       const hotspots = [...self].sort((a, b) => b[1] - a[1]).slice(0, 25).map(([functionName, us]) => ({ functionName, ms: us / 1000 }));
-      const operations = await page.evaluate(({ mode, phase }) => window.frameworkPerf.operations(mode, 128, phase), { mode, phase });
-      results.push({ mode, phase, width: 128, timingsUs: timings, operations, profiledRoots: roots, profiledRunMs, hotspots });
+      const operations = await page.evaluate(({ mode, phase, width }) => window.frameworkPerf.operations(mode, width, phase), { mode, phase, width });
+      results.push({ mode, phase, width, timingsUs: timings, operations, profiledRoots: roots, profiledRuns: repeat, profiledRunMs, hotspots });
       console.log(JSON.stringify({ mode, phase, hotspots: hotspots.slice(0, 8) }));
     }
   }

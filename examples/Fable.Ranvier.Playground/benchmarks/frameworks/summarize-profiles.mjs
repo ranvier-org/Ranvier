@@ -26,7 +26,29 @@ for (const mode of metadata.modes || ["ranvier", "solid", "ripple", "react"]) fo
     const original = frame.url.includes("/assets/") ? originalPositionFor(sourceMap, { line: frame.lineNumber + 1, column: frame.columnNumber }) : null;
     return { name: frame.functionName || "(anonymous)", source: original?.source || frame.url || "(runtime)", line: original?.line || frame.lineNumber + 1 };
   };
+  // A repeated profile also samples preparation and cleanup: keep the samples inside the prepared `run`, and the
+  // stackless (garbage collector) and (program) samples between two of them.
+  const repeated = (metadata.results.find(row => row.mode === mode && row.phase === phase)?.profiledRuns || 1) > 1;
+  const inRun = profile.samples.map(id => {
+    if (!repeated) return true;
+    let jsFrame = false;
+    for (; id !== undefined; id = parents.get(id)) {
+      const frame = nodes.get(id).callFrame;
+      if (frame.functionName === "run" && frame.url.includes("/assets/") && label(nodes.get(id)).source.endsWith("page.mjs")) return true;
+      if (frame.url) jsFrame = true;
+    }
+    return jsFrame ? false : null;
+  });
+  for (let i = 0, previous = false; i < inRun.length; i++) {
+    if (inRun[i] !== null) { previous = inRun[i]; continue; }
+    let next = i + 1;
+    while (next < inRun.length && inRun[next] === null) next++;
+    const value = previous && next < inRun.length && inRun[next] === true;
+    for (; i < next; i++) inRun[i] = value;
+    i--;
+  }
   for (let i = 0; i < profile.samples.length; i++) {
+    if (!inRun[i]) continue;
     let id = profile.samples[i], leaf = true;
     const delta = profile.timeDeltas[i], seen = new Set();
     while (id !== undefined) {
