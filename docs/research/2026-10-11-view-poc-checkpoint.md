@@ -51,3 +51,5 @@ Components now use [owner lifetime](2026-10-13-owner-lifetime.md): the core owne
 Event handlers now use [delegated listeners](2026-10-13-delegated-listeners.md): bubbling events dispatch from one listener per mount host. Its acceptance passes 211 Node cases and 22 Chromium tests.
 
 Mount-path allocation is reduced by [allocation cuts](2026-10-13-allocation-cuts.md): children arrays, pass-through handlers and setters, and shared binding commits. Its acceptance passes 211 Node cases and 22 Chromium tests.
+
+Components can be written as [component templates](2026-10-14-component-templates.md): a component type builds its view once, and each instance clones a shared skeleton with one state array and one render effect. At 128 rows a template mount is 1.48× Solid 2 and allocates 1.15× Solid 2, against 1.98× and 3.65× for authored components; the mount target of 1.3× is not met. Its acceptance passes 232 Node tests and 22 Chromium tests.

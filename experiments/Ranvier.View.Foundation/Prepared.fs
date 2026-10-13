@@ -1,3 +1,4 @@
+/// <summary>Clones cached static skeletons and applies instance modifiers to them. Superseded by component templates in <c>Template.fs</c>; kept until its removal is decided.</summary>
 module Ranvier.View.Foundation.Prepared
 
 open System

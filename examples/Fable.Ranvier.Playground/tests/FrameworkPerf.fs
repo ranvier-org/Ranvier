@@ -8,6 +8,47 @@ open Ranvier.View.Foundation.Generated.Html.Authoring
 
 module H = Ranvier.View.Foundation.Generated.Html
 
+type private PerfProps =
+    {
+        Index: int
+        Source: Signal<string>
+        Disabled: Memo<bool>
+    }
+
+type private PerfRow =
+    {
+        Index: int
+        Source: Signal<string>
+        Disabled: Memo<bool>
+        Local: Signal<int>
+    }
+
+let private perfRow =
+    Template.Component.define
+        (fun _ (props: PerfProps) ->
+            {
+                Index = props.Index
+                Source = props.Source
+                Disabled = props.Disabled
+                Local = Api.createSignal 0
+            })
+        (fun t ->
+            t.div
+                [|
+                    t.Attrs.id (fun r -> "row-" + string r.Index)
+                    t.Attrs.className "panel"
+                    t.Attrs.title (t.from (fun r -> r.Source))
+                |]
+                [|
+                    t.input [| t.Props.value (t.from (fun r -> r.Source)) |]
+                    t.button
+                        [|
+                            t.Props.disabled (t.from (fun r -> r.Disabled))
+                            t.Events.onClick (fun r _ -> r.Local.Value <- r.Local.Value + 1)
+                        |]
+                        [| t.text (fun r -> string r.Local.Value) |]
+                |])
+
 let private rowTemplate =
     Prepared.prepare (H.Program.div [| H.Attrs.classStatic "panel" |] [| H.Program.input [||]; H.Program.button [||] [| Program.text "0" |] |])
 
@@ -69,3 +110,20 @@ let mount host width =
 /// <summary>Mounts equivalent components through a shared static skeleton and instance bindings.</summary>
 let mountPrepared host width =
     mountCore preparedRows host width
+
+/// <summary>Mounts equivalent rows as template component instances.</summary>
+let mountTemplate host width =
+    mountCore
+        (fun width source disabled ->
+            Program.fragment (
+                Array.init width (fun index ->
+                    Template.Component.render
+                        perfRow
+                        {
+                            Index = index + 1
+                            Source = source
+                            Disabled = disabled
+                        })
+            ))
+        host
+        width

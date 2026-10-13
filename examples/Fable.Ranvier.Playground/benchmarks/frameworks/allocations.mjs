@@ -28,7 +28,7 @@ try {
   if (!ready) throw Error(output);
   browser = await chromium.launch();
   const results = [];
-  for (const mode of ["ranvier", "ranvier-direct", "solid", "ripple", "native-descendants"]) {
+  for (const mode of ["ranvier", "ranvier-template", "ranvier-direct", "solid", "ripple", "native-descendants"]) {
     const page = await browser.newPage();
     await page.goto(url);
     await page.waitForFunction(() => window.frameworkPerf);
