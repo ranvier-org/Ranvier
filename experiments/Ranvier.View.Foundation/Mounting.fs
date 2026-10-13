@@ -116,18 +116,22 @@ let private isDelegated (events: obj) (eventName: string) : bool = jsNative
 [<Emit("$0['$$ranvier:' + $1] = $2")>]
 let private setDelegatedHandler (node: Node) (eventName: string) (handler: obj -> unit) : unit = jsNative
 
-[<Emit("new WeakMap()")>]
-let private createHostListeners () : obj = jsNative
+[<Emit("new Map()")>]
+let private createSharedListeners () : obj = jsNative
 
-/// <summary>Per host and event name: the delegating listener and the number of mounts using it.</summary>
-let private hostListeners = createHostListeners ()
+/// <summary>Per event name: the listener shared by every host, and the host property counting the mounts using it.</summary>
+let private sharedListeners = createSharedListeners ()
 
-// The listener walks from the target to its host, presenting each handled node as currentTarget. A node with a handler runs it; a template event node passes its instance state to `dispatchTemplate`. An inner host records itself on the event, so an outer host resumes above it.
-[<Emit("""(() => { let names = $0.get($1); if (!names) $0.set($1, names = new Map()); let entry = names.get($2); if (!entry) { const key = '$$ranvier:' + $2; const host = $1; const listener = event => { let node = event.$$ranvierHost ? event.$$ranvierHost.parentNode : event.target; Object.defineProperty(event, 'currentTarget', { configurable: true, get: () => node }); while (node) { const handler = node[key]; if (handler) { handler(event); if (event.cancelBubble) break; } else if (node.$$ranvier !== undefined) { $3(node.$$ranvier, node, event); if (event.cancelBubble) break; } if (node === host) break; node = node.parentNode; } event.$$ranvierHost = host; }; host.addEventListener($2, listener); names.set($2, entry = { listener, count: 0 }); } entry.count++; })()""")>]
-let private delegateFrom (listeners: obj) (host: Node) (eventName: string) (dispatchTemplate: Func<obj array, Node, obj, unit>) : unit = jsNative
+// The listener runs with its host as `this` and walks from the target to that host, presenting each handled node as currentTarget. A node with a handler runs it; a template event node passes its instance state to `$1`. An inner host records itself on the event, so an outer host resumes above it.
+let private delegateFrom: Func<Node, string, unit> =
+    JsInterop.emitJsExpr
+        (sharedListeners, TemplateDom.dispatch)
+        """(host, eventName) => { let shared = $0.get(eventName); if (!shared) { const key = '$$ranvier:' + eventName; shared = { count: '$$ranvier:count:' + eventName, listener: function (event) { const host = this; let node = event.$$ranvierHost ? event.$$ranvierHost.parentNode : event.target; Object.defineProperty(event, 'currentTarget', { configurable: true, get: () => node }); while (node) { const handler = node[key]; if (handler) { handler(event); if (event.cancelBubble) break; } else if (node.$$ranvier !== undefined) { $1(node.$$ranvier, node, event); if (event.cancelBubble) break; } if (node === host) break; node = node.parentNode; } event.$$ranvierHost = host; } }; $0.set(eventName, shared); } const count = host[shared.count] | 0; if (count === 0) host.addEventListener(eventName, shared.listener); host[shared.count] = count + 1; }"""
 
-[<Emit("(() => { const names = $0.get($1); const entry = names && names.get($2); if (entry && --entry.count === 0) { $1.removeEventListener($2, entry.listener); names.delete($2); } })()")>]
-let private undelegateFrom (listeners: obj) (host: Node) (eventName: string) : unit = jsNative
+let private undelegateFrom: Func<Node, string, unit> =
+    JsInterop.emitJsExpr
+        sharedListeners
+        """(host, eventName) => { const shared = $0.get(eventName); const count = shared ? host[shared.count] | 0 : 0; if (count === 1) host.removeEventListener(eventName, shared.listener); if (count > 0) host[shared.count] = count - 1; }"""
 
 let private claim (registry: WeakSet<Node>) (node: Node) : unit =
     registry.add node |> ignore
@@ -823,7 +827,7 @@ let rec private mountCore
     let delegateAt (target: Node) =
         for index in 0 .. delegatedNames.Count - 1 do
             let eventName = delegatedNames[index]
-            delegateFrom hostListeners target eventName TemplateDom.dispatch
+            delegateFrom.Invoke (target, eventName)
 
         delegatedHost <- target
 
@@ -831,7 +835,7 @@ let rec private mountCore
         if not (isNull (box delegatedHost)) then
             for index in 0 .. delegatedNames.Count - 1 do
                 let eventName = delegatedNames[index]
-                undelegateFrom hostListeners delegatedHost eventName
+                undelegateFrom.Invoke (delegatedHost, eventName)
 
             delegatedHost <- Unchecked.defaultof<_>
 
