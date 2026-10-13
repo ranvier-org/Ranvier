@@ -1,6 +1,6 @@
 # Binding setup allocation reduction
 
-This follows the mount diagnosis at `b175b68`. The production renderer now keeps a committed-value flag and value instead of wrapping every successful write in an option. Synchronous bindings inline the liveness and setup-failure guards; queued bindings keep their asynchronous callbacks. Built-in property and attribute comparers are shared two-argument delegates. Fable emits them as aliases of its equality function and calls them directly, without a curried intermediate function. No public authoring API changes.
+This follows the mount diagnosis at `a2f2c7f`. The production renderer now keeps a committed-value flag and value instead of wrapping every successful write in an option. Synchronous bindings inline the liveness and setup-failure guards; queued bindings keep their asynchronous callbacks. Built-in property and attribute comparers are shared two-argument delegates. Fable emits them as aliases of its equality function and calls them directly, without a curried intermediate function. No public authoring API changes.
 
 Tracking, untracked comparison/writes, disposal checks, initial setter rollback, failed-setter retries, queued version checks, and per-run cleanup ownership remain in place. Component and element construction are unchanged. Prepared templates are still outstanding.
 
@@ -10,7 +10,7 @@ The final full playground test command passes 197 Node tests and 22 Chromium tes
 
 ## Measurements
 
-`binding-results.json` compares a saved, minified counter-free Release bundle from `b175b68` against the changed bundle. Three independent Chromium processes alternate variants, with three warmups and eleven measured rounds. At 128 rows:
+`binding-results.json` compares a saved, minified counter-free Release bundle from `a2f2c7f` against the changed bundle. Three independent Chromium processes alternate variants, with three warmups and eleven measured rounds. At 128 rows:
 
 - Mount: 946.72 → 933.75 µs. Process medians disagree on the direction; this is not a reliable mount speedup.
 - Update: 131.30 → 122.85 µs. The pooled reduction is 6.4%; one process regresses.
@@ -28,7 +28,7 @@ Absolute timings vary between runs. Compare the changed and saved bundles within
 
 ## Reproduction
 
-Before editing or recompiling the baseline, build and verify `b175b68` and copy `generated-framework-dist` to the ignored `generated-framework-binding-before` directory. Then, from `examples/Fable.Ranvier.Playground`, run sequentially:
+Before editing or recompiling the baseline, build and verify `a2f2c7f` and copy `generated-framework-dist` to the ignored `generated-framework-binding-before` directory. Then, from `examples/Fable.Ranvier.Playground`, run sequentially:
 
 ```powershell
 rtk node benchmarks/frameworks/run.mjs --build --binding-comparison

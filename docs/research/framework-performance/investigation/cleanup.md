@@ -10,7 +10,7 @@ Name validation uses a character loop instead of splitting strings and creating 
 
 ## Paired performance checkpoint
 
-The [raw results](cleanup-results.json) compare the saved counter-free Release bundle from `48bbfd4` against the cleanup bundle. Both are minified production builds. Three independent Chromium processes alternate variant order, discard three warmups and collect eleven rounds at widths 1, 16 and 128. Bundle hashes, all samples, correctness checks and retained heap readings are archived. Host setup and paint/layout are excluded; timings include GC and use the existing root-batch sizes.
+The [raw results](cleanup-results.json) compare the saved counter-free Release bundle from `ca3a5d5` against the cleanup bundle. Both are minified production builds. Three independent Chromium processes alternate variant order, discard three warmups and collect eleven rounds at widths 1, 16 and 128. Bundle hashes, all samples, correctness checks and retained heap readings are archived. Host setup and paint/layout are excluded; timings include GC and use the existing root-batch sizes.
 
 At 128 rows, pooled median microseconds per operation were:
 
@@ -37,7 +37,7 @@ These comparisons show the remaining gap directly. The cleanup brings updates cl
 
 The full playground suite passed **197 Node cases and 22 Chromium tests**. All **25 compiler fixtures** passed, including unannotated saved Program views, native element constraints and rejection of list arguments. The generator's determinism, coverage, policy and corrupt-catalogue tests passed. The portable .NET representation checks passed, and the foundation Release build had zero warnings/errors. The XML documentation audit returned zero findings.
 
-For a paired rerun, build the framework benchmark at `48bbfd4` in a separate checkout using `rtk npm run bench:frameworks:verify`. Copy its `generated-framework-dist` directory to this playground's ignored `generated-framework-before` directory. Then compile the current playground tests in Release with counters disabled and run:
+For a paired rerun, build the framework benchmark at `ca3a5d5` in a separate checkout using `rtk npm run bench:frameworks:verify`. Copy its `generated-framework-dist` directory to this playground's ignored `generated-framework-before` directory. Then compile the current playground tests in Release with counters disabled and run:
 
 ```powershell
 rtk npm run compile:tests

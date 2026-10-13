@@ -1,6 +1,6 @@
 # Prepared template cloning
 
-This follows the binding setup reduction at `e68e954`. `Prepared.prepare` caches a static HTML skeleton on its first browser mount. `Prepared.view` and `Prepared.createComponent` clone that skeleton per instance and run a setup callback that attaches typed modifiers (`Prepared.apply`) and text bindings (`Prepared.text`) to nodes of the clone. The ordinary element construction path is unchanged; the prepared path is opt-in.
+This follows the binding setup reduction at `4d2d109`. `Prepared.prepare` caches a static HTML skeleton on its first browser mount. `Prepared.view` and `Prepared.createComponent` clone that skeleton per instance and run a setup callback that attaches typed modifiers (`Prepared.apply`) and text bindings (`Prepared.text`) to nodes of the clone. The ordinary element construction path is unchanged; the prepared path is opt-in.
 
 Every cloned descendant, including `<template>` content, is claimed and tracked by the owned range, so moved descendants are still removed on disposal and overlapping native ownership is still rejected. Prepared operations accept only nodes of the clone under setup. Skeletons accept static elements, text and attributes; reactive instructions, browser hooks, keyed views and components are rejected before their callbacks run. Server serialization rejects prepared views. The skeleton is created from the global `document`, so a template is bound to the document of its first mount.
 

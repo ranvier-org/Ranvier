@@ -1,6 +1,6 @@
 # Remaining mount cost after cleanup
 
-The production comparison remains **980 µs Ranvier / 533 µs Ripple / 313 µs Solid** at 128 rows: **1.84× Ripple** and **3.13× Solid**. This diagnostic capture profiles the cleaned-up code at `cac6969`; it does not replace the minified production comparison.
+The production comparison remains **980 µs Ranvier / 533 µs Ripple / 313 µs Solid** at 128 rows: **1.84× Ripple** and **3.13× Solid**. This diagnostic capture profiles the cleaned-up code at `b1de7f5`; it does not replace the minified production comparison.
 
 The strongest current explanation for the Ripple gap is extra renderer/authoring setup and allocation, with per-node ownership claims adding work. The Solid gap also includes its prepared-template advantage. These measurements do not establish an unavoidable cost of core guarantees or an exact percentage attributable to each mechanism.
 

@@ -1,6 +1,6 @@
 {
   "measuredAt": "2026-10-12T14:28:17.652Z",
-  "baseCommit": "7fcdff0b4e28a8cffee76a045a556000d25649f9",
+  "baseCommit": "27949a0f1239c39075aded6a9e09b0cfe4ed4678",
   "dirtyExperiment": true,
   "node": "v26.7.0",
   "chromium": "153.0.8010.12",

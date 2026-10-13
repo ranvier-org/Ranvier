@@ -1,7 +1,7 @@
 {
   "measuredAt": "2026-10-12T18:10:38.564Z",
   "chromium": "153.0.8010.12",
-  "baselineCommit": "b175b68",
+  "baselineCommit": "a2f2c7f",
   "configuration": "counter-free Release Fable, minified production; saved baseline bundle and rebuilt changed bundle, alternating variant order in three independent browser processes",
   "warmups": 3,
   "rounds": 11,
