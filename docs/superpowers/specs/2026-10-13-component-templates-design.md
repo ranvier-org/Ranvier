@@ -19,7 +19,7 @@ Decisions taken during design:
 
 Goals:
 
-- Per instance: one `cloneNode`, one state object, one render effect, and two property writes per event node. Everything else exists once per component type.
+- Per instance: one `cloneNode`, one state object, one render effect, one property write per event node, and one fixed-dependency binding per direct slot. Everything else exists once per component type.
 - 128-row benchmark row, against Solid 2.0.0-rc.14 in the same processes: mount within 1.3× Solid 2; JavaScript allocation within 1.5× Solid 2 (about 210 KiB). These are targets for the measurement section, not acceptance gates.
 - Every guarantee kept by owner lifetime and delegated listeners: `use`-order cleanup with DOM attached, rollback after a failing setter, owner-checked handlers, and a reader failure confined to its slot.
 
@@ -41,8 +41,8 @@ let row : Component<RowProps> =
             { Index = props.Index; Source = props.Source; Disabled = props.Disabled; Local = Api.createSignal 0 })
         (T.div [| T.Attrs.className "panel"
                   T.Attrs.id (fun r -> "row-" + string r.Index)
-                  T.Attrs.title (fun r -> r.Source.Value) |]
-               [| T.input [| T.Props.value (fun r -> r.Source.Value) |]
+                  T.Attrs.title (T.from (fun r -> r.Source)) |]
+               [| T.input [| T.Props.value (T.from (fun r -> r.Source)) |]
                   T.button [| T.Props.disabled (fun r -> r.Disabled.Value)
                               T.Events.onClick (fun r _ -> r.Local.Value <- r.Local.Value + 1) |]
                            [| T.text (fun r -> string r.Local.Value) |] |])
@@ -52,16 +52,17 @@ H.Program.section [||] [| for i in 1..128 -> Component.render row { Index = i; S
 
 - `Component.define (setup: Setup -> 'props -> 'inst) (template: Template<'inst>) : Component<'props>` is created once, normally at module level. Its value is the component's identity.
 - `T.*` helpers are generated from the same catalogue as `H.Program.*`, with the same element typing. A value argument gives a static part; an `'inst -> value` argument gives a dynamic part. Static and dynamic forms are overloads.
+- `T.from (fun r -> r.Source)` binds a part directly to one source: the accessor returns a `Signal<'v>` or `Memo<'v>` rather than reading it, so the dependency is known from the type. A direct binding has no tracking and no effect (see Direct bindings). A distinct marker is used rather than an overload on the lambda's return type, which F# overload resolution cannot reliably distinguish.
 - Event handlers are `'inst -> Event -> unit`: one shared function per template.
 - `T.isolated part` gives one dynamic part its own effect, for readers too expensive to re-run with the instance's other slots; the documented remedy before it is a memo created in setup.
-- Dynamic structure: `T.render childDef (fun r -> props)`, `T.view (fun r -> view)`, `T.branch (fun r -> key) arms`, `T.each key (fun r -> items) row`.
+- Dynamic structure: `T.render childDef (fun r -> props)`, `T.view (fun r -> view)`, `T.matchWith (fun r -> union) arms`, `T.branch (fun r -> key) arms`, `T.each key (fun r -> items) row`. `T.matchWith` is the preferred branch form: arms are chosen by union case, the compiler checks exhaustiveness, and each arm is a component definition whose props come from the case payload.
 - `Component.render def props : Program.View` and `Component.renderWith ops def props : 'view` embed a template component in any representation.
 
 ## Definition and instance model
 
 `Component<'props>` derives from a non-generic `ComponentDefinition` holding the erased setup, the template tree, and one lazily filled compiled-form slot per backend kind.
 
-The template tree is immutable. Nodes: element (tag, static attributes and properties, dynamic slots, event slots, children), static text, text slot, child template, view hole, branch, keyed list, fragment. Slots are stored as `obj -> obj` readers and `Func<obj, Event, unit>`-shaped handlers; only the typed `T.*` constructors create them. Static attribute names are validated when the template is built.
+The template tree is immutable. Nodes: element (tag, static attributes and properties, dynamic slots, event slots, children), static text, text slot, child template, view hole, branch, keyed list, fragment. Slots are typed by value kind: `string`, `string option`, `bool`, `int`, `float`, and a general kind carrying its comparer. Each kind has a specialised comparison (`===` for the primitive kinds) and the cheapest write for its target: `Text.data` for text, direct property assignment, `toggleAttribute` for boolean attributes, and `setAttribute` or `removeAttribute` for optional strings. Only the typed `T.*` constructors create slots. Static attribute names are validated when the template is built.
 
 Per instance:
 
@@ -80,17 +81,25 @@ A template instance has no owner of its own. It cannot outlive or be disposed ap
   - Child templates are inlined: their markup is part of the parent's, so one clone covers a parent and all inlined descendants.
 - **Skeleton.** The markup is parsed once through a `<template>` element. The skeleton must be round-trippable: serialising it and parsing the result yields the same node structure. Compilation asserts this in development builds.
 - **Walk program.** An integer array of `FirstChild`, `NextSibling`, `Parent` and `Collect` steps reaching every dynamic node of a clone in document order, interpreted by a tight loop.
-- **Slot table.** Per slot: node index, kind (attribute, property, text, event, structure, isolated), shared reader or handler, comparer, and for child templates the inlined child's slot range.
+- **Slot table.** Per slot: node index, target (attribute, property, text, event, structure), value kind, binding mode (render effect, isolated or direct), shared reader, accessor or handler, and for child templates the inlined child's slot range.
+- **Specialised materialiser.** Compilation records which stages the template needs (render effect, isolated effects, direct bindings, events, regions, child templates) and composes a materialiser from only those stages, so instances never test for absent features.
 
 ### Materialisation, per instance
 
 1. `skeleton.cloneNode(true)`; the walk collects dynamic nodes.
-2. One state object: instance record, enclosing owner and graph, dynamic node references, previous slot values.
-3. One render effect: for each non-isolated slot, read, compare with the previous value, write only on change, record. The first run writes every slot. Each reader is guarded on its own; a throwing reader fails its slot and leaves the others running. A throwing setter during setup rolls back the mount. Each `T.isolated` slot gets its own effect.
-4. Events: each event node receives `node["$$ranvier:<event>"] = handler` and `node["$$ranvier:<event>:data"] = state`. The delegated dispatcher, seeing data, calls `handler state.Inst event` under the state's graph and owner, untracked, and does nothing if that owner is disposed. Non-bubbling events attach a direct listener as today.
-5. Inlined child templates: each child instance runs its setup, receives its own state object and render effect over its slot range, and reuses the parent's cloned nodes.
-6. Regions mount their content at the anchors through the existing branch, keyed and interpreter paths.
-7. The clone joins the mount through the existing append path.
+2. One state object: a fixed-length array whose layout is fixed per template, holding the instance record, enclosing owner and graph, dynamic node references, and previous slot values. Every instance of a template shares one array shape.
+3. One render effect over the render-effect slots: read, compare by the slot's kind, write only on change, record. The first run writes every slot. Each reader is guarded on its own; a throwing reader fails its slot and leaves the others running. A throwing setter during setup rolls back the mount. Each `T.isolated` slot gets its own effect.
+4. Direct bindings: each `T.from` slot attaches a fixed-dependency binding to its source (see Direct bindings), writes the current value, and writes again when the source changes.
+5. Events: each event node receives one property, `node.$$ranvier = state`. The delegated dispatcher, finding that property, locates the node among the state's dynamic nodes, takes the event slot for that node and event type from the template's slot table, and calls `handler state.Inst event` under the state's graph and owner, untracked; it does nothing if that owner is disposed. Non-bubbling events attach a direct listener as today.
+6. Inlined child templates: each child instance runs its setup, receives its own state object and render effect over its slot range, and reuses the parent's cloned nodes.
+7. Regions mount their content at the anchors. `T.matchWith` compiles each arm's definition once and switches arms when the union case tag changes; a payload change within the same case updates the current arm's props without remounting it. `T.branch`, `T.each` and view holes use the existing branch, keyed and interpreter paths.
+8. The clone joins the mount through the existing append path.
+
+### Direct bindings
+
+A direct binding is a computation with exactly one source, fixed when it is created. It re-collects no dependencies, allocates no tracking scope, and is scheduled with effects, so it honours batching, queued commits and `flush()`. It is owned by the enclosing owner and disposed with it. A `Memo` source that is pending or failed leaves the bound value unchanged, as a failed reader does in the render effect.
+
+Ranvier's core exposes no such primitive: sources notify observers through the internal `IComputation` interface, and the public consumers, effects and memos, re-collect their dependencies on every run. The fixed-dependency binding is a core addition, made in its own change to `master` before this work depends on it, with its own tests and benchmarks.
 
 ## Non-DOM backends
 
@@ -106,7 +115,8 @@ Server HTML for a template is the same markup function's output with slot values
 
 - Equivalence: each template feature has a `createComponent` twin; both produce identical server HTML on .NET and under Fable, and identical live DOM under the same updates.
 - Cross-runtime: a template's HTML on .NET byte-matches its HTML under Fable.
-- Materialisation: clone and walk including `<template>` content, multiple roots and separators; slot comparison and first-run writes; `T.isolated`; reader failure confined to its slot; setter failure rolling back the mount; delegated template handlers including after disposal and after movement; cleanup order without an instance owner.
+- Materialisation: clone and walk including `<template>` content, multiple roots and separators; comparison and writes for each slot kind; first-run writes; `T.isolated`; direct bindings including batching, flush, pending and failed memos, and disposal; reader failure confined to its slot; setter failure rolling back the mount; delegated template handlers including after disposal and after movement; cleanup order without an instance owner; materialisers composed without absent stages.
+- `T.matchWith`: arm switching by case, payload updates within a case, disposal of the previous arm, and compile-time exhaustiveness.
 - Structure: inlined child templates, view holes, branch switching and disposal, keyed lists of template rows.
 - Round-trip: every test skeleton round-trips.
 - Fallback: templates render through `Browser.fs` and the tree representation, and prepared skeletons reject them.
@@ -122,7 +132,8 @@ Server HTML for a template is the same markup function's output with slot values
 
 - **Readers re-run together.** Any signal change re-evaluates every non-isolated reader of an instance. Mitigation: memos in setup, `T.isolated`.
 - **Generated helper surface.** `T.*` doubles the generated surface; the generator must emit both forms from one catalogue entry.
-- **Erased slot storage.** Fable function adaptation can reintroduce closures at the erasure boundary; the implementation must verify emitted JavaScript, as the allocation cuts did.
+- **Typed slot storage.** Fable function adaptation can reintroduce closures where typed slots meet the backend; the implementation must verify emitted JavaScript, as the allocation cuts did.
+- **Core primitive.** Direct bindings depend on a core addition; until it lands, `T.from` slots fall back to the render effect, so the template work is not blocked.
 - **Inlining depth.** Deeply nested inlined children lengthen the walk program; measure before adding limits.
 - **Keyed rows** remain nested mounts; list performance is a separate design.
 - **Text slot placeholders.** A single-space text node is dropped or moved by the HTML parser in some contexts, such as directly inside `table` or `select`. The development-build round-trip assertion detects this; in those contexts the slot uses a `<!--#-->` placeholder that materialisation replaces with a text node.
