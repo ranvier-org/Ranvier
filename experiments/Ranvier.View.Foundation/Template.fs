@@ -23,7 +23,7 @@ type SlotMode =
     | RenderMode
     /// <summary>In its own effect.</summary>
     | IsolatedMode
-    /// <summary>From one fixed source; evaluated in the render effect until core provides fixed-dependency bindings.</summary>
+    /// <summary>From one fixed source, evaluated in the render effect.</summary>
     | DirectMode
 
 /// <summary>A dynamic part of a template: reads a value from the instance and writes it to a node.</summary>
