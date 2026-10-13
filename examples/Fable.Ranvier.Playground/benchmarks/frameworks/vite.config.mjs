@@ -7,7 +7,10 @@ const headers = {
   "Cross-Origin-Opener-Policy": "same-origin",
   "Cross-Origin-Embedder-Policy": "require-corp"
 };
+// Ladder rungs replace the compiled test adapters with a rung's gated Fable output.
+const ladderTests = process.env.RANVIER_LADDER_TESTS;
 export default defineConfig({
+  resolve: ladderTests ? { alias: [{ find: /^\.\.\/\.\.\/generated-tests\//, replacement: fileURLToPath(new URL(`../../${ladderTests}/`, import.meta.url)) }] } : {},
   plugins: [{
     name: "benchmark-solid-jsx", enforce: "pre",
     async transform(code, id) {

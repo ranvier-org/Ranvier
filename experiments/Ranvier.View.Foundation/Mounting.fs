@@ -128,6 +128,9 @@ type private OwnedRange(host: Node) =
     let entries = ResizeArray<Entry>()
     let generatedDescendants = ResizeArray<Node>()
     let mutable placement: Node = staging
+#if LADDER_NAIVE_RANGE
+    let naiveRoots = ResizeArray<Node>()
+#endif
 
     let intactAt parent =
         let mutable cursor = Some (first :> ChildNode)
@@ -213,6 +216,12 @@ type private OwnedRange(host: Node) =
         claim claims node
         parent.appendChild node |> ignore
 
+#if LADDER_NAIVE_RANGE
+    member _.AddNaive(node: Node) =
+        naiveRoots.Add node
+        insert staging node (Some last)
+
+#endif
     member _.TrackPrepared(root: Node) =
         walkPrepared
             (fun node ->
@@ -307,8 +316,10 @@ type private OwnedRange(host: Node) =
                         |> Option.map (fun x -> x :> Node)
 
     member this.Attach(parent, before) =
+#if !LADDER_NAIVE_RANGE
         this.Validate ()
         this.ValidateDestination (parent, before)
+#endif
         insert parent staging before
         placement <- parent
 
@@ -378,6 +389,13 @@ type private OwnedRange(host: Node) =
     member _.Release() =
         let errors = ResizeArray<exn>()
 
+#if LADDER_NAIVE_RANGE
+        for index in naiveRoots.Count - 1 .. -1 .. 0 do
+            remove (naiveRoots[index] :?> ChildNode)
+
+        naiveRoots.Clear ()
+
+#endif
         for index in generatedDescendants.Count - 1 .. -1 .. 0 do
             let node = generatedDescendants[index]
 
@@ -489,26 +507,39 @@ let rec private mountCore
     onRoot root
 
     let ensureSetup () =
+#if LADDER_NAIVE_CHECKS
+        ()
+#else
         if
             root.Phase <> SettingUp
             || scope.Phase <> SettingUp
         then
             invalid "View construction is only valid during live setup"
+#endif
 
     let append node =
         ensureSetup ()
 
+#if LADDER_NAIVE_RANGE
+        if same parent range.Staging then
+            range.AddNaive node
+        else
+            parent.appendChild node |> ignore
+#else
         if same parent range.Staging then
             range.Add (node, Owned)
         else
             range.AppendGenerated (parent, node)
+#endif
 
     let currentElement () =
+#if !LADDER_NAIVE_CHECKS
         ensureSetup ()
 
         if isNull (box modifierNode) then
             invalid "Element modifiers require an active element"
 
+#endif
         modifierNode
 
     let applyModifiers (backend: Backend) tag node modifiers =
@@ -527,6 +558,9 @@ let rec private mountCore
             modifierTag <- previousTag
 
     let startBinding (equals: Func<_, _, bool>) read write =
+#if LADDER_NAIVE_BINDINGS
+        Api.createEffect (fun () -> write (read ()))
+#else
         let bindingScope = scope
 
         match scheduling with
@@ -569,6 +603,7 @@ let rec private mountCore
             Binding.startQueued bindingScope.OnCleanup live queue (fun left right -> equals.Invoke (left, right)) read guardedWrite
 
         bindingSetupFailure |> Option.iter raise
+#endif
 
     let mutable preparedRoot: Node = Unchecked.defaultof<_>
 
@@ -632,17 +667,23 @@ let rec private mountCore
 
             member _.Attribute(key, value) =
                 let node = currentElement ()
+#if !LADDER_NAIVE_CHECKS
                 validateAttribute key
+#endif
                 node.setAttribute (key, value)
 
             member _.OptionalAttribute(key, value) =
                 let node = currentElement ()
+#if !LADDER_NAIVE_CHECKS
                 validateAttribute key
+#endif
                 attributeValue node key value
 
             member _.ReactiveAttribute(key, read) =
                 let node = currentElement ()
+#if !LADDER_NAIVE_CHECKS
                 validateAttribute key
+#endif
                 startBinding attributeEquals read (attributeValue node key)
 
             member _.InputValue value =
@@ -985,6 +1026,9 @@ let rec private mountCore
 
             member _.Component setup =
                 ensureSetup ()
+#if LADDER_NAIVE_COMPONENTS
+                setup { OnCleanup = scope.OnCleanup }
+#else
                 let previous = scope
                 let child = scope.Child ignore
                 scope <- child
@@ -996,6 +1040,7 @@ let rec private mountCore
                         Api.untrack (fun () -> setup { OnCleanup = child.OnCleanup }))
                 finally
                     scope <- previous
+#endif
         }
 
     let context =
