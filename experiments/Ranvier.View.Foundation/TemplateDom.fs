@@ -39,10 +39,12 @@ let StateGraph = 3
 let StateNodes = 4
 
 /// <summary>A definition compiled for the DOM: a skeleton, the walk to its dynamic nodes, and its slot tables.</summary>
+/// <remarks>A single-root skeleton is the root node itself and its walk starts at that root; otherwise the skeleton is a fragment of <c>RootCount</c> roots.</remarks>
 [<NoEquality; NoComparison>]
 type Compiled =
     {
-        Skeleton: DocumentFragment
+        Skeleton: Node
+        RootCount: int
         Walk: int array
         NodeCount: int
         RenderSlots: (int * Slot) array
@@ -179,7 +181,8 @@ let compile (definition: TemplateComponent) : Compiled =
     let markup, targets, rootCount = skeletonMarkup definition.Root
     let template = document.createElement "template" :?> HTMLTemplateElement
     template.innerHTML <- markup
-    let walk = walkProgram (Array.map snd targets)
+    let paths = Array.map snd targets
+    let walk = walkProgram paths
     validateParsed template.content walk targets rootCount
     let renderSlots = ResizeArray ()
     let isolatedSlots = ResizeArray ()
@@ -215,8 +218,17 @@ let compile (definition: TemplateComponent) : Compiled =
         |> Array.distinct
 
     {
-        Skeleton = template.content
-        Walk = walk
+        Skeleton =
+            if rootCount = 1 then
+                unbox template.content.firstChild
+            else
+                template.content :> Node
+        RootCount = rootCount
+        Walk =
+            if rootCount = 1 then
+                walkProgram (paths |> Array.map (fun path -> path[1..]))
+            else
+                walk
         NodeCount = targets.Length
         RenderSlots = renderSlots.ToArray ()
         IsolatedSlots = isolatedSlots.ToArray ()
@@ -308,7 +320,7 @@ let materialise (definition: TemplateDefinition) (props: obj) (services: MountSe
 
     let compiled = definition.Compiled :?> Compiled
     let instance = Api.untrack (fun () -> template.Setup.Invoke (services.Setup, props))
-    let fragment = compiled.Skeleton.cloneNode true
+    let clone = compiled.Skeleton.cloneNode true
     let renderCount = compiled.RenderSlots.Length
     let isolatedCount = compiled.IsolatedSlots.Length
     let previousBase = StateNodes + compiled.NodeCount
@@ -322,7 +334,7 @@ let materialise (definition: TemplateDefinition) (props: obj) (services: MountSe
     for index in previousBase .. pendingBase - 1 do
         state[index] <- unset
 
-    collect fragment compiled.Walk state
+    collect clone compiled.Walk state
 
     for nodeIndex, writer, value in compiled.Properties do
         try
@@ -422,11 +434,11 @@ let materialise (definition: TemplateDefinition) (props: obj) (services: MountSe
                 if not owner.IsDisposed then
                     graph.Run (fun () -> Api.runWithOwner owner (fun () -> Api.untrack (fun () -> handler.Invoke (instance, event)))))
 
-    let rootCount = int fragment.childNodes.length
-    let roots: Node array = Array.zeroCreate rootCount
+    if compiled.RootCount = 1 then
+        services.Append clone
+    else
+        let mutable root: Node = unbox clone.firstChild
 
-    for index in 0 .. rootCount - 1 do
-        roots[index] <- fragment.childNodes.item (float index)
-
-    for root in roots do
-        services.Append root
+        while not (isNull (box root)) do
+            services.Append root
+            root <- unbox clone.firstChild
