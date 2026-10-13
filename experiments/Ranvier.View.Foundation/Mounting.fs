@@ -612,6 +612,26 @@ let rec private mountCore
         else
             node
 
+    let mutable lastReported: exn = null
+
+    // Sends a reader failure to `report`, untracked, once per exception object until `clearReported` runs.
+    // A pending read (`NotReadyException`) stays with the effect.
+    let reportReaderFailure (error: exn) =
+        match error with
+        | NotReadyException _ -> ()
+        | _ when obj.ReferenceEquals (error, lastReported) -> ()
+        | _ ->
+            lastReported <- error
+
+            try
+                Api.untrack (fun () -> report [ error ])
+            with reporterError ->
+                raise (AggregateException ("Binding reader and reporter failed", [| error; reporterError |]))
+
+    // Called when a failed reader recovers; the same exception object is reported again if it recurs.
+    let clearReported () =
+        lastReported <- null
+
     let startBinding (equals: Func<_, _, bool>) read write =
 #if LADDER_NAIVE_BINDINGS
         Api.createEffect (fun () -> write (read ()))
@@ -636,8 +656,20 @@ let rec private mountCore
                         bindingSetupFailure <- Some error
                         reraise ()
 
+            let mutable failed = false
+
             Api.createEffect (fun () ->
-                let value = read ()
+                let value =
+                    try
+                        read ()
+                    with error ->
+                        failed <- true
+                        reportReaderFailure error
+                        reraise ()
+
+                if failed then
+                    failed <- false
+                    clearReported ()
 
                 if not root.IsDisposed then
                     pending <- value
@@ -653,7 +685,24 @@ let rec private mountCore
                     bindingSetupFailure <- Some error
                     reraise ()
 
-            Binding.startQueued root.OnCleanup live queue (fun left right -> equals.Invoke (left, right)) read guardedWrite
+            let mutable failed = false
+
+            let reportingRead () =
+                let value =
+                    try
+                        read ()
+                    with error ->
+                        failed <- true
+                        reportReaderFailure error
+                        reraise ()
+
+                if failed then
+                    failed <- false
+                    clearReported ()
+
+                value
+
+            Binding.startQueued root.OnCleanup live queue (fun left right -> equals.Invoke (left, right)) reportingRead guardedWrite
 
         bindingSetupFailure |> Option.iter raise
 #endif
@@ -732,7 +781,8 @@ let rec private mountCore
                     IsDelegated = fun eventName -> isDelegated delegatedEvents eventName
                     Delegate = registerDelegated
                     ListenDirect = listenDirect
-                    ReportFailure = fun error -> Api.untrack (fun () -> report [ error ])
+                    ReportFailure = reportReaderFailure
+                    ClearFailure = clearReported
                 }
 
         templateServices

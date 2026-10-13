@@ -391,6 +391,114 @@ let private descendantFailure queued =
     finally
         mounted.Dispose ()
 
+let private collectingMount graph host (reported: ResizeArray<exn>) view =
+    mount graph None reported.AddRange host None (fun context -> Program.run view context.Backend)
+
+let private bindingReaderFailure () =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal "a")
+    let reported = ResizeArray<exn>()
+    let host = host ()
+
+    let view =
+        Program.element
+            Div
+            [|
+                ReactiveAttribute (
+                    "title",
+                    fun () ->
+                        if source.Value = "bad" then
+                            failwith "reader"
+                        else
+                            Some source.Value
+                )
+            |]
+            [| Program.bind (=) (fun () -> source.Value) |]
+
+    let mounted = collectingMount graph host reported view
+    equal 0 reported.Count
+    graph.Run (fun () -> source.Value <- "bad")
+    equal [ "reader" ] [ for error in reported -> error.Message ]
+    equal "bad" host.textContent
+    graph.Run (fun () -> source.Value <- "c")
+    equal 1 reported.Count
+    mounted.Dispose ()
+
+let private sharedMemoFailure () =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal 1)
+
+    let failing =
+        graph.Run (fun () ->
+            Api.createMemo (fun _ ->
+                if source.Value = 2 then
+                    failwith "memo"
+                else
+                    string source.Value))
+
+    let reported = ResizeArray<exn>()
+    let host = host ()
+
+    let view =
+        Program.fragment
+            [|
+                Program.bind (=) (fun () -> failing.Value)
+                Program.bind (=) (fun () -> failing.Value)
+            |]
+
+    let mounted = collectingMount graph host reported view
+    graph.Run (fun () -> source.Value <- 2)
+    equal [ "memo" ] [ for error in reported -> error.Message ]
+    mounted.Dispose ()
+
+let private queuedReaderFailure () =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal "a")
+    let reported = ResizeArray<exn>()
+    let host = host ()
+
+    let mounted =
+        mountWith (QueuedCommits (CollectAndContinue, ignore)) graph None reported.AddRange host None (fun context ->
+            Program.run
+                (Program.bind (=) (fun () ->
+                    if source.Value = "bad" then
+                        failwith "reader"
+                    else
+                        source.Value))
+                context.Backend)
+
+    mounted.Flush ()
+    graph.Run (fun () -> source.Value <- "bad")
+    mounted.Flush ()
+    equal [ "reader" ] [ for error in reported -> error.Message ]
+    equal "a" host.textContent
+    mounted.Dispose ()
+
+let private recoveredFailureRecurs () =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal "a")
+    let failure = Exception "cached"
+    let reported = ResizeArray<exn>()
+
+    let mounted =
+        collectingMount
+            graph
+            (host ())
+            reported
+            (Program.bind (=) (fun () ->
+                if source.Value.StartsWith "bad" then
+                    raise failure
+                else
+                    source.Value))
+
+    graph.Run (fun () -> source.Value <- "bad")
+    graph.Run (fun () -> source.Value <- "bad!")
+    equal 1 reported.Count
+    graph.Run (fun () -> source.Value <- "ok")
+    graph.Run (fun () -> source.Value <- "bad")
+    equal 2 reported.Count
+    mounted.Dispose ()
+
 let portableCases =
     [|
         "tree HTML serializes the boundary's escaped result", fun () -> serverBoundary Tree.ops Tree.run
@@ -418,4 +526,8 @@ let cases =
             "program queued structural selection shares a core boundary", fun () -> structuralBoundary Program.ops Program.run true
             "computation boundary leaves synchronous descendant read failures on the effect", fun () -> descendantFailure false
             "computation boundary leaves queued descendant read failures on the effect", fun () -> descendantFailure true
+            "a throwing binding reader is reported once and other bindings update", bindingReaderFailure
+            "a failed memo read by two bindings is reported once", sharedMemoFailure
+            "a throwing reader is reported under queued commits", queuedReaderFailure
+            "a recurring failure object is reported again after its binding recovers", recoveredFailureRecurs
         |]

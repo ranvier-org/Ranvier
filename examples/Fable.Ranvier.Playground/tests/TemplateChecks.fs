@@ -211,6 +211,59 @@ let private readerFailure () =
     graph.Run (fun () -> source.Value <- "bad")
     equal (Some "a", "bad") ((host.querySelector "div" |> unbox<HTMLElement>).getAttribute "title", host.textContent)
     equal [ "reader" ] [ for error in reported -> error.Message ]
+    graph.Run (fun () -> source.Value <- "c")
+    equal (Some "c", "c") ((host.querySelector "div" |> unbox<HTMLElement>).getAttribute "title", host.textContent)
+    equal 1 reported.Count
+    mounted.Dispose ()
+
+let private recoveredFailureRecurs () =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal "a")
+    let failure = exn "cached"
+
+    let failing =
+        Component.define (fun _ (source: Signal<string>) -> source) (fun t ->
+            t.div
+                [|
+                    t.Attrs.title (fun s -> if s.Value.StartsWith "bad" then raise failure else s.Value)
+                |]
+                [||])
+
+    let host = host ()
+    let reported = ResizeArray<exn>()
+
+    let mounted =
+        Mounting.mount graph None reported.AddRange host None (fun context -> Program.run (Component.render failing source) context.Backend)
+
+    graph.Run (fun () -> source.Value <- "bad")
+    graph.Run (fun () -> source.Value <- "bad!")
+    equal 1 reported.Count
+    graph.Run (fun () -> source.Value <- "ok")
+    graph.Run (fun () -> source.Value <- "bad")
+    equal 2 reported.Count
+    mounted.Dispose ()
+
+let private initialReaderFailure () =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal "bad")
+
+    let failing =
+        Component.define (fun _ (source: Signal<string>) -> source) (fun t ->
+            t.div
+                [|
+                    t.Attrs.title (fun s -> if s.Value = "bad" then failwith "reader" else s.Value)
+                |]
+                [| t.text (fun s -> s.Value) |])
+
+    let host = host ()
+    let reported = ResizeArray<exn>()
+
+    let mounted =
+        Mounting.mount graph None reported.AddRange host None (fun context -> Program.run (Component.render failing source) context.Backend)
+
+    equal ("bad", 1) (host.textContent, reported.Count)
+    graph.Run (fun () -> source.Value <- "ok")
+    equal (Some "ok", "ok") ((host.querySelector "div" |> unbox<HTMLElement>).getAttribute "title", host.textContent)
     mounted.Dispose ()
 
 let private setterRollback () =
@@ -600,6 +653,8 @@ let cases =
         "a template renders the same DOM as its createComponent twin", twinEquality
         "slot writes happen only for changed values", changedSlotsOnly
         "a throwing reader fails only its slot", readerFailure
+        "a slot failing on first render is reported without failing the mount", initialReaderFailure
+        "a recurring slot failure object is reported again after the slot recovers", recoveredFailureRecurs
         "a throwing setter rolls back the mount", setterRollback
         "template cleanups run in use order without an instance owner", cleanupOrder
         "adjacent text slots keep separate nodes", adjacentTexts
