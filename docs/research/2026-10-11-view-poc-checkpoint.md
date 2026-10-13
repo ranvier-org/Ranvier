@@ -49,3 +49,5 @@ The [common attribute authoring](2026-10-12-attribute-authoring.md) adds 34 gene
 Components now use [owner lifetime](2026-10-13-owner-lifetime.md): the core owner is the only component lifetime, and the owned range records mount roots only. Cleanup follows `use` order, and moved generated descendants leave their mount's ownership. Its acceptance passes 205 Node cases and 22 Chromium tests.
 
 Event handlers now use [delegated listeners](2026-10-13-delegated-listeners.md): bubbling events dispatch from one listener per mount host. Its acceptance passes 211 Node cases and 22 Chromium tests.
+
+Mount-path allocation is reduced by [allocation cuts](2026-10-13-allocation-cuts.md): children arrays, pass-through handlers and setters, and shared binding commits. Its acceptance passes 211 Node cases and 22 Chromium tests.
