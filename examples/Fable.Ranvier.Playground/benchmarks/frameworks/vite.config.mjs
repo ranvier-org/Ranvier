@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import { transformAsync } from "@babel/core";
+import { transform as solidTransform } from "@solidjs/compiler";
 import { fileURLToPath } from "node:url";
 import sharedBackendProbe from "./shared-backend-probe.mjs";
 
@@ -20,10 +21,9 @@ export default defineConfig({
         });
       }
       if (!/\/frameworks\/(semantics-)?solid\.jsx$/.test(id)) return;
-      return await transformAsync(code, {
-        filename: id, babelrc: false, configFile: false,
-        presets: [["babel-preset-solid", { generate: "dom", hydratable: false }]]
-      });
+      // Solid 2's native compiler, released with the runtime it targets.
+      const { code: compiled, map } = solidTransform(code, { filename: id, generate: "dom", hydratable: false, sourceMap: true });
+      return { code: compiled, map };
     }
   }],
   build: {

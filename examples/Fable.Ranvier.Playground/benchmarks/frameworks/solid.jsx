@@ -1,5 +1,5 @@
-import { createSignal, createMemo, batch } from "solid-js";
-import { render } from "solid-js/web";
+import { createSignal, createMemo, flush } from "solid-js";
+import { render } from "@solidjs/web";
 
 function Row(props) {
   const [local, setLocal] = createSignal(0);
@@ -9,6 +9,7 @@ function Row(props) {
   </div>;
 }
 
+// Solid 2 batches writes; each operation flushes so its DOM work is inside the timed window.
 export function mount(host, width) {
   let setSource;
   const dispose = render(() => {
@@ -18,10 +19,11 @@ export function mount(host, width) {
     return <section>{Array.from({ length: width }, (_, i) =>
       <Row index={i + 1} source={source} disabled={disabled} />)}</section>;
   }, host);
+  flush();
   let live = true;
   return {
-    update: value => batch(() => setSource(value)),
-    flush() {},
+    update: value => { setSource(value); flush(); },
+    flush() { flush(); },
     dispose() { if (live) { live = false; dispose(); } }
   };
 }
