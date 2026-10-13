@@ -468,6 +468,11 @@ type internal TraceLog(locked: bool) =
 type internal ITraced =
     abstract TraceLog: TraceLog with get, set
     abstract TraceId: int with get, set
+
+/// <summary>Traced state carried by a lookup.</summary>
+type internal ITracedHost =
+    /// <summary>The node id the lookup's cells are recorded as parts of.</summary>
+    abstract TraceHost: int with get, set
 #endif
 
 /// <summary>The trace hooks. Every hook is removed, with its arguments, from a build without <c>RANVIER_TRACE</c>.</summary>
@@ -796,6 +801,24 @@ type internal Tracer =
 #if RANVIER_TRACE
         (graph :?> ITraced).TraceLog.Append(TraceEventKind.Part, id, host, 0, 0, 0, key)
         |> ignore
+#else
+        ()
+#endif
+
+    /// <summary>Sets the host of <c>lookup</c>, an <c>ITracedHost</c>, to node <c>host</c>.</summary>
+    [<Conditional("RANVIER_TRACE")>]
+    static member Host(lookup: obj, host: int) =
+#if RANVIER_TRACE
+        (lookup :?> ITracedHost).TraceHost <- host
+#else
+        ()
+#endif
+
+    /// <summary>Records <c>Part</c>: node <c>id</c> belongs to the host of <c>lookup</c>, an <c>ITracedHost</c>, under <c>key</c>.</summary>
+    [<Conditional("RANVIER_TRACE")>]
+    static member LookupPart(graph: obj, lookup: obj, id: int, key: obj) =
+#if RANVIER_TRACE
+        Tracer.Part (graph, id, (lookup :?> ITracedHost).TraceHost, key)
 #else
         ()
 #endif
