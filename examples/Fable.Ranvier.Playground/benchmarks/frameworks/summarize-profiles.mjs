@@ -3,7 +3,9 @@ import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { gunzipSync } from "node:zlib";
 
-const output = fileURLToPath(new URL(process.argv.includes("--cleanup") ? "../../../../docs/research/framework-performance/investigation/cleanup-profile/" : "../../../../docs/research/framework-performance/investigation/", import.meta.url));
+// `--out=<name>` writes to investigation/<name>/ instead of the baseline directories.
+const outName = process.argv.find(arg => arg.startsWith("--out="))?.slice(6);
+const output = fileURLToPath(new URL(outName ? `../../../../docs/research/framework-performance/investigation/${outName}/` : process.argv.includes("--cleanup") ? "../../../../docs/research/framework-performance/investigation/cleanup-profile/" : "../../../../docs/research/framework-performance/investigation/", import.meta.url));
 const metadata = JSON.parse(await readFile(`${output}/profiles.json`, "utf8"));
 if (!metadata.sourceMap) throw Error("Profile source map was not archived. Run diagnose.mjs --build before mapping profiles.");
 const mapPath = metadata.sourceMap;
