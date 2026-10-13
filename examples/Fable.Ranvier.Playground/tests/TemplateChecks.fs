@@ -528,6 +528,70 @@ let private focusBesideClick () =
     dispatchFocus input
     equal [ "focus"; "click" ] (List.ofSeq log)
 
+let private queuedFallback () =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal "a")
+    let disabled = graph.Run (fun () -> Api.createMemo (fun _ -> false))
+    let host = host ()
+
+    let mounted =
+        Mounting.mountWith (Scheduling.QueuedCommits (Scheduling.CollectAndContinue, ignore)) graph None ignore host None (fun context ->
+            Program.run
+                (Component.render
+                    row
+                    {
+                        Index = 1
+                        Source = source
+                        Disabled = disabled
+                    })
+                context.Backend)
+
+    mounted.Flush ()
+    equal (Some "a") ((host.querySelector "div" |> unbox<HTMLElement>).getAttribute "title")
+    graph.Run (fun () -> source.Value <- "b")
+    mounted.Flush ()
+    equal (Some "b") ((host.querySelector "div" |> unbox<HTMLElement>).getAttribute "title")
+    mounted.Dispose ()
+
+let private browserInterpreter () =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal "a")
+
+    let plain =
+        Component.define (fun _ (source: Signal<string>) -> source) (fun t -> t.div [| t.Attrs.id "row-1" |] [| t.text (fun s -> s.Value) |])
+
+    let host = host ()
+
+    let dispose =
+        Browser.mount graph host ignore None (Program.run (Component.render plain source))
+
+    equal (Some "row-1", "a") ((host.querySelector "div" |> unbox<HTMLElement>).getAttribute "id", host.textContent)
+    graph.Run (fun () -> source.Value <- "b")
+    equal "b" host.textContent
+    dispose ()
+    equal 0. host.childNodes.length
+
+let private preparedRejects () =
+    let mutable rejected = false
+
+    try
+        let template =
+            Prepared.prepare (Component.render greeting { Title = "T"; Name = "N" })
+
+        use graph = new Graph ()
+
+        mount graph (host ()) (Prepared.view template (fun _ _ -> ()))
+        |> ignore
+    with :? System.InvalidOperationException ->
+        rejected <- true
+
+    equal true rejected
+
+let private serverMarkup () =
+    equal
+        "<div class=\"panel\" title=\"T &amp;\">Hello <!--!-->&lt;Ada&gt;<!--!-->!</div><span>&lt;Ada&gt;</span>"
+        (Html.render Omit (Program.run (Component.render greeting { Title = "T &"; Name = "<Ada>" })))
+
 /// <summary>Checks template compilation and DOM materialisation.</summary>
 let cases =
     [|
@@ -548,4 +612,8 @@ let cases =
         "template click handlers receive the instance and stop after disposal", clicks
         "template handlers dispatch after a move", movedClicks
         "focus uses a direct listener beside a delegated click", focusBesideClick
+        "queued mounts render templates through expansion", queuedFallback
+        "the Browser interpreter renders templates through expansion", browserInterpreter
+        "prepared skeletons reject templates", preparedRejects
+        "server markup under Fable matches the portable expectation", serverMarkup
     |]
