@@ -55,7 +55,7 @@ F# compilation artefacts appear as CPU self time without semantic purpose: `uncu
 
 - Buys a guarantee Solid 2 or Ripple lacks, and stays: per-component owners, setup checks, attribute validation, range ownership and the reactive core's semantics. Rollback after a failing setter is shared with Solid 2 and absent from Ripple. Together roughly 200–250 µs of the gap, more than half of it the reactive core.
 - Buys a design choice: interpreting view values at runtime rather than compiling them. Its costs are per-instance allocation and element-by-element construction; Solid 2's template clones make its native DOM work 38 ms cheaper per 256 profiled mounts, about 0.15 ms per mount under the profiler.
-- Buys nothing: per-element listeners, about 118 µs mount and 57 µs disposal, and the F# compilation artefacts and per-instance allocation inside dispatch, most of the 337 µs.
+- Buys nothing: per-element listeners, about 118 µs mount and 57 µs disposal, since replaced by [delegated listeners](../../2026-10-13-delegated-listeners.md), and the F# compilation artefacts and per-instance allocation inside dispatch, most of the 337 µs.
 
 ## Reproduction
 

@@ -47,3 +47,5 @@ The [HTML expansion](2026-10-12-full-html-generation.md) covers 112 tag construc
 The [common attribute authoring](2026-10-12-attribute-authoring.md) adds 34 generated static/reactive attributes plus data-/aria- helpers over the existing owned binding path. Latest scoped acceptance passes 188 Node cases and 18 Chromium tests. SVG, methods, additional type shapes, complete portable property metadata and runtime error/reveal work remain open.
 
 Components now use [owner lifetime](2026-10-13-owner-lifetime.md): the core owner is the only component lifetime, and the owned range records mount roots only. Cleanup follows `use` order, and moved generated descendants leave their mount's ownership. Its acceptance passes 205 Node cases and 22 Chromium tests.
+
+Event handlers now use [delegated listeners](2026-10-13-delegated-listeners.md): bubbling events dispatch from one listener per mount host. Its acceptance passes 211 Node cases and 22 Chromium tests.
