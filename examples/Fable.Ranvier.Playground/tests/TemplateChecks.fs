@@ -377,6 +377,73 @@ let private staticTemplate () =
     a.Dispose ()
     b.Dispose ()
 
+type Counted =
+    {
+        First: Signal<int>
+        Second: Signal<int>
+        Reads: int ref
+    }
+
+let private isolatedSlots () =
+    use graph = new Graph ()
+    let first = graph.Run (fun () -> Api.createSignal 1)
+    let second = graph.Run (fun () -> Api.createSignal 1)
+    let reads = ref 0
+
+    let counted =
+        Component.define (fun _ (props: Counted) -> props) (fun t ->
+            t.div
+                [||]
+                [|
+                    t.span [||] [| t.text (fun c -> string c.First.Value) |]
+                    t.span
+                        [||]
+                        [|
+                            t.isolated (
+                                t.text (fun c ->
+                                    c.Reads.Value <- c.Reads.Value + 1
+                                    string c.Second.Value)
+                            )
+                        |]
+                |])
+
+    let host = host ()
+
+    let mounted =
+        mount
+            graph
+            host
+            (Component.render
+                counted
+                {
+                    First = first
+                    Second = second
+                    Reads = reads
+                })
+
+    graph.Run (fun () -> first.Value <- 2)
+    equal 1 reads.Value
+    graph.Run (fun () -> second.Value <- 2)
+    equal (2, "22") (reads.Value, host.textContent)
+    mounted.Dispose ()
+
+let private sourceSlots () =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal "a")
+
+    let doubled =
+        graph.Run (fun () -> Api.createMemo (fun _ -> source.Value + source.Value))
+
+    let sourced =
+        Component.define (fun _ () -> source, doubled) (fun t ->
+            t.div [| t.Attrs.title (t.from (fun (s, _) -> s)) |] [| t.text (t.from (fun (_, d) -> d)) |])
+
+    let host = host ()
+    let mounted = mount graph host (Component.render sourced ())
+    graph.Run (fun () -> source.Value <- "b")
+    equal (Some "b", "bb") ((host.querySelector "div" |> unbox<HTMLElement>).getAttribute "title", host.textContent)
+    mounted.Dispose ()
+
 /// <summary>Checks template compilation and DOM materialisation.</summary>
 let cases =
     [|
@@ -392,4 +459,6 @@ let cases =
         "a template inside a removed keyed row stops updating", keyedRows
         "a null text value renders empty", nullText
         "a static template mounts without effects", staticTemplate
+        "an isolated slot re-runs only on its own source", isolatedSlots
+        "source slots follow their signal and memo", sourceSlots
     |]
