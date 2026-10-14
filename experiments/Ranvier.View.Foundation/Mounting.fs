@@ -578,96 +578,10 @@ type private KeyedEntry =
 exception private KeyedDisposed
 exception private KeyedSetupFailed of exn list
 
-type private MountMembers =
-    {
-        Clone: Action<HTMLElement, HTMLElement -> unit>
-        Apply: Action<Backend, HTMLElement, ModifierAction array>
-        BindText: Action<Node, unit -> string>
-        Text: Action<string>
-        Attribute: Action<string, string>
-        OptionalAttribute: Action<string, string option>
-        ReactiveAttribute: Action<string, unit -> string option>
-        InputValue: Action<string>
-        CurrentElement: Func<HTMLElement>
-        BrowserCleanup: Action<unit -> unit>
-        Listen: Action<string, obj -> unit>
-        Property: Action<obj -> unit>
-        ReactiveProperty: Action<unit -> obj, Func<obj, obj, unit>>
-        Element: Action<Backend, Tag, ModifierAction array, unit -> unit>
-        ElementWith: Action<Backend, Tag, ModifierAction array, ModifierAction array>
-        Bind: Action<Func<string, string, bool>, unit -> string>
-        Keyed: Action<Func<obj, obj, bool>, unit -> (obj * obj) array, Func<unit -> obj, Backend, unit>>
-        Component: Action<Setup -> unit>
-        Template: Action<Backend, TemplateDefinition, obj>
-    }
-
-type private MountBackend(members: MountMembers) =
+/// <summary>The state of a mounted view and the backend that builds it.</summary>
+type private MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope option, report: exn list -> unit, host: Node) =
     inherit Prepared.Backend()
 
-    override _.Clone(template, setup) =
-        members.Clone.Invoke (template, setup)
-
-    override this.Apply(node, modifiers) =
-        members.Apply.Invoke (this, node, modifiers)
-
-    override _.BindText(node, read) =
-        members.BindText.Invoke (node, read)
-
-    override _.Text(value) =
-        members.Text.Invoke value
-
-    override _.Attribute(key, value) =
-        members.Attribute.Invoke (key, value)
-
-    override _.OptionalAttribute(key, value) =
-        members.OptionalAttribute.Invoke (key, value)
-
-    override _.ReactiveAttribute(key, read) =
-        members.ReactiveAttribute.Invoke (key, read)
-
-    override _.InputValue(value) =
-        members.InputValue.Invoke value
-
-    override _.Browser(hook) =
-        members.BrowserCleanup.Invoke (hook (box (members.CurrentElement.Invoke ())))
-
-    override _.Listen(eventName, handler) =
-        members.Listen.Invoke (eventName, handler)
-
-    override _.Property(write) =
-        members.Property.Invoke write
-
-    override _.ReactiveProperty(read, write) =
-        members.ReactiveProperty.Invoke (read, write)
-
-    override this.Element(tag, modifiers, children) =
-        members.Element.Invoke (this, tag, modifiers, children)
-
-    override this.ElementWith(tag, modifiers, children) =
-        members.ElementWith.Invoke (this, tag, modifiers, children)
-
-    override _.Bind(equals, read) =
-        members.Bind.Invoke (Func<_, _, _>(fun left right -> equals left right), read)
-
-    override _.Keyed(equals, read, render) =
-        members.Keyed.Invoke (Func<_, _, _>(fun left right -> equals left right), read, Func<_, _, _>(fun read backend -> render read backend))
-
-    override _.Component(setup) =
-        members.Component.Invoke setup
-
-    override this.Template(definition, props) =
-        members.Template.Invoke (this, definition, props)
-
-let rec private mountCore
-    scheduling
-    onRoot
-    (graph: Graph)
-    (parentScope: Scope option)
-    (report: exn list -> unit)
-    (host: Node)
-    (before: Node option)
-    (build: BuildContext -> unit)
-    =
     let range = OwnedRange host
 
     let cleanupErrors = ResizeArray<exn>()
@@ -705,8 +619,6 @@ let rec private mountCore
     let mutable bindingSetupFailure: exn option = None
     let mutable modifierNode: HTMLElement = Unchecked.defaultof<_>
     let mutable modifierTag = Div
-
-    onRoot root
 
     let ensureSetup () =
 #if LADDER_NAIVE_CHECKS
@@ -947,531 +859,519 @@ let rec private mountCore
 
         templateServices
 
-    let members =
-        {
-            Clone =
-                Action<HTMLElement, HTMLElement -> unit>(fun template setup ->
-                    ensureSetup ()
-                    let node = template.cloneNode true :?> HTMLElement
-                    append node
-                    let previous = preparedRoot
-                    preparedRoot <- node
+    member _.Root = root
+
+    /// <summary>Builds the view, attaches it before <c>before</c> in the host, and returns its handle.</summary>
+    /// <remarks>A build or attachment failure disposes the root scope and rethrows.</remarks>
+    member this.Run(before: Node option, build: BuildContext -> unit) =
+        let context =
+            {
+                Backend = this
+                Native =
+                    fun (node, ownership) ->
+                        ensureSetup ()
+
+                        if not (same parent range.Staging) then
+                            invalid "Native roots require top-level placement"
+
+                        range.Add (node :?> ChildNode, ownership)
+                OnCleanup = root.OnCleanup
+                Phase = fun () -> root.Phase
+            }
+
+        try
+            graph.Run (fun () ->
+                Api.createRoot (fun owner ->
+                    Api.onCleanup root.Dispose
+                    root.OnCleanup owner.Dispose
+                    Api.untrack (fun () -> build context)))
+
+            ensureSetup ()
+            range.Attach (host, before)
+            root.MarkAttached ()
+            delegateAt host
+            root.OnCleanup releaseDelegation
+
+            Mounted (
+                root,
+                (fun (parent, before) ->
+                    range.Move (parent, before, root.Dispose)
+
+                    if not (same parent delegatedHost) then
+                        releaseDelegation ()
+                        delegateAt parent),
+                (fun () -> range.Validate ()),
+                (fun () -> range.Relocate ()),
+                (fun () ->
+                    match scheduling with
+                    | Synchronous -> graph.Run Api.flush
+                    | Queued queue -> queue.Flush ()),
+                (fun () ->
+                    match scheduling with
+                    | Synchronous -> [||]
+                    | Queued queue -> queue.Errors)
+            )
+        with _ ->
+            root.Dispose ()
+            reraise ()
+
+    override _.Clone(template, setup) =
+        ensureSetup ()
+        let node = template.cloneNode true :?> HTMLElement
+        append node
+        let previous = preparedRoot
+        preparedRoot <- node
+
+        try
+            setup node
+            ensureSetup ()
+        finally
+            preparedRoot <- previous
+
+    override this.Apply(node, modifiers) =
+        ensurePrepared node
+
+        let tag =
+            if node.tagName = "INPUT" then
+                Input
+            else
+                HtmlTag node.localName
+
+        applyModifiers this tag node modifiers
+
+    override _.BindText(node, read) =
+        ensurePrepared node
+
+        if node.nodeType <> 3. then
+            raise (ArgumentException ("Prepared text bindings require a text node", "node"))
+
+        startBinding (Func<_, _, _>(fun left right -> left = right)) read (fun value -> node.textContent <- Some value)
+        ensureSetup ()
+
+    override _.Text(value) =
+        ensureSetup ()
+        append (text value)
+
+    override _.Attribute(key, value) =
+        let node = currentElement ()
+#if !LADDER_NAIVE_CHECKS && !LADDER_UNCHECKED_ATTRIBUTES
+        validateAttribute key
+#endif
+        node.setAttribute (key, value)
+
+    override _.OptionalAttribute(key, value) =
+        let node = currentElement ()
+#if !LADDER_NAIVE_CHECKS && !LADDER_UNCHECKED_ATTRIBUTES
+        validateAttribute key
+#endif
+        attributeValue node key value
+
+    override _.ReactiveAttribute(key, read) =
+        let node = currentElement ()
+#if !LADDER_NAIVE_CHECKS && !LADDER_UNCHECKED_ATTRIBUTES
+        validateAttribute key
+#endif
+        startBinding attributeEquals read (attributeValue node key)
+
+    override _.InputValue(value) =
+        let node = currentElement ()
+
+        if modifierTag <> Input then
+            invalidArg "modifiers" "Input value requires input"
+
+        inputValue (node :?> HTMLInputElement) value
+
+    override _.Browser(hook) =
+        let cleanup = hook (box (currentElement ()))
+
+        if root.IsDisposed then
+            cleanup ()
+            ensureSetup ()
+
+        ownedCleanup (Api.getOwner ()) cleanup
+
+    override _.Listen(eventName, handler) =
+        let node = currentElement ()
+        let invoke = Typed.ownedHandler handler
+
+        if isDelegated delegatedEvents eventName then
+            setDelegatedHandler node eventName invoke
+            registerDelegated eventName
+        else
+            listenDirect node eventName invoke
+
+    override _.Property(write) =
+        write (box (currentElement ()))
+
+    override _.ReactiveProperty(read, write) =
+        let node = currentElement ()
+        startBinding propertyEquals read (fun value -> write.Invoke (box node, value))
+
+    override this.Element(tag, modifiers, children) =
+        let node = openElement this tag modifiers
+
+        if not (isVoid tag) then
+            let previous = parent
+            parent <- childParent tag node
+
+            try
+                children ()
+            finally
+                parent <- previous
+
+        if tag = Select then
+            applyModifiers this tag node modifiers
+
+    override this.ElementWith(tag, modifiers, children) =
+        let node = openElement this tag modifiers
+
+        if not (isVoid tag) then
+            let previous = parent
+            parent <- childParent tag node
+
+            try
+                for index in 0 .. children.Length - 1 do
+                    children[index] this
+            finally
+                parent <- previous
+
+        if tag = Select then
+            applyModifiers this tag node modifiers
+
+    override _.Bind(equals, read) =
+        ensureSetup ()
+        let node = text ""
+        append node
+        startBinding (Func<_, _, _>(fun left right -> equals left right)) read (fun value -> node.textContent <- value)
+
+    override _.Keyed(equals, read, render) =
+        ensureSetup ()
+
+        let regionStart, regionEnd =
+            comment "ranvier:list:start", comment "ranvier:list:end"
+
+        if not (same parent range.Staging) then
+            range.AppendGenerated (parent, regionStart)
+            range.AppendGenerated (parent, regionEnd)
+
+        let regionScope = root.Child (report, ignore)
+        let mutable entries: KeyedEntry array = [||]
+        let mutable regionOwner: Owner option = None
+        let mutable initializing = true
+        let mutable setupFailure: exn option = None
+        let mutable rowSetupErrors: ResizeArray<exn> option = None
+
+        let reportRow errors =
+            match rowSetupErrors with
+            | Some collected -> collected.AddRange errors
+            | None -> report errors
+
+        let ensureRegionLive () =
+            if root.IsDisposed || regionScope.IsDisposed then
+                raise KeyedDisposed
+
+        let liveEquals left right =
+            ensureRegionLive ()
+            let result = equals left right
+            ensureRegionLive ()
+            result
+
+        let getRegionParent () =
+            let regionParent =
+                regionStart.parentNode
+                |> Option.defaultWith (fun () -> invalid "Keyed-list boundaries have no parent")
+
+            if
+                not (
+                    regionEnd.parentNode
+                    |> Option.exists (same regionParent)
+                )
+            then
+                invalid "Keyed-list boundaries were externally mutated"
+
+            regionParent
+
+        let validateRegion regionParent =
+            if
+                not (
+                    regionStart.parentNode
+                    |> Option.exists (same regionParent)
+                )
+                || not (
+                    regionEnd.parentNode
+                    |> Option.exists (same regionParent)
+                )
+            then
+                invalid "Keyed-list boundaries were externally mutated"
+
+            let mutable cursor = nextSiblingNode regionStart
+
+            for entry in entries do
+                entry.Mount.Validate ()
+
+                if not (cursor |> Option.exists (same entry.First)) then
+                    invalid "Keyed-list rows or contents were externally mutated"
+
+                cursor <- nextSiblingNode entry.Last
+
+            if not (cursor |> Option.exists (same regionEnd)) then
+                invalid "Keyed-list boundaries were externally reordered"
+
+        if same parent range.Staging then
+            range.AddRegion (
+                regionStart,
+                regionEnd,
+                (fun () -> validateRegion (getRegionParent ())),
+                (fun () ->
+                    for entry in entries do
+                        entry.Mount.Relocate ())
+            )
+
+        let moveToOrder regionParent (ordered: KeyedEntry array) =
+            let mutable anchor: Node option = Some regionEnd
+
+            for index in ordered.Length - 1 .. -1 .. 0 do
+                let entry = ordered[index]
+                ensureRegionLive ()
+
+                let alreadyPlaced =
+                    entry.Last.parentNode
+                    |> Option.exists (same regionParent)
+                    && (nextSiblingNode entry.Last
+                        |> Option.exists (fun next -> anchor |> Option.exists (same next)))
+
+                if not alreadyPlaced then
+                    entry.Mount.MoveBefore (regionParent, anchor)
+
+                ensureRegionLive ()
+
+                anchor <- Some entry.First
+
+        let createEntry key value =
+            ensureRegionLive ()
+            let item = graph.Run (fun () -> Api.createSignal value)
+            let staging = fragment ()
+            let setupErrors = ResizeArray<exn>()
+            let previousErrors = rowSetupErrors
+
+            let owner =
+                regionOwner
+                |> Option.defaultWith (fun () -> invalid "Keyed-list owner is unavailable")
+
+            let mounted: Mounted =
+                rowSetupErrors <- Some setupErrors
+
+                try
+                    try
+                        Api.runWithOwner owner (fun () ->
+                            MountState(scheduling, graph, Some regionScope, reportRow, staging)
+                                .Run(None, (fun context -> render (fun () -> item.Value) context.Backend)))
+                    with original ->
+                        if setupErrors.Count > 0 then
+                            raise (KeyedSetupFailed (original :: List.ofSeq setupErrors))
+
+                        ensureRegionLive ()
+                        reraise ()
+                finally
+                    rowSetupErrors <- previousErrors
+
+            if setupErrors.Count > 0 then
+                let errors = List.ofSeq setupErrors
+
+                try
+                    Api.untrack (fun () -> report errors)
+                with reporterError ->
+                    let failures = ResizeArray<exn>(errors)
+                    failures.Add reporterError
 
                     try
-                        setup node
-                        ensureSetup ()
-                    finally
-                        preparedRoot <- previous)
+                        mounted.Dispose ()
+                    with cleanupError ->
+                        failures.Add cleanupError
 
-            Apply =
-                Action<Backend, HTMLElement, ModifierAction array>(fun this node modifiers ->
-                    ensurePrepared node
+                    raise (AggregateException ("Keyed row reader and reporter failed", failures))
 
-                    let tag =
-                        if node.tagName = "INPUT" then
-                            Input
-                        else
-                            HtmlTag node.localName
+            let first =
+                staging.firstChild
+                |> Option.defaultWith (fun () -> invalid "A keyed row has no start boundary")
 
-                    applyModifiers this tag node modifiers)
+            let last =
+                staging.lastChild
+                |> Option.defaultWith (fun () -> invalid "A keyed row has no end boundary")
 
-            BindText =
-                Action<Node, unit -> string>(fun node read ->
-                    ensurePrepared node
+            {
+                Key = key
+                Value = item
+                First = first
+                Last = last
+                Mount = mounted
+            }
 
-                    if node.nodeType <> 3. then
-                        raise (ArgumentException ("Prepared text bindings require a text node", "node"))
+        let reconcileItems items =
+            ensureRegionLive ()
+            let regionParent = getRegionParent ()
+            validateRegion regionParent
+            Keyed.validateUniqueKeys liveEquals items
+            ensureRegionLive ()
 
-                    startBinding (Func<_, _, _>(fun left right -> left = right)) read (fun value -> node.textContent <- Some value)
-                    ensureSetup ())
+            let matches =
+                items
+                |> Array.map (fun (key, value) ->
+                    let matched =
+                        entries
+                        |> Array.tryFind (fun entry -> liveEquals entry.Key key)
 
-            Text =
-                Action<string>(fun value ->
-                    ensureSetup ()
-                    append (text value))
+                    ensureRegionLive ()
 
-            Attribute =
-                Action<string, string>(fun key value ->
-                    let node = currentElement ()
-#if !LADDER_NAIVE_CHECKS && !LADDER_UNCHECKED_ATTRIBUTES
-                    validateAttribute key
-#endif
-                    node.setAttribute (key, value))
+                    match matched with
+                    | Some entry -> Choice1Of2 (entry, value)
+                    | None -> Choice2Of2 (key, value))
 
-            OptionalAttribute =
-                Action<string, string option>(fun key value ->
-                    let node = currentElement ()
-#if !LADDER_NAIVE_CHECKS && !LADDER_UNCHECKED_ATTRIBUTES
-                    validateAttribute key
-#endif
-                    attributeValue node key value)
+            let created = ResizeArray<KeyedEntry>()
+            let desired = ResizeArray<KeyedEntry * obj>()
 
-            ReactiveAttribute =
-                Action<string, unit -> string option>(fun key read ->
-                    let node = currentElement ()
-#if !LADDER_NAIVE_CHECKS && !LADDER_UNCHECKED_ATTRIBUTES
-                    validateAttribute key
-#endif
-                    startBinding attributeEquals read (attributeValue node key))
-
-            InputValue =
-                Action<string>(fun value ->
-                    let node = currentElement ()
-
-                    if modifierTag <> Input then
-                        invalidArg "modifiers" "Input value requires input"
-
-                    inputValue (node :?> HTMLInputElement) value)
-
-            CurrentElement = Func<HTMLElement> currentElement
-
-            BrowserCleanup =
-                Action<unit -> unit>(fun cleanup ->
-                    if root.IsDisposed then
-                        cleanup ()
-                        ensureSetup ()
-
-                    ownedCleanup (Api.getOwner ()) cleanup)
-
-            Listen =
-                Action<string, obj -> unit>(fun eventName handler ->
-                    let node = currentElement ()
-                    let invoke = Typed.ownedHandler handler
-
-                    if isDelegated delegatedEvents eventName then
-                        setDelegatedHandler node eventName invoke
-                        registerDelegated eventName
-                    else
-                        listenDirect node eventName invoke)
-
-            Property = Action<obj -> unit>(fun write -> write (box (currentElement ())))
-
-            ReactiveProperty =
-                Action<unit -> obj, Func<obj, obj, unit>>(fun read write ->
-                    let node = currentElement ()
-                    startBinding propertyEquals read (fun value -> write.Invoke (box node, value)))
-
-            Element =
-                Action<Backend, Tag, ModifierAction array, unit -> unit>(fun this tag modifiers children ->
-                    let node = openElement this tag modifiers
-
-                    if not (isVoid tag) then
-                        let previous = parent
-                        parent <- childParent tag node
-
-                        try
-                            children ()
-                        finally
-                            parent <- previous
-
-                    if tag = Select then
-                        applyModifiers this tag node modifiers)
-
-            ElementWith =
-                Action<Backend, Tag, ModifierAction array, ModifierAction array>(fun this tag modifiers children ->
-                    let node = openElement this tag modifiers
-
-                    if not (isVoid tag) then
-                        let previous = parent
-                        parent <- childParent tag node
-
-                        try
-                            for index in 0 .. children.Length - 1 do
-                                children[index] this
-                        finally
-                            parent <- previous
-
-                    if tag = Select then
-                        applyModifiers this tag node modifiers)
-
-            Bind =
-                Action<Func<string, string, bool>, unit -> string>(fun equals read ->
-                    ensureSetup ()
-                    let node = text ""
-                    append node
-                    startBinding equals read (fun value -> node.textContent <- value))
-
-            Keyed =
-                Action<Func<obj, obj, bool>, unit -> (obj * obj) array, Func<unit -> obj, Backend, unit>>(fun equals read render ->
-                    ensureSetup ()
-
-                    let regionStart, regionEnd =
-                        comment "ranvier:list:start", comment "ranvier:list:end"
-
-                    if not (same parent range.Staging) then
-                        range.AppendGenerated (parent, regionStart)
-                        range.AppendGenerated (parent, regionEnd)
-
-                    let regionScope = root.Child (report, ignore)
-                    let mutable entries: KeyedEntry array = [||]
-                    let mutable regionOwner: Owner option = None
-                    let mutable initializing = true
-                    let mutable setupFailure: exn option = None
-                    let mutable rowSetupErrors: ResizeArray<exn> option = None
-
-                    let reportRow errors =
-                        match rowSetupErrors with
-                        | Some collected -> collected.AddRange errors
-                        | None -> report errors
-
-                    let ensureRegionLive () =
-                        if root.IsDisposed || regionScope.IsDisposed then
-                            raise KeyedDisposed
-
-                    let liveEquals left right =
+            try
+                for matchResult in matches do
+                    match matchResult with
+                    | Choice1Of2 (entry, value) -> desired.Add (entry, value)
+                    | Choice2Of2 (key, value) ->
+                        let entry = createEntry key value
+                        created.Add entry
                         ensureRegionLive ()
-                        let result = equals.Invoke (left, right)
-                        ensureRegionLive ()
-                        result
+                        desired.Add (entry, value)
+            with original ->
+                let errors = ResizeArray<exn>()
+                errors.Add original
 
-                    let getRegionParent () =
-                        let regionParent =
-                            regionStart.parentNode
-                            |> Option.defaultWith (fun () -> invalid "Keyed-list boundaries have no parent")
+                for index in created.Count - 1 .. -1 .. 0 do
+                    try
+                        created[index].Mount.Dispose()
+                    with error ->
+                        errors.Add error
 
-                        if
-                            not (
-                                regionEnd.parentNode
-                                |> Option.exists (same regionParent)
-                            )
-                        then
-                            invalid "Keyed-list boundaries were externally mutated"
+                if errors.Count = 1 then
+                    reraise ()
+                else
+                    raise (AggregateException ("Keyed row setup and cleanup failed", errors))
 
-                        regionParent
+            let nextEntries = Array.init desired.Count (fun index -> fst desired[index])
 
-                    let validateRegion regionParent =
-                        if
-                            not (
-                                regionStart.parentNode
-                                |> Option.exists (same regionParent)
-                            )
-                            || not (
-                                regionEnd.parentNode
-                                |> Option.exists (same regionParent)
-                            )
-                        then
-                            invalid "Keyed-list boundaries were externally mutated"
+            try
+                moveToOrder regionParent nextEntries
+            with movementError ->
+                ensureRegionLive ()
 
-                        let mutable cursor = nextSiblingNode regionStart
+                try
+                    moveToOrder regionParent entries
+                with rollbackError ->
+                    root.Dispose ()
+                    raise (AggregateException ("Keyed reconciliation and rollback failed", [| movementError; rollbackError |]))
 
-                        for entry in entries do
-                            entry.Mount.Validate ()
+                let errors = ResizeArray<exn>()
+                errors.Add movementError
 
-                            if not (cursor |> Option.exists (same entry.First)) then
-                                invalid "Keyed-list rows or contents were externally mutated"
+                for entry in created do
+                    try
+                        entry.Mount.Dispose ()
+                    with error ->
+                        errors.Add error
 
-                            cursor <- nextSiblingNode entry.Last
+                if errors.Count = 1 then
+                    reraise ()
+                else
+                    raise (AggregateException ("Keyed reconciliation and cleanup failed", errors))
 
-                        if not (cursor |> Option.exists (same regionEnd)) then
-                            invalid "Keyed-list boundaries were externally reordered"
+            let removedEntries =
+                entries
+                |> Array.filter (fun entry ->
+                    nextEntries
+                    |> Array.exists (fun next -> obj.ReferenceEquals (entry, next))
+                    |> not)
 
-                    if same parent range.Staging then
-                        range.AddRegion (
-                            regionStart,
-                            regionEnd,
-                            (fun () -> validateRegion (getRegionParent ())),
-                            (fun () ->
-                                for entry in entries do
-                                    entry.Mount.Relocate ())
+            Api.batch (fun () ->
+                for entry, value in desired do
+                    ensureRegionLive ()
+                    entry.Value.Value <- value
+
+                entries <- nextEntries
+
+                for removed in removedEntries do
+                    removed.Mount.Dispose ())
+
+        let reconcile () =
+            try
+                let items = Array.copy (read ())
+                Api.untrack (fun () -> reconcileItems items)
+            with
+            | KeyedDisposed -> ()
+            | error ->
+                let errors =
+                    match error with
+                    | KeyedSetupFailed errors -> errors
+                    | _ -> [ error ]
+
+                if initializing then
+                    setupFailure <-
+                        Some (
+                            match errors with
+                            | [ error ] -> error
+                            | _ ->
+                                AggregateException (
+                                    "Keyed row setup and cleanup failed: "
+                                    + String.concat "; " (errors |> List.map _.Message),
+                                    errors
+                                )
                         )
+                else
+                    try
+                        Api.untrack (fun () -> report errors)
+                    with reporterError ->
+                        raise (AggregateException ("Keyed update and reporter failed", [| error; reporterError |]))
 
-                    let moveToOrder regionParent (ordered: KeyedEntry array) =
-                        let mutable anchor: Node option = Some regionEnd
+                    reraise ()
 
-                        for index in ordered.Length - 1 .. -1 .. 0 do
-                            let entry = ordered[index]
-                            ensureRegionLive ()
+        Api.createRoot (fun owner ->
+            regionOwner <- Some owner
+            Api.onCleanup regionScope.Dispose
+            regionScope.OnCleanup owner.Dispose
+            Api.untrack (fun () -> Api.createEffect reconcile))
 
-                            let alreadyPlaced =
-                                entry.Last.parentNode
-                                |> Option.exists (same regionParent)
-                                && (nextSiblingNode entry.Last
-                                    |> Option.exists (fun next -> anchor |> Option.exists (same next)))
+        initializing <- false
 
-                            if not alreadyPlaced then
-                                entry.Mount.MoveBefore (regionParent, anchor)
+        match setupFailure with
+        | Some error -> raise error
+        | None -> ()
 
-                            ensureRegionLive ()
-
-                            anchor <- Some entry.First
-
-                    let createEntry key value =
-                        ensureRegionLive ()
-                        let item = graph.Run (fun () -> Api.createSignal value)
-                        let staging = fragment ()
-                        let setupErrors = ResizeArray<exn>()
-                        let previousErrors = rowSetupErrors
-
-                        let owner =
-                            regionOwner
-                            |> Option.defaultWith (fun () -> invalid "Keyed-list owner is unavailable")
-
-                        let mounted: Mounted =
-                            rowSetupErrors <- Some setupErrors
-
-                            try
-                                try
-                                    Api.runWithOwner owner (fun () ->
-                                        mountCore scheduling ignore graph (Some regionScope) reportRow staging None (fun context ->
-                                            render.Invoke ((fun () -> item.Value), context.Backend)))
-                                with original ->
-                                    if setupErrors.Count > 0 then
-                                        raise (KeyedSetupFailed (original :: List.ofSeq setupErrors))
-
-                                    ensureRegionLive ()
-                                    reraise ()
-                            finally
-                                rowSetupErrors <- previousErrors
-
-                        if setupErrors.Count > 0 then
-                            let errors = List.ofSeq setupErrors
-
-                            try
-                                Api.untrack (fun () -> report errors)
-                            with reporterError ->
-                                let failures = ResizeArray<exn>(errors)
-                                failures.Add reporterError
-
-                                try
-                                    mounted.Dispose ()
-                                with cleanupError ->
-                                    failures.Add cleanupError
-
-                                raise (AggregateException ("Keyed row reader and reporter failed", failures))
-
-                        let first =
-                            staging.firstChild
-                            |> Option.defaultWith (fun () -> invalid "A keyed row has no start boundary")
-
-                        let last =
-                            staging.lastChild
-                            |> Option.defaultWith (fun () -> invalid "A keyed row has no end boundary")
-
-                        {
-                            Key = key
-                            Value = item
-                            First = first
-                            Last = last
-                            Mount = mounted
-                        }
-
-                    let reconcileItems items =
-                        ensureRegionLive ()
-                        let regionParent = getRegionParent ()
-                        validateRegion regionParent
-                        Keyed.validateUniqueKeys liveEquals items
-                        ensureRegionLive ()
-
-                        let matches =
-                            items
-                            |> Array.map (fun (key, value) ->
-                                let matched =
-                                    entries
-                                    |> Array.tryFind (fun entry -> liveEquals entry.Key key)
-
-                                ensureRegionLive ()
-
-                                match matched with
-                                | Some entry -> Choice1Of2 (entry, value)
-                                | None -> Choice2Of2 (key, value))
-
-                        let created = ResizeArray<KeyedEntry>()
-                        let desired = ResizeArray<KeyedEntry * obj>()
-
-                        try
-                            for matchResult in matches do
-                                match matchResult with
-                                | Choice1Of2 (entry, value) -> desired.Add (entry, value)
-                                | Choice2Of2 (key, value) ->
-                                    let entry = createEntry key value
-                                    created.Add entry
-                                    ensureRegionLive ()
-                                    desired.Add (entry, value)
-                        with original ->
-                            let errors = ResizeArray<exn>()
-                            errors.Add original
-
-                            for index in created.Count - 1 .. -1 .. 0 do
-                                try
-                                    created[index].Mount.Dispose()
-                                with error ->
-                                    errors.Add error
-
-                            if errors.Count = 1 then
-                                reraise ()
-                            else
-                                raise (AggregateException ("Keyed row setup and cleanup failed", errors))
-
-                        let nextEntries = Array.init desired.Count (fun index -> fst desired[index])
-
-                        try
-                            moveToOrder regionParent nextEntries
-                        with movementError ->
-                            ensureRegionLive ()
-
-                            try
-                                moveToOrder regionParent entries
-                            with rollbackError ->
-                                root.Dispose ()
-                                raise (AggregateException ("Keyed reconciliation and rollback failed", [| movementError; rollbackError |]))
-
-                            let errors = ResizeArray<exn>()
-                            errors.Add movementError
-
-                            for entry in created do
-                                try
-                                    entry.Mount.Dispose ()
-                                with error ->
-                                    errors.Add error
-
-                            if errors.Count = 1 then
-                                reraise ()
-                            else
-                                raise (AggregateException ("Keyed reconciliation and cleanup failed", errors))
-
-                        let removedEntries =
-                            entries
-                            |> Array.filter (fun entry ->
-                                nextEntries
-                                |> Array.exists (fun next -> obj.ReferenceEquals (entry, next))
-                                |> not)
-
-                        Api.batch (fun () ->
-                            for entry, value in desired do
-                                ensureRegionLive ()
-                                entry.Value.Value <- value
-
-                            entries <- nextEntries
-
-                            for removed in removedEntries do
-                                removed.Mount.Dispose ())
-
-                    let reconcile () =
-                        try
-                            let items = Array.copy (read ())
-                            Api.untrack (fun () -> reconcileItems items)
-                        with
-                        | KeyedDisposed -> ()
-                        | error ->
-                            let errors =
-                                match error with
-                                | KeyedSetupFailed errors -> errors
-                                | _ -> [ error ]
-
-                            if initializing then
-                                setupFailure <-
-                                    Some (
-                                        match errors with
-                                        | [ error ] -> error
-                                        | _ ->
-                                            AggregateException (
-                                                "Keyed row setup and cleanup failed: "
-                                                + String.concat "; " (errors |> List.map _.Message),
-                                                errors
-                                            )
-                                    )
-                            else
-                                try
-                                    Api.untrack (fun () -> report errors)
-                                with reporterError ->
-                                    raise (AggregateException ("Keyed update and reporter failed", [| error; reporterError |]))
-
-                                reraise ()
-
-                    Api.createRoot (fun owner ->
-                        regionOwner <- Some owner
-                        Api.onCleanup regionScope.Dispose
-                        regionScope.OnCleanup owner.Dispose
-                        Api.untrack (fun () -> Api.createEffect reconcile))
-
-                    initializing <- false
-
-                    match setupFailure with
-                    | Some error -> raise error
-                    | None -> ())
-
-            Component =
-                Action<Setup -> unit>(fun setup ->
-                    ensureSetup ()
-#if LADDER_NAIVE_COMPONENTS
-                    setup
-                        {
-                            OnCleanup = ownedCleanup (Api.getOwner ())
-                        }
-#else
-                    Api.createRoot (fun owner ->
-                        Api.untrack (fun () ->
-                            setup
-                                {
-                                    OnCleanup = fun callback -> ownedCleanup owner callback
-                                })
-
-                        if owner.IsDisposed then
-                            invalid "View construction is only valid during live setup")
-#endif
-                )
-
-            Template =
-                Action<Backend, TemplateDefinition, obj>(fun this definition props ->
-                    ensureSetup ()
-
-                    match scheduling with
-                    | Synchronous -> TemplateDom.materialise definition props (getTemplateServices ())
-                    | Queued _ -> definition.Expand (this, props))
-        }
-
-    let backend = MountBackend members
-
-    let context =
-        {
-            Backend = backend
-            Native =
-                fun (node, ownership) ->
-                    ensureSetup ()
-
-                    if not (same parent range.Staging) then
-                        invalid "Native roots require top-level placement"
-
-                    range.Add (node :?> ChildNode, ownership)
-            OnCleanup = root.OnCleanup
-            Phase = fun () -> root.Phase
-        }
-
-    try
-        graph.Run (fun () ->
-            Api.createRoot (fun owner ->
-                Api.onCleanup root.Dispose
-                root.OnCleanup owner.Dispose
-                Api.untrack (fun () -> build context)))
-
+    override _.Component(setup) =
         ensureSetup ()
-        range.Attach (host, before)
-        root.MarkAttached ()
-        delegateAt host
-        root.OnCleanup releaseDelegation
+#if LADDER_NAIVE_COMPONENTS
+        setup
+            {
+                OnCleanup = ownedCleanup (Api.getOwner ())
+            }
+#else
+        Api.createRoot (fun owner ->
+            Api.untrack (fun () ->
+                setup
+                    {
+                        OnCleanup = fun callback -> ownedCleanup owner callback
+                    })
 
-        Mounted (
-            root,
-            (fun (parent, before) ->
-                range.Move (parent, before, root.Dispose)
+            if owner.IsDisposed then
+                invalid "View construction is only valid during live setup")
+#endif
 
-                if not (same parent delegatedHost) then
-                    releaseDelegation ()
-                    delegateAt parent),
-            (fun () -> range.Validate ()),
-            (fun () -> range.Relocate ()),
-            (fun () ->
-                match scheduling with
-                | Synchronous -> graph.Run Api.flush
-                | Queued queue -> queue.Flush ()),
-            (fun () ->
-                match scheduling with
-                | Synchronous -> [||]
-                | Queued queue -> queue.Errors)
-        )
-    with _ ->
-        root.Dispose ()
-        reraise ()
+    override this.Template(definition, props) =
+        ensureSetup ()
+
+        match scheduling with
+        | Synchronous -> TemplateDom.materialise definition props (getTemplateServices ())
+        | Queued _ -> definition.Expand (this, props)
+
+let private mountCore scheduling onRoot graph parentScope report host before build =
+    let state = MountState (scheduling, graph, parentScope, report, host)
+    onRoot state.Root
+    state.Run (before, build)
 
 /// <summary>Mounts a view with an owned commit queue when deferred scheduling is selected.</summary>
 /// <remarks>Nested keyed mounts share the containing mount's scheduler.</remarks>
