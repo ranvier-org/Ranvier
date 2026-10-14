@@ -1,6 +1,6 @@
 # Keyed rows and arms on core primitives
 
-Date: 2026-10-14. Status: draft for review. Nothing below is implemented.
+Date: 2026-10-14. Status: approved; decisions 1–3 confirmed by the user on 2026-10-14; amended with the plan's rulings ([plan](../plans/2026-10-14-keyed-rows-on-core.md)). Nothing below is implemented.
 
 Baseline: `31e4a4b` on `poc/fable-ranvier-dom` (PR #42 head `be4e4cc` plus the view rule). Evidence: [keyed-row cost](../../research/2026-10-14-keyed-row-cost.md) on branch `research/keyed-row-cost` (`aa5b811`), whose prototypes 6 and 7 this design turns into production code. Rule: [`.claude/rules/view-uses-core.md`](../../../.claude/rules/view-uses-core.md).
 
@@ -15,7 +15,7 @@ Baseline: `31e4a4b` on `poc/fable-ranvier-dom` (PR #42 head `be4e4cc` plus the v
 | `Projection.Keys`, `Projection.Get` | The row order layout follows, and each row's nodes. |
 | `Api.createMemo` | An arm region's items, read once per change by both the selection and the payload write. |
 | `Api.createMemoWithComparer` | Arm selection: an arm stays mounted while the comparer reports the same arm. The comparer is internal to the region. |
-| `Api.createRoot`, `Owner` | A mount's lifetime, each arm's lifetime, and the error list of a teardown. Replaces `Lifetime.fs` `Scope`. |
+| `Api.createRoot`, `Owner` | A mount's lifetime, each arm's lifetime, and the error list of a teardown. Replaces the `Scope` tree. |
 | `Owner.OnCleanup`, reverse-order teardown | Cleanup order; node release registered first, so it runs after the owner's own cleanups. |
 | `Owner.IsDisposed` | `Disposed` phase of a mount; the test for "an enclosing owner is tearing down" (`disposed` is set before children are torn down, `Core.fs:898`). |
 | `Owner.ErrorCount`, `Owner.ErrorsFrom` (new) | The errors a teardown recorded, read as a slice after it. |
@@ -36,7 +36,7 @@ Baseline: `31e4a4b` on `poc/fable-ranvier-dom` (PR #42 head `be4e4cc` plus the v
 | Delegated event names per host, as a set | Event delegation. Replaces the `ResizeArray` scanned by `Contains`. |
 | Template tables, setters, native claims, server HTML, last-written DOM values | Unchanged from the template design. |
 
-Removed from the view: `Lifetime.fs` (`Scope`, `ScopePhase` as a stored state), `Mounting.fs` `KeyedRegion`, `KeyedEntry`, `KeyedDisposed`, `KeyedSetupFailed`, `Keyed.validateUniqueKeys`, and every view-side key comparer.
+Removed from the view: the `Scope` tree of `Lifetime.fs` (its child list, callback list and per-scope phase), `Mounting.fs` `KeyedRegion`, `KeyedEntry`, `KeyedDisposed`, `KeyedSetupFailed`, `Keyed.validateUniqueKeys`, and every view-side key comparer.
 
 ## Decisions
 
@@ -46,12 +46,12 @@ Settled:
 - **Create before retire for lists** (plan 2b). New rows are set up before removed rows' cleanups run, and a failed update leaves the existing rows and their DOM identities in place. Arm switches dispose first.
 - **Custom comparers leave the view only.** `Keyed.list`, `Keyed.array` and `Branch.select` lose their equality parameter, as do `Backend.Keyed`, `Backend.Switch`, `Operations.Keyed`, `Operations.Switch`, `MountServices.Region` and the template `Region.Same`. Keys are compared by the core: `'K: equality`, hashed through `Platform.KeyMap`. A caller that needs another identity maps its item to a key with that identity. The core keeps `createMemoWithComparer` and every other comparer overload.
 - **Node-release ordering and teardown reporting live in the view**, on top of core owners and core error lists.
-- **Positional edits are not used.** `Positional.diff` is unchanged; layout is a view-side step in the shape of Solid's `reconcileArrays`.
+- **Positional edits are not used.** `Positional.diff` is unchanged; layout is a view-side minimal-move step over row objects.
 - **An uncurried factory overload is not part of this design.** It is added only if a profile of the finished design shows the `curry2` per key.
 
-For the user to confirm (recommendation first):
+Confirmed by the user on 2026-10-14:
 
-1. **`createProjectionOnce` as the row form.** Measured on: 300 bytes less retained heap per row (1,516 → 1,216 at 1,000 rows), `create1k` 0.891× of the memo form in the view, 24–30% of a create and 20% of a clear in the core alone. Measured off: identical heap and counters, timings within 0.8%, +850 B minified. If declined, rows use `createProjectionWith` and every heap target below rises by 300 bytes.
+1. **`createProjectionOnce` as the row form.** Measured on: 300 bytes less retained heap per row (1,516 → 1,216 at 1,000 rows), `create1k` 0.891× of the memo form in the view, 24–30% of a create and 20% of a clear in the core alone. Measured off: identical heap and counters, timings within 0.8%, +850 B minified.
 2. **Duplicate keys raise `InvalidOperationException`**, the core's exception and message, in place of `ArgumentException`. The test asserting `ArgumentException` changes.
 3. **A layout failure disposes the region's mount** and reports. Today a failed move is rolled back to the previous order and created rows are disposed. With rows on the core, the pass has committed before layout runs, so there is no previous membership to restore. Layout raises only when the DOM refuses an insert.
 
@@ -79,9 +79,9 @@ val createProjectionWithOptions:
 4. Retires removed keys. A removed row's cleanup that disposes the projection stops the pass here; the rows created in step 2 are disposed with the projection.
 5. Writes survivors' items and publishes the key set.
 
-Without `CreateFirst`, a factory failure is stored on its row and raised on read (today's behaviour). With it, the failure is the pass's. `ApplyDelta` follows the same order: `Added` and `Replaced` rows are created before `Removed` and `Replaced` rows retire. A key replaced within one delta keeps its old row until its new row exists.
+Without `CreateFirst`, a factory failure is stored on its row and raised on read (today's behaviour). With it, the failure is the pass's. `ApplyDelta` is unchanged: it serves only the internal delta-driven projections of `Collections.fs` and `Combinators.fs`, which never receive options (ruling in the plan).
 
-When off, the cost is one test of the option per pass (in `ApplyDiff` and `ApplyDelta`), never per row.
+When off, the cost is one test of the option per pass in `ApplyDiff`, never per row.
 
 ### `createProjectionOnce`
 
@@ -131,19 +131,19 @@ let rows =
 2. Materialises the row: a template clone bound to the item reader for `t.each`, or a nested mount for an authored `Program` row (see [Authored views](#authored-views)).
 3. Returns `Row (first, last)`. A row with no nodes gets one `ranvier:row` comment.
 
-The row's release removes its nodes from `first` to `last`, and marks the row removed. It does nothing when the region's owner is disposing (`IsDisposed`), because the region's own release removes the region's content.
+The row's release removes its nodes from `first` to `last`, and marks the row removed. In a nested region it does nothing while the region's owner is disposing (`IsDisposed`), because the region's content leaves with its container.
 
 The region's reconcile effect:
 
 1. Returns without work if the region's owner is disposed, as `KeyedDisposed` does today.
 2. Validates the markers: both share a parent. Validates the laid-out rows' first and last nodes in order between them. A failure raises "externally mutated" before the pass runs, as today.
 3. Reads `rows.Keys` (tracked), which runs the pass. Duplicate keys and factory failures raise here, with the previous rows and DOM in place.
-4. Lays out, untracked: `Get` for each key gives the target row array; the laid-out array is the previous one with removed rows skipped. The step matches the common prefix and suffix, then places the remaining rows through a map from row to target index, in the shape of Solid's `reconcileArrays`, moving each row as a unit (`first` to `last`). New rows are inserted from their creation fragment. A two-row swap moves two rows.
+4. Lays out, untracked: `Get` for each key gives the target row array; the laid-out array is the previous one with removed rows skipped. The step matches the common prefix and suffix, then moves only the rows outside one longest run of rows already in order, each as a unit (`first` to `last`). When every row between the prefix and suffix is new and the rows are the region's staging content, one insertion places them all. A two-row swap moves two rows.
 5. Stores the target array as the laid-out array.
 
 The pass, its row creation and its retirement run inside the core's batch. Errors recorded while it runs are reported once, after layout (see [Teardown reporting](#teardown-reporting)).
 
-On the region owner's teardown, a top-level region (`NewRegion`, `RootRegion`) removes everything from its start marker to its end marker in one range deletion; a nested region's content leaves with its element. Rows skip their own removal (step above), so disposing a mount with a list costs no per-row DOM work.
+On the region owner's teardown, rows of a nested region skip their own removal: their nodes leave with the element or row that holds the markers, so disposing a mount with a nested list costs no per-row DOM work. Rows of a top-level region (`NewRegion`, `RootRegion`) remove their own nodes; a range deletion between the markers would also delete foreign nodes inserted inside rows (ruling in the plan).
 
 Rows register delegated events at the containing mount's host, once per event name per host. Direct listeners register on the row's node and are removed by the row's owner.
 
@@ -152,7 +152,7 @@ Rows register delegated events at the containing mount's host, once per event na
 Prototype 6, made production code:
 
 - `items = Api.createMemo (fun _ -> read ())`.
-- `selection = Api.createMemoWithComparer sameArm (fun _ -> first item of items)`. `sameArm` is internal: definition identity for `matchWith`; key under `=` and definition identity for `branch`; key under `=` for `Branch.select` and `Switch`.
+- `selection = Api.createMemoWithComparer sameArm (fun _ -> first item of items)`. `sameArm` is internal and compares the items' keys with `=`: a `matchWith` key is the arm's definition, compared by reference; a `branch` key is the user key with the definition.
 - A reconcile effect reads `selection`. On a change it disposes the previous arm's root owner in a batch, which runs the arm's cleanups and then its node release, and then creates the next arm's root owner under the region owner and mounts the arm into it. Dispose first.
 - A payload effect reads `items` and writes the retained arm's item signal. The write cuts off when the payload is unchanged.
 - An arm whose setup raises leaves the region empty and is reported; a later switch mounts.
@@ -167,10 +167,10 @@ A view hole reads its view once, untracked, and mounts it between its markers un
 
 ### Lifetime: `Scope` replaced by `Owner`
 
-`Lifetime.fs` is removed. A `MountState` is given an `Owner`: `createRoot` for a top-level mount, the key scope for a row, the arm's root for an arm. `Mounting.mount` and `mountWith` take `parentOwner: Owner option` in place of `parentScope: Scope option`.
+`Lifetime.fs` keeps `ScopePhase` and holds `MountLifetime`, a wrapper of one core owner with a parent pointer, an attached flag, a release queue and held errors; it has no child or cleanup list. A `MountState` is given an `Owner`: `createRoot` for a top-level mount, the key scope for a row, the arm's root for an arm. `Mounting.mount` and `mountWith` take `parentOwner: Owner option` in place of `parentScope: Scope option`.
 
 - **Phase.** `Mounted.Phase` is `Disposed` when the owner is disposed, `Attached` after the mount's attach step, and `SettingUp` before it. Rows and arms read their containing mount's phase.
-- **Release order.** A mount registers its node release as the first cleanup of its owner. When the release runs while an enclosing mount is tearing down, it is appended to the outermost tearing-down mount's pending-release queue instead of running. The outermost mount runs its queue in order, then its own release, after its owner's teardown finishes. So every cleanup in a disposed tree runs before any of its nodes is released: `child-clean, parent-clean, remove-child, remove-parent`.
+- **Release order.** A mount registers its node release as the first cleanup of its owner. When the release runs while an enclosing mount is tearing down, it is appended to the outermost tearing-down mount's pending-release queue instead of running. The outermost mount runs its queue in order, then its own release, after its owner's teardown finishes. So every cleanup in a disposed tree runs before any of its nodes is released: `child-clean, parent-clean, remove-child, remove-parent`. A release that runs while a descendant's `Dispose` is in progress waits for that call to finish. Mount-level cleanups run in core owner order, last registered first.
 - **Late registration** and idempotent disposal are the core's.
 
 ### Teardown reporting
@@ -211,18 +211,19 @@ Changed:
 |---|---|
 | `duplicate each keys fail the mount, are reported on update and keep the rows` | asserts `InvalidOperationException` |
 | `keyed comparer disposal prevents further reconciliation`, `initial keyed comparer disposal stops before further callbacks` | removed: no comparer exists |
-| `initial keyed reader disposal stops before comparer calls`, `keyed reconciliation tracks snapshots but not comparers or cleanup`, `array comparers cannot change renderer snapshot slots` | keep their reader halves |
-| `failed movement rollback disposes resources instead of stranding bindings`, `failed keyed rollback terminates the mount and all row resources` | a layout failure disposes the mount and reports (decision 3) |
+| `initial keyed reader disposal stops before comparer calls`, `keyed reconciliation tracks snapshots but not comparers or cleanup` | keep their reader halves |
+| `array comparers cannot change renderer snapshot slots` | removed: it exercised the comparer only; `array key callbacks cannot change unread snapshot slots` keeps the snapshot check |
+| `failed keyed movement restores prior order and permits recovery`, `failed keyed rollback terminates the mount and all row resources` | replaced by `a failed keyed layout disposes the mount and reports once` (decision 3); `failed movement rollback disposes resources instead of stranding bindings` moves a whole mount and is unchanged |
 | Scope unit checks in `LifetimeChecks` | rewritten against mounts on owners: order, late registration, reporter failure |
 
 New, in the owning tasks:
 
-1. Core, both platforms: `CreateFirst` runs added rows' factories before removed rows' cleanups; a failing factory disposes this pass's created rows in reverse order and leaves keys, rows and items unchanged; the next source change retries; a removed row's cleanup disposing the projection stops the pass; `ApplyDelta` replaced keys create before retiring.
+1. Core, both platforms: `CreateFirst` runs added rows' factories before removed rows' cleanups; a failing factory disposes this pass's created rows in reverse order and leaves keys, rows and items unchanged; the next source change retries; a removed row's cleanup disposing the projection stops the pass.
 2. Core: `createProjectionOnce` rows read without recomputation; a tracked `Get` wakes when the key leaves; the unsupported readers raise `NotSupportedException`.
 3. Core: `ErrorsFrom` returns exactly the errors recorded after an index; `ensureUniqueKeys` raises the pass's exception and message for `int`, `string`, record and tuple keys, and treats `1` and `1L` as `=` does.
 4. View: a two-row swap of 1,000 rows performs two `insertBefore`; prepend, reverse, and remove-from-middle produce the expected DOM and keep node identities (property test against a reference order).
 5. View: zero-node rows keep their position across moves and leave with their comment.
-6. View: disposing a mount with a top-level list removes the region in one range deletion and runs every row cleanup first.
+6. View: disposing a mount runs every row cleanup before a row's node leaves.
 7. View: delegated clicks on a row reach its own instance after create, after a move and after the containing mount moves hosts, and stop after removal.
 8. View: a teardown inside another teardown's window is reported once, on its own tree.
 9. Browser (Chromium): focus and selection inside a row survive a move of another row.
@@ -232,14 +233,14 @@ New, in the owning tasks:
 
 Each core option is measured off and on, as `createProjectionOnce` was in the research: op counters (`RANVIER_COUNTERS`), retained heap by constructor (CDP heap-snapshot diff), paired shuffled timings in one page (A: option compiled out, B: compiled in and off, C: on), the pure-core workload under Node and .NET, and the minified bundle. Raw JSON is committed with machine, Chromium version, date and commit. Bundle figures are measurements, not gates.
 
-Targets on `keyed-rows.mjs` against Solid 2 (2.0.0-rc.14, native compiler), shuffled rounds: `create1k`, `append1k` and `clear1k` at or below 2.0×; `swap1k` and `remove1k` at or below 3×; `clear10k` / `clear1k` within 12×; retained heap at or below 1,300 bytes per row at 1,000 rows (1,600 if decision 1 is declined); `armsSwitch1k` at or below 2×. These are targets for the measurement report, not acceptance gates.
+Targets on `keyed-rows.mjs` against Solid 2 (2.0.0-rc.14, native compiler), shuffled rounds: `create1k`, `append1k` and `clear1k` at or below 2.0×; `swap1k` and `remove1k` at or below 3×; `clear10k` / `clear1k` within 12×; retained heap at or below 1,300 bytes per row at 1,000 rows; `armsSwitch1k` at or below 2×. These are targets for the measurement report, not acceptance gates.
 
 ## Non-goals
 
 - Hydration, structural boundaries, setter-failure handling, the playground migration.
 - Indexed edges and constant-time unlink (#54, deferred).
 - Moving the queued commit `Queue` onto core effects: investigated after this design.
-- Bulk clear when an update empties a live list; the range deletion above applies to region disposal only.
+- Bulk clear, on an update that empties a live list or on disposal of a top-level region.
 - Owner-less static rows.
 
 ## Risks
@@ -247,6 +248,7 @@ Targets on `keyed-rows.mjs` against Solid 2 (2.0.0-rc.14, native compiler), shuf
 - **Row interiors are not validated.** External mutation between a row's first and last node is undetected; moved first or last nodes are detected.
 - **Cleanup order inside a row** is core owner order: reverse registration, interleaved with child owners. Nested-mount rows ran scope callbacks first.
 - **`Graph.Root` windows include any error recorded during the window**, including from a cleanup of an unrelated tree that the window's teardown triggers. Nested windows exclude their own slices; other sources are reported with the teardown that ran them.
+- **A teardown driven by the core rather than by `Dispose`** (for example `Graph.Dispose`) reports the mount's owner errors, adopted owners' errors and release failures; errors that computation scopes record into `Graph.Root` meanwhile are not grouped into it.
 - **`Graph.Root.Errors` grows without bound**, as it does today; the view reads slices and never clears it.
 - **`createProjectionOnce` code is present in every bundle that uses `createProjectionWith`** (+850 B minified), because `CreateAdded` references it.
 - **.NET `create1k` of the pure-core workload was 1–2% slower with the option compiled in**, unattributed. The measurement above repeats it with `ItemRow` kept sealed.
