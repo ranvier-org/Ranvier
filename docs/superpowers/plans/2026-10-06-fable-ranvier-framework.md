@@ -12,6 +12,67 @@
 
 Status (2026-10-14): the experimental Foundation renderer has owned ranges, components on owner lifetime with delegated listeners, keyed lists and keyed branches, component templates with dynamic structure (view holes, `matchWith`, `branch`, `each` and inlined children), the generated DOM catalogue (`Generated/Html.fs`, all 112 tags of `HTMLElementTagNameMap`) and the generated template catalogue (`Generated/HtmlTemplate.fs`), and production benchmarks against Solid 2 (2.0.0-rc.14), Ripple and React. The [checkpoint index](../../research/2026-10-11-view-poc-checkpoint.md) links each step. Keyed lists and arms run on core projections, memos and owners ([spec](../specs/2026-10-14-keyed-rows-on-core-design.md), [measurements](../../research/2026-10-14-keyed-rows-on-core.md)). Open: list performance (`swap1k` at 4.556x and `remove1k` at 5.000x Solid, against the <=3x targets; see the [measurements](../../research/2026-10-14-keyed-rows-on-core.md)), structural boundaries, server HTML and hydration, and sugar; production integration, public API freeze and release budgets follow them. The core indexed-edges work (draft PR #54) is deferred. See the [baseline report](../../research/2026-10-08-fable-ranvier-baseline.md) for fresh results and known whole-solution/Fable-test failures. The user approved explicit typed functions subject to extreme performance and efficient Oxpecker-style or Feliz-style sugar; the [DSL design](../specs/2026-10-08-ranvier-view-dsl-design.md) records the proof requirements. File names below are proposed seams; verify existing symbols before choosing final names. API descriptions are design sketches, not compiler-validated signatures.
 
+## Where we stand (2026-10-14)
+
+Branch `poc/fable-ranvier-dom` at `eb39b96`, pushed as [PR #42](https://github.com/shayanhabibi/Ranvier/pull/42). Gates at that commit: 2106 core .NET tests; 872 Fable core tests with inline delivery, plus the 18 known Fable/.NET differences; 328 Node DOM tests; 23 Chromium tests; 14 portable representation checks.
+
+### Performance
+
+Ratios are Ranvier's time over the other framework's; below 1 is faster. Every figure is a measurement, not a budget.
+
+Components, template path, at `a0de558` ([component templates note](../../research/2026-10-14-component-templates.md#measurements)). This benchmark predates the keyed-rows work, which changed mount ownership and teardown, so the dispose rows need a fresh run.
+
+| Phase, rows | × Solid 2 | × Ripple |
+|---|---|---|
+| Mount, 1 / 16 / 128 | 1.18 / 1.16 / 1.17 | 0.97 / 0.88 / 0.81 |
+| Update, 1 / 16 / 128 | 0.80 / 1.05 / 1.07 | 0.93 / 1.01 / 0.99 |
+| Dispose, 1 / 16 / 128 | 1.32 / 1.25 / 1.56 | 2.28 / 0.80 / 0.95 |
+| Retained heap, 128-row mount | 0.96 (111 / 116 KiB) | 0.68 (111 / 163 KiB) |
+
+Plan 2c's paired runs against Solid 2 left these within run-to-run variation.
+
+Keyed lists and arms, production rows at `4353219` against Solid 2 only ([keyed rows on core](../../research/2026-10-14-keyed-rows-on-core.md#production-against-solid-2)):
+
+| Operation | × Solid 2 | Target |
+|---|---|---|
+| create1k / create10k | 1.69 / 1.69 | ≤ 2 (met) |
+| append1k / replace1k | 1.63 / 1.51 | ≤ 2 (met) / — |
+| update10th1k | 0.21 | — |
+| swap1k | 4.56 | ≤ 3 (not met) |
+| remove1k / remove10k | 5.00 / 11.0 | ≤ 3 (not met) / — |
+| clear1k / clear10k | 1.61 (2.23 in the six-mode page) / 2.56 | ≤ 2 |
+| armsCreate1k / armsSwitch1k | 1.70 / 1.77 | — / ≤ 2 (met) |
+| armsPayload1k / armsClear1k | 0.54 / 2.33 | — |
+| Retained heap per row | 1,228 / 905 B (snapshot); 1,448 / 1,057 B (`getHeapUsage`) | ≤ 1,300 B |
+
+The list benchmark has no Ripple adapter.
+
+### Done
+
+- Owned ranges, components and props, minimal text bindings and queued commits (Tasks 3–5, experimental).
+- Keyed lists and arms on core projections, memos and owners; `MountLifetime` over core owners replaces the `Scope` tree ([spec](../specs/2026-10-14-keyed-rows-on-core-design.md)).
+- Component templates with dynamic structure and the generated template catalogue (plans 2a–2c).
+- The generated DOM catalogue, all 112 tags.
+- Production comparisons against Solid 2, Ripple and React.
+
+### Open, in proposed order
+
+1. List structural edits: `swap1k`, `remove1k` and `remove10k`, and the unexplained 26–32% `remove10k` slowdown with memo-free rows. Indexed edges ([#54](https://github.com/shayanhabibi/Ranvier/pull/54)) stay deferred until the whole picture is measured.
+2. Re-run the component comparison at the current head, for Solid 2 and Ripple.
+3. Investigate the queued commit `Queue` (`Scheduling.fs`) as binding effects under a microtask `IGraphDispatcher` (agreed follow-up).
+4. Structural view boundaries and live setter-failure handling (Task 5).
+5. Owned async cancellation and the playground screen migration (Task 7).
+6. Server HTML: precomputed static segments in `renderHtml`, escaping, request isolation; then hydration (Task 9).
+7. Performance and release acceptance, then sugar (Tasks 8 and 10).
+
+Smaller items recorded by the keyed-rows plan:
+
+- No tests yet for `Complete` handing held errors to a window that serves its reporter, or for `Abandon` disposing inside another reporter's window.
+- `createProjectionOnce` without `CreateFirst` no longer stops a pass when a factory disposes the projection; the view always uses `CreateFirst`.
+- No test for an arm reader failing on an update.
+- Two benchmark JSON files lack machine fields; their `commit` fields read `ab68bde` plus a dirty list, and the measured tree `4353219` is recorded only in the write-up.
+- The [keyed-row cost research](../../research/2026-10-14-keyed-row-cost.md) is on unmerged branch `research/keyed-row-cost` (`aa5b811`), so that link is broken on this branch.
+
 ## Global constraints
 
 - Preserve explicit core policies and plugin independence. Do not add silent scheduling, ownership inference, implicit async retention or automatic memoization.

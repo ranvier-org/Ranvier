@@ -264,6 +264,8 @@ Targets on `keyed-rows.mjs` against Solid 2 (2.0.0-rc.14, native compiler), shuf
 
 ## Follow-ups
 
-- Mark the parts of PR #42 and its research notes that describe "every region runs through the keyed path" as replaced by this design.
-- Replace `delegatedNames.Contains` with a set (12% of `create1k` allocation); folded into the list task, as rows register delegation at the host.
-- Investigate the queued commit `Queue` as binding effects under a microtask `IGraphDispatcher`.
+- Done: the parts of PR #42 and its research notes that describe "every region runs through the keyed path" are marked as replaced by this design.
+- Done: `delegatedNames` is a set (it was 12% of `create1k` allocation), folded into the list task.
+- Open: investigate the queued commit `Queue` as binding effects under a microtask `IGraphDispatcher`.
+- Open: `swap1k` (4.556×) and `remove1k` (5.000×) miss the ≤ 3× targets, and `remove10k` is 26–32% slower with memo-free rows, unexplained.
+- Open: a core hook around a tracked read's staleness check would let list regions read `projection.Keys` tracked, replacing the region-local version signal.
