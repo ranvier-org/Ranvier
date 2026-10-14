@@ -214,8 +214,12 @@ type private OwnedRange(host: Node) =
             staged <- true
 
             for index in 0 .. entries.Count - 1 do
-                staging.appendChild (at entries index).Node
-                |> ignore
+                let node = (at entries index).Node
+
+                if not (isDetached node || isChildOf node staging) then
+                    invalid "Range boundaries or owned roots were externally mutated"
+
+                staging.appendChild node |> ignore
 
     do
         entries.Add
@@ -274,6 +278,11 @@ type private OwnedRange(host: Node) =
 #endif
     /// <summary>Adds an unclaimed root node created by the mount, either detached or a child of a cloned fragment.</summary>
     member _.AddCreated(node: Node) =
+        let attachNow = staged || not (isDetached node)
+
+        if attachNow then
+            stage ()
+
         entries.Insert (
             entries.Count - 1,
             {
@@ -287,8 +296,7 @@ type private OwnedRange(host: Node) =
 
         claim claims node
 
-        if staged || not (isDetached node) then
-            stage ()
+        if attachNow then
             insert staging node (Some last)
 
     member _.Add(node: ChildNode, ownership) =
@@ -314,6 +322,8 @@ type private OwnedRange(host: Node) =
 
                         insert parent node before)
 
+        stage ()
+
         entries.Insert (
             entries.Count - 1,
             {
@@ -326,7 +336,6 @@ type private OwnedRange(host: Node) =
         )
 
         claim claims node
-        stage ()
         insert staging node (Some last)
 
     member _.Validate() =

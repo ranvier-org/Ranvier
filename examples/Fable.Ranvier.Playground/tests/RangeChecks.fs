@@ -583,6 +583,36 @@ let private attachmentReentry () =
     finally
         restore ()
 
+[<Emit("document.body.appendChild($0)")>]
+let private appendToBody (node: Node) : unit = jsNative
+
+let private movedBeforeStaging () =
+    use graph = new Graph ()
+    let host = Dom.element "section" [] []
+    let native = Dom.element "aside" [] []
+    let mutable moved: HTMLElement option = None
+
+    rejected (fun () ->
+        mounted graph None host None (fun ctx ->
+            ctx.Backend.Element (
+                Div,
+                [|
+                    browserModifier (fun node ->
+                        let element = unbox<HTMLElement> node
+                        moved <- Some element
+                        appendToBody element
+                        ignore)
+                |],
+                ignore
+            )
+
+            ctx.Native (native, Owned))
+        |> ignore)
+
+    equal 0. host.childNodes.length
+    equal None moved.Value.parentNode
+    equal None native.parentNode
+
 let private overlappingMounts () =
     use graph = new Graph ()
     let host, other = Dom.element "section" [] [], Dom.element "section" [] []
@@ -1154,6 +1184,7 @@ let allCases =
             "duplicate keys fail before mounting mutates the host", duplicateKeys
             "disposal during attachment cannot revive a mount", attachmentReentry
             "native ownership cannot overlap another live mount", overlappingMounts
+            "staging rejects a root moved elsewhere by a browser hook and unwinds", movedBeforeStaging
             "equality-triggered disposal prevents a late DOM write", equalityDisposal
             "direct child mount disposal uses its explicit reporter", childReporter
             "failed movement rollback disposes resources instead of stranding bindings", failedMovementRollback
