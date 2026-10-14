@@ -768,12 +768,17 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     /// whose beacon has a reader becomes eager, so a write to any of its
     /// sources schedules the retry.
     /// </summary>
-    member private _.Abandon() =
+    member private this.Abandon() =
         freshness <- Freshness.Dirty
+        let sourceMoved = deferredDirty && this.CreateFirst
         deferredDirty <- false
 
         if beacon.ObserverCount > 0 then
             observed <- true
+
+        // A source written by a rolled-back row's cleanup invalidates the failed pass.
+        if sourceMoved then
+            (this :> IComputation).MarkDirty()
 
     /// <summary>
     /// Disposes removed keys, creates added rows, writes changed items and publishes the key set, in one batch. With
