@@ -162,7 +162,7 @@ let private nextOrNull (node: Node) : Node = jsNative
 [<Emit("$0[$1]")>]
 let private at (items: ResizeArray<'T>) (index: int) : 'T = jsNative
 
-let private skip: unit -> unit = JsInterop.emitJsExpr () "() => {}"
+let private skip: unit -> unit = ignore
 
 type private Entry =
     {
