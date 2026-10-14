@@ -19,8 +19,8 @@ let private equal expected actual =
 [<Emit("$0[$1]")>]
 let private read (node: obj) (name: string) : 'value = jsNative
 
-[<Emit("$0.dispatchEvent(new ($0.ownerDocument.defaultView.Event)($1, { bubbles: true }))")>]
-let private fire (target: HTMLElement) (name: string) : bool = jsNative
+[<Emit("(() => { const event = new ($0.ownerDocument.defaultView.Event)($1, { bubbles: true }); $0.dispatchEvent(event); return event; })()")>]
+let private fire (target: HTMLElement) (name: string) : obj = jsNative
 
 let private host () =
     globalThis.document.createElement "main"
@@ -229,6 +229,115 @@ let private optionReaderRemoval () =
     equal "<div></div>" (markup (Component.render optionalReader (List.item 0 flagCases)))
     equal "<div title=\"n\"></div>" (markup (Component.render optionalReader (List.item 1 flagCases)))
 
+let private ariaTemplate =
+    Component.define (fun _ (props: Flags) -> props) (fun t ->
+        t.div
+            [||]
+            [|
+                t.div
+                    [|
+                        t.Attrs.aria ("label", "x")
+                        t.Attrs.aria ("note", (fun r -> r.Nickname))
+                        t.Attrs.ariaExpanded (Some false)
+                    |]
+                    [||]
+                t.div [| t.Attrs.ariaExpanded (None: bool option) |] [||]
+            |])
+
+let private ariaProgram (flags: Flags) =
+    G.Program.div
+        [||]
+        [|
+            G.Program.div
+                [|
+                    G.Attrs.ariaStatic "label" "x"
+                    G.Attrs.ariaExpandedReactive (fun () -> Some false)
+                    G.Attrs.ariaReactive "note" (fun () -> flags.Nickname)
+                |]
+                [||]
+            G.Program.div [| G.Attrs.ariaExpandedReactive (fun () -> None) |] [||]
+        |]
+
+let private ariaParity () =
+    for flags in flagCases do
+        equal (markup (ariaProgram flags)) (markup (Component.render ariaTemplate flags))
+
+type Sourced =
+    {
+        Text: Signal<string>
+        Optional: Signal<string option>
+        On: Signal<bool>
+        Aria: Signal<bool>
+        AriaOption: Signal<bool option>
+        Label: Signal<string option>
+    }
+
+let private sourced =
+    Component.define (fun _ (props: Sourced) -> props) (fun t ->
+        t.button
+            [|
+                t.Attrs.title (t.from (fun r -> r.Text))
+                t.Attrs.id (t.from (fun r -> r.Optional))
+                t.Attrs.Button.disabled (t.from (fun r -> r.On))
+                t.Attrs.ariaDisabled (t.from (fun r -> r.Aria))
+                t.Attrs.ariaExpanded (t.from (fun r -> r.AriaOption))
+                t.Attrs.aria ("label", t.from (fun r -> r.Label))
+            |]
+            [||])
+
+let private sourceAttributes () =
+    use graph = new Graph ()
+    let host = host ()
+    let text = graph.Run (fun () -> Api.createSignal "a")
+    let optional = graph.Run (fun () -> Api.createSignal (Some "o"))
+    let on = graph.Run (fun () -> Api.createSignal true)
+    let aria = graph.Run (fun () -> Api.createSignal true)
+    let ariaOption = graph.Run (fun () -> Api.createSignal (Some true))
+    let label = graph.Run (fun () -> Api.createSignal (Some "l"))
+
+    let mounted =
+        mount
+            graph
+            host
+            (Component.render
+                sourced
+                {
+                    Text = text
+                    Optional = optional
+                    On = on
+                    Aria = aria
+                    AriaOption = ariaOption
+                    Label = label
+                })
+
+    let button = host.querySelector "button" |> unbox<HTMLElement>
+
+    let snapshot () =
+        [
+            for name in [ "title"; "id"; "disabled"; "aria-disabled"; "aria-expanded"; "aria-label" ] -> button.getAttribute name
+        ]
+
+    equal [ Some "a"; Some "o"; Some ""; Some "true"; Some "true"; Some "l" ] (snapshot ())
+
+    graph.Run (fun () ->
+        text.Value <- "b"
+        optional.Value <- None
+        on.Value <- false
+        aria.Value <- false
+        ariaOption.Value <- Some false
+        label.Value <- None)
+
+    equal [ Some "b"; None; None; Some "false"; Some "false"; None ] (snapshot ())
+
+    graph.Run (fun () ->
+        optional.Value <- Some "p"
+        on.Value <- true
+        ariaOption.Value <- None
+        label.Value <- Some "m")
+
+    equal [ Some "b"; Some "p"; Some ""; Some "false"; None; Some "m" ] (snapshot ())
+    mounted.Dispose ()
+
 type Live =
     {
         Text: Signal<string>
@@ -314,7 +423,7 @@ let private propertyTypes () =
 type Hits =
     {
         Label: string
-        Log: ResizeArray<string>
+        Log: ResizeArray<string * obj>
     }
 
 let private eventTemplate =
@@ -322,8 +431,12 @@ let private eventTemplate =
         t.div
             [||]
             [|
-                t.input [| t.Events.onInput (fun r _ -> r.Log.Add ("input " + r.Label)) |]
-                t.video [| t.Events.Video.onWaitingforkey (fun r _ -> r.Log.Add ("video " + r.Label)) |] [||]
+                t.input [| t.Events.onInput (fun r e -> r.Log.Add ("input " + r.Label, box e)) |]
+                t.video
+                    [|
+                        t.Events.Video.onWaitingforkey (fun r e -> r.Log.Add ("video " + r.Label, box e))
+                    |]
+                    [||]
             |])
 
 let private events () =
@@ -334,16 +447,22 @@ let private events () =
     let mounted =
         mount graph host (Component.render eventTemplate { Label = "L"; Log = log })
 
-    fire (host.querySelector "input" |> unbox<HTMLElement>) "input"
-    |> ignore
+    let inputEvent = fire (host.querySelector "input" |> unbox<HTMLElement>) "input"
 
-    fire (host.querySelector "video" |> unbox<HTMLElement>) "waitingforkey"
-    |> ignore
+    let videoEvent =
+        fire (host.querySelector "video" |> unbox<HTMLElement>) "waitingforkey"
 
     fire (host.querySelector "video" |> unbox<HTMLElement>) "input"
     |> ignore
 
-    equal [ "input L"; "video L" ] (List.ofSeq log)
+    equal [ "input L"; "video L" ] [ for name, _ in log -> name ]
+
+    equal
+        [ true; true ]
+        [
+            for (_, received), sent in Seq.zip log [ inputEvent; videoEvent ] -> obj.ReferenceEquals (received, sent)
+        ]
+
     mounted.Dispose ()
 
 type Counts =
@@ -421,6 +540,8 @@ let cases =
         "reader attributes render the same markup as Html.Program, including null and absent values", readerParity
         "static attributes render the same markup as Html.Program", staticParity
         "an option reader on a string attribute removes the attribute on None", optionReaderRemoval
+        "static bool option ARIA and aria static and reader forms render the same markup as Html.Attrs", ariaParity
+        "string, bool and ARIA source attributes write and remove through signals", sourceAttributes
         "string, bool, float and option properties write in static, reader and source forms", propertyTypes
         "flat and grouped events receive the instance and fire only for their event name", events
         "an isolated generated attribute re-runs only on its own source", isolation

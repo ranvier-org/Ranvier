@@ -564,7 +564,7 @@ let flagCases =
         }
     ]
 
-// The expected strings equal those asserted by the Fable run in TemplateCatalogueChecks, which also compares them with Html.Program.
+// Mirrors flagMarkup in TemplateCatalogueChecks.fs.
 let flagMarkup =
     [
         "<button title=\"a\" data-state=\"x\">go</button>"
