@@ -2012,7 +2012,7 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
     /// </summary>
     let mutable trimValid = false
 
-    /// <summary>Whether every <c>keyOf</c> call so far read no tracked source, created no node and used no owner.</summary>
+    /// <summary>False once a <c>keyOf</c> call has read a tracked source, created a node or used the pass's owner. Never reset.</summary>
     let mutable keyPure = true
 
     /// <summary>A buffer of at least <c>size</c> items: <c>spare</c> when it fits, else a new array.</summary>
@@ -2040,6 +2040,9 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
 
     /// <summary>Reads the source into a buffer owned by this pass.</summary>
     member private this.Read() =
+        passItems <- Array.empty
+        passCount <- 0
+        passRun <- -1
         let items = source ()
         let array = Platform.asArray items
         let mutable buffer = Array.empty

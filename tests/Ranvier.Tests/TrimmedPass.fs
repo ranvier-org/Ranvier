@@ -83,4 +83,43 @@ let tests =
                 proj.Keys |> ignore
                 Expect.sequenceEqual log [ "item 1"; "item 2"; "key 1"; "key 2" ] "source first, then keyOf"
             }
+
+            test "a nested pass failing in its source leaves the outer pass's items intact" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let tick = createSignal 0
+                let mutable failing = false
+                let mutable fired = false
+                let mutable proj: Projection<int, int> = Unchecked.defaultof<_>
+
+                proj <-
+                    createProjection
+                        (fun x ->
+                            if x = 2 && not fired then
+                                fired <- true
+                                failing <- true
+                                tick.Value <- 1
+
+                                try
+                                    proj.Keys |> ignore
+                                with _ ->
+                                    ()
+
+                                failing <- false
+
+                            x)
+                        (fun x -> x * 10)
+                        (fun () ->
+                            tick.Value |> ignore
+
+                            if failing then
+                                failwith "source failed"
+
+                            [| 1; 2; 3; 4 |] :> seq<_>)
+
+                // The nested pass restarts the pass's keys, so the outer pass publishes the items it visits after it.
+                let keys = proj.Keys
+                Expect.sequenceEqual keys [ 2; 3; 4 ] "the outer pass's keys"
+                Expect.equal (keys |> Array.map proj.Get) [| 20; 30; 40 |] "the outer pass's rows"
+            }
         ]
