@@ -7,12 +7,20 @@ open Ranvier.View.Foundation
 open Ranvier.View.Foundation.Representation
 open Ranvier.View.Foundation.Template
 
+module G = Ranvier.View.Foundation.Generated.Html
+
 [<Global>]
 let private globalThis: TS.Es.GlobalThis = jsNative
 
 let private equal expected actual =
     if expected <> actual then
         failwithf "Expected %A; got %A" expected actual
+
+[<Emit("$0[$1]")>]
+let private read (node: obj) (name: string) : 'value = jsNative
+
+[<Emit("$0.dispatchEvent(new ($0.ownerDocument.defaultView.Event)($1, { bubbles: true }))")>]
+let private fire (target: HTMLElement) (name: string) : bool = jsNative
 
 let private host () =
     globalThis.document.createElement "main"
@@ -85,7 +93,337 @@ let private labelInference () =
 
     mounted.Dispose ()
 
+type Flags =
+    {
+        Name: string
+        Nickname: string option
+        Busy: bool
+        Expanded: bool option
+        State: string
+    }
+
+let private flagsTemplate =
+    Component.define (fun _ (props: Flags) -> props) (fun t ->
+        t.button
+            [|
+                t.Attrs.title (fun r -> r.Name)
+                t.Attrs.id (fun r -> r.Nickname)
+                t.Attrs.Button.disabled (fun r -> r.Busy)
+                t.Attrs.ariaExpanded (fun r -> r.Expanded)
+                t.Attrs.data ("state", fun r -> Some r.State)
+            |]
+            [| t.text "go" |])
+
+let private flagsProgram (flags: Flags) =
+    G.Program.button
+        [|
+            G.Authoring.Attrs.title (fun () -> flags.Name)
+            G.Authoring.Attrs.id (fun () -> flags.Nickname)
+            G.Attrs.Button.disabledReactive (fun () -> flags.Busy)
+            G.Attrs.ariaExpandedReactive (fun () -> flags.Expanded)
+            G.Attrs.dataReactive "state" (fun () -> Some flags.State)
+        |]
+        [| Program.text "go" |]
+
+let private markup view =
+    Html.render Omit (Program.run view)
+
+let private flagCases =
+    [
+        {
+            Name = "a"
+            Nickname = None
+            Busy = false
+            Expanded = None
+            State = "x"
+        }
+        {
+            Name = "b"
+            Nickname = Some "n"
+            Busy = true
+            Expanded = Some false
+            State = "y"
+        }
+        {
+            Name = "c"
+            Nickname = Some "m"
+            Busy = false
+            Expanded = Some true
+            State = "z"
+        }
+        {
+            Name = null
+            Nickname = None
+            Busy = false
+            Expanded = None
+            State = "n"
+        }
+    ]
+
+let private flagMarkup =
+    [
+        "<button title=\"a\" data-state=\"x\">go</button>"
+        "<button title=\"b\" id=\"n\" disabled=\"\" aria-expanded=\"false\" data-state=\"y\">go</button>"
+        "<button title=\"c\" id=\"m\" aria-expanded=\"true\" data-state=\"z\">go</button>"
+        "<button data-state=\"n\">go</button>"
+    ]
+
+let private readerParity () =
+    for flags in flagCases do
+        equal (markup (flagsProgram flags)) (markup (Component.render flagsTemplate flags))
+
+    equal flagMarkup [ for flags in flagCases -> markup (Component.render flagsTemplate flags) ]
+
+let private staticTemplate =
+    Component.define (fun _ () -> ()) (fun t ->
+        t.div
+            [||]
+            [|
+                t.button
+                    [|
+                        t.Attrs.Button.disabled false
+                        t.Attrs.ariaExpanded false
+                        t.Attrs.id (None: string option)
+                        t.Attrs.title "t"
+                    |]
+                    [||]
+                t.button
+                    [|
+                        t.Attrs.Button.disabled true
+                        t.Attrs.ariaExpanded true
+                        t.Attrs.id (Some "i")
+                        t.Attrs.data ("k", "v")
+                    |]
+                    [||]
+            |])
+
+let private staticProgram =
+    G.Program.div
+        [||]
+        [|
+            G.Program.button
+                [|
+                    G.Attrs.Button.disabledStatic false
+                    G.Attrs.ariaExpandedStatic false
+                    G.Authoring.Attrs.id (None: string option)
+                    G.Authoring.Attrs.title "t"
+                |]
+                [||]
+            G.Program.button
+                [|
+                    G.Attrs.Button.disabledStatic true
+                    G.Attrs.ariaExpandedStatic true
+                    G.Authoring.Attrs.id (Some "i")
+                    G.Attrs.dataStatic "k" "v"
+                |]
+                [||]
+        |]
+
+let private staticParity () =
+    equal (markup staticProgram) (markup (Component.render staticTemplate ()))
+
+let private optionalReader =
+    Component.define (fun _ (props: Flags) -> props) (fun t -> t.div [| t.Attrs.title (fun r -> r.Nickname) |] [||])
+
+let private optionReaderRemoval () =
+    equal "<div></div>" (markup (Component.render optionalReader (List.item 0 flagCases)))
+    equal "<div title=\"n\"></div>" (markup (Component.render optionalReader (List.item 1 flagCases)))
+
+type Live =
+    {
+        Text: Signal<string>
+        On: Signal<bool>
+        Level: Signal<float>
+        Popover: Signal<string option>
+    }
+
+let private live =
+    Component.define (fun _ (props: Live) -> props) (fun t ->
+        t.div
+            [||]
+            [|
+                t.input [| t.Props.Input.value "static"; t.Props.Input.``checked`` true |]
+                t.input
+                    [|
+                        t.Props.Input.value (fun r -> r.Text.Value)
+                        t.Props.Input.``checked`` (fun r -> r.On.Value)
+                    |]
+                t.input
+                    [|
+                        t.Props.Input.value (t.from (fun r -> r.Text))
+                        t.Props.Input.``checked`` (t.from (fun r -> r.On))
+                    |]
+                t.meter [| t.Props.Meter.high 0.25 |] [||]
+                t.meter [| t.Props.Meter.high (fun r -> r.Level.Value) |] [||]
+                t.meter [| t.Props.Meter.high (t.from (fun r -> r.Level)) |] [||]
+                t.span [| t.Props.popover (Some "manual") |] [||]
+                t.span [| t.Props.popover (fun r -> r.Popover.Value) |] [||]
+                t.span [| t.Props.popover (t.from (fun r -> r.Popover)) |] [||]
+            |])
+
+let private propertyTypes () =
+    use graph = new Graph ()
+    let host = host ()
+    let text = graph.Run (fun () -> Api.createSignal "a")
+    let on = graph.Run (fun () -> Api.createSignal false)
+    let level = graph.Run (fun () -> Api.createSignal 0.5)
+    let popover = graph.Run (fun () -> Api.createSignal (Some "auto"))
+
+    let mounted =
+        mount
+            graph
+            host
+            (Component.render
+                live
+                {
+                    Text = text
+                    On = on
+                    Level = level
+                    Popover = popover
+                })
+
+    let inputs =
+        [|
+            for i in 0..2 ->
+                host.querySelectorAll("input").[i]
+                |> unbox<HTMLInputElement>
+        |]
+
+    let meters = [| for i in 0..2 -> host.querySelectorAll("meter").[i] :> obj |]
+
+    let spans = [| for i in 0..2 -> host.querySelectorAll("span").[i] :> obj |]
+
+    let snapshot () =
+        [| for i in inputs -> i.value |],
+        [| for i in inputs -> i.``checked`` |],
+        [| for m in meters -> read<float> m "high" |],
+        [| for s in spans -> read<string option> s "popover" |]
+
+    equal ([| "static"; "a"; "a" |], [| true; false; false |], [| 0.25; 0.5; 0.5 |], [| Some "manual"; Some "auto"; Some "auto" |]) (snapshot ())
+
+    graph.Run (fun () ->
+        text.Value <- "b"
+        on.Value <- true
+        level.Value <- 0.75
+        popover.Value <- None)
+
+    equal ([| "static"; "b"; "b" |], [| true; true; true |], [| 0.25; 0.75; 0.75 |], [| Some "manual"; None; None |]) (snapshot ())
+
+    mounted.Dispose ()
+
+type Hits =
+    {
+        Label: string
+        Log: ResizeArray<string>
+    }
+
+let private eventTemplate =
+    Component.define (fun _ (props: Hits) -> props) (fun t ->
+        t.div
+            [||]
+            [|
+                t.input [| t.Events.onInput (fun r _ -> r.Log.Add ("input " + r.Label)) |]
+                t.video [| t.Events.Video.onWaitingforkey (fun r _ -> r.Log.Add ("video " + r.Label)) |] [||]
+            |])
+
+let private events () =
+    use graph = new Graph ()
+    let host = host ()
+    let log = ResizeArray ()
+
+    let mounted =
+        mount graph host (Component.render eventTemplate { Label = "L"; Log = log })
+
+    fire (host.querySelector "input" |> unbox<HTMLElement>) "input"
+    |> ignore
+
+    fire (host.querySelector "video" |> unbox<HTMLElement>) "waitingforkey"
+    |> ignore
+
+    fire (host.querySelector "video" |> unbox<HTMLElement>) "input"
+    |> ignore
+
+    equal [ "input L"; "video L" ] (List.ofSeq log)
+    mounted.Dispose ()
+
+type Counts =
+    {
+        First: Signal<string>
+        Second: Signal<string>
+        Reads: int ref
+    }
+
+let private isolation () =
+    use graph = new Graph ()
+    let first = graph.Run (fun () -> Api.createSignal "a")
+    let second = graph.Run (fun () -> Api.createSignal "x")
+    let reads = ref 0
+
+    let counted =
+        Component.define (fun _ (props: Counts) -> props) (fun t ->
+            t.div
+                [|
+                    t.Attrs.id (fun c -> c.First.Value)
+                    t.isolated (
+                        t.Attrs.title (fun c ->
+                            c.Reads.Value <- c.Reads.Value + 1
+                            c.Second.Value)
+                    )
+                |]
+                [||])
+
+    let host = host ()
+
+    let mounted =
+        mount
+            graph
+            host
+            (Component.render
+                counted
+                {
+                    First = first
+                    Second = second
+                    Reads = reads
+                })
+
+    let div = host.querySelector "div" |> unbox<HTMLElement>
+    graph.Run (fun () -> first.Value <- "b")
+    equal (1, Some "b", Some "x") (reads.Value, div.getAttribute "id", div.getAttribute "title")
+    graph.Run (fun () -> second.Value <- "y")
+    equal (2, Some "y") (reads.Value, div.getAttribute "title")
+    mounted.Dispose ()
+
+let private staticIsolationRejected () =
+    let mutable rejected = false
+
+    try
+        Component.define (fun _ () -> ()) (fun t -> t.div [| t.isolated (t.Attrs.title "static") |] [||])
+        |> ignore
+    with error when error.Message.Contains "Only dynamic parts can be isolated" ->
+        rejected <- true
+
+    equal true rejected
+
+let private invalidAttributeRejectedAtDefinition () =
+    let mutable rejected = false
+
+    try
+        Component.define (fun _ () -> ()) (fun t -> t.div [| t.Attrs.attribute ("bad name", "x") |] [||])
+        |> ignore
+    with :? System.ArgumentException ->
+        rejected <- true
+
+    equal true rejected
+
 let cases =
     [|
         "a template lambda types against the instance when another record shares the field name", labelInference
+        "reader attributes render the same markup as Html.Program, including null and absent values", readerParity
+        "static attributes render the same markup as Html.Program", staticParity
+        "an option reader on a string attribute removes the attribute on None", optionReaderRemoval
+        "string, bool, float and option properties write in static, reader and source forms", propertyTypes
+        "flat and grouped events receive the instance and fire only for their event name", events
+        "an isolated generated attribute re-runs only on its own source", isolation
+        "isolating a static generated attribute fails at definition", staticIsolationRejected
+        "an invalid attribute name raises ArgumentException when the template is defined", invalidAttributeRejectedAtDefinition
     |]

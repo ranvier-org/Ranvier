@@ -510,3 +510,69 @@ equal "<div><span></span></div>" (render Omit (Component.render cleaning ()))
 equal 1 childCleanups
 
 printfn "PASS template inlined children"
+
+type Flags =
+    {
+        Name: string
+        Nickname: string option
+        Busy: bool
+        Expanded: bool option
+        State: string
+    }
+
+let flagsTemplate =
+    Component.define (fun _ (props: Flags) -> props) (fun t ->
+        t.button
+            [|
+                t.Attrs.title (fun r -> r.Name)
+                t.Attrs.id (fun r -> r.Nickname)
+                t.Attrs.Button.disabled (fun r -> r.Busy)
+                t.Attrs.ariaExpanded (fun r -> r.Expanded)
+                t.Attrs.data ("state", fun r -> Some r.State)
+            |]
+            [| t.text "go" |])
+
+let flagCases =
+    [
+        {
+            Name = "a"
+            Nickname = None
+            Busy = false
+            Expanded = None
+            State = "x"
+        }
+        {
+            Name = "b"
+            Nickname = Some "n"
+            Busy = true
+            Expanded = Some false
+            State = "y"
+        }
+        {
+            Name = "c"
+            Nickname = Some "m"
+            Busy = false
+            Expanded = Some true
+            State = "z"
+        }
+        {
+            Name = null
+            Nickname = None
+            Busy = false
+            Expanded = None
+            State = "n"
+        }
+    ]
+
+// The expected strings equal those asserted by the Fable run in TemplateCatalogueChecks, which also compares them with Html.Program.
+let flagMarkup =
+    [
+        "<button title=\"a\" data-state=\"x\">go</button>"
+        "<button title=\"b\" id=\"n\" disabled=\"\" aria-expanded=\"false\" data-state=\"y\">go</button>"
+        "<button title=\"c\" id=\"m\" aria-expanded=\"true\" data-state=\"z\">go</button>"
+        "<button data-state=\"n\">go</button>"
+    ]
+
+equal flagMarkup [ for flags in flagCases -> render Omit (Component.render flagsTemplate flags) ]
+
+printfn "PASS template catalogue server markup"
