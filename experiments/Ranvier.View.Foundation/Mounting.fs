@@ -963,8 +963,6 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
     let mutable owner: Owner = Unchecked.defaultof<_>
     let mutable builder: RowBuilder = Unchecked.defaultof<_>
 
-    member _.Start = regionStart
-    member _.End = regionEnd
     member _.LaidOut = laidOut
     member _.Errors = errors
 
