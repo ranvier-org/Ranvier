@@ -42,8 +42,8 @@ let row : Component<RowProps> =
         (T.div [| T.Attrs.className "panel"
                   T.Attrs.id (fun r -> "row-" + string r.Index)
                   T.Attrs.title (T.from (fun r -> r.Source)) |]
-               [| T.input [| T.Props.value (T.from (fun r -> r.Source)) |]
-                  T.button [| T.Props.disabled (fun r -> r.Disabled.Value)
+               [| T.input [| T.Props.Input.value (T.from (fun r -> r.Source)) |]
+                  T.button [| T.Props.Button.disabled (fun r -> r.Disabled.Value)
                               T.Events.onClick (fun r _ -> r.Local.Value <- r.Local.Value + 1) |]
                            [| T.text (fun r -> string r.Local.Value) |] |])
 
@@ -88,7 +88,7 @@ Plan 2c ([implementation plan](../plans/2026-10-14-component-templates-catalogue
 
 - **Attribute values.** Generated attributes have `Typed`'s semantics: a string attribute is removed on `None`; a boolean attribute is `""` when true and absent when false; an ARIA boolean writes `"true"` or `"false"` and is removed on `None`. String readers and sources map `null` to `None`, which removes the attribute. `data-` and `aria-` names are checked by `Typed.prefixedAttributeName`.
 - **Name validation.** `t.Attrs.attribute` validates its name when the template is built, so an invalid name raises at `Component.define`.
-- **Attribute order.** Template markup lists static attributes before dynamic ones; `Html.Program` keeps authoring order. Attribute order is insignificant in HTML, and a template and its `createComponent` twin produce the same markup up to attribute order.
+- **Attribute order.** Template markup lists static attributes before dynamic ones; `Html.Program` keeps authoring order. A template and its `createComponent` twin produce the same markup up to attribute order.
 - **Emitted JavaScript.** Under Fable, each extension member compiles to a module-level function that takes the builder first. Vite removes unused members; a used group accessor constructs one small `Groups.*` instance.
 
 ## Definition and instance model

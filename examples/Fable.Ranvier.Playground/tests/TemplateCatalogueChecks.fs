@@ -405,8 +405,8 @@ let private propertyTypes () =
     let snapshot () =
         [| for i in inputs -> i.value |],
         [| for i in inputs -> i.``checked`` |],
-        [| for m in meters -> read<float> m "high" |],
-        [| for s in spans -> read<string option> s "popover" |]
+        [| for m in meters -> (read m "high": float) |],
+        [| for s in spans -> (read s "popover": string option) |]
 
     equal ([| "static"; "a"; "a" |], [| true; false; false |], [| 0.25; 0.5; 0.5 |], [| Some "manual"; Some "auto"; Some "auto" |]) (snapshot ())
 

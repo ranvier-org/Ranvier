@@ -8,4 +8,4 @@ Six runs of `node benchmarks/frameworks/run.mjs --template-comparison` from `exa
 - `base-N.json`: commit `0e82e46`, the commit before plan 2c's code, with the handwritten template members.
 - `head-N.json`: commit `e8abf81`, the end of plan 2c's Tasks 1 and 2, with the generated catalogue.
 
-Each commit was built once in its own git worktree (`run.mjs --build` on its first run) and the runs alternated: base 1, head 1, base 2, head 2, base 3, head 3. Every run passed its 45 correctness checks. Each file records its commit (`baseCommit`), time, Chromium version, CPU and source hashes.
+Each commit was built once in its own git worktree (`run.mjs --build` on its first run) and the runs alternated: base 1, head 1, base 2, head 2, base 3, head 3. Every run passed its 45 correctness checks. Each file records its commit (`baseCommit`), time, Chromium version, CPU and source hashes. `dirtyExperiment: true` is a constant written by `run.mjs`; both worktrees were clean checkouts of their commits.
