@@ -553,7 +553,8 @@ module Api =
     /// With <c>ProjectionOptions.CreateFirst</c> a pass creates its added rows, then retires its removed rows, then
     /// writes survivors' items and publishes the key set. A factory that raises fails the pass: the rows the pass created
     /// are disposed, last first, and every row, item and key stays as the previous pass applied it. The next change to a
-    /// source retries the pass.
+    /// source retries the pass, and until then every read raises the failure the pass held without running a factory. Without
+    /// the option, each read of a failed projection retries the pass.
     /// </remarks>
     let createProjectionWithOptions
         (options: ProjectionOptions)
