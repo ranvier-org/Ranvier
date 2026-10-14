@@ -1878,26 +1878,39 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
         if adds.Count > 0 then
             if valueForm then
                 graph.RunOwned (this.Scope, this.CreateMapped)
+            elif this.CreateFirst then
+                this.CreateAddedFirst ()
+            elif isNull (box once) then
+                for struct (key, item) in adds do
+                    this.CreateFactored (key, item)
             else
-                let memoFree = not (isNull (box once))
-                let mutable started = 0
+                for struct (key, item) in adds do
+                    this.CreateOnce (key, item)
 
-                try
-                    while started < adds.Count
-                          && not this.IsDisposedInternal do
-                        let struct (key, item) = adds[started]
-                        started <- started + 1
+    /// <summary>
+    /// Creates the added rows in source order, and stops when a factory disposes the projection. A factory failure
+    /// disposes the rows created by this pass, in reverse creation order, and raises.
+    /// </summary>
+    member private this.CreateAddedFirst() =
+        let memoFree = not (isNull (box once))
+        let mutable started = 0
 
-                        if memoFree then
-                            this.CreateOnce (key, item)
-                        else
-                            this.CreateFactored (key, item)
-                with _ when this.CreateFirst ->
-                    for index in started - 1 .. -1 .. 0 do
-                        let struct (key, _) = adds[index]
-                        this.Discard key
+        try
+            while started < adds.Count
+                  && not this.IsDisposedInternal do
+                let struct (key, item) = adds[started]
+                started <- started + 1
 
-                    reraise ()
+                if memoFree then
+                    this.CreateOnce (key, item)
+                else
+                    this.CreateFactored (key, item)
+        with _ ->
+            for index in started - 1 .. -1 .. 0 do
+                let struct (key, _) = adds[index]
+                this.Discard key
+
+            reraise ()
 
 /// <summary>
 /// A projection keyed by a function of the item.
