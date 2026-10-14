@@ -185,7 +185,7 @@ module Keyed =
 
 module Branch =
     /// <summary>Selects a mounted instance by key and supplies a reader for its current selection.</summary>
-    /// <remarks>Equal keys retain the instance; changed keys replace it.
+    /// <remarks>Equal keys retain the instance; a changed key runs the previous instance's cleanups and removes its nodes before the next instance is set up.
     /// Include the branch discriminator in the key when component shape changes.</remarks>
     let select (ops: Operations<'view>) (equals: 'key -> 'key -> bool) (key: 'item -> 'key) (read: unit -> 'item) (render: (unit -> 'item) -> 'view) =
         if isNull (box equals) then
@@ -204,7 +204,7 @@ module Branch =
             let item = read ()
             [| box (key item), box item |]
 
-        ops.Keyed (fun left right -> equals (unbox left) (unbox right)) readObjects (fun current -> render (fun () -> unbox (current ())))
+        ops.Switch (fun left right -> equals (unbox left) (unbox right)) readObjects (fun current -> render (fun () -> unbox (current ())))
 
 module Tree =
     type View =
