@@ -167,9 +167,12 @@ policy: by default, records and classes compare by reference. A pass may skip `k
 equal to the one at the same position in the previous pass, counted from the start or from the end.
 
 :::warning Replace an item to change its key
-An item whose key field is mutated in place and republished keeps its old key and row. Publish a
+An item whose key field is mutated in place and republished may keep its old key and row. Publish a
 new item instead.
 :::
+
+The order in which a pass disposes the rows of removed keys is unspecified, and a duplicate-key
+failure reports one of the duplicated keys.
 
 :::warning Keys must be unique
 Records and unions used as keys compare by contents. Two equal items therefore produce the same
