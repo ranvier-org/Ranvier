@@ -1288,6 +1288,89 @@ let private branchMarkup () =
 
     equal "<div><!--[--><span>4</span><!--]--></div>" (graph.Run (fun () -> Html.render Omit (Program.run (Component.render decades value))))
 
+let private roleLog = ResizeArray<string>()
+
+let private adminArm =
+    Component.define
+        (fun setup (tab: unit -> string) ->
+            roleLog.Add "setup admin"
+            setup.OnCleanup (fun () -> roleLog.Add "cleanup admin")
+            tab)
+        (fun t -> t.span [||] [| t.text (fun tab -> "admin " + tab ()) |])
+
+let private userArm =
+    Component.define
+        (fun setup (length: unit -> int) ->
+            roleLog.Add "setup user"
+            setup.OnCleanup (fun () -> roleLog.Add "cleanup user")
+            length)
+        (fun t -> t.span [||] [| t.text (fun length -> "user " + string (length ())) |])
+
+/// <summary>Mounts a <c>branch</c> whose arms read an admin flag, through the template or its default expansion, and returns the DOM after each step and the setup/cleanup log.</summary>
+let private roleSteps (expanded: bool) =
+    use graph = new Graph ()
+    roleLog.Clear ()
+    let tab = graph.Run (fun () -> Api.createSignal "home")
+    let admin = graph.Run (fun () -> Api.createSignal false)
+
+    let roled =
+        Component.define (fun _ (tab: Signal<string>) -> tab) (fun t ->
+            t.div
+                [||]
+                [|
+                    t.branch (fun tab -> tab.Value) (fun tab ->
+                        if admin.Value then
+                            t.arm adminArm tab
+                        else
+                            t.arm userArm tab.Length)
+                |])
+
+    let host = host ()
+
+    let mounted =
+        mount
+            graph
+            host
+            (if expanded then
+                 Component.renderWith Program.ops roled tab
+             else
+                 Component.render roled tab)
+
+    let steps = ResizeArray<string>()
+    steps.Add (withoutComments host)
+    graph.Run (fun () -> admin.Value <- true)
+    steps.Add (withoutComments host)
+    graph.Run (fun () -> tab.Value <- "away")
+    steps.Add (withoutComments host)
+    graph.Run (fun () -> admin.Value <- false)
+    steps.Add (withoutComments host)
+    mounted.Dispose ()
+    steps.Add (string host.childNodes.length)
+    List.ofSeq steps, List.ofSeq roleLog
+
+let private branchDefinitionChange () =
+    let expected =
+        [
+            "<div><span>user 4</span></div>"
+            "<div><span>admin home</span></div>"
+            "<div><span>admin away</span></div>"
+            "<div><span>user 4</span></div>"
+            "0"
+        ],
+        [
+            "setup user"
+            "setup admin"
+            "cleanup user"
+            "setup admin"
+            "cleanup admin"
+            "setup user"
+            "cleanup admin"
+            "cleanup user"
+        ]
+
+    equal expected (roleSteps false)
+    equal expected (roleSteps true)
+
 type Listed = { Id: int; Text: string }
 
 let private listedLog = ResizeArray<string>()
@@ -1852,6 +1935,7 @@ let cases =
         "branch remounts on a key change and keeps the arm for an equal key", branchSwitching
         "branch renders the same DOM as its default expansion across a key change", branchTwin
         "branch server markup under Fable matches .NET", branchMarkup
+        "branch remounts when its arms select another definition for an equal key", branchDefinitionChange
         "each renders template rows, retains them by key and dispatches their clicks", eachRows
         "duplicate each keys fail the mount, are reported on update and keep the rows", eachDuplicates
         "an empty each region keeps its markers, fills and empties", eachEmpty

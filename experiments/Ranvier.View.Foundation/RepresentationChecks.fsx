@@ -340,6 +340,68 @@ let decades =
 equal "<div><!--[--><span>4</span><!--]--></div>" (render Omit (Component.render decades 42))
 equal "<div><span>4</span></div>" (Html.render Omit (Tree.run (Component.renderWith Tree.ops decades 42)))
 
+let mutable roleAdmin = false
+
+let adminArm =
+    Component.define (fun _ (tab: unit -> string) -> tab) (fun t -> t.span [||] [| t.text (fun tab -> "admin " + tab ()) |])
+
+let userArm =
+    Component.define (fun _ (length: unit -> int) -> length) (fun t -> t.span [||] [| t.text (fun length -> "user " + string (length ())) |])
+
+let roled =
+    Component.define (fun _ (tab: string) -> tab) (fun t ->
+        t.div
+            [||]
+            [|
+                t.branch id (fun tab ->
+                    if roleAdmin then
+                        t.arm adminArm tab
+                    else
+                        t.arm userArm tab.Length)
+            |])
+
+let mutable regionReads: ((obj -> obj -> bool) * (unit -> (obj * obj) array)) list =
+    []
+
+let capturing =
+    { Tree.ops with
+        Keyed =
+            fun same read render ->
+                regionReads <- regionReads @ [ same, read ]
+                Tree.ops.Keyed same read render
+    }
+
+let renderRoled tab =
+    Html.render Omit (Tree.run (Component.renderWith capturing roled tab))
+
+equal "<div><span>user 4</span></div>" (renderRoled "home")
+let roleSame, readHome = regionReads[0]
+
+let firstKey (read: unit -> (obj * obj) array) =
+    fst (read ()).[0]
+
+let homeKey () =
+    firstKey readHome
+
+let userHome = homeKey ()
+
+// An equal key with the same definition keeps the arm.
+equal true (roleSame userHome (homeKey ()))
+
+roleAdmin <- true
+let adminHome = homeKey ()
+
+// An equal key selecting another definition remounts the arm.
+equal false (roleSame userHome adminHome)
+equal "<div><span>admin home</span></div>" (renderRoled "home")
+equal "<div><!--[--><span>admin home</span><!--]--></div>" (render Omit (Component.render roled "home"))
+
+equal "<div><span>admin away</span></div>" (renderRoled "away")
+let _, readAway = regionReads[2]
+
+// A key change under the same definition remounts the arm.
+equal false (roleSame adminHome (firstKey readAway))
+
 printfn "PASS template branch"
 
 type Listed = { Id: int; Text: string }

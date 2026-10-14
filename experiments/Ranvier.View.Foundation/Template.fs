@@ -675,17 +675,24 @@ type TemplateBuilder<'inst> internal () =
                 }
         )
 
-    /// <summary>Renders the arm selected for the instance's key, between region markers; a key change under <c>=</c> remounts the arm.</summary>
-    /// <remarks>A remount sets up the new arm before the previous arm's cleanups run; Solid 2 disposes the previous arm first.</remarks>
+    /// <summary>Renders the arm selected for the instance's key, between region markers; a key change under <c>=</c> or a change of the selected definition remounts the arm.</summary>
+    /// <remarks>An equal key with the same definition keeps the arm and updates the payload its props read. A remount sets up the new arm before the previous arm's cleanups run; Solid 2 disposes the previous arm first.</remarks>
     member _.branch<'key when 'key: equality> (key: 'inst -> 'key) (arms: 'key -> Arm) : TemplateView<'inst> =
         TemplateView (
             RegionNode
                 {
-                    Region.Same = Func<obj, obj, bool>(fun left right -> unbox<'key> left = unbox<'key> right)
+                    Region.Same =
+                        Func<obj, obj, bool>(fun left right ->
+                            let leftKey, leftDefinition = unbox<obj * TemplateComponent> left
+                            let rightKey, rightDefinition = unbox<obj * TemplateComponent> right
+
+                            obj.ReferenceEquals (leftDefinition, rightDefinition)
+                            && unbox<'key> leftKey = unbox<'key> rightKey)
                     Items =
                         Func<obj, (obj * obj) array>(fun instance ->
                             let current = key (unbox instance)
-                            [| box current, box (arms current) |])
+                            let arm = arms current
+                            [| box (box current, arm.Definition), box arm |])
                     Row = ArmRow
                 }
         )
