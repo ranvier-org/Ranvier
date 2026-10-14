@@ -166,11 +166,13 @@ type private Entry =
     }
 
 type private OwnedRange(host: Node) =
-    let staging = fragment ()
+    // Created by the first staging or movement.
+    let mutable staging: DocumentFragment = Unchecked.defaultof<_>
     let first, last = comment "ranvier:start", comment "ranvier:end"
     let entries = ResizeArray<Entry>()
     let mutable generatedDescendants: ResizeArray<Node> = null
-    let mutable placement: Node = staging
+    // The parent of the entries; null while they are detached and unstaged.
+    let mutable placement: Node = Unchecked.defaultof<_>
     // False while every root is a detached node created by the mount; `Attach` then inserts each root individually. A keyed region, a native node or a cloned-fragment root moves all roots into `staging`.
     let mutable staged = false
 #if LADDER_NAIVE_RANGE
@@ -207,9 +209,19 @@ type private OwnedRange(host: Node) =
 
         intact
 
+    let stagingFragment () =
+        if isNull (box staging) then
+            staging <- fragment ()
+
+        staging
+
     let stage () =
         if not staged then
             staged <- true
+            let staging = stagingFragment ()
+
+            if isNull (box placement) then
+                placement <- staging
 
             for index in 0 .. entries.Count - 1 do
                 let node = (at entries index).Node
@@ -240,8 +252,6 @@ type private OwnedRange(host: Node) =
 
         claim claims first
         claim claims last
-
-    member _.Staging = staging
 
     member _.AddRegion(start: Node, finish: Node, validate: unit -> unit, relocate: unit -> unit) =
         stage ()
@@ -302,7 +312,11 @@ type private OwnedRange(host: Node) =
             insert staging node (Some last)
 
     member _.Add(node: ChildNode, ownership) =
-        if contains node host || contains node staging then
+        if
+            contains node host
+            || (not (isNull (box staging))
+                && contains node staging)
+        then
             invalid "A native node cannot contain its mount host or range"
 
         if overlaps claims node then
@@ -341,7 +355,7 @@ type private OwnedRange(host: Node) =
         insert staging node (Some last)
 
     member _.Validate() =
-        if not staged && same placement staging then
+        if isNull (box placement) then
             for index in 0 .. entries.Count - 1 do
                 if not (isDetached (at entries index).Node) then
                     invalid "Range boundaries or owned roots were externally mutated"
@@ -423,6 +437,7 @@ type private OwnedRange(host: Node) =
 
         if not (before |> Option.exists (same first)) then
             let originalParent, originalNext = placement, last.nextSibling
+            let staging = stagingFragment ()
 
             try
                 for entry in entries do
@@ -622,7 +637,8 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
         | Some parent -> parent.Child (report, release)
         | None -> Scope (report, release)
 
-    let mutable parent: Node = range.Staging
+    // The element receiving created nodes; null at the top level of the range.
+    let mutable parent: Node = Unchecked.defaultof<_>
     let mutable bindingSetupFailure: exn option = None
     let mutable modifierNode: HTMLElement = Unchecked.defaultof<_>
     let mutable modifierTag = Div
@@ -639,12 +655,12 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
         ensureSetup ()
 
 #if LADDER_NAIVE_RANGE
-        if same parent range.Staging then
+        if isNull (box parent) then
             range.AddNaive node
         else
             parent.appendChild node |> ignore
 #else
-        if same parent range.Staging then
+        if isNull (box parent) then
             range.AddCreated node
         else
             parent.appendChild node |> ignore
@@ -858,7 +874,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
     member _.Native(node: Node, ownership: NativeOwnership) : unit =
         ensureSetup ()
 
-        if not (same parent range.Staging) then
+        if not (isNull (box parent)) then
             invalid "Native roots require top-level placement"
 
         range.Add (node :?> ChildNode, ownership)
@@ -1046,7 +1062,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
         let regionStart, regionEnd =
             comment "ranvier:list:start", comment "ranvier:list:end"
 
-        if not (same parent range.Staging) then
+        if not (isNull (box parent)) then
             range.AppendGenerated (parent, regionStart)
             range.AppendGenerated (parent, regionEnd)
 
@@ -1113,7 +1129,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
             if not (cursor |> Option.exists (same regionEnd)) then
                 invalid "Keyed-list boundaries were externally reordered"
 
-        if same parent range.Staging then
+        if isNull (box parent) then
             range.AddRegion (
                 regionStart,
                 regionEnd,
