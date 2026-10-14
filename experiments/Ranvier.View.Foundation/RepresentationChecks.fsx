@@ -296,3 +296,36 @@ with :? System.InvalidOperationException ->
 equal true holeRejected
 
 printfn "PASS template view holes"
+
+type Stage =
+    | Waiting
+    | Working of int
+    | Complete of string
+
+let waitingArm =
+    Component.define (fun _ (_: unit -> unit) -> ()) (fun t -> t.span [||] [| t.text "waiting" |])
+
+let workingArm =
+    Component.define (fun _ (progress: unit -> int) -> progress) (fun t ->
+        t.span [||] [| t.text (fun progress -> "working " + string (progress ())) |])
+
+let completeArm =
+    Component.define (fun _ (result: unit -> string) -> result) (fun t -> t.span [||] [| t.text (fun result -> "complete " + result ()) |])
+
+let staged =
+    Component.define (fun _ (stage: Stage) -> stage) (fun t ->
+        t.div
+            [||]
+            [|
+                t.matchWith id (function
+                    | Waiting -> t.arm waitingArm ()
+                    | Working progress -> t.arm workingArm progress
+                    | Complete result -> t.arm completeArm result)
+            |])
+
+equal "<div><!--[--><span>working 3</span><!--]--></div>" (render Omit (Component.render staged (Working 3)))
+equal "<div><!--[--><span>complete &lt;ok&gt;</span><!--]--></div>" (render Omit (Component.render staged (Complete "<ok>")))
+
+equal (stripMarkers (render Omit (Component.render staged Waiting))) (Html.render Omit (Tree.run (Component.renderWith Tree.ops staged Waiting)))
+
+printfn "PASS template matchWith"

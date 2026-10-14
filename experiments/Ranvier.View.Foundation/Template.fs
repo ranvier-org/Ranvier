@@ -66,12 +66,28 @@ and [<NoEquality; NoComparison>] Region =
 and [<NoEquality; NoComparison>] RegionRow =
     /// <summary>The item is a <c>Program.View</c>, read once per instance.</summary>
     | ViewRow
+    /// <summary>The item is an <c>Arm</c>; the arm's definition receives a reader of the current arm's payload.</summary>
+    | ArmRow
 
 /// <summary>A template component definition without its props type.</summary>
 and [<AbstractClass>] TemplateComponent internal (setup: Func<Setup, obj, obj>, root: TemplateNode) =
     inherit TemplateDefinition()
     member internal _.Setup = setup
     member internal _.Root = root
+
+    /// <summary>The arm reader shared by every arm of the definition; <c>null</c> until the definition first appears in an arm.</summary>
+    member val internal ArmReader: Func<(unit -> obj), obj> = null with get, set
+
+/// <summary>A component definition selected by a <c>matchWith</c> or <c>branch</c> arm, with the payload its props read.</summary>
+[<NoEquality; NoComparison>]
+type Arm =
+    internal
+        {
+            Definition: TemplateComponent
+            Payload: obj
+            /// <summary>Turns a reader of the current arm into the definition's props, a reader of the current payload.</summary>
+            Reader: Func<(unit -> obj), obj>
+        }
 
 #if FABLE_COMPILER
 [<Emit("$0 === $1")>]
@@ -135,6 +151,9 @@ let private width node =
 let internal rowRenderer (row: RegionRow) (current: unit -> obj) (backend: Backend) : unit =
     match row with
     | ViewRow -> (unbox<Program.View>(current ())).Invoke backend
+    | ArmRow ->
+        let arm = unbox<Arm>(current ())
+        backend.Template (arm.Definition, arm.Reader.Invoke current)
 
 let private serverRow (backend: Backend) (row: RegionRow) (item: obj) =
     rowRenderer row (fun () -> item) backend
@@ -268,9 +287,15 @@ let rec private expandNode (ops: Operations<'view>) (instance: obj) (node: Templ
         | ViewRow ->
             let _, item = (region.Items.Invoke instance)[0]
             ops.Embed (rowRenderer region.Row (fun () -> item))
+        | ArmRow -> ops.Keyed (fun left right -> region.Same.Invoke (left, right)) (fun () -> region.Items.Invoke instance) (expandArm ops)
+
+/// <summary>Expands the current arm's definition through the operations.</summary>
+and private expandArm (ops: Operations<'view>) (current: unit -> obj) : 'view =
+    let arm = unbox<Arm>(current ())
+    expandWith ops arm.Definition (arm.Reader.Invoke current)
 
 /// <summary>Expands a definition into any view representation through its operations.</summary>
-let expandWith (ops: Operations<'view>) (definition: TemplateComponent) (props: obj) : 'view =
+and expandWith (ops: Operations<'view>) (definition: TemplateComponent) (props: obj) : 'view =
     ops.Component (fun context -> expandNode ops (definition.Setup.Invoke (context, props)) definition.Root)
 
 /// <summary>A component whose template is built once per definition; setup runs per instance.</summary>
@@ -346,6 +371,9 @@ let private elementNode tag (parts: Part<'native, 'inst> array) (children: Templ
     TemplateView (ElementNode (tag, attributes.ToArray (), properties.ToArray (), slots.ToArray (), events.ToArray (), Array.map nodeOf children))
 
 let private anySame = Func<obj, obj, bool>(fun _ _ -> true)
+
+let private definitionSame =
+    Func<obj, obj, bool>(fun left right -> obj.ReferenceEquals (left, right))
 
 /// <summary>Attribute parts: a value is static, a reader or source is dynamic.</summary>
 [<Sealed>]
@@ -500,6 +528,34 @@ type TemplateBuilder<'inst> internal () =
                     Region.Same = anySame
                     Items = Func<obj, (obj * obj) array>(fun instance -> [| (null: obj), box (read (unbox instance)) |])
                     Row = ViewRow
+                }
+        )
+
+    /// <summary>An arm that renders <c>definition</c>; its props read the payload of the arm currently selected.</summary>
+    member _.arm (definition: Component<unit -> 'payload>) (payload: 'payload) : Arm =
+        let template = definition :> TemplateComponent
+
+        if isNull template.ArmReader then
+            template.ArmReader <- Func<(unit -> obj), obj>(fun current -> box (fun () -> unbox<'payload> (unbox<Arm>(current ())).Payload))
+
+        {
+            Arm.Definition = template
+            Payload = box payload
+            Reader = template.ArmReader
+        }
+
+    /// <summary>Renders the arm that <c>arms</c> selects for the instance's union value, between region markers.</summary>
+    /// <remarks>Arms are compared by definition: selecting another definition remounts, and selecting the same definition updates the payload its props read. Writing <c>arms</c> as a <c>function</c> match lets the compiler check that every case has an arm.</remarks>
+    member _.matchWith (read: 'inst -> 'union) (arms: 'union -> Arm) : TemplateView<'inst> =
+        TemplateView (
+            RegionNode
+                {
+                    Region.Same = definitionSame
+                    Items =
+                        Func<obj, (obj * obj) array>(fun instance ->
+                            let arm = arms (read (unbox instance))
+                            [| box arm.Definition, box arm |])
+                    Row = ArmRow
                 }
         )
 

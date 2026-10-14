@@ -1075,6 +1075,165 @@ let private holeFallbacks () =
     dispose ()
     equal (0., 0.) (queuedHost.childNodes.length, browserHost.childNodes.length)
 
+type Stage =
+    | Waiting
+    | Working of int
+    | Complete of string
+
+let private stageLog = ResizeArray<string>()
+let private stageRenders = ResizeArray<string>()
+
+let private waitingArm =
+    Component.define
+        (fun setup (_: unit -> unit) ->
+            stageLog.Add "setup waiting"
+            setup.OnCleanup (fun () -> stageLog.Add "cleanup waiting"))
+        (fun t -> t.span [||] [| t.text "waiting" |])
+
+let private workingArm =
+    Component.define
+        (fun setup (progress: unit -> int) ->
+            stageLog.Add "setup working"
+            setup.OnCleanup (fun () -> stageLog.Add "cleanup working")
+            progress)
+        (fun t ->
+            t.span
+                [||]
+                [|
+                    t.text (fun progress ->
+                        let text = "working " + string (progress ())
+                        stageRenders.Add text
+                        text)
+                |])
+
+let private completeArm =
+    Component.define
+        (fun setup (result: unit -> string) ->
+            stageLog.Add "setup complete"
+            setup.OnCleanup (fun () -> stageLog.Add "cleanup complete")
+            result)
+        (fun t -> t.span [||] [| t.text (fun result -> "complete " + result ()) |])
+
+/// <summary>Selects the arm of a stage; <c>complete</c> renders <c>Complete</c>.</summary>
+let private stageArmsWith (complete: Component<unit -> string>) (t: TemplateBuilder<'inst>) (stage: Stage) =
+    match stage with
+    | Waiting -> t.arm waitingArm ()
+    | Working progress -> t.arm workingArm progress
+    | Complete result -> t.arm complete result
+
+let private stageArms (t: TemplateBuilder<'inst>) (stage: Stage) =
+    stageArmsWith completeArm t stage
+
+let private staged =
+    Component.define (fun _ (stage: Signal<Stage>) -> stage) (fun t -> t.div [||] [| t.matchWith (fun stage -> stage.Value) (stageArms t) |])
+
+let private matchSwitching () =
+    use graph = new Graph ()
+    stageLog.Clear ()
+    let stage = graph.Run (fun () -> Api.createSignal Waiting)
+    let host = host ()
+    let mounted = mount graph host (Component.render staged stage)
+    equal "waiting" host.textContent
+    graph.Run (fun () -> stage.Value <- Working 1)
+    graph.Run (fun () -> stage.Value <- Working 2)
+    equal "working 2" host.textContent
+    graph.Run (fun () -> stage.Value <- Complete "ok")
+    equal "complete ok" host.textContent
+
+    equal
+        [
+            "setup waiting"
+            "setup working"
+            "cleanup waiting"
+            "setup complete"
+            "cleanup working"
+        ]
+        (List.ofSeq stageLog)
+
+    mounted.Dispose ()
+    equal ("cleanup complete", 0.) (stageLog[stageLog.Count - 1], host.childNodes.length)
+
+let private matchSameFlush () =
+    use graph = new Graph ()
+    stageLog.Clear ()
+    stageRenders.Clear ()
+    let stage = graph.Run (fun () -> Api.createSignal (Working 1))
+    let host = host ()
+    let mounted = mount graph host (Component.render staged stage)
+
+    graph.Run (fun () ->
+        Api.batch (fun () ->
+            stage.Value <- Complete "x"
+            stage.Value <- Working 2))
+
+    equal ("working 2", [ "setup working" ]) (host.textContent, List.ofSeq stageLog)
+
+    graph.Run (fun () ->
+        Api.batch (fun () ->
+            stage.Value <- Working 3
+            stage.Value <- Complete "y"))
+
+    equal ("complete y", [ "setup working"; "setup complete"; "cleanup working" ]) (host.textContent, List.ofSeq stageLog)
+    equal [ "working 1"; "working 2" ] (List.ofSeq stageRenders)
+    mounted.Dispose ()
+
+let private matchTwin () =
+    use graph = new Graph ()
+    stageLog.Clear ()
+    let stage = graph.Run (fun () -> Api.createSignal (Working 1))
+    let first, second = host (), host ()
+    let templateMount = mount graph first (Component.render staged stage)
+    let twinMount = mount graph second (Component.renderWith Program.ops staged stage)
+    equal (withoutComments second, "<div><span>working 1</span></div>") (withoutComments first, withoutComments second)
+    graph.Run (fun () -> stage.Value <- Working 2)
+    equal (withoutComments second, "<div><span>working 2</span></div>") (withoutComments first, withoutComments second)
+    graph.Run (fun () -> stage.Value <- Complete "ok")
+    equal (withoutComments second, "<div><span>complete ok</span></div>") (withoutComments first, withoutComments second)
+    templateMount.Dispose ()
+    twinMount.Dispose ()
+    equal (0., 0.) (first.childNodes.length, second.childNodes.length)
+
+let mutable private haltDuringSetup: unit -> unit = ignore
+
+let private haltingArm =
+    Component.define
+        (fun setup (_: unit -> string) ->
+            stageLog.Add "setup halting"
+            setup.OnCleanup (fun () -> stageLog.Add "cleanup halting")
+            haltDuringSetup ())
+        (fun t -> t.span [||] [| t.text "halting" |])
+
+let private halting =
+    Component.define (fun _ (stage: Signal<Stage>) -> stage) (fun t ->
+        t.div [||] [| t.matchWith (fun stage -> stage.Value) (stageArmsWith haltingArm t) |])
+
+let private disposedMidSwitch () =
+    use graph = new Graph ()
+    stageLog.Clear ()
+    let stage = graph.Run (fun () -> Api.createSignal (Working 1))
+    let host = host ()
+    let reported = ResizeArray<exn>()
+
+    let mounted =
+        Mounting.mount graph None reported.AddRange host None (fun context -> Program.run (Component.render halting stage) context.Backend)
+
+    haltDuringSetup <- fun () -> mounted.Dispose ()
+
+    try
+        graph.Run (fun () -> stage.Value <- Complete "x")
+    finally
+        haltDuringSetup <- ignore
+
+    equal (0., 0) (host.childNodes.length, reported.Count)
+
+    equal [ "cleanup halting"; "cleanup working"; "setup halting"; "setup working" ] (List.sort (List.ofSeq stageLog))
+
+let private stagedServer =
+    Component.define (fun _ (stage: Stage) -> stage) (fun t -> t.div [||] [| t.matchWith id (stageArms t) |])
+
+let private matchMarkup () =
+    equal "<div><!--[--><span>working 3</span><!--]--></div>" (Html.render Omit (Program.run (Component.render stagedServer (Working 3))))
+
 /// <summary>Checks template compilation and DOM materialisation.</summary>
 let cases =
     [|
@@ -1120,4 +1279,9 @@ let cases =
         "a failing view hole rolls back the mount", failingHole
         "a root-level view hole dispatches clicks before and after a move", rootHoleClicks
         "queued mounts and the Browser interpreter render view holes through expansion", holeFallbacks
+        "matchWith switches arms by case and updates payloads in place", matchSwitching
+        "a match changed twice in one flush settles on its final case", matchSameFlush
+        "matchWith renders the same DOM as its default expansion across a switch and a payload change", matchTwin
+        "disposing the mount during an arm's setup ends the switch cleanly", disposedMidSwitch
+        "matchWith server markup under Fable matches .NET", matchMarkup
     |]
