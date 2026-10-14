@@ -30,6 +30,8 @@ Every view spec and plan opens with a **Core and view state** section, before an
 A spec without the section, or with view-owned state outside the list above and no recorded
 agreement, is not ready for review.
 
-Existing duplicates, agreed for replacement on 2026-10-14: the keyed region reconciler
-(`Mounting.fs` `KeyedRegion`, `Keyed.validateUniqueKeys`), arm switches routed through it, and the
-renderer `Scope` tree (`Lifetime.fs`). Under review: the queued commit `Queue` (`Scheduling.fs`).
+Duplicates replaced on 2026-10-14: the keyed region reconciler (formerly `KeyedRegion` and
+`Keyed.validateUniqueKeys`) by core projections and `Projection.ensureUniqueKeys`, arm switches by a
+core memo with an owner per arm, and the renderer `Scope` tree by `MountLifetime` over core owners
+(`Lifetime.fs`). The benchmark baseline `BindingBaselineMounting.fs` keeps a frozen copy of the old
+code. Under review: the queued commit `Queue` (`Scheduling.fs`).
