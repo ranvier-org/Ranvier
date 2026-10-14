@@ -1,6 +1,96 @@
 # Indexed edges (compile-time variant) — design
 
-Status: draft for review.
+Status: **deferred**, 2026-10-14. Template performance in the view proof of concept is satisfactory without this
+work: mount 1.12-1.18× Solid 2, updates at parity, retained heap 0.98×. The remaining dispose gap at scale
+(1.25-1.56×) sits in core edge removal, and this document is the research for picking it up later. Two independent
+reviews found correctness problems in the draft below and argued for a different delivery. Read Review findings and
+Revised direction first; the earlier sections are kept as the reviewed draft.
+
+## Review findings
+
+Two reviewers read this draft against the code at `e2e0f95`. Both confirmed that the description of the current
+design is accurate. Their findings, most severe first:
+
+1. **The last-linker shortcut loses edges.** A reader links A, a later run skips A (`trimFrom` removes the edge), and
+   a run after that reads A again. The record still names the reader, so the read counts as a repeat, the slot stores
+   `-1`, and no edge is linked: the reader stops updating on A. The nested-run form, where an inner memo overwrites the
+   record and the record is later restored, is not covered by the planned tests. Two fixes were proposed:
+   - **Handle-only record:** the source keeps the last handle only. A hit requires `handle < count` and the observer at
+     that handle to be the adding reader. The check validates itself after any removal or swap, and the record holds
+     no reference.
+   - **Run-stamped record:** the record carries the reader and its run number, and a hit requires both to match.
+2. **Removal is no longer idempotent.** Today, removing an absent observer does nothing. Two places rely on that:
+   `Combinators.fs:894` removes every row on dispose, and `trimFrom` with `from > 0` can remove a source twice when
+   it repeats in the dropped suffix. With bare positions, a second removal unlinks whichever observer now sits at the
+   handle. Fix:
+   - Make `RemoveObserverAt` take the expected observer and check its identity in every build, which costs one compare.
+   - Have every remover write `-1` back into its handle.
+   - Make `-1` a no-op.
+
+   With these, drift fails loudly instead of corrupting the graph.
+3. **The projection summary watch cannot route `MovedIn`.** One `RowWatch` observes N row memos
+   (`Projections.fs:522, 601`), and `MovedIn(slot, position)` carries no source identity. Two options were proposed:
+   - A forwarding `IComputation` per pending row, as `ValueRow` and `FoldRow` already have.
+   - The source passed in `MovedIn`. That needs a source-to-entry map, which is a hash.
+
+   The per-row forwarder is preferred.
+4. **The last-linker record retains garbage.** A strong record keeps a disposed reader, its closure and its DOM
+   reachable from a long-lived source. That is the same failure that made tombstoning lose on V8. Fix: the handle-only
+   record from finding 1, or null the record on removal.
+5. **Mixed edges in stage 2.** A transitional hash for readers that link directly puts two kinds of edge in one
+   `ObserverSet`, and stage 3 would then measure that mix as if it were the final design. Fix: migrate the direct
+   linkers before measuring, or measure a throwaway prototype.
+6. **The reader-side fallback must be lazy.** A reader-side hash maintained on every append recreates the cost being
+   removed. Build it on the first positional miss in a run, and drop it at `EndRun`.
+7. **Fable parallel arrays.** `Platform.itemAt` is unchecked, so a length mismatch reads `undefined`, which `-1` tests
+   do not catch. Grow and blank both arrays in one helper. Test what `Array.zeroCreate<int>` fills with under Fable.
+8. **Small fan-out.** At 8 or fewer observers, today's scan stays within cache. The variant adds an interface call per
+   swap: `DisposeInCreationOrder` swaps on every removal, while `DisposeRoot` never swaps. Measure at 8.
+9. **Out-of-order wide readers** move from an O(1) hash to an O(n) scan on add.
+
+Neither review found a re-entrancy fault. Swap-remove is unchanged, and `MovedIn` is a single integer write that is
+safe mid-walk.
+
+### On delivery
+
+Both reviews argue against publishing the variant as a second package for users to choose:
+
+- API and semantics are identical, so users cannot predict which profile they need, and the choice is global to an
+  application.
+- Two packages with the same assembly name create diamond conflicts when a library references `Ranvier` and the
+  application references `Ranvier.IndexedEdges`.
+- If the Fable package ships source, the consumer's defines choose the profile, not the package id. This is
+  unverified.
+- Gate 1 relates only the default build to master. No gate relates the two builds to each other.
+- `#if` would stay in every implementer, and CI would need 4-8 cells.
+
+Their recommendation: use the switch as a development instrument only (a byte-identical default and A/B benchmarks),
+then ship one model. A runtime option would put a branch on every link, so both reject it. The doubly linked `Link`
+model stays as the fallback if handles lose. Both called the review point toothless, because "kept if any workload
+favours it" guarantees it is kept. The default at review should be removal unless the published numbers justify the
+variant.
+
+## Revised direction (when resumed)
+
+1. **First, the hash-free experiment** (about 50 lines, no interface change):
+   - Keep today's structures and delete `RefIndex` from `ObserverSet`.
+   - Removal scans: the last slot and index 0 are checked first, so teardown in either order is O(1), and only
+     scattered removal on a wide source is O(n).
+   - Duplicate reads move to the reader: the handle-only check from finding 1 where it applies, and otherwise the lazy
+     per-run fallback from finding 6.
+
+   Measure on Fable/V8 with `--trace-gc` and on .NET, interleaved with master:
+   - `DisposeRoot`, `DisposeInCreationOrder`, and a new scattered order at 8, 64 and 1024;
+   - `RelinkOne` at 8;
+   - the out-of-order reader at 64 and 1024;
+   - 128-row browser dispose.
+
+   If scattered removal is the only loss and is tolerable, this becomes the single model.
+2. **Otherwise, indexed handles with findings 1-8 applied.** That means identity-checked removal and `-1` discipline,
+   per-row forwarders for the watch, lockstep arrays, and direct linkers migrated before measuring. If they win on
+   Fable, they replace the current model outright. If they lose on Fable, move to the `Link` model.
+3. **Offering users a choice of profile, if still wanted.** Use a documented build property for those who build from
+   source, not a second published package.
 
 ## Summary
 
