@@ -40,22 +40,20 @@ let parts (host: HTMLElement) width =
     measure "graph-dispose" graph.Dispose
     times.ToArray ()
 
-/// <summary>Measures flat renderer-scope cleanup with empty callbacks and releases, excluding DOM and core graph work.</summary>
+/// <summary>Measures flat mount-lifetime setup and teardown with empty callbacks and releases, excluding DOM work.</summary>
 let scopes width =
+    use graph = new Graph ()
     let start = globalThis.performance.now ()
-    let root = Scope (ignore, ignore)
+    let root = MountLifetime.Root (graph, ignore, ignore)
 
-    for _ in 1..width do
-        let child = root.Child ignore
-        child.OnCleanup ignore
+    graph.Run (fun () ->
+        for _ in 1..width do
+            let child = root.Child ignore
+            child.OnCleanup ignore)
 
     let built = globalThis.performance.now ()
     root.Dispose ()
     let disposed = globalThis.performance.now ()
-
-    if root.ChildCount <> 0 then
-        failwith "Renderer retained disposed child scopes"
-
     [| "scope-setup", built - start; "scope-dispose", disposed - built |]
 
 /// <summary>Measures component/effect graph setup and teardown without DOM operations or renderer scopes.</summary>

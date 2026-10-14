@@ -12,7 +12,7 @@ let private equal expected actual =
 let private narrowQueued suspend failWrite =
     use graph = new Graph ()
     let queue = Queue (graph, CollectAndContinue, ignore)
-    let scope = Scope (ignore, ignore)
+    let scope = graph.Run (fun () -> Api.createRoot id)
     let source = graph.Run (fun () -> Api.createSignal 1)
     let pending = graph.Run (fun () -> Api.createSignal false)
     let missing = graph.Run (fun () -> Api.createAsyncSource<int>())
@@ -21,10 +21,10 @@ let private narrowQueued suspend failWrite =
 
     graph.Run (fun () ->
         Api.createRoot (fun owner ->
-            scope.OnCleanup owner.Dispose
+            scope.OnCleanup (Action owner.Dispose)
 
             Binding.startQueued
-                scope.OnCleanup
+                (fun cleanup -> scope.OnCleanup (Action cleanup))
                 (fun () -> not scope.IsDisposed)
                 queue
                 (=)
@@ -103,15 +103,22 @@ type MicrotaskFixture =
 
 let microtaskFixture () =
     let graph = new Graph ()
-    let scope = Scope (ignore, ignore)
+    let scope = graph.Run (fun () -> Api.createRoot id)
     let queue = Microtask.create graph CollectAndContinue
     let source = graph.Run (fun () -> Api.createSignal 1)
     let writes = ResizeArray<int>()
 
     graph.Run (fun () ->
         Api.createRoot (fun owner ->
-            scope.OnCleanup owner.Dispose
-            Binding.startQueued scope.OnCleanup (fun () -> not scope.IsDisposed) queue (=) (fun () -> source.Value) writes.Add))
+            scope.OnCleanup (Action owner.Dispose)
+
+            Binding.startQueued
+                (fun cleanup -> scope.OnCleanup (Action cleanup))
+                (fun () -> not scope.IsDisposed)
+                queue
+                (=)
+                (fun () -> source.Value)
+                writes.Add))
 
     writes.Clear ()
 
@@ -235,17 +242,17 @@ let private failFastReplacements () =
 
 let private comparerDisposal () =
     use graph = new Graph ()
-    let scope = Scope (ignore, ignore)
+    let scope = graph.Run (fun () -> Api.createRoot id)
     let queue = Queue (graph, CollectAndContinue, ignore)
     let source = graph.Run (fun () -> Api.createSignal 1)
     let writes = ResizeArray<int>()
 
     graph.Run (fun () ->
         Api.createRoot (fun owner ->
-            scope.OnCleanup owner.Dispose
+            scope.OnCleanup (Action owner.Dispose)
 
             Binding.startQueued
-                scope.OnCleanup
+                (fun cleanup -> scope.OnCleanup (Action cleanup))
                 (fun () -> not scope.IsDisposed)
                 queue
                 (fun _ _ ->
@@ -284,17 +291,22 @@ let private retrySameValue () =
 
 let private writerCleanup () =
     use graph = new Graph ()
-    let scope = Scope (ignore, ignore)
+    let scope = graph.Run (fun () -> Api.createRoot id)
     let queue = Queue (graph, CollectAndContinue, ignore)
     let source = graph.Run (fun () -> Api.createSignal 1)
     let mutable cleaned = 0
 
     graph.Run (fun () ->
         Api.createRoot (fun owner ->
-            scope.OnCleanup owner.Dispose
+            scope.OnCleanup (Action owner.Dispose)
 
-            Binding.startQueued scope.OnCleanup (fun () -> not scope.IsDisposed) queue (=) (fun () -> source.Value) (fun _ ->
-                Api.onCleanup (fun () -> cleaned <- cleaned + 1))))
+            Binding.startQueued
+                (fun cleanup -> scope.OnCleanup (Action cleanup))
+                (fun () -> not scope.IsDisposed)
+                queue
+                (=)
+                (fun () -> source.Value)
+                (fun _ -> Api.onCleanup (fun () -> cleaned <- cleaned + 1))))
 
     graph.Run (fun () -> source.Value <- 2)
     equal 1 cleaned

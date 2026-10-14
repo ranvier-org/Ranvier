@@ -635,50 +635,24 @@ and private KeyedEntry =
     }
 
 /// <summary>The state of a mounted view and the backend that builds it.</summary>
-and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope option, report: exn list -> unit, host: Node) =
+and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifetime, parentOwner: Owner, report: exn list -> unit, host: Node) =
     inherit Prepared.Backend()
 
     let range = OwnedRange host
 
-    let mutable cleanupErrors: ResizeArray<exn> = null
-
     let release () =
         range.Release ()
 
-        if
-            not (isNull cleanupErrors)
-            && cleanupErrors.Count > 0
-        then
-            let errors = cleanupErrors.ToArray ()
-            cleanupErrors.Clear ()
-
-            if errors.Length = 1 then
-                raise errors[0]
-            else
-                raise (AggregateException ("Component cleanup failed", errors))
-
-    let reporting (callback: unit -> unit) () =
-        try
-            callback ()
-        with error ->
-            if isNull cleanupErrors then
-                cleanupErrors <- ResizeArray ()
-
-            cleanupErrors.Add error
-
-    let ownedCleanup (owner: Owner) callback =
+    let ownedCleanup (owner: Owner) (callback: unit -> unit) =
         if owner.IsDisposed then
             invalid "Component cleanup registration requires a live component"
 
-        owner.OnCleanup (Action (reporting callback))
+        owner.OnCleanup (Action callback)
 
-    let root =
-        match parentScope with
-        | Some parent -> parent.Child (report, release)
-        | None -> Scope (report, release)
+    let mutable root: MountLifetime = null
 
     // The element receiving created nodes; null at the top level of the range.
-    let mutable parent: Node = Unchecked.defaultof<_>
+    let mutable target: Node = Unchecked.defaultof<_>
     let mutable bindingSetupFailure: exn option = None
     let mutable modifierNode: HTMLElement = Unchecked.defaultof<_>
     let mutable modifierTag = Div
@@ -695,15 +669,15 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
         ensureSetup ()
 
 #if LADDER_NAIVE_RANGE
-        if isNull (box parent) then
+        if isNull (box target) then
             range.AddNaive node
         else
-            parent.appendChild node |> ignore
+            target.appendChild node |> ignore
 #else
-        if isNull (box parent) then
+        if isNull (box target) then
             range.AddCreated node
         else
-            parent.appendChild node |> ignore
+            target.appendChild node |> ignore
 #endif
 
     let currentElement () =
@@ -909,12 +883,12 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
 
     let mutable templateSetup: Setup = Unchecked.defaultof<_>
 
-    member _.Root: Scope = root
+    member _.Root: MountLifetime = root
 
     member _.Native(node: Node, ownership: NativeOwnership) : unit =
         ensureSetup ()
 
-        if not (isNull (box parent)) then
+        if not (isNull (box target)) then
             invalid "Native roots require top-level placement"
 
         range.Add (node :?> ChildNode, ownership)
@@ -950,16 +924,21 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
         | Queued queue -> queue.Errors
 
     /// <summary>Builds the view, attaches it before <c>before</c> in the host, and returns its handle.</summary>
-    /// <remarks>A build or attachment failure disposes the root scope and rethrows.</remarks>
+    /// <remarks>A build or attachment failure disposes the mount and rethrows.</remarks>
     member this.Run(before: Node option, build: BuildContext -> unit) =
         let context = BuildContext this
 
         try
             graph.Run (fun () ->
-                Api.createRoot (fun owner ->
-                    Api.onCleanup root.Dispose
-                    root.OnCleanup owner.Dispose
-                    Api.untrack (fun () -> build context)))
+                let create () =
+                    Api.createRoot (fun owner ->
+                        root <- MountLifetime.Create (graph, owner, report, release, parent)
+                        Api.untrack (fun () -> build context))
+
+                if isNull (box parentOwner) then
+                    create ()
+                else
+                    Api.runWithOwner parentOwner create)
 
             ensureSetup ()
             range.Attach (host, before)
@@ -971,7 +950,9 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
 
             Mounted this
         with _ ->
-            root.Dispose ()
+            if not (isNull root) then
+                root.Abandon ()
+
             reraise ()
 
     override _.Clone(template, setup) =
@@ -1070,13 +1051,13 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
         let node = openElement this tag modifiers
 
         if not (isVoid tag) then
-            let previous = parent
-            parent <- childParent tag node
+            let previous = target
+            target <- childParent tag node
 
             try
                 children ()
             finally
-                parent <- previous
+                target <- previous
 
         if tag = Select then
             applyModifiers this tag node modifiers
@@ -1085,14 +1066,14 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
         let node = openElement this tag modifiers
 
         if not (isVoid tag) then
-            let previous = parent
-            parent <- childParent tag node
+            let previous = target
+            target <- childParent tag node
 
             try
                 for index in 0 .. children.Length - 1 do
                     children[index] this
             finally
-                parent <- previous
+                target <- previous
 
         if tag = Select then
             applyModifiers this tag node modifiers
@@ -1116,11 +1097,11 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
         let regionStart, regionEnd =
             comment "ranvier:list:start", comment "ranvier:list:end"
 
-        if isNull (box parent) then
+        if isNull (box target) then
             this.KeyedRegion (regionStart, regionEnd, NewRegion, disposeFirst, read, render)
         else
-            range.AppendGenerated (parent, regionStart)
-            range.AppendGenerated (parent, regionEnd)
+            range.AppendGenerated (target, regionStart)
+            range.AppendGenerated (target, regionEnd)
             this.KeyedRegion (regionStart, regionEnd, NestedRegion, disposeFirst, read, render)
 
     /// <summary>Mounts one nested mount per keyed item between two boundary nodes and reconciles them as the items change.</summary>
@@ -1134,7 +1115,6 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
             read: unit -> (obj * obj) array,
             render: (unit -> obj) -> Backend -> unit
         ) =
-        let regionScope = root.Child (report, ignore)
         let mutable entries: KeyedEntry array = [||]
         let mutable regionOwner: Owner option = None
         let mutable initializing = true
@@ -1147,7 +1127,10 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
             | None -> report errors
 
         let ensureRegionLive () =
-            if root.IsDisposed || regionScope.IsDisposed then
+            if
+                root.IsDisposed
+                || regionOwner |> Option.exists _.IsDisposed
+            then
                 raise KeyedDisposed
 
         let getRegionParent () =
@@ -1244,7 +1227,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
                 try
                     try
                         Api.runWithOwner owner (fun () ->
-                            MountState(scheduling, graph, Some regionScope, reportRow, staging)
+                            MountState(scheduling, graph, root, Unchecked.defaultof<_>, reportRow, staging)
                                 .Run(None, (fun context -> render (fun () -> item.Value) context.Backend)))
                     with original ->
                         if setupErrors.Count > 0 then
@@ -1429,8 +1412,6 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
 
         Api.createRoot (fun owner ->
             regionOwner <- Some owner
-            Api.onCleanup regionScope.Dispose
-            regionScope.OnCleanup owner.Dispose
             Api.untrack (fun () -> Api.createEffect reconcile))
 
         initializing <- false
@@ -1448,6 +1429,8 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
             }
 #else
         Api.createRoot (fun owner ->
+            root.Adopt owner
+
             Api.untrack (fun () ->
                 setup
                     {
@@ -1506,7 +1489,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
             ensureSetup ()
 
             let placement =
-                if rootLevel && isNull (box parent) then
+                if rootLevel && isNull (box target) then
                     RootRegion
                 else
                     NestedRegion
@@ -1515,19 +1498,25 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
 
 /// <summary>Mounts a view with an owned commit queue when deferred scheduling is selected.</summary>
 /// <remarks>Nested keyed mounts share the containing mount's scheduler.</remarks>
-let mountWith mode graph parentScope report host before build =
+let mountWith mode graph (parentOwner: Owner option) report host before build =
+    let parentOwner =
+        match parentOwner with
+        | Some owner -> owner
+        | None -> Unchecked.defaultof<_>
+
     match mode with
-    | SynchronousCommits -> MountState(Synchronous, graph, parentScope, report, host).Run(before, build)
+    | SynchronousCommits -> MountState(Synchronous, graph, null, parentOwner, report, host).Run(before, build)
     | QueuedCommits (failure, post) ->
         let queue = Queue (graph, failure, post)
 
         try
-            let state = MountState (Queued queue, graph, parentScope, report, host)
+            let state = MountState (Queued queue, graph, null, parentOwner, report, host)
+            let mounted = state.Run (before, build)
             state.Root.OnCleanup queue.Dispose
-            state.Run (before, build)
+            mounted
         with _ ->
             queue.Dispose ()
             reraise ()
 
-let mount graph parentScope report host before build =
-    mountWith SynchronousCommits graph parentScope report host before build
+let mount graph (parentOwner: Owner option) report host before build =
+    mountWith SynchronousCommits graph parentOwner report host before build

@@ -246,8 +246,7 @@ let private cleanupOrder () =
 let private parentAndGraph () =
     use graph = new Graph ()
     let host = Dom.element "section" [] []
-    let parent = Scope (ignore, ignore)
-    parent.MarkAttached ()
+    let parent = graph.Run (fun () -> Api.createRoot id)
     let a = mounted graph (Some parent) host None (fun ctx -> ctx.Backend.Text "a")
     let b = tree graph host (Tree.ops.Text "b")
     parent.Dispose ()
@@ -338,7 +337,7 @@ let private releaseFailures () =
 let private disposedDuringSetup () =
     use graph = new Graph ()
     let host = Dom.element "section" [] []
-    let parent = Scope (ignore, ignore)
+    let parent = graph.Run (fun () -> Api.createRoot id)
 
     rejected (fun () ->
         mounted graph (Some parent) host None (fun ctx ->
@@ -571,7 +570,7 @@ let private duplicateKeys () =
 let private attachmentReentry () =
     use graph = new Graph ()
     let host = Dom.element "section" [] []
-    let parent = Scope (ignore, ignore)
+    let parent = graph.Run (fun () -> Api.createRoot id)
     let restore = afterAttachment host parent.Dispose
 
     try
@@ -709,7 +708,7 @@ let private overlappingMounts () =
 let private equalityDisposal () =
     use graph = new Graph ()
     let host = Dom.element "section" [] []
-    let parent = Scope (ignore, ignore)
+    let parent = graph.Run (fun () -> Api.createRoot id)
     let source = graph.Run (fun () -> Api.createSignal 0)
 
     let handle =
@@ -730,8 +729,8 @@ let private equalityDisposal () =
 let private childReporter () =
     use graph = new Graph ()
     let host = Dom.element "section" [] []
-    let mutable parentReports, mountReports = 0, 0
-    let parent = Scope ((fun _ -> parentReports <- parentReports + 1), ignore)
+    let mutable mountReports = 0
+    let parent = graph.Run (fun () -> Api.createRoot id)
 
     let handle =
         mount
@@ -748,8 +747,6 @@ let private childReporter () =
 
     handle.Dispose ()
     equal 1 mountReports
-    equal 0 parentReports
-    equal 0 parent.ChildCount
     equal 0. host.childNodes.length
     parent.Dispose ()
 
@@ -1003,7 +1000,7 @@ let private keyedNestedMovement () =
 let private keyedDisposal point =
     use graph = new Graph ()
     let host = Dom.element "section" [] []
-    let parent = Scope (ignore, ignore)
+    let parent = graph.Run (fun () -> Api.createRoot id)
     let rows = graph.Run (fun () -> Api.createSignal [ 1; 2 ])
     let reports = ResizeArray<exn>()
     let cleanups = ResizeArray<int>()
@@ -1122,7 +1119,7 @@ let private keyedTracksOnlySnapshot () =
 let private keyedInitialDisposal () =
     use graph = new Graph ()
     let host = Dom.element "section" [] []
-    let parent = Scope (ignore, ignore)
+    let parent = graph.Run (fun () -> Api.createRoot id)
     let mutable rendered = 0
 
     let view =
@@ -1142,7 +1139,7 @@ let private keyedInitialDisposal () =
 
     equal 0 rendered
     equal 0. host.childNodes.length
-    equal 0 parent.ChildCount
+    equal true parent.IsDisposed
 
 let private keyedSetupAndCleanupFailure () =
     use graph = new Graph ()

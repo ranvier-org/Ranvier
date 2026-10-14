@@ -40,19 +40,15 @@ let private inputValue (node: HTMLInputElement) (value: string) : unit =
 let mount (graph: Graph) (host: HTMLElement) (report: exn list -> unit) (counts: Metrics option) (build: Backend -> unit) : unit -> unit =
     let roots = ResizeArray<Node>()
 
-    let root =
-        Scope (
-            report,
-            fun () ->
-                for node in roots do
-                    remove (node :?> ChildNode)
+    let release () =
+        for node in roots do
+            remove (node :?> ChildNode)
 
-                roots.Clear ()
-        )
+        roots.Clear ()
 
     let mutable parent: Node = host
-    let mutable scope = root
-    let mutable rootOwner: Owner option = None
+    let mutable root: MountLifetime = null
+    let mutable scope: MountLifetime = null
     let mutable modifierNode: HTMLElement = Unchecked.defaultof<_>
     let mutable modifierTag = Div
 
@@ -168,18 +164,20 @@ let mount (graph: Graph) (host: HTMLElement) (report: exn list -> unit) (counts:
 
             member _.Component setup =
                 let previous = scope
-                let child = scope.Child ignore
-                scope <- child
 
                 try
-                    Api.createRoot (fun owner ->
-                        count (fun c ->
-                            c.Owners <- c.Owners + 1
-                            c.Setups <- c.Setups + 1)
+                    scope.Child (
+                        ignore,
+                        fun child ->
+                            scope <- child
 
-                        Api.onCleanup child.Dispose
-                        child.OnCleanup owner.Dispose
-                        Api.untrack (fun () -> setup { OnCleanup = child.OnCleanup }))
+                            count (fun c ->
+                                c.Owners <- c.Owners + 1
+                                c.Setups <- c.Setups + 1)
+
+                            Api.untrack (fun () -> setup { OnCleanup = child.OnCleanup })
+                    )
+                    |> ignore
                 finally
                     scope <- previous
         }
@@ -187,15 +185,14 @@ let mount (graph: Graph) (host: HTMLElement) (report: exn list -> unit) (counts:
     try
         graph.Run (fun () ->
             Api.createRoot (fun owner ->
-                rootOwner <- Some owner
+                root <- MountLifetime.Create (graph, owner, report, release, null)
+                scope <- root
                 count (fun c -> c.Owners <- c.Owners + 1)
-                Api.onCleanup root.Dispose
                 Api.untrack (fun () -> build backend)))
     with _ ->
-        root.Dispose ()
-        rootOwner |> Option.iter _.Dispose()
+        if not (isNull root) then
+            root.Abandon ()
+
         reraise ()
 
-    fun () ->
-        root.Dispose ()
-        rootOwner |> Option.iter _.Dispose()
+    fun () -> root.Dispose ()

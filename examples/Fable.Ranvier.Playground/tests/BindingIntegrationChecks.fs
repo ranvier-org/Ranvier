@@ -555,7 +555,7 @@ let private componentCleanupFailures () =
     equal 0 reports.Count
     mounted.Dispose ()
     equal (2, 1) (ran.Count, reports.Count)
-    equal "Component cleanup failed" (List.exactlyOne reports[0]).Message
+    equal [ "first"; "second" ] (reports[0] |> List.map _.Message |> List.sort)
 
 let cases =
     Array.append

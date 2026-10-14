@@ -47,12 +47,13 @@ let private normal =
         Acquired = fun _ _ _ _ -> ()
     }
 
+
 type private Fixture =
     {
         Parent: HTMLElement
         Child: HTMLElement
-        Scope: Scope
-        ChildScope: Scope
+        Scope: MountLifetime
+        ChildScope: MountLifetime
         Owner: Owner
         Set: int -> unit
         Writes: unit -> int
@@ -75,73 +76,78 @@ let private createFixture (graph: Graph) (host: HTMLElement) (trace: ResizeArray
     parent.appendChild (child) |> ignore
     host.appendChild (parent) |> ignore
     let reports = ResizeArray<exn list>()
-
-    let scope =
-        Scope (
-            (fun errors ->
-                reports.Add errors
-
-                if config.ReporterFails then
-                    failwith "reporter"),
-            (fun () ->
-                trace.Add (label + ":remove-parent")
-                remove parent)
-        )
-
-    let childScope =
-        scope.Child (fun () ->
-            trace.Add (label + ":remove-child")
-            remove child
-
-            if config.ReleaseFails then
-                failwith "release")
-
     let mutable calls = 0
     let mutable writes = 0
+    let mutable scope: MountLifetime = null
+    let mutable childScope: MountLifetime = null
     let mutable ownerForFailure: Owner option = None
     let signal = graph.Run (fun () -> Api.createSignal 0)
+
+    let report errors =
+        reports.Add errors
+
+        if config.ReporterFails then
+            failwith "reporter"
 
     let owner =
         try
             graph.Run (fun () ->
                 Api.createRoot (fun owner ->
                     ownerForFailure <- Some owner
+
+                    scope <-
+                        MountLifetime.Root (
+                            graph,
+                            report,
+                            fun () ->
+                                trace.Add (label + ":remove-parent")
+                                remove parent
+                        )
+
                     let unsubscribe = listen child (fun () -> calls <- calls + 1)
 
-                    childScope.OnCleanup (fun () ->
-                        same parent child.parentNode.Value
-                        same host parent.parentNode.Value
-                        trace.Add (label + ":child-clean-attached")
-                        unsubscribe ()
-
-                        if config.Reenter then
-                            scope.Dispose ()
-
-                        if config.CleanupFails then
-                            failwith "cleanup")
-
+                    // Runs after the child lifetime's teardown.
                     scope.OnCleanup (fun () ->
                         same host parent.parentNode.Value
                         same parent child.parentNode.Value
                         trace.Add (label + ":parent-clean-attached"))
 
-                    Api.createRoot (fun _ ->
-                        Api.onCleanup childScope.Dispose
+                    childScope <-
+                        scope.Child (
+                            (fun () ->
+                                trace.Add (label + ":remove-child")
+                                remove child
 
-                        Api.createEffect (fun () ->
-                            let value = signal.Value
-                            writes <- writes + 1
-                            child.textContent <- string value))
+                                if config.ReleaseFails then
+                                    failwith "release"),
+                            fun nested ->
+                                nested.OnCleanup (fun () ->
+                                    same parent child.parentNode.Value
+                                    same host parent.parentNode.Value
+                                    trace.Add (label + ":child-clean-attached")
+                                    unsubscribe ()
 
-                    // Acquired after the child root, so the registry drains while the child DOM is attached.
-                    Api.onCleanup scope.Dispose
+                                    if config.Reenter then
+                                        scope.Dispose ()
+
+                                    if config.CleanupFails then
+                                        failwith "cleanup")
+
+                                Api.createEffect (fun () ->
+                                    let value = signal.Value
+                                    writes <- writes + 1
+                                    child.textContent <- string value)
+                        )
+
                     config.Acquired child (fun () -> calls) (fun value -> signal.Value <- value) (fun () -> writes)
 
                     match config.SetupFailure with
                     | Some error -> raise error
                     | None -> owner))
         with _ ->
-            scope.Dispose ()
+            if not (isNull scope) then
+                scope.Dispose ()
+
             ownerForFailure |> Option.iter _.Dispose()
             reraise ()
 
@@ -324,6 +330,7 @@ let private teardownFailures () =
         equal 1 first.Reports.Count
         equal 1.0 host.childNodes.length)
 
+
 let private reentrantAndRejected () =
     withHost (fun host _ ->
         use graph = new Graph ()
@@ -345,19 +352,23 @@ let private reentrantAndRejected () =
         fixture.Owner.Dispose ()
         equal (expected "root") (List.ofSeq trace)
         equal 2 rejected
-        equal 0 fixture.Scope.ChildCount
+        equal true fixture.Scope.IsDisposed
         fixture.Dispose ()
         equal (expected "root") (List.ofSeq trace))
 
-let private unlinkChildren () =
-    let parent = Scope (ignore, ignore)
+let private childrenReleaseOnce () =
+    use graph = new Graph ()
+    let mutable released = 0
+    let parent = MountLifetime.Root (graph, ignore, ignore)
 
-    for _ in 1..1000 do
-        parent.Child(ignore).Dispose()
+    graph.Run (fun () ->
+        for _ in 1..1000 do
+            parent.Child(fun () -> released <- released + 1).Dispose())
 
-    equal 0 parent.ChildCount
+    equal 1000 released
     equal false parent.IsDisposed
     parent.Dispose ()
+    equal 1000 released
 
 let private ancestorReentry () =
     withHost (fun host _ ->
@@ -367,19 +378,30 @@ let private ancestorReentry () =
         fixture.ChildScope.OnCleanup (fixture.Scope.Dispose)
         fixture.ChildScope.OnCleanup (fun () -> same host fixture.Parent.parentNode.Value)
         fixture.ChildScope.Dispose ()
-        equal (expected "root") (List.ofSeq trace)
+
+        // Every cleanup of the tree runs before its first release.
+        equal
+            [
+                "root:parent-clean-attached"
+                "root:child-clean-attached"
+                "root:remove-child"
+                "root:remove-parent"
+            ]
+            (List.ofSeq trace)
+
         equal [] fixture.ChildScope.Failures
         equal true fixture.Scope.IsDisposed
         fixture.Dispose ()
         equal 1.0 host.childNodes.length)
 
 let private attachmentPhases () =
-    let root = Scope (ignore, ignore)
-    let child = root.Child ignore
+    use graph = new Graph ()
+    let root = MountLifetime.Root (graph, ignore, ignore)
+    let child = graph.Run (fun () -> root.Child ignore)
     equal SettingUp root.Phase
     root.MarkAttached ()
     equal Attached child.Phase
-    let later = root.Child ignore
+    let later = graph.Run (fun () -> root.Child ignore)
     equal SettingUp later.Phase
     later.MarkAttached ()
     root.Dispose ()
@@ -394,18 +416,16 @@ let private attachmentPhases () =
     equal true rejected
 
 let private crossTreeDisposal () =
+    use graph = new Graph ()
     let trace = ResizeArray<string>()
     let aReports, bReports = ResizeArray<exn list>(), ResizeArray<exn list>()
+    let a = MountLifetime.Root (graph, aReports.Add, (fun () -> trace.Add "a:release"))
+    // Runs after the teardown of a's child.
+    a.OnCleanup (fun () -> trace.Add "a:clean")
+    let b = MountLifetime.Root (graph, bReports.Add, (fun () -> trace.Add "b:release"))
 
-    let a =
-        Scope ((fun errors -> aReports.Add errors), (fun () -> trace.Add "a:release"))
-
-    let aChild = a.Child (fun () -> trace.Add "a-child:release")
-
-    let b =
-        Scope ((fun errors -> bReports.Add errors), (fun () -> trace.Add "b:release"))
-
-    let bChild = b.Child (fun () -> trace.Add "b-child:release")
+    let aChild, bChild =
+        graph.Run (fun () -> a.Child (fun () -> trace.Add "a-child:release"), b.Child (fun () -> trace.Add "b-child:release"))
 
     bChild.OnCleanup (fun () ->
         trace.Add "b-child:clean"
@@ -415,7 +435,6 @@ let private crossTreeDisposal () =
         trace.Add "a-child:clean"
         bChild.Dispose ())
 
-    a.OnCleanup (fun () -> trace.Add "a:clean")
     a.Dispose ()
 
     equal
@@ -454,6 +473,6 @@ let cases: (string * (unit -> unit)) array =
         "failed setup unwinds before rethrowing", setupFailure
         "cleanup release and reporter failures do not strand siblings", teardownFailures
         "teardown rejects registration and survives reentry", reentrantAndRejected
-        "disposed children unlink in Fable", unlinkChildren
+        "disposed children release once and leave the parent live", childrenReleaseOnce
         "a cleanup disposing a scope in another tree reports on that tree and keeps its own order", crossTreeDisposal
     |]
