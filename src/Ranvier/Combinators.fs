@@ -937,6 +937,17 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
 [<RequireQualifiedAccess>]
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Projection =
+    /// <summary>Raises the exception a projection pass raises for the first key of <c>items</c> that repeats an earlier key.</summary>
+    /// <remarks>Keys are compared as a projection compares them: <c>'K: equality</c>, hashed.</remarks>
+    let ensureUniqueKeys (keyOf: 'T -> 'K) (items: 'T seq) : unit =
+        let seen = Platform.KeySet<'K>()
+
+        for item in items do
+            let key = keyOf item
+
+            if not (seen.Add key) then
+                raise (ProjectionFailures.duplicateKey key)
+
     /// <summary>The keys of <c>upstream</c> whose value satisfies <c>predicate</c>, in upstream order, with their values.</summary>
     /// <remarks>
     /// <c>predicate</c> re-runs for a key when its upstream row changes. A pending predicate keeps the key's last membership;

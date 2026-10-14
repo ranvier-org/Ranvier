@@ -1694,6 +1694,15 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             link <- null
             this.Dispose ()
 
+/// <summary>Failures shared by projection passes and key checks.</summary>
+module internal ProjectionFailures =
+    let duplicateKey (key: 'K) =
+        InvalidOperationException (
+            "The projection produced the key "
+            + string key
+            + " twice in one pass. Keys must be unique; check the keyOf function."
+        )
+
 /// <summary>
 /// The rows of a projection over items of type <c>'T</c>: one item source per key,
 /// written when the key's item changes.
@@ -1729,13 +1738,7 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
         if not (this.Seen.Add key) then
             // Two items, one key: one of them would silently disappear. The
             // throw fails the pass, and reaches the boundary around the read.
-            raise (
-                InvalidOperationException (
-                    "The projection produced the key "
-                    + string key
-                    + " twice in one pass. Keys must be unique; check the keyOf function."
-                )
-            )
+            raise (ProjectionFailures.duplicateKey key)
 
         this.PassKeys.Add key
 
