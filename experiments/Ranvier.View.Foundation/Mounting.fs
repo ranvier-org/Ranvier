@@ -1751,23 +1751,23 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                                     this.MountRow (current, render)
                                 else
                                     site.Builder.Build (rows, current)))
+
+                    // An arm whose setup disposed the region leaves with the region's owner.
+                    if site.Live () then
+                        Row.MoveBefore (row, site.Parent (), regionEnd)
+
+                        if not (isNull (box row.Mount)) then
+                            row.Mount.Relocate ()
+
+                        site.LaidOut.Add row
+                        armOwner <- created
+                        armItem <- item
+                        armKey <- key
                 with _ ->
                     if not (isNull (box created)) then
                         created.Dispose ()
 
                     reraise ()
-
-                // An arm whose setup disposed the region leaves with the region's owner.
-                if site.Live () then
-                    Row.MoveBefore (row, site.Parent (), regionEnd)
-
-                    if not (isNull (box row.Mount)) then
-                        row.Mount.Relocate ()
-
-                    site.LaidOut.Add row
-                    armOwner <- created
-                    armItem <- item
-                    armKey <- key
 
         let reconcile () =
             if site.Live () then

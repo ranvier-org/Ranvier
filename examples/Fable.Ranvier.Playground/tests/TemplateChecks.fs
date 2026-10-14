@@ -1526,6 +1526,59 @@ let private armCleanupFailure () =
     mounted.Dispose ()
     equal ("cleanup working", 0.) (stageLog[stageLog.Count - 1], host.childNodes.length)
 
+let private armPlacementFailure () =
+    use graph = new Graph ()
+    let host = host ()
+    let log = ResizeArray<string>()
+    let ticks = graph.Run (fun () -> Api.createSignal 0)
+
+    let detachingArm =
+        Component.define
+            (fun setup (_: unit -> unit) ->
+                setup.OnCleanup (fun () ->
+                    let div = host.querySelector "div" |> unbox<HTMLElement>
+                    div.removeChild div.firstChild.Value |> ignore))
+            (fun t -> t.span [||] [| t.text "detaching" |])
+
+    let tickingArm =
+        Component.define
+            (fun setup (_: unit -> unit) ->
+                Api.createEffect (fun () -> log.Add ("tick " + string ticks.Value))
+                setup.OnCleanup (fun () -> log.Add "cleanup ticking"))
+            (fun t -> t.span [||] [| t.text "ticking" |])
+
+    let switching =
+        Component.define (fun _ (detached: Signal<bool>) -> detached) (fun t ->
+            t.div
+                [||]
+                [|
+                    t.matchWith (fun detached -> detached.Value) (fun detached ->
+                        if detached then
+                            t.arm tickingArm ()
+                        else
+                            t.arm detachingArm ())
+                |])
+
+    let detached = graph.Run (fun () -> Api.createSignal false)
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        Mounting.mount graph None reports.Add host None (fun context -> Program.run (Component.render switching detached) context.Backend)
+
+    graph.Run (fun () -> detached.Value <- true)
+    let afterSwitch = List.ofSeq log
+    graph.Run (fun () -> ticks.Value <- 1)
+
+    equal
+        (true, afterSwitch, [ [ "Keyed-list boundaries have no parent" ] ])
+        (List.contains "cleanup ticking" afterSwitch,
+         List.ofSeq log,
+         reports
+         |> Seq.map (List.map _.Message)
+         |> List.ofSeq)
+
+    mounted.Dispose ()
+
 type Listed = { Id: int; Text: string }
 
 let private listedLog = ResizeArray<string>()
@@ -2718,6 +2771,7 @@ let cases =
         "a switched arm sets up after the previous arm restores its saved state", armSaveRestore
         "a switched arm whose setup throws leaves the region empty and a later switch mounts", armSetupFailure
         "a previous arm whose cleanup throws is reported and the switched arm mounts", armCleanupFailure
+        "a switched arm whose placement fails is disposed and reported once", armPlacementFailure
         "each renders template rows, retains them by key and dispatches their clicks", eachRows
         "each sets up a replacing row before the replaced row's cleanup", eachReplacement
         "duplicate each keys fail the mount, are reported on update and keep the rows", eachDuplicates
