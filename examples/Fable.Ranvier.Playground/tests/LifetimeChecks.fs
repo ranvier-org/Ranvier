@@ -461,6 +461,28 @@ let private crossTreeDisposal () =
     equal false b.IsDisposed
     b.Dispose ()
 
+let private crossTreeOwnerDisposal () =
+    use graph = new Graph ()
+    let aReports, bReports = ResizeArray<exn list>(), ResizeArray<exn list>()
+    let mutable bReleased = false
+    let a = MountLifetime.Root (graph, aReports.Add, ignore)
+    let bParent = graph.Run (fun () -> Api.createRoot id)
+
+    let b =
+        graph.Run (fun () -> Api.runWithOwner bParent (fun () -> MountLifetime.Root (graph, bReports.Add, (fun () -> bReleased <- true))))
+
+    b.OnCleanup (fun () -> failwith "b")
+    a.OnCleanup bParent.Dispose
+    a.Dispose ()
+
+    let messages (reports: exn list seq) =
+        reports
+        |> Seq.concat
+        |> Seq.map _.Message
+        |> List.ofSeq
+
+    equal ([], [ "b" ], [], [ "b" ], true) (messages aReports, messages bReports, messages [ a.Failures ], messages [ b.Failures ], bReleased)
+
 let cases: (string * (unit -> unit)) array =
     [|
         "attachment cannot revive disposed scopes", attachmentPhases
@@ -475,4 +497,5 @@ let cases: (string * (unit -> unit)) array =
         "teardown rejects registration and survives reentry", reentrantAndRejected
         "disposed children release once and leave the parent live", childrenReleaseOnce
         "a cleanup disposing a scope in another tree reports on that tree and keeps its own order", crossTreeDisposal
+        "a cleanup disposing another mount's parent owner reports that mount's errors on its own reporter", crossTreeOwnerDisposal
     |]

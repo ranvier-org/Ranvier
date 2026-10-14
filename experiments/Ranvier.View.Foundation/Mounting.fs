@@ -1650,6 +1650,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                 let recorded, failure =
                     MountLifetime.Capture (
                         graph,
+                        report,
                         fun () ->
                             snapshot <- read ()
                             Api.untrack (fun () -> version.Value <- version.Value + 1)
@@ -1773,6 +1774,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                 let recorded, failure =
                     MountLifetime.Capture (
                         graph,
+                        report,
                         fun () ->
                             let selected = selection.Value
 

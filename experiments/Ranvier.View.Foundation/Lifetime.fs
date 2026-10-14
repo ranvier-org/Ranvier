@@ -10,16 +10,17 @@ type ScopePhase =
 
 /// <summary>
 /// The errors of one view-initiated teardown or list pass: the errors the graph root records while it runs, less those
-/// of nested windows, followed by the errors routed to it.
+/// of nested windows, followed by the errors routed to it by lifetimes that report to <c>report</c>.
 /// </summary>
 [<Sealed; AllowNullLiteral>]
-type internal TeardownWindow(root: Owner, start: int) =
+type internal TeardownWindow(root: Owner, start: int, report: exn list -> unit) =
     let routed = ResizeArray<exn>()
     // Start and end positions in the root's errors of nested windows, in pairs.
     let nested = ResizeArray<int>()
 
     member _.Root = root
     member _.Start = start
+    member _.Report = report
 
     member _.Add(errors: exn[]) =
         routed.AddRange errors
@@ -62,7 +63,9 @@ type internal TeardownWindow(root: Owner, start: int) =
 /// </para>
 /// <para>
 /// A teardown's errors reach the reporter once: the errors of the owner and of adopted owners, release failures and,
-/// for a teardown started by <c>Dispose</c>, the errors the graph root records meanwhile.
+/// for a teardown started by <c>Dispose</c>, the errors the graph root records meanwhile. An open teardown window
+/// receives a lifetime's errors only when the window serves the lifetime's reporter; a lifetime torn down inside a
+/// window of another reporter reports its errors through its own reporter when its teardown completes.
 /// </para>
 /// </remarks>
 [<Sealed; AllowNullLiteral>]
@@ -101,11 +104,14 @@ type MountLifetime private (graph: Graph, owner: Owner, report: exn list -> unit
     static member internal Root(graph: Graph, report: exn list -> unit, release: unit -> unit) =
         graph.Run (fun () -> Api.createRoot (fun owner -> MountLifetime.Create (graph, owner, report, release, null)))
 
-    /// <summary>Runs <c>body</c> in a new teardown window and returns the window's errors with the exception <c>body</c> raised.</summary>
-    static member internal Capture(graph: Graph, body: unit -> unit) : exn list * exn option =
+    /// <summary>
+    /// Runs <c>body</c> in a new teardown window serving <c>report</c>, and returns the window's errors with the
+    /// exception <c>body</c> raised.
+    /// </summary>
+    static member internal Capture(graph: Graph, report: exn list -> unit, body: unit -> unit) : exn list * exn option =
         let root = graph.Root
         let windows = MountLifetime.Windows
-        let window = TeardownWindow (root, root.ErrorCount)
+        let window = TeardownWindow (root, root.ErrorCount, report)
         windows.Add window
         let mutable failure = None
 
@@ -248,14 +254,14 @@ type MountLifetime private (graph: Graph, owner: Owner, report: exn list -> unit
                 pending[index]()
 
     /// <summary>
-    /// Adds <c>errors</c> to the open teardown window, or to the teardown of the outermost tearing-down lifetime, or
-    /// reports them.
+    /// Adds <c>errors</c> to the open teardown window when it serves this lifetime's reporter, or else to the teardown
+    /// of the outermost tearing-down lifetime, or reports them.
     /// </summary>
     member internal this.Route(errors: exn[]) =
         if errors.Length > 0 then
             let window = MountLifetime.CurrentWindow
 
-            if not (isNull window) then
+            if this.Serves window then
                 window.Add errors
             else
                 let target = this.Outermost ()
@@ -264,6 +270,10 @@ type MountLifetime private (graph: Graph, owner: Owner, report: exn list -> unit
                     target.Hold errors
                 else
                     this.Report (List.ofArray errors)
+
+    member private _.Serves(window: TeardownWindow) =
+        not (isNull window)
+        && obj.ReferenceEquals (window.Report, report)
 
     member private this.Report(errors: exn list) =
         if not errors.IsEmpty then
@@ -292,13 +302,15 @@ type MountLifetime private (graph: Graph, owner: Owner, report: exn list -> unit
 
         this.RunRelease ()
 
-        if
-            isNull MountLifetime.CurrentWindow
-            && not (isNull held)
-        then
-            let errors = List.ofSeq held
+        if not (isNull held) then
+            let errors = held.ToArray ()
             held <- null
-            this.Report errors
+            let window = MountLifetime.CurrentWindow
+
+            if this.Serves window then
+                window.Add errors
+            else
+                this.Report (List.ofArray errors)
 
     member private this.Finish() =
         let outer = this.Outermost ()
@@ -328,13 +340,15 @@ type MountLifetime private (graph: Graph, owner: Owner, report: exn list -> unit
     /// <summary>Tears the lifetime down and reports the teardown's errors once.</summary>
     member this.Dispose() =
         if not owner.IsDisposed then
-            let errors, failure = MountLifetime.Capture (graph, (fun () -> this.TearDown ()))
+            let errors, failure =
+                MountLifetime.Capture (graph, report, (fun () -> this.TearDown ()))
+
             this.Report errors
             failure |> Option.iter raise
 
-    /// <summary>Tears the lifetime down. Inside another teardown window the errors join that window.</summary>
+    /// <summary>Tears the lifetime down. Inside a teardown window serving this lifetime's reporter the errors join that window.</summary>
     member internal this.Abandon() =
-        if isNull MountLifetime.CurrentWindow then
+        if not (this.Serves MountLifetime.CurrentWindow) then
             this.Dispose ()
         elif not owner.IsDisposed then
             this.TearDown ()
