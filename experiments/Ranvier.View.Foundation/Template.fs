@@ -51,6 +51,8 @@ type TemplateNode =
     | FragmentNode of TemplateNode array
     /// <summary>Dynamic structure mounted between a pair of region markers.</summary>
     | RegionNode of Region
+    /// <summary>A child template inlined into this template's skeleton, with the reader of its props from the inlining instance.</summary>
+    | ChildNode of TemplateComponent * Func<obj, obj>
 
 /// <summary>Dynamic structure of a template: keyed items read from an instance, rendered one row per item.</summary>
 and [<NoEquality; NoComparison>] Region =
@@ -102,13 +104,23 @@ let private strictEquals (left: obj) (right: obj) =
 /// <summary>Compares primitive slot values: strings, booleans, numbers and options of them.</summary>
 let primitiveSame = Func<obj, obj, bool>(fun left right -> strictEquals left right)
 
-let rec private flatten (nodes: TemplateNode array) =
+[<NoEquality; NoComparison>]
+type private Flat =
+    | Item of TemplateNode
+    | Enter of TemplateComponent * Func<obj, obj>
+    | Leave
+
+let rec private flatten (nodes: TemplateNode array) : Flat list =
     [
         for node in nodes do
             match node with
             | FragmentNode children -> yield! flatten children
             | TextNode "" -> ()
-            | other -> other
+            | ChildNode (definition, props) ->
+                yield Enter (definition, props)
+                yield! flatten [| definition.Root |]
+                yield Leave
+            | other -> yield Item other
     ]
 
 let private isText node =
@@ -132,7 +144,7 @@ let private rawText tag =
 [<NoEquality; NoComparison>]
 type private MarkupMode =
     | Skeleton
-    | Server of instance: obj * rejectBrowser: bool * backend: Backend
+    | Server of setup: Setup * rejectBrowser: bool * backend: Backend
 
 let private hasBrowserParts properties (slots: Slot array) (events: (string * Func<obj, obj, unit>) array) =
     Array.length properties > 0
@@ -161,21 +173,101 @@ let internal rowRenderer (row: RegionRow) (current: unit -> obj) (backend: Backe
 let private serverRow (backend: Backend) (row: RegionRow) (item: obj) =
     rowRenderer row (fun () -> item) backend
 
-let private writeMarkup (append: string -> unit) mode (targets: ResizeArray<TemplateNode * int array>) (root: TemplateNode) =
+/// <summary>A child template inlined into a skeleton.</summary>
+[<NoEquality; NoComparison>]
+type InlinedChild =
+    {
+        Definition: TemplateComponent
+        Props: Func<obj, obj>
+        /// <summary>The part whose instance the props reader receives: 0 for the template, k for the k-th inlined child in document order.</summary>
+        Owner: int
+        /// <summary>The index of the child's first dynamic node.</summary>
+        First: int
+        /// <summary>The number of dynamic nodes of the child and its inlined descendants.</summary>
+        Count: int
+    }
+
+/// <summary>The markup of a template's skeleton with its dynamic nodes and inlined children.</summary>
+[<NoEquality; NoComparison>]
+type SkeletonLayout =
+    {
+        Markup: string
+        /// <summary>Each dynamic node in document order, with its child-index path from the skeleton's root fragment.</summary>
+        Targets: (TemplateNode * int array) array
+        /// <summary>The part owning each dynamic node: 0 for the template, k for the k-th inlined child in document order.</summary>
+        Owners: int array
+        RootCount: int
+        /// <summary>The inlined children, at every depth, in document order.</summary>
+        Children: InlinedChild array
+    }
+
+type private WriterState(instance: obj) =
+    member val Instance = instance with get, set
+    member val Instances = ResizeArray<obj>()
+    member val Targets = ResizeArray<TemplateNode * int array>()
+    member val Owners = ResizeArray<int>()
+    member val Children = ResizeArray<InlinedChild>()
+    member val Parts = ResizeArray<int>()
+    member val Part = 0 with get, set
+
+let private writeMarkup (append: string -> unit) (mode: MarkupMode) (state: WriterState) (root: TemplateNode) =
+    let target node (path: int list) =
+        state.Targets.Add (node, Array.ofList (List.rev path))
+        state.Owners.Add state.Part
+
+    let enter (definition: TemplateComponent) (props: Func<obj, obj>) =
+        match mode with
+        | Skeleton ->
+            state.Children.Add
+                {
+                    InlinedChild.Definition = definition
+                    Props = props
+                    Owner = state.Part
+                    First = state.Targets.Count
+                    Count = 0
+                }
+
+            state.Parts.Add state.Part
+            state.Part <- state.Children.Count
+        | Server (setup, _, _) ->
+            state.Instances.Add state.Instance
+            state.Instance <- definition.Setup.Invoke (setup, props.Invoke state.Instance)
+
+    let leave () =
+        match mode with
+        | Skeleton ->
+            let index = state.Part - 1
+            let child = state.Children[index]
+
+            state.Children[index] <-
+                { child with
+                    Count = state.Targets.Count - child.First
+                }
+
+            state.Part <- state.Parts[state.Parts.Count - 1]
+            state.Parts.RemoveAt (state.Parts.Count - 1)
+        | Server _ ->
+            state.Instance <- state.Instances[state.Instances.Count - 1]
+            state.Instances.RemoveAt (state.Instances.Count - 1)
+
     let rec writeChildren (children: TemplateNode array) (path: int list) =
         let mutable index = 0
         let mutable previousText = false
 
-        for child in flatten children do
-            let text = isText child
+        for flat in flatten children do
+            match flat with
+            | Enter (definition, props) -> enter definition props
+            | Leave -> leave ()
+            | Item child ->
+                let text = isText child
 
-            if text && previousText then
-                append "<!--!-->"
-                index <- index + 1
+                if text && previousText then
+                    append "<!--!-->"
+                    index <- index + 1
 
-            writeNode child (index :: path)
-            index <- index + width child
-            previousText <- text
+                writeNode child (index :: path)
+                index <- index + width child
+                previousText <- text
 
         index
 
@@ -185,12 +277,13 @@ let private writeMarkup (append: string -> unit) mode (targets: ResizeArray<Temp
         | TextSlotNode slot ->
             match mode with
             | Skeleton ->
-                targets.Add (node, Array.ofList (List.rev path))
+                target node path
                 append " "
-            | Server (instance, _, _) ->
-                let value = unbox<string>(slot.Read.Invoke instance)
+            | Server _ ->
+                let value = unbox<string>(slot.Read.Invoke state.Instance)
                 append (Html.escape false (if isNull value then "" else value))
-        | FragmentNode _ -> invalidOp "Fragments are flattened before writing"
+        | FragmentNode _
+        | ChildNode _ -> invalidOp "Fragments and inlined children are flattened before writing"
         | ElementNode (tag, attributes, properties, slots, events, children) ->
             if rawText tag then
                 raise (InvalidOperationException "Raw-text elements require an explicit HTML serialization policy")
@@ -202,7 +295,7 @@ let private writeMarkup (append: string -> unit) mode (targets: ResizeArray<Temp
                     || slots.Length > 0
                     || events.Length > 0
                 then
-                    targets.Add (node, Array.ofList (List.rev path))
+                    target node path
             | Server (_, rejectBrowser, _) ->
                 if
                     rejectBrowser
@@ -216,11 +309,11 @@ let private writeMarkup (append: string -> unit) mode (targets: ResizeArray<Temp
                 append (" " + key + "=\"" + Html.escape true value + "\"")
 
             match mode with
-            | Server (instance, _, _) ->
+            | Server _ ->
                 for slot in slots do
                     match slot.Target with
                     | AttributeTarget key ->
-                        match unbox<string option>(slot.Read.Invoke instance) with
+                        match unbox<string option>(slot.Read.Invoke state.Instance) with
                         | Some value -> append (" " + key + "=\"" + Html.escape true value + "\"")
                         | None -> ()
                     | _ -> ()
@@ -234,10 +327,10 @@ let private writeMarkup (append: string -> unit) mode (targets: ResizeArray<Temp
         | RegionNode region ->
             match mode with
             | Skeleton ->
-                targets.Add (node, Array.ofList (List.rev path))
+                target node path
                 append "<!--[--><!--]-->"
-            | Server (instance, _, backend) ->
-                let items = Array.copy (region.Items.Invoke instance)
+            | Server (_, _, backend) ->
+                let items = Array.copy (region.Items.Invoke state.Instance)
                 Keyed.validateUniqueKeys (fun left right -> region.Same.Invoke (left, right)) items
                 append "<!--[-->"
 
@@ -248,22 +341,35 @@ let private writeMarkup (append: string -> unit) mode (targets: ResizeArray<Temp
 
     writeChildren [| root |] []
 
+/// <summary>The skeleton of a template: its markup, its dynamic nodes in document order with their owning parts, its root count and its inlined children.</summary>
+/// <remarks>A path lists child indexes from the skeleton's root fragment. A region's path leads to its start marker.</remarks>
+let skeletonLayout (root: TemplateNode) : SkeletonLayout =
+    let output = StringBuilder ()
+    let state = WriterState (null: obj)
+
+    let rootCount =
+        writeMarkup (fun value -> output.Append value |> ignore) Skeleton state root
+
+    {
+        Markup = output.ToString ()
+        Targets = state.Targets.ToArray ()
+        Owners = state.Owners.ToArray ()
+        RootCount = rootCount
+        Children = state.Children.ToArray ()
+    }
+
 /// <summary>The skeleton markup of a template, the path of every dynamic node in document order, and the number of root nodes.</summary>
 /// <remarks>A path lists child indexes from the skeleton's root fragment. A region's path leads to its start marker.</remarks>
 let skeletonMarkup (root: TemplateNode) =
-    let output = StringBuilder ()
-    let targets = ResizeArray ()
-
-    let rootCount =
-        writeMarkup (fun value -> output.Append value |> ignore) Skeleton targets root
-
-    output.ToString (), targets.ToArray (), rootCount
+    let layout = skeletonLayout root
+    layout.Markup, layout.Targets, layout.RootCount
 
 /// <summary>Writes an instance as server HTML with the skeleton's markers; region rows render through <c>backend</c>.</summary>
+/// <remarks>Inlined children's setups receive <c>setup</c>; their cleanups run with the enclosing component's.</remarks>
 let renderHtml (definition: TemplateComponent) (backend: Backend) (setup: Setup) (props: obj) (rejectBrowser: bool) (append: string -> unit) =
     let instance = definition.Setup.Invoke (setup, props)
 
-    writeMarkup append (Server (instance, rejectBrowser, backend)) (ResizeArray ()) definition.Root
+    writeMarkup append (Server (setup, rejectBrowser, backend)) (WriterState instance) definition.Root
     |> ignore
 
 let rec private expandNode (ops: Operations<'view>) (instance: obj) (node: TemplateNode) : 'view =
@@ -293,6 +399,7 @@ let rec private expandNode (ops: Operations<'view>) (instance: obj) (node: Templ
         | ArmRow
         | ItemRow _ ->
             ops.Keyed (fun left right -> region.Same.Invoke (left, right)) (fun () -> region.Items.Invoke instance) (expandRow ops region.Row)
+    | ChildNode (definition, props) -> expandWith ops definition (props.Invoke instance)
 
 /// <summary>Expands a region row through the operations; the reader returns the row's current item.</summary>
 and private expandRow (ops: Operations<'view>) (row: RegionRow) (current: unit -> obj) : 'view =
@@ -600,6 +707,10 @@ type TemplateBuilder<'inst> internal () =
                     Row = ItemRow (row :> TemplateComponent, Func<(unit -> obj), obj>(fun current -> box (fun () -> unbox<'item>(current ()))))
                 }
         )
+
+    /// <summary>Inlines a child template: its markup joins this template's skeleton, and its setup runs once per instance with props read untracked from the instance.</summary>
+    member _.render (definition: Component<'props>) (props: 'inst -> 'props) : TemplateView<'inst> =
+        TemplateView (ChildNode (definition :> TemplateComponent, Func<obj, obj>(fun instance -> box (props (unbox instance)))))
 
 module Component =
     /// <summary>Defines a component from per-instance setup and a template built once.</summary>

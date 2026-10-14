@@ -1559,6 +1559,246 @@ let private eachMarkup () =
         "<ul><!--[--><li>a</li><li>&lt;b&gt;</li><!--]--></ul>"
         (graph.Run (fun () -> Html.render Omit (Program.run (Component.render listed items))))
 
+type BadgeProps =
+    {
+        Count: Signal<int>
+        BadgeReads: int ref
+        BadgeLog: ResizeArray<string>
+    }
+
+type CardProps =
+    {
+        Heading: Signal<string>
+        Tally: Signal<int>
+        CardReads: int ref
+        BadgeCounter: int ref
+        CardLog: ResizeArray<string>
+    }
+
+let private badge =
+    Component.define
+        (fun setup (props: BadgeProps) ->
+            setup.OnCleanup (fun () -> props.BadgeLog.Add "cleanup badge")
+            props)
+        (fun t ->
+            t.button
+                [|
+                    t.Events.onClick (fun badge _ -> badge.BadgeLog.Add ("badge " + string badge.Count.Value))
+                |]
+                [|
+                    t.text (fun badge ->
+                        badge.BadgeReads.Value <- badge.BadgeReads.Value + 1
+                        string badge.Count.Value)
+                |])
+
+let private card =
+    Component.define
+        (fun setup (props: CardProps) ->
+            setup.OnCleanup (fun () -> props.CardLog.Add "cleanup card")
+            props)
+        (fun t ->
+            t.div
+                [| t.Events.onClick (fun card _ -> card.CardLog.Add "card") |]
+                [|
+                    t.text (fun card ->
+                        card.CardReads.Value <- card.CardReads.Value + 1
+                        card.Heading.Value)
+                    t.render badge (fun card ->
+                        {
+                            Count = card.Tally
+                            BadgeReads = card.BadgeCounter
+                            BadgeLog = card.CardLog
+                        })
+                |])
+
+let private cardProps (graph: Graph) =
+    {
+        Heading = graph.Run (fun () -> Api.createSignal "h")
+        Tally = graph.Run (fun () -> Api.createSignal 1)
+        CardReads = ref 0
+        BadgeCounter = ref 0
+        CardLog = ResizeArray<string>()
+    }
+
+let private inlinedChild () =
+    use graph = new Graph ()
+    let props = cardProps graph
+    let host = host ()
+    let mounted = mount graph host (Component.render card props)
+    equal ("h1", 1, 1) (host.textContent, props.CardReads.Value, props.BadgeCounter.Value)
+    graph.Run (fun () -> props.Tally.Value <- 2)
+    equal ("h2", 1, 2) (host.textContent, props.CardReads.Value, props.BadgeCounter.Value)
+    graph.Run (fun () -> props.Heading.Value <- "H")
+    equal ("H2", 2, 2) (host.textContent, props.CardReads.Value, props.BadgeCounter.Value)
+    equal true (isNull (badge :> TemplateDefinition).Compiled)
+    equal 1 ((card :> TemplateDefinition).Compiled :?> TemplateDom.Compiled).Children.Length
+
+    (host.querySelector "button"
+     |> unbox<HTMLButtonElement>)
+        .click()
+
+    mounted.Dispose ()
+
+    equal ([ "badge 2"; "card"; "cleanup badge"; "cleanup card" ], 0.) (List.ofSeq props.CardLog, host.childNodes.length)
+
+let private framed =
+    Component.define (fun _ (props: CardProps) -> props) (fun t -> t.section [||] [| t.render card id |])
+
+let private inlinedGrandchild () =
+    use graph = new Graph ()
+    let props = cardProps graph
+    let host = host ()
+    let mounted = mount graph host (Component.render framed props)
+    graph.Run (fun () -> props.Tally.Value <- 5)
+
+    (host.querySelector "button"
+     |> unbox<HTMLButtonElement>)
+        .click()
+
+    equal ("h5", [ "badge 5"; "card" ]) (host.textContent, List.ofSeq props.CardLog)
+    equal 2 ((framed :> TemplateDefinition).Compiled :?> TemplateDom.Compiled).Children.Length
+    mounted.Dispose ()
+    equal 0. host.childNodes.length
+
+type ShelfProps = { Shelf: Signal<Listed array> }
+
+let private shelf =
+    Component.define (fun _ (props: ShelfProps) -> props) (fun t ->
+        t.element
+            (HtmlTag "ul")
+            [||]
+            [|
+                t.each (fun (item: Listed) -> item.Id) (fun props -> props.Shelf.Value) listedRow
+            |])
+
+let private shelfSection =
+    Component.define (fun _ (items: Signal<Listed array>) -> items) (fun t ->
+        t.section [||] [| t.text "shelf:"; t.render shelf (fun items -> { Shelf = items }) |])
+
+let private inlinedRegion () =
+    use graph = new Graph ()
+    let items = graph.Run (fun () -> Api.createSignal [| { Id = 1; Text = "a" } |])
+    let host = host ()
+    let mounted = mount graph host (Component.render shelfSection items)
+    equal "shelf:a" host.textContent
+    graph.Run (fun () -> items.Value <- [| { Id = 2; Text = "b" }; { Id = 1; Text = "a" } |])
+    equal ("shelf:ba", 2) (host.textContent, regionMarkers (host.querySelector "ul" |> unbox<HTMLElement>))
+    mounted.Dispose ()
+    equal 0. host.childNodes.length
+
+let private textual =
+    Component.define (fun _ (value: Signal<string>) -> value) (fun t -> t.text (fun value -> value.Value))
+
+let private besideText =
+    Component.define (fun _ (value: Signal<string>) -> value) (fun t -> t.span [||] [| t.text "a"; t.render textual id |])
+
+let private inlinedText () =
+    use graph = new Graph ()
+    let value = graph.Run (fun () -> Api.createSignal "b")
+    let host = host ()
+    let mounted = mount graph host (Component.render besideText value)
+    graph.Run (fun () -> value.Value <- "c")
+    let span = host.querySelector "span" |> unbox<HTMLElement>
+    equal ("ac", 3.) (span.textContent, span.childNodes.length)
+    mounted.Dispose ()
+
+let private inlinedFailure () =
+    use graph = new Graph ()
+
+    let failingChild =
+        Component.define (fun _ () -> failwith "child") (fun t -> t.span [||] [||])
+
+    let parent =
+        Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.render failingChild id |])
+
+    let host = host ()
+    host.innerHTML <- "<span>keep</span>"
+    let mutable failed = false
+
+    try
+        mount graph host (Component.render parent ())
+        |> ignore
+    with error ->
+        failed <- error.Message = "child"
+
+    equal (true, "<span>keep</span>") (failed, host.innerHTML)
+
+type Composite =
+    {
+        Caption: Signal<string>
+        Card: CardProps
+        Items: Signal<Listed array>
+    }
+
+let private composite =
+    Component.define (fun _ (props: Composite) -> props) (fun t ->
+        t.div
+            [| t.Attrs.title (fun r -> r.Caption.Value) |]
+            [|
+                t.text (fun r -> r.Caption.Value)
+                t.render card (fun r -> r.Card)
+                t.render shelf (fun r -> { Shelf = r.Items })
+            |])
+
+let private inlinedTwin () =
+    use graph = new Graph ()
+    let card = cardProps graph
+
+    let props =
+        graph.Run (fun () ->
+            {
+                Caption = Api.createSignal "c"
+                Card = card
+                Items = Api.createSignal [| { Id = 1; Text = "a" } |]
+            })
+
+    let first, second = host (), host ()
+    let templateMount = mount graph first (Component.render composite props)
+
+    let twinMount =
+        mount graph second (Component.renderWith Program.ops composite props)
+
+    let matches expected =
+        equal (withoutComments second, expected) (withoutComments first, withoutComments second)
+
+    matches "<div title=\"c\">c<div>h<button>1</button></div><ul><li>a</li></ul></div>"
+    graph.Run (fun () -> props.Caption.Value <- "C")
+    matches "<div title=\"C\">C<div>h<button>1</button></div><ul><li>a</li></ul></div>"
+    graph.Run (fun () -> card.Tally.Value <- 2)
+    matches "<div title=\"C\">C<div>h<button>2</button></div><ul><li>a</li></ul></div>"
+    graph.Run (fun () -> card.Heading.Value <- "H")
+    matches "<div title=\"C\">C<div>H<button>2</button></div><ul><li>a</li></ul></div>"
+    graph.Run (fun () -> props.Items.Value <- [| { Id = 2; Text = "b" }; { Id = 1; Text = "a" } |])
+    matches "<div title=\"C\">C<div>H<button>2</button></div><ul><li>b</li><li>a</li></ul></div>"
+    templateMount.Dispose ()
+    twinMount.Dispose ()
+    equal (0., 0.) (first.childNodes.length, second.childNodes.length)
+
+let private structureRoundTrips () =
+    let definitions: TemplateComponent list =
+        [
+            holed :> TemplateComponent
+            staged :> TemplateComponent
+            listed :> TemplateComponent
+            rootListed :> TemplateComponent
+            shelved :> TemplateComponent
+            card :> TemplateComponent
+            framed :> TemplateComponent
+            shelfSection :> TemplateComponent
+            besideText :> TemplateComponent
+            composite :> TemplateComponent
+        ]
+
+    for definition in definitions do
+        let markup, _, _ = skeletonMarkup definition.Root
+        equal (markup, true) (markup, roundTrips markup)
+
+let private inlinedMarkup () =
+    use graph = new Graph ()
+    let props = cardProps graph
+
+    equal "<div>h<button>1</button></div>" (graph.Run (fun () -> Html.render Omit (Program.run (Component.render card props))))
+
 /// <summary>Checks template compilation and DOM materialisation.</summary>
 let cases =
     [|
@@ -1619,4 +1859,12 @@ let cases =
         "root-level each regions beside other roots update, reorder, move and dispose", rootRegions
         "a matchWith inside each rows follows, moves and leaves with its row", nestedRegions
         "each server markup under Fable matches .NET", eachMarkup
+        "an inlined child shares the clone and keeps its own instance, effect and handlers", inlinedChild
+        "a grandchild inlined through a child is hoisted and updates", inlinedGrandchild
+        "an inlined child's region reads the child instance", inlinedRegion
+        "text beside an inlined text root keeps separate nodes", inlinedText
+        "a failing inlined child setup rolls back the mount", inlinedFailure
+        "inlined children render the same DOM as their default expansion across parent and child updates", inlinedTwin
+        "region and child skeletons round-trip", structureRoundTrips
+        "inlined child server markup under Fable matches .NET", inlinedMarkup
     |]

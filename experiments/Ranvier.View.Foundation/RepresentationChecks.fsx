@@ -374,3 +374,44 @@ with :? System.ArgumentException ->
 equal true duplicateRejected
 
 printfn "PASS template each"
+
+type BadgeProps = { Count: int }
+
+let badge =
+    Component.define (fun _ (props: BadgeProps) -> props) (fun t ->
+        t.span [| t.Attrs.title (fun badge -> string badge.Count) |] [| t.text (fun badge -> string badge.Count) |])
+
+let carded =
+    Component.define (fun _ (props: GreetingProps) -> props) (fun t ->
+        t.div
+            [||]
+            [|
+                t.text (fun r -> r.Name)
+                t.render badge (fun r -> { Count = r.Title.Length })
+            |])
+
+equal "<div>&lt;Ada&gt;<span title=\"3\">3</span></div>" (render Omit (Component.render carded greetingProps))
+equal (render Omit (Component.render carded greetingProps)) (Html.render Omit (Tree.run (Component.renderWith Tree.ops carded greetingProps)))
+
+let textual =
+    Component.define (fun _ (value: string) -> value) (fun t -> t.text (fun value -> value))
+
+let besideText =
+    Component.define (fun _ (props: GreetingProps) -> props) (fun t -> t.span [||] [| t.text "a"; t.render textual (fun r -> r.Name) |])
+
+// Text beside an inlined text root is separated as sibling text is.
+equal "<span>a<!--!-->&lt;Ada&gt;</span>" (render Omit (Component.render besideText greetingProps))
+
+let mutable childCleanups = 0
+
+let cleaned =
+    Component.define (fun setup () -> setup.OnCleanup (fun () -> childCleanups <- childCleanups + 1)) (fun t -> t.span [||] [||])
+
+let cleaning =
+    Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.render cleaned id |])
+
+// An inlined child's cleanup runs with the enclosing server component.
+equal "<div><span></span></div>" (render Omit (Component.render cleaning ()))
+equal 1 childCleanups
+
+printfn "PASS template inlined children"

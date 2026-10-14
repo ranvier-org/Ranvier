@@ -44,6 +44,8 @@ type CompiledRegion =
     {
         /// <summary>The node index of the region's start marker.</summary>
         Marker: int
+        /// <summary>The part whose instance the region reads: 0 for the template, k for the k-th inlined child.</summary>
+        Owner: int
         /// <summary>True when the markers are roots of a multi-root skeleton.</summary>
         RootLevel: bool
         Same: obj -> obj -> bool
@@ -54,7 +56,7 @@ type CompiledRegion =
     }
 
 /// <summary>A definition compiled for the DOM: a skeleton, the walk to its dynamic nodes, and its slot tables.</summary>
-/// <remarks>A single-root skeleton is the root node itself and its walk starts at the root; otherwise the skeleton is a fragment of <c>RootCount</c> roots.</remarks>
+/// <remarks>A single-root skeleton is the root node itself and its walk starts at the root; otherwise the skeleton is a fragment of <c>RootCount</c> roots. The root compiled form lists the regions and inlined children of every depth.</remarks>
 [<NoEquality; NoComparison>]
 type Compiled =
     {
@@ -69,6 +71,20 @@ type Compiled =
         EventNames: string array
         Dispatch: Func<obj array, Node, obj, unit>
         Regions: CompiledRegion array
+        Children: CompiledChild array
+    }
+
+/// <summary>An inlined child template of a compiled template.</summary>
+and [<NoEquality; NoComparison>] CompiledChild =
+    {
+        Definition: TemplateComponent
+        Props: Func<obj, obj>
+        /// <summary>The part whose instance the props reader receives.</summary>
+        Owner: int
+        /// <summary>The template's node index of the child's first dynamic node.</summary>
+        Offset: int
+        /// <summary>The child's slot and event tables, indexed from <c>Offset</c>; its skeleton is null and its walk empty.</summary>
+        Tables: Compiled
     }
 
 /// <summary>Compiles child-index paths, in document order, into walk opcodes ending each path with <c>Collect</c>.</summary>
@@ -179,7 +195,8 @@ let private validateParsed (content: DocumentFragment) (walk: int array) (target
                 | TextSlotNode _ -> "a text node", not (isNull (box cursor)) && cursor.nodeType = 3.
                 | RegionNode _ -> "a region marker pair", isRegionStart cursor
                 | TextNode _
-                | FragmentNode _ -> invalidOp "Static nodes are not dynamic targets"
+                | FragmentNode _
+                | ChildNode _ -> invalidOp "Static nodes are not dynamic targets"
 
             if not matches then
                 let found =
@@ -206,22 +223,11 @@ let private readsOnce (row: RegionRow) =
     | ArmRow
     | ItemRow _ -> false
 
-/// <summary>Compiles a definition once: parses its skeleton markup and builds its walk, slot and region tables.</summary>
-/// <remarks>The skeleton belongs to the main document, as do its clones.</remarks>
-/// <exception cref="T:System.InvalidOperationException">The HTML parser restructures the markup, moving a dynamic node or changing the root count.</exception>
-let compile (definition: TemplateComponent) : Compiled =
-    let markup, targets, rootCount = skeletonMarkup definition.Root
-    let template = document.createElement "template" :?> HTMLTemplateElement
-    template.innerHTML <- markup
-    let content = importDeep template.content :?> DocumentFragment
-    let paths = Array.map snd targets
-    let walk = walkProgram paths
-    validateParsed content walk targets rootCount
-    let renderSlots = ResizeArray ()
-    let isolatedSlots = ResizeArray ()
-    let properties = ResizeArray ()
-    let events = ResizeArray ()
-    let regions = ResizeArray ()
+let private tables (targets: (TemplateNode * int array) array) (owners: int array) (part: int) (first: int) (count: int) =
+    let renderSlots = ResizeArray<int * Slot>()
+    let isolatedSlots = ResizeArray<int * Slot>()
+    let properties = ResizeArray<int * Func<obj, obj, unit> * obj>()
+    let events = ResizeArray<int * string * Func<obj, obj, unit>>()
 
     let add index (slot: Slot) =
         if slot.Mode = IsolatedMode then
@@ -229,62 +235,122 @@ let compile (definition: TemplateComponent) : Compiled =
         else
             renderSlots.Add (index, slot)
 
-    targets
-    |> Array.iteri (fun index (node, path) ->
-        match node with
-        | TextSlotNode slot -> add index slot
-        | ElementNode (_, _, elementProperties, slots, elementEvents, _) ->
-            for write, value in elementProperties do
-                properties.Add (index, write, value)
+    for absolute in first .. first + count - 1 do
+        if owners[absolute] = part then
+            let index = absolute - first
 
-            for slot in slots do
-                add index slot
+            match fst (targets[absolute]) with
+            | TextSlotNode slot -> add index slot
+            | ElementNode (_, _, elementProperties, slots, elementEvents, _) ->
+                for write, value in elementProperties do
+                    properties.Add (index, write, value)
 
-            for eventName, handler in elementEvents do
-                events.Add (index, eventName, handler)
-        | RegionNode region ->
-            let same = region.Same
+                for slot in slots do
+                    add index slot
 
-            regions.Add
-                {
-                    CompiledRegion.Marker = index
-                    RootLevel = rootCount > 1 && path.Length = 1
-                    Same = fun left right -> same.Invoke (left, right)
-                    Items = region.Items
-                    Once = readsOnce region.Row
-                    Render = rowRenderer region.Row
-                }
-        | TextNode _
-        | FragmentNode _ -> invalidOp "Static nodes are not dynamic targets")
+                for eventName, handler in elementEvents do
+                    events.Add (index, eventName, handler)
+            | RegionNode _ -> ()
+            | TextNode _
+            | FragmentNode _
+            | ChildNode _ -> invalidOp "Static nodes are not dynamic targets"
 
-    let eventArray = events.ToArray ()
+    renderSlots.ToArray (), isolatedSlots.ToArray (), properties.ToArray (), events.ToArray ()
+
+let private compilePart
+    (layout: SkeletonLayout)
+    (part: int)
+    (first: int)
+    (count: int)
+    (skeleton: Node)
+    (rootCount: int)
+    (walk: int array)
+    (regions: CompiledRegion array)
+    (children: CompiledChild array)
+    : Compiled =
+    let renderSlots, isolatedSlots, properties, events =
+        tables layout.Targets layout.Owners part first count
 
     let eventNames =
-        eventArray
+        events
         |> Array.map (fun (_, eventName, _) -> eventName)
         |> Array.distinct
 
     {
-        Skeleton =
-            if rootCount = 1 then
-                unbox content.firstChild
-            else
-                content :> Node
+        Skeleton = skeleton
         RootCount = rootCount
-        Walk =
-            if rootCount = 1 then
-                walkProgram (paths |> Array.map (fun path -> path[1..]))
-            else
-                walk
-        NodeCount = targets.Length
-        RenderSlots = renderSlots.ToArray ()
-        IsolatedSlots = isolatedSlots.ToArray ()
-        Properties = properties.ToArray ()
-        Events = eventArray
+        Walk = walk
+        NodeCount = count
+        RenderSlots = renderSlots
+        IsolatedSlots = isolatedSlots
+        Properties = properties
+        Events = events
         EventNames = eventNames
-        Dispatch = dispatchFor targets.Length eventArray eventNames
-        Regions = regions.ToArray ()
+        Dispatch = dispatchFor count events eventNames
+        Regions = regions
+        Children = children
     }
+
+/// <summary>Compiles a definition once: parses its skeleton markup and builds its walk, its slot tables, its regions and its inlined children's slot tables.</summary>
+/// <remarks>The skeleton belongs to the main document, as do its clones.</remarks>
+/// <exception cref="T:System.InvalidOperationException">The HTML parser restructures the markup, moving a dynamic node or changing the root count.</exception>
+let compile (definition: TemplateComponent) : Compiled =
+    let layout = skeletonLayout definition.Root
+    let targets = layout.Targets
+    let rootCount = layout.RootCount
+    let template = document.createElement "template" :?> HTMLTemplateElement
+    template.innerHTML <- layout.Markup
+    let content = importDeep template.content :?> DocumentFragment
+    let paths = Array.map snd targets
+    let walk = walkProgram paths
+    validateParsed content walk targets rootCount
+
+    let regions =
+        [|
+            for index in 0 .. targets.Length - 1 do
+                match targets[index] with
+                | RegionNode region, path ->
+                    let same = region.Same
+
+                    {
+                        CompiledRegion.Marker = index
+                        Owner = layout.Owners[index]
+                        RootLevel = rootCount > 1 && path.Length = 1
+                        Same = fun left right -> same.Invoke (left, right)
+                        Items = region.Items
+                        Once = readsOnce region.Row
+                        Render = rowRenderer region.Row
+                    }
+                | _ -> ()
+        |]
+
+    let children =
+        layout.Children
+        |> Array.mapi (fun index child ->
+            {
+                CompiledChild.Definition = child.Definition
+                Props = child.Props
+                Owner = child.Owner
+                Offset = child.First
+                Tables = compilePart layout (index + 1) child.First child.Count Unchecked.defaultof<Node> 0 [||] [||] [||]
+            })
+
+    compilePart
+        layout
+        0
+        0
+        targets.Length
+        (if rootCount = 1 then
+             unbox content.firstChild
+         else
+             content :> Node)
+        rootCount
+        (if rootCount = 1 then
+             walkProgram (paths |> Array.map (fun path -> path[1..]))
+         else
+             walk)
+        regions
+        children
 
 /// <summary>The mount-owned operations a template instance uses.</summary>
 type internal MountServices =
@@ -372,21 +438,17 @@ let private collect (root: Node) (walk: int array) (state: obj array) =
             store state (StateNodes + count) (box cursor)
             count <- count + 1
 
-/// <summary>Materialises one instance: runs setup, clones the skeleton, binds its slots and events, appends it and mounts its regions.</summary>
-let internal materialise (definition: TemplateDefinition) (props: obj) (services: MountServices) =
-    let template = definition :?> TemplateComponent
-
-    if isNull definition.Compiled then
-        definition.Compiled <- box (compile template)
-
-    let compiled = definition.Compiled :?> Compiled
-    let instance = Api.untrack (fun () -> template.Setup.Invoke (services.Setup, props))
-    let clone = compiled.Skeleton.cloneNode true
+/// <summary>A state array for an instance of <c>compiled</c>, with <c>extra</c> trailing elements and every previous value unset.</summary>
+let private stateFor (compiled: Compiled) (instance: obj) (extra: int) =
     let renderCount = compiled.RenderSlots.Length
-    let isolatedCount = compiled.IsolatedSlots.Length
     let previousBase = StateNodes + compiled.NodeCount
-    let pendingBase = previousBase + renderCount + isolatedCount
-    let state = allocate (pendingBase + renderCount)
+
+    let pendingBase =
+        previousBase
+        + renderCount
+        + compiled.IsolatedSlots.Length
+
+    let state = allocate (pendingBase + renderCount + extra)
     store state StateCompiled (box compiled)
     store state StateInstance instance
     store state StateOwner (box (Api.getOwner ()))
@@ -395,8 +457,14 @@ let internal materialise (definition: TemplateDefinition) (props: obj) (services
     for index in previousBase .. pendingBase - 1 do
         store state index unset
 
-    collect clone compiled.Walk state
+    state
 
+/// <summary>Writes a part's static properties, starts its render and isolated effects, and attaches its events.</summary>
+let private bind (services: MountServices) (compiled: Compiled) (state: obj array) (instance: obj) =
+    let renderCount = compiled.RenderSlots.Length
+    let isolatedCount = compiled.IsolatedSlots.Length
+    let previousBase = StateNodes + compiled.NodeCount
+    let pendingBase = previousBase + renderCount + isolatedCount
     let properties = compiled.Properties
 
     for i in 0 .. properties.Length - 1 do
@@ -506,6 +574,49 @@ let internal materialise (definition: TemplateDefinition) (props: obj) (services
                         graph.Run (fun () -> Api.runWithOwner owner (fun () -> Api.untrack (fun () -> handler.Invoke (instance, event))))
             )
 
+/// <summary>The instance of a part: the template's own for 0, an inlined child's from its state array otherwise.</summary>
+let private partInstance (state: obj array) (childBase: int) (part: int) : obj =
+    if part = 0 then
+        at state StateInstance
+    else
+        at (unbox<obj array>(at state (childBase + part - 1))) StateInstance
+
+/// <summary>Materialises one instance: runs setup, clones the skeleton, binds its slots and events and those of its inlined children, appends it and mounts its regions.</summary>
+let internal materialise (definition: TemplateDefinition) (props: obj) (services: MountServices) =
+    let template = definition :?> TemplateComponent
+
+    if isNull definition.Compiled then
+        definition.Compiled <- box (compile template)
+
+    let compiled = definition.Compiled :?> Compiled
+    let instance = Api.untrack (fun () -> template.Setup.Invoke (services.Setup, props))
+    let clone = compiled.Skeleton.cloneNode true
+    let children = compiled.Children
+    let state = stateFor compiled instance children.Length
+    collect clone compiled.Walk state
+    bind services compiled state instance
+
+    let childBase =
+        StateNodes
+        + compiled.NodeCount
+        + 2 * compiled.RenderSlots.Length
+        + compiled.IsolatedSlots.Length
+
+    for k in 0 .. children.Length - 1 do
+        let child = at children k
+
+        let childInstance =
+            Api.untrack (fun () -> child.Definition.Setup.Invoke (services.Setup, child.Props.Invoke (partInstance state childBase child.Owner)))
+
+        let tables = child.Tables
+        let childState = stateFor tables childInstance 0
+
+        for i in 0 .. tables.NodeCount - 1 do
+            store childState (StateNodes + i) (at state (StateNodes + child.Offset + i))
+
+        store state (childBase + k) (box childState)
+        bind services tables childState childInstance
+
     if compiled.RootCount = 1 then
         services.Append clone
     else
@@ -520,15 +631,16 @@ let internal materialise (definition: TemplateDefinition) (props: obj) (services
 
     for i in 0 .. regions.Length - 1 do
         let region = at regions i
+        let owner = partInstance state childBase region.Owner
         let start: Node = unbox (at state (StateNodes + region.Marker))
         let finish: Node = unbox start.nextSibling
         let items = region.Items
 
         let read =
             if region.Once then
-                let snapshot = items.Invoke instance
+                let snapshot = items.Invoke owner
                 fun () -> snapshot
             else
-                fun () -> items.Invoke instance
+                fun () -> items.Invoke owner
 
         services.Region (start, finish, region.RootLevel, region.Same, read, region.Render)
