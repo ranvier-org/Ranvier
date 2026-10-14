@@ -169,7 +169,7 @@ type private OwnedRange(host: Node) =
     let staging = fragment ()
     let first, last = comment "ranvier:start", comment "ranvier:end"
     let entries = ResizeArray<Entry>()
-    let generatedDescendants = ResizeArray<Node>()
+    let mutable generatedDescendants: ResizeArray<Node> = null
     let mutable placement: Node = staging
     // False while every root is a detached node created by the mount; `Attach` then inserts each root individually. A keyed region, a native node or a cloned-fragment root moves all roots into `staging`.
     let mutable staged = false
@@ -263,6 +263,9 @@ type private OwnedRange(host: Node) =
         insert staging finish (Some last)
 
     member this.AppendGenerated(parent: Node, node: Node) =
+        if isNull generatedDescendants then
+            generatedDescendants <- ResizeArray ()
+
         generatedDescendants.Add node
         claim claims node
         parent.appendChild node |> ignore
@@ -478,17 +481,18 @@ type private OwnedRange(host: Node) =
         naiveRoots.Clear ()
 
 #endif
-        for index in generatedDescendants.Count - 1 .. -1 .. 0 do
-            let node = at generatedDescendants index
+        if not (isNull generatedDescendants) then
+            for index in generatedDescendants.Count - 1 .. -1 .. 0 do
+                let node = at generatedDescendants index
 
-            try
-                remove (node :?> ChildNode)
-            with error ->
-                errors.Add error
+                try
+                    remove (node :?> ChildNode)
+                with error ->
+                    errors.Add error
 
-            unclaim claims node
+                unclaim claims node
 
-        generatedDescendants.Clear ()
+            generatedDescendants.Clear ()
 
         for index in entries.Count - 1 .. -1 .. 0 do
             let entry = at entries index
@@ -581,12 +585,15 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
 
     let range = OwnedRange host
 
-    let cleanupErrors = ResizeArray<exn>()
+    let mutable cleanupErrors: ResizeArray<exn> = null
 
     let release () =
         range.Release ()
 
-        if cleanupErrors.Count > 0 then
+        if
+            not (isNull cleanupErrors)
+            && cleanupErrors.Count > 0
+        then
             let errors = cleanupErrors.ToArray ()
             cleanupErrors.Clear ()
 
@@ -599,6 +606,9 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
         try
             callback ()
         with error ->
+            if isNull cleanupErrors then
+                cleanupErrors <- ResizeArray ()
+
             cleanupErrors.Add error
 
     let ownedCleanup (owner: Owner) callback =
@@ -776,18 +786,23 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
         bindingSetupFailure |> Option.iter raise
 #endif
 
-    let delegatedNames = ResizeArray<string>()
+    // Created by the first delegated event; registration ends with setup.
+    let mutable delegatedNames: ResizeArray<string> = null
     let mutable delegatedHost: Node = Unchecked.defaultof<_>
 
     let delegateAt (target: Node) =
-        for index in 0 .. delegatedNames.Count - 1 do
-            let eventName = delegatedNames[index]
-            delegateFrom.Invoke (target, eventName)
+        if not (isNull delegatedNames) then
+            for index in 0 .. delegatedNames.Count - 1 do
+                let eventName = delegatedNames[index]
+                delegateFrom.Invoke (target, eventName)
 
         delegatedHost <- target
 
     let releaseDelegation () =
-        if not (isNull (box delegatedHost)) then
+        if
+            not (isNull (box delegatedHost))
+            && not (isNull delegatedNames)
+        then
             for index in 0 .. delegatedNames.Count - 1 do
                 let eventName = delegatedNames[index]
                 undelegateFrom.Invoke (delegatedHost, eventName)
@@ -815,6 +830,9 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
             invalid "Prepared node operations require a node from the current clone"
 
     let registerDelegated (eventName: string) =
+        if isNull delegatedNames then
+            delegatedNames <- ResizeArray ()
+
         let mutable known = false
 
         for index in 0 .. delegatedNames.Count - 1 do
@@ -884,7 +902,9 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
             range.Attach (host, before)
             root.MarkAttached ()
             delegateAt host
-            root.OnCleanup releaseDelegation
+
+            if not (isNull delegatedNames) then
+                root.OnCleanup releaseDelegation
 
             Mounted this
         with _ ->
@@ -1381,21 +1401,18 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
         member _.ClearFailure() =
             clearReported ()
 
-let private mountCore scheduling onRoot graph parentScope report host before build =
-    let state = MountState (scheduling, graph, parentScope, report, host)
-    onRoot state.Root
-    state.Run (before, build)
-
 /// <summary>Mounts a view with an owned commit queue when deferred scheduling is selected.</summary>
 /// <remarks>Nested keyed mounts share the containing mount's scheduler.</remarks>
 let mountWith mode graph parentScope report host before build =
     match mode with
-    | SynchronousCommits -> mountCore Synchronous ignore graph parentScope report host before build
+    | SynchronousCommits -> MountState(Synchronous, graph, parentScope, report, host).Run(before, build)
     | QueuedCommits (failure, post) ->
         let queue = Queue (graph, failure, post)
 
         try
-            mountCore (Queued queue) (fun root -> root.OnCleanup queue.Dispose) graph parentScope report host before build
+            let state = MountState (Queued queue, graph, parentScope, report, host)
+            state.Root.OnCleanup queue.Dispose
+            state.Run (before, build)
         with _ ->
             queue.Dispose ()
             reraise ()
