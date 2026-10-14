@@ -210,7 +210,7 @@ The fixture gives every Ranvier mount its own `Graph`; its construction and acti
 
 ## Acceptance
 
-With plan 2b, the playground suites pass 297 Node tests and 22 Chromium tests; the 12 portable .NET representation checks print `PASS`, and the 8 pure lifetime checks pass.
+With plan 2c, the playground suites pass 312 Node tests and 22 Chromium tests; the 14 portable .NET representation checks print `PASS`, and the 8 pure lifetime checks pass.
 
 ## Dynamic structure
 
@@ -278,3 +278,60 @@ The benchmark row has no dynamic structure. [One run](framework-performance/inve
 | Dispose, 128 | 55.2 | 39.1 | 1.41 |
 
 The run fell in one of the machine's slow phases: Solid 2's 128-row mount took 416.9 µs against 285.9 µs in the `a0de558` run, and the 128-row update ratio per process was 1.03 / 1.18 / 1.24. [The run before it](framework-performance/investigation/template-structure/run-c85916f/run-1.json) was slower still (128-row mount 1.39× overall, 1.17 / 1.22 / 1.17× per process). The paired `f4273e6` columns above are the comparison with `19c8a8f`.
+
+## Generated catalogue (plan 2c)
+
+Plan 2c ([implementation plan](../superpowers/plans/2026-10-14-component-templates-catalogue.md)) generates the template builder's element, attribute, property and event members from the catalogue that generates `Html.Program.*`. `tools/Ranvier.Dom.Generate` writes `Generated/HtmlTemplate.fs` beside `Generated/Html.fs`. The file declares `[<AutoOpen>] module Ranvier.View.Foundation.HtmlTemplate`, so `open Ranvier.View.Foundation` brings the members into scope. Each member is an optional type extension on a handwritten builder (`TemplateBuilder`, `AttributeBuilder`, `PropertyBuilder`, `EventBuilder`) or on a marker class in the nested `Groups` module, and its body is one call into the handwritten `TemplateParts` module of `Template.fs`. The handwritten members it replaces are removed; `t.Props.value` is now `t.Props.Input.value` and `t.Props.disabled` is `t.Props.Button.disabled`.
+
+The surface, condensed from the [spec clarifications](../superpowers/specs/2026-10-13-component-templates-design.md#generated-catalogue-clarifications):
+
+| Builder | Flat members | Groups |
+|---|---|---|
+| `t` | one per tag of `HTMLElementTagNameMap`: `t.div parts children`; void tags take parts only | |
+| `t.Attrs` | the policy's common attributes, plus `data` and `aria` | `t.Attrs.Button`, `t.Attrs.Input`, `t.Attrs.Select`, `t.Attrs.TextArea`, `t.Attrs.Option` |
+| `t.Props` | settable primitive properties declared on `HTMLElement` or its ancestors and mixins | one per other declaring type: `t.Props.Input.value` |
+| `t.Events` | events of `HTMLElementEventMap`: `t.Events.onClick` | element-specific events by the tag's native type: `t.Events.Video.onWaitingforkey` |
+
+Names follow `Html.fs`, with the `authoring.json` renames for attributes (`t.Attrs.className`). A group is named by its native type without `HTML` and `Element` (`TableCell`); attribute groups use the same names, while `Html.Attrs` keeps the policy module names (`Html.Attrs.Textarea`). Flat and grouped members are generic in `'native :> <declaring native type>` and a tag fixes `'native`, so an element-specific member on another element is a compile error. A value gives a static part, an `'inst -> value` reader a dynamic part and a `Source` from `t.from` a source part; string and ARIA boolean attributes add `option` forms that remove the attribute on `None`, and string readers and sources map `null` to `None`. Template markup lists static attributes before dynamic ones, while `Html.Program` keeps authoring order; the two agree up to attribute order.
+
+Counts from `Generated/Html.coverage.json`:
+
+| Key | Value |
+|---|---|
+| `templateTagCount` | 112 |
+| `templateAttributeCount` | 34, plus `data` and `aria` |
+| `templatePropertyCount` | 409: 68 flat, 341 in 60 groups (`templatePropertyGroups`) |
+| `templateEventCount` | 132: 108 flat, 24 in 3 groups (`templateEventGroups`: `Audio`, `Body`, `Video`) |
+
+`HtmlTemplate.fs` has 5,298 lines and 405,494 bytes. `Html.fs` is byte-identical to its pre-plan output (587,597 bytes).
+
+### Bundle and emitted JavaScript
+
+The benchmark bundle (`run.mjs --build`: Fable Release with counters off, then `vite build`) holds every adapter, including `ranvier-template`:
+
+| | Raw | Vite gzip | `gzip -6` |
+|---|---|---|---|
+| Before (`a4d310c`) | 419,342 B | 127.83 kB | 126,358 B |
+| After (`f484e89`) | 419,612 B | 127.86 kB | 126,420 B |
+
+The catalogue adds 270 bytes raw and 62 bytes gzipped; the paired builds below, at `0e82e46` and `e8abf81`, reproduce both raw sizes (419.34 and 419.61 kB). Under Fable each extension member is an exported module-level function that takes the builder first, and a call site passes all arguments at once (the curried `t.div parts children` becomes one three-argument call). Vite removes unused members: the bundle contains neither `Groups.TableCellProperties.abbr` nor `Groups.TemplateProperties.shadowRootCustomElementRegistry`. An unminified build of the same configuration keeps only the members the benchmark and the bundled test modules use (`div`, `button`, `input`, `className`, `id`, `title`, `onClick`, the `Button` and `Input` property accessors, `ButtonProperties.disabled` and `InputProperties.value`), 8 `TemplateParts` helpers, and the two marker classes those accessors construct, `Groups_ButtonProperties$1` and `Groups_InputProperties$1`.
+
+At `e8abf81`, `curry`, `uncurry` and `partialApply` occur 0 times in the emitted `Generated/HtmlTemplate.js`, `Template.js` and `TemplateDom.js` (Playground `generated-tests/experiments/Ranvier.View.Foundation/`), as before the plan.
+
+### Paired benchmark
+
+The benchmark row uses the same parts as before the plan, now through the generated members. [Paired runs](framework-performance/investigation/template-catalogue/paired-e8abf81/) of `run.mjs --template-comparison` on 2026-10-14 (AMD Ryzen 9 9900X, Chromium 153.0.8010.12, Solid 2.0.0-rc.14) alternate `0e82e46`, the commit before plan 2c's code, and `e8abf81` three times each, every run passing its 45 correctness checks. Median ratio of the template to Solid 2 over the three runs, with their range:
+
+| Phase, rows | `0e82e46` | `e8abf81` |
+|---|---|---|
+| Mount, 1 | 1.11 (1.11–1.13) | 1.13 (1.09–1.13) |
+| Mount, 16 | 1.16 (1.16–1.16) | 1.17 (1.15–1.17) |
+| Mount, 128 | 1.16 (1.14–1.16) | 1.15 (1.14–1.22) |
+| Update, 1 | 0.80 (0.77–0.80) | 0.79 (0.79–0.79) |
+| Update, 16 | 1.04 (1.03–1.05) | 1.04 (1.03–1.04) |
+| Update, 128 | 1.06 (1.05–1.08) | 1.07 (1.06–1.08) |
+| Dispose, 1 | 1.29 (1.24–1.33) | 1.27 (1.27–1.27) |
+| Dispose, 16 | 1.29 (1.13–1.41) | 1.23 (1.18–1.42) |
+| Dispose, 128 | 1.34 (1.32–1.35) | 1.36 (1.34–1.48) |
+
+Every cell's two ranges overlap, and each base median lies within the head's range. Two head medians sit 0.01 above the base's range, the table's resolution: the 16-row mount (1.17 against 1.16–1.16) and the 128-row disposal (1.36 against 1.32–1.35). Solid 2's 128-row mount took 270 to 284 µs across the six runs. The generated catalogue leaves the benchmark row's cost unchanged within run-to-run variation.

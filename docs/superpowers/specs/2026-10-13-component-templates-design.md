@@ -58,6 +58,39 @@ H.Program.section [||] [| for i in 1..128 -> Component.render row { Index = i; S
 - Dynamic structure: `T.render childDef (fun r -> props)`, `T.view (fun r -> view)`, `T.matchWith (fun r -> union) arms`, `T.branch (fun r -> key) arms`, `T.each key (fun r -> items) row`. `T.matchWith` is the preferred branch form: arms are chosen by union case, the compiler checks exhaustiveness, and each arm is a component definition whose props come from the case payload.
 - `Component.render def props : Program.View` and `Component.renderWith ops def props : 'view` embed a template component in any representation.
 
+### Generated catalogue clarifications
+
+Plan 2c ([implementation plan](../plans/2026-10-14-component-templates-catalogue.md)) generates the builder's element, attribute, property and event members. `T.*` in this document means these members.
+
+- **Builder members.** Generated helpers are members of the template builder: `t.div`, `t.Attrs.title`, `t.Props.Input.value`, `t.Events.onClick`. They are optional type extensions in `[<AutoOpen>] module Ranvier.View.Foundation.HtmlTemplate` (`Generated/HtmlTemplate.fs`); `open Ranvier.View.Foundation` brings them into scope.
+- **Names.** Tags and properties keep their declared names, backticked where they are F# keywords (``` t.``base`` ```). Attribute members take the `authoring.json` renames that `Html.Authoring` uses, so the class attribute is `t.Attrs.className`. Events are `on` followed by the event name with its first letter upper-cased (`onClick`, `onAnimationcancel`).
+- **Grouping.**
+
+  | Builder | Flat members | Groups |
+  |---|---|---|
+  | `t` | one member per tag of `HTMLElementTagNameMap` (112); void tags take parts only | |
+  | `t.Attrs` | the policy group with `"module": ""`, plus `data` and `aria` | one group per other policy group (`t.Attrs.Button.disabled`) |
+  | `t.Props` | settable properties declared on `HTMLElement` or its ancestors and mixins | one group per other declaring type (`t.Props.Input.value`) |
+  | `t.Events` | events of `HTMLElementEventMap` | element-specific events, grouped by the tag's native type (`t.Events.Video.onWaitingforkey`) |
+
+  A group is named by its native type with a leading `HTML` and a trailing `Element` removed: `HTMLInputElement` gives `Input`, `HTMLTableCellElement` gives `TableCell`. Template attribute groups are named by native type too, so `t.Attrs.TextArea` matches `t.Props.TextArea`; `Html.Attrs` keeps the policy module names (`Html.Attrs.Textarea`).
+- **Element typing.** A flat or grouped member is generic in `'native` with `'native :> <declaring native type>`, and a tag member fixes `'native` to the tag's native type, so `t.Props.Input.value` inside `t.div` is a compile error.
+- **Overloads.**
+
+  | Kind | Overloads |
+  |---|---|
+  | string attribute | `string`, `string option`, `'inst -> string`, `'inst -> string option`, `Source<'inst, string>`, `Source<'inst, string option>` |
+  | boolean attribute | `bool`, `'inst -> bool`, `Source<'inst, bool>` |
+  | ARIA boolean attribute | `bool`, `bool option`, `'inst -> bool`, `'inst -> bool option`, `Source<'inst, bool>`, `Source<'inst, bool option>` |
+  | `data`, `aria` | `(suffix, string)`, `(suffix, 'inst -> string option)`, `(suffix, Source<'inst, string option>)` |
+  | property of type `'v` | `'v`, `'inst -> 'v`, `Source<'inst, 'v>` |
+  | event of type `'e` | `'inst -> 'e -> unit` |
+
+- **Attribute values.** Generated attributes have `Typed`'s semantics: a string attribute is removed on `None`; a boolean attribute is `""` when true and absent when false; an ARIA boolean writes `"true"` or `"false"` and is removed on `None`. String readers and sources map `null` to `None`, which removes the attribute. `data-` and `aria-` names are checked by `Typed.prefixedAttributeName`.
+- **Name validation.** `t.Attrs.attribute` validates its name when the template is built, so an invalid name raises at `Component.define`.
+- **Attribute order.** Template markup lists static attributes before dynamic ones; `Html.Program` keeps authoring order. Attribute order is insignificant in HTML, and a template and its `createComponent` twin produce the same markup up to attribute order.
+- **Emitted JavaScript.** Under Fable, each extension member compiles to a module-level function that takes the builder first. Vite removes unused members; a used group accessor constructs one small `Groups.*` instance.
+
 ## Definition and instance model
 
 `Component<'props>` derives from a non-generic `ComponentDefinition` holding the erased setup, the template tree, and one lazily filled compiled-form slot per backend kind.
