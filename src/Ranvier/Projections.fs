@@ -111,11 +111,21 @@ type internal ProjectionBeacon(graph: Graph, host: IBeaconHost) =
 /// <summary>
 /// A row with its item source.
 /// </summary>
-[<Sealed; AllowNullLiteral>]
+[<AllowNullLiteral>]
 type internal ItemRow<'T, 'K, 'V>(key: 'K, item: Signal<'T>) =
     inherit RowEntry<'K, 'V>(key)
 
     member _.Item = item
+
+/// <summary>
+/// A row whose value is its factory's result, held without a row memo. <c>Row</c> is null. <c>Reader</c> is null, or
+/// raises the factory's failure.
+/// </summary>
+[<Sealed; AllowNullLiteral>]
+type internal OnceRow<'T, 'K, 'V>(key: 'K, item: Signal<'T>) =
+    inherit ItemRow<'T, 'K, 'V>(key, item)
+
+    member val Value: 'V = Unchecked.defaultof<'V> with get, set
 
 /// <summary>
 /// A read-only dictionary that enumerates in insertion order. Holds every key
@@ -419,10 +429,12 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             Tracer.Notified graph
 
     /// <summary>
-    /// Whether anything other than the projection's <c>RowWatch</c> reads the row.
+    /// Whether anything other than the projection's <c>RowWatch</c> reads the row. A memo-free row is observed through
+    /// the key set.
     /// </summary>
     let rowObserved (entry: RowEntry<'K, 'V>) =
-        entry.Row.ObserverCount > (if entry.Watched then 1 else 0)
+        not (isNull (box entry.Row))
+        && entry.Row.ObserverCount > (if entry.Watched then 1 else 0)
 
     member private this.Pass = box this :?> IProjectionPass
 
@@ -435,6 +447,19 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
     /// <summary>Whether a pass creates its added rows before it retires its removed ones.</summary>
     member val internal CreateFirst = false with get, set
+
+    /// <summary>The value of a memo-free row, or null while the projection's rows have memos.</summary>
+    member val internal OnceValue: Func<RowEntry<'K, 'V>, 'V> = null with get, set
+
+    /// <summary>Raises <c>NotSupportedException</c> naming <c>operation</c> when the rows have no row memos.</summary>
+    member internal this.RequireRowMemos(operation: string) =
+        if not (isNull this.OnceValue) then
+            raise (
+                NotSupportedException (
+                    operation
+                    + " reads row memos, and a projection from createProjectionOnce has none. Use createProjectionWith."
+                )
+            )
 
     member internal _.IsDisposedInternal = disposed
 
@@ -1068,7 +1093,10 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
         let existing = entries.Find key
 
         if not (isNull existing) then
-            graph.Track (existing.Row :> ISource)
+            if isNull (box existing.Row) then
+                graph.Track (keys :> ISource)
+            else
+                graph.Track (existing.Row :> ISource)
 
     /// <summary>
     /// Links the reader of an absent key to the keys cell, so it wakes when
@@ -1081,29 +1109,36 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             observed <- true
 
     /// <summary>
-    /// A tracked read of a row. A pending row raises <c>NotReadyException</c>
-    /// naming the source its reader awaits, and links the caller to that
-    /// source as well as to the row.
+    /// A tracked read of a row. A pending row raises <c>NotReadyException</c> naming the source its reader awaits, and
+    /// links the caller to that source as well as to the row. A memo-free row is a tracked read of the key set.
     /// </summary>
     member private this.ReadRow(entry: RowEntry<'K, 'V>) : 'V =
-        try
-            try
-                entry.Row.Value
-            with NotReadyException _ ->
-                let mutable awaited = entry.Row :> INode
-                let mutable e = entry.Row.PendingSources.GetEnumerator ()
+        if isNull (box entry.Row) then
+            graph.Track (keys :> ISource)
 
-                if e.MoveNext () then
-                    awaited <- e.Current
-
-                match Awaited.source awaited with
-                | ValueSome source -> graph.Track source
-                | ValueNone -> ()
-
-                raise (graph.NotReady awaited)
-        finally
-            if not observed && rowObserved entry then
+            if not observed && keys.ObserverCount > 0 then
                 observed <- true
+
+            this.OnceValue.Invoke entry
+        else
+            try
+                try
+                    entry.Row.Value
+                with NotReadyException _ ->
+                    let mutable awaited = entry.Row :> INode
+                    let mutable e = entry.Row.PendingSources.GetEnumerator ()
+
+                    if e.MoveNext () then
+                        awaited <- e.Current
+
+                    match Awaited.source awaited with
+                    | ValueSome source -> graph.Track source
+                    | ValueNone -> ()
+
+                    raise (graph.NotReady awaited)
+            finally
+                if not observed && rowObserved entry then
+                    observed <- true
 
     /// <summary>
     /// The key set, in source order. A tracked read of the keys cell.
@@ -1347,10 +1382,14 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
                 let entry = entries.Find key
 
                 if not (isNull entry) then
-                    (entry.Row :> ISource).UpdateIfNecessary()
+                    if isNull (box entry.Row) then
+                        if isNull (box entry.Reader) then
+                            copy.Add (key, this.OnceValue.Invoke entry)
+                    else
+                        (entry.Row :> ISource).UpdateIfNecessary()
 
-                    if entry.Settled then
-                        copy.Add (key, entry.Row.Peek)
+                        if entry.Settled then
+                            copy.Add (key, entry.Row.Peek)
 
             Tracer.Walked (graph, id)
             copy :> IReadOnlyDictionary<'K, 'V>)
@@ -1374,6 +1413,8 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     /// </para>
     /// </remarks>
     member this.AsObservableCollection() : ObservableCollection<'V> =
+        this.RequireRowMemos "AsObservableCollection"
+
         if disposed then
             raise (ObjectDisposedException (this.GetType().Name))
 
@@ -1582,6 +1623,8 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     /// alone do not report <c>Changed</c>. The first read and overflow report a reset, as <c>NewKeyReader</c> does.
     /// </remarks>
     member this.NewValueReader() : ProjectionReader<'K> =
+        this.RequireRowMemos "NewValueReader"
+
         if not disposed && isNull (box values) then
             values <-
                 ProjectionValues (
@@ -1675,6 +1718,9 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
     let adds = ResizeArray<struct ('K * 'T)>()
     let writes = ResizeArray<struct (Signal<'T> * 'T)>()
 
+    /// <summary>The memo-free factory, or null.</summary>
+    let mutable once: (unit -> 'T) -> 'V = Unchecked.defaultof<_>
+
     /// <summary>
     /// Stages one item of the pass: a write to a survivor's item source, or a
     /// row to create.
@@ -1717,6 +1763,41 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
             entry.Row <- Memo<'V>.Create(graph, this.Compute entry, rowMode)
             Tracer.Part (graph, (entry.Row :> INode).Id, (this :> INode).Id, box key)
 
+    /// <summary>
+    /// A reader that raises the failure of the factory for <c>key</c>. Under <c>CreateFirst</c> the failure is raised at
+    /// once instead. A pending-source read becomes an <c>InvalidOperationException</c> whose message ends with
+    /// <c>advice</c>.
+    /// </summary>
+    member private this.FactoryFailure(key: 'K, error: exn, advice: string) : unit -> 'V =
+        match error with
+        | NotReadyException _ ->
+            let message =
+                "The projection's factory for key "
+                + string key
+                + " read a pending source. The factory runs once per key, untracked, and cannot wait for a source to settle."
+                + advice
+
+            let failure =
+#if FABLE_COMPILER
+                let failure = InvalidOperationException message
+                Platform.setInner failure error
+                failure
+#else
+                InvalidOperationException (message, error)
+#endif
+
+            if this.CreateFirst then
+                raise failure
+
+            fun () -> raise failure
+        | _ ->
+            let captured = Platform.captureFailure null error
+
+            if this.CreateFirst then
+                Platform.rethrowStored captured
+
+            fun () -> Platform.rethrowStored captured
+
     member private this.CreateFactored(key: 'K, item: 'T) =
         let entry = this.NewRow (key, item)
         let source = entry.Item
@@ -1724,6 +1805,9 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
         keyScope.SetParent (this.Scope.AttachLinked keyScope)
         entry.Scope <- keyScope
         Tracer.PartScope (graph, keyScope, (this :> INode).Id, box key)
+#if RANVIER_COUNTERS
+        Counters.FactoryRowCreated ()
+#endif
 
         graph.RunOwned (
             keyScope,
@@ -1731,35 +1815,43 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
                 entry.Reader <-
                     try
                         factory (fun () -> source.Value)
-                    with
-                    | NotReadyException _ as ex ->
-                        let message =
-                            "The projection's factory for key "
-                            + string key
-                            + " read a pending source. The factory runs once per key, untracked, and cannot wait for a source to settle. Read the source inside the reader the factory returns."
-
-                        let failure =
-#if FABLE_COMPILER
-                            let failure = InvalidOperationException message
-                            Platform.setInner failure ex
-                            failure
-#else
-                            InvalidOperationException (message, ex)
-#endif
-
-                        if this.CreateFirst then
-                            raise failure
-
-                        fun () -> raise failure
-                    | ex ->
-                        if this.CreateFirst then
-                            reraise ()
-
-                        let captured = Platform.captureFailure null ex
-                        fun () -> Platform.rethrowStored captured
+                    with ex ->
+                        this.FactoryFailure (key, ex, " Read the source inside the reader the factory returns.")
 
                 entry.Row <- Memo<'V>.Create(graph, this.Compute entry, rowMode)
                 Tracer.Part (graph, (entry.Row :> INode).Id, (this :> INode).Id, box key)
+        )
+
+    /// <summary>Makes every row a memo-free row: the factory's result, stored once per key.</summary>
+    member internal this.UseOnce(factory: (unit -> 'T) -> 'V) =
+        once <- factory
+
+        this.OnceValue <-
+            Func<RowEntry<'K, 'V>, 'V>(fun entry ->
+                let row = entry :?> OnceRow<'T, 'K, 'V>
+
+                if isNull (box row.Reader) then row.Value else row.Reader ())
+
+    member private this.CreateOnce(key: 'K, item: 'T) =
+        let entry = OnceRow<'T, 'K, 'V>(key, Signal<'T>(graph, item))
+        Tracer.Part (graph, (entry.Item :> INode).Id, (this :> INode).Id, box key)
+        this.AddEntry (key, entry)
+        let source = entry.Item
+        let keyScope = new Owner (graph.Root)
+        keyScope.SetParent (this.Scope.AttachLinked keyScope)
+        entry.Scope <- keyScope
+        Tracer.PartScope (graph, keyScope, (this :> INode).Id, box key)
+#if RANVIER_COUNTERS
+        Counters.OnceRowCreated ()
+#endif
+
+        graph.RunOwned (
+            keyScope,
+            fun () ->
+                try
+                    entry.Value <- once (fun () -> source.Value)
+                with ex ->
+                    entry.Reader <- this.FactoryFailure (key, ex, "")
         )
 
     abstract Enumerate: unit -> unit
@@ -1784,6 +1876,7 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
             if valueForm then
                 graph.RunOwned (this.Scope, this.CreateMapped)
             else
+                let memoFree = not (isNull (box once))
                 let mutable started = 0
 
                 try
@@ -1791,7 +1884,11 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
                           && not this.IsDisposedInternal do
                         let struct (key, item) = adds[started]
                         started <- started + 1
-                        this.CreateFactored (key, item)
+
+                        if memoFree then
+                            this.CreateOnce (key, item)
+                        else
+                            this.CreateFactored (key, item)
                 with _ when this.CreateFirst ->
                     for index in started - 1 .. -1 .. 0 do
                         let struct (key, _) = adds[index]

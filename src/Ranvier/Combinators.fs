@@ -951,6 +951,7 @@ module Projection =
     /// </code>
     /// </example>
     let filter (predicate: 'V -> bool) (upstream: Projection<'K, 'V>) : Projection<'K, 'V> =
+        upstream.RequireRowMemos "Projection.filter"
         let graph = upstream.Graph
         let inclusion = ref Unchecked.defaultof<Projection<'K, bool>>
 
@@ -995,6 +996,7 @@ module Projection =
     /// </code>
     /// </example>
     let choose (chooser: 'V -> 'U option) (upstream: Projection<'K, 'V>) : Projection<'K, 'U> =
+        upstream.RequireRowMemos "Projection.choose"
         let graph = upstream.Graph
         let choices = ref Unchecked.defaultof<Projection<'K, 'U option>>
         let inclusion = ref Unchecked.defaultof<Projection<'K, bool>>
@@ -1038,6 +1040,8 @@ module Projection =
     /// outside its <c>Keys</c>.
     /// </remarks>
     let map (mapping: 'V -> 'U) (upstream: Projection<'K, 'V>) : Projection<'K, 'U> =
+        upstream.RequireRowMemos "Projection.map"
+
         let view =
             new MapView<'K, 'V, 'U> (upstream.Graph, upstream, (fun key -> mapping (upstream.Get key)), Unchecked.defaultof<_>)
 
@@ -1062,6 +1066,8 @@ module Projection =
     /// </code>
     /// </example>
     let mapWith (mapping: 'K -> (unit -> 'V) -> (unit -> 'U)) (upstream: Projection<'K, 'V>) : Projection<'K, 'U> =
+        upstream.RequireRowMemos "Projection.mapWith"
+
         let factory (key: unit -> 'K) =
             let k = key ()
             mapping k (fun () -> upstream.Get k)
@@ -1090,6 +1096,7 @@ module Projection =
     /// </code>
     /// </example>
     let sortBy (projection: 'V -> 'S) (upstream: Projection<'K, 'V>) : Projection<'K, 'V> =
+        upstream.RequireRowMemos "Projection.sortBy"
         let graph = upstream.Graph
         let sortKeys = ref Unchecked.defaultof<Projection<'K, 'S>>
         let view = new SortView<'K, 'V, 'S> (graph, upstream, sortKeys)
@@ -1112,6 +1119,7 @@ module Projection =
         view :> Projection<'K, 'V>
 
     let private slice (offset: unit -> int) (count: unit -> int) (upstream: Projection<'K, 'V>) : Projection<'K, 'V> =
+        upstream.RequireRowMemos "Projection.slice"
         let view = new SliceView<'K, 'V> (upstream.Graph, upstream, offset, count)
 
         if not (isNull (box upstream.PendingExtra)) then
@@ -1191,6 +1199,7 @@ module Projection =
     /// </code>
     /// </example>
     let groupBy (projection: 'V -> 'G) (upstream: Projection<'K, 'V>) : Grouping<'G, 'K, 'V> =
+        upstream.RequireRowMemos "Projection.groupBy"
         let graph = upstream.Graph
         let groupKeys = ref Unchecked.defaultof<Projection<'K, 'G>>
         let view = new Grouping<'G, 'K, 'V> (graph, upstream, groupKeys)
@@ -1228,6 +1237,8 @@ module Projection =
     /// </code>
     /// </example>
     let foldGroup (add: 'S -> 'V -> 'S) (subtract: 'S -> 'V -> 'S) (zero: 'S) (upstream: Projection<'K, 'V>) : Memo<'S> =
+        upstream.RequireRowMemos "Projection.foldGroup"
+
         if isNull (box subtract) then
             raise (System.ArgumentNullException (nameof subtract))
 
@@ -1242,6 +1253,7 @@ module Projection =
     /// Use <c>foldGroup</c> when the fold has an inverse. Pending, failed and disposal behave as in <c>foldGroup</c>.
     /// </remarks>
     let fold (folder: 'S -> 'V -> 'S) (state: 'S) (upstream: Projection<'K, 'V>) : Memo<'S> =
+        upstream.RequireRowMemos "Projection.fold"
         let graph = upstream.Graph
 
         let aggregate =
