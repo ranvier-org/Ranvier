@@ -514,7 +514,7 @@ module internal TemplateParts =
     let mapSource (map: 'value -> 'next) (Source read: Source<'inst, 'value>) : Source<'inst, 'next> =
         Source (Func<obj, obj>(fun instance -> box (map (unbox<'value>(read.Invoke instance)))))
 
-    /// <summary>A string attribute value; <c>null</c> removes the attribute.</summary>
+    /// <summary>Wraps a string as an attribute value; <c>null</c> gives <c>None</c>.</summary>
     let present (value: string) =
         if isNull value then None else Some value
 
@@ -543,15 +543,13 @@ module internal TemplateParts =
 [<Sealed>]
 type AttributeBuilder<'inst> internal () =
     member _.attribute(name: string, value: string) : Part<'native, 'inst> =
-        StaticAttribute (name, value)
+        TemplateParts.attribute name value
 
     member _.attribute(name: string, read: 'inst -> string option) : Part<'native, 'inst> =
-        validateAttribute name
-        DynamicPart (slot (AttributeTarget name) RenderMode read primitiveSame)
+        TemplateParts.readAttribute name read
 
     member _.attribute(name: string, source: Source<'inst, string option>) : Part<'native, 'inst> =
-        validateAttribute name
-        DynamicPart (sourceSlot (AttributeTarget name) source primitiveSame)
+        TemplateParts.sourceAttribute name source
 
 /// <summary>Property parts: a value is written once per instance, a reader or source is dynamic.</summary>
 /// <remarks>A writer sets properties and leaves the element's child nodes intact: nodes moved into a template clone by a writer bypass the mount's ownership checks.</remarks>
@@ -570,7 +568,7 @@ type PropertyBuilder<'inst> internal () =
 [<Sealed>]
 type EventBuilder<'inst> internal () =
     member _.on(eventName: string, handler: 'inst -> Event -> unit) : Part<'native, 'inst> =
-        EventPart (eventName, Func<obj, obj, unit>(fun instance event -> handler (unbox instance) (unbox event)))
+        TemplateParts.event eventName handler
 
 /// <summary>Builds a template for instances of type <c>'inst</c>; dynamic parts receive the instance as their argument.</summary>
 [<Sealed>]
