@@ -38,6 +38,21 @@ let StateGraph = 3
 [<Literal>]
 let StateNodes = 4
 
+/// <summary>A region of a compiled template.</summary>
+[<NoEquality; NoComparison>]
+type CompiledRegion =
+    {
+        /// <summary>The node index of the region's start marker.</summary>
+        Marker: int
+        /// <summary>True when the markers are roots of a multi-root skeleton.</summary>
+        RootLevel: bool
+        Same: obj -> obj -> bool
+        Items: Func<obj, (obj * obj) array>
+        /// <summary>True when the items are read once, as the instance is created.</summary>
+        Once: bool
+        Render: (unit -> obj) -> Backend -> unit
+    }
+
 /// <summary>A definition compiled for the DOM: a skeleton, the walk to its dynamic nodes, and its slot tables.</summary>
 /// <remarks>A single-root skeleton is the root node itself and its walk starts at the root; otherwise the skeleton is a fragment of <c>RootCount</c> roots.</remarks>
 [<NoEquality; NoComparison>]
@@ -53,6 +68,7 @@ type Compiled =
         Events: (int * string * Func<obj, obj, unit>) array
         EventNames: string array
         Dispatch: Func<obj array, Node, obj, unit>
+        Regions: CompiledRegion array
     }
 
 /// <summary>Compiles child-index paths, in document order, into walk opcodes ending each path with <c>Collect</c>.</summary>
@@ -132,6 +148,12 @@ let private restructured (detail: string) =
         + detail
     )
 
+[<Emit("$0 != null && $0.nodeType === 8 && $0.data === '[' && $0.nextSibling != null && $0.nextSibling.nodeType === 8 && $0.nextSibling.data === ']'")>]
+let private isRegionStart (node: Node) : bool = jsNative
+
+[<Emit("document.importNode($0, true)")>]
+let private importDeep (node: Node) : Node = jsNative
+
 let private validateParsed (content: DocumentFragment) (walk: int array) (targets: (TemplateNode * int array) array) (rootCount: int) =
     let parsedRoots = int content.childNodes.length
 
@@ -154,7 +176,10 @@ let private validateParsed (content: DocumentFragment) (walk: int array) (target
                     not (isNull (box cursor))
                     && cursor.nodeType = 1.
                     && cursor.nodeName.ToLowerInvariant () = tagName.ToLowerInvariant ()
-                | _ -> "a text node", not (isNull (box cursor)) && cursor.nodeType = 3.
+                | TextSlotNode _ -> "a text node", not (isNull (box cursor)) && cursor.nodeType = 3.
+                | RegionNode _ -> "a region marker pair", isRegionStart cursor
+                | TextNode _
+                | FragmentNode _ -> invalidOp "Static nodes are not dynamic targets"
 
             if not matches then
                 let found =
@@ -175,19 +200,26 @@ let private validateParsed (content: DocumentFragment) (walk: int array) (target
             else
                 cursor <- unbox cursor.parentNode
 
-/// <summary>Compiles a definition once: parses its skeleton markup and builds its walk and slot tables.</summary>
+let private readsOnce (row: RegionRow) =
+    match row with
+    | ViewRow -> true
+
+/// <summary>Compiles a definition once: parses its skeleton markup and builds its walk, slot and region tables.</summary>
+/// <remarks>The skeleton belongs to the main document, as do its clones.</remarks>
 /// <exception cref="T:System.InvalidOperationException">The HTML parser restructures the markup, moving a dynamic node or changing the root count.</exception>
 let compile (definition: TemplateComponent) : Compiled =
     let markup, targets, rootCount = skeletonMarkup definition.Root
     let template = document.createElement "template" :?> HTMLTemplateElement
     template.innerHTML <- markup
+    let content = importDeep template.content :?> DocumentFragment
     let paths = Array.map snd targets
     let walk = walkProgram paths
-    validateParsed template.content walk targets rootCount
+    validateParsed content walk targets rootCount
     let renderSlots = ResizeArray ()
     let isolatedSlots = ResizeArray ()
     let properties = ResizeArray ()
     let events = ResizeArray ()
+    let regions = ResizeArray ()
 
     let add index (slot: Slot) =
         if slot.Mode = IsolatedMode then
@@ -196,7 +228,7 @@ let compile (definition: TemplateComponent) : Compiled =
             renderSlots.Add (index, slot)
 
     targets
-    |> Array.iteri (fun index (node, _) ->
+    |> Array.iteri (fun index (node, path) ->
         match node with
         | TextSlotNode slot -> add index slot
         | ElementNode (_, _, elementProperties, slots, elementEvents, _) ->
@@ -208,7 +240,20 @@ let compile (definition: TemplateComponent) : Compiled =
 
             for eventName, handler in elementEvents do
                 events.Add (index, eventName, handler)
-        | _ -> ())
+        | RegionNode region ->
+            let same = region.Same
+
+            regions.Add
+                {
+                    CompiledRegion.Marker = index
+                    RootLevel = rootCount > 1 && path.Length = 1
+                    Same = fun left right -> same.Invoke (left, right)
+                    Items = region.Items
+                    Once = readsOnce region.Row
+                    Render = rowRenderer region.Row
+                }
+        | TextNode _
+        | FragmentNode _ -> invalidOp "Static nodes are not dynamic targets")
 
     let eventArray = events.ToArray ()
 
@@ -220,9 +265,9 @@ let compile (definition: TemplateComponent) : Compiled =
     {
         Skeleton =
             if rootCount = 1 then
-                unbox template.content.firstChild
+                unbox content.firstChild
             else
-                template.content :> Node
+                content :> Node
         RootCount = rootCount
         Walk =
             if rootCount = 1 then
@@ -236,6 +281,7 @@ let compile (definition: TemplateComponent) : Compiled =
         Events = eventArray
         EventNames = eventNames
         Dispatch = dispatchFor targets.Length eventArray eventNames
+        Regions = regions.ToArray ()
     }
 
 /// <summary>The mount-owned operations a template instance uses.</summary>
@@ -250,6 +296,8 @@ type internal MountServices =
     abstract ListenDirect: Node * string * (obj -> unit) -> unit
     abstract ReportFailure: exn -> unit
     abstract ClearFailure: unit -> unit
+    /// <summary>Mounts keyed rows between a region's start and end markers; <c>true</c> marks markers that are roots of the appended clone.</summary>
+    abstract Region: Node * Node * bool * (obj -> obj -> bool) * (unit -> (obj * obj) array) * ((unit -> obj) -> Backend -> unit) -> unit
 
 let private unset = obj ()
 
@@ -322,7 +370,7 @@ let private collect (root: Node) (walk: int array) (state: obj array) =
             store state (StateNodes + count) (box cursor)
             count <- count + 1
 
-/// <summary>Materialises one instance: runs setup, clones the skeleton, binds its slots and events, and appends it.</summary>
+/// <summary>Materialises one instance: runs setup, clones the skeleton, binds its slots and events, appends it and mounts its regions.</summary>
 let internal materialise (definition: TemplateDefinition) (props: obj) (services: MountServices) =
     let template = definition :?> TemplateComponent
 
@@ -465,3 +513,20 @@ let internal materialise (definition: TemplateDefinition) (props: obj) (services
             let next: Node = unbox root.nextSibling
             services.Append root
             root <- next
+
+    let regions = compiled.Regions
+
+    for i in 0 .. regions.Length - 1 do
+        let region = at regions i
+        let start: Node = unbox (at state (StateNodes + region.Marker))
+        let finish: Node = unbox start.nextSibling
+        let items = region.Items
+
+        let read =
+            if region.Once then
+                let snapshot = items.Invoke instance
+                fun () -> snapshot
+            else
+                fun () -> items.Invoke instance
+
+        services.Region (start, finish, region.RootLevel, region.Same, read, region.Render)

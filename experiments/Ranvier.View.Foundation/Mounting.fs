@@ -272,6 +272,34 @@ type private OwnedRange(host: Node) =
         insert staging start (Some last)
         insert staging finish (Some last)
 
+    /// <summary>Joins a region's start and end markers, adjacent roots of the range, into one entry spanning the region's rows.</summary>
+    member _.SpanRegion(start: Node, finish: Node, validate: unit -> unit, relocate: unit -> unit) =
+        let mutable index = entries.Count - 2
+
+        while index > 1
+              && not (same (at entries index).Node finish) do
+            index <- index - 1
+
+        if
+            index < 2
+            || not (same (at entries (index - 1)).Node start)
+        then
+            invalid "Region markers must be adjacent roots of the range"
+
+        entries[index - 1] <-
+            {
+                Node = start
+                EndNode = finish
+                Validate = validate
+                Relocate = relocate
+                Restore = None
+            }
+
+        entries.RemoveAt index
+
+    /// <summary>The parent of the range's entries.</summary>
+    member _.Placement: Node = placement
+
     member this.AppendGenerated(parent: Node, node: Node) =
         if isNull generatedDescendants then
             generatedDescendants <- ResizeArray ()
@@ -412,6 +440,9 @@ type private OwnedRange(host: Node) =
 #endif
         if staged then
             insert parent staging before
+
+            for index in 0 .. entries.Count - 1 do
+                (at entries index).Relocate()
         else
             let mutable index = 0
 
@@ -542,6 +573,15 @@ type private OwnedRange(host: Node) =
             raise errors[0]
         elif errors.Count > 1 then
             raise (AggregateException ("Range release failed", errors))
+
+/// <summary>How a keyed region's markers join the mount's range.</summary>
+type private RegionPlacement =
+    /// <summary>Markers created for an authored list at the range's top level.</summary>
+    | NewRegion
+    /// <summary>Markers already added as adjacent roots of the range.</summary>
+    | RootRegion
+    /// <summary>Markers inside an element.</summary>
+    | NestedRegion
 
 exception private KeyedDisposed
 exception private KeyedSetupFailed of exn list
@@ -892,6 +932,13 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
     member _.Relocate() : unit =
         range.Relocate ()
 
+        if
+            not (isNull delegatedNames)
+            && not (same range.Placement delegatedHost)
+        then
+            releaseDelegation ()
+            delegateAt range.Placement
+
     member _.Flush() : unit =
         match scheduling with
         | Synchronous -> graph.Run Api.flush
@@ -1056,16 +1103,29 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
         append node
         startBinding (Func<_, _, _>(fun left right -> equals left right)) read (fun value -> node.textContent <- value)
 
-    override _.Keyed(equals, read, render) =
+    override this.Keyed(equals, read, render) =
         ensureSetup ()
 
         let regionStart, regionEnd =
             comment "ranvier:list:start", comment "ranvier:list:end"
 
-        if not (isNull (box parent)) then
+        if isNull (box parent) then
+            this.KeyedRegion (regionStart, regionEnd, NewRegion, equals, read, render)
+        else
             range.AppendGenerated (parent, regionStart)
             range.AppendGenerated (parent, regionEnd)
+            this.KeyedRegion (regionStart, regionEnd, NestedRegion, equals, read, render)
 
+    /// <summary>Mounts one nested mount per keyed item between two boundary nodes and reconciles them as the items change.</summary>
+    member private _.KeyedRegion
+        (
+            regionStart: Node,
+            regionEnd: Node,
+            placement: RegionPlacement,
+            equals: obj -> obj -> bool,
+            read: unit -> (obj * obj) array,
+            render: (unit -> obj) -> Backend -> unit
+        ) =
         let regionScope = root.Child (report, ignore)
         let mutable entries: KeyedEntry array = [||]
         let mutable regionOwner: Owner option = None
@@ -1129,7 +1189,8 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
             if not (cursor |> Option.exists (same regionEnd)) then
                 invalid "Keyed-list boundaries were externally reordered"
 
-        if isNull (box parent) then
+        match placement with
+        | NewRegion ->
             range.AddRegion (
                 regionStart,
                 regionEnd,
@@ -1138,6 +1199,16 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
                     for entry in entries do
                         entry.Mount.Relocate ())
             )
+        | RootRegion ->
+            range.SpanRegion (
+                regionStart,
+                regionEnd,
+                (fun () -> validateRegion (getRegionParent ())),
+                (fun () ->
+                    for entry in entries do
+                        entry.Mount.Relocate ())
+            )
+        | NestedRegion -> ()
 
         let moveToOrder regionParent (ordered: KeyedEntry array) =
             let mutable anchor: Node option = Some regionEnd
@@ -1416,6 +1487,17 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
 
         member _.ClearFailure() =
             clearReported ()
+
+        member this.Region(start, finish, rootLevel, equals, read, render) =
+            ensureSetup ()
+
+            let placement =
+                if rootLevel && isNull (box parent) then
+                    RootRegion
+                else
+                    NestedRegion
+
+            this.KeyedRegion (start, finish, placement, equals, read, render)
 
 /// <summary>Mounts a view with an owned commit queue when deferred scheduling is selected.</summary>
 /// <remarks>Nested keyed mounts share the containing mount's scheduler.</remarks>

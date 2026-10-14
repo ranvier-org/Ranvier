@@ -888,6 +888,193 @@ let private holeMarkup () =
         "<div class=\"card\">A<!--[--><em>&lt;b&gt;</em><!--]--></div>"
         (Html.render Omit (Program.run (Component.render holed { Caption = "A"; Body = body })))
 
+let private holeSlotPaths () =
+    let between =
+        Component.define (fun _ () -> ()) (fun t -> t.fragment [| t.text "x"; t.view (fun _ -> Program.fragment [||]); t.text (fun _ -> "y") |])
+
+    let markup, targets, rootCount = skeletonMarkup (between :> TemplateComponent).Root
+    equal ("x<!--[--><!--]--> ", 4, [| 3 |]) (markup, rootCount, snd targets[1])
+
+    let leading =
+        Component.define (fun _ () -> ()) (fun t -> t.fragment [| t.view (fun _ -> Program.fragment [||]); t.text (fun _ -> "y") |])
+
+    let markup, _, _ = skeletonMarkup (leading :> TemplateComponent).Root
+    equal "<!--[--><!--]--> " markup
+
+[<Emit("$0.innerHTML.replace(/<!--.*?-->/g, '')")>]
+let private withoutComments (node: HTMLElement) : string = jsNative
+
+[<Emit("Array.from($0.childNodes).filter(n => n.nodeType === 8 && (n.data === '[' || n.data === ']')).length")>]
+let private regionMarkers (node: Node) : int = jsNative
+
+let private rootHole =
+    Component.define (fun _ (body: Program.View) -> body) (fun t -> t.fragment [| t.view id |])
+
+let private viewHole () =
+    use graph = new Graph ()
+    let label = graph.Run (fun () -> Api.createSignal "x")
+    let mutable cleaned = 0
+
+    let body =
+        Program.createComponent (fun context ->
+            context.OnCleanup (fun () -> cleaned <- cleaned + 1)
+            Program.element (HtmlTag "em") [||] [| Program.bind (=) (fun () -> label.Value) |])
+
+    let host = host ()
+
+    let mounted =
+        mount graph host (Component.render holed { Caption = "A"; Body = body })
+
+    let div = host.querySelector "div" |> unbox<HTMLElement>
+    equal ("<div class=\"card\">A<em>x</em></div>", 2) (withoutComments host, regionMarkers div)
+    graph.Run (fun () -> label.Value <- "y")
+    equal "Ay" host.textContent
+    mounted.Dispose ()
+    equal (1, 0.) (cleaned, host.childNodes.length)
+
+let private holeTwin () =
+    use graph = new Graph ()
+    let label = graph.Run (fun () -> Api.createSignal "x")
+
+    let body () =
+        Program.element (HtmlTag "em") [||] [| Program.bind (=) (fun () -> label.Value) |]
+
+    let first, second = host (), host ()
+
+    let templateMount =
+        mount graph first (Component.render holed { Caption = "A"; Body = body () })
+
+    let twinMount =
+        mount graph second (Component.renderWith Program.ops holed { Caption = "A"; Body = body () })
+
+    equal (withoutComments second) (withoutComments first)
+    graph.Run (fun () -> label.Value <- "y")
+    equal (withoutComments second, "<div class=\"card\">A<em>y</em></div>") (withoutComments first, withoutComments second)
+    templateMount.Dispose ()
+    twinMount.Dispose ()
+
+let private emptyHole () =
+    use graph = new Graph ()
+    let host = host ()
+
+    let mounted =
+        mount
+            graph
+            host
+            (Component.render
+                holed
+                {
+                    Caption = "E"
+                    Body = Program.fragment [||]
+                })
+
+    let div = host.querySelector "div" |> unbox<HTMLElement>
+    equal ("<div class=\"card\">E</div>", 2) (withoutComments host, regionMarkers div)
+    mounted.Dispose ()
+    equal 0. host.childNodes.length
+
+let private viewReadOnce () =
+    use graph = new Graph ()
+    let choice = graph.Run (fun () -> Api.createSignal "first")
+    let mutable reads = 0
+
+    let once =
+        Component.define (fun _ () -> ()) (fun t ->
+            t.div
+                [||]
+                [|
+                    t.view (fun _ ->
+                        reads <- reads + 1
+                        Program.text choice.Value)
+                |])
+
+    let host = host ()
+    let mounted = mount graph host (Component.render once ())
+    graph.Run (fun () -> choice.Value <- "second")
+    equal ("first", 1) (host.textContent, reads)
+    mounted.Dispose ()
+
+let private failingHole () =
+    use graph = new Graph ()
+    let host = host ()
+    host.innerHTML <- "<span>keep</span>"
+    let mutable failed = false
+
+    try
+        mount
+            graph
+            host
+            (Component.render
+                holed
+                {
+                    Caption = "F"
+                    Body = Program.createComponent (fun _ -> failwith "view")
+                })
+        |> ignore
+    with error ->
+        failed <- error.Message = "view"
+
+    equal (true, "<span>keep</span>") (failed, host.innerHTML)
+
+let private rootHoleClicks () =
+    use graph = new Graph ()
+    let clicks = ResizeArray<string>()
+
+    let body =
+        H.Program.button [| H.Events.onClick (fun _ -> clicks.Add "click") |] [||]
+
+    let first, second = host (), host ()
+    let mounted = mount graph first (Component.render rootHole body)
+
+    let button =
+        first.querySelector "button"
+        |> unbox<HTMLButtonElement>
+
+    button.click ()
+    mounted.MoveBefore (second, None)
+    button.click ()
+    equal (2, 0., 1.) (clicks.Count, first.childNodes.length, second.children.length)
+    mounted.Dispose ()
+    button.click ()
+    equal (2, 0.) (clicks.Count, second.childNodes.length)
+
+let private holeFallbacks () =
+    use graph = new Graph ()
+    let queuedHost, browserHost = host (), host ()
+
+    let queued =
+        Mounting.mountWith (Scheduling.QueuedCommits (Scheduling.CollectAndContinue, ignore)) graph None ignore queuedHost None (fun context ->
+            Program.run
+                (Component.render
+                    holed
+                    {
+                        Caption = "Q"
+                        Body = Program.text "v"
+                    })
+                context.Backend)
+
+    queued.Flush ()
+
+    let dispose =
+        Browser.mount
+            graph
+            browserHost
+            ignore
+            None
+            (Program.run (
+                Component.render
+                    holed
+                    {
+                        Caption = "B"
+                        Body = Program.text "v"
+                    }
+            ))
+
+    equal ("Qv", "Bv") (queuedHost.textContent, browserHost.textContent)
+    queued.Dispose ()
+    dispose ()
+    equal (0., 0.) (queuedHost.childNodes.length, browserHost.childNodes.length)
+
 /// <summary>Checks template compilation and DOM materialisation.</summary>
 let cases =
     [|
@@ -925,4 +1112,12 @@ let cases =
         "walk programs begin with a collect for the empty path", walkProgramEmptyPath
         "a single-root definition compiles to an element skeleton", singleRootCompiled
         "view hole server markup under Fable matches .NET", holeMarkup
+        "a slot after a view hole is indexed past both markers without a separator", holeSlotPaths
+        "a view hole mounts its view between region markers and disposes it", viewHole
+        "a view hole renders the same DOM as its default expansion", holeTwin
+        "an empty view hole keeps its markers", emptyHole
+        "a view hole reads its view once per instance", viewReadOnce
+        "a failing view hole rolls back the mount", failingHole
+        "a root-level view hole dispatches clicks before and after a move", rootHoleClicks
+        "queued mounts and the Browser interpreter render view holes through expansion", holeFallbacks
     |]

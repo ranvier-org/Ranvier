@@ -132,9 +132,9 @@ let private width node =
     | _ -> 1
 
 /// <summary>Renders a region row through a backend; the reader returns the row's current item.</summary>
-let internal rowRenderer (row: RegionRow) : (unit -> obj) -> Backend -> unit =
+let internal rowRenderer (row: RegionRow) (current: unit -> obj) (backend: Backend) : unit =
     match row with
-    | ViewRow -> fun current backend -> (unbox<Program.View>(current ())).Invoke backend
+    | ViewRow -> (unbox<Program.View>(current ())).Invoke backend
 
 let private serverRow (backend: Backend) (row: RegionRow) (item: obj) =
     rowRenderer row (fun () -> item) backend
