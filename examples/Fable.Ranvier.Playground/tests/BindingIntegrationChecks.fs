@@ -531,6 +531,32 @@ let portableCases =
         "program HTML selects structural boundary snapshots", fun () -> serverStructuralBoundary Program.ops Program.run
     |]
 
+let private componentCleanupFailures () =
+    use graph = new Graph ()
+    let host = host ()
+    let reports = ResizeArray<exn list>()
+    let ran = ResizeArray<string>()
+
+    let view =
+        Tree.ops.Component (fun setup ->
+            setup.OnCleanup (fun () ->
+                ran.Add "first"
+                failwith "first")
+
+            setup.OnCleanup (fun () ->
+                ran.Add "second"
+                failwith "second")
+
+            Typed.reactiveText Tree.ops (fun () -> "value"))
+
+    let mounted =
+        mount graph None reports.Add host None (fun context -> Tree.run view context.Backend)
+
+    equal 0 reports.Count
+    mounted.Dispose ()
+    equal (2, 1) (ran.Count, reports.Count)
+    equal "Component cleanup failed" (List.exactlyOne reports[0]).Message
+
 let cases =
     Array.append
         portableCases
@@ -555,4 +581,5 @@ let cases =
             "a throwing reader is reported under queued commits", queuedReaderFailure
             "a recurring failure object is reported again after its binding recovers", recoveredFailureRecurs
             "a keyed row reading a failed memo reports the failure", keyedRowReaderFailure
+            "two throwing component cleanups are reported together on disposal", componentCleanupFailures
         |]

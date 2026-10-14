@@ -247,6 +247,24 @@ let private nestedHosts stop =
     b.Dispose ()
     a.Dispose ()
 
+let private directOnlyMove () =
+    use graph = new Graph ()
+    let first, second = element "main", element "main"
+    let mutable clicks, focused = 0, 0
+
+    let direct =
+        mount graph first (H.Program.input [| H.Events.onFocus (fun _ -> focused <- focused + 1) |])
+
+    let delegated =
+        mount graph first (H.Program.button [| H.Events.onClick (fun _ -> clicks <- clicks + 1) |] [||])
+
+    direct.MoveBefore (second, None)
+    direct.Dispose ()
+    (button first 0.).click()
+    equal 1 clicks
+    equal 0 focused
+    delegated.Dispose ()
+
 /// <summary>Checks delegated event dispatch from mount hosts.</summary>
 let cases =
     [|
@@ -261,4 +279,5 @@ let cases =
         "a handler mounting a fresh view on its host leaves later clicks dispatching once", remountDuringDispatch
         "an inner host's handler resumes dispatch in the outer mount", fun () -> nestedHosts false
         "stopPropagation in an inner host's handler stops the outer mount's handler", fun () -> nestedHosts true
+        "moving and disposing a mount with only direct listeners leaves the host's delegated dispatch once", directOnlyMove
     |]
