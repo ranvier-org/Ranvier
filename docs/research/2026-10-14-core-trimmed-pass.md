@@ -7,8 +7,11 @@ Date: 2026-10-14
 - Commits: `B0` = `093269fcc4009a8d59866f1b3910a5746f03d549` (the benchmarks commit on `perf/core-trimmed-pass`, on top of `dc0ee50`, the branch's projection work: memo-free `createProjectionOnce`, the shared `ensureUniqueKeys`, the create-first stop and rollback kept off the default pass). The core is unchanged from `dc0ee50`.
 - Machine: AMD Ryzen 9 9900X 12-Core Processor, 24 logical cores, 62 GB, win32 10.0.26200. Node v26.7.0, .NET SDK 10.0.402, Fable 5.18.0, `@solidjs/signals` 2.0.0-rc.14.
 - Node run: `docs/research/core-trimmed-pass/before.json` (commit `B0`, `dirtyAtStart` empty). .NET run: `docs/research/core-trimmed-pass/dotnet-before/` (see `provenance.json`).
+- After run: A1 = `1d354b231a895b2d4e8f3811f0c1ab4b3069eeff` (`perf/core-trimmed-pass`; the fixture, the fixture project and `Lists.fs` are identical to `B0`). Node: `docs/research/core-trimmed-pass/after.json` (`dirtyAtStart` empty, `baseCommit` = `B0`, `baseDirty` empty). .NET: `dotnet-after/` and `dotnet-before-short/` (see their `provenance.json`).
 
 Seven Node processes, each with 10 warmup and 31 timed rounds per operation. A round times the operation once per framework in a seeded random order, each on a fresh list after a forced GC. Before timing, each operation's resulting rows (order and text) are checked equal across the frameworks.
+
+The Before tables use the full settings. The After section uses reduced settings: Node 3 processes, each with 5 warmup and 15 timed rounds (3×(5+15)), and .NET `ListPassBenchmarks` with the BenchmarkDotNet `Short` job (3 warmup, 3 iterations, 1 launch). `ProjectionBenchmarks` was not re-run. BenchmarkDotNet reports the Host line as DEBUG: that is the launcher only; the measured job is Release.
 
 Each .NET benchmark runs two passes and alternates between two states of equal cost. With `Layout`, an effect reads every row after every key change, which is linear in the list length in both versions.
 
@@ -71,3 +74,59 @@ Each .NET benchmark runs two passes and alternates between two states of equal c
 | EditOneItem | 512 | 8320.2 ns | 184 B |
 | Reorder | 512 | 10517.0 ns | 18584 B |
 | ChurnOneKey | 512 | 8666.7 ns | 6800 B |
+
+## After
+
+Settings: Node 3×(5+15) (3 processes, 5 warmup and 15 timed rounds per operation); .NET `Short` job on `ListPassBenchmarks` only. `before.json` used 7×(10+31) and records `B0` in two-framework rounds (Solid 2, Ranvier); it is not paired with `after.json`. In `after.json` each round times three frameworks (Solid 2, `B0` Ranvier, `A1` Ranvier) in a seeded random order, so "before ms" below is `baseMs` from the same rounds and the after/before ratio (`vsBase`) is paired within a round.
+
+### Node: A1 against B0 and Solid 2 (milliseconds per operation)
+
+| Operation | Solid 2 ms | Before ms (`B0`, paired) | After ms (`A1`) | After / Solid 2 [q1, q3] | After / before [q1, q3] | Per-process after / before medians | Per-process after / Solid 2 medians |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| create1k | 1.2453 | 3.6133 | 3.9221 | 3.103 [2.735, 3.446] | 1.084 [0.966, 1.196] | 1.11, 1.04, 1.10 | 3.15, 3.10, 3.10 |
+| create10k | 5.6715 | 21.6306 | 23.0245 | 3.661 [2.579, 5.145] | 1.086 [0.916, 1.340] | 1.05, 1.09, 1.15 | 3.89, 3.39, 4.51 |
+| replace1k | 1.7315 | 3.4101 | 3.8446 | 2.196 [2.026, 2.596] | 1.101 [0.977, 1.245] | 1.16, 1.18, 1.01 | 2.15, 2.19, 2.43 |
+| append1k | 1.4108 | 2.9030 | 2.7840 | 1.932 [1.732, 2.310] | 0.931 [0.840, 1.171] | 0.99, 1.04, 0.91 | 2.26, 1.89, 1.86 |
+| update10th1k | 0.1708 | 0.1599 | 0.1425 | 0.801 [0.683, 1.080] | 0.835 [0.701, 1.188] | 0.81, 0.79, 0.96 | 0.76, 0.77, 0.86 |
+| swap1k | 0.1567 | 0.7869 | 0.3949 | 2.708 [2.182, 3.603] | 0.541 [0.394, 0.680] | 0.55, 0.58, 0.44 | 3.23, 2.98, 2.18 |
+| swap10k | 0.8334 | 5.7030 | 2.1991 | 2.816 [1.814, 3.212] | 0.399 [0.345, 0.452] | 0.40, 0.40, 0.40 | 2.90, 2.37, 2.83 |
+| remove1k | 0.1874 | 0.7886 | 0.3957 | 1.954 [1.684, 2.498] | 0.468 [0.363, 0.599] | 0.59, 0.49, 0.39 | 2.53, 1.76, 1.90 |
+| remove10k | 1.2164 | 5.7163 | 2.5552 | 2.178 [1.804, 2.670] | 0.475 [0.395, 0.535] | 0.51, 0.47, 0.45 | 2.18, 2.11, 2.21 |
+| clear1k | 0.5966 | 1.1569 | 1.3782 | 2.309 [1.905, 2.847] | 1.142 [0.969, 1.366] | 1.05, 1.23, 1.21 | 2.56, 2.16, 2.25 |
+| clear10k | 3.2409 | 7.7152 | 9.1500 | 2.820 [2.485, 3.772] | 1.158 [1.027, 1.499] | 1.44, 1.15, 1.13 | 2.78, 2.66, 2.87 |
+
+### .NET: ListPassBenchmarks (separate runs, not paired)
+
+Both columns use the `Short` job. The `B0` run is in `dotnet-before-short/`, the `A1` run in `dotnet-after/`. The full-job `B0` record in `dotnet-before/` is not used here. With 3 iterations the reported errors are large for `ReplaceAll` and `ClearAndCreate` (see the `*-report-github.md` files).
+
+| Benchmark | Rows | Layout | Before mean (`B0`) | After mean (`A1`) | After / before | Before allocated | After allocated |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Swap | 1000 | False | 32.77 us | 7.57 us | 0.231 | 15.93 KB | 23.87 KB |
+| RemoveAndRestore | 1000 | False | 31.35 us | 6.88 us | 0.219 | 16.65 KB | 24.59 KB |
+| UpdateOneItem | 1000 | False | 30.77 us | 4.95 us | 0.161 | 8.10 KB | 8.18 KB |
+| ReplaceAll | 1000 | False | 398.11 us | 478.29 us | 1.201 | 1461.22 KB | 1469.16 KB |
+| ClearAndCreate | 1000 | False | 176.74 us | 230.24 us | 1.303 | 730.70 KB | 734.78 KB |
+| Swap | 1000 | True | 49.16 us | 28.56 us | 0.581 | 15.99 KB | 23.93 KB |
+| RemoveAndRestore | 1000 | True | 55.71 us | 27.91 us | 0.501 | 16.71 KB | 24.65 KB |
+| UpdateOneItem | 1000 | True | 32.00 us | 5.13 us | 0.160 | 8.10 KB | 8.18 KB |
+| ReplaceAll | 1000 | True | 419.50 us | 486.66 us | 1.160 | 1461.28 KB | 1469.22 KB |
+| ClearAndCreate | 1000 | True | 188.26 us | 251.56 us | 1.336 | 730.76 KB | 734.84 KB |
+| Swap | 10000 | False | 335.69 us | 62.33 us | 0.186 | 156.55 KB | 234.80 KB |
+| RemoveAndRestore | 10000 | False | 328.11 us | 54.97 us | 0.168 | 157.27 KB | 235.52 KB |
+| UpdateOneItem | 10000 | False | 332.48 us | 49.08 us | 0.148 | 78.41 KB | 78.49 KB |
+| ReplaceAll | 10000 | False | 8,158.88 us | 12,792.54 us | 1.568 | 14609.66 KB | 14687.91 KB |
+| ClearAndCreate | 10000 | False | 2,354.78 us | 3,441.81 us | 1.462 | 7304.91 KB | 7344.16 KB |
+| Swap | 10000 | True | 466.66 us | 284.53 us | 0.610 | 156.62 KB | 234.87 KB |
+| RemoveAndRestore | 10000 | True | 483.62 us | 268.16 us | 0.554 | 157.34 KB | 235.59 KB |
+| UpdateOneItem | 10000 | True | 326.44 us | 47.76 us | 0.146 | 78.41 KB | 78.49 KB |
+| ReplaceAll | 10000 | True | 10,570.31 us | 10,249.01 us | 0.970 | 14609.72 KB | 14687.91 KB |
+| ClearAndCreate | 10000 | True | 2,802.27 us | 3,860.96 us | 1.378 | 7304.98 KB | 7344.22 KB |
+
+### What moved and what did not
+
+- Node swap and remove: after / before is 0.541 (swap1k), 0.399 (swap10k), 0.468 (remove1k) and 0.475 (remove10k); each interval [q1, q3] lies below 1 and every per-process median lies below 1.
+- Node create, replace, clear: after / before is 1.084 (create1k), 1.086 (create10k), 1.101 (replace1k), 1.142 (clear1k) and 1.158 (clear10k). Only the clear10k interval [1.027, 1.499] lies above 1; the other four intervals span 1 with medians above 1. append1k is 0.931 [0.840, 1.171] and update10th1k is 0.835 [0.701, 1.188]; both intervals span 1.
+- Remaining Node gaps to Solid 2 (after / Solid 2 median): swap1k 2.708, swap10k 2.816, remove1k 1.954, remove10k 2.178, create1k 3.103, create10k 3.661, replace1k 2.196, append1k 1.932, clear1k 2.309, clear10k 2.820. update10th1k is 0.801 [0.683, 1.080].
+- .NET without `Layout`: Swap, RemoveAndRestore and UpdateOneItem take 0.231, 0.219 and 0.161 of the before mean at 1000 rows, and 0.186, 0.168 and 0.148 at 10000 rows. With `Layout`: Swap and RemoveAndRestore are 0.581 and 0.501 at 1000 rows and 0.610 and 0.554 at 10000 rows; UpdateOneItem is 0.160 and 0.146.
+- .NET ReplaceAll and ClearAndCreate: after / before is between 0.970 and 1.568 across the eight rows, with the `Short` job's large reported errors; no direction is established.
+- .NET allocation: Swap and RemoveAndRestore allocate about 7.9 KB more per operation at 1000 rows and about 78 KB more at 10000 rows. UpdateOneItem allocates 0.08 KB more; ReplaceAll and ClearAndCreate allocate 4 to 8 KB more at 1000 rows and 39 to 78 KB more at 10000 rows.
