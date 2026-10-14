@@ -926,7 +926,16 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
                 then
                     this.ResolveFailedCheck ()
 
-                if freshness = Freshness.Dirty then
+                if
+                    freshness = Freshness.Dirty
+                    && this.CreateFirst
+                    && status = Status.Error
+                    && not invalidated
+                then
+                    // A create-first pass that failed holds its error until a source it
+                    // depends on changes.
+                    graph.Raise failure
+                elif freshness = Freshness.Dirty then
                     if isNull (box passScope) then
                         this.Run ()
                     else

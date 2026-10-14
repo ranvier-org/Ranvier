@@ -2553,9 +2553,10 @@ let rowOptionTests =
                     with _ ->
                         ()
 
-                readKeys ()
+                createEffect readKeys
                 failOn <- 3
                 items.Value <- [ (1, "b"); (2, "x"); (3, "y") ]
+                readKeys ()
                 readKeys ()
 
                 Expect.sequenceEqual created [ 1; 2; 3 ] "the pass created rows 2 and 3"
@@ -2564,7 +2565,6 @@ let rowOptionTests =
 
                 failOn <- 0
                 items.Value <- [ (1, "c"); (2, "z") ]
-                readKeys ()
 
                 Expect.sequenceEqual created [ 1; 2; 3; 2 ] "row 1 survived the failed pass; row 2 is created again"
                 Expect.sequenceEqual proj.Keys [ 1; 2 ] "the next pass applies"
