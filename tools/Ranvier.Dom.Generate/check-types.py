@@ -7,11 +7,11 @@ root = Path(__file__).resolve().parents[2]
 project = root / "examples/Fable.Ranvier.Playground/tests/DomTests.fsproj"
 prefix = """module GeneratedTypeCheck
 open Fable.Core.TS
+open Ranvier.View.Foundation
 open Ranvier.View.Foundation.Representation
 module H = Ranvier.View.Foundation.Generated.Html
 open Ranvier.View.Foundation.Generated.Html.Authoring
 open Ranvier.View.Foundation.Template
-open Ranvier.View.Foundation.Generated.HtmlTemplate
 """
 examples = [
     ("valid helpers", "let view = H.div Tree.ops [| H.Properties.HTMLElement.titleStatic \"shared\"; H.Events.onClick (fun (_: Dom.PointerEvent) -> ()) |] [| H.input Tree.ops [| H.Input.checkedStatic true |]; H.select Tree.ops [||] [| H.option Tree.ops [||] [||] |]; H.br Tree.ops [||] |]", None),

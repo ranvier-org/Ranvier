@@ -5,7 +5,6 @@ open Fable.Core.TS.Dom
 open Ranvier.View.Foundation
 open Ranvier.View.Foundation.Representation
 open Ranvier.View.Foundation.Generated.Html.Authoring
-open Ranvier.View.Foundation.Generated.HtmlTemplate
 
 module H = Ranvier.View.Foundation.Generated.Html
 

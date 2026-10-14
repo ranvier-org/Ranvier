@@ -178,8 +178,8 @@ then
     measure "program" Program.ops
 #endif
 
+open Ranvier.View.Foundation
 open Ranvier.View.Foundation.Template
-open Ranvier.View.Foundation.Generated.HtmlTemplate
 
 type GreetingProps = { Title: string; Name: string }
 
