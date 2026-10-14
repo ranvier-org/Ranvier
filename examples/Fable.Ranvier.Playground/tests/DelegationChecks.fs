@@ -265,6 +265,30 @@ let private directOnlyMove () =
     equal 0 focused
     delegated.Dispose ()
 
+let private topLevelList () =
+    use graph = new Graph ()
+    let first, second = element "main", element "main"
+    let rows = graph.Run (fun () -> Api.createSignal [ 1; 2 ])
+    let clicks = ResizeArray<int>()
+
+    let view =
+        Keyed.list Program.ops (=) id (fun () -> rows.Value) (fun current ->
+            H.Program.button [| H.Events.onClick (fun _ -> clicks.Add (current ())) |] [||])
+
+    let mounted = mount graph first view
+    (button first 1.).click()
+    equal [ 2 ] (List.ofSeq clicks)
+    graph.Run (fun () -> rows.Value <- [ 3; 1; 2 ])
+    (button first 0.).click()
+    equal [ 2; 3 ] (List.ofSeq clicks)
+    mounted.MoveBefore (second, None)
+    equal (0., 3.) (first.childNodes.length, (second.querySelectorAll "button").length)
+    (button second 1.).click()
+    (button second 2.).click()
+    equal [ 2; 3; 1; 2 ] (List.ofSeq clicks)
+    mounted.Dispose ()
+    equal 0. second.childNodes.length
+
 /// <summary>Checks delegated event dispatch from mount hosts.</summary>
 let cases =
     [|
@@ -280,4 +304,5 @@ let cases =
         "an inner host's handler resumes dispatch in the outer mount", fun () -> nestedHosts false
         "stopPropagation in an inner host's handler stops the outer mount's handler", fun () -> nestedHosts true
         "moving and disposing a mount with only direct listeners leaves the host's delegated dispatch once", directOnlyMove
+        "rows of a top-level keyed list dispatch clicks after attach, an update and a move", topLevelList
     |]

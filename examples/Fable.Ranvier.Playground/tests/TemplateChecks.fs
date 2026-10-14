@@ -1234,6 +1234,41 @@ let private stagedServer =
 let private matchMarkup () =
     equal "<div><!--[--><span>working 3</span><!--]--></div>" (Html.render Omit (Program.run (Component.render stagedServer (Working 3))))
 
+type Phase =
+    | Loading of int
+    | Saving of int
+    | Idle
+
+let private phased =
+    Component.define (fun _ (phase: Signal<Phase>) -> phase) (fun t ->
+        t.div
+            [||]
+            [|
+                t.matchWith (fun phase -> phase.Value) (function
+                    | Loading progress
+                    | Saving progress -> t.arm workingArm progress
+                    | Idle -> t.arm waitingArm ())
+            |])
+
+let private sharedArm () =
+    use graph = new Graph ()
+    stageLog.Clear ()
+    let phase = graph.Run (fun () -> Api.createSignal (Loading 1))
+    let host = host ()
+    let mounted = mount graph host (Component.render phased phase)
+    let span = host.querySelector "span" |> unbox<HTMLElement>
+    equal ("working 1", [ "setup working" ]) (host.textContent, List.ofSeq stageLog)
+    graph.Run (fun () -> phase.Value <- Saving 2)
+
+    equal ("working 2", [ "setup working" ], true) (host.textContent, List.ofSeq stageLog, obj.ReferenceEquals (span, host.querySelector "span"))
+
+    graph.Run (fun () -> phase.Value <- Loading 3)
+    equal ("working 3", [ "setup working" ]) (host.textContent, List.ofSeq stageLog)
+    graph.Run (fun () -> phase.Value <- Idle)
+    equal ("waiting", [ "setup working"; "setup waiting"; "cleanup working" ]) (host.textContent, List.ofSeq stageLog)
+    mounted.Dispose ()
+    equal 0. host.childNodes.length
+
 let private decadeLog = ResizeArray<string>()
 
 let private decadeArm =
@@ -1882,6 +1917,83 @@ let private inlinedMarkup () =
 
     equal "<div>h<button>1</button></div>" (graph.Run (fun () -> Html.render Omit (Program.run (Component.render card props))))
 
+type Ledger =
+    {
+        LedgerLabel: Signal<string>
+        LedgerItems: Signal<Listed array>
+    }
+
+type LedgerFrame = { Inner: Ledger }
+
+let private ledgerBody =
+    Component.define (fun _ (ledger: Ledger) -> ledger) (fun t ->
+        t.fragment
+            [|
+                t.text (fun ledger -> ledger.LedgerLabel.Value)
+                t.each (fun (item: Listed) -> item.Id) (fun ledger -> ledger.LedgerItems.Value) listedRow
+            |])
+
+let private ledgerFrame =
+    Component.define (fun _ (ledger: Ledger) -> { Inner = ledger }) (fun t ->
+        t.fragment [| t.text "<"; t.render ledgerBody (fun frame -> frame.Inner); t.text ">" |])
+
+/// <summary>Mounts a multi-root template whose inlined child owns a root-level region beside text, at the mount's top level or inside an authored element.</summary>
+let private inlinedRootRegion (wrapped: bool) =
+    use graph = new Graph ()
+    listedLog.Clear ()
+
+    let ledger =
+        graph.Run (fun () ->
+            {
+                LedgerLabel = Api.createSignal "L"
+                LedgerItems = Api.createSignal [| { Id = 1; Text = "a" }; { Id = 2; Text = "b" } |]
+            })
+
+    let first, second = host (), host ()
+
+    let view =
+        if wrapped then
+            Program.element Div [||] [| Component.render ledgerFrame ledger |]
+        else
+            Component.render ledgerFrame ledger
+
+    let mounted = mount graph first view
+
+    let markers (host: HTMLElement) =
+        if wrapped then
+            regionMarkers (host.querySelector "div" |> unbox<HTMLElement>)
+        else
+            regionMarkers host
+
+    equal ("<Lab>", 2) (first.textContent, markers first)
+    let retained = first.querySelector "li" |> unbox<HTMLElement>
+
+    graph.Run (fun () ->
+        ledger.LedgerLabel.Value <- "M"
+        ledger.LedgerItems.Value <- [| { Id = 2; Text = "B" }; { Id = 3; Text = "c" }; { Id = 1; Text = "a" } |])
+
+    equal ("<MBca>", true) (first.textContent, obj.ReferenceEquals (retained, first.querySelectorAll("li").item 2.))
+    mounted.MoveBefore (second, None)
+    equal (0., "<MBca>", 2) (first.childNodes.length, second.textContent, markers second)
+    retained.click ()
+    graph.Run (fun () -> ledger.LedgerItems.Value <- [| { Id = 1; Text = "A" } |])
+    equal ("<MA>", 2) (second.textContent, markers second)
+    mounted.Dispose ()
+    equal (0., 0.) (first.childNodes.length, second.childNodes.length)
+
+    equal
+        (List.sort
+            [
+                "setup 1"
+                "setup 2"
+                "setup 3"
+                "click 1"
+                "cleanup 1"
+                "cleanup 2"
+                "cleanup 3"
+            ])
+        (List.sort (List.ofSeq listedLog))
+
 /// <summary>Checks template compilation and DOM materialisation.</summary>
 let cases =
     [|
@@ -1932,6 +2044,7 @@ let cases =
         "matchWith renders the same DOM as its default expansion across a switch and a payload change", matchTwin
         "disposing the mount during an arm's setup ends the switch cleanly", disposedMidSwitch
         "matchWith server markup under Fable matches .NET", matchMarkup
+        "two cases selecting the same matchWith definition keep the arm and update its payload", sharedArm
         "branch remounts on a key change and keeps the arm for an equal key", branchSwitching
         "branch renders the same DOM as its default expansion across a key change", branchTwin
         "branch server markup under Fable matches .NET", branchMarkup
@@ -1951,4 +2064,8 @@ let cases =
         "inlined children render the same DOM as their default expansion across parent and child updates", inlinedTwin
         "region and child skeletons round-trip", structureRoundTrips
         "inlined child server markup under Fable matches .NET", inlinedMarkup
+        "an inlined child's root-level region beside text updates, reorders, moves and disposes at a mount's top level",
+        fun () -> inlinedRootRegion false
+        "an inlined child's root-level region beside text updates, reorders, moves and disposes inside an authored element",
+        fun () -> inlinedRootRegion true
     |]
