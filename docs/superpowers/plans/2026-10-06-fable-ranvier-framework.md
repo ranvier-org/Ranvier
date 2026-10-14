@@ -47,6 +47,13 @@ Keyed lists and arms, production rows at `4353219` against Solid 2 only ([keyed 
 
 The list benchmark has no Ripple adapter.
 
+The core alone, with no DOM, against Solid 2's `mapArray` in the same Node processes ([core lists against Solid 2](../../research/2026-10-14-core-list-solid.md)):
+- Creating, appending, replacing and clearing take 2.1–3.5× Solid 2.
+- Item updates take 0.70×.
+- Swaps and removals take 4–9×, and grow with list length.
+
+The projection pass visits and hashes every item on each write; `Positional.diff` is off this path.
+
 ### Done
 
 - Owned ranges, components and props, minimal text bindings and queued commits (Tasks 3–5, experimental).
@@ -57,7 +64,7 @@ The list benchmark has no Ripple adapter.
 
 ### Open, in proposed order
 
-1. List structural edits: `swap1k`, `remove1k` and `remove10k`, and the unexplained 26–32% `remove10k` slowdown with memo-free rows. Indexed edges ([#54](https://github.com/shayanhabibi/Ranvier/pull/54)) stay deferred until the whole picture is measured.
+1. List structural edits: `swap1k`, `remove1k` and `remove10k`, and the unexplained 26–32% `remove10k` slowdown with memo-free rows. The cost is in the core pass; the [core comparison](../../research/2026-10-14-core-list-solid.md#what-would-close-the-gap) lists the changes that would make it follow the size of the change. Indexed edges ([#54](https://github.com/shayanhabibi/Ranvier/pull/54)) stay deferred until the whole picture is measured.
 2. Re-run the component comparison at the current head, for Solid 2 and Ripple.
 3. Investigate the queued commit `Queue` (`Scheduling.fs`) as binding effects under a microtask `IGraphDispatcher` (agreed follow-up).
 4. Structural view boundaries and live setter-failure handling (Task 5).
