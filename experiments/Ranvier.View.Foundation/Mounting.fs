@@ -836,28 +836,7 @@ type private MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
 
         ownedCleanup (Api.getOwner ()) cleanup
 
-    let mutable templateServices: TemplateDom.MountServices = Unchecked.defaultof<_>
-
-    let getTemplateServices () =
-        if isNull (box templateServices) then
-            templateServices <-
-                {
-                    Append = fun node -> append (node :?> ChildNode)
-                    Setup =
-                        {
-                            OnCleanup = fun callback -> ownedCleanup (Api.getOwner ()) callback
-                        }
-                    SettingUp = fun () -> root.Phase = SettingUp
-                    SetupFailed = fun error -> bindingSetupFailure <- Some error
-                    RaiseSetupFailure = fun () -> bindingSetupFailure |> Option.iter raise
-                    IsDelegated = fun eventName -> isDelegated delegatedEvents eventName
-                    Delegate = registerDelegated
-                    ListenDirect = listenDirect
-                    ReportFailure = reportReaderFailure
-                    ClearFailure = clearReported
-                }
-
-        templateServices
+    let mutable templateSetup: Setup = Unchecked.defaultof<_>
 
     member _.Root = root
 
@@ -1365,8 +1344,45 @@ type private MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
         ensureSetup ()
 
         match scheduling with
-        | Synchronous -> TemplateDom.materialise definition props (getTemplateServices ())
+        | Synchronous -> TemplateDom.materialise definition props (this :> TemplateDom.MountServices)
         | Queued _ -> definition.Expand (this, props)
+
+    interface TemplateDom.MountServices with
+        member _.Append(node) =
+            append (node :?> ChildNode)
+
+        member _.Setup =
+            if isNull (box templateSetup) then
+                templateSetup <-
+                    {
+                        OnCleanup = fun callback -> ownedCleanup (Api.getOwner ()) callback
+                    }
+
+            templateSetup
+
+        member _.SettingUp() =
+            root.Phase = SettingUp
+
+        member _.SetupFailed(error) =
+            bindingSetupFailure <- Some error
+
+        member _.RaiseSetupFailure() =
+            bindingSetupFailure |> Option.iter raise
+
+        member _.IsDelegated(eventName) =
+            isDelegated delegatedEvents eventName
+
+        member _.Delegate(eventName) =
+            registerDelegated eventName
+
+        member _.ListenDirect(node, eventName, invoke) =
+            listenDirect node eventName invoke
+
+        member _.ReportFailure(error) =
+            reportReaderFailure error
+
+        member _.ClearFailure() =
+            clearReported ()
 
 let private mountCore scheduling onRoot graph parentScope report host before build =
     let state = MountState (scheduling, graph, parentScope, report, host)

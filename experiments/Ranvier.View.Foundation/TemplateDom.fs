@@ -239,20 +239,17 @@ let compile (definition: TemplateComponent) : Compiled =
     }
 
 /// <summary>The mount-owned operations a template instance uses.</summary>
-[<NoEquality; NoComparison>]
 type MountServices =
-    {
-        Append: Node -> unit
-        Setup: Setup
-        SettingUp: unit -> bool
-        SetupFailed: exn -> unit
-        RaiseSetupFailure: unit -> unit
-        IsDelegated: string -> bool
-        Delegate: string -> unit
-        ListenDirect: Node -> string -> (obj -> unit) -> unit
-        ReportFailure: exn -> unit
-        ClearFailure: unit -> unit
-    }
+    abstract Append: Node -> unit
+    abstract Setup: Setup
+    abstract SettingUp: unit -> bool
+    abstract SetupFailed: exn -> unit
+    abstract RaiseSetupFailure: unit -> unit
+    abstract IsDelegated: string -> bool
+    abstract Delegate: string -> unit
+    abstract ListenDirect: Node * string * (obj -> unit) -> unit
+    abstract ReportFailure: exn -> unit
+    abstract ClearFailure: unit -> unit
 
 let private unset = obj ()
 
@@ -451,9 +448,13 @@ let materialise (definition: TemplateDefinition) (props: obj) (services: MountSe
             let owner = at state StateOwner :?> Owner
             let graph = at state StateGraph :?> Graph
 
-            services.ListenDirect (unbox node) eventName (fun event ->
-                if not owner.IsDisposed then
-                    graph.Run (fun () -> Api.runWithOwner owner (fun () -> Api.untrack (fun () -> handler.Invoke (instance, event)))))
+            services.ListenDirect (
+                unbox node,
+                eventName,
+                fun event ->
+                    if not owner.IsDisposed then
+                        graph.Run (fun () -> Api.runWithOwner owner (fun () -> Api.untrack (fun () -> handler.Invoke (instance, event))))
+            )
 
     if compiled.RootCount = 1 then
         services.Append clone
