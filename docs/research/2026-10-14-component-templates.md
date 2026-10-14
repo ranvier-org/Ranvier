@@ -232,25 +232,38 @@ Rows of a region at a mount's top level delegate events at the range's staging f
 
 ### Cost of templates without structure
 
-At `729a5a2`, the end of the structure tasks, the benchmark row (no dynamic structure) had regressed against `19c8a8f`, the commit before them. Paired runs of `run.mjs --template-comparison`, alternating the two commits three times in one session, median ratio to Solid 2 with the range of the three runs:
+All numbers in this section are from this machine (AMD Ryzen 9 9900X, Chromium 153.0.8010.12) on 2026-10-14, against Solid 2.0.0-rc.14. The raw results are under [`template-structure/`](framework-performance/investigation/template-structure/); every `run.mjs` result records the commit it measured and the hashes of its sources.
 
-| Phase, rows | `19c8a8f` | `729a5a2` | `64f8bf7` (fixed) | `19c8a8f`, same session as `64f8bf7` |
-|---|---|---|---|---|
-| Mount, 1 | 1.12 (1.11–1.15) | 1.16 (1.16–1.17) | 1.13 (1.10–1.14) | 1.12 (1.09–1.13) |
-| Mount, 16 | 1.15 (1.14–1.16) | 1.21 (1.20–1.23) | 1.16 (1.16–1.17) | 1.16 (1.14–1.17) |
-| Mount, 128 | 1.13 (1.13–1.15) | 1.21 (1.17–1.21) | 1.15 (1.14–1.20) | 1.16 (1.15–1.19) |
-| Update, 1 | 0.78 (0.76–0.78) | 0.78 (0.78–0.81) | 0.78 (0.78–0.79) | 0.80 (0.78–0.81) |
-| Update, 16 | 1.03 (1.03–1.04) | 1.04 (1.04–1.04) | 1.04 (1.03–1.05) | 1.04 (1.04–1.04) |
-| Update, 128 | 1.06 (1.06–1.06) | 1.07 (1.07–1.08) | 1.07 (1.06–1.07) | 1.07 (1.06–1.07) |
-| Dispose, 1 | 1.33 (1.25–1.40) | 1.36 (1.35–1.39) | 1.26 (1.17–1.35) | 1.31 (1.26–1.39) |
-| Dispose, 16 | 1.21 (1.15–1.25) | 1.43 (1.28–1.62) | 1.28 (1.27–1.29) | 1.25 (1.19–1.34) |
-| Dispose, 128 | 1.35 (1.32–1.48) | 1.59 (1.51–1.75) | 1.39 (1.37–1.39) | 1.35 (1.34–1.35) |
+At `729a5a2`, the end of the structure tasks, the benchmark row (no dynamic structure) had regressed against `19c8a8f`, the commit before them. Paired runs of `run.mjs --template-comparison`, alternating the two commits three times in one session, give the median ratio to Solid 2 with the range of the three runs. Three sessions were run: [`729a5a2`](framework-performance/investigation/template-structure/paired-729a5a2/), [`64f8bf7`](framework-performance/investigation/template-structure/paired-64f8bf7/) and [`f4273e6`](framework-performance/investigation/template-structure/paired-f4273e6/). `f4273e6` has the sources of `c85916f`; `64f8bf7` differs from it only by `bind` not being inlined.
 
-The cause was the skeleton's document. Task 2 made `compile` import every skeleton into the main document, so that region rows insert between the markers of a clone that belongs to the main document. Clones of an imported skeleton cost more to mount and to dispose than clones of the template element's inert content, which the browser adopts on insertion. A shorter interleaved sampler (both frameworks alternating, 18 rounds in each of three processes) measured the 16-row mount at 1.19–1.20× Solid 2 with the inert skeleton against 1.25–1.27× with the imported one, and the 16-row disposal at 1.23–1.32× against 1.47–1.51×. `8e4fec2` imports a skeleton only when the template has regions.
+| Phase, rows | `19c8a8f` | `729a5a2` | `19c8a8f` | `64f8bf7` | `19c8a8f` | `f4273e6` |
+|---|---|---|---|---|---|---|
+| Mount, 1 | 1.12 (1.11–1.15) | 1.16 (1.16–1.17) | 1.12 (1.09–1.13) | 1.13 (1.10–1.14) | 1.11 (1.10–1.12) | 1.11 (1.11–1.14) |
+| Mount, 16 | 1.15 (1.14–1.16) | 1.21 (1.20–1.23) | 1.16 (1.14–1.17) | 1.16 (1.16–1.17) | 1.16 (1.13–1.19) | 1.16 (1.16–1.17) |
+| Mount, 128 | 1.13 (1.13–1.15) | 1.21 (1.17–1.21) | 1.16 (1.15–1.19) | 1.15 (1.14–1.20) | 1.16 (1.14–1.22) | 1.21 (1.17–1.22) |
+| Update, 1 | 0.78 (0.76–0.78) | 0.78 (0.78–0.81) | 0.80 (0.78–0.81) | 0.78 (0.78–0.79) | 0.79 (0.77–0.79) | 0.78 (0.77–0.79) |
+| Update, 16 | 1.03 (1.03–1.04) | 1.04 (1.04–1.04) | 1.04 (1.04–1.04) | 1.04 (1.03–1.05) | 1.05 (1.03–1.08) | 1.04 (1.04–1.04) |
+| Update, 128 | 1.06 (1.06–1.06) | 1.07 (1.07–1.08) | 1.07 (1.06–1.07) | 1.07 (1.06–1.07) | 1.06 (1.05–1.09) | 1.06 (1.05–1.07) |
+| Dispose, 1 | 1.33 (1.25–1.40) | 1.36 (1.35–1.39) | 1.31 (1.26–1.39) | 1.26 (1.17–1.35) | 1.27 (1.22–1.27) | 1.27 (1.25–1.28) |
+| Dispose, 16 | 1.21 (1.15–1.25) | 1.43 (1.28–1.62) | 1.25 (1.19–1.34) | 1.28 (1.27–1.29) | 1.26 (1.18–1.36) | 1.34 (1.06–1.36) |
+| Dispose, 128 | 1.35 (1.32–1.48) | 1.59 (1.51–1.75) | 1.35 (1.34–1.35) | 1.39 (1.37–1.39) | 1.48 (1.44–1.62) | 1.45 (1.34–1.57) |
 
-The split of `materialise` into `stateFor` and `bind` added one closure context per instance: the effect closures captured `bind`'s context and the setup closure `materialise`'s. Allocation sampling of 4096 one-row mounts at a 128-byte interval measured `TemplateDom.js` at 550 bytes per mount against 514 at `19c8a8f`. `c85916f` inlines `bind`; `materialise` and `stateFor` then allocate 441 bytes per mount. The remaining difference is within the sampler's spread. At 128 rows, two allocation samples per commit, interleaved: the template allocates 146.1 and 146.8 KiB per mount at `c85916f` (1.01 and 1.05× Solid 2), against 147.5 and 147.2 KiB at `19c8a8f` (1.02 and 1.07×).
+At `729a5a2`, the mount at 16 and 128 rows and the disposal at 16 and 128 rows exceed the base's range by more than its spread. After the two fixes, mount and update match the base. Two cells still sit above the base's range: the 128-row disposal at `64f8bf7` (1.39 against 1.34–1.35) and the 128-row mount at `f4273e6`, whose median of 1.21 is within the base's range of 1.14–1.22 but 0.05 above its median. Neither difference recurs in the other session: the 128-row disposal at `f4273e6` is 1.45 against the base's 1.48, and the 128-row mount at `64f8bf7` is 1.15 against 1.16. Both are left as unresolved session-to-session variation, not as a measured cost.
 
-The benchmark row has no dynamic structure. One run of `run.mjs --template-comparison` at commit `c85916f`, all 45 correctness checks passing, overall medians, µs per operation, with the template's ratio to Solid 2:
+The cause of the `729a5a2` regression was the skeleton's document. Task 2 (`2379c2d`) made `compile` import every skeleton into the main document, so that region rows insert between the markers of a clone that belongs to the main document. Clones of an imported skeleton cost more to mount and to dispose than clones of the template element's inert content. `8e4fec2` imports a skeleton only when the template has regions. The `729a5a2` and `64f8bf7` columns differ by this change and by a documentation comment. An interleaved scratch sampler (not committed; both frameworks alternating, 18 rounds in each of three processes) also isolated it at `729a5a2`: the 16-row mount was 1.19–1.20× Solid 2 with the inert skeleton against 1.25–1.27× with the imported one, and the 16-row disposal 1.23–1.32× against 1.47–1.51×.
+
+The split of `materialise` into `stateFor` and `bind` added one closure context per instance: the effect closures captured `bind`'s context and the setup closure `materialise`'s. Allocation sampling of 4096 one-row mounts at a 128-byte interval (`allocations.mjs --modes=ranvier-template,solid --width=1 --roots=4096 --interval=128`), bytes per mount:
+
+| | `TemplateDom.js` | Whole template mount | Solid 2 |
+|---|---|---|---|
+| [`19c8a8f`](framework-performance/investigation/template-structure/allocations-64f8bf7/one-row-base.json), session with `64f8bf7` | 514 | 4387 | 3971 |
+| [`64f8bf7`](framework-performance/investigation/template-structure/allocations-64f8bf7/one-row-head.json) | 550 | 4427 | 3967 |
+| [`19c8a8f`](framework-performance/investigation/template-structure/allocations-f4273e6/), session with `f4273e6`, two samples | 511 / 519 | 4380 / 4389 | 3971 / 3960 |
+| [`f4273e6`](framework-performance/investigation/template-structure/allocations-f4273e6/), two samples | 518 / 526 | 4385 / 4392 | 3980 / 3967 |
+
+`c85916f` inlines `bind`, and the one-row template mount allocates what it allocated at `19c8a8f`. At 128 rows (`allocations.mjs --modes=ranvier-template,solid`, 4096-byte interval, interleaved, two samples each), the template allocated 149.5 and 148.3 KiB per mount at `f4273e6` (1.06 and 1.04× Solid 2) against 143.7 and 145.4 KiB at `19c8a8f` (1.03 and 1.02×). By source, `TemplateDom.js` measured 58.7 and 56.1 KiB against 55.8 and 56.1 KiB. The rest of the difference is attributed to the benchmark row's setup function in `FrameworkPerf.js` (3.6 and 3.0 KiB against 0.7 and 0.8 KiB). That source is unchanged between the two commits, and the one-row samples, at a 32 times finer interval, show no such difference.
+
+The benchmark row has no dynamic structure. [One run](framework-performance/investigation/template-structure/run-c85916f/run-2.json) of `run.mjs --template-comparison` at commit `c85916f`, all 45 correctness checks passing, overall medians, µs per operation, with the template's ratio to Solid 2:
 
 | Phase, rows | Template | Solid 2 | × Solid 2 |
 |---|---|---|---|
@@ -264,4 +277,4 @@ The benchmark row has no dynamic structure. One run of `run.mjs --template-compa
 | Dispose, 16 | 8.8 | 6.5 | 1.35 |
 | Dispose, 128 | 55.2 | 39.1 | 1.41 |
 
-The run fell in one of the machine's slow phases: Solid 2's 128-row mount took 416.9 µs against 285.9 µs in the `a0de558` run, and the 128-row update ratio per process was 1.03 / 1.18 / 1.24. The paired `64f8bf7` columns above, which differ from `c85916f` only by the inlined `bind`, are the comparison with `19c8a8f`.
+The run fell in one of the machine's slow phases: Solid 2's 128-row mount took 416.9 µs against 285.9 µs in the `a0de558` run, and the 128-row update ratio per process was 1.03 / 1.18 / 1.24. [The run before it](framework-performance/investigation/template-structure/run-c85916f/run-1.json) was slower still (128-row mount 1.39× overall, 1.17 / 1.22 / 1.17× per process). The paired `f4273e6` columns above are the comparison with `19c8a8f`.
