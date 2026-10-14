@@ -164,6 +164,7 @@ type AttributeBuilder<'inst> internal () =
         this.attribute ("title", someOf source)
 
 /// <summary>Property parts: a value is written once per instance, a reader or source is dynamic.</summary>
+/// <remarks>A writer sets properties and leaves the element's child nodes intact: nodes moved into a template clone by a writer bypass the mount's ownership checks.</remarks>
 [<Sealed>]
 type PropertyBuilder<'inst> internal () =
     member _.propertyStatic(write: 'native -> 'value -> unit, value: 'value) : Part<'native, 'inst> =

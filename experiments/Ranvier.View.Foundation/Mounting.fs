@@ -128,7 +128,7 @@ let private createHostCounts () : obj = jsNative
 /// <summary>Per host: the number of mounts using each shared listener.</summary>
 let private hostCounts = createHostCounts ()
 
-// The listener runs with its host as `this` and walks from the target to that host, presenting each handled node as currentTarget. A node with a handler runs it; a template event node passes its instance state to `TemplateDom.dispatch`. An inner host records itself on the event, so an outer host resumes above it.
+// The listener runs with its host as `this` and walks from the target to that host, presenting each handled node as currentTarget. A node with a handler runs it; for a template event node, `TemplateDom.dispatch` receives its instance state. An inner host records itself on the event, so an outer host resumes above it.
 let private delegateFrom: Func<Node, string, unit> =
     JsInterop.emitJsExpr
         (sharedListeners, TemplateDom.dispatch, hostCounts)
@@ -179,7 +179,7 @@ type private OwnedRange(host: Node) =
     let entries = ResizeArray<Entry>()
     let generatedDescendants = ResizeArray<Node>()
     let mutable placement: Node = staging
-    // Until a keyed region or a native node needs a shared parent, the roots stay detached and attach one by one.
+    // False while every root is a detached node created by the mount; `Attach` then inserts each root individually. A keyed region, a native node or a cloned-fragment root moves all roots into `staging`.
     let mutable staged = false
 #if LADDER_NAIVE_RANGE
     let naiveRoots = ResizeArray<Node>()
@@ -282,7 +282,8 @@ type private OwnedRange(host: Node) =
         insert staging node (Some last)
 
 #endif
-    /// <summary>Adds an unclaimed root node created by the mount, either detached or a child of a cloned fragment.</summary>
+    /// <summary>Adds a root node created by the mount, either detached or a child of a cloned fragment.</summary>
+    /// <remarks>The node and its subtree are unclaimed and contain neither the host nor the range.</remarks>
     member _.AddCreated(node: Node) =
         let attachNow = staged || not (isDetached node)
 
