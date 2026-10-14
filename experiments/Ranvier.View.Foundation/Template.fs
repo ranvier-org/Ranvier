@@ -285,7 +285,9 @@ let private writeMarkup (append: string -> unit) (mode: MarkupMode) (state: Writ
         | ChildNode _ -> invalidOp "Fragments and inlined children are flattened before writing"
         | ElementNode (tag, attributes, properties, slots, events, children) ->
             if rawText tag then
-                raise (InvalidOperationException "Raw-text elements require an explicit HTML serialization policy")
+                match mode with
+                | Skeleton when children.Length = 0 && name tag <> "plaintext" -> ()
+                | _ -> raise (InvalidOperationException "Raw-text elements require an explicit HTML serialization policy")
 
             match mode with
             | Skeleton ->
@@ -556,7 +558,7 @@ type AttributeBuilder<'inst> internal () =
 [<Sealed>]
 type PropertyBuilder<'inst> internal () =
     member _.propertyStatic(write: 'native -> 'value -> unit, value: 'value) : Part<'native, 'inst> =
-        StaticProperty (writer write, box value)
+        TemplateParts.property write value
 
     member _.propertyWith(write: 'native -> 'value -> unit, read: 'inst -> 'value, same: Func<obj, obj, bool>) : Part<'native, 'inst> =
         DynamicPart (slot (PropertyTarget (writer write)) RenderMode read same)
