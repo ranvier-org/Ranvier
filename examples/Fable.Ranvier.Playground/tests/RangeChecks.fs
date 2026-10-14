@@ -866,7 +866,7 @@ let private keyedSetupRecovery initial =
 
                 Tree.ops.Text (string key)))
 
-    let build ctx =
+    let build (ctx: BuildContext) =
         Tree.run view ctx.Backend
 
     if initial then

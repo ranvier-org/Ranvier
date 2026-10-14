@@ -13,14 +13,6 @@ type NativeOwnership =
     | Owned
     | Borrowed
 
-type BuildContext =
-    {
-        Backend: Backend
-        Native: Node * NativeOwnership -> unit
-        OnCleanup: (unit -> unit) -> unit
-        Phase: unit -> ScopePhase
-    }
-
 [<Global>]
 let private globalThis: GlobalThis = jsNative
 
@@ -532,41 +524,49 @@ type private OwnedRange(host: Node) =
         elif errors.Count > 1 then
             raise (AggregateException ("Range release failed", errors))
 
-type Mounted
-    internal
-    (
-        scope: Scope,
-        move: Node * Node option -> unit,
-        validate: unit -> unit,
-        relocate: unit -> unit,
-        flush: unit -> unit,
-        commitErrors: unit -> exn array
-    ) =
-    member _.Phase = scope.Phase
-    member _.Failures = scope.Failures
-    member _.CommitErrors = commitErrors ()
+exception private KeyedDisposed
+exception private KeyedSetupFailed of exn list
+
+/// <summary>The operations a view's build function uses during setup.</summary>
+type BuildContext internal (state: MountState) =
+    member _.Backend: Backend = state
+
+    /// <summary>Adds a native node as a top-level root of the mount.</summary>
+    member _.Native(node: Node, ownership: NativeOwnership) =
+        state.Native (node, ownership)
+
+    member _.OnCleanup(callback: unit -> unit) =
+        state.Root.OnCleanup callback
+
+    member _.Phase() =
+        state.Root.Phase
+
+and Mounted internal (state: MountState) =
+    member _.Phase = state.Root.Phase
+    member _.Failures = state.Root.Failures
+    member _.CommitErrors = state.CommitErrors
 
     member _.Flush() =
-        if not scope.IsDisposed then
-            flush ()
+        if not state.Root.IsDisposed then
+            state.Flush ()
 
     /// <summary>Checks that the mount's recorded DOM range remains intact.</summary>
     member internal _.Validate() =
-        validate ()
+        state.Validate ()
 
     member internal _.Relocate() =
-        relocate ()
+        state.Relocate ()
 
     member _.Dispose() =
-        scope.Dispose ()
+        state.Root.Dispose ()
 
     member _.MoveBefore(parent, before) =
-        if scope.Phase <> Attached then
+        if state.Root.Phase <> Attached then
             invalid "Only an attached mount can move"
 
-        move (parent, before)
+        state.Move (parent, before)
 
-type private KeyedEntry =
+and private KeyedEntry =
     {
         Key: obj
         Value: Signal<obj>
@@ -575,11 +575,8 @@ type private KeyedEntry =
         Mount: Mounted
     }
 
-exception private KeyedDisposed
-exception private KeyedSetupFailed of exn list
-
 /// <summary>The state of a mounted view and the backend that builds it.</summary>
-type private MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope option, report: exn list -> unit, host: Node) =
+and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope option, report: exn list -> unit, host: Node) =
     inherit Prepared.Backend()
 
     let range = OwnedRange host
@@ -838,25 +835,43 @@ type private MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
 
     let mutable templateSetup: Setup = Unchecked.defaultof<_>
 
-    member _.Root = root
+    member _.Root: Scope = root
+
+    member _.Native(node: Node, ownership: NativeOwnership) : unit =
+        ensureSetup ()
+
+        if not (same parent range.Staging) then
+            invalid "Native roots require top-level placement"
+
+        range.Add (node :?> ChildNode, ownership)
+
+    member _.Move(parent: Node, before: Node option) : unit =
+        range.Move (parent, before, root.Dispose)
+
+        if not (same parent delegatedHost) then
+            releaseDelegation ()
+            delegateAt parent
+
+    member _.Validate() : unit =
+        range.Validate ()
+
+    member _.Relocate() : unit =
+        range.Relocate ()
+
+    member _.Flush() : unit =
+        match scheduling with
+        | Synchronous -> graph.Run Api.flush
+        | Queued queue -> queue.Flush ()
+
+    member _.CommitErrors: exn array =
+        match scheduling with
+        | Synchronous -> [||]
+        | Queued queue -> queue.Errors
 
     /// <summary>Builds the view, attaches it before <c>before</c> in the host, and returns its handle.</summary>
     /// <remarks>A build or attachment failure disposes the root scope and rethrows.</remarks>
     member this.Run(before: Node option, build: BuildContext -> unit) =
-        let context =
-            {
-                Backend = this
-                Native =
-                    fun (node, ownership) ->
-                        ensureSetup ()
-
-                        if not (same parent range.Staging) then
-                            invalid "Native roots require top-level placement"
-
-                        range.Add (node :?> ChildNode, ownership)
-                OnCleanup = root.OnCleanup
-                Phase = fun () -> root.Phase
-            }
+        let context = BuildContext this
 
         try
             graph.Run (fun () ->
@@ -871,25 +886,7 @@ type private MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
             delegateAt host
             root.OnCleanup releaseDelegation
 
-            Mounted (
-                root,
-                (fun (parent, before) ->
-                    range.Move (parent, before, root.Dispose)
-
-                    if not (same parent delegatedHost) then
-                        releaseDelegation ()
-                        delegateAt parent),
-                (fun () -> range.Validate ()),
-                (fun () -> range.Relocate ()),
-                (fun () ->
-                    match scheduling with
-                    | Synchronous -> graph.Run Api.flush
-                    | Queued queue -> queue.Flush ()),
-                (fun () ->
-                    match scheduling with
-                    | Synchronous -> [||]
-                    | Queued queue -> queue.Errors)
-            )
+            Mounted this
         with _ ->
             root.Dispose ()
             reraise ()
