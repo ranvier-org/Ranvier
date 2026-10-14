@@ -2472,3 +2472,133 @@ let deltaReaderTests =
                 expectLaw "hidden key removed" removed
             }
         ]
+
+[<Tests>]
+let rowOptionTests =
+    testList
+        "Projection row options"
+        [
+            test "create-first runs an added row's factory before a removed row's cleanup" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let items = createSignal [ 1 ]
+                let log = ResizeArray<string>()
+
+                let proj =
+                    createProjectionWithOptions
+                        ProjectionOptions.CreateFirst
+                        id
+                        (fun item ->
+                            let key = item ()
+                            log.Add ("create " + string key)
+                            onCleanup (fun () -> log.Add ("retire " + string key))
+                            fun () -> item ())
+                        (fun () -> items.Value)
+
+                createEffect (fun () -> proj.Keys |> ignore)
+                items.Value <- [ 2 ]
+
+                Expect.sequenceEqual log [ "create 1"; "create 2"; "retire 1" ] "the new row exists before the old row retires"
+            }
+
+            test "without options a pass retires before it creates" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let items = createSignal [ 1 ]
+                let log = ResizeArray<string>()
+
+                let proj =
+                    createProjectionWithOptions
+                        ProjectionOptions.None
+                        id
+                        (fun item ->
+                            let key = item ()
+                            log.Add ("create " + string key)
+                            onCleanup (fun () -> log.Add ("retire " + string key))
+                            fun () -> item ())
+                        (fun () -> items.Value)
+
+                createEffect (fun () -> proj.Keys |> ignore)
+                items.Value <- [ 2 ]
+
+                Expect.sequenceEqual log [ "create 1"; "retire 1"; "create 2" ] "the default order is unchanged"
+            }
+
+            test "a failing create-first factory leaves the previous rows, items and keys" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let items = createSignal [ (1, "a") ]
+                let created = ResizeArray<int>()
+                let retired = ResizeArray<int>()
+                let mutable failOn = 0
+
+                let proj =
+                    createProjectionWithOptions
+                        ProjectionOptions.CreateFirst
+                        fst
+                        (fun item ->
+                            let key = fst (item ())
+                            created.Add key
+                            onCleanup (fun () -> retired.Add key)
+
+                            if key = failOn then
+                                failwith "factory"
+
+                            fun () -> snd (item ()))
+                        (fun () -> items.Value)
+
+                let readKeys () =
+                    try
+                        proj.Keys |> ignore
+                    with _ ->
+                        ()
+
+                readKeys ()
+                failOn <- 3
+                items.Value <- [ (1, "b"); (2, "x"); (3, "y") ]
+                readKeys ()
+
+                Expect.sequenceEqual created [ 1; 2; 3 ] "the pass created rows 2 and 3"
+                Expect.sequenceEqual retired [ 3; 2 ] "and disposed them, last first"
+                Expect.equal proj.Status Status.Error "the pass failed"
+
+                failOn <- 0
+                items.Value <- [ (1, "c"); (2, "z") ]
+                readKeys ()
+
+                Expect.sequenceEqual created [ 1; 2; 3; 2 ] "row 1 survived the failed pass; row 2 is created again"
+                Expect.sequenceEqual proj.Keys [ 1; 2 ] "the next pass applies"
+                Expect.equal (proj.Get 1) "c" "with the survivor's latest item"
+            }
+
+            test "a removed row's cleanup that disposes the projection stops a create-first pass" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let items = createSignal [ 1; 2 ]
+                let retired = ResizeArray<int>()
+                let mutable proj = Unchecked.defaultof<Projection<int, int>>
+
+                proj <-
+                    createProjectionWithOptions
+                        ProjectionOptions.CreateFirst
+                        id
+                        (fun item ->
+                            let key = item ()
+
+                            onCleanup (fun () ->
+                                retired.Add key
+
+                                if key = 2 then
+                                    proj.Dispose ())
+
+                            fun () -> item () * 10)
+                        (fun () -> items.Value)
+
+                createEffect (fun () -> proj.Keys |> ignore)
+                items.Value <- [ 1; 3 ]
+
+                Expect.equal proj.Status Status.None "the pass did not fail"
+                Expect.isNull proj.Error "and recorded no error"
+                Expect.containsAll retired [ 1; 2; 3 ] "the disposal took the created row with it"
+            }
+        ]

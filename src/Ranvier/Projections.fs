@@ -433,6 +433,26 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     member internal _.PassKeys = passKeys
     member internal _.Seen = seen
 
+    /// <summary>Whether a pass creates its added rows before it retires its removed ones.</summary>
+    member val internal CreateFirst = false with get, set
+
+    member internal _.IsDisposedInternal = disposed
+
+    /// <summary>
+    /// Removes the row of <c>key</c> created by a failing create-first pass and disposes it with its scope.
+    /// </summary>
+    member internal this.Discard(key: 'K) =
+        let entry = entries.Find key
+
+        if not (isNull entry) then
+            inCleanup <- true
+
+            try
+                entries.Remove key
+                this.Retire entry
+            finally
+                inCleanup <- false
+
     /// <summary>The tracked input delta for a membership pass, or null for snapshot enumeration.</summary>
     member val internal ReadDelta: unit -> ProjectionDelta<'K> = Unchecked.defaultof<_> with get, set
     /// <summary>Stages an added or replaced key from the input delta.</summary>
@@ -602,7 +622,8 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             inFlight.Remove entry.Key
             this.MoveSummary ()
 
-        entry.Row.NotifyRemoved ()
+        if not (isNull (box entry.Row)) then
+            entry.Row.NotifyRemoved ()
 
         if isNull (box entry.Scope) then
             entry.Row.Dispose ()
@@ -755,15 +776,28 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             observed <- true
 
     /// <summary>
-    /// Disposes removed keys, creates added rows, writes changed items and
-    /// publishes the key set. Runs inside one batch, and stops after the
-    /// removals if a removed key's cleanup disposes the projection.
+    /// Disposes removed keys, creates added rows, writes changed items and publishes the key set, in one batch. With
+    /// <c>CreateFirst</c> the added rows are created before the removed keys retire. The pass stops after the removals
+    /// if a removed key's cleanup disposes the projection.
     /// </summary>
     member private this.ApplyDiff() =
         entries.Iterate (fun key _ ->
             if not (seen.Contains key) then
                 removed.Add key)
 
+        if this.CreateFirst then
+            this.Pass.CreateAdded ()
+            this.RetireRemoved ()
+
+            if not disposed then
+                this.SettleAdditions ()
+        else
+            this.RetireRemoved ()
+
+            if not disposed then
+                this.ApplyAdditions ()
+
+    member private this.RetireRemoved() =
         if removed.Count > 0 then
             inCleanup <- true
 
@@ -777,15 +811,17 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             finally
                 inCleanup <- false
 
-        if not disposed then
-            this.ApplyAdditions ()
-
     /// <summary>
     /// The diff after its removals.
     /// </summary>
     member private this.ApplyAdditions() =
         this.Pass.CreateAdded ()
+        this.SettleAdditions ()
 
+    /// <summary>
+    /// The diff after its creations and removals: hidden keys, item writes and the key set.
+    /// </summary>
+    member private this.SettleAdditions() =
         if not (isNull (box hidden)) then
             this.SettleHidden ()
 
@@ -1697,8 +1733,14 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
                             InvalidOperationException (message, ex)
 #endif
 
+                        if this.CreateFirst then
+                            raise failure
+
                         fun () -> raise failure
                     | ex ->
+                        if this.CreateFirst then
+                            reraise ()
+
                         let captured = Platform.captureFailure null ex
                         fun () -> Platform.rethrowStored captured
 
@@ -1728,8 +1770,20 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
             if valueForm then
                 graph.RunOwned (this.Scope, this.CreateMapped)
             else
-                for struct (key, item) in adds do
-                    this.CreateFactored (key, item)
+                let mutable started = 0
+
+                try
+                    while started < adds.Count
+                          && not this.IsDisposedInternal do
+                        let struct (key, item) = adds[started]
+                        started <- started + 1
+                        this.CreateFactored (key, item)
+                with _ when this.CreateFirst ->
+                    for index in started - 1 .. -1 .. 0 do
+                        let struct (key, _) = adds[index]
+                        this.Discard key
+
+                    reraise ()
 
 /// <summary>
 /// A projection keyed by a function of the item.
