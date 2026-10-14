@@ -310,6 +310,9 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     /// The last pass's failure, as <c>Effect.Error</c>.
     /// </summary>
     let mutable failure: Failure = null
+
+    /// <summary>The <c>NotReadyException</c> that suspended the last pass, or null.</summary>
+    let mutable suspension: exn = null
     let mutable status = Status.None
     let mutable disposed = false
     let mutable link: OwnerLink = null
@@ -715,9 +718,16 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
                     finally
                         inCleanup <- false))
 
+    /// <summary>
+    /// Runs a pass. A nested pass that runs during the enumeration or the diff supersedes the pass: the pass applies
+    /// nothing further, discards its own exception, and leaves the projection in the nested pass's state. The caller
+    /// receives the nested pass's outcome: its failure, its suspension, or a normal return.
+    /// </summary>
     member private this.Run() =
         sources.BeginRun ()
         runs <- runs + 1
+        let mine = runs
+        suspension <- null
         Tracer.RunStart (graph, id, runs)
         freshness <- Freshness.Clean
 
@@ -768,27 +778,26 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
                 beaconsStale <- true
 
-            if not disposed then
+            if runs = mine && not disposed then
                 graph.RunUntracked (fun () ->
                     graph.RunBatch (fun () ->
                         if isNull (box delta) then
-                            this.ApplyDiff ()
+                            this.ApplyDiff mine
                         else
-                            this.ApplyDelta delta))
+                            this.ApplyDelta (delta, mine)))
 
+            if runs = mine then
                 // Readers parked on a pending or failed pass wake when it
                 // resolves, whether or not any row moved.
-                if previousStatus <> Status.None then
+                if not disposed && previousStatus <> Status.None then
                     Tracer.Moved (graph, id, null)
                     beacon.NotifyFailure this.Running
                     Tracer.Notified graph
-                    Tracer.RunEnd (graph, id, status)
-                else
-                    Tracer.RunEnd (graph, id, status)
-            else
+
                 Tracer.RunEnd (graph, id, status)
         with
-        | NotReadyException _ ->
+        | _ when runs <> mine -> ()
+        | NotReadyException _ as ex ->
             // Membership is unknown until the awaited source settles. The
             // reader that pulled links that source itself (see `linkAwaited`);
             // the beacon wakes every other reader on the transition into
@@ -796,6 +805,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             this.Pass.ClearStaged ()
             this.Abandon ()
             status <- Status.Pending
+            suspension <- ex
 
             if not (previousStatus.HasFlag Status.Pending) then
                 Tracer.Moved (graph, id, null)
@@ -829,6 +839,28 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             graph.Raised recorded
             reraise ()
 
+        if runs <> mine then
+            this.Superseded previousStatus
+
+    /// <summary>
+    /// Ends a superseded pass with the outcome of the pass that superseded it: raises its failure or suspension, or
+    /// returns after waking the readers parked on <c>previousStatus</c>.
+    /// </summary>
+    member private this.Superseded(previousStatus: Status) =
+        this.Pass.ClearStaged ()
+        removed.Clear ()
+        Tracer.RunEnd (graph, id, status)
+
+        if not disposed then
+            if status = Status.Error then
+                graph.Raise failure
+            elif status = Status.Pending then
+                raise suspension
+            elif previousStatus <> Status.None then
+                Tracer.Moved (graph, id, null)
+                beacon.NotifyFailure this.Running
+                Tracer.Notified graph
+
     /// <summary>
     /// Leaves the projection <c>Dirty</c> after an unfinished pass. A projection
     /// whose beacon has a reader becomes eager, so a write to any of its
@@ -850,32 +882,45 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     /// <summary>
     /// Disposes removed keys, creates added rows, writes changed items and publishes the key set, in one batch. With
     /// <c>CreateFirst</c> the added rows are created before the removed keys retire. The pass stops after the removals
-    /// if a removed key's cleanup disposes the projection.
+    /// if a removed key's cleanup disposes the projection, and after any step that runs a nested pass.
     /// </summary>
-    member private this.ApplyDiff() =
+    member private this.ApplyDiff(mine: int) =
         if not removalsStaged then
             entries.Iterate (fun key _ ->
                 if not (seen.Contains key) then
                     removed.Add key)
 
-        if this.CreateFirst then
-            this.Pass.CreateAdded ()
-            this.RetireRemoved ()
+        try
+            if this.CreateFirst then
+                this.Pass.CreateAdded ()
 
-            if not disposed then
-                this.SettleAdditions ()
-        else
-            this.RetireRemoved ()
+                if runs = mine then
+                    this.RetireRemoved mine
 
-            if not disposed then
-                this.ApplyAdditions ()
+                    if not disposed && runs = mine then
+                        this.SettleAdditions ()
+            else
+                this.RetireRemoved mine
 
-    member private this.RetireRemoved() =
+                if not disposed && runs = mine then
+                    this.Pass.CreateAdded ()
+
+                    if runs = mine then
+                        this.SettleAdditions ()
+        finally
+            removed.Clear ()
+
+    /// <summary>Retires the rows of <c>removed</c>, and stops when a cleanup runs a nested pass.</summary>
+    member private this.RetireRemoved(mine: int) =
         if removed.Count > 0 then
             inCleanup <- true
 
             try
-                for key in removed do
+                let mutable i = 0
+
+                while i < removed.Count && runs = mine do
+                    let key = removed[i]
+                    i <- i + 1
                     let entry = entries.Find key
 
                     if not (isNull entry) then
@@ -883,13 +928,6 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
                         this.Retire entry
             finally
                 inCleanup <- false
-
-    /// <summary>
-    /// The diff after its removals.
-    /// </summary>
-    member private this.ApplyAdditions() =
-        this.Pass.CreateAdded ()
-        this.SettleAdditions ()
 
     /// <summary>
     /// The diff after its creations and removals: hidden keys, item writes and the key set.
@@ -905,14 +943,20 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
         this.ObservePass ()
 
-    member private this.ApplyDelta(delta: ProjectionDelta<'K>) =
+    /// <summary>
+    /// Applies an input delta: retires its removed and replaced keys, then creates and writes its added and replaced
+    /// ones and publishes its keys. Stops after the retirements if a cleanup disposes the projection or runs a nested
+    /// pass.
+    /// </summary>
+    member private this.ApplyDelta(delta: ProjectionDelta<'K>, mine: int) =
         inCleanup <- true
 
         try
             for change in delta.Changes do
                 if
-                    change.Value = KeyChange.Removed
-                    || change.Value = KeyChange.Replaced
+                    runs = mine
+                    && (change.Value = KeyChange.Removed
+                        || change.Value = KeyChange.Replaced)
                 then
                     let entry = entries.Find change.Key
 
@@ -922,7 +966,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
         finally
             inCleanup <- false
 
-        if not disposed then
+        if not disposed && runs = mine then
             for change in delta.Changes do
                 if
                     change.Value = KeyChange.Added
@@ -1011,7 +1055,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
                     graph.Raise failure
                 elif freshness = Freshness.Dirty then
                     if isNull (box passScope) then
-                        this.Run ()
+                        this.RunCurrent ()
                     else
                         // A pass run by a cleanup's read replaces this one,
                         // and a write after that read starts over, as on
@@ -1022,11 +1066,25 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
                         if not disposed then
                             if runs = before then
-                                this.Run ()
+                                this.RunCurrent ()
                             elif freshness = Freshness.Dirty then
                                 this.EnsureCurrent ()
             finally
                 graph.ExitPull ()
+
+    /// <summary>
+    /// Runs a pass, and runs again while a write after a pass that superseded it left the projection dirty.
+    /// </summary>
+    member private this.RunCurrent() =
+        let before = runs
+        this.Run ()
+
+        if
+            runs <> before + 1
+            && freshness = Freshness.Dirty
+            && not disposed
+        then
+            this.EnsureCurrent ()
 
     /// <summary><c>EnsureCurrent</c> for <c>reader</c>, which reads the result of the pass in its current run.</summary>
     member private this.PullFor(reader: IComputation) =
@@ -1940,30 +1998,40 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
         member this.Abandoned() =
             this.Abandoned ()
 
+    /// <summary>Creates the added rows in source order, and stops when a factory runs a nested pass.</summary>
     member private this.CreateAdded() =
         if adds.Count > 0 then
             if valueForm then
                 graph.RunOwned (this.Scope, this.CreateMapped)
             elif this.CreateFirst then
                 this.CreateAddedFirst ()
-            elif isNull (box once) then
-                for struct (key, item) in adds do
-                    this.CreateFactored (key, item)
             else
-                for struct (key, item) in adds do
-                    this.CreateOnce (key, item)
+                let mine = this.Runs
+                let memoFree = not (isNull (box once))
+                let mutable i = 0
+
+                while i < adds.Count && this.Runs = mine do
+                    let struct (key, item) = adds[i]
+                    i <- i + 1
+
+                    if memoFree then
+                        this.CreateOnce (key, item)
+                    else
+                        this.CreateFactored (key, item)
 
     /// <summary>
-    /// Creates the added rows in source order, and stops when a factory disposes the projection. A factory failure
-    /// disposes the rows created by this pass, in reverse creation order, and raises.
+    /// Creates the added rows in source order, and stops when a factory disposes the projection or runs a nested pass.
+    /// A factory failure disposes the rows created by this pass, in reverse creation order, and raises.
     /// </summary>
     member private this.CreateAddedFirst() =
+        let mine = this.Runs
         let memoFree = not (isNull (box once))
         let mutable started = 0
 
         try
             while started < adds.Count
-                  && not this.IsDisposedInternal do
+                  && not this.IsDisposedInternal
+                  && this.Runs = mine do
                 let struct (key, item) = adds[started]
                 started <- started + 1
 
@@ -1972,8 +2040,11 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
                 else
                     this.CreateFactored (key, item)
         with _ ->
-            for index in started - 1 .. -1 .. 0 do
+            let mutable index = started - 1
+
+            while index >= 0 && this.Runs = mine do
                 let struct (key, _) = adds[index]
+                index <- index - 1
                 this.Discard key
 
             reraise ()
@@ -2102,11 +2173,10 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
 
     /// <summary>
     /// Reconciles the positions whose item differs from the last installed pass, after trimming the common prefix and
-    /// suffix, and stages the removed keys and the key array. A pass nested in a <c>keyOf</c> call ends the trimming: the
-    /// item of that call and every later item are visited as a full pass visits them.
+    /// suffix, and stages the removed keys and the key array. Stops after a <c>keyOf</c> call that runs a nested pass.
     /// </summary>
     member private this.Trim() =
-        let runs = this.Runs
+        let mine = this.Runs
         let prev = lastItems
         let prevKeys = lastKeys
         let n0 = lastCount
@@ -2131,17 +2201,12 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
         // Equal-length middles compare index by index.
         let aligned = n0 = n1
         let mutable nextKeys: 'K[] = null
-        let mutable nestedAt = -1
-        let mutable nestedKey = Unchecked.defaultof<'K>
 
         let visit (i: int) =
             let item = cur[i]
             let key = this.KeyOf item
 
-            if this.Runs <> runs then
-                nestedAt <- i
-                nestedKey <- key
-            else
+            if this.Runs = mine then
                 if not (changed.Add key) then
                     raise (ProjectionFailures.duplicateKey key)
 
@@ -2181,17 +2246,17 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
             if aligned then
                 let mutable k = 0
 
-                while nestedAt < 0 && k < changedAt.Count do
+                while this.Runs = mine && k < changedAt.Count do
                     visit changedAt[k]
                     k <- k + 1
             else
                 let mutable i = start
 
-                while nestedAt < 0 && i <= end1 do
+                while this.Runs = mine && i <= end1 do
                     visit i
                     i <- i + 1
 
-            if nestedAt < 0 then
+            if this.Runs = mine then
                 let removed = this.Removed
 
                 for i in changedAt do
@@ -2211,14 +2276,6 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
 
             changedKeys.Clear ()
 
-        if nestedAt >= 0 then
-            // Continues as a full pass from the item whose keyOf call nested a pass.
-            this.Visit (nestedKey, cur[nestedAt])
-
-            for i in nestedAt + 1 .. n1 - 1 do
-                let item = cur[i]
-                this.Visit (this.KeyOf item, item)
-
     override this.Enumerate() =
         let trim = trimValid && keyPure
         trimValid <- false
@@ -2227,11 +2284,14 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
         if trim then
             this.Trim ()
         else
+            let mine = this.Runs
             let items = passItems
             let count = passCount
+            let mutable i = 0
 
-            for i in 0 .. count - 1 do
+            while this.Runs = mine && i < count do
                 let item = items[i]
+                i <- i + 1
                 this.Visit (this.KeyOf item, item)
 
     override this.Applied() =

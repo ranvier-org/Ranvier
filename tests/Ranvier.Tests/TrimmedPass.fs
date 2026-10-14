@@ -317,7 +317,7 @@ let tests =
                 Expect.sequenceEqual log [ "item 1"; "item 2"; "key 1"; "key 2" ] "source first, then keyOf"
             }
 
-            test "a nested pass failing in its source leaves the outer pass's items intact" {
+            test "a nested pass failing in its source leaves the projection failed with that failure" {
                 use g = new Graph ()
                 use _ = g.Activate ()
                 let tick = createSignal 0
@@ -350,10 +350,62 @@ let tests =
 
                             [| 1; 2; 3; 4 |] :> seq<_>)
 
-                // The nested pass restarts the pass's keys, so the outer pass publishes the items it visits after it.
+                let raised =
+                    try
+                        proj.Keys |> ignore
+                        null
+                    with ex ->
+                        ex
+
+                Expect.isFalse (isNull raised) "the read raises the nested pass's failure"
+                Expect.equal raised.Message "source failed" "the source's exception"
+                Expect.equal proj.Status Status.Error "the projection reports the failure"
+                Expect.isFalse (isNull proj.Error) "and records it"
+                Expect.equal proj.Error.Message "source failed" "as the source's exception"
+
+                tick.Value <- 2
                 let keys = proj.Keys
-                Expect.sequenceEqual keys [ 2; 3; 4 ] "the outer pass's keys"
-                Expect.equal (keys |> Array.map proj.Get) [| 20; 30; 40 |] "the outer pass's rows"
+                Expect.sequenceEqual keys [ 1; 2; 3; 4 ] "every key once the source succeeds"
+                Expect.equal (keys |> Array.map proj.Get) [| 10; 20; 30; 40 |] "and every row"
+            }
+
+            test "a nested pass suspending in its source leaves the projection pending" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let tick = createSignal 0
+                let flight = createAsyncSource<int>()
+                let mutable waiting = false
+                let mutable fired = false
+                let mutable proj: Projection<int, int> = Unchecked.defaultof<_>
+
+                proj <-
+                    createProjection
+                        (fun x ->
+                            if x = 2 && not fired then
+                                fired <- true
+                                waiting <- true
+                                tick.Value <- 1
+
+                                try
+                                    proj.Keys |> ignore
+                                with _ ->
+                                    ()
+
+                            x)
+                        (fun x -> x * 10)
+                        (fun () ->
+                            tick.Value |> ignore
+
+                            if waiting then
+                                [| flight.Value |] :> seq<_>
+                            else
+                                [| 1; 2; 3 |] :> seq<_>)
+
+                Expect.throwsT<NotReadyException> (fun () -> proj.Keys |> ignore) "the read raises the nested pass's suspension"
+                Expect.equal proj.Status Status.Pending "the projection reports the suspension"
+                flight.Settle 5
+                Expect.sequenceEqual proj.Keys [ 5 ] "the keys of the settled source"
+                Expect.equal (proj.Get 5) 50 "and its row"
             }
 
             test "a swap of two items calls keyOf twice and creates no row" {
@@ -704,7 +756,7 @@ let tests =
             }
 
             test "a pass nested in keyOf during a trimmed pass matches a full pass, and the next pass runs in full" {
-                let script (forceFull: bool) =
+                let script (createFirst: bool) (forceFull: bool) =
                     use g = new Graph ()
                     use _ = g.Activate ()
                     let unused = createSignal 0
@@ -713,26 +765,34 @@ let tests =
                     let mutable armed = false
                     let mutable proj: Projection<int, int> = Unchecked.defaultof<_>
 
+                    let keyOf x =
+                        keyCalls.Value <- keyCalls.Value + 1
+
+                        if forceFull then
+                            unused.Value |> ignore
+
+                        if x = 9 && armed then
+                            armed <- false
+                            items.Value <- [| 1 |]
+
+                            try
+                                untrack (fun () -> proj.Keys) |> ignore
+                            with _ ->
+                                ()
+
+                        x
+
+                    let factory (item: unit -> int) =
+                        fun () -> item () * 10
+
+                    let source () =
+                        items.Value :> seq<_>
+
                     proj <-
-                        createProjectionWith
-                            (fun x ->
-                                keyCalls.Value <- keyCalls.Value + 1
-
-                                if forceFull then
-                                    unused.Value |> ignore
-
-                                if x = 9 && armed then
-                                    armed <- false
-                                    items.Value <- [| 1 |]
-
-                                    try
-                                        untrack (fun () -> proj.Keys) |> ignore
-                                    with _ ->
-                                        ()
-
-                                x)
-                            (fun item -> fun () -> item () * 10)
-                            (fun () -> items.Value :> seq<_>)
+                        if createFirst then
+                            createProjectionWithOptions ProjectionOptions.CreateFirst keyOf factory source
+                        else
+                            createProjectionWith keyOf factory source
 
                     let read () =
                         try
@@ -760,11 +820,15 @@ let tests =
                     let after = read ()
                     nested, after, keyCalls.Value
 
-                let (nested, after, calls) = script false
-                let (nested', after', _) = script true
-                Expect.equal nested nested' "keys, rows and status after the nested pass"
-                Expect.equal after after' "keys and rows on the next pass"
-                Expect.equal calls 3 "the next pass calls keyOf for every item"
+                for createFirst in [ false; true ] do
+                    let label = if createFirst then "create-first" else "default"
+                    let (nested, after, calls) = script createFirst false
+                    let (nested', after', _) = script createFirst true
+                    Expect.equal nested (Ok [ 1, Ok 10 ], Status.None) $"{label}: the keys and rows of the source keyOf wrote"
+                    Expect.equal nested nested' $"{label}: keys, rows and status after the nested pass"
+                    Expect.equal after (Ok [ 1, Ok 10; 9, Ok 90; 3, Ok 30 ]) $"{label}: keys and rows on the next pass"
+                    Expect.equal after after' $"{label}: the next pass matches a full pass"
+                    Expect.equal calls 3 $"{label}: the next pass calls keyOf for every item"
             }
 
             test "a pending row stays pending through a swap and ends with its removal" {
@@ -985,5 +1049,95 @@ let tests =
                 Expect.equal proj.Status Status.None "the pass did not fail"
                 Expect.isNull proj.Error "and recorded no error"
                 Expect.sequenceEqual proj.Keys [] "the projection reads empty"
+            }
+
+            test "a factory that runs a nested pass leaves the keys and rows of the latest source" {
+                for createFirst in [ false; true ] do
+                    let label = if createFirst then "create-first" else "default"
+                    use g = new Graph ()
+                    use _ = g.Activate ()
+                    let items = createSignal [| 1 |]
+                    let created = ResizeArray<int>()
+                    let mutable proj: Projection<int, int> = Unchecked.defaultof<_>
+
+                    // Key 2's factory writes the source and reads the projection inside the pass's diff.
+                    let factory (item: unit -> int) =
+                        let x = item ()
+                        created.Add x
+
+                        if x = 2 then
+                            items.Value <- [| 1; 3 |]
+
+                            try
+                                untrack (fun () -> proj.Keys) |> ignore
+                            with _ ->
+                                ()
+
+                        fun () -> item () * 10
+
+                    let source () =
+                        items.Value :> seq<_>
+
+                    proj <-
+                        if createFirst then
+                            createProjectionWithOptions ProjectionOptions.CreateFirst id factory source
+                        else
+                            createProjectionWith id factory source
+
+                    proj.Keys |> ignore
+                    items.Value <- [| 1; 2; 4 |]
+                    let keys = proj.Keys
+                    Expect.equal proj.Status Status.None $"{label}: the nested pass succeeded"
+                    Expect.sequenceEqual keys [ 1; 3 ] $"{label}: the keys of the source the factory wrote"
+                    Expect.sequenceEqual (keys |> Array.map proj.Get) [ 10; 30 ] $"{label}: every key has a row"
+                    Expect.equal (proj.TryGet 4) None $"{label}: the superseded pass created no row for 4"
+                    Expect.sequenceEqual created [ 1; 2; 3 ] $"{label}: factories"
+            }
+
+            test "a cleanup that runs a nested pass leaves the keys and rows of the latest source" {
+                for createFirst in [ false; true ] do
+                    let label = if createFirst then "create-first" else "default"
+                    use g = new Graph ()
+                    use _ = g.Activate ()
+                    let items = createSignal [| 1; 2 |]
+                    let mutable armed = false
+                    let mutable proj: Projection<int, int> = Unchecked.defaultof<_>
+
+                    // keyOf for 5 writes the source, and a removed row's cleanup reads the projection inside the diff.
+                    let keyOf x =
+                        if x = 5 && armed then
+                            items.Value <- [| 7 |]
+
+                        x
+
+                    let factory (item: unit -> int) =
+                        onCleanup (fun () ->
+                            if armed then
+                                armed <- false
+
+                                try
+                                    untrack (fun () -> proj.Keys) |> ignore
+                                with _ ->
+                                    ())
+
+                        fun () -> item () * 10
+
+                    let source () =
+                        items.Value :> seq<_>
+
+                    proj <-
+                        if createFirst then
+                            createProjectionWithOptions ProjectionOptions.CreateFirst keyOf factory source
+                        else
+                            createProjectionWith keyOf factory source
+
+                    proj.Keys |> ignore
+                    armed <- true
+                    items.Value <- [| 5 |]
+                    let keys = proj.Keys
+                    Expect.equal proj.Status Status.None $"{label}: the nested pass succeeded"
+                    Expect.sequenceEqual keys [ 7 ] $"{label}: the keys of the source keyOf wrote"
+                    Expect.sequenceEqual (keys |> Array.map proj.Get) [ 70 ] $"{label}: every key has a row"
+                    Expect.equal (proj.TryGet 5) None $"{label}: the superseded pass left no row for 5"
             }
         ]
