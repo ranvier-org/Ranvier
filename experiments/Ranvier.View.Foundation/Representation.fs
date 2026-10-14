@@ -63,8 +63,8 @@ and [<AbstractClass>] TemplateDefinition internal () =
     /// <summary>Renders the definition through ordinary backend operations.</summary>
     abstract Expand: Backend * obj -> unit
 
-    /// <summary>Renders an instance as HTML markup; a <c>true</c> flag rejects browser-only parts.</summary>
-    abstract RenderHtml: Setup * obj * bool -> string
+    /// <summary>Writes an instance's HTML through the sink; region rows render through the backend, and a <c>true</c> flag rejects browser-only parts.</summary>
+    abstract RenderHtml: Backend * Setup * obj * bool * (string -> unit) -> unit
 
     /// <summary>The DOM backend's compiled form, or null before the first DOM render.</summary>
     member val Compiled: obj = null with get, set
@@ -106,6 +106,8 @@ type Operations<'view> =
         /// <summary>Creates the internal keyed-list representation used by <c>Keyed.list</c>.</summary>
         Keyed: (obj -> obj -> bool) -> (unit -> (obj * obj) array) -> ((unit -> obj) -> 'view) -> 'view
         Component: (Setup -> 'view) -> 'view
+        /// <summary>Runs backend operations at this position; a template view hole embeds its view through it.</summary>
+        Embed: (Backend -> unit) -> 'view
     }
 
 module Keyed =
@@ -205,6 +207,7 @@ module Tree =
         | Bind of (string -> string -> bool) * (unit -> string)
         | Keyed of (obj -> obj -> bool) * (unit -> (obj * obj) array) * ((unit -> obj) -> View)
         | Component of (Setup -> View)
+        | Embed of (Backend -> unit)
 
     let rec run view (backend: Backend) =
         match view with
@@ -224,6 +227,7 @@ module Tree =
         | Bind (equals, read) -> backend.Bind (equals, read)
         | Keyed (equals, read, render) -> backend.Keyed (equals, read, fun current target -> run (render current) target)
         | Component setup -> backend.Component (fun context -> run (setup context) backend)
+        | Embed build -> build backend
 
     let ops =
         {
@@ -234,6 +238,7 @@ module Tree =
             Bind = fun equals read -> Bind (equals, read)
             Keyed = fun equals read render -> Keyed (equals, read, render)
             Component = Component
+            Embed = Embed
         }
 
 module Program =
@@ -282,6 +287,7 @@ module Program =
             Bind = bind
             Keyed = fun equals read render -> View (fun backend -> backend.Keyed (equals, read, fun current target -> (render current).Invoke target))
             Component = createComponent
+            Embed = fun build -> View (fun backend -> build backend)
         }
 
 let private validNameCharacters underscore (value: string) =
@@ -541,7 +547,7 @@ module Html =
                     | None, _ -> raise (System.AggregateException errors)
 
                 member this.Template(definition, props) =
-                    this.Component (fun context -> append (definition.RenderHtml (context, props, (policy = Reject))))
+                    this.Component (fun context -> definition.RenderHtml (this, context, props, (policy = Reject), append))
             }
 
         build backend

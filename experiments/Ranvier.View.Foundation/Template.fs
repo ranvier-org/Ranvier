@@ -49,6 +49,29 @@ type TemplateNode =
     | TextNode of string
     | TextSlotNode of Slot
     | FragmentNode of TemplateNode array
+    /// <summary>Dynamic structure mounted between a pair of region markers.</summary>
+    | RegionNode of Region
+
+/// <summary>Dynamic structure of a template: keyed items read from an instance, rendered one row per item.</summary>
+and [<NoEquality; NoComparison>] Region =
+    {
+        /// <summary>Compares two item keys.</summary>
+        Same: Func<obj, obj, bool>
+        /// <summary>Reads the keyed items from an instance.</summary>
+        Items: Func<obj, (obj * obj) array>
+        Row: RegionRow
+    }
+
+/// <summary>What a region's item is and how its row renders it.</summary>
+and [<NoEquality; NoComparison>] RegionRow =
+    /// <summary>The item is a <c>Program.View</c>, read once per instance.</summary>
+    | ViewRow
+
+/// <summary>A template component definition without its props type.</summary>
+and [<AbstractClass>] TemplateComponent internal (setup: Func<Setup, obj, obj>, root: TemplateNode) =
+    inherit TemplateDefinition()
+    member internal _.Setup = setup
+    member internal _.Root = root
 
 #if FABLE_COMPILER
 [<Emit("$0 === $1")>]
@@ -60,6 +83,206 @@ let private strictEquals (left: obj) (right: obj) =
 
 /// <summary>Compares primitive slot values: strings, booleans, numbers and options of them.</summary>
 let primitiveSame = Func<obj, obj, bool>(fun left right -> strictEquals left right)
+
+let rec private flatten (nodes: TemplateNode array) =
+    [
+        for node in nodes do
+            match node with
+            | FragmentNode children -> yield! flatten children
+            | TextNode "" -> ()
+            | other -> other
+    ]
+
+let private isText node =
+    match node with
+    | TextNode _
+    | TextSlotNode _ -> true
+    | _ -> false
+
+let private rawText tag =
+    match name tag with
+    | "script"
+    | "style"
+    | "iframe"
+    | "noscript"
+    | "xmp"
+    | "noembed"
+    | "noframes"
+    | "plaintext" -> true
+    | _ -> false
+
+[<NoEquality; NoComparison>]
+type private MarkupMode =
+    | Skeleton
+    | Server of instance: obj * rejectBrowser: bool * backend: Backend
+
+let private hasBrowserParts properties (slots: Slot array) (events: (string * Func<obj, obj, unit>) array) =
+    Array.length properties > 0
+    || events.Length > 0
+    || slots
+       |> Array.exists (fun slot ->
+           match slot.Target with
+           | PropertyTarget _ -> true
+           | _ -> false)
+
+/// <summary>The number of skeleton sibling nodes a flattened node occupies.</summary>
+let private width node =
+    match node with
+    | RegionNode _ -> 2
+    | _ -> 1
+
+/// <summary>Renders a region row through a backend; the reader returns the row's current item.</summary>
+let internal rowRenderer (row: RegionRow) : (unit -> obj) -> Backend -> unit =
+    match row with
+    | ViewRow -> fun current backend -> (unbox<Program.View>(current ())).Invoke backend
+
+let private serverRow (backend: Backend) (row: RegionRow) (item: obj) =
+    rowRenderer row (fun () -> item) backend
+
+let private writeMarkup (append: string -> unit) mode (targets: ResizeArray<TemplateNode * int array>) (root: TemplateNode) =
+    let rec writeChildren (children: TemplateNode array) (path: int list) =
+        let mutable index = 0
+        let mutable previousText = false
+
+        for child in flatten children do
+            let text = isText child
+
+            if text && previousText then
+                append "<!--!-->"
+                index <- index + 1
+
+            writeNode child (index :: path)
+            index <- index + width child
+            previousText <- text
+
+        index
+
+    and writeNode node path =
+        match node with
+        | TextNode value -> append (Html.escape false value)
+        | TextSlotNode slot ->
+            match mode with
+            | Skeleton ->
+                targets.Add (node, Array.ofList (List.rev path))
+                append " "
+            | Server (instance, _, _) ->
+                let value = unbox<string>(slot.Read.Invoke instance)
+                append (Html.escape false (if isNull value then "" else value))
+        | FragmentNode _ -> invalidOp "Fragments are flattened before writing"
+        | ElementNode (tag, attributes, properties, slots, events, children) ->
+            if rawText tag then
+                raise (InvalidOperationException "Raw-text elements require an explicit HTML serialization policy")
+
+            match mode with
+            | Skeleton ->
+                if
+                    properties.Length > 0
+                    || slots.Length > 0
+                    || events.Length > 0
+                then
+                    targets.Add (node, Array.ofList (List.rev path))
+            | Server (_, rejectBrowser, _) ->
+                if
+                    rejectBrowser
+                    && hasBrowserParts properties slots events
+                then
+                    invalidOp "Browser capability requires explicit Omit policy"
+
+            append ("<" + name tag)
+
+            for key, value in attributes do
+                append (" " + key + "=\"" + Html.escape true value + "\"")
+
+            match mode with
+            | Server (instance, _, _) ->
+                for slot in slots do
+                    match slot.Target with
+                    | AttributeTarget key ->
+                        match unbox<string option>(slot.Read.Invoke instance) with
+                        | Some value -> append (" " + key + "=\"" + Html.escape true value + "\"")
+                        | None -> ()
+                    | _ -> ()
+            | Skeleton -> ()
+
+            append ">"
+
+            if not (isVoid tag) then
+                writeChildren children path |> ignore
+                append ("</" + name tag + ">")
+        | RegionNode region ->
+            match mode with
+            | Skeleton ->
+                targets.Add (node, Array.ofList (List.rev path))
+                append "<!--[--><!--]-->"
+            | Server (instance, _, backend) ->
+                let items = Array.copy (region.Items.Invoke instance)
+                Keyed.validateUniqueKeys (fun left right -> region.Same.Invoke (left, right)) items
+                append "<!--[-->"
+
+                for _, item in items do
+                    serverRow backend region.Row item
+
+                append "<!--]-->"
+
+    writeChildren [| root |] []
+
+/// <summary>The skeleton markup of a template, the path of every dynamic node in document order, and the number of root nodes.</summary>
+/// <remarks>A path lists child indexes from the skeleton's root fragment. A region's path leads to its start marker.</remarks>
+let skeletonMarkup (root: TemplateNode) =
+    let output = StringBuilder ()
+    let targets = ResizeArray ()
+
+    let rootCount =
+        writeMarkup (fun value -> output.Append value |> ignore) Skeleton targets root
+
+    output.ToString (), targets.ToArray (), rootCount
+
+/// <summary>Writes an instance as server HTML with the skeleton's markers; region rows render through <c>backend</c>.</summary>
+let renderHtml (definition: TemplateComponent) (backend: Backend) (setup: Setup) (props: obj) (rejectBrowser: bool) (append: string -> unit) =
+    let instance = definition.Setup.Invoke (setup, props)
+
+    writeMarkup append (Server (instance, rejectBrowser, backend)) (ResizeArray ()) definition.Root
+    |> ignore
+
+let rec private expandNode (ops: Operations<'view>) (instance: obj) (node: TemplateNode) : 'view =
+    match node with
+    | TextNode value -> ops.Text value
+    | TextSlotNode slot -> ops.Bind (fun left right -> slot.Same.Invoke (box left, box right)) (fun () -> unbox<string>(slot.Read.Invoke instance))
+    | FragmentNode children -> ops.Fragment (Array.map (expandNode ops instance) children)
+    | ElementNode (tag, attributes, properties, slots, events, children) ->
+        let modifiers: ModifierAction array =
+            [|
+                for key, value in attributes -> Attribute (key, value)
+                for write, value in properties -> fun (backend: Backend) -> backend.Property (fun target -> write.Invoke (target, value))
+                for slot in slots ->
+                    match slot.Target with
+                    | AttributeTarget key -> ReactiveAttribute (key, fun () -> unbox<string option>(slot.Read.Invoke instance))
+                    | PropertyTarget write -> fun (backend: Backend) -> backend.ReactiveProperty ((fun () -> slot.Read.Invoke instance), write)
+                    | TextTarget -> invalidOp "A text slot is a child node"
+                for eventName, handler in events -> listenModifier eventName (fun event -> handler.Invoke (instance, event))
+            |]
+
+        ops.Element tag modifiers (Array.map (expandNode ops instance) children)
+    | RegionNode region ->
+        match region.Row with
+        | ViewRow ->
+            let _, item = (region.Items.Invoke instance)[0]
+            ops.Embed (rowRenderer region.Row (fun () -> item))
+
+/// <summary>Expands a definition into any view representation through its operations.</summary>
+let expandWith (ops: Operations<'view>) (definition: TemplateComponent) (props: obj) : 'view =
+    ops.Component (fun context -> expandNode ops (definition.Setup.Invoke (context, props)) definition.Root)
+
+/// <summary>A component whose template is built once per definition; setup runs per instance.</summary>
+[<Sealed>]
+type Component<'props> internal (setup: Func<Setup, obj, obj>, root: TemplateNode) =
+    inherit TemplateComponent(setup, root)
+
+    override this.Expand(backend, props) =
+        Program.run (expandWith Program.ops (this :> TemplateComponent) props) backend
+
+    override this.RenderHtml(backend, context, props, rejectBrowser, append) =
+        renderHtml (this :> TemplateComponent) backend context props rejectBrowser append
 
 /// <summary>One part of an element in a template for instances of type <c>'inst</c>.</summary>
 [<NoEquality; NoComparison>]
@@ -80,7 +303,7 @@ type Source<'inst, 'value> = internal Source of Func<obj, obj>
 
 let private slot target mode (read: 'inst -> 'value) same =
     {
-        Target = target
+        Slot.Target = target
         Mode = mode
         Read = Func<obj, obj>(fun instance -> box (read (unbox instance)))
         Same = same
@@ -88,7 +311,7 @@ let private slot target mode (read: 'inst -> 'value) same =
 
 let private sourceSlot target (Source read: Source<'inst, 'value>) same =
     {
-        Target = target
+        Slot.Target = target
         Mode = DirectMode
         Read = read
         Same = same
@@ -121,6 +344,8 @@ let private elementNode tag (parts: Part<'native, 'inst> array) (children: Templ
         | EventPart (name, handler) -> events.Add (name, handler)
 
     TemplateView (ElementNode (tag, attributes.ToArray (), properties.ToArray (), slots.ToArray (), events.ToArray (), Array.map nodeOf children))
+
+let private anySame = Func<obj, obj, bool>(fun _ _ -> true)
 
 /// <summary>Attribute parts: a value is static, a reader or source is dynamic.</summary>
 [<Sealed>]
@@ -266,182 +491,17 @@ type TemplateBuilder<'inst> internal () =
         | TemplateView (TextSlotNode slot) -> TemplateView (TextSlotNode { slot with Mode = IsolatedMode })
         | _ -> invalidArg "view" "Only text slots can be isolated"
 
-let rec private flatten (nodes: TemplateNode array) =
-    [
-        for node in nodes do
-            match node with
-            | FragmentNode children -> yield! flatten children
-            | TextNode "" -> ()
-            | other -> other
-    ]
-
-let private isText node =
-    match node with
-    | TextNode _
-    | TextSlotNode _ -> true
-    | _ -> false
-
-let private rawText tag =
-    match name tag with
-    | "script"
-    | "style"
-    | "iframe"
-    | "noscript"
-    | "xmp"
-    | "noembed"
-    | "noframes"
-    | "plaintext" -> true
-    | _ -> false
-
-[<NoEquality; NoComparison>]
-type private MarkupMode =
-    | Skeleton
-    | Server of instance: obj * rejectBrowser: bool
-
-let private hasBrowserParts properties (slots: Slot array) (events: (string * Func<obj, obj, unit>) array) =
-    Array.length properties > 0
-    || events.Length > 0
-    || slots
-       |> Array.exists (fun slot ->
-           match slot.Target with
-           | PropertyTarget _ -> true
-           | _ -> false)
-
-let private writeMarkup (output: StringBuilder) mode (targets: ResizeArray<TemplateNode * int array>) (root: TemplateNode) =
-    let append (value: string) =
-        output.Append value |> ignore
-
-    let rec writeChildren (children: TemplateNode array) (path: int list) =
-        let mutable index = 0
-        let mutable previousText = false
-
-        for child in flatten children do
-            let text = isText child
-
-            if text && previousText then
-                append "<!--!-->"
-                index <- index + 1
-
-            writeNode child (index :: path)
-            index <- index + 1
-            previousText <- text
-
-        index
-
-    and writeNode node path =
-        match node with
-        | TextNode value -> append (Html.escape false value)
-        | TextSlotNode slot ->
-            match mode with
-            | Skeleton ->
-                targets.Add (node, Array.ofList (List.rev path))
-                append " "
-            | Server (instance, _) ->
-                let value = unbox<string>(slot.Read.Invoke instance)
-                append (Html.escape false (if isNull value then "" else value))
-        | FragmentNode _ -> invalidOp "Fragments are flattened before writing"
-        | ElementNode (tag, attributes, properties, slots, events, children) ->
-            if rawText tag then
-                raise (InvalidOperationException "Raw-text elements require an explicit HTML serialization policy")
-
-            match mode with
-            | Skeleton ->
-                if
-                    properties.Length > 0
-                    || slots.Length > 0
-                    || events.Length > 0
-                then
-                    targets.Add (node, Array.ofList (List.rev path))
-            | Server (_, rejectBrowser) ->
-                if
-                    rejectBrowser
-                    && hasBrowserParts properties slots events
-                then
-                    invalidOp "Browser capability requires explicit Omit policy"
-
-            append ("<" + name tag)
-
-            for key, value in attributes do
-                append (" " + key + "=\"" + Html.escape true value + "\"")
-
-            match mode with
-            | Server (instance, _) ->
-                for slot in slots do
-                    match slot.Target with
-                    | AttributeTarget key ->
-                        match unbox<string option>(slot.Read.Invoke instance) with
-                        | Some value -> append (" " + key + "=\"" + Html.escape true value + "\"")
-                        | None -> ()
-                    | _ -> ()
-            | Skeleton -> ()
-
-            append ">"
-
-            if not (isVoid tag) then
-                writeChildren children path |> ignore
-                append ("</" + name tag + ">")
-
-    writeChildren [| root |] []
-
-/// <summary>The skeleton markup of a template, the path of every dynamic node in document order, and the number of root nodes.</summary>
-/// <remarks>A path lists child indexes from the skeleton's root fragment.</remarks>
-let skeletonMarkup (root: TemplateNode) =
-    let output = StringBuilder ()
-    let targets = ResizeArray ()
-    let rootCount = writeMarkup output Skeleton targets root
-    output.ToString (), targets.ToArray (), rootCount
-
-/// <summary>A template component definition without its props type.</summary>
-[<AbstractClass>]
-type TemplateComponent internal (setup: Func<Setup, obj, obj>, root: TemplateNode) =
-    inherit TemplateDefinition()
-    member internal _.Setup = setup
-    member internal _.Root = root
-
-/// <summary>Renders an instance as server HTML with the skeleton's markers.</summary>
-let renderHtml (definition: TemplateComponent) (setup: Setup) (props: obj) (rejectBrowser: bool) =
-    let instance = definition.Setup.Invoke (setup, props)
-    let output = StringBuilder ()
-
-    writeMarkup output (Server (instance, rejectBrowser)) (ResizeArray ()) definition.Root
-    |> ignore
-
-    output.ToString ()
-
-let rec private expandNode (ops: Operations<'view>) (instance: obj) (node: TemplateNode) : 'view =
-    match node with
-    | TextNode value -> ops.Text value
-    | TextSlotNode slot -> ops.Bind (fun left right -> slot.Same.Invoke (box left, box right)) (fun () -> unbox<string>(slot.Read.Invoke instance))
-    | FragmentNode children -> ops.Fragment (Array.map (expandNode ops instance) children)
-    | ElementNode (tag, attributes, properties, slots, events, children) ->
-        let modifiers: ModifierAction array =
-            [|
-                for key, value in attributes -> Attribute (key, value)
-                for write, value in properties -> fun (backend: Backend) -> backend.Property (fun target -> write.Invoke (target, value))
-                for slot in slots ->
-                    match slot.Target with
-                    | AttributeTarget key -> ReactiveAttribute (key, fun () -> unbox<string option>(slot.Read.Invoke instance))
-                    | PropertyTarget write -> fun (backend: Backend) -> backend.ReactiveProperty ((fun () -> slot.Read.Invoke instance), write)
-                    | TextTarget -> invalidOp "A text slot is a child node"
-                for eventName, handler in events -> listenModifier eventName (fun event -> handler.Invoke (instance, event))
-            |]
-
-        ops.Element tag modifiers (Array.map (expandNode ops instance) children)
-
-/// <summary>Expands a definition into any view representation through its operations.</summary>
-let expandWith (ops: Operations<'view>) (definition: TemplateComponent) (props: obj) : 'view =
-    ops.Component (fun context -> expandNode ops (definition.Setup.Invoke (context, props)) definition.Root)
-
-/// <summary>A component whose template is built once per definition; setup runs per instance.</summary>
-[<Sealed>]
-type Component<'props> internal (setup: Func<Setup, obj, obj>, root: TemplateNode) =
-    inherit TemplateComponent(setup, root)
-
-    override this.Expand(backend, props) =
-        Program.run (expandWith Program.ops (this :> TemplateComponent) props) backend
-
-    override this.RenderHtml(context, props, rejectBrowser) =
-        renderHtml (this :> TemplateComponent) context props rejectBrowser
+    /// <summary>A view hole: renders the view read from the instance as it is created, between region markers.</summary>
+    /// <remarks>The reader runs once per instance, untracked.</remarks>
+    member _.view(read: 'inst -> Program.View) : TemplateView<'inst> =
+        TemplateView (
+            RegionNode
+                {
+                    Region.Same = anySame
+                    Items = Func<obj, (obj * obj) array>(fun instance -> [| (null: obj), box (read (unbox instance)) |])
+                    Row = ViewRow
+                }
+        )
 
 module Component =
     /// <summary>Defines a component from per-instance setup and a template built once.</summary>

@@ -243,3 +243,56 @@ equal "<div></div>" (render Omit (Component.render nullTitle greetingProps))
 equal "<div></div>" (Html.render Omit (Tree.run (Component.renderWith Tree.ops nullTitle greetingProps)))
 
 printfn "PASS template portable rendering"
+
+let stripMarkers (html: string) =
+    System.Text.RegularExpressions.Regex.Replace (html, "<!--.*?-->", "")
+
+type HoleProps = { Caption: string; Body: Program.View }
+
+let holed =
+    Component.define (fun _ (props: HoleProps) -> props) (fun t ->
+        t.div [| t.Attrs.className "card" |] [| t.text (fun r -> r.Caption); t.view (fun r -> r.Body) |])
+
+let holeProps =
+    {
+        Caption = "A"
+        Body = Program.element (HtmlTag "em") [||] [| Program.text "<b>" |]
+    }
+
+// A view hole renders between region markers; text beside a marker has no separator.
+equal "<div class=\"card\">A<!--[--><em>&lt;b&gt;</em><!--]--></div>" (render Omit (Component.render holed holeProps))
+
+// The default expansion renders the same HTML without markers.
+equal (stripMarkers (render Omit (Component.render holed holeProps))) (Html.render Omit (Tree.run (Component.renderWith Tree.ops holed holeProps)))
+
+// An empty view hole keeps its markers.
+equal
+    "<div class=\"card\">B<!--[--><!--]--></div>"
+    (render
+        Omit
+        (Component.render
+            holed
+            {
+                Caption = "B"
+                Body = Program.fragment [||]
+            }))
+
+let mutable holeRejected = false
+
+try
+    render
+        Reject
+        (Component.render
+            holed
+            {
+                Caption = "C"
+                Body = Program.element Button [| listenModifier "click" ignore |] [||]
+            })
+    |> ignore
+with :? System.InvalidOperationException ->
+    holeRejected <- true
+
+// A browser-only part inside a view hole follows the Reject policy.
+equal true holeRejected
+
+printfn "PASS template view holes"

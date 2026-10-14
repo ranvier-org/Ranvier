@@ -875,6 +875,19 @@ let private singleRootCompiled () =
         (compiled.Walk.Length = 0
          || compiled.Walk[0] <> TemplateDom.FirstChild)
 
+type Holed = { Caption: string; Body: Program.View }
+
+let private holed =
+    Component.define (fun _ (props: Holed) -> props) (fun t ->
+        t.div [| t.Attrs.className "card" |] [| t.text (fun r -> r.Caption); t.view (fun r -> r.Body) |])
+
+let private holeMarkup () =
+    let body = Program.element (HtmlTag "em") [||] [| Program.text "<b>" |]
+
+    equal
+        "<div class=\"card\">A<!--[--><em>&lt;b&gt;</em><!--]--></div>"
+        (Html.render Omit (Program.run (Component.render holed { Caption = "A"; Body = body })))
+
 /// <summary>Checks template compilation and DOM materialisation.</summary>
 let cases =
     [|
@@ -911,4 +924,5 @@ let cases =
         "a multi-root template moves together and disposes empty", movedRoots
         "walk programs begin with a collect for the empty path", walkProgramEmptyPath
         "a single-root definition compiles to an element skeleton", singleRootCompiled
+        "view hole server markup under Fable matches .NET", holeMarkup
     |]
