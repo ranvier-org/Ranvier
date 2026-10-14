@@ -19,7 +19,7 @@
 - Fable: no interface type tests (`:? IFoo`), and no secondary constructors with a self-identifier.
 - After touching `Template.fs`, `TemplateDom.fs`, `Mounting.fs` or `Lifetime.fs`, grep the emitted JavaScript for `curry`, `uncurry` and `partialApply` and compare with the counts recorded in Task 5 Step 1. A new occurrence fails the task.
 - Duplicate keys raise the core's `InvalidOperationException` with the message "The projection produced the key <key> twice in one pass. Keys must be unique; check the keyOf function.".
-- Keys are compared by the core: `'K: equality`, hashed through `Platform.KeyMap`. The view passes no key comparer anywhere. The core keeps `createMemoWithComparer` and every other comparer overload.
+- Keys are compared by the core: `'K: equality`, hashed through `Platform.KeyMap`. The view has no user-supplied or per-region key-identity comparer; arm selection uses an internal `createMemoWithComparer` comparer named `sameArm` over `fst` with `=` (Task 8). The core keeps `createMemoWithComparer` and every other comparer overload.
 - Benchmarks compare against Solid 2 (`solid-js`, `@solidjs/web` and `@solidjs/compiler` all 2.0.0-rc.14, native compiler), call `flush()` after each timed write, run paired rounds in a seeded shuffled order (`--shuffle`), and commit raw JSON recording machine, Chromium version, date and commit. Bundle figures are measurements, not gates. Timing targets are reported, not gates.
 - Production code carries no `PROTOTYPE (research/keyed-row-cost)` label and no `RANVIER_ROWS_BASELINE` define. Measurement variants live only on the throwaway branch of Task 10.
 - Gates: core `rtk dotnet test tests/Ranvier.Tests -c Release -v q` (net8.0 and net10.0); core under Fable `rtk dotnet fable fable/Ranvier.Tests.Fable -e .fs.js -o dist/tests -c Release` then `rtk npm test` from the repository root; view from `examples/Fable.Ranvier.Playground`: `rtk npm run test:dom` and `rtk npm run test:browser`; view on .NET `rtk proxy dotnet run --project experiments/Ranvier.View.Foundation/RepresentationChecks.fsproj --configuration Release`. A filtered run is never an acceptance check.
@@ -51,7 +51,7 @@
 | `experiments/Ranvier.View.Foundation/TemplateDom.fs` | modify | `RegionKind`; region materialisers |
 | `experiments/Ranvier.View.Foundation/Mounting.fs` | modify | mounts on `MountLifetime`; `Row`, `RowBuilder`, list, arm and hole regions; removal of `KeyedRegion` |
 | `experiments/Ranvier.View.Foundation/Browser.fs`, `Prepared.fs`, `Authoring.fs` | modify | lifetimes and comparer-free signatures |
-| `examples/Fable.Ranvier.Playground/benchmarks/BindingBaselineMounting.fs` | modify | comparer-free `Keyed` override |
+| `examples/Fable.Ranvier.Playground/benchmarks/BindingBaselineMounting.fs` | modify | comparer-free `Keyed` override; a private copy of the old `Scope` |
 | `examples/Fable.Ranvier.Playground/tests/*.fs`, `range.html`, `range.spec.mjs` | modify | updated and new view checks |
 | `docs/research/2026-10-14-keyed-rows-on-core.md` and `docs/research/framework-performance/investigation/keyed-rows-on-core/*.json` | create | measurement report and raw data (Task 10) |
 | `docs/research/2026-10-14-component-templates.md`, `docs/superpowers/plans/2026-10-06-fable-ranvier-framework.md` | modify | supersession notes and status (Task 11) |
@@ -159,7 +159,7 @@ rtk git commit -m "feat(core): read the errors an owner recorded from a position
 
 **Interfaces:**
 - Consumes: nothing.
-- Produces: `[<Flags>] type ProjectionOptions = None = 0 | CreateFirst = 1`; `Api.createProjectionWithOptions (options: ProjectionOptions) (keyOf: 'T -> 'K) (factory: (unit -> 'T) -> (unit -> 'V)) (source: unit -> 'T seq) : Projection<'K, 'V>`; internal `Projection.CreateFirst: bool` (settable), `Projection.Discard(key: 'K)`, `Projection.IsDisposedInternal: bool`, and `RowsOf.CreateAdded` that stops creating once the projection is disposed.
+- Produces: `[<Flags>] type ProjectionOptions = None = 0 | CreateFirst = 1`; `Api.createProjectionWithOptions (options: ProjectionOptions) (keyOf: 'T -> 'K) (factory: (unit -> 'T) -> (unit -> 'V)) (source: unit -> 'T seq) : Projection<'K, 'V>`; internal `Projection.CreateFirst: bool` (settable), `Projection.Discard(key: 'K)`, `Projection.IsDisposedInternal: bool`, `Retire` that skips the memo notification of an entry whose `Row` is null, and `RowsOf.CreateAdded` that stops creating once the projection is disposed.
 
 Ruling recorded for the spec: `ApplyDelta` is left unchanged. It serves only the internal delta-driven projections (`Collections.fs`, `Combinators.fs`), which never receive options, so the spec's `ApplyDelta` paragraph is removed in the plan commit.
 
@@ -467,6 +467,13 @@ In `src/Ranvier/Projections.fs`, `Projection` type:
                     reraise ()
 ```
 
+5. In `Projection.Retire`, replace `entry.Row.NotifyRemoved ()` with the guarded call below. The row whose factory failed under `CreateFirst` has no `Row` when `Discard` retires it:
+
+```fsharp
+        if not (isNull (box entry.Row)) then
+            entry.Row.NotifyRemoved ()
+```
+
 - [ ] **Step 5: Add the API**
 
 In `src/Ranvier/Api.fs`, directly after `createProjectionWith`:
@@ -520,7 +527,7 @@ rtk git commit -m "feat(core): add create-first projection passes that keep the 
 
 **Interfaces:**
 - Consumes: `ProjectionOptions`, `Projection.CreateFirst`, `Projection.Discard`, `RowsOf.CreateAdded` (Task 2).
-- Produces: `Api.createProjectionOnce (options: ProjectionOptions) (keyOf: 'T -> 'K) (factory: (unit -> 'T) -> 'V) (source: unit -> 'T seq) : Projection<'K, 'V>`; internal `Projection.OnceValue: Func<RowEntry<'K, 'V>, 'V>` (null for memo rows), `Projection.RequireRowMemos(operation: string)`; internal `OnceRow<'T, 'K, 'V>`; counters `FactoryRowsCreated` (index 11) and `OnceRowsCreated` (index 12).
+- Produces: `Api.createProjectionOnce (options: ProjectionOptions) (keyOf: 'T -> 'K) (factory: (unit -> 'T) -> 'V) (source: unit -> 'T seq) : Projection<'K, 'V>`; internal `Projection.OnceValue: Func<RowEntry<'K, 'V>, 'V>` (null for memo rows), `Projection.RequireRowMemos(operation: string)`; internal `OnceRow<'T, 'K, 'V>`; private `RowsOf.FactoryFailure(key: 'K, error: exn, advice: string) : unit -> 'V`, shared by `CreateFactored` and `CreateOnce`; counters `FactoryRowsCreated` (index 11) and `OnceRowsCreated` (index 12).
 
 The prototype is `git diff fcda344 aa5b811 -- src/Ranvier` in `C:\Users\shaya\RiderProjects\Ranvier-keyed-rows`. Port its non-baseline branches without the `#if RANVIER_ROWS_BASELINE` blocks or `PROTOTYPE` labels, with the changes below.
 
@@ -683,12 +690,7 @@ type internal OnceRow<'T, 'K, 'V>(key: 'K, item: Signal<'T>) =
             )
 ```
 
-4. In `Retire`, guard the memo notification:
-
-```fsharp
-        if not (isNull (box entry.Row)) then
-            entry.Row.NotifyRemoved ()
-```
+4. `Retire` already guards the memo notification (Task 2 Step 4); leave it unchanged.
 
 5. In `TrackRow`, replace the body's `graph.Track (existing.Row :> ISource)` with:
 
@@ -766,6 +768,55 @@ type internal OnceRow<'T, 'K, 'V>(key: 'K, item: Signal<'T>) =
     let mutable once: (unit -> 'T) -> 'V = Unchecked.defaultof<_>
 ```
 
+Before `CreateFactored`, add the factory-failure helper that `CreateFactored` and `CreateOnce` share:
+
+```fsharp
+    /// <summary>
+    /// A reader that raises the failure of the factory for <c>key</c>. Under <c>CreateFirst</c> the failure is raised at
+    /// once instead. A pending-source read becomes an <c>InvalidOperationException</c> whose message ends with
+    /// <c>advice</c>.
+    /// </summary>
+    member private this.FactoryFailure(key: 'K, error: exn, advice: string) : unit -> 'V =
+        match error with
+        | NotReadyException _ ->
+            let message =
+                "The projection's factory for key "
+                + string key
+                + " read a pending source. The factory runs once per key, untracked, and cannot wait for a source to settle."
+                + advice
+
+            let failure =
+#if FABLE_COMPILER
+                let failure = InvalidOperationException message
+                Platform.setInner failure error
+                failure
+#else
+                InvalidOperationException (message, error)
+#endif
+
+            if this.CreateFirst then
+                raise failure
+
+            fun () -> raise failure
+        | _ ->
+            let captured = Platform.captureFailure null error
+
+            if this.CreateFirst then
+                Platform.rethrowStored captured
+
+            fun () -> Platform.rethrowStored captured
+```
+
+In `CreateFactored`, replace the factory `try` (with the two `with` branches Task 2 wrote) with:
+
+```fsharp
+                entry.Reader <-
+                    try
+                        factory (fun () -> source.Value)
+                    with ex ->
+                        this.FactoryFailure (key, ex, " Read the source inside the reader the factory returns.")
+```
+
 After `CreateFactored`, add `UseOnce` and `CreateOnce`:
 
 ```fsharp
@@ -797,32 +848,8 @@ After `CreateFactored`, add `UseOnce` and `CreateOnce`:
             fun () ->
                 try
                     entry.Value <- once (fun () -> source.Value)
-                with
-                | NotReadyException _ as ex ->
-                    let message =
-                        "The projection's factory for key "
-                        + string key
-                        + " read a pending source. The factory runs once per key, untracked, and cannot wait for a source to settle."
-
-                    let failure =
-#if FABLE_COMPILER
-                        let failure = InvalidOperationException message
-                        Platform.setInner failure ex
-                        failure
-#else
-                        InvalidOperationException (message, ex)
-#endif
-
-                    if this.CreateFirst then
-                        raise failure
-
-                    entry.Reader <- fun () -> raise failure
-                | ex ->
-                    if this.CreateFirst then
-                        reraise ()
-
-                    let captured = Platform.captureFailure null ex
-                    entry.Reader <- fun () -> Platform.rethrowStored captured
+                with ex ->
+                    entry.Reader <- this.FactoryFailure (key, ex, "")
         )
 ```
 
@@ -931,29 +958,44 @@ rtk git commit -m "feat(core): add memo-free factory rows through createProjecti
 - Test: `tests/Ranvier.Tests/Projections.fs` (`rowOptionTests`)
 
 **Interfaces:**
-- Consumes: nothing.
+- Consumes: the `rowOptionTests` list in `tests/Ranvier.Tests/Projections.fs` (Task 2), already registered in `fable/Ranvier.Tests.Fable/Main.fs`.
 - Produces: `Projection.ensureUniqueKeys (keyOf: 'T -> 'K) (items: 'T seq) : unit`; internal `ProjectionFailures.duplicateKey (key: 'K) : InvalidOperationException`.
 
 - [ ] **Step 1: Write the failing tests**
 
+In `tests/Ranvier.Tests/Projections.fs`, directly before `[<Tests>] let rowOptionTests`, add:
+
+```fsharp
+/// <summary>The message <c>action</c> raises; the test fails when it raises nothing.</summary>
+let private raisedMessage (action: unit -> unit) : string =
+    let message = ref ""
+    Expect.throwsC action (fun error -> message.Value <- error.Message)
+    message.Value
+
+/// <summary>The messages a projection pass over <c>items</c> and <c>ensureUniqueKeys</c> over them raise.</summary>
+let private duplicateMessages<'T when 'T: equality> (items: 'T list) : string * string =
+    let proj = createProjection id id (fun () -> items)
+    raisedMessage (fun () -> proj.Keys |> ignore), raisedMessage (fun () -> Projection.ensureUniqueKeys id items)
+```
+
 Append to `rowOptionTests`:
 
 ```fsharp
-            test "ensureUniqueKeys raises the pass's exception for the first repeated key" {
+            test "ensureUniqueKeys raises the pass's message for int, string, record and tuple keys" {
                 use g = new Graph ()
                 use _ = g.Activate ()
-                let proj = createProjection id id (fun () -> [ 1; 2; 1 ])
-                let fromPass = Expect.throwsC (fun () -> proj.Keys |> ignore) id
-                let fromCheck = Expect.throwsC (fun () -> Projection.ensureUniqueKeys id [ 1; 2; 1 ]) id
 
-                Expect.equal (fromCheck.GetType ()) (fromPass.GetType ()) "the same exception type"
-                Expect.equal fromCheck.Message fromPass.Message "and the same message"
+                for label, (fromPass, fromCheck) in
+                    [
+                        "int", duplicateMessages [ 1; 2; 1 ]
+                        "string", duplicateMessages [ "a"; "a" ]
+                        "record", duplicateMessages [ {| Id = 1 |}; {| Id = 1 |} ]
+                        "tuple", duplicateMessages [ (1, "a"); (1, "a") ]
+                    ] do
+                    Expect.equal fromCheck fromPass label
             }
 
-            test "ensureUniqueKeys compares string, record, tuple and boxed keys as = does" {
-                Expect.throwsT<InvalidOperationException> (fun () -> Projection.ensureUniqueKeys id [ "a"; "a" ]) "strings"
-                Expect.throwsT<InvalidOperationException> (fun () -> Projection.ensureUniqueKeys id [ {| Id = 1 |}; {| Id = 1 |} ]) "records"
-                Expect.throwsT<InvalidOperationException> (fun () -> Projection.ensureUniqueKeys id [ (1, "a"); (1, "a") ]) "tuples"
+            test "ensureUniqueKeys keeps boxed keys of different types apart, as = does" {
                 Projection.ensureUniqueKeys id [ box 1; box 1L; box "1" ]
             }
 ```
@@ -1017,8 +1059,8 @@ rtk git commit -m "feat(core): share the projection's duplicate-key check throug
 ### Task 5: Comparer-free keyed and switch surfaces
 
 **Files:**
-- Modify: `experiments/Ranvier.View.Foundation/Representation.fs`, `Template.fs`, `TemplateDom.fs`, `Mounting.fs`, `Prepared.fs`, `Browser.fs`, `Authoring.fs`, `RepresentationChecks.fsx`; `examples/Fable.Ranvier.Playground/benchmarks/BindingBaselineMounting.fs`
-- Test: `examples/Fable.Ranvier.Playground/tests/` `RangeChecks.fs`, `TemplateChecks.fs`, `RepresentationChecks.fs`, `BindingBench.fs`, `BindingIntegrationChecks.fs`, `DelegationChecks.fs`, `FrameworkDiagnostics.fs`
+- Modify: `experiments/Ranvier.View.Foundation/Representation.fs`, `Template.fs`, `TemplateDom.fs`, `Mounting.fs`, `Prepared.fs`, `Browser.fs`, `Authoring.fs`, `RepresentationChecks.fsx`; `examples/Fable.Ranvier.Playground/benchmarks/BindingBaselineMounting.fs`; `examples/Fable.Ranvier.Playground/App.fs`
+- Test: `examples/Fable.Ranvier.Playground/tests/` `RangeChecks.fs`, `TemplateChecks.fs`, `RepresentationChecks.fs`, `BindingBench.fs`, `BindingIntegrationChecks.fs`, `DelegationChecks.fs`, `FrameworkDiagnostics.fs`, `AuthoringChecks.fs`
 
 **Interfaces:**
 - Consumes: `Projection.ensureUniqueKeys` (Task 4).
@@ -1039,11 +1081,13 @@ Expected: 314 tests pass. Record each file's count in the task report: later tas
 
 - [ ] **Step 2: Update the tests first**
 
-1. In every test file listed under **Test**, delete the comparer argument of each `Keyed.list`, `Keyed.array` and `Branch.select` call: the `(=)` or lambda between `ops`/`Tree.ops`/`Program.ops` and the key selector. Find them with `rtk grep -n "Keyed.list\|Keyed.array\|Branch.select" examples/Fable.Ranvier.Playground/tests`. Example: `Keyed.list Tree.ops (=) fst (fun () -> rows.Value) render` becomes `Keyed.list Tree.ops fst (fun () -> rows.Value) render`.
+1. In every test file listed under **Test** and in `examples/Fable.Ranvier.Playground/App.fs`, delete the comparer argument of each `Keyed.list`, `Keyed.array`, `Branch.select`, `keyedArray` and `branch` call: the `(=)` or lambda between `ops`/`Tree.ops`/`Program.ops` (or the function name, for `keyedArray` and `branch`) and the key selector. Find them with `rtk grep -n "Keyed.list\|Keyed.array\|Branch.select\|keyedArray (\|branch (=)" examples/Fable.Ranvier.Playground/tests examples/Fable.Ranvier.Playground/App.fs`. Example: `Keyed.list Tree.ops (=) fst (fun () -> rows.Value) render` becomes `Keyed.list Tree.ops fst (fun () -> rows.Value) render`. The three calls outside the `Keyed`/`Branch` modules:
+   - `AuthoringChecks.fs` `portableAuthoring`: `keyedArray fst (fun () -> [| 1, "one"; 2, "two" |]) (fun current -> ...)` and `branch id (fun () -> "selected") (fun current -> text (current ()))`.
+   - `App.fs` `foundationRowsView`: `View.keyedArray fst (fun () -> foundationRows.Value) (fun current -> ...)`.
 2. `FrameworkDiagnostics.fs`: `Keyed = fun _ _ -> invalidOp "Token extraction requires an element"` and `Switch = fun _ _ -> invalidOp "Token extraction requires an element"`.
 3. `RangeChecks.fs`:
    - Delete `arrayComparerMutation` and its case `"array comparers cannot change renderer snapshot slots"`. Ruling recorded for the spec: the test exercised the comparer only; `arrayKeyMutation` keeps the snapshot check.
-   - In `keyedDisposal`, delete the comparer lambda. Replace it with the key selector `id`, dropping the `comparisonsAfterDisposal` counter and its assertion, and delete the case `"keyed comparer disposal prevents further reconciliation"`.
+   - In `keyedDisposal`, delete the comparer lambda `(fun a b -> ... a = b)`; the `id` key selector after it stays. Delete the `comparisonsAfterDisposal` counter and its assertion `equal 0 comparisonsAfterDisposal`. In `expected`, change `if point = "read" || point = "equals" then [ 1; 2 ]` to `if point = "read" then [ 1; 2 ]`. Delete the case `"keyed comparer disposal prevents further reconciliation", fun () -> keyedDisposal "equals"`.
    - In `keyedTracksOnlySnapshot`, replace the comparer lambda by nothing: `Keyed.list Tree.ops id (fun () -> ...) render`. The cleanup half stays.
    - Replace `keyedInitialDisposal` with a reader-only check and delete the case `"initial keyed comparer disposal stops before further callbacks"`:
 
@@ -1078,6 +1122,68 @@ let private keyedInitialDisposal () =
    - `duplicateKeys`: `with :? InvalidOperationException ->`. `keyedReportsAndRecovery`: `equal true (reports[0] :? InvalidOperationException)`.
 4. `TemplateChecks.fs` `eachDuplicates`: both `System.ArgumentException` become `System.InvalidOperationException`.
 5. `RepresentationChecks.fs` line 191 and `experiments/Ranvier.View.Foundation/RepresentationChecks.fsx` line 433: `InvalidOperationException` (`System.InvalidOperationException` in the `.fsx`).
+6. `experiments/Ranvier.View.Foundation/RepresentationChecks.fsx`, the `Keyed`/`Switch` overrides and the arm-identity assertions. Replace the block from `let mutable regionReads` to `equal false (roleSame adminHome (firstKey readAway))` with:
+
+```fsharp
+let mutable regionReads: (unit -> (obj * obj) array) list = []
+
+let capturing =
+    { Tree.ops with
+        Switch =
+            fun read render ->
+                regionReads <- regionReads @ [ read ]
+                Tree.ops.Switch read render
+    }
+
+let renderRoled tab =
+    Html.render Omit (Tree.run (Component.renderWith capturing roled tab))
+
+equal "<div><span>user 4</span></div>" (renderRoled "home")
+let readHome = regionReads[0]
+
+let firstKey (read: unit -> (obj * obj) array) =
+    fst (read ()).[0]
+
+let homeKey () =
+    firstKey readHome
+
+let userHome = homeKey ()
+
+// An equal key with the same definition keeps the arm.
+equal true (userHome = homeKey ())
+
+roleAdmin <- true
+let adminHome = homeKey ()
+
+// An equal key selecting another definition remounts the arm.
+equal false (userHome = adminHome)
+equal "<div><span>admin home</span></div>" (renderRoled "home")
+equal "<div><!--[--><span>admin home</span><!--]--></div>" (render Omit (Component.render roled "home"))
+
+equal "<div><span>admin away</span></div>" (renderRoled "away")
+let readAway = regionReads[2]
+
+// A key change under the same definition remounts the arm.
+equal false (adminHome = firstKey readAway)
+```
+
+   and replace `recording` with:
+
+```fsharp
+let recording =
+    { Tree.ops with
+        Keyed =
+            fun read render ->
+                regionKinds <- regionKinds @ [ "keyed" ]
+                Tree.ops.Keyed read render
+        Switch =
+            fun read render ->
+                regionKinds <- regionKinds @ [ "switch" ]
+                Tree.ops.Switch read render
+    }
+```
+
+   The `=` assertions compare the first keys as the core compares them: a `branch` key is the boxed tuple of the user key and the arm definition, and the definition compares by reference.
 
 - [ ] **Step 3: Run the tests to verify they fail**
 
@@ -1133,14 +1239,18 @@ module Keyed =
         ops.Keyed readObjects renderObject
 
     /// <summary>Retains keyed rows and supplies their current item values.</summary>
-    /// <remarks>Keys are compared with <c>=</c>. Duplicate keys fail before the rows change.</remarks>
+    /// <remarks>The input array's slots are copied before key callbacks run. Keys are compared with <c>=</c>. Duplicate
+    /// keys fail before the rows change.</remarks>
     let array<'item, 'key, 'view when 'key: equality>
         (ops: Operations<'view>)
         (key: 'item -> 'key)
         (read: unit -> 'item array)
         (render: (unit -> 'item) -> 'view)
         =
-        create ops key read render
+        if isNull (box read) then
+            invalidArg "read" "Keyed item reader cannot be null"
+
+        create ops key (fun () -> Array.copy (read ())) render
 
     /// <summary>Adapts list snapshots to the array-backed keyed renderer.</summary>
     /// <remarks>Equal keys under <c>=</c> retain rows; their item readers return current values.</remarks>
@@ -1201,7 +1311,15 @@ Delete `Keyed.validateUniqueKeys`.
 
 `Mounting.fs`: `override this.Keyed(read, render) = this.AuthoredRegion (false, read, render)`, `override this.Switch(read, render) = this.AuthoredRegion (true, read, render)`; drop `equals` from `AuthoredRegion`, `KeyedRegion` and `MountServices.Region`. Inside `KeyedRegion`, delete `liveEquals`; replace `Keyed.validateUniqueKeys liveEquals items` with `Projection.ensureUniqueKeys fst items`, and `liveEquals entry.Key key` with `entry.Key = key`.
 
-`Prepared.fs` and `Browser.fs`: `member _.Keyed(_, _) =`. `Authoring.fs`: `let inline keyedArray key read render = Keyed.array Program.ops key read render` and `let inline branch key read render = Branch.select Program.ops key read render`, with the remarks' "equal keys" sentences ending "under <c>=</c>". `BindingBaselineMounting.fs`: `member _.Keyed(read, render) =`, and replace each use of `equals` inside that member with `(=)`.
+`Prepared.fs` and `Browser.fs`: `member _.Keyed(_, _) =`. `Authoring.fs`: `let inline keyedArray key read render = Keyed.array Program.ops key read render` and `let inline branch key read render = Branch.select Program.ops key read render`, with the remarks' "equal keys" sentences ending "under <c>=</c>". `BindingBaselineMounting.fs`, `member _.Keyed`:
+- The member becomes `member _.Keyed(read, render) =`.
+- Delete `setupEquals` and `liveEquals`.
+- Replace `Keyed.validateUniqueKeys setupEquals initialItems` with `Projection.ensureUniqueKeys fst initialItems`, and `Keyed.validateUniqueKeys liveEquals items` with `Projection.ensureUniqueKeys fst items`.
+- Replace `liveEquals entry.Key key` with `entry.Key = key`.
+
+The `ensureSetup ()` and `ensureRegionLive ()` calls around them stay. `Bind(equals, read)` keeps its own `equals`.
+
+`App.fs`: the `View.keyedArray` call loses its `(=)` (Step 2).
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
@@ -1220,8 +1338,8 @@ Expected: each count at most its baseline.
 - [ ] **Step 6: Format and commit**
 
 ```bash
-rtk dotnet fantomas experiments/Ranvier.View.Foundation/Representation.fs experiments/Ranvier.View.Foundation/Template.fs experiments/Ranvier.View.Foundation/TemplateDom.fs experiments/Ranvier.View.Foundation/Mounting.fs experiments/Ranvier.View.Foundation/Prepared.fs experiments/Ranvier.View.Foundation/Browser.fs experiments/Ranvier.View.Foundation/Authoring.fs examples/Fable.Ranvier.Playground/benchmarks/BindingBaselineMounting.fs examples/Fable.Ranvier.Playground/tests/*.fs
-rtk git add experiments/Ranvier.View.Foundation examples/Fable.Ranvier.Playground/benchmarks/BindingBaselineMounting.fs examples/Fable.Ranvier.Playground/tests
+rtk dotnet fantomas experiments/Ranvier.View.Foundation/Representation.fs experiments/Ranvier.View.Foundation/Template.fs experiments/Ranvier.View.Foundation/TemplateDom.fs experiments/Ranvier.View.Foundation/Mounting.fs experiments/Ranvier.View.Foundation/Prepared.fs experiments/Ranvier.View.Foundation/Browser.fs experiments/Ranvier.View.Foundation/Authoring.fs examples/Fable.Ranvier.Playground/benchmarks/BindingBaselineMounting.fs examples/Fable.Ranvier.Playground/App.fs examples/Fable.Ranvier.Playground/tests/*.fs
+rtk git add experiments/Ranvier.View.Foundation examples/Fable.Ranvier.Playground/benchmarks/BindingBaselineMounting.fs examples/Fable.Ranvier.Playground/App.fs examples/Fable.Ranvier.Playground/tests
 rtk git commit -m "refactor(view): compare keys with the core's equality and drop the view's key comparers"
 ```
 
@@ -1231,7 +1349,8 @@ rtk git commit -m "refactor(view): compare keys with the core's equality and dro
 
 **Files:**
 - Rewrite: `experiments/Ranvier.View.Foundation/Lifetime.fs`
-- Modify: `experiments/Ranvier.View.Foundation/Mounting.fs`, `Browser.fs`
+- Modify: `experiments/Ranvier.View.Foundation/Mounting.fs`, `Browser.fs`; `examples/Fable.Ranvier.Playground/benchmarks/BindingBaselineMounting.fs` (a private copy of the old `Scope`)
+- Delete: `experiments/Ranvier.View.Foundation/LifetimeChecks.fsx` (superseded by `examples/Fable.Ranvier.Playground/tests/LifetimeChecks.fs`)
 - Test: `examples/Fable.Ranvier.Playground/tests/LifetimeChecks.fs`, `RangeChecks.fs`, `BindingChecks.fs`, `FrameworkDiagnostics.fs`, and any other file `rtk grep -ln "Scope (" examples/Fable.Ranvier.Playground/tests` lists
 
 **Interfaces:**
@@ -1310,7 +1429,7 @@ let private createFixture (graph: Graph) (host: HTMLElement) (trace: ResizeArray
 
                     let unsubscribe = listen child (fun () -> calls <- calls + 1)
 
-                    // Registered before the child lifetime exists, so it runs after the child's teardown.
+                    // Runs after the child lifetime's teardown.
                     scope.OnCleanup (fun () ->
                         same host parent.parentNode.Value
                         same parent child.parentNode.Value
@@ -1423,7 +1542,7 @@ let private ancestorReentry () =
         fixture.ChildScope.OnCleanup (fun () -> same host fixture.Parent.parentNode.Value)
         fixture.ChildScope.Dispose ()
 
-        // The ancestor's cleanups run inside the child's teardown; every release waits for the child to finish.
+        // Every cleanup of the tree runs before its first release.
         equal
             [
                 "root:parent-clean-attached"
@@ -1464,7 +1583,7 @@ let private crossTreeDisposal () =
     let trace = ResizeArray<string>()
     let aReports, bReports = ResizeArray<exn list>(), ResizeArray<exn list>()
     let a = MountLifetime.Root (graph, aReports.Add, (fun () -> trace.Add "a:release"))
-    // Registered before a's child exists, so it runs after the child's teardown.
+    // Runs after the teardown of a's child.
     a.OnCleanup (fun () -> trace.Add "a:clean")
     let b = MountLifetime.Root (graph, bReports.Add, (fun () -> trace.Add "b:release"))
 
@@ -1610,6 +1729,8 @@ type internal TeardownWindow(root: Owner, start: int) =
 [<Sealed; AllowNullLiteral>]
 type MountLifetime private (graph: Graph, owner: Owner, report: exn list -> unit, release: unit -> unit, parent: MountLifetime) =
     let inherits = not (isNull parent) && parent.Phase = SettingUp
+    // The teardown reports the owner's errors recorded at or after this position.
+    let ownerStart = owner.ErrorCount
     let mutable attached = false
     let mutable released = false
     let mutable failures: exn list = []
@@ -1722,11 +1843,12 @@ type MountLifetime private (graph: Graph, owner: Owner, report: exn list -> unit
         attached <- true
 
     /// <summary>
-    /// Routes the errors of <c>adopted</c>, a root owner nested in this lifetime, into this lifetime's teardown report.
-    /// Call before anything else registers with <c>adopted</c>.
+    /// Routes the errors recorded by <c>adopted</c> after this call into this lifetime's teardown report.
+    /// <c>adopted</c> is a root owner nested in this lifetime. Call before anything else registers with it.
     /// </summary>
     member this.Adopt(adopted: Owner) =
-        adopted.OnCleanup (Action (fun () -> this.Route (adopted.ErrorsFrom 0)))
+        let start = adopted.ErrorCount
+        adopted.OnCleanup (Action (fun () -> this.Route (adopted.ErrorsFrom start)))
 
     member private this.DescendsFrom(ancestor: MountLifetime) =
         let mutable cursor = parent
@@ -1831,7 +1953,7 @@ type MountLifetime private (graph: Graph, owner: Owner, report: exn list -> unit
 
     member private this.Finish() =
         let outer = this.Outermost ()
-        this.Route (owner.ErrorsFrom 0)
+        this.Route (owner.ErrorsFrom ownerStart)
 
         if obj.ReferenceEquals (outer, this) then
             let frame = MountLifetime.DescendantFrame this
@@ -2027,10 +2149,158 @@ and the tail of `mount`:
     fun () -> root.Dispose ()
 ```
 
+`examples/Fable.Ranvier.Playground/benchmarks/BindingBaselineMounting.fs` is a frozen benchmark baseline and keeps the old renderer scope. Directly after its `open` lines, add this copy of the old `Scope` (the members the file uses; `ChildCount` is dropped). It is `internal`, not `private`: `mount` and the constructor of `Mounted` name it, and a private type there is error FS0410. Change `let rec mount` to `let rec internal mount`; `BindingBench.fs`, its only caller, is in the same project. Nothing else in the file changes.
+
+```fsharp
+/// <summary>The renderer scope tree of the baseline, kept with the baseline it measures.</summary>
+type internal Scope private (report: exn list -> unit, release: unit -> unit, parent: Scope option) =
+    let children = ResizeArray<Scope>()
+    let callbacks = ResizeArray<unit -> unit>()
+    let mutable disposed = false
+    let mutable attached = false
+    let mutable failures: exn list = []
+    // The active disposal order of this scope's tree. Set only on the topmost scope; null outside a disposal.
+    let mutable draining: ResizeArray<Scope> = null
+
+    new(report, release) = Scope (report, release, None)
+
+    member private this.Top: Scope =
+        match parent with
+        | Some owner -> owner.Top
+        | None -> this
+
+    member private _.Draining
+        with get () = draining
+        and set value = draining <- value
+
+    member private _.RemoveChild(child) =
+        children.Remove child |> ignore
+
+    member private _.EnsureLive() =
+        if disposed then
+            raise (System.InvalidOperationException "Renderer scope is disposed")
+
+    member this.Child(childReport: exn list -> unit, childRelease: unit -> unit) =
+        this.EnsureLive ()
+        let child = Scope (childReport, childRelease, Some this)
+        children.Add child
+        child
+
+    member this.Child(childRelease: unit -> unit) =
+        this.Child (report, childRelease)
+
+    member this.OnCleanup(callback: unit -> unit) =
+        this.EnsureLive ()
+        callbacks.Add callback
+
+    member private this.Collect(order: ResizeArray<Scope>) =
+        if not disposed then
+            disposed <- true
+
+            for index in 0 .. children.Count - 1 do
+                children[index].Collect order
+
+            order.Add this
+
+    member private _.Clean(errors: ResizeArray<exn>) =
+        for index in 0 .. callbacks.Count - 1 do
+            try
+                callbacks[index]()
+            with error ->
+                errors.Add error
+
+        callbacks.Clear ()
+
+    member private this.Release(errors: ResizeArray<exn>) =
+        try
+            release ()
+        with error ->
+            errors.Add error
+
+        children.Clear ()
+
+        match parent with
+        | Some owner -> owner.RemoveChild this
+        | None -> ()
+
+    member this.Dispose() =
+        if not disposed then
+            let top = this.Top
+
+            match top.Draining with
+            | null ->
+                let order = ResizeArray<Scope>()
+                let errors = ResizeArray<exn>()
+                top.Draining <- order
+
+                try
+                    this.Collect order
+                    let mutable cleaned = 0
+                    let mutable released = 0
+
+                    while released < order.Count do
+                        while cleaned < order.Count do
+                            order[cleaned].Clean errors
+                            cleaned <- cleaned + 1
+
+                        order[released].Release errors
+                        released <- released + 1
+
+                    if errors.Count > 0 then
+                        failures <- List.ofSeq errors
+                finally
+                    top.Draining <- null
+
+                if errors.Count > 0 then
+                    try
+                        report failures
+                    with error ->
+                        failures <- failures @ [ error ]
+            | order -> this.Collect order
+
+    member this.MarkAttached() =
+        this.EnsureLive ()
+
+        if attached then
+            raise (System.InvalidOperationException "Renderer scope is already attached")
+
+        attached <- true
+
+        for index in 0 .. children.Count - 1 do
+            let child = children[index]
+
+            if not child.IsDisposed && child.Phase = SettingUp then
+                child.MarkAttached ()
+
+    member _.Phase =
+        if disposed then Disposed
+        elif attached then Attached
+        else SettingUp
+
+    member _.IsDisposed = disposed
+    member _.Failures = failures
+```
+
+Delete the superseded script:
+
+```bash
+rtk git rm experiments/Ranvier.View.Foundation/LifetimeChecks.fsx
+```
+
 - [ ] **Step 5: Run the tests to verify they pass**
 
 Run (from `examples/Fable.Ranvier.Playground`): `rtk npm run test:dom`
-Expected: 311 pass. A test that asserts the order of two or more mount-level `ctx.OnCleanup`/`root.OnCleanup` registrations now sees them in reverse. Where `rtk npm run test:dom` names such a test, reverse the expected order only in that assertion, and list each one in the task report under "use-order flips". Any other failure is a defect in this task.
+Expected: 311 pass, with no expected order changed outside `LifetimeChecks.fs`. Use-order flips: none. Only `ctx.OnCleanup`/`root.OnCleanup` on the mount and `Browser.fs` component cleanups change from registration order to core owner order, and no view test asserts the order of two or more of them. The view tests that assert the order of several cleanups already observe core owner order and keep their expected values:
+
+| Test (file) | Expected order, before and after this task |
+|---|---|
+| "range cleanup runs child first while DOM stays attached" (`RangeChecks.fs`) | `[ "child"; "parent" ]` |
+| "template cleanups run in use order without an instance owner" (`TemplateChecks.fs`) | `[ "cleanup 2"; "cleanup 1" ]` |
+| "each renders template rows, retains them by key and dispatches their clicks" (`TemplateChecks.fs`) | `[ "setup 1"; "setup 2"; "click 1"; "cleanup 2"; "cleanup 1" ]` |
+| "an inlined child shares the clone and keeps its own instance, effect and handlers" (`TemplateChecks.fs`) | `[ "badge 2"; "card"; "cleanup badge"; "cleanup card" ]` |
+| "128 components clean up without stopping a sibling mount", "512 components …" (`MountingInvestigationChecks.fs`) | `[| width .. -1 .. 1 |]` |
+
+Every other cleanup assertion in the view tests counts cleanups or sorts them first. A failing order assertion is a defect in this task, not an expected flip.
 
 Run: `rtk npm run test:browser`. Expected: 22 pass.
 Run the emitted-JavaScript grep from Task 5 Step 1. Expected: each count at most its baseline.
@@ -2038,8 +2308,8 @@ Run the emitted-JavaScript grep from Task 5 Step 1. Expected: each count at most
 - [ ] **Step 6: Format and commit**
 
 ```bash
-rtk dotnet fantomas experiments/Ranvier.View.Foundation/Lifetime.fs experiments/Ranvier.View.Foundation/Mounting.fs experiments/Ranvier.View.Foundation/Browser.fs examples/Fable.Ranvier.Playground/tests/*.fs
-rtk git add experiments/Ranvier.View.Foundation examples/Fable.Ranvier.Playground/tests
+rtk dotnet fantomas experiments/Ranvier.View.Foundation/Lifetime.fs experiments/Ranvier.View.Foundation/Mounting.fs experiments/Ranvier.View.Foundation/Browser.fs examples/Fable.Ranvier.Playground/benchmarks/BindingBaselineMounting.fs examples/Fable.Ranvier.Playground/tests/*.fs
+rtk git add experiments/Ranvier.View.Foundation examples/Fable.Ranvier.Playground/benchmarks/BindingBaselineMounting.fs examples/Fable.Ranvier.Playground/tests
 rtk git commit -m "refactor(view): build mount lifetimes on core owners in place of the renderer scope tree"
 ```
 
@@ -2052,12 +2322,13 @@ rtk git commit -m "refactor(view): build mount lifetimes on core owners in place
 - Test: `examples/Fable.Ranvier.Playground/tests/TemplateChecks.fs`, `RangeChecks.fs`, `range.html`, `range.spec.mjs`
 
 **Interfaces:**
-- Consumes: `Api.createProjectionOnce`, `ProjectionOptions.CreateFirst` (Tasks 2–3); `MountLifetime.Capture`, `MountLifetime.Root`, `MountState(scheduling, graph, parent, parentOwner, report, host)` (Task 6); comparer-free signatures (Task 5).
+- Consumes: `Api.createProjectionOnce`, `ProjectionOptions.CreateFirst` (Tasks 2–3); `MountLifetime.Capture`, `MountState(scheduling, graph, parent, parentOwner, report, host)` (Task 6); comparer-free signatures (Task 5).
 - Produces:
-  - `TemplateDom.RegionKind = ListRows | SelectedArm | ViewHole`.
+  - Public `TemplateDom.RegionKind = ListRows | SelectedArm | ViewHole` (public because the public record `CompiledRegion` holds it).
   - `CompiledRegion = { Marker; Owner; RootLevel; Kind: RegionKind; Items; Render; Row: RegionRow }`.
   - `MountServices.Region: Node * Node * bool * RegionKind * (unit -> (obj * obj) array) * ((unit -> obj) -> Backend -> unit) * Func<(unit -> obj), MountServices, unit> -> unit`, where the materialiser is null for a view hole.
   - In `Mounting.fs`:
+    - Private `RegionErrors(report: exn list -> unit)`, with `Initializing`, `SetupFailure`, `Report(errors)` and `Fail(error, errors)`.
     - `Row(first, last)`, with members `First`, `Last`, `Index`, `Removed` and `Mount`, and statics `MoveBefore`, `Remove`, `Validate`, `Relocate` and `Layout`.
     - `RowBuilder(state: MountState)`, with `Staging` and `Build(materialise, current): Row`.
     - The `MountState` members `ListRegion(...)`, `MountRow(current, render): Row`, `RegionOf(...)`, `PlaceRegion(...)` and `RegionParent(...)`.
@@ -2203,17 +2474,22 @@ let private clicksFollowMovedRows () =
     use graph = new Graph ()
     listedLog.Clear ()
     let items = graph.Run (fun () -> Api.createSignal [| for id in 1..3 -> { Id = id; Text = string id } |])
+    let other = host ()
     let host = host ()
     globalThis.document.body.appendChild host |> ignore
+    globalThis.document.body.appendChild other |> ignore
     let mounted = mount graph host (Component.render listed items)
     let one = host.querySelector "li" |> unbox<HTMLElement>
     graph.Run (fun () -> items.Value <- [| for id in [ 3; 1; 2 ] -> { Id = id; Text = string id } |])
+    one.click ()
+    mounted.MoveBefore (other, None)
     one.click ()
     graph.Run (fun () -> items.Value <- [| for id in [ 3; 2 ] -> { Id = id; Text = string id } |])
     one.click ()
     mounted.Dispose ()
     host.remove ()
-    equal 1 (listedLog |> Seq.filter (fun line -> line = "click 1") |> Seq.length)
+    other.remove ()
+    equal 2 (listedLog |> Seq.filter (fun line -> line = "click 1") |> Seq.length)
 
 let private throwingRowCleanup () =
     use graph = new Graph ()
@@ -2386,7 +2662,7 @@ Add to `cases`, after the `eachDuplicates` line:
         "boxed keys of different types keep separate rows", boxedKeys
 ```
 
-If `t.fragment [||]` fails template compilation, the empty row is `t.view (fun _ -> Program.empty)` instead. `zeroNodeRows` then counts the hole's own markers, so it asserts on `rowMarkers` filtered the same way. Record which form was used in the task report.
+`emptyRow` must be zero-node: `t.fragment [||]` with no other form. If `t.fragment [||]` does not compile as a zero-node row template, stop and report NEEDS_CONTEXT; do not substitute another row.
 
 `range.html`: add `import { browserCases as templateBrowser } from "../generated-tests/TemplateChecks.js";` and `window.templateBrowserCases = templateBrowser;`. `range.spec.mjs`: append
 
@@ -2426,7 +2702,15 @@ let private keyedLayoutFailure () =
     let handle =
         mount graph None (List.iter reports.Add) host None (fun ctx -> Tree.run view ctx.Backend)
 
-    let restore = afterAttachment host (fun () -> failwith "insert")
+    let mutable inserts = 0
+
+    //FOR-REVIEW Only the first insert fails: the old reconciler's rollback then succeeds and restores the order, so this test is red before this task.
+    let restore =
+        afterAttachment host (fun () ->
+            inserts <- inserts + 1
+
+            if inserts = 1 then
+                failwith "insert")
 
     try
         graph.Run (fun () -> rows.Value <- [ 3; 2; 1 ])
@@ -2452,7 +2736,7 @@ Expected: FAIL. "a two-row swap of 1,000 rows moves two rows" reports `Expected 
 
 ```fsharp
 /// <summary>How a region mounts its rows.</summary>
-type internal RegionKind =
+type RegionKind =
     /// <summary>One row per keyed item; new rows are created before removed rows retire.</summary>
     | ListRows
     /// <summary>The row of the selected arm; the previous arm is disposed before the next is created.</summary>
@@ -2953,7 +3237,7 @@ and private RowBuilder(state: MountState) =
         let buildRow (item: unit -> obj * obj) : Row =
             let mutable row: Row = null
 
-            // Registered before the row's own cleanups, so it runs after them.
+            // Runs after the row's own cleanups.
             Api.onCleanup (fun () ->
                 if not (isNull row) then
                     if not (isNull (box row.Mount)) then
@@ -3091,8 +3375,12 @@ rtk git commit -m "feat(view): mount keyed lists on a create-first core projecti
 - Test: `examples/Fable.Ranvier.Playground/tests/RangeChecks.fs`
 
 **Interfaces:**
-- Consumes: `Row`, `RowBuilder`, `RegionErrors`, `PlaceRegion`, `RegionParent`, `MountRow`, `RegionOf` (Task 7); `MountLifetime.Adopt`, `MountLifetime.Capture` (Task 6).
-- Produces: `MountState.ArmRegion(regionStart, regionEnd, placement, read, render, rows)`; `MountState.HoleRegion(regionStart, regionEnd, placement, read, render)`. `KeyedRegion`, `KeyedEntry`, `KeyedDisposed` and `KeyedSetupFailed` no longer exist.
+- Consumes: `Row`, `RowBuilder`, `RegionErrors`, `PlaceRegion`, `RegionParent`, `MountRow`, `ListRegion`, `RegionOf` (Task 7); `MountLifetime.Adopt`, `MountLifetime.Capture` (Task 6).
+- Produces:
+  - Private `sameArm: IEqualityComparer<obj>` (module level): equal when both selections are null, or when their keys (`fst`) are equal under `=`.
+  - Private `RegionSite(state: MountState, regionStart: Node, regionEnd: Node, placement: RegionPlacement, report: exn list -> unit)` in the recursive type group, with `Start`, `End`, `LaidOut: ResizeArray<Row>`, `Errors: RegionErrors`, `Owner: Owner`, `Builder: RowBuilder`, `Live(): bool`, `Parent(): Node`, `Validate()`, `ReleaseRow(row: Row)`, `Own(body: unit -> unit)` and `Settle(recorded: exn list, failure: exn option, settle: exn list -> unit)`.
+  - `MountState.Site(regionStart, regionEnd, placement): RegionSite`; `ListRegion` rewritten on it; `MountState.ArmRegion(regionStart, regionEnd, placement, read, render, rows)`; `MountState.HoleRegion(regionStart, regionEnd, placement, read, render)`.
+  - `MountState.RegionParent` no longer exists (its body is `RegionSite.Parent`). `KeyedRegion`, `KeyedEntry`, `KeyedDisposed` and `KeyedSetupFailed` no longer exist.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -3130,12 +3418,14 @@ Arm switches go through `KeyedRegion` until this task, which already passes this
 Run: `rtk npm run test:dom`
 Expected: PASS (320 tests). The test guards the replacement in Steps 3–4.
 
-- [ ] **Step 3: Add the arm and hole regions**
+- [ ] **Step 3: Share the region site and add the arm and hole regions**
+
+The arm region is the second region kind with markers, laid-out rows, an owner, a row builder and a failure state. That state moves into one private helper, `RegionSite`, which `ListRegion`, `ArmRegion` and `HoleRegion` all use.
 
 `Mounting.fs`, before the recursive type group:
 
 ```fsharp
-let private sameSelection =
+let private sameArm =
     { new System.Collections.Generic.IEqualityComparer<obj> with
         member _.Equals(left, right) =
             if isNull left || isNull right then
@@ -3145,6 +3435,192 @@ let private sameSelection =
 
         member _.GetHashCode _ = 0
     }
+```
+
+In the recursive type group, after `RowBuilder`:
+
+```fsharp
+/// <summary>
+/// The markers and laid-out rows of one region, with the region's owner, row builder and failure state.
+/// </summary>
+and private RegionSite
+    (state: MountState, regionStart: Node, regionEnd: Node, placement: RegionPlacement, report: exn list -> unit) =
+    let laidOut = ResizeArray<Row>()
+    let errors = RegionErrors report
+    let mutable owner: Owner = Unchecked.defaultof<_>
+    let mutable builder: RowBuilder = Unchecked.defaultof<_>
+
+    member _.Start = regionStart
+    member _.End = regionEnd
+    member _.LaidOut = laidOut
+    member _.Errors = errors
+
+    /// <summary>The region's owner, set by <c>Own</c>.</summary>
+    member _.Owner = owner
+
+    member _.Builder =
+        if isNull (box builder) then
+            builder <- RowBuilder state
+
+        builder
+
+    /// <summary>Whether the mount and the region's owner are both live.</summary>
+    member _.Live() =
+        not state.Root.IsDisposed && not owner.IsDisposed
+
+    /// <summary>The markers' shared parent. Raises when the markers have no parent or different parents.</summary>
+    member _.Parent() : Node =
+        let regionParent =
+            regionStart.parentNode
+            |> Option.defaultWith (fun () -> invalid "Keyed-list boundaries have no parent")
+
+        if not (regionEnd.parentNode |> Option.exists (same regionParent)) then
+            invalid "Keyed-list boundaries were externally mutated"
+
+        regionParent
+
+    member this.Validate() =
+        Row.Validate (regionStart, regionEnd, laidOut, this.Parent ())
+
+    /// <summary>
+    /// Removes the nodes of a template row, or marks an authored row removed. A template row of a nested region keeps
+    /// its nodes while the region's owner tears down; they leave with the element or row holding the markers.
+    /// </summary>
+    member _.ReleaseRow(row: Row) =
+        if not (isNull row) then
+            if not (isNull (box row.Mount)) then
+                row.Removed <- true
+            elif not (placement = NestedRegion && owner.IsDisposed) then
+                Row.Remove row
+
+    /// <summary>
+    /// Runs <c>body</c> in a new root owner of the region, then raises the setup failure recorded during that first pass.
+    /// </summary>
+    member _.Own(body: unit -> unit) =
+        Api.createRoot (fun created ->
+            owner <- created
+            body ())
+
+        errors.Initializing <- false
+        errors.SetupFailure |> Option.iter raise
+
+    /// <summary>
+    /// Ends a pass while the region is live: a failure is recorded or reported with <c>recorded</c>, and a success runs
+    /// <c>settle recorded</c>.
+    /// </summary>
+    member this.Settle(recorded: exn list, failure: exn option, settle: exn list -> unit) =
+        if this.Live () then
+            match failure with
+            | Some error -> errors.Fail (error, error :: recorded)
+            | None -> settle recorded
+```
+
+In `MountState`, replace `RegionParent` with `Site` (its body is now `RegionSite.Parent`):
+
+```fsharp
+    /// <summary>The site of a region between <c>regionStart</c> and <c>regionEnd</c>, placed in the mount's range.</summary>
+    member private this.Site(regionStart: Node, regionEnd: Node, placement: RegionPlacement) : RegionSite =
+        let site = RegionSite (this, regionStart, regionEnd, placement, report)
+
+        this.PlaceRegion (
+            regionStart,
+            regionEnd,
+            placement,
+            (fun () -> site.Validate ()),
+            fun () -> Row.Relocate site.LaidOut
+        )
+
+        site
+```
+
+Replace `ListRegion` (Task 7) with:
+
+```fsharp
+    /// <summary>
+    /// Mounts one row per keyed item between the region's markers, on a core projection that creates new rows before it
+    /// retires removed ones. Template rows (<c>rows</c>) are cloned into the region; authored rows (<c>render</c>) are
+    /// nested mounts.
+    /// </summary>
+    member private this.ListRegion
+        (
+            regionStart: Node,
+            regionEnd: Node,
+            placement: RegionPlacement,
+            read: unit -> (obj * obj) array,
+            render: (unit -> obj) -> Backend -> unit,
+            rows: Func<(unit -> obj), TemplateDom.MountServices, unit>
+        ) =
+        let site = this.Site (regionStart, regionEnd, placement)
+        let mutable projection: Projection<obj, Row> = Unchecked.defaultof<_>
+
+        let buildRow (item: unit -> obj * obj) : Row =
+            let mutable row: Row = null
+
+            // Runs after the row's own cleanups.
+            Api.onCleanup (fun () -> site.ReleaseRow row)
+
+            let current () = snd (item ())
+
+            row <-
+                if isNull rows then
+                    this.MountRow (current, render)
+                else
+                    site.Builder.Build (rows, current)
+
+            row
+
+        let reconcile () =
+            if site.Live () then
+                let parent = ref Unchecked.defaultof<Node>
+                let keys = ref Unchecked.defaultof<obj array>
+
+                let recorded, failure =
+                    MountLifetime.Capture (
+                        graph,
+                        fun () ->
+                            parent.Value <- site.Parent ()
+                            Row.Validate (regionStart, regionEnd, site.LaidOut, parent.Value)
+                            keys.Value <- projection.Keys
+                    )
+
+                site.Settle (
+                    recorded,
+                    failure,
+                    fun recorded ->
+                        let layoutFailure =
+                            try
+                                Api.untrack (fun () ->
+                                    let next = keys.Value |> Array.map (fun key -> projection.Get key)
+
+                                    Row.Layout (
+                                        (fun () -> site.Live ()),
+                                        site.LaidOut,
+                                        site.Builder.Staging,
+                                        parent.Value,
+                                        regionEnd,
+                                        next
+                                    ))
+
+                                None
+                            with error ->
+                                Some error
+
+                        match layoutFailure with
+                        | Some error ->
+                            root.Dispose ()
+                            site.Errors.Fail (error, recorded @ [ error ])
+                        | None -> site.Errors.Report recorded
+                )
+
+        site.Own (fun () ->
+            projection <-
+                Api.createProjectionOnce
+                    ProjectionOptions.CreateFirst
+                    (fun (item: obj * obj) -> fst item)
+                    buildRow
+                    (fun () -> read () :> seq<_>)
+
+            Api.untrack (fun () -> Api.createEffect reconcile))
 ```
 
 In `MountState`, after `ListRegion`:
@@ -3164,29 +3640,12 @@ In `MountState`, after `ListRegion`:
             render: (unit -> obj) -> Backend -> unit,
             rows: Func<(unit -> obj), TemplateDom.MountServices, unit>
         ) =
-        let laidOut = ResizeArray<Row>()
-        let builder = RowBuilder this
-        let errors = RegionErrors report
-        let nested = (placement = NestedRegion)
-        let mutable regionOwner: Owner = Unchecked.defaultof<_>
+        let site = this.Site (regionStart, regionEnd, placement)
         let mutable items: Memo<(obj * obj) array> = Unchecked.defaultof<_>
         let mutable selection: Memo<obj> = Unchecked.defaultof<_>
         let mutable armOwner: Owner = Unchecked.defaultof<_>
         let mutable armItem: Signal<obj> = Unchecked.defaultof<_>
         let mutable armKey: obj = null
-
-        let live () =
-            not root.IsDisposed && not regionOwner.IsDisposed
-
-        let regionParent () = this.RegionParent (regionStart, regionEnd)
-
-        this.PlaceRegion (
-            regionStart,
-            regionEnd,
-            placement,
-            (fun () -> Row.Validate (regionStart, regionEnd, laidOut, regionParent ())),
-            fun () -> Row.Relocate laidOut
-        )
 
         let disposeArm () =
             if not (isNull (box armOwner)) then
@@ -3194,7 +3653,7 @@ In `MountState`, after `ListRegion`:
                 armOwner <- Unchecked.defaultof<_>
                 armItem <- Unchecked.defaultof<_>
                 armKey <- null
-                laidOut.Clear ()
+                site.LaidOut.Clear ()
                 Api.batch (fun () -> owner.Dispose ())
 
         let mountArm (selected: obj) =
@@ -3205,19 +3664,13 @@ In `MountState`, after `ListRegion`:
                 let mutable row: Row = null
 
                 try
-                    Api.runWithOwner regionOwner (fun () ->
+                    Api.runWithOwner site.Owner (fun () ->
                         Api.createRoot (fun owner ->
                             created <- owner
                             root.Adopt owner
 
-                            // Registered before the arm's own cleanups, so it runs after them.
-                            Api.onCleanup (fun () ->
-                                if
-                                    not (isNull row)
-                                    && isNull (box row.Mount)
-                                    && not (nested && regionOwner.IsDisposed)
-                                then
-                                    Row.Remove row)
+                            // Runs after the arm's own cleanups.
+                            Api.onCleanup (fun () -> site.ReleaseRow row)
 
                             let current () = item.Value
 
@@ -3226,25 +3679,25 @@ In `MountState`, after `ListRegion`:
                                     if isNull rows then
                                         this.MountRow (current, render)
                                     else
-                                        builder.Build (rows, current))))
+                                        site.Builder.Build (rows, current))))
                 with _ ->
                     if not (isNull (box created)) then
                         created.Dispose ()
 
                     reraise ()
 
-                Row.MoveBefore (row, regionParent (), regionEnd)
+                Row.MoveBefore (row, site.Parent (), regionEnd)
 
                 if not (isNull (box row.Mount)) then
                     row.Mount.Relocate ()
 
-                laidOut.Add row
+                site.LaidOut.Add row
                 armOwner <- created
                 armItem <- item
                 armKey <- key
 
         let reconcile () =
-            if live () then
+            if site.Live () then
                 let selected = selection.Value
 
                 let recorded, failure =
@@ -3252,15 +3705,12 @@ In `MountState`, after `ListRegion`:
                         graph,
                         fun () ->
                             Api.untrack (fun () ->
-                                Row.Validate (regionStart, regionEnd, laidOut, regionParent ())
+                                site.Validate ()
                                 disposeArm ()
                                 mountArm selected)
                     )
 
-                if live () then
-                    match failure with
-                    | Some error -> errors.Fail (error, error :: recorded)
-                    | None -> errors.Report recorded
+                site.Settle (recorded, failure, (fun recorded -> site.Errors.Report recorded))
 
         let updatePayload () =
             let current = items.Value
@@ -3272,20 +3722,16 @@ In `MountState`, after `ListRegion`:
                     if key = armKey then
                         armItem.Value <- value)
 
-        Api.createRoot (fun owner ->
-            regionOwner <- owner
+        site.Own (fun () ->
             items <- Api.createMemo (fun _ -> read ())
 
             selection <-
-                Api.createMemoWithComparer sameSelection (fun _ ->
+                Api.createMemoWithComparer sameArm (fun _ ->
                     let current = items.Value
                     if current.Length = 0 then null else box current[0])
 
             Api.untrack (fun () -> Api.createEffect reconcile)
             Api.untrack (fun () -> Api.createEffect updatePayload))
-
-        errors.Initializing <- false
-        errors.SetupFailure |> Option.iter raise
 
     /// <summary>Mounts the view read once from the region's single item between its markers.</summary>
     member private this.HoleRegion
@@ -3296,22 +3742,13 @@ In `MountState`, after `ListRegion`:
             read: unit -> (obj * obj) array,
             render: (unit -> obj) -> Backend -> unit
         ) =
-        let laidOut = ResizeArray<Row>()
-
-        this.PlaceRegion (
-            regionStart,
-            regionEnd,
-            placement,
-            (fun () -> Row.Validate (regionStart, regionEnd, laidOut, this.RegionParent (regionStart, regionEnd))),
-            fun () -> Row.Relocate laidOut
-        )
-
+        let site = this.Site (regionStart, regionEnd, placement)
         let items = read ()
         let view = snd items[0]
         let row = this.MountRow ((fun () -> view), render)
-        Row.MoveBefore (row, this.RegionParent (regionStart, regionEnd), regionEnd)
+        Row.MoveBefore (row, site.Parent (), regionEnd)
         row.Mount.Relocate ()
-        laidOut.Add row
+        site.LaidOut.Add row
 ```
 
 `RegionOf`:
@@ -3413,8 +3850,8 @@ rtk git checkout research/keyed-row-cost -- bench/Ranvier.RowsBench examples/Fab
 ```
 
 Then make these edits on the throwaway branch only:
-- `src/Ranvier/Ranvier.fsproj` and `tests/DomTests.fsproj`: the `RanvierRowsBaseline` property group, defining `RANVIER_ROWS_BASELINE`, copied from `research/keyed-row-cost`.
-- `src/Ranvier`: wrap in `#if !RANVIER_ROWS_BASELINE` the `CreateFirst` branch of `ApplyDiff`, the `CreateFirst` tests in `CreateFactored`, `CreateOnce` and `CreateAdded`, `Discard`, `OnceRow`, `OnceValue`, `UseOnce`, `CreateOnce`, `RequireRowMemos` and its call sites, `createProjectionWithOptions`, `createProjectionOnce`, and the null tests of `entry.Row` added in Task 3. `ItemRow` stays `Sealed` under the define.
+- `src/Ranvier/Ranvier.fsproj` and `examples/Fable.Ranvier.Playground/tests/DomTests.fsproj`: copy from `research/keyed-row-cost` the `RanvierRowsBaseline` property group (its `PROTOTYPE` comment line, then `<PropertyGroup Condition="'$(RanvierRowsBaseline)' == 'true'">` defining `RANVIER_ROWS_BASELINE`), placed after the `RanvierCounters` property group. In `examples/Fable.Ranvier.Playground/tests/DomTests.fsproj`, also add `<Compile Include="KeyedRowsPerf.fs" />` directly after `<Compile Include="FrameworkPerf.fs" />`, as on `research/keyed-row-cost`.
+- `src/Ranvier`: wrap in `#if !RANVIER_ROWS_BASELINE` the `CreateFirst` branch of `ApplyDiff`, the `CreateFirst` tests in `FactoryFailure` and `CreateAdded`, `Discard`, `OnceRow`, `OnceValue`, `UseOnce`, `CreateOnce`, `RequireRowMemos` and its call sites, `createProjectionWithOptions`, `createProjectionOnce`, and the null tests of `entry.Row` added in Tasks 2 and 3. `ItemRow` stays `Sealed` under the define.
 - `Mounting.fs`: `let mutable internal rowForm = 4` (0–4 are A, B, C1, C2, C3), read when a list region is created; `ListRegion` builds the projection matching the table above. Under `RANVIER_ROWS_BASELINE`, forms 1–4 raise `invalidOp`.
 - `KeyedRowsPerf.fs`: `mountKeyed (form: int)` sets `Mounting.rowForm` around the mount, in place of `withKeyedPrototype`. `coreBuild` stays.
 - `keyed-page.mjs`: adapters `rows-A` (baseline import, form 0), `rows-B`, `rows-C1`, `rows-C2` and `rows-C3` (forms 1–4), and `solid`. Arm adapters `ranvier` (production) and `solid`.
@@ -3487,10 +3924,10 @@ rtk git branch -D measure/keyed-rows-on-core
 
 - [ ] **Step 1: Mark the replaced design**
 
-In `docs/research/2026-10-14-component-templates.md`, directly under `## Dynamic structure`, add:
+In `docs/research/2026-10-14-component-templates.md`, section `## Dynamic structure`, add this note as its own paragraph directly above the paragraph that starts "Every region kind (view hole, `matchWith`, `branch` and `each`) mounts through the keyed path.":
 
 ```markdown
-> Replaced on 2026-10-14 by [keyed rows and arms on core primitives](../superpowers/specs/2026-10-14-keyed-rows-on-core-design.md). Lists now run on a create-first core projection, arms on a core memo with a root owner per arm, and view holes mount once. The two paragraphs below describe the earlier keyed path.
+> Replaced on 2026-10-14 by [keyed rows and arms on core primitives](../superpowers/specs/2026-10-14-keyed-rows-on-core-design.md). Lists now run on a create-first core projection, arms on a core memo with a root owner per arm, and view holes mount once. The paragraph below describes the earlier keyed path.
 ```
 
 - [ ] **Step 2: Refresh the framework plan**

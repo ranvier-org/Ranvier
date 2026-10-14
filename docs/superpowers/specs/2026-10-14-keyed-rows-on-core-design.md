@@ -197,7 +197,7 @@ A mount's reporter is called once per teardown with that teardown's errors. User
 | `Backend.Keyed`, `Backend.Switch`: `(obj -> obj -> bool) * …` | the same without the comparer |
 | `Mounting.mount graph (parentScope: Scope option) …` | `Mounting.mount graph (parentOwner: Owner option) …` |
 | duplicate keys: `ArgumentException` | `InvalidOperationException` (decision 2) |
-| `Keyed.array` "copies the input array's slots before key callbacks run" | the projection enumerates the array once per pass |
+| `Keyed.array` "copies the input array's slots before key callbacks run" | unchanged: the slots are still copied before key callbacks run, as `array key callbacks cannot change unread snapshot slots` checks |
 
 Every in-repository caller passes `(=)` and changes mechanically.
 
@@ -215,6 +215,7 @@ Changed:
 | `array comparers cannot change renderer snapshot slots` | removed: it exercised the comparer only; `array key callbacks cannot change unread snapshot slots` keeps the snapshot check |
 | `failed keyed movement restores prior order and permits recovery`, `failed keyed rollback terminates the mount and all row resources` | replaced by `a failed keyed layout disposes the mount and reports once` (decision 3); `failed movement rollback disposes resources instead of stranding bindings` moves a whole mount and is unchanged |
 | Scope unit checks in `LifetimeChecks` | rewritten against mounts on owners: order, late registration, reporter failure |
+| Use-order flips from mount-level cleanups moving to core owner order | none: no view test asserts the order of two or more mount-level (`ctx.OnCleanup`, `root.OnCleanup`) or `Browser.fs` component cleanups. `range cleanup runs child first while DOM stays attached`, `template cleanups run in use order without an instance owner`, `each renders template rows, retains them by key and dispatches their clicks`, `an inlined child shares the clone and keeps its own instance, effect and handlers` and the `components clean up without stopping a sibling mount` cases already observe core owner order and keep their expected order |
 
 New, in the owning tasks:
 
