@@ -22,6 +22,14 @@ manager that duplicates a core primitive requires agreement with the user before
 Raise it as a question: name the core primitive, and the behaviour it lacks. When the core lacks
 a behaviour, the default proposal is to add it to the core.
 
+Every view spec and plan opens with a **Core and view state** section, before any design:
+
+- **Core primitives used:** each primitive and the job it does in the design.
+- **View-owned state:** each piece of state the view keeps, and why the core cannot hold it.
+
+A spec without the section, or with view-owned state outside the list above and no recorded
+agreement, is not ready for review.
+
 Existing duplicates, agreed for replacement on 2026-10-14: the keyed region reconciler
 (`Mounting.fs` `KeyedRegion`, `Keyed.validateUniqueKeys`), arm switches routed through it, and the
 renderer `Scope` tree (`Lifetime.fs`). Under review: the queued commit `Queue` (`Scheduling.fs`).
