@@ -50,6 +50,13 @@ type Backend() =
     abstract Bind: (string -> string -> bool) * (unit -> string) -> unit
     /// <summary>Interprets a keyed item snapshot and renders its items into this backend.</summary>
     abstract Keyed: (obj -> obj -> bool) * (unit -> (obj * obj) array) * ((unit -> obj) -> Backend -> unit) -> unit
+
+    /// <summary>Renders the single keyed row selected by a switch; the previous row is disposed before the next is created.</summary>
+    abstract Switch: (obj -> obj -> bool) * (unit -> (obj * obj) array) * ((unit -> obj) -> Backend -> unit) -> unit
+
+    default this.Switch(equals, read, render) =
+        this.Keyed (equals, read, render)
+
     abstract Component: (Setup -> unit) -> unit
 
     /// <summary>Renders a template component definition with its props.</summary>
@@ -105,6 +112,8 @@ type Operations<'view> =
         Bind: (string -> string -> bool) -> (unit -> string) -> 'view
         /// <summary>Creates the internal keyed-list representation used by <c>Keyed.list</c>.</summary>
         Keyed: (obj -> obj -> bool) -> (unit -> (obj * obj) array) -> ((unit -> obj) -> 'view) -> 'view
+        /// <summary>Creates the single keyed row selected by a switch; the previous row is disposed before the next is created.</summary>
+        Switch: (obj -> obj -> bool) -> (unit -> (obj * obj) array) -> ((unit -> obj) -> 'view) -> 'view
         Component: (Setup -> 'view) -> 'view
         /// <summary>Runs backend operations in the view's place; a template view hole embeds its view through it.</summary>
         Embed: (Backend -> unit) -> 'view
@@ -237,6 +246,7 @@ module Tree =
             Element = fun tag tokens children -> Element (tag, tokens, children)
             Bind = fun equals read -> Bind (equals, read)
             Keyed = fun equals read render -> Keyed (equals, read, render)
+            Switch = fun equals read render -> Embed (fun backend -> backend.Switch (equals, read, fun current target -> run (render current) target))
             Component = Component
             Embed = Embed
         }
@@ -286,6 +296,8 @@ module Program =
             Element = element
             Bind = bind
             Keyed = fun equals read render -> View (fun backend -> backend.Keyed (equals, read, fun current target -> (render current).Invoke target))
+            Switch =
+                fun equals read render -> View (fun backend -> backend.Switch (equals, read, fun current target -> (render current).Invoke target))
             Component = createComponent
             Embed = fun build -> View (fun backend -> build backend)
         }

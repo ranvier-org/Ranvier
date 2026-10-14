@@ -365,10 +365,10 @@ let mutable regionReads: ((obj -> obj -> bool) * (unit -> (obj * obj) array)) li
 
 let capturing =
     { Tree.ops with
-        Keyed =
+        Switch =
             fun same read render ->
                 regionReads <- regionReads @ [ same, read ]
-                Tree.ops.Keyed same read render
+                Tree.ops.Switch same read render
     }
 
 let renderRoled tab =
@@ -436,6 +436,38 @@ with :? System.ArgumentException ->
 equal true duplicateRejected
 
 printfn "PASS template each"
+
+let mutable regionKinds: string list = []
+
+let recording =
+    { Tree.ops with
+        Keyed =
+            fun same read render ->
+                regionKinds <- regionKinds @ [ "keyed" ]
+                Tree.ops.Keyed same read render
+        Switch =
+            fun same read render ->
+                regionKinds <- regionKinds @ [ "switch" ]
+                Tree.ops.Switch same read render
+    }
+
+let switchedThenListed =
+    Component.define (fun _ (items: Listed array) -> items) (fun t ->
+        t.div
+            [||]
+            [|
+                t.matchWith (fun (items: Listed array) -> items.Length) (fun length -> t.arm userArm length)
+                t.each (fun (item: Listed) -> item.Id) id listedRow
+            |])
+
+// An expanded arm switch goes through Switch; an expanded each goes through Keyed.
+equal
+    "<div><span>user 2</span><li>a</li><li>&lt;b&gt;</li></div>"
+    (Html.render Omit (Tree.run (Component.renderWith recording switchedThenListed listedItems)))
+
+equal [ "switch"; "keyed" ] regionKinds
+
+printfn "PASS template switch expansion"
 
 type BadgeProps = { Count: int }
 

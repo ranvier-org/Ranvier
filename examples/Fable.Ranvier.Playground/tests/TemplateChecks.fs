@@ -1143,10 +1143,10 @@ let private matchSwitching () =
     equal
         [
             "setup waiting"
-            "setup working"
             "cleanup waiting"
-            "setup complete"
+            "setup working"
             "cleanup working"
+            "setup complete"
         ]
         (List.ofSeq stageLog)
 
@@ -1173,7 +1173,7 @@ let private matchSameFlush () =
             stage.Value <- Working 3
             stage.Value <- Complete "y"))
 
-    equal ("complete y", [ "setup working"; "setup complete"; "cleanup working" ]) (host.textContent, List.ofSeq stageLog)
+    equal ("complete y", [ "setup working"; "cleanup working"; "setup complete" ]) (host.textContent, List.ofSeq stageLog)
     equal [ "working 1"; "working 2" ] (List.ofSeq stageRenders)
     mounted.Dispose ()
 
@@ -1265,7 +1265,7 @@ let private sharedArm () =
     graph.Run (fun () -> phase.Value <- Loading 3)
     equal ("working 3", [ "setup working" ]) (host.textContent, List.ofSeq stageLog)
     graph.Run (fun () -> phase.Value <- Idle)
-    equal ("waiting", [ "setup working"; "setup waiting"; "cleanup working" ]) (host.textContent, List.ofSeq stageLog)
+    equal ("waiting", [ "setup working"; "cleanup working"; "setup waiting" ]) (host.textContent, List.ofSeq stageLog)
     mounted.Dispose ()
     equal 0. host.childNodes.length
 
@@ -1297,9 +1297,9 @@ let private branchSwitching () =
     graph.Run (fun () -> value.Value <- 12)
     equal ("1", [ "setup 1" ]) (host.textContent, List.ofSeq decadeLog)
     graph.Run (fun () -> value.Value <- 21)
-    equal ("2", [ "setup 1"; "setup 2"; "cleanup 1" ]) (host.textContent, List.ofSeq decadeLog)
+    equal ("2", [ "setup 1"; "cleanup 1"; "setup 2" ]) (host.textContent, List.ofSeq decadeLog)
     mounted.Dispose ()
-    equal ([ "setup 1"; "setup 2"; "cleanup 1"; "cleanup 2" ], 0.) (List.ofSeq decadeLog, host.childNodes.length)
+    equal ([ "setup 1"; "cleanup 1"; "setup 2"; "cleanup 2" ], 0.) (List.ofSeq decadeLog, host.childNodes.length)
 
 let private branchTwin () =
     use graph = new Graph ()
@@ -1394,17 +1394,137 @@ let private branchDefinitionChange () =
         ],
         [
             "setup user"
-            "setup admin"
             "cleanup user"
             "setup admin"
             "cleanup admin"
-            "setup user"
+            "setup admin"
             "cleanup admin"
+            "setup user"
             "cleanup user"
         ]
 
     equal expected (roleSteps false)
     equal expected (roleSteps true)
+
+let mutable private ambient = "original"
+
+/// <summary>An arm that saves <c>ambient</c> on setup, sets it to its name, and restores the saved value on cleanup.</summary>
+let private ambientArm (name: string) =
+    Component.define
+        (fun setup (_: unit -> unit) ->
+            let saved = ambient
+            ambient <- name
+            setup.OnCleanup (fun () -> ambient <- saved))
+        (fun t -> t.span [||] [| t.text name |])
+
+let private ambientFirst = ambientArm "a"
+let private ambientSecond = ambientArm "b"
+
+let private ambientSwitch =
+    Component.define (fun _ (second: Signal<bool>) -> second) (fun t ->
+        t.div
+            [||]
+            [|
+                t.matchWith (fun second -> second.Value) (fun second ->
+                    if second then
+                        t.arm ambientSecond ()
+                    else
+                        t.arm ambientFirst ())
+            |])
+
+let private armSaveRestore () =
+    for expanded in [ false; true ] do
+        use graph = new Graph ()
+        ambient <- "original"
+        let second = graph.Run (fun () -> Api.createSignal false)
+        let host = host ()
+
+        let mounted =
+            mount
+                graph
+                host
+                (if expanded then
+                     Component.renderWith Program.ops ambientSwitch second
+                 else
+                     Component.render ambientSwitch second)
+
+        equal "a" ambient
+        graph.Run (fun () -> second.Value <- true)
+        equal ("b", "b") (ambient, host.textContent)
+        mounted.Dispose ()
+        equal "original" ambient
+
+let private failingArm =
+    Component.define
+        (fun setup (_: unit -> string) ->
+            stageLog.Add "setup failing"
+            setup.OnCleanup (fun () -> stageLog.Add "cleanup failing")
+            (failwith "arm setup failed": unit))
+        (fun t -> t.span [||] [| t.text "failing" |])
+
+let private failingStaged =
+    Component.define (fun _ (stage: Signal<Stage>) -> stage) (fun t ->
+        t.div [||] [| t.matchWith (fun stage -> stage.Value) (stageArmsWith failingArm t) |])
+
+let private armSetupFailure () =
+    use graph = new Graph ()
+    stageLog.Clear ()
+    let stage = graph.Run (fun () -> Api.createSignal (Working 1))
+    let host = host ()
+    let reported = ResizeArray<exn>()
+
+    let mounted =
+        Mounting.mount graph None reported.AddRange host None (fun context -> Program.run (Component.render failingStaged stage) context.Backend)
+
+    let div = host.querySelector "div" |> unbox<HTMLElement>
+    graph.Run (fun () -> stage.Value <- Complete "x")
+
+    equal
+        ([ "setup working"; "cleanup working"; "setup failing"; "cleanup failing" ], 2., "", [ "arm setup failed" ])
+        (List.ofSeq stageLog, div.childNodes.length, div.textContent, reported |> Seq.map _.Message |> List.ofSeq)
+
+    graph.Run (fun () -> stage.Value <- Waiting)
+    equal ("waiting", "setup waiting", 1) (host.textContent, stageLog[stageLog.Count - 1], reported.Count)
+    mounted.Dispose ()
+    equal ("cleanup waiting", 0.) (stageLog[stageLog.Count - 1], host.childNodes.length)
+
+let private throwingCleanupArm =
+    Component.define
+        (fun setup (_: unit -> unit) ->
+            stageLog.Add "setup throwing"
+            setup.OnCleanup (fun () -> failwith "arm cleanup failed"))
+        (fun t -> t.span [||] [| t.text "throwing" |])
+
+let private throwingCleanupStaged =
+    Component.define (fun _ (stage: Signal<Stage>) -> stage) (fun t ->
+        t.div
+            [||]
+            [|
+                t.matchWith (fun stage -> stage.Value) (fun stage ->
+                    match stage with
+                    | Waiting -> t.arm throwingCleanupArm ()
+                    | other -> stageArms t other)
+            |])
+
+let private armCleanupFailure () =
+    use graph = new Graph ()
+    stageLog.Clear ()
+    let stage = graph.Run (fun () -> Api.createSignal Waiting)
+    let host = host ()
+    let reported = ResizeArray<exn>()
+
+    let mounted =
+        Mounting.mount graph None reported.AddRange host None (fun context ->
+            Program.run (Component.render throwingCleanupStaged stage) context.Backend)
+
+    graph.Run (fun () -> stage.Value <- Working 1)
+
+    equal
+        ("working 1", [ "setup throwing"; "setup working" ], [ "arm cleanup failed" ])
+        (host.textContent, List.ofSeq stageLog, reported |> Seq.map _.Message |> List.ofSeq)
+
+    mounted.Dispose ()
+    equal ("cleanup working", 0.) (stageLog[stageLog.Count - 1], host.childNodes.length)
 
 type Listed = { Id: int; Text: string }
 
@@ -1460,6 +1580,26 @@ let private eachRows () =
     mounted.Dispose ()
 
     equal ([ "setup 1"; "setup 2"; "click 1"; "cleanup 2"; "cleanup 1" ], 0.) (List.ofSeq listedLog, host.childNodes.length)
+
+let private eachReplacement () =
+    for expanded in [ false; true ] do
+        use graph = new Graph ()
+        listedLog.Clear ()
+        let items = graph.Run (fun () -> Api.createSignal [| { Id = 1; Text = "a" } |])
+        let host = host ()
+
+        let mounted =
+            mount
+                graph
+                host
+                (if expanded then
+                     Component.renderWith Program.ops listed items
+                 else
+                     Component.render listed items)
+
+        graph.Run (fun () -> items.Value <- [| { Id = 2; Text = "b" } |])
+        equal ("b", [ "setup 1"; "setup 2"; "cleanup 1" ]) (host.textContent, List.ofSeq listedLog)
+        mounted.Dispose ()
 
 let private eachDuplicates () =
     use graph = new Graph ()
@@ -1660,8 +1800,8 @@ let private nestedRegions () =
         [
             "setup waiting"
             "setup working"
-            "setup complete"
             "cleanup waiting"
+            "setup complete"
             "cleanup working"
             "cleanup complete"
         ]
@@ -2049,7 +2189,11 @@ let cases =
         "branch renders the same DOM as its default expansion across a key change", branchTwin
         "branch server markup under Fable matches .NET", branchMarkup
         "branch remounts when its arms select another definition for an equal key", branchDefinitionChange
+        "a switched arm sets up after the previous arm restores its saved state", armSaveRestore
+        "a switched arm whose setup throws leaves the region empty and a later switch mounts", armSetupFailure
+        "a previous arm whose cleanup throws is reported and the switched arm mounts", armCleanupFailure
         "each renders template rows, retains them by key and dispatches their clicks", eachRows
+        "each sets up a replacing row before the replaced row's cleanup", eachReplacement
         "duplicate each keys fail the mount, are reported on update and keep the rows", eachDuplicates
         "an empty each region keeps its markers, fills and empties", eachEmpty
         "each renders the same DOM as its default expansion across insert, remove, reorder and an item change", eachTwin

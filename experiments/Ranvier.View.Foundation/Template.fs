@@ -395,7 +395,8 @@ let rec private expandNode (ops: Operations<'view>) (instance: obj) (node: Templ
         | ViewRow ->
             let _, item = (region.Items.Invoke instance)[0]
             expandRow ops region.Row (fun () -> item)
-        | ArmRow
+        | ArmRow ->
+            ops.Switch (fun left right -> region.Same.Invoke (left, right)) (fun () -> region.Items.Invoke instance) (expandRow ops region.Row)
         | ItemRow _ ->
             ops.Keyed (fun left right -> region.Same.Invoke (left, right)) (fun () -> region.Items.Invoke instance) (expandRow ops region.Row)
     | ChildNode (definition, props) -> expandWith ops definition (props.Invoke instance)
@@ -660,7 +661,7 @@ type TemplateBuilder<'inst> internal () =
         }
 
     /// <summary>Renders the arm that <c>arms</c> selects for the instance's union value, between region markers.</summary>
-    /// <remarks>Arms are compared by definition: selecting another definition remounts, and selecting the same definition updates the payload read by its props. Writing <c>arms</c> as a <c>function</c> match lets the compiler check that every case has an arm. A remount sets up the new arm before the previous arm's cleanups run; Solid 2 disposes the previous arm first.</remarks>
+    /// <remarks>Arms are compared by definition: selecting another definition remounts, and selecting the same definition updates the payload read by its props. Writing <c>arms</c> as a <c>function</c> match lets the compiler check that every case has an arm. A remount runs the previous arm's cleanups and removes its nodes before the new arm is set up.</remarks>
     member _.matchWith (read: 'inst -> 'union) (arms: 'union -> Arm) : TemplateView<'inst> =
         TemplateView (
             RegionNode
@@ -675,7 +676,7 @@ type TemplateBuilder<'inst> internal () =
         )
 
     /// <summary>Renders the arm selected for the instance's key, between region markers; a key change under <c>=</c> or a change of the selected definition remounts the arm.</summary>
-    /// <remarks>An equal key with the same definition keeps the arm and updates the payload read by its props. A remount sets up the new arm before the previous arm's cleanups run; Solid 2 disposes the previous arm first.</remarks>
+    /// <remarks>An equal key with the same definition keeps the arm and updates the payload read by its props. A remount runs the previous arm's cleanups and removes its nodes before the new arm is set up.</remarks>
     member _.branch<'key when 'key: equality> (key: 'inst -> 'key) (arms: 'key -> Arm) : TemplateView<'inst> =
         TemplateView (
             RegionNode

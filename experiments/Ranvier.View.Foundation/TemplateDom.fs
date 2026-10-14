@@ -51,6 +51,8 @@ type CompiledRegion =
         Items: Func<obj, (obj * obj) array>
         /// <summary>True when the items are read once, as the instance is created.</summary>
         Once: bool
+        /// <summary>True when the region is an arm switch: the previous row is disposed before the next is created.</summary>
+        DisposeFirst: bool
         Render: (unit -> obj) -> Backend -> unit
     }
 
@@ -311,6 +313,11 @@ let compile (definition: TemplateComponent) : Compiled =
                         Same = fun left right -> same.Invoke (left, right)
                         Items = region.Items
                         Once = readsOnce region.Row
+                        DisposeFirst =
+                            match region.Row with
+                            | ArmRow -> true
+                            | ViewRow
+                            | ItemRow _ -> false
                         Render = rowRenderer region.Row
                     }
                 | _ -> ()
@@ -369,8 +376,8 @@ type internal MountServices =
     abstract ListenDirect: Node * string * (obj -> unit) -> unit
     abstract ReportFailure: exn -> unit
     abstract ClearFailure: unit -> unit
-    /// <summary>Mounts keyed rows between a region's start and end markers; <c>true</c> marks markers that are roots of the appended clone.</summary>
-    abstract Region: Node * Node * bool * (obj -> obj -> bool) * (unit -> (obj * obj) array) * ((unit -> obj) -> Backend -> unit) -> unit
+    /// <summary>Mounts keyed rows between a region's start and end markers; the first flag marks markers that are roots of the appended clone, and the second disposes a replaced row before its replacement is created.</summary>
+    abstract Region: Node * Node * bool * bool * (obj -> obj -> bool) * (unit -> (obj * obj) array) * ((unit -> obj) -> Backend -> unit) -> unit
 
 let private unset = obj ()
 
@@ -649,4 +656,4 @@ let internal materialise (definition: TemplateDefinition) (props: obj) (services
             else
                 fun () -> items.Invoke owner
 
-        services.Region (start, finish, region.RootLevel, region.Same, read, region.Render)
+        services.Region (start, finish, region.RootLevel, region.DisposeFirst, region.Same, read, region.Render)
