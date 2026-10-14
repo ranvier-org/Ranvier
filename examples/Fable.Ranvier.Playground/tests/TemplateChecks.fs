@@ -1814,7 +1814,7 @@ let private zeroNodeRows () =
     equal 0 (rowMarkers list).Length
     mounted.Dispose ()
 
-let private disposalCleansBeforeRelease () =
+let private disposalCleansBeforeRelease (rootLevel: bool) =
     use graph = new Graph ()
     let host = host ()
     let counts = ResizeArray<float>()
@@ -1828,12 +1828,19 @@ let private disposalCleansBeforeRelease () =
 
     let watched =
         Component.define (fun _ (items: Signal<Listed array>) -> items) (fun t ->
-            t.element (HtmlTag "ul") [||] [| t.each (fun (item: Listed) -> item.Id) (fun items -> items.Value) watching |])
+            let rows =
+                t.each (fun (item: Listed) -> item.Id) (fun items -> items.Value) watching
+
+            if rootLevel then
+                t.fragment [| rows |]
+            else
+                t.element (HtmlTag "ul") [||] [| rows |])
 
     let items =
         graph.Run (fun () -> Api.createSignal [| for id in 1..3 -> { Id = id; Text = string id } |])
 
     let mounted = mount graph host (Component.render watched items)
+    equal 3. (host.querySelectorAll "li").length
     mounted.Dispose ()
     equal ([ 3.; 3.; 3. ], 0.) (List.ofSeq counts, host.childNodes.length)
 
@@ -1885,14 +1892,18 @@ let private clicksFollowMovedRows () =
     mounted.MoveBefore (other, None)
     one.click ()
     graph.Run (fun () -> items.Value <- [| for id in [ 3; 2 ] -> { Id = id; Text = string id } |])
+    let removed = one.parentNode.IsNone
+    // Back under the delegating host, the removed row's node reaches the listener.
+    other.appendChild one |> ignore
     one.click ()
     mounted.Dispose ()
     host.remove ()
     other.remove ()
 
     equal
-        2
-        (listedLog
+        (true, 2)
+        (removed,
+         listedLog
          |> Seq.filter (fun line -> line = "click 1")
          |> Seq.length)
 
@@ -2778,7 +2789,8 @@ let cases =
         "a two-row swap of 1,000 rows moves two rows", eachSwapMovesTwo
         "list updates match a reference order and keep node identities", eachMatchesReferenceOrder
         "zero-node rows keep their place through their marker", zeroNodeRows
-        "disposing a mount runs every row cleanup before a node leaves", disposalCleansBeforeRelease
+        "disposing a mount runs every row cleanup before a node leaves", fun () -> disposalCleansBeforeRelease false
+        "disposing a mount runs every root-level row cleanup before a node leaves", fun () -> disposalCleansBeforeRelease true
         "an arm switch and a mount disposal run the arm's cleanups before its nodes leave", armCleansBeforeRelease
         "delegated clicks reach a moved row and stop after its removal", clicksFollowMovedRows
         "a throwing row cleanup is reported once with its update after the row leaves", throwingRowCleanup
