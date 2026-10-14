@@ -252,6 +252,23 @@ type internal IProjectionPass =
     /// <summary>Runs when a pass fails or suspends before its diff applies in full, and when the projection is disposed.</summary>
     abstract Abandoned: unit -> unit
 
+/// <summary>Failures shared by projection passes, key checks and row reads.</summary>
+module internal ProjectionFailures =
+    let duplicateKey (key: 'K) =
+        InvalidOperationException (
+            "The projection produced the key "
+            + string key
+            + " twice in one pass. Keys must be unique; check the keyOf function."
+        )
+
+    /// <summary>The failure of a read of the row of <c>key</c> while its factory runs.</summary>
+    let underConstruction (key: 'K) =
+        InvalidOperationException (
+            "The row of key "
+            + string key
+            + " is still being created."
+        )
+
 /// <summary>
 /// A keyed collection derived from a source collection: a key set, and one row
 /// per live key.
@@ -1189,36 +1206,42 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             else
                 graph.Track (existing.Row :> ISource)
 
+    /// <summary>Marks the projection observed, and schedules a pass when it is dirty.</summary>
+    member private this.MarkObserved() =
+        observed <- true
+
+        if
+            freshness = Freshness.Dirty
+            && not queued
+            && not disposed
+        then
+            queued <- true
+            graph.Schedule (this :> IScheduled)
+
     /// <summary>
     /// Links the reader of an absent key to the keys cell, so it wakes when
     /// membership changes.
     /// </summary>
-    member private _.TrackAbsent() =
+    member private this.TrackAbsent() =
         graph.Track (keys :> ISource)
 
         if not observed && keys.ObserverCount > 0 then
-            observed <- true
+            this.MarkObserved ()
 
     /// <summary>
     /// A tracked read of a row. A pending row raises <c>NotReadyException</c> naming the source its reader awaits, and
     /// links the caller to that source as well as to the row. A memo-free row is a tracked read of the key set. A memo
-    /// row whose factory is still running raises <c>InvalidOperationException</c>.
+    /// or memo-free row whose factory is still running raises <c>InvalidOperationException</c>.
     /// </summary>
     member private this.ReadRow(entry: RowEntry<'K, 'V>) : 'V =
         if isNull (box entry.Row) && isNull this.OnceValue then
-            raise (
-                InvalidOperationException (
-                    "The row of key "
-                    + string entry.Key
-                    + " is still being created."
-                )
-            )
+            raise (ProjectionFailures.underConstruction entry.Key)
 
         if isNull (box entry.Row) then
             graph.Track (keys :> ISource)
 
             if not observed && keys.ObserverCount > 0 then
-                observed <- true
+                this.MarkObserved ()
 
             this.OnceValue.Invoke entry
         else
@@ -1239,7 +1262,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
                     raise (graph.NotReady awaited)
             finally
                 if not observed && rowObserved entry then
-                    observed <- true
+                    this.MarkObserved ()
 
     /// <summary>
     /// The key set, in source order. A tracked read of the keys cell.
@@ -1262,7 +1285,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
         let result = keys.Value
 
         if not observed && keys.ObserverCount > 0 then
-            observed <- true
+            this.MarkObserved ()
 
         result
 
@@ -1306,7 +1329,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
         let result = cell.Value
 
         if not observed && cell.ObserverCount > 0 then
-            observed <- true
+            this.MarkObserved ()
 
         result
 
@@ -1334,7 +1357,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             match entry.Row.TryValue with
             | Pending ->
                 if not observed && rowObserved entry then
-                    observed <- true
+                    this.MarkObserved ()
 
                 entry.Row.Peek
             | _ -> this.ReadRow entry
@@ -1399,7 +1422,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
         let result = summary.Value
 
         if not observed && summary.ObserverCount > 0 then
-            observed <- true
+            this.MarkObserved ()
 
         result
 
@@ -1796,15 +1819,6 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             link <- null
             this.Dispose ()
 
-/// <summary>Failures shared by projection passes and key checks.</summary>
-module internal ProjectionFailures =
-    let duplicateKey (key: 'K) =
-        InvalidOperationException (
-            "The projection produced the key "
-            + string key
-            + " twice in one pass. Keys must be unique; check the keyOf function."
-        )
-
 /// <summary>
 /// The rows of a projection over items of type <c>'T</c>: one item source per key,
 /// written when the key's item changes.
@@ -1969,8 +1983,11 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
         graph.RunOwned (
             keyScope,
             fun () ->
+                entry.Reader <- fun () -> raise (ProjectionFailures.underConstruction key)
+
                 try
                     entry.Value <- once (fun () -> source.Value)
+                    entry.Reader <- Unchecked.defaultof<_>
                 with ex ->
                     entry.Reader <- this.FactoryFailure (key, ex, "", before)
         )

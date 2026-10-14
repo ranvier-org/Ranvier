@@ -418,7 +418,7 @@ let tests =
                     Expect.equal (proj.Get 5) 50 $"{label}: and its row"
             }
 
-            test "a keyOf that writes the source on every call and reads the projection once returns, and later reads converge" {
+            test "a keyOf that writes the source on its first four calls and reads the projection once returns, and later reads converge" {
                 use g = new Graph ()
                 use _ = g.Activate ()
                 let counter = createSignal 0
@@ -561,6 +561,124 @@ let tests =
                         else
                             createProjectionWith id factory source
 
+                    proj.Keys |> ignore
+                    armed <- true
+                    items.Value <- [| 1; 2; 4 |]
+                    let keys = proj.Keys
+                    Expect.equal inner.Value "The row of key 2 is still being created." $"{label}: the read inside the factory"
+                    Expect.sequenceEqual keys [ 1; 2 ] $"{label}: the keys of the source the factory wrote"
+                    Expect.sequenceEqual (keys |> Array.map proj.Get) [ 10; 20 ] $"{label}: the rows once created"
+            }
+
+            test "a keyOf that writes the source on every call and reads the projection once leaves every read returning" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let counter = createSignal 0
+                let items = createSignal [| 1; 2 |]
+                let mutable guard = false
+                let mutable proj: Projection<int, int> = Unchecked.defaultof<_>
+
+                proj <-
+                    createProjection
+                        (fun x ->
+                            if x = 1 then
+                                counter.Value <- counter.Value + 1
+
+                                if not guard then
+                                    guard <- true
+
+                                    try
+                                        untrack (fun () -> proj.Keys) |> ignore
+                                    with _ ->
+                                        ()
+
+                                    guard <- false
+
+                            x)
+                        (fun x -> x * 10)
+                        (fun () ->
+                            counter.Value |> ignore
+                            items.Value :> seq<_>)
+
+                for read in 1..3 do
+                    Expect.sequenceEqual proj.Keys [ 1; 2 ] $"read {read} returns"
+
+                Expect.sequenceEqual (proj.Keys |> Array.map proj.Get) [ 10; 20 ] "every key has a row"
+            }
+
+            test "an effect's first read of a projection whose keyOf writes the source ends with the latest keys" {
+                for nested in [ false; true ] do
+                    let label = if nested then "nested" else "not nested"
+                    use g = new Graph ()
+                    use _ = g.Activate ()
+                    let items = createSignal [| 1; 2 |]
+                    let mutable stage = 0
+                    let mutable proj: Projection<int, int> = Unchecked.defaultof<_>
+
+                    // The first pass's keyOf writes the source; when nested, it reads the projection, and the nested
+                    // pass's keyOf writes the source again without reading it.
+                    proj <-
+                        createProjection
+                            (fun x ->
+                                if x = 1 || x = 9 then
+                                    if stage = 0 then
+                                        stage <- 1
+
+                                        if nested then
+                                            items.Value <- [| 9; 1; 2; 3 |]
+
+                                            try
+                                                untrack (fun () -> proj.Keys) |> ignore
+                                            with _ ->
+                                                ()
+                                        else
+                                            items.Value <- [| 9; 1; 2; 3; 4 |]
+                                    elif stage = 1 && nested then
+                                        stage <- 2
+                                        items.Value <- [| 9; 1; 2; 3; 4 |]
+
+                                x)
+                            (fun x -> x * 10)
+                            (fun () -> items.Value :> seq<_>)
+
+                    let seen = ResizeArray<int[]>()
+                    createEffect (fun () -> seen.Add proj.Keys)
+                    Expect.sequenceEqual (Seq.last seen) [ 9; 1; 2; 3; 4 ] $"{label}: the effect's last keys"
+            }
+
+            test "a memo-free row read while its factory runs raises naming the key" {
+                for createFirst in [ false; true ] do
+                    let label = if createFirst then "create-first" else "default"
+                    use g = new Graph ()
+                    use _ = g.Activate ()
+                    let items = createSignal [| 1 |]
+                    let mutable armed = false
+                    let inner = ref ""
+                    let mutable proj: Projection<int, int> = Unchecked.defaultof<_>
+
+                    let factory (item: unit -> int) =
+                        let x = item ()
+
+                        if x = 2 && armed then
+                            armed <- false
+                            items.Value <- [| 1; 2 |]
+
+                            inner.Value <-
+                                try
+                                    untrack (fun () -> proj.Get 2) |> ignore
+                                    ""
+                                with ex ->
+                                    ex.Message
+
+                        x * 10
+
+                    let options =
+                        if createFirst then
+                            ProjectionOptions.CreateFirst
+                        else
+                            ProjectionOptions.None
+
+                    proj <- createProjectionOnce options id factory (fun () -> items.Value :> seq<_>)
                     proj.Keys |> ignore
                     armed <- true
                     items.Value <- [| 1; 2; 4 |]

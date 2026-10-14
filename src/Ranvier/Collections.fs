@@ -95,10 +95,11 @@ type internal CollectionProjection<'K, 'V when 'K: equality>(graph: Graph) as th
     override _.Enumerate() =
         revision.Value |> ignore
         let mine = this.Runs
+        let keys = order.ToArray ()
         let mutable i = 0
 
-        while this.Runs = mine && i < order.Count do
-            let key = order[i]
+        while this.Runs = mine && i < keys.Length do
+            let key = keys[i]
             i <- i + 1
             let item = items.Find key
             let entry = this.Entries.Find key
