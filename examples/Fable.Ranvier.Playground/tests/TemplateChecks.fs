@@ -1784,6 +1784,31 @@ let private disposalCleansBeforeRelease () =
     mounted.Dispose ()
     equal ([ 3.; 3.; 3. ], 0.) (List.ofSeq counts, host.childNodes.length)
 
+let private armCleansBeforeRelease () =
+    use graph = new Graph ()
+    let host = host ()
+    let counts = ResizeArray<float>()
+
+    let watchingArm =
+        Component.define (fun setup (_: unit -> unit) -> setup.OnCleanup (fun () -> counts.Add (host.querySelectorAll "span").length)) (fun t ->
+            t.span [||] [| t.text "on" |])
+
+    let watched =
+        Component.define (fun _ (on: Signal<bool>) -> on) (fun t ->
+            t.div
+                [||]
+                [|
+                    t.matchWith (fun on -> on.Value) (fun on -> if on then t.arm watchingArm () else t.arm waitingArm ())
+                |])
+
+    let on = graph.Run (fun () -> Api.createSignal true)
+    let mounted = mount graph host (Component.render watched on)
+    graph.Run (fun () -> on.Value <- false)
+    equal "waiting" host.textContent
+    graph.Run (fun () -> on.Value <- true)
+    mounted.Dispose ()
+    equal ([ 1.; 1. ], 0.) (List.ofSeq counts, host.childNodes.length)
+
 let private clicksFollowMovedRows () =
     use graph = new Graph ()
     listedLog.Clear ()
@@ -2700,6 +2725,7 @@ let cases =
         "list updates match a reference order and keep node identities", eachMatchesReferenceOrder
         "zero-node rows keep their place through their marker", zeroNodeRows
         "disposing a mount runs every row cleanup before a node leaves", disposalCleansBeforeRelease
+        "an arm switch and a mount disposal run the arm's cleanups before its nodes leave", armCleansBeforeRelease
         "delegated clicks reach a moved row and stop after its removal", clicksFollowMovedRows
         "a throwing row cleanup is reported once with its update after the row leaves", throwingRowCleanup
         "disposing the mount from a row's setup ends the update silently", disposalFromRowSetup

@@ -1183,10 +1183,34 @@ let private arrayKeyMutation () =
     handle.Dispose ()
     equal 0. host.childNodes.length
 
+let private authoredSwitch () =
+    use graph = new Graph ()
+    let host = Dom.element "section" [] []
+    let selected = graph.Run (fun () -> Api.createSignal (1, "a"))
+    let log = ResizeArray<string>()
+
+    let view =
+        Branch.select Tree.ops fst (fun () -> selected.Value) (fun current ->
+            Tree.ops.Component (fun ctx ->
+                let key = fst (current ())
+                log.Add ("setup " + string key)
+                ctx.OnCleanup (fun () -> log.Add ("cleanup " + string key))
+                Tree.ops.Bind (=) (fun () -> snd (current ()))))
+
+    let handle = tree graph host view
+    graph.Run (fun () -> selected.Value <- (1, "b"))
+    equal "b" host.textContent
+    graph.Run (fun () -> selected.Value <- (2, "c"))
+    equal "c" host.textContent
+    equal [ "setup 1"; "cleanup 1"; "setup 2" ] (List.ofSeq log)
+    handle.Dispose ()
+    equal 0. host.childNodes.length
+
 let allCases =
     Array.append
         cases
         [|
+            "an authored switch disposes the previous arm before the next arm's setup and keeps an equal key", authoredSwitch
             "array key callbacks cannot change unread snapshot slots", arrayKeyMutation
             "reusable bindings retain identity across range movement", reactiveMoves
             "keyed rows preserve identity and current data across reorder and removal", keyedReconciliation

@@ -664,8 +664,17 @@ type private RegionPlacement =
     /// <summary>Markers inside an element.</summary>
     | NestedRegion
 
-exception private KeyedDisposed
-exception private KeyedSetupFailed of exn list
+/// <summary>Arm selections are equal when both are null, or when their keys (<c>fst</c>) are equal under <c>=</c>.</summary>
+let private sameArm =
+    { new System.Collections.Generic.IEqualityComparer<obj> with
+        member _.Equals(left, right) =
+            if isNull left || isNull right then
+                isNull left && isNull right
+            else
+                fst (unbox<obj * obj> left) = fst (unbox<obj * obj> right)
+
+        member _.GetHashCode _ = 0
+    }
 
 /// <summary>The operations a view's build function uses during setup.</summary>
 type BuildContext internal (state: MountState) =
@@ -945,14 +954,82 @@ and private RowBuilder(state: MountState) =
         member _.Region(start, finish, _, kind, read, render, rows) =
             state.NestedRegion (start, finish, kind, read, render, rows)
 
-and private KeyedEntry =
-    {
-        Key: obj
-        Value: Signal<obj>
-        First: Node
-        Last: Node
-        Mount: Mounted
-    }
+/// <summary>
+/// The markers and laid-out rows of one region, with the region's owner, row builder and failure state.
+/// </summary>
+and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, report: exn list -> unit, releaseNodes: Row -> unit) =
+    let laidOut = ResizeArray<Row>()
+    let errors = RegionErrors report
+    let mutable owner: Owner = Unchecked.defaultof<_>
+    let mutable builder: RowBuilder = Unchecked.defaultof<_>
+
+    member _.Start = regionStart
+    member _.End = regionEnd
+    member _.LaidOut = laidOut
+    member _.Errors = errors
+
+    /// <summary>The region's owner, set by <c>Own</c>.</summary>
+    member _.Owner = owner
+
+    member _.Builder =
+        if isNull (box builder) then
+            builder <- RowBuilder state
+
+        builder
+
+    /// <summary>Whether the mount and the region's owner are both live.</summary>
+    member _.Live() =
+        not state.Root.IsDisposed && not owner.IsDisposed
+
+    /// <summary>The markers' shared parent. Raises when the markers have no parent or different parents.</summary>
+    member _.Parent() : Node =
+        let regionParent =
+            regionStart.parentNode
+            |> Option.defaultWith (fun () -> invalid "Keyed-list boundaries have no parent")
+
+        if
+            not (
+                regionEnd.parentNode
+                |> Option.exists (same regionParent)
+            )
+        then
+            invalid "Keyed-list boundaries were externally mutated"
+
+        regionParent
+
+    member this.Validate() =
+        Row.Validate (regionStart, regionEnd, laidOut, this.Parent ())
+
+    /// <summary>Marks an authored row removed, and releases the nodes of a template row through the mount.</summary>
+    member _.ReleaseRow(row: Row) =
+        if not (isNull row) then
+            if not (isNull (box row.Mount)) then
+                row.Removed <- true
+            else
+                releaseNodes row
+
+    /// <summary>
+    /// Runs <c>body</c> in a new root owner of the region, then raises the setup failure recorded during that first pass.
+    /// </summary>
+    member _.Own(body: unit -> unit) =
+        Api.createRoot (fun created ->
+            owner <- created
+            body ())
+
+        errors.Initializing <- false
+        errors.SetupFailure |> Option.iter raise
+
+    /// <summary>
+    /// Ends a pass. A region disposed during the pass reports <c>recorded</c>; otherwise a failure is recorded or
+    /// reported with <c>recorded</c>, and a success runs <c>settle recorded</c>.
+    /// </summary>
+    member this.Settle(recorded: exn list, failure: exn option, settle: exn list -> unit) =
+        if not (this.Live ()) then
+            errors.Report recorded
+        else
+            match failure with
+            | Some error -> errors.Fail (error, error :: recorded)
+            | None -> settle recorded
 
 /// <summary>The state of a mounted view and the backend that builds it.</summary>
 and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifetime, parentOwner: Owner, report: exn list -> unit, host: Node) =
@@ -996,6 +1073,16 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
         owner.OnCleanup (Action callback)
 
     let mutable root: MountLifetime = null
+
+    // Removes the nodes of a template row; while the mount tears down, before its release, queues them for the release.
+    let releaseNodes (row: Row) =
+        if root.IsDisposed && not rowsReleased then
+            if isNull releasedRows then
+                releasedRows <- ResizeArray ()
+
+            releasedRows.Add row
+        else
+            Row.Remove row
 
     // The element receiving created nodes; null at the top level of the range.
     let mutable target: Node = Unchecked.defaultof<_>
@@ -1486,26 +1573,19 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
         ) =
         this.RegionOf (start, finish, NestedRegion, kind, read, render, rows)
 
-    member private _.RegionParent(regionStart: Node, regionEnd: Node) : Node =
-        let regionParent =
-            regionStart.parentNode
-            |> Option.defaultWith (fun () -> invalid "Keyed-list boundaries have no parent")
-
-        if
-            not (
-                regionEnd.parentNode
-                |> Option.exists (same regionParent)
-            )
-        then
-            invalid "Keyed-list boundaries were externally mutated"
-
-        regionParent
-
     member private _.PlaceRegion(regionStart: Node, regionEnd: Node, placement: RegionPlacement, validate: unit -> unit, relocate: unit -> unit) =
         match placement with
         | NestedRegion -> ()
         | NewRegion -> range.AddRegion (regionStart, regionEnd, validate, relocate)
         | RootRegion -> range.SpanRegion (regionStart, regionEnd, validate, relocate)
+
+    /// <summary>The site of a region between <c>regionStart</c> and <c>regionEnd</c>, placed in the mount's range.</summary>
+    member private this.Site(regionStart: Node, regionEnd: Node, placement: RegionPlacement) : RegionSite =
+        let site = RegionSite (this, regionStart, regionEnd, report, releaseNodes)
+
+        this.PlaceRegion (regionStart, regionEnd, placement, (fun () -> site.Validate ()), (fun () -> Row.Relocate site.LaidOut))
+
+        site
 
     /// <summary>Mounts an authored row as a nested mount and returns its nodes.</summary>
     member private _.MountRow(current: unit -> obj, render: (unit -> obj) -> Backend -> unit) : Row =
@@ -1538,45 +1618,18 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
             render: (unit -> obj) -> Backend -> unit,
             rows: Func<(unit -> obj), TemplateDom.MountServices, unit>
         ) =
-        let laidOut = ResizeArray<Row>()
-        let builder = RowBuilder this
-        let errors = RegionErrors report
-        let mutable regionOwner: Owner = Unchecked.defaultof<_>
+        let site = this.Site (regionStart, regionEnd, placement)
         let mutable projection: Projection<obj, Row> = Unchecked.defaultof<_>
         // The items of the latest reconcile, the projection's only input; each write is followed by a bump of `version`,
         // which marks the projection stale.
         let mutable version: Signal<int> = Unchecked.defaultof<_>
         let mutable snapshot: (obj * obj) array = [||]
 
-        let live () =
-            not root.IsDisposed && not regionOwner.IsDisposed
-
-        let regionParent () =
-            this.RegionParent (regionStart, regionEnd)
-
-        this.PlaceRegion (
-            regionStart,
-            regionEnd,
-            placement,
-            (fun () -> Row.Validate (regionStart, regionEnd, laidOut, regionParent ())),
-            fun () -> Row.Relocate laidOut
-        )
-
         let buildRow (item: unit -> obj * obj) : Row =
             let mutable row: Row = null
 
             // Runs after the row's own cleanups.
-            Api.onCleanup (fun () ->
-                if not (isNull row) then
-                    if not (isNull (box row.Mount)) then
-                        row.Removed <- true
-                    elif root.IsDisposed && not rowsReleased then
-                        if isNull releasedRows then
-                            releasedRows <- ResizeArray ()
-
-                        releasedRows.Add row
-                    else
-                        Row.Remove row)
+            Api.onCleanup (fun () -> site.ReleaseRow row)
 
             let current () =
                 snd (item ())
@@ -1585,12 +1638,12 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                 if isNull rows then
                     this.MountRow (current, render)
                 else
-                    builder.Build (rows, current)
+                    site.Builder.Build (rows, current)
 
             row
 
         let reconcile () =
-            if live () then
+            if site.Live () then
                 let parent = ref Unchecked.defaultof<Node>
                 let keys = ref Unchecked.defaultof<obj array>
 
@@ -1600,19 +1653,16 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                         fun () ->
                             snapshot <- read ()
                             Api.untrack (fun () -> version.Value <- version.Value + 1)
-                            parent.Value <- regionParent ()
-                            Row.Validate (regionStart, regionEnd, laidOut, parent.Value)
+                            parent.Value <- site.Parent ()
+                            Row.Validate (regionStart, regionEnd, site.LaidOut, parent.Value)
                             // Runs the pass inside the window: its row setup, rollback and retirement errors are reported with this update.
                             keys.Value <- Api.untrack (fun () -> projection.Keys)
                     )
 
-                // A region disposed during the pass reports the errors recorded before the disposal and ends the update.
-                if not (live ()) then
-                    errors.Report recorded
-                else
-                    match failure with
-                    | Some error -> errors.Fail (error, error :: recorded)
-                    | None ->
+                site.Settle (
+                    recorded,
+                    failure,
+                    fun recorded ->
                         let layoutFailure =
                             try
                                 Api.untrack (fun () ->
@@ -1620,7 +1670,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                                         keys.Value
                                         |> Array.map (fun key -> projection.Get key)
 
-                                    Row.Layout (live, laidOut, builder.Staging, parent.Value, regionEnd, next))
+                                    Row.Layout ((fun () -> site.Live ()), site.LaidOut, site.Builder.Staging, parent.Value, regionEnd, next))
 
                                 None
                             with error ->
@@ -1628,14 +1678,14 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
 
                         match layoutFailure with
                         // A layout that disposed its own region reports the pass's errors and ends the update.
-                        | Some _ when not (live ()) -> errors.Report recorded
+                        | Some _ when not (site.Live ()) -> site.Errors.Report recorded
                         | Some error ->
                             root.Dispose ()
-                            errors.Fail (error, recorded @ [ error ])
-                        | None -> errors.Report recorded
+                            site.Errors.Fail (error, recorded @ [ error ])
+                        | None -> site.Errors.Report recorded
+                )
 
-        Api.createRoot (fun owner ->
-            regionOwner <- owner
+        site.Own (fun () ->
             version <- Api.createSignal 0
 
             projection <-
@@ -1645,8 +1695,128 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
 
             Api.untrack (fun () -> Api.createEffect reconcile))
 
-        errors.Initializing <- false
-        errors.SetupFailure |> Option.iter raise
+    /// <summary>
+    /// Mounts the arm selected by the region's first item between its markers. An arm stays while its key is unchanged
+    /// under <c>=</c> and receives the item's new value; another key disposes the arm, its cleanups and its nodes, before
+    /// the next arm is set up.
+    /// </summary>
+    member private this.ArmRegion
+        (
+            regionStart: Node,
+            regionEnd: Node,
+            placement: RegionPlacement,
+            read: unit -> (obj * obj) array,
+            render: (unit -> obj) -> Backend -> unit,
+            rows: Func<(unit -> obj), TemplateDom.MountServices, unit>
+        ) =
+        let site = this.Site (regionStart, regionEnd, placement)
+        let mutable items: Memo<(obj * obj) array> = Unchecked.defaultof<_>
+        let mutable selection: Memo<obj> = Unchecked.defaultof<_>
+        // The mounted arm's root owner, item signal and key; null while the region is empty.
+        let mutable armOwner: Owner = Unchecked.defaultof<_>
+        let mutable armItem: Signal<obj> = Unchecked.defaultof<_>
+        let mutable armKey: obj = null
+
+        let disposeArm () =
+            if not (isNull (box armOwner)) then
+                let owner = armOwner
+                armOwner <- Unchecked.defaultof<_>
+                armItem <- Unchecked.defaultof<_>
+                armKey <- null
+                site.LaidOut.Clear ()
+                Api.batch (fun () -> owner.Dispose ())
+
+        let mountArm (selected: obj) =
+            if not (isNull selected) then
+                let key, value = unbox<obj * obj> selected
+                let item = Api.createSignal value
+                let mutable created: Owner = Unchecked.defaultof<_>
+                let mutable row: Row = null
+
+                try
+                    Api.runWithOwner site.Owner (fun () ->
+                        Api.createRoot (fun owner ->
+                            created <- owner
+                            root.Adopt owner
+
+                            // Runs after the arm's own cleanups.
+                            Api.onCleanup (fun () -> site.ReleaseRow row)
+
+                            let current () =
+                                item.Value
+
+                            row <-
+                                if isNull rows then
+                                    this.MountRow (current, render)
+                                else
+                                    site.Builder.Build (rows, current)))
+                with _ ->
+                    if not (isNull (box created)) then
+                        created.Dispose ()
+
+                    reraise ()
+
+                // An arm whose setup disposed the region leaves with the region's owner.
+                if site.Live () then
+                    Row.MoveBefore (row, site.Parent (), regionEnd)
+
+                    if not (isNull (box row.Mount)) then
+                        row.Mount.Relocate ()
+
+                    site.LaidOut.Add row
+                    armOwner <- created
+                    armItem <- item
+                    armKey <- key
+
+        let reconcile () =
+            if site.Live () then
+                let recorded, failure =
+                    MountLifetime.Capture (
+                        graph,
+                        fun () ->
+                            let selected = selection.Value
+
+                            Api.untrack (fun () ->
+                                site.Validate ()
+                                disposeArm ()
+                                mountArm selected)
+                    )
+
+                site.Settle (recorded, failure, (fun recorded -> site.Errors.Report recorded))
+
+        let updatePayload () =
+            let current = items.Value
+
+            Api.untrack (fun () ->
+                if current.Length > 0 && not (isNull (box armItem)) then
+                    let key, value = current[0]
+
+                    if key = armKey then
+                        armItem.Value <- value)
+
+        site.Own (fun () ->
+            items <- Api.createMemo (fun _ -> read ())
+
+            selection <-
+                Api.createMemoWithComparer sameArm (fun _ ->
+                    let current = items.Value
+
+                    if current.Length = 0 then null else box current[0])
+
+            Api.untrack (fun () -> Api.createEffect reconcile)
+            Api.untrack (fun () -> Api.createEffect updatePayload))
+
+    /// <summary>Mounts the view read once from the region's single item between its markers.</summary>
+    member private this.HoleRegion
+        (regionStart: Node, regionEnd: Node, placement: RegionPlacement, read: unit -> (obj * obj) array, render: (unit -> obj) -> Backend -> unit)
+        =
+        let site = this.Site (regionStart, regionEnd, placement)
+        let items = read ()
+        let view = snd items[0]
+        let row = this.MountRow ((fun () -> view), render)
+        Row.MoveBefore (row, site.Parent (), regionEnd)
+        row.Mount.Relocate ()
+        site.LaidOut.Add row
 
     member private this.RegionOf
         (
@@ -1660,318 +1830,8 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
         ) =
         match kind with
         | TemplateDom.ListRows -> this.ListRegion (start, finish, placement, read, render, rows)
-        | TemplateDom.SelectedArm -> this.KeyedRegion (start, finish, placement, true, read, render)
-        | TemplateDom.ViewHole -> this.KeyedRegion (start, finish, placement, false, read, render)
-
-
-    /// <summary>Mounts one nested mount per keyed item between two boundary nodes and reconciles them as the items change.</summary>
-    /// <remarks>With <c>disposeFirst</c>, rows whose keys leave the items are disposed before new rows are created; otherwise they are disposed after the new rows are in place.</remarks>
-    member private this.KeyedRegion
-        (
-            regionStart: Node,
-            regionEnd: Node,
-            placement: RegionPlacement,
-            disposeFirst: bool,
-            read: unit -> (obj * obj) array,
-            render: (unit -> obj) -> Backend -> unit
-        ) =
-        let mutable entries: KeyedEntry array = [||]
-        let mutable regionOwner: Owner option = None
-        let mutable initializing = true
-        let mutable setupFailure: exn option = None
-        let mutable rowSetupErrors: ResizeArray<exn> option = None
-
-        let reportRow errors =
-            match rowSetupErrors with
-            | Some collected -> collected.AddRange errors
-            | None -> report errors
-
-        let ensureRegionLive () =
-            if
-                root.IsDisposed
-                || regionOwner |> Option.exists _.IsDisposed
-            then
-                raise KeyedDisposed
-
-        let getRegionParent () =
-            let regionParent =
-                regionStart.parentNode
-                |> Option.defaultWith (fun () -> invalid "Keyed-list boundaries have no parent")
-
-            if
-                not (
-                    regionEnd.parentNode
-                    |> Option.exists (same regionParent)
-                )
-            then
-                invalid "Keyed-list boundaries were externally mutated"
-
-            regionParent
-
-        let validateRegion regionParent =
-            if
-                not (
-                    regionStart.parentNode
-                    |> Option.exists (same regionParent)
-                )
-                || not (
-                    regionEnd.parentNode
-                    |> Option.exists (same regionParent)
-                )
-            then
-                invalid "Keyed-list boundaries were externally mutated"
-
-            let mutable cursor = nextSiblingNode regionStart
-
-            for entry in entries do
-                entry.Mount.Validate ()
-
-                if not (cursor |> Option.exists (same entry.First)) then
-                    invalid "Keyed-list rows or contents were externally mutated"
-
-                cursor <- nextSiblingNode entry.Last
-
-            if not (cursor |> Option.exists (same regionEnd)) then
-                invalid "Keyed-list boundaries were externally reordered"
-
-        let validate () =
-            validateRegion (getRegionParent ())
-
-        let relocate () =
-            for entry in entries do
-                entry.Mount.Relocate ()
-
-        this.PlaceRegion (regionStart, regionEnd, placement, validate, relocate)
-
-        let moveToOrder regionParent (ordered: KeyedEntry array) =
-            let mutable anchor: Node option = Some regionEnd
-
-            for index in ordered.Length - 1 .. -1 .. 0 do
-                let entry = ordered[index]
-                ensureRegionLive ()
-
-                let alreadyPlaced =
-                    entry.Last.parentNode
-                    |> Option.exists (same regionParent)
-                    && (nextSiblingNode entry.Last
-                        |> Option.exists (fun next -> anchor |> Option.exists (same next)))
-
-                if not alreadyPlaced then
-                    entry.Mount.MoveBefore (regionParent, anchor)
-
-                ensureRegionLive ()
-
-                anchor <- Some entry.First
-
-        let createEntry key value =
-            ensureRegionLive ()
-            let item = graph.Run (fun () -> Api.createSignal value)
-            let staging = fragment ()
-            let setupErrors = ResizeArray<exn>()
-            let previousErrors = rowSetupErrors
-
-            let owner =
-                regionOwner
-                |> Option.defaultWith (fun () -> invalid "Keyed-list owner is unavailable")
-
-            let mounted: Mounted =
-                rowSetupErrors <- Some setupErrors
-
-                try
-                    try
-                        Api.runWithOwner owner (fun () ->
-                            MountState(scheduling, graph, root, Unchecked.defaultof<_>, reportRow, staging)
-                                .Run(None, (fun context -> render (fun () -> item.Value) context.Backend)))
-                    with original ->
-                        if setupErrors.Count > 0 then
-                            raise (KeyedSetupFailed (original :: List.ofSeq setupErrors))
-
-                        ensureRegionLive ()
-                        reraise ()
-                finally
-                    rowSetupErrors <- previousErrors
-
-            if setupErrors.Count > 0 then
-                let errors = List.ofSeq setupErrors
-
-                try
-                    Api.untrack (fun () -> report errors)
-                with reporterError ->
-                    let failures = ResizeArray<exn>(errors)
-                    failures.Add reporterError
-
-                    try
-                        mounted.Dispose ()
-                    with cleanupError ->
-                        failures.Add cleanupError
-
-                    raise (AggregateException ("Keyed row reader and reporter failed", failures))
-
-            let first =
-                staging.firstChild
-                |> Option.defaultWith (fun () -> invalid "A keyed row has no start boundary")
-
-            let last =
-                staging.lastChild
-                |> Option.defaultWith (fun () -> invalid "A keyed row has no end boundary")
-
-            {
-                Key = key
-                Value = item
-                First = first
-                Last = last
-                Mount = mounted
-            }
-
-        let reconcileItems items =
-            ensureRegionLive ()
-            let regionParent = getRegionParent ()
-            validateRegion regionParent
-            Projection.ensureUniqueKeys fst items
-            ensureRegionLive ()
-
-            let matches =
-                items
-                |> Array.map (fun (key, value) ->
-                    let matched =
-                        entries
-                        |> Array.tryFind (fun entry -> entry.Key = key)
-
-                    ensureRegionLive ()
-
-                    match matched with
-                    | Some entry -> Choice1Of2 (entry, value)
-                    | None -> Choice2Of2 (key, value))
-
-            if disposeFirst then
-                let retained, removed =
-                    entries
-                    |> Array.partition (fun entry ->
-                        matches
-                        |> Array.exists (fun matchResult ->
-                            match matchResult with
-                            | Choice1Of2 (kept, _) -> obj.ReferenceEquals (entry, kept)
-                            | Choice2Of2 _ -> false))
-
-                if removed.Length > 0 then
-                    entries <- retained
-
-                    Api.batch (fun () ->
-                        for entry in removed do
-                            entry.Mount.Dispose ())
-
-            let created = ResizeArray<KeyedEntry>()
-            let desired = ResizeArray<KeyedEntry * obj>()
-
-            try
-                for matchResult in matches do
-                    match matchResult with
-                    | Choice1Of2 (entry, value) -> desired.Add (entry, value)
-                    | Choice2Of2 (key, value) ->
-                        let entry = createEntry key value
-                        created.Add entry
-                        ensureRegionLive ()
-                        desired.Add (entry, value)
-            with original ->
-                let errors = ResizeArray<exn>()
-                errors.Add original
-
-                for index in created.Count - 1 .. -1 .. 0 do
-                    try
-                        created[index].Mount.Dispose()
-                    with error ->
-                        errors.Add error
-
-                if errors.Count = 1 then
-                    reraise ()
-                else
-                    raise (AggregateException ("Keyed row setup and cleanup failed", errors))
-
-            let nextEntries = Array.init desired.Count (fun index -> fst desired[index])
-
-            try
-                moveToOrder regionParent nextEntries
-            with movementError ->
-                ensureRegionLive ()
-
-                try
-                    moveToOrder regionParent entries
-                with rollbackError ->
-                    root.Dispose ()
-                    raise (AggregateException ("Keyed reconciliation and rollback failed", [| movementError; rollbackError |]))
-
-                let errors = ResizeArray<exn>()
-                errors.Add movementError
-
-                for entry in created do
-                    try
-                        entry.Mount.Dispose ()
-                    with error ->
-                        errors.Add error
-
-                if errors.Count = 1 then
-                    reraise ()
-                else
-                    raise (AggregateException ("Keyed reconciliation and cleanup failed", errors))
-
-            let removedEntries =
-                entries
-                |> Array.filter (fun entry ->
-                    nextEntries
-                    |> Array.exists (fun next -> obj.ReferenceEquals (entry, next))
-                    |> not)
-
-            Api.batch (fun () ->
-                for entry, value in desired do
-                    ensureRegionLive ()
-                    entry.Value.Value <- value
-
-                entries <- nextEntries
-
-                for removed in removedEntries do
-                    removed.Mount.Dispose ())
-
-        let reconcile () =
-            try
-                let items = Array.copy (read ())
-                Api.untrack (fun () -> reconcileItems items)
-            with
-            | KeyedDisposed -> ()
-            | error ->
-                let errors =
-                    match error with
-                    | KeyedSetupFailed errors -> errors
-                    | _ -> [ error ]
-
-                if initializing then
-                    setupFailure <-
-                        Some (
-                            match errors with
-                            | [ error ] -> error
-                            | _ ->
-                                AggregateException (
-                                    "Keyed row setup and cleanup failed: "
-                                    + String.concat "; " (errors |> List.map _.Message),
-                                    errors
-                                )
-                        )
-                else
-                    try
-                        Api.untrack (fun () -> report errors)
-                    with reporterError ->
-                        raise (AggregateException ("Keyed update and reporter failed", [| error; reporterError |]))
-
-                    reraise ()
-
-        Api.createRoot (fun owner ->
-            regionOwner <- Some owner
-            Api.untrack (fun () -> Api.createEffect reconcile))
-
-        initializing <- false
-
-        match setupFailure with
-        | Some error -> raise error
-        | None -> ()
+        | TemplateDom.SelectedArm -> this.ArmRegion (start, finish, placement, read, render, rows)
+        | TemplateDom.ViewHole -> this.HoleRegion (start, finish, placement, read, render)
 
     override _.Component(setup) =
         ensureSetup ()
