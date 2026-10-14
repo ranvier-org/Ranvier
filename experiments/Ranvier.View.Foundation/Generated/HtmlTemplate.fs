@@ -191,9 +191,6 @@ module Groups =
     type TimeProperties<'inst> internal () = class end
 
     [<Sealed>]
-    type TitleProperties<'inst> internal () = class end
-
-    [<Sealed>]
     type TrackProperties<'inst> internal () = class end
 
     [<Sealed>]
@@ -1731,7 +1728,6 @@ type PropertyBuilder<'inst> with
     member _.Template: Groups.TemplateProperties<'inst> = Groups.TemplateProperties ()
     member _.TextArea: Groups.TextAreaProperties<'inst> = Groups.TextAreaProperties ()
     member _.Time: Groups.TimeProperties<'inst> = Groups.TimeProperties ()
-    member _.Title: Groups.TitleProperties<'inst> = Groups.TitleProperties ()
     member _.Track: Groups.TrackProperties<'inst> = Groups.TrackProperties ()
     member _.UList: Groups.UListProperties<'inst> = Groups.UListProperties ()
     member _.Video: Groups.VideoProperties<'inst> = Groups.VideoProperties ()
@@ -1835,15 +1831,6 @@ type Groups.AnchorProperties<'inst> with
 
     member _.``target``<'native when 'native :> Dom.HTMLAnchorElement>(source: Source<'inst, string>) : Part<'native, 'inst> =
         TemplateParts.sourceProperty (fun (node: 'native) (value: string) -> (node :> Dom.HTMLAnchorElement).``target`` <- value) source
-
-    member _.``text``<'native when 'native :> Dom.HTMLAnchorElement>(value: string) : Part<'native, 'inst> =
-        TemplateParts.property (fun (node: 'native) (value: string) -> (node :> Dom.HTMLAnchorElement).``text`` <- value) value
-
-    member _.``text``<'native when 'native :> Dom.HTMLAnchorElement>(read: 'inst -> string) : Part<'native, 'inst> =
-        TemplateParts.readProperty (fun (node: 'native) (value: string) -> (node :> Dom.HTMLAnchorElement).``text`` <- value) read
-
-    member _.``text``<'native when 'native :> Dom.HTMLAnchorElement>(source: Source<'inst, string>) : Part<'native, 'inst> =
-        TemplateParts.sourceProperty (fun (node: 'native) (value: string) -> (node :> Dom.HTMLAnchorElement).``text`` <- value) source
 
     member _.``type``<'native when 'native :> Dom.HTMLAnchorElement>(value: string) : Part<'native, 'inst> =
         TemplateParts.property (fun (node: 'native) (value: string) -> (node :> Dom.HTMLAnchorElement).``type`` <- value) value
@@ -3788,15 +3775,6 @@ type Groups.OptionProperties<'inst> with
     member _.``selected``<'native when 'native :> Dom.HTMLOptionElement>(source: Source<'inst, bool>) : Part<'native, 'inst> =
         TemplateParts.sourceProperty (fun (node: 'native) (value: bool) -> (node :> Dom.HTMLOptionElement).``selected`` <- value) source
 
-    member _.``text``<'native when 'native :> Dom.HTMLOptionElement>(value: string) : Part<'native, 'inst> =
-        TemplateParts.property (fun (node: 'native) (value: string) -> (node :> Dom.HTMLOptionElement).``text`` <- value) value
-
-    member _.``text``<'native when 'native :> Dom.HTMLOptionElement>(read: 'inst -> string) : Part<'native, 'inst> =
-        TemplateParts.readProperty (fun (node: 'native) (value: string) -> (node :> Dom.HTMLOptionElement).``text`` <- value) read
-
-    member _.``text``<'native when 'native :> Dom.HTMLOptionElement>(source: Source<'inst, string>) : Part<'native, 'inst> =
-        TemplateParts.sourceProperty (fun (node: 'native) (value: string) -> (node :> Dom.HTMLOptionElement).``text`` <- value) source
-
     member _.``value``<'native when 'native :> Dom.HTMLOptionElement>(value: string) : Part<'native, 'inst> =
         TemplateParts.property (fun (node: 'native) (value: string) -> (node :> Dom.HTMLOptionElement).``value`` <- value) value
 
@@ -3807,15 +3785,6 @@ type Groups.OptionProperties<'inst> with
         TemplateParts.sourceProperty (fun (node: 'native) (value: string) -> (node :> Dom.HTMLOptionElement).``value`` <- value) source
 
 type Groups.OutputProperties<'inst> with
-    member _.``defaultValue``<'native when 'native :> Dom.HTMLOutputElement>(value: string) : Part<'native, 'inst> =
-        TemplateParts.property (fun (node: 'native) (value: string) -> (node :> Dom.HTMLOutputElement).``defaultValue`` <- value) value
-
-    member _.``defaultValue``<'native when 'native :> Dom.HTMLOutputElement>(read: 'inst -> string) : Part<'native, 'inst> =
-        TemplateParts.readProperty (fun (node: 'native) (value: string) -> (node :> Dom.HTMLOutputElement).``defaultValue`` <- value) read
-
-    member _.``defaultValue``<'native when 'native :> Dom.HTMLOutputElement>(source: Source<'inst, string>) : Part<'native, 'inst> =
-        TemplateParts.sourceProperty (fun (node: 'native) (value: string) -> (node :> Dom.HTMLOutputElement).``defaultValue`` <- value) source
-
     member _.``name``<'native when 'native :> Dom.HTMLOutputElement>(value: string) : Part<'native, 'inst> =
         TemplateParts.property (fun (node: 'native) (value: string) -> (node :> Dom.HTMLOutputElement).``name`` <- value) value
 
@@ -3824,15 +3793,6 @@ type Groups.OutputProperties<'inst> with
 
     member _.``name``<'native when 'native :> Dom.HTMLOutputElement>(source: Source<'inst, string>) : Part<'native, 'inst> =
         TemplateParts.sourceProperty (fun (node: 'native) (value: string) -> (node :> Dom.HTMLOutputElement).``name`` <- value) source
-
-    member _.``value``<'native when 'native :> Dom.HTMLOutputElement>(value: string) : Part<'native, 'inst> =
-        TemplateParts.property (fun (node: 'native) (value: string) -> (node :> Dom.HTMLOutputElement).``value`` <- value) value
-
-    member _.``value``<'native when 'native :> Dom.HTMLOutputElement>(read: 'inst -> string) : Part<'native, 'inst> =
-        TemplateParts.readProperty (fun (node: 'native) (value: string) -> (node :> Dom.HTMLOutputElement).``value`` <- value) read
-
-    member _.``value``<'native when 'native :> Dom.HTMLOutputElement>(source: Source<'inst, string>) : Part<'native, 'inst> =
-        TemplateParts.sourceProperty (fun (node: 'native) (value: string) -> (node :> Dom.HTMLOutputElement).``value`` <- value) source
 
 type Groups.ParagraphProperties<'inst> with
     member _.``align``<'native when 'native :> Dom.HTMLParagraphElement>(value: string) : Part<'native, 'inst> =
@@ -3987,15 +3947,6 @@ type Groups.ScriptProperties<'inst> with
 
     member _.``src``<'native when 'native :> Dom.HTMLScriptElement>(source: Source<'inst, string>) : Part<'native, 'inst> =
         TemplateParts.sourceProperty (fun (node: 'native) (value: string) -> (node :> Dom.HTMLScriptElement).``src`` <- value) source
-
-    member _.``text``<'native when 'native :> Dom.HTMLScriptElement>(value: string) : Part<'native, 'inst> =
-        TemplateParts.property (fun (node: 'native) (value: string) -> (node :> Dom.HTMLScriptElement).``text`` <- value) value
-
-    member _.``text``<'native when 'native :> Dom.HTMLScriptElement>(read: 'inst -> string) : Part<'native, 'inst> =
-        TemplateParts.readProperty (fun (node: 'native) (value: string) -> (node :> Dom.HTMLScriptElement).``text`` <- value) read
-
-    member _.``text``<'native when 'native :> Dom.HTMLScriptElement>(source: Source<'inst, string>) : Part<'native, 'inst> =
-        TemplateParts.sourceProperty (fun (node: 'native) (value: string) -> (node :> Dom.HTMLScriptElement).``text`` <- value) source
 
     member _.``type``<'native when 'native :> Dom.HTMLScriptElement>(value: string) : Part<'native, 'inst> =
         TemplateParts.property (fun (node: 'native) (value: string) -> (node :> Dom.HTMLScriptElement).``type`` <- value) value
@@ -4624,15 +4575,6 @@ type Groups.TextAreaProperties<'inst> with
     member _.``cols``<'native when 'native :> Dom.HTMLTextAreaElement>(source: Source<'inst, float>) : Part<'native, 'inst> =
         TemplateParts.sourceProperty (fun (node: 'native) (value: float) -> (node :> Dom.HTMLTextAreaElement).``cols`` <- value) source
 
-    member _.``defaultValue``<'native when 'native :> Dom.HTMLTextAreaElement>(value: string) : Part<'native, 'inst> =
-        TemplateParts.property (fun (node: 'native) (value: string) -> (node :> Dom.HTMLTextAreaElement).``defaultValue`` <- value) value
-
-    member _.``defaultValue``<'native when 'native :> Dom.HTMLTextAreaElement>(read: 'inst -> string) : Part<'native, 'inst> =
-        TemplateParts.readProperty (fun (node: 'native) (value: string) -> (node :> Dom.HTMLTextAreaElement).``defaultValue`` <- value) read
-
-    member _.``defaultValue``<'native when 'native :> Dom.HTMLTextAreaElement>(source: Source<'inst, string>) : Part<'native, 'inst> =
-        TemplateParts.sourceProperty (fun (node: 'native) (value: string) -> (node :> Dom.HTMLTextAreaElement).``defaultValue`` <- value) source
-
     member _.``dirName``<'native when 'native :> Dom.HTMLTextAreaElement>(value: string) : Part<'native, 'inst> =
         TemplateParts.property (fun (node: 'native) (value: string) -> (node :> Dom.HTMLTextAreaElement).``dirName`` <- value) value
 
@@ -4759,16 +4701,6 @@ type Groups.TimeProperties<'inst> with
 
     member _.``dateTime``<'native when 'native :> Dom.HTMLTimeElement>(source: Source<'inst, string>) : Part<'native, 'inst> =
         TemplateParts.sourceProperty (fun (node: 'native) (value: string) -> (node :> Dom.HTMLTimeElement).``dateTime`` <- value) source
-
-type Groups.TitleProperties<'inst> with
-    member _.``text``<'native when 'native :> Dom.HTMLTitleElement>(value: string) : Part<'native, 'inst> =
-        TemplateParts.property (fun (node: 'native) (value: string) -> (node :> Dom.HTMLTitleElement).``text`` <- value) value
-
-    member _.``text``<'native when 'native :> Dom.HTMLTitleElement>(read: 'inst -> string) : Part<'native, 'inst> =
-        TemplateParts.readProperty (fun (node: 'native) (value: string) -> (node :> Dom.HTMLTitleElement).``text`` <- value) read
-
-    member _.``text``<'native when 'native :> Dom.HTMLTitleElement>(source: Source<'inst, string>) : Part<'native, 'inst> =
-        TemplateParts.sourceProperty (fun (node: 'native) (value: string) -> (node :> Dom.HTMLTitleElement).``text`` <- value) source
 
 type Groups.TrackProperties<'inst> with
     member _.``default``<'native when 'native :> Dom.HTMLTrackElement>(value: bool) : Part<'native, 'inst> =

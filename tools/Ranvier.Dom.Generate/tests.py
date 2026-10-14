@@ -92,7 +92,23 @@ with tempfile.TemporaryDirectory() as folder:
     data_aria = 2 * 3
     attribute_parts = len(re.findall(r"TemplateParts\.(?:attribute|optionalAttribute|readAttribute|sourceAttribute)\b", ttext))
     assert attribute_parts == sum(overloads[entry["kind"]] for entry in entries) + data_aria, "string and ARIA attributes need six overloads, booleans three"
-    assert coverage["templatePropertyCount"] == text.count("Typed.staticProperty (fun (node: 'native)"), "every shared settable property needs a template part"
+    child_replacing = {
+        ("HTMLAnchorElement", "text"),
+        ("HTMLOptionElement", "text"),
+        ("HTMLTitleElement", "text"),
+        ("HTMLScriptElement", "text"),
+        ("HTMLOutputElement", "value"),
+        ("HTMLOutputElement", "defaultValue"),
+        ("HTMLTextAreaElement", "defaultValue"),
+    }
+    template_omissions = {(item["owner"], item["memberName"]) for item in coverage["templateOmissions"] if item["reason"] == "setter replaces child nodes"}
+    assert template_omissions == child_replacing, "child-replacing setters are template coverage omissions"
+    for owner, name in child_replacing:
+        assert "member _.``" + name + "``<'native when 'native :> Dom." + owner + ">" not in ttext, "template omits child-replacing setter " + owner + "." + name
+        assert "(node :> Dom." + owner + ").``" + name + "`` <- value" in text, "Html.fs keeps setter " + owner + "." + name
+    assert "type Groups.TitleProperties<'inst> with" not in ttext
+    assert "member _.``value``<'native when 'native :> Dom.HTMLTextAreaElement>(value: string)" in ttext, "value stays on owners whose setter keeps child nodes"
+    assert coverage["templatePropertyCount"] == text.count("Typed.staticProperty (fun (node: 'native)") - len(child_replacing), "every shared settable property, except child-replacing setters, needs a template part"
     for function in ("property", "readProperty", "sourceProperty"):
         assert len(re.findall(r"TemplateParts\." + function + r"\b", ttext)) == coverage["templatePropertyCount"], "every property needs value, reader and source overloads"
     assert coverage["templateEventCount"] == len(re.findall(r"TemplateParts\.event\b", ttext))
@@ -104,6 +120,20 @@ with tempfile.TemporaryDirectory() as folder:
     assert "type Groups.InputProperties<'inst> with" in ttext
     assert "member _.onClick<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.PointerEvent -> unit)" in ttext
     assert "TemplateParts.readAttribute \"aria-expanded\" (fun instance -> Some (TemplateParts.ariaText (read instance)))" in ttext
+    handwritten = (root / "../../experiments/Ranvier.View.Foundation/Template.fs").read_text(encoding="utf-8")
+    builder_members = {}
+    for builder in ("TemplateBuilder", "AttributeBuilder", "PropertyBuilder", "EventBuilder"):
+        body = re.search(r"^type " + builder + r"<'inst>.*?(?=^\S)", handwritten, re.M | re.S)
+        assert body, builder + " must be declared in Template.fs"
+        builder_members[builder] = set(re.findall(r"^    member (?:_|this)\.(\w+)", body.group(0), re.M))
+    generator = (root / "Program.fs").read_text(encoding="utf-8")
+    reserved_block = generator.split("    let reserved =", 1)[1].split("    let authoringRenames", 1)[0]
+    reserved = {builder: set(re.findall(r'"(\w+)"', names)) for builder, names in re.findall(r'"(\w+Builder)",\s*set\s*\[(.*?)\]', reserved_block, re.S)}
+    exempt = {"AttributeBuilder": {"data", "aria"}}
+    assert set(reserved) == set(builder_members), reserved
+    for builder, members in builder_members.items():
+        assert members, builder + " must declare handwritten members"
+        assert reserved[builder] - exempt.get(builder, set()) == members, builder + ": reserved names must equal handwritten members " + repr(sorted(members ^ (reserved[builder] - exempt.get(builder, set()))))
     policy_root = pathlib.Path(folder) / "policy"
     policy_root.mkdir()
     shutil.copy(root / "authoring.json", policy_root / "authoring.json")

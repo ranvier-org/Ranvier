@@ -351,6 +351,7 @@ let generate compilerRoot policyRoot packageRoot output =
     emit ""
 
     let omissions = ResizeArray<string * string * string>()
+    let templateOmissions = ResizeArray<string * string * string>()
     let counts = ResizeArray<string * int * int * int>()
     let programElements = ResizeArray<string>()
     let templateTags = ResizeArray<string * string>()
@@ -426,6 +427,18 @@ let generate compilerRoot policyRoot packageRoot output =
                 "outerText"
                 "srcdoc"
                 "files"
+            ]
+
+    let childReplacingSetters =
+        set
+            [
+                "HTMLAnchorElement.text"
+                "HTMLOptionElement.text"
+                "HTMLTitleElement.text"
+                "HTMLScriptElement.text"
+                "HTMLOutputElement.value"
+                "HTMLOutputElement.defaultValue"
+                "HTMLTextAreaElement.defaultValue"
             ]
 
     let tryType native =
@@ -561,11 +574,14 @@ let generate compilerRoot policyRoot packageRoot output =
                         shared.Add $"        let ``{memberName}`` (node: #{ownerName}) : {valueType} = node.``{memberName}``"
 
                         if canSet then
-                            if not (templateProperties.ContainsKey owner.Name) then
-                                templateProperties.Add (owner.Name, ResizeArray ())
-                                templatePropertyOwners.Add (owner.Name, owner)
+                            if childReplacingSetters.Contains (owner.Name + "." + memberName) then
+                                templateOmissions.Add (owner.Name, memberName, "setter replaces child nodes")
+                            else
+                                if not (templateProperties.ContainsKey owner.Name) then
+                                    templateProperties.Add (owner.Name, ResizeArray ())
+                                    templatePropertyOwners.Add (owner.Name, owner)
 
-                            templateProperties[owner.Name].Add(memberName, ownerName, valueType)
+                                templateProperties[owner.Name].Add(memberName, ownerName, valueType)
 
                             shared.Add
                                 $"        let {memberName}Static<'native when 'native :> {ownerName}> (value: {valueType}) : Typed.Modifier<'native> ="
@@ -1281,6 +1297,12 @@ let generate compilerRoot policyRoot packageRoot output =
 
     let templatePropertyCount = templateProperties.Values |> Seq.sumBy _.Count
 
+    for key in childReplacingSetters do
+        require
+            (templateOmissions
+             |> Seq.exists (fun (owner, memberName, _) -> owner + "." + memberName = key))
+            $"Child-replacing setter not found: {key}"
+
     Directory.CreateDirectory (Path.GetDirectoryName (Path.GetFullPath output))
     |> ignore
 
@@ -1316,6 +1338,15 @@ let generate compilerRoot policyRoot packageRoot output =
                     |> Seq.map (fun (tag, memberName, reason) ->
                         {|
                             tag = tag
+                            memberName = memberName
+                            reason = reason
+                        |})
+                    |> Seq.toArray
+                templateOmissions =
+                    templateOmissions
+                    |> Seq.map (fun (owner, memberName, reason) ->
+                        {|
+                            owner = owner
                             memberName = memberName
                             reason = reason
                         |})

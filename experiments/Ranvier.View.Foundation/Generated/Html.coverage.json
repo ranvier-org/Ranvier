@@ -68327,7 +68327,44 @@
   "templateAttributeCount": 34,
   "templateEventCount": 132,
   "templateEventGroups": 3,
-  "templatePropertyCount": 409,
-  "templatePropertyGroups": 60,
+  "templateOmissions": [
+    {
+      "memberName": "text",
+      "owner": "HTMLAnchorElement",
+      "reason": "setter replaces child nodes"
+    },
+    {
+      "memberName": "text",
+      "owner": "HTMLOptionElement",
+      "reason": "setter replaces child nodes"
+    },
+    {
+      "memberName": "defaultValue",
+      "owner": "HTMLOutputElement",
+      "reason": "setter replaces child nodes"
+    },
+    {
+      "memberName": "value",
+      "owner": "HTMLOutputElement",
+      "reason": "setter replaces child nodes"
+    },
+    {
+      "memberName": "text",
+      "owner": "HTMLScriptElement",
+      "reason": "setter replaces child nodes"
+    },
+    {
+      "memberName": "defaultValue",
+      "owner": "HTMLTextAreaElement",
+      "reason": "setter replaces child nodes"
+    },
+    {
+      "memberName": "text",
+      "owner": "HTMLTitleElement",
+      "reason": "setter replaces child nodes"
+    }
+  ],
+  "templatePropertyCount": 402,
+  "templatePropertyGroups": 59,
   "templateTagCount": 112
 }
