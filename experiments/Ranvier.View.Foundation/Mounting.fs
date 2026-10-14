@@ -960,10 +960,13 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
 
     let range = OwnedRange host
 
-    // Template rows retired while the mount tears down; their nodes leave in the mount's release, before the range's.
+    // Template rows retired while the mount tears down, before its release; their nodes leave in the release, before
+    // the range's. A row retired after the release removes its nodes at once.
     let mutable releasedRows: ResizeArray<Row> = null
+    let mutable rowsReleased = false
 
     let release () =
+        rowsReleased <- true
         let errors = ResizeArray<exn>()
 
         if not (isNull releasedRows) then
@@ -1567,7 +1570,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                 if not (isNull row) then
                     if not (isNull (box row.Mount)) then
                         row.Removed <- true
-                    elif root.IsDisposed then
+                    elif root.IsDisposed && not rowsReleased then
                         if isNull releasedRows then
                             releasedRows <- ResizeArray ()
 
