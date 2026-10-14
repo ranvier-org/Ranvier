@@ -118,14 +118,17 @@ type internal ItemRow<'T, 'K, 'V>(key: 'K, item: Signal<'T>) =
     member _.Item = item
 
 /// <summary>
-/// A row whose value is its factory's result, held without a row memo. <c>Row</c> is null. <c>Reader</c> is null, or
-/// raises the factory's failure.
+/// A row whose value is its factory's result, held without a row memo. <c>Row</c> is null. <c>Reader</c> is null,
+/// <c>Constructing</c> while the factory runs, or raises the factory's failure.
 /// </summary>
 [<Sealed; AllowNullLiteral>]
 type internal OnceRow<'T, 'K, 'V>(key: 'K, item: Signal<'T>) =
     inherit ItemRow<'T, 'K, 'V>(key, item)
 
     member val Value: 'V = Unchecked.defaultof<'V> with get, set
+
+    /// <summary>The <c>Reader</c> of a row whose factory is running.</summary>
+    static member val Constructing: unit -> 'V = fun () -> Unchecked.defaultof<'V>
 
 /// <summary>
 /// A read-only dictionary that enumerates in insertion order. Holds every key
@@ -1964,7 +1967,12 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
             Func<RowEntry<'K, 'V>, 'V>(fun entry ->
                 let row = entry :?> OnceRow<'T, 'K, 'V>
 
-                if isNull (box row.Reader) then row.Value else row.Reader ())
+                if isNull (box row.Reader) then
+                    row.Value
+                elif LanguagePrimitives.PhysicalEquality row.Reader OnceRow<'T, 'K, 'V>.Constructing then
+                    raise (ProjectionFailures.underConstruction row.Key)
+                else
+                    row.Reader ())
 
     member private this.CreateOnce(key: 'K, item: 'T) =
         let entry = OnceRow<'T, 'K, 'V>(key, Signal<'T>(graph, item))
@@ -1983,7 +1991,7 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
         graph.RunOwned (
             keyScope,
             fun () ->
-                entry.Reader <- fun () -> raise (ProjectionFailures.underConstruction key)
+                entry.Reader <- OnceRow<'T, 'K, 'V>.Constructing
 
                 try
                     entry.Value <- once (fun () -> source.Value)
