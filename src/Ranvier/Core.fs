@@ -1908,6 +1908,7 @@ type Graph(options: GraphOptions) =
             try
                 while queueHead < queueCount do
                     let item = Platform.entryAt queueHead queue
+                    Tracer.Dequeue (this, item)
 
                     // Released as it is consumed, so a disposed effect is not
                     // kept alive by a spent slot until a later turn overwrites
@@ -2161,6 +2162,9 @@ type Graph(options: GraphOptions) =
         this.AssertOnGraphThread "Creating a node"
         nextId <- nextId + 1
         nextId
+
+    /// <summary>The last id <c>NextId</c> issued.</summary>
+    member internal _.NodeCount = nextId
 
     /// <summary>
     /// Links <c>source</c> into the computation currently being evaluated, if any.

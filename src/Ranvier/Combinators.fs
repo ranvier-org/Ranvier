@@ -124,8 +124,13 @@ type internal MapView<'K, 'V, 'U when 'K: equality>(graph: Graph, upstream: Proj
 
     override this.Enumerate() =
         heldOut.Begin ()
+        let mine = this.Runs
+        let keys = upstream.Keys
+        let mutable i = 0
 
-        for key in upstream.Keys do
+        while this.Runs = mine && i < keys.Length do
+            let key = keys[i]
+            i <- i + 1
             let item = upstream.Entries.Find key
             let entry = this.Entries.Find key
 
@@ -135,7 +140,8 @@ type internal MapView<'K, 'V, 'U when 'K: equality>(graph: Graph, upstream: Proj
             then
                 this.RetireChanged key
 
-            this.Visit (key, item)
+            if this.Runs = mine then
+                this.Visit (key, item)
 
         heldOut.Publish upstream
 
@@ -502,6 +508,9 @@ type Grouping<'G, 'K, 'V when 'G: equality and 'K: equality> internal (graph: Gr
         member _.ClearStaged() =
             adds.Clear ()
             writes.Clear ()
+
+        member _.Applied() = ()
+        member _.Abandoned() = ()
 
 /// <summary>
 /// The reads of an aggregate's <c>add</c>, <c>subtract</c> or folder since its last full recompute. A change to any of them

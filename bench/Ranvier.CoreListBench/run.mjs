@@ -1,16 +1,18 @@
 // Keyed-list operations on the reactive core alone, with no DOM: Ranvier's production projection (Fixture.fs, compiled by
 // Fable) against Solid 2's mapArray from @solidjs/signals. Both run in the same Node process; each round times every
 // operation once per framework in a seeded shuffled order, and a ratio divides the two times of one round.
-// Usage: node bench/Ranvier.CoreListBench/run.mjs [--build] [--processes=7] [--warmup=10] [--rounds=31] [--ops=a,b] [--label=core-list-solid]
+// --base=<dir holding Fixture.js> adds a second Ranvier build as framework `base`; --base-commit=<sha> asserts that build's commit.
+// Usage: node bench/Ranvier.CoreListBench/run.mjs [--build] [--base=<dir>] [--base-commit=<sha>] [--processes=7] [--warmup=10] [--rounds=31] [--ops=a,b] [--label=core-list-solid]
 import { execFileSync } from "node:child_process";
+import path from "node:path";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import os from "node:os";
 
 const here = fileURLToPath(new URL("./", import.meta.url));
 const root = fileURLToPath(new URL("../../", import.meta.url));
-const playground = `${root}examples/Fable.Ranvier.Playground/`;
-const output = `${root}docs/research/framework-performance/investigation/core-list-solid/`;
+const solidRoot = `${here}node_modules/@solidjs/signals/`;
+const output = `${root}docs/research/core-trimmed-pass/`;
 const argument = (name, fallback) => process.argv.find(arg => arg.startsWith(`--${name}=`))?.split("=")[1] ?? fallback;
 const run = (command, args) => execFileSync(command, args, { cwd: here, encoding: "utf8", windowsHide: true, maxBuffer: 1 << 26 });
 
@@ -28,9 +30,9 @@ const operations = {
   clear10k: [f => f.create(10000), f => f.clear()],
 };
 
-const ranvierFixture = async () => {
+const ranvierFixture = async (dir = `${here}out/`) => {
   // Fable emits the members as module functions taking the instance first.
-  const R = await import(pathToFileURL(`${here}out/Fixture.js`).href);
+  const R = await import(pathToFileURL(`${dir}Fixture.js`).href);
   return () => {
     const f = R.Fixture_$ctor();
     return {
@@ -43,7 +45,7 @@ const ranvierFixture = async () => {
 };
 
 const solidFixture = async () => {
-  const S = await import(pathToFileURL(`${playground}node_modules/@solidjs/signals/dist/prod/index.js`).href);
+  const S = await import(pathToFileURL(`${solidRoot}dist/prod/index.js`).href);
   let sink = 0;
   return () => {
     let next = 1, dispose, items, setItems, mapped;
@@ -88,7 +90,10 @@ const quantile = (values, q) => [...values].sort((a, b) => a - b)[Math.floor(q *
 if (process.argv.includes("--child")) {
   const seed = Number(argument("seed", 1)), warmup = Number(argument("warmup", 10)), rounds = Number(argument("rounds", 31));
   const wanted = argument("ops", "").split(",").filter(Boolean);
+  const baseDir = argument("base", "");
   const frameworks = { ranvier: await ranvierFixture(), solid: await solidFixture() };
+  if (baseDir) frameworks.base = await ranvierFixture(baseDir.endsWith("/") || baseDir.endsWith("\\") ? baseDir : `${baseDir}/`);
+  const frameworkNames = Object.keys(frameworks);
   let state = seed >>> 0 || 1;
   const random = () => (state = (Math.imul(state, 1664525) + 1013904223) >>> 0) / 2 ** 32;
   const sample = (make, [setup, timed]) => {
@@ -111,17 +116,20 @@ if (process.argv.includes("--child")) {
       fixture.dispose();
       return snapshot.replace(/\d+:/g, ":");
     });
-    if (snapshots[0] !== snapshots[1]) throw Error(`${name}: Ranvier and Solid 2 rows differ`);
+    if (snapshots.some(snapshot => snapshot !== snapshots[0])) throw Error(`${name}: the frameworks' rows differ`);
   }
   const results = {};
   for (const [name, op] of Object.entries(operations).filter(([name]) => wanted.length === 0 || wanted.includes(name))) {
-    const ms = { ranvier: [], solid: [] }, order = [];
+    const ms = Object.fromEntries(frameworkNames.map(framework => [framework, []])), order = [];
     for (let i = 0; i < warmup + rounds; i++) {
-      const names = random() < 0.5 ? ["ranvier", "solid"] : ["solid", "ranvier"];
+      const names = [...frameworkNames];
+      for (let k = names.length - 1; k > 0; k--) {
+        const j = Math.floor(random() * (k + 1));
+        [names[k], names[j]] = [names[j], names[k]];
+      }
       const times = Object.fromEntries(names.map(framework => [framework, sample(frameworks[framework], op)]));
       if (i >= warmup) {
-        ms.ranvier.push(times.ranvier);
-        ms.solid.push(times.solid);
+        for (const framework of frameworkNames) ms[framework].push(times[framework]);
         order.push(names[0]);
       }
     }
@@ -129,6 +137,15 @@ if (process.argv.includes("--child")) {
   }
   console.log(JSON.stringify(results));
 } else {
+  const git = (cwd, ...args) => execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
+  const status = cwd => git(cwd, "status", "--porcelain").split("\n").filter(Boolean);
+  const dirtyAtStart = status(root);
+  const baseArgument = argument("base", "");
+  const baseDir = baseArgument ? path.resolve(process.cwd(), baseArgument) : "";
+  const baseCommit = baseDir ? git(baseDir, "rev-parse", "HEAD") : undefined;
+  const baseDirty = baseDir ? status(baseDir) : undefined;
+  const expectedBase = argument("base-commit", "");
+  if (expectedBase && baseCommit !== expectedBase) throw Error(`The base build is at ${baseCommit}, not ${expectedBase}`);
   if (process.argv.includes("--build")) {
     run("dotnet", ["fable", "Ranvier.CoreListBench.fsproj", "--outDir", "out", "--configuration", "Release", "--noCache"]);
     await writeFile(`${here}out/package.json`, "{\"type\":\"module\"}\n");
@@ -137,7 +154,7 @@ if (process.argv.includes("--child")) {
   const ops = argument("ops", ""), label = argument("label", "core-list-solid");
   const runs = [];
   for (let p = 0; p < processes; p++) {
-    const line = run(process.execPath, ["--expose-gc", fileURLToPath(import.meta.url), "--child", `--seed=${p + 1}`, `--warmup=${warmup}`, `--rounds=${rounds}`, `--ops=${ops}`]).trim().split("\n").at(-1);
+    const line = run(process.execPath, ["--expose-gc", fileURLToPath(import.meta.url), "--child", ...(baseDir ? [`--base=${baseDir}`] : []), `--seed=${p + 1}`, `--warmup=${warmup}`, `--rounds=${rounds}`, `--ops=${ops}`]).trim().split("\n").at(-1);
     runs.push({ process: p + 1, seed: p + 1, results: JSON.parse(line) });
     console.log(`process ${p + 1}/${processes}`);
   }
@@ -145,16 +162,22 @@ if (process.argv.includes("--child")) {
     const all = framework => runs.flatMap(r => r.results[operation][framework]);
     const ratios = runs.flatMap(r => r.results[operation].ranvier.map((ms, i) => ms / r.results[operation].solid[i]));
     const perProcess = runs.map(r => median(r.results[operation].ranvier.map((ms, i) => ms / r.results[operation].solid[i])));
+    const withBase = runs[0].results[operation].base !== undefined;
+    const sameRound = (a, b) => runs.flatMap(r => r.results[operation][a].map((ms, i) => ms / r.results[operation][b][i]));
+    const perProcessOf = (a, b) => runs.map(r => median(r.results[operation][a].map((ms, i) => ms / r.results[operation][b][i])));
+    const shape = (a, b) => { const values = sameRound(a, b); return { median: median(values), q1: quantile(values, 0.25), q3: quantile(values, 0.75), perProcess: perProcessOf(a, b) }; };
     return {
       operation, solidMs: median(all("solid")), ranvierMs: median(all("ranvier")),
       ratio: { median: median(ratios), q1: quantile(ratios, 0.25), q3: quantile(ratios, 0.75), perProcess },
+      ...(withBase ? { baseMs: median(all("base")), vsBase: shape("ranvier", "base"), baseRatio: shape("base", "solid") } : {}),
     };
   });
-  const solidVersion = JSON.parse(await readFile(`${playground}node_modules/@solidjs/signals/package.json`, "utf8")).version;
+  const solidVersion = JSON.parse(await readFile(`${solidRoot}package.json`, "utf8")).version;
   const result = {
     measuredAt: new Date().toISOString(),
-    commit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
-    dirty: execFileSync("git", ["status", "--porcelain"], { cwd: root, encoding: "utf8" }).trim().split("\n").filter(Boolean),
+    commit: git(root, "rev-parse", "HEAD"),
+    dirtyAtStart, dirty: status(root),
+    ...(baseDir ? { baseDir, baseCommit, baseDirty } : {}),
     node: process.version, solidSignals: solidVersion, fable: run("dotnet", ["fable", "--version"]).trim().split("\n").at(-1),
     cpu: os.cpus()[0].model, cores: os.cpus().length, memoryGb: Math.round(os.totalmem() / 2 ** 30), platform: `${os.platform()} ${os.release()}`,
     processes, warmup: Number(warmup), rounds: Number(rounds), unit: "milliseconds per operation",

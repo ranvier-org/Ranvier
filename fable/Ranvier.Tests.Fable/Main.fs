@@ -56,6 +56,7 @@ let all =
                     Ranvier.Tests.Projections.deltaReaderTests
                     Ranvier.Tests.Projections.rowOptionTests
                 ]
+            testList "TrimmedPass.fs" [ Ranvier.Tests.TrimmedPass.tests ]
             testList "Lookups.fs" [ Ranvier.Tests.Lookups.tests ]
             testList "MemoScopes.fs" [ Ranvier.Tests.MemoScopes.tests ]
             testList "MemoPurity.fs" [ Ranvier.Tests.MemoPurity.tests ]
