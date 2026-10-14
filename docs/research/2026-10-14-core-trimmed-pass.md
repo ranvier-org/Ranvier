@@ -130,3 +130,52 @@ Both columns use the `Short` job. The `B0` run is in `dotnet-before-short/`, the
 - .NET without `Layout`: Swap, RemoveAndRestore and UpdateOneItem take 0.231, 0.219 and 0.161 of the before mean at 1000 rows, and 0.186, 0.168 and 0.148 at 10000 rows. With `Layout`: Swap and RemoveAndRestore are 0.581 and 0.501 at 1000 rows and 0.610 and 0.554 at 10000 rows; UpdateOneItem is 0.160 and 0.146.
 - .NET ReplaceAll and ClearAndCreate: after / before is between 0.970 and 1.568 across the eight rows, with the `Short` job's large reported errors; no direction is established.
 - .NET allocation: Swap and RemoveAndRestore allocate about 7.9 KB more per operation at 1000 rows and about 78 KB more at 10000 rows. UpdateOneItem allocates 0.08 KB more; ReplaceAll and ClearAndCreate allocate 4 to 8 KB more at 1000 rows and 39 to 78 KB more at 10000 rows.
+
+## Rerun after the nested-pass fixes
+
+C1 = `5b4e3b4` (`perf/core-trimmed-pass`, after the nested-pass fixes, the traced-build rerun guard and the shared under-construction reader). Node: `after-fixes.json`, the same settings and pairing as `after.json` (3×(5+15), `B0` as `base` in the same rounds). .NET: `dotnet-after-fixes/`, the `Short` job on `ListPassBenchmarks`, a separate run from `dotnet-after/` (see its `provenance.json`).
+
+| Operation | Solid 2 ms | Before ms (`B0`, paired) | After ms (`C1`) | After / Solid 2 [q1, q3] | After / before [q1, q3] | Per-process after / before medians |
+| --- | --- | --- | --- | --- | --- | --- |
+| create1k | 0.9978 | 2.6283 | 2.7732 | 2.712 [2.512, 3.086] | 1.070 [0.996, 1.116] | 1.05, 1.05, 1.11 |
+| create10k | 4.8659 | 16.4635 | 17.8855 | 3.513 [2.516, 4.542] | 1.087 [0.951, 1.181] | 1.04, 1.10, 1.04 |
+| replace1k | 1.3376 | 2.6616 | 2.8227 | 2.123 [1.941, 2.447] | 1.049 [0.897, 1.182] | 1.04, 1.08, 1.03 |
+| append1k | 1.0932 | 2.2926 | 2.0565 | 1.881 [1.725, 2.103] | 0.911 [0.811, 1.012] | 0.89, 0.91, 0.95 |
+| update10th1k | 0.1111 | 0.0730 | 0.0707 | 0.663 [0.560, 0.750] | 0.926 [0.783, 1.093] | 0.98, 0.94, 0.87 |
+| swap1k | 0.0840 | 0.4696 | 0.2513 | 3.188 [2.425, 3.974] | 0.500 [0.473, 0.591] | 0.56, 0.50, 0.48 |
+| swap10k | 0.3846 | 3.7676 | 1.8092 | 5.062 [3.819, 6.170] | 0.471 [0.435, 0.549] | 0.47, 0.49, 0.46 |
+| remove1k | 0.1122 | 0.5272 | 0.2716 | 2.534 [2.201, 2.779] | 0.513 [0.440, 0.598] | 0.48, 0.54, 0.49 |
+| remove10k | 0.6370 | 4.0651 | 1.8765 | 2.900 [2.344, 3.459] | 0.452 [0.416, 0.508] | 0.43, 0.46, 0.45 |
+| clear1k | 0.3823 | 0.8394 | 1.0324 | 2.484 [2.198, 3.034] | 1.158 [1.007, 1.312] | 1.23, 1.08, 1.19 |
+| clear10k | 2.0243 | 4.8308 | 5.8558 | 2.850 [2.291, 3.217] | 1.197 [0.991, 1.423] | 1.18, 1.18, 1.26 |
+
+### .NET: C1 against A1 (separate runs, not paired)
+
+| Benchmark | Rows | Layout | `A1` mean | `C1` mean | `C1` / `A1` | `A1` allocated | `C1` allocated |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Swap | 1000 | False | 7.571 us | 5.797 us | 0.766 | 23.87 KB | 23.8 KB |
+| RemoveAndRestore | 1000 | False | 6.879 us | 5.481 us | 0.797 | 24.59 KB | 24.52 KB |
+| UpdateOneItem | 1000 | False | 4.947 us | 4.519 us | 0.913 | 8.18 KB | 8.12 KB |
+| ReplaceAll | 1000 | False | 478.290 us | 370.718 us | 0.775 | 1469.16 KB | 1469.09 KB |
+| ClearAndCreate | 1000 | False | 230.237 us | 161.183 us | 0.700 | 734.78 KB | 734.72 KB |
+| Swap | 1000 | True | 28.562 us | 23.517 us | 0.823 | 23.93 KB | 23.87 KB |
+| RemoveAndRestore | 1000 | True | 27.915 us | 23.631 us | 0.847 | 24.65 KB | 24.59 KB |
+| UpdateOneItem | 1000 | True | 5.128 us | 4.373 us | 0.853 | 8.18 KB | 8.12 KB |
+| ReplaceAll | 1000 | True | 486.664 us | 378.282 us | 0.777 | 1469.22 KB | 1469.16 KB |
+| ClearAndCreate | 1000 | True | 251.559 us | 241.428 us | 0.960 | 734.84 KB | 734.78 KB |
+| Swap | 10000 | False | 62.326 us | 46.726 us | 0.750 | 234.8 KB | 234.74 KB |
+| RemoveAndRestore | 10000 | False | 54.970 us | 48.706 us | 0.886 | 235.52 KB | 235.46 KB |
+| UpdateOneItem | 10000 | False | 49.083 us | 43.454 us | 0.885 | 78.49 KB | 78.43 KB |
+| ReplaceAll | 10000 | False | 12,792.538 us | 8,208.468 us | 0.642 | 14687.91 KB | 14687.84 KB |
+| ClearAndCreate | 10000 | False | 3,441.814 us | 2,536.530 us | 0.737 | 7344.16 KB | 7344.09 KB |
+| Swap | 10000 | True | 284.527 us | 228.185 us | 0.802 | 234.87 KB | 234.8 KB |
+| RemoveAndRestore | 10000 | True | 268.155 us | 229.998 us | 0.858 | 235.59 KB | 235.52 KB |
+| UpdateOneItem | 10000 | True | 47.758 us | 43.029 us | 0.901 | 78.49 KB | 78.43 KB |
+| ReplaceAll | 10000 | True | 10,249.010 us | 8,176.409 us | 0.798 | 14687.91 KB | 14687.91 KB |
+| ClearAndCreate | 10000 | True | 3,860.961 us | 2,515.374 us | 0.651 | 7344.22 KB | 7344.16 KB |
+
+### What the fixes changed
+
+- Node: every after / before median is within 0.1 of its `A1` value, and every `A1` median lies inside the matching `C1` interval [q1, q3] except swap10k (`A1` 0.399, `C1` [0.435, 0.549]). Swap and remove stay below 1 in every interval; create and clear stay at 1.07 to 1.20.
+- .NET allocation: every row is within 0.07 KB of `A1`. The build before C1 (`e34c138`) created one closure per memo-free row and allocated about 47 B more per created row (ReplaceAll 1515.97 KB at 1000 rows); the shared reader removed it.
+- .NET time: every `C1` mean is 0.64 to 0.96 of the `A1` mean. The runs are not paired, and the Node Solid 2 timings in the same session are also 20 to 50% below those in `after.json`, so the machine ran faster; no speed-up is attributed to the fixes.
