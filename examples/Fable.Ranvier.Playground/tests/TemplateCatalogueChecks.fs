@@ -110,6 +110,7 @@ let private flagsTemplate =
                 t.Attrs.id (fun r -> r.Nickname)
                 t.Attrs.Button.disabled (fun r -> r.Busy)
                 t.Attrs.ariaExpanded (fun r -> r.Expanded)
+                t.Attrs.ariaBusy (fun r -> r.Busy)
                 t.Attrs.data ("state", fun r -> Some r.State)
             |]
             [| t.text "go" |])
@@ -121,6 +122,7 @@ let private flagsProgram (flags: Flags) =
             G.Authoring.Attrs.id (fun () -> flags.Nickname)
             G.Attrs.Button.disabledReactive (fun () -> flags.Busy)
             G.Attrs.ariaExpandedReactive (fun () -> flags.Expanded)
+            G.Attrs.ariaBusyReactive (fun () -> Some flags.Busy)
             G.Attrs.dataReactive "state" (fun () -> Some flags.State)
         |]
         [| Program.text "go" |]
@@ -162,10 +164,10 @@ let private flagCases =
 
 let private flagMarkup =
     [
-        "<button title=\"a\" data-state=\"x\">go</button>"
-        "<button title=\"b\" id=\"n\" disabled=\"\" aria-expanded=\"false\" data-state=\"y\">go</button>"
-        "<button title=\"c\" id=\"m\" aria-expanded=\"true\" data-state=\"z\">go</button>"
-        "<button data-state=\"n\">go</button>"
+        "<button title=\"a\" aria-busy=\"false\" data-state=\"x\">go</button>"
+        "<button title=\"b\" id=\"n\" disabled=\"\" aria-expanded=\"false\" aria-busy=\"true\" data-state=\"y\">go</button>"
+        "<button title=\"c\" id=\"m\" aria-expanded=\"true\" aria-busy=\"false\" data-state=\"z\">go</button>"
+        "<button aria-busy=\"false\" data-state=\"n\">go</button>"
     ]
 
 let private readerParity () =
@@ -219,8 +221,13 @@ let private staticProgram =
                 [||]
         |]
 
+/// <summary>The server markup of <c>staticTemplate</c>, shared with RepresentationChecks.fsx.</summary>
+let private staticMarkup =
+    "<div><button aria-expanded=\"false\" title=\"t\"></button><button disabled=\"\" aria-expanded=\"true\" id=\"i\" data-k=\"v\"></button></div>"
+
 let private staticParity () =
     equal (markup staticProgram) (markup (Component.render staticTemplate ()))
+    equal staticMarkup (markup (Component.render staticTemplate ()))
 
 let private optionalReader =
     Component.define (fun _ (props: Flags) -> props) (fun t -> t.div [| t.Attrs.title (fun r -> r.Nickname) |] [||])
@@ -270,6 +277,7 @@ type Sourced =
         Aria: Signal<bool>
         AriaOption: Signal<bool option>
         Label: Signal<string option>
+        Data: Signal<string option>
     }
 
 let private sourced =
@@ -282,6 +290,7 @@ let private sourced =
                 t.Attrs.ariaDisabled (t.from (fun r -> r.Aria))
                 t.Attrs.ariaExpanded (t.from (fun r -> r.AriaOption))
                 t.Attrs.aria ("label", t.from (fun r -> r.Label))
+                t.Attrs.data ("k", t.from (fun r -> r.Data))
             |]
             [||])
 
@@ -294,6 +303,7 @@ let private sourceAttributes () =
     let aria = graph.Run (fun () -> Api.createSignal true)
     let ariaOption = graph.Run (fun () -> Api.createSignal (Some true))
     let label = graph.Run (fun () -> Api.createSignal (Some "l"))
+    let data = graph.Run (fun () -> Api.createSignal (Some "d"))
 
     let mounted =
         mount
@@ -308,16 +318,26 @@ let private sourceAttributes () =
                     Aria = aria
                     AriaOption = ariaOption
                     Label = label
+                    Data = data
                 })
 
     let button = host.querySelector "button" |> unbox<HTMLElement>
 
     let snapshot () =
         [
-            for name in [ "title"; "id"; "disabled"; "aria-disabled"; "aria-expanded"; "aria-label" ] -> button.getAttribute name
+            for name in
+                [
+                    "title"
+                    "id"
+                    "disabled"
+                    "aria-disabled"
+                    "aria-expanded"
+                    "aria-label"
+                    "data-k"
+                ] -> button.getAttribute name
         ]
 
-    equal [ Some "a"; Some "o"; Some ""; Some "true"; Some "true"; Some "l" ] (snapshot ())
+    equal [ Some "a"; Some "o"; Some ""; Some "true"; Some "true"; Some "l"; Some "d" ] (snapshot ())
 
     graph.Run (fun () ->
         text.Value <- "b"
@@ -325,18 +345,52 @@ let private sourceAttributes () =
         on.Value <- false
         aria.Value <- false
         ariaOption.Value <- Some false
-        label.Value <- None)
+        label.Value <- None
+        data.Value <- None)
 
-    equal [ Some "b"; None; None; Some "false"; Some "false"; None ] (snapshot ())
+    equal [ Some "b"; None; None; Some "false"; Some "false"; None; None ] (snapshot ())
 
     graph.Run (fun () ->
         optional.Value <- Some "p"
         on.Value <- true
         ariaOption.Value <- None
-        label.Value <- Some "m")
+        label.Value <- Some "m"
+        data.Value <- Some "e")
 
-    equal [ Some "b"; Some "p"; Some ""; Some "false"; None; Some "m" ] (snapshot ())
+    equal [ Some "b"; Some "p"; Some ""; Some "false"; None; Some "m"; Some "e" ] (snapshot ())
+    graph.Run (fun () -> text.Value <- null)
+    equal [ None; Some "p"; Some ""; Some "false"; None; Some "m"; Some "e" ] (snapshot ())
     mounted.Dispose ()
+
+let private rawTextElement () =
+    use graph = new Graph ()
+    let host = host ()
+
+    let framed =
+        Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.iframe [| t.Attrs.title "map" |] [||] |])
+
+    let mounted = mount graph host (Component.render framed ())
+    let frames = host.querySelectorAll "iframe"
+    equal 1. frames.length
+    equal (Some "map") ((frames.[0] |> unbox<HTMLElement>).getAttribute "title")
+    mounted.Dispose ()
+
+let private rawTextChildrenRejected () =
+    let filled =
+        Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.iframe [||] [| t.text "x" |] |])
+
+    let empty =
+        Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.iframe [||] [||] |])
+
+    let raises action =
+        try
+            action ()
+            false
+        with :? System.InvalidOperationException ->
+            true
+
+    equal true (raises (fun () -> TemplateDom.compile filled |> ignore))
+    equal true (raises (fun () -> markup (Component.render empty ()) |> ignore))
 
 type Live =
     {
@@ -541,7 +595,9 @@ let cases =
         "static attributes render the same markup as Html.Program", staticParity
         "an option reader on a string attribute removes the attribute on None", optionReaderRemoval
         "static bool option ARIA and aria static and reader forms render the same markup as Html.Attrs", ariaParity
-        "string, bool and ARIA source attributes write and remove through signals", sourceAttributes
+        "string, bool, ARIA and data source attributes write and remove through signals, null removing a string attribute", sourceAttributes
+        "a raw-text element without children mounts with its attributes", rawTextElement
+        "a raw-text element with children fails to compile, and server markup rejects every raw-text element", rawTextChildrenRejected
         "string, bool, float and option properties write in static, reader and source forms", propertyTypes
         "flat and grouped events receive the instance and fire only for their event name", events
         "an isolated generated attribute re-runs only on its own source", isolation

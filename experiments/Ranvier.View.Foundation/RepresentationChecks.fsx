@@ -528,6 +528,7 @@ let flagsTemplate =
                 t.Attrs.id (fun r -> r.Nickname)
                 t.Attrs.Button.disabled (fun r -> r.Busy)
                 t.Attrs.ariaExpanded (fun r -> r.Expanded)
+                t.Attrs.ariaBusy (fun r -> r.Busy)
                 t.Attrs.data ("state", fun r -> Some r.State)
             |]
             [| t.text "go" |])
@@ -567,12 +568,40 @@ let flagCases =
 // Mirrors flagMarkup in TemplateCatalogueChecks.fs.
 let flagMarkup =
     [
-        "<button title=\"a\" data-state=\"x\">go</button>"
-        "<button title=\"b\" id=\"n\" disabled=\"\" aria-expanded=\"false\" data-state=\"y\">go</button>"
-        "<button title=\"c\" id=\"m\" aria-expanded=\"true\" data-state=\"z\">go</button>"
-        "<button data-state=\"n\">go</button>"
+        "<button title=\"a\" aria-busy=\"false\" data-state=\"x\">go</button>"
+        "<button title=\"b\" id=\"n\" disabled=\"\" aria-expanded=\"false\" aria-busy=\"true\" data-state=\"y\">go</button>"
+        "<button title=\"c\" id=\"m\" aria-expanded=\"true\" aria-busy=\"false\" data-state=\"z\">go</button>"
+        "<button aria-busy=\"false\" data-state=\"n\">go</button>"
     ]
 
 equal flagMarkup [ for flags in flagCases -> render Omit (Component.render flagsTemplate flags) ]
+
+let staticTemplate =
+    Component.define (fun _ () -> ()) (fun t ->
+        t.div
+            [||]
+            [|
+                t.button
+                    [|
+                        t.Attrs.Button.disabled false
+                        t.Attrs.ariaExpanded false
+                        t.Attrs.id (None: string option)
+                        t.Attrs.title "t"
+                    |]
+                    [||]
+                t.button
+                    [|
+                        t.Attrs.Button.disabled true
+                        t.Attrs.ariaExpanded true
+                        t.Attrs.id (Some "i")
+                        t.Attrs.data ("k", "v")
+                    |]
+                    [||]
+            |])
+
+// Mirrors staticMarkup in TemplateCatalogueChecks.fs.
+equal
+    "<div><button aria-expanded=\"false\" title=\"t\"></button><button disabled=\"\" aria-expanded=\"true\" id=\"i\" data-k=\"v\"></button></div>"
+    (render Omit (Component.render staticTemplate ()))
 
 printfn "PASS template catalogue server markup"
