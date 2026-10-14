@@ -467,7 +467,8 @@ let private stateFor (compiled: Compiled) (instance: obj) (extra: int) =
     state
 
 /// <summary>Writes a part's static properties, starts its render and isolated effects, and attaches its events.</summary>
-let private bind (services: MountServices) (compiled: Compiled) (state: obj array) (instance: obj) =
+/// <remarks>Inlined, so the effect closures share the caller's closure context with the caller's own closures.</remarks>
+let inline private bind (services: MountServices) (compiled: Compiled) (state: obj array) (instance: obj) =
     let renderCount = compiled.RenderSlots.Length
     let isolatedCount = compiled.IsolatedSlots.Length
     let previousBase = StateNodes + compiled.NodeCount
