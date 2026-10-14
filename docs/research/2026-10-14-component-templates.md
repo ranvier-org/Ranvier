@@ -14,7 +14,7 @@ The benchmark row is the existing framework row written as a template: a `div` w
 
 ## Measurements
 
-All numbers below are from one run on this machine (AMD Ryzen 9 9900X, Chromium 153.0.8010.12) at commit `8762e5c`, measured against Solid 2.0.0-rc.14 compiled with `@solidjs/compiler`. The machine has slow phases: the comparisons are ratios between frameworks measured in the same processes; absolute values are not comparable with earlier notes. The previous figures, at `b934a13`, are from one run of the same benchmark.
+All numbers below are from one run on this machine (AMD Ryzen 9 9900X, Chromium 153.0.8010.12) at commit `a0de558`, measured against Solid 2.0.0-rc.14 compiled with `@solidjs/compiler`. The machine has slow phases: the comparisons are ratios between frameworks measured in the same processes; absolute values are not comparable with earlier notes. The previous figures, at `8762e5c`, are from one run of the same benchmark.
 
 The measured code includes binding reader-failure reporting: every synchronous binding and template effect wraps its reads in a `try`/`catch` and checks a failure flag on each run. It also includes the parse validation in `compile`, which runs once per definition.
 
@@ -22,39 +22,83 @@ The measured code includes binding reader-failure reporting: every synchronous b
 
 | | Ranvier (authored) | Ranvier template | Solid 2 | Ripple | React |
 |---|---|---|---|---|---|
-| Mount | 897 | 530 | 481 | 672 | 849 |
-| | 880 / 859 / 1142 | 518 / 501 / 599 | 481 / 416 / 511 | 631 / 623 / 722 | 809 / 729 / 915 |
-| Update | 167 | 166 | 155 | 166 | 375 |
-| | 169 / 159 / 176 | 165 / 163 / 179 | 154 / 151 / 168 | 162 / 164 / 177 | 374 / 361 / 417 |
-| Dispose | 143 | 67 | 50 | 85 | 135 |
-| | 136 / 132 / 148 | 71 / 66 / 69 | 51 / 48 / 51 | 82 / 82 / 94 | 143 / 134 / 132 |
-| Retained JS heap per mount | 345 KiB | 113 KiB | 115 KiB | 163 KiB | 189 KiB |
+| Mount | 564 | 333 | 286 | 414 | 495 |
+| | 576 / 570 / 537 | 333 / 385 / 322 | 296 / 294 / 273 | 370 / 389 / 446 | 519 / 516 / 481 |
+| Update | 114 | 114 | 107 | 115 | 246 |
+| | 115 / 114 / 111 | 112 / 117 / 113 | 107 / 111 / 106 | 116 / 111 / 117 | 250 / 243 / 244 |
+| Dispose | 75 | 39 | 25 | 41 | 76 |
+| | 69 / 75 / 85 | 35 / 40 / 37 | 25 / 26 / 24 | 41 / 39 / 44 | 73 / 74 / 81 |
+| Retained JS heap per mount | 345 KiB | 111 KiB | 116 KiB | 163 KiB | 189 KiB |
 
-The template path against Solid 2 and Ripple at every width, µs per operation (overall median), at `b934a13` and at `8762e5c`:
+The template path against Solid 2 and Ripple at every width, µs per operation (overall median), with the ratios at `8762e5c`:
 
-| Phase, rows | Template at `b934a13` | × Solid 2 | × Ripple | Template at `8762e5c` | Solid 2 | Ripple | × Solid 2 | × Ripple |
-|---|---|---|---|---|---|---|---|---|
-| Mount, 1 | 15.4 | 1.85 | 1.61 | 8.1 | 7.6 | 8.4 | 1.07 | 0.97 |
-| Mount, 16 | 81.1 | 1.46 | 1.00 | 61.6 | 57.0 | 71.9 | 1.08 | 0.86 |
-| Mount, 128 | 625.5 | 1.21 | 0.71 | 529.8 | 480.8 | 671.6 | 1.10 | 0.79 |
-| Update, 1 | 1.6 | 0.75 | 0.96 | 1.2 | 1.5 | 1.3 | 0.81 | 0.87 |
-| Update, 16 | 21.9 | 1.04 | 0.97 | 22.3 | 21.5 | 22.3 | 1.04 | 1.00 |
-| Update, 128 | 190.7 | 1.08 | 1.02 | 166.1 | 155.0 | 166.3 | 1.07 | 1.00 |
-| Dispose, 1 | 4.3 | 2.07 | 3.26 | 2.3 | 1.5 | 0.7 | 1.53 | 3.05 |
-| Dispose, 16 | 17.0 | 1.54 | 1.03 | 14.9 | 10.2 | 15.8 | 1.47 | 0.94 |
-| Dispose, 128 | 74.4 | 1.43 | 0.79 | 67.3 | 49.8 | 84.8 | 1.35 | 0.79 |
+| Phase, rows | × Solid 2 at `8762e5c` | × Ripple at `8762e5c` | Template at `a0de558` | Solid 2 | Ripple | × Solid 2 | × Ripple |
+|---|---|---|---|---|---|---|---|
+| Mount, 1 | 1.07 | 0.97 | 5.9 | 5.0 | 6.1 | 1.18 | 0.97 |
+| Mount, 16 | 1.08 | 0.86 | 43.3 | 37.4 | 49.3 | 1.16 | 0.88 |
+| Mount, 128 | 1.10 | 0.79 | 333.4 | 285.9 | 414.1 | 1.17 | 0.81 |
+| Update, 1 | 0.81 | 0.87 | 1.0 | 1.3 | 1.1 | 0.80 | 0.93 |
+| Update, 16 | 1.04 | 1.00 | 14.2 | 13.4 | 14.1 | 1.05 | 1.01 |
+| Update, 128 | 1.07 | 1.00 | 113.8 | 106.7 | 114.6 | 1.07 | 0.99 |
+| Dispose, 1 | 1.53 | 3.05 | 1.3 | 1.0 | 0.6 | 1.32 | 2.28 |
+| Dispose, 16 | 1.47 | 0.94 | 5.1 | 4.1 | 6.4 | 1.25 | 0.80 |
+| Dispose, 128 | 1.35 | 0.79 | 38.6 | 24.7 | 40.6 | 1.56 | 0.95 |
 
-Per process, the one-row mount is 1.21 / 1.22 / 0.98× Solid 2 and the one-row disposal 1.39 / 1.68 / 1.49×; the 128-row mount is 1.08 / 1.20 / 1.17×.
+Per process, the one-row mount is 1.10 / 1.21 / 1.21× Solid 2 and the one-row disposal 1.34 / 1.29 / 1.31×; the 128-row mount is 1.13 / 1.31 / 1.18×. The two columns of ratios come from different sessions, and the commits between `8762e5c` and `08526f9` changed range validation, staging and delegation; the paired runs under [per-mount state](#per-mount-state) isolate the change to the mount state.
 
-Against the authored path in the same processes, templates mount in 0.59× the time, dispose in 0.47× and retain 0.33× the heap; updates are 1.00×. Against Solid 2, the authored path mounts in 1.87×. Templates retain 0.98× Solid 2's heap per 128-row mount. The one-row heap measurement varies by more than its value between processes (Solid 2 measured −1.7, 3.2 and 2.0 KiB) and is not compared.
+Against the authored path in the same processes, templates mount in 0.59× the time, dispose in 0.51× and retain 0.32× the heap; updates are 1.00×. Against Solid 2, the authored path mounts in 1.97×. Templates retain 0.96× Solid 2's heap per 128-row mount. The one-row heap measurement varies between processes by more than the difference it would show (template 3.7, 5.1 and 5.2 KiB; Solid 2 1.7, 3.1 and 3.2 KiB) and is not compared.
 
 [Allocation sampling](framework-performance/investigation/template-profile/allocations.json), one browser process, 4096-byte interval, per 128-row mount:
 
 | | Ranvier (authored) | Ranvier template | Solid 2 | Ripple |
 |---|---|---|---|---|
-| Allocated | 467 KiB | 145 KiB | 143 KiB | 368 KiB |
+| Allocated | 471 KiB | 142 KiB | 136 KiB | 373 KiB |
 
-Templates allocate 1.02× Solid 2 (1.08× at `b934a13`) and 0.31× the authored path; the authored path allocates 3.27× Solid 2.
+Templates allocate 1.04× Solid 2 (1.02× at `8762e5c`) and 0.30× the authored path; the authored path allocates 3.46× Solid 2.
+
+### Per-mount state
+
+At `08526f9`, `mountCore` kept a mount's state in local variables and created about 48 closures per mount over them: 16 local helpers, 18 backend delegates in a `MountMembers` record that `MountBackend` forwarded to, 3 `BuildContext` callbacks, 5 setup callbacks handed to core, 5 `Mounted` callbacks and an `onRoot` callback. A mount's first template added a `MountServices` record of 10 more closures. Six commits replace them:
+
+- `f74084a`: the allocation sampler takes `--modes`, `--width`, `--roots`, `--interval` and `--top`.
+- `b575422`: `MountState`, one class per mount, holds the state as fields and is the backend; its helpers compile to functions taking the instance.
+- `316d61a`: `MountServices` is an interface implemented by the mount state; the template `Setup` record is created by the first template.
+- `02f164e`: `BuildContext` and `Mounted` are classes over the mount state. A build function that reads `ctx.Backend` from an unannotated parameter now needs a `BuildContext` annotation.
+- `9cf54fe`: the cleanup-error list, the delegated-event list and the range's generated-node list are created on first use; delegation release is registered only for a mount with delegated events, and `mountWith` passes no `onRoot` callback.
+- `a0de558`: the range's staging fragment is created by the first staging or movement; a range whose roots attach individually never creates it.
+
+A one-row template mount with a delegated click now creates 8 closures in `Mounting.fs`: the scope's release callback, the 5 setup callbacks handed to core, the delegation release and the template `Setup` callback.
+
+[Allocation sampling](framework-performance/investigation/template-root-allocations/) of 4096 one-row mounts at a 128-byte interval (`allocations.mjs --modes=ranvier-template,solid --width=1 --roots=4096 --interval=128`), one browser process per variant, bytes per mount, [at `08526f9`](framework-performance/investigation/template-root-allocations/before/allocations.json) and [at `a0de558`](framework-performance/investigation/template-root-allocations/after/allocations.json):
+
+| Site | `08526f9` | `a0de558` |
+|---|---|---|
+| Mount state: `mountCore` closures, `MountMembers`, `Mounted` and `BuildContext`; then the `MountState` instance, `Run`, `Mounted` and `BuildContext` | 1616 | 249 |
+| Setup callbacks handed to core | 61 | 56 |
+| Template services; then the template `Setup` record | 230 | 63 |
+| `OwnedRange`: range, boundary comments, entries | 249 | 216 |
+| `mountWith` `onRoot` callback | 29 | |
+| Other | 18 | 14 |
+| `Mounting.fs` total | 2206 | 603 |
+| Whole mount, Ranvier template | 5894 | 4374 |
+| Whole mount, Solid 2 | 3985 | 3967 |
+
+A one-row template mount allocates 1.10× Solid 2, against 1.48× at `08526f9`. The remainder is in core (1709 bytes: effects, owners and the fixture's own `Graph` per mount), the fixture (592) and `TemplateDom.materialise` (about 410: the state array, the render effect and its closures).
+
+Paired runs of `run.mjs --template-comparison`, alternating `08526f9` and `a0de558` three times each in one session; median ratio of the three runs, with their range:
+
+| Phase, rows | × Solid 2 at `08526f9` | × Solid 2 at `a0de558` | × Ripple at `08526f9` | × Ripple at `a0de558` |
+|---|---|---|---|---|
+| Mount, 1 | 1.22 (1.19–1.23) | 1.12 (1.11–1.14) | 1.08 | 0.97 |
+| Mount, 16 | 1.17 (1.16–1.18) | 1.17 (1.16–1.19) | 0.90 | 0.89 |
+| Mount, 128 | 1.17 (1.16–1.24) | 1.21 (1.17–1.28) | 0.75 | 0.80 |
+| Dispose, 1 | 1.34 (1.30–1.38) | 1.33 (1.31–1.33) | 2.21 | 2.23 |
+| Dispose, 16 | 1.50 (1.39–1.53) | 1.46 (1.31–1.62) | 0.97 | 0.92 |
+| Dispose, 128 | 1.65 (1.53–1.66) | 1.52 (1.48–1.65) | 0.90 | 0.91 |
+
+The one-row mount fell from 6.1 to 5.7 µs while Solid 2 stayed at 5.0 µs; the other widths and disposal moved within the spread between runs. In [the one-row CPU profiles](framework-performance/investigation/template-root-profile/) (`diagnose.mjs --modes=ranvier-template,solid --phases=mount,dispose --width=1 --roots=256 --repeat=160`, one session per variant), the mount's garbage collection fell from 55.4 to 31.5 ms and `Mounting.js` self time from 49.7 to 33.2 ms; the busy-time ratio to Solid 2 moved from 1.39 to 1.21 for mount and from 1.36 to 1.18 for disposal.
+
+The range boundary comments stay. They give an empty mount a position, anchor `Move` and `Relocate`, delimit keyed rows, and their claims let the native-ownership check detect an empty mount inside a native node. In the `a0de558` profile of 40960 one-row mounts and disposals, `createComment` took 6.5 ms, `claim` 7.1 ms and `unclaim` 6.8 ms for three nodes per mount, two of them boundaries, and `remove` 25.2 ms for the same three nodes. Counting two thirds of the per-node costs, the boundaries take about 32 ms of 352 ms busy, or 0.8 µs per mount and disposal.
 
 ## CPU profile
 
@@ -146,19 +190,19 @@ An `ObserverSet` above eight observers keeps a `Map` index; every removal delete
 
 ## Spec targets
 
-- **Mount within 1.3× Solid 2: met.** The 128-row template mount is 1.10× Solid 2 (529.8 against 480.8 µs); each process measured between 1.08× and 1.20×.
-- **Allocation within 1.5× Solid 2: met.** The 128-row template mount allocates 1.02× Solid 2 (145.1 against 142.6 KiB).
+- **Mount within 1.3× Solid 2: met.** The 128-row template mount is 1.17× Solid 2 (333.4 against 285.9 µs); each process measured between 1.13× and 1.31×.
+- **Allocation within 1.5× Solid 2: met.** The 128-row template mount allocates 1.04× Solid 2 (141.5 against 136.0 KiB).
 
 ## Next costs
 
-Disposal at 16 and 128 rows is now dominated by the core edge removal above. The remaining view-layer costs, from the one-row profile at `8762e5c` and a 128-byte-interval allocation sample of 4096 one-row mounts (5.8 KiB per Ranvier mount against 3.9 KiB for Solid 2):
+Disposal at 16 and 128 rows is dominated by the core edge removal above. The remaining view-layer costs, from the one-row profiles and allocation samples at `a0de558` (4.3 KiB per Ranvier mount against 3.9 KiB for Solid 2):
 
 | Cost | Size |
 |---|---|
-| `mountCore` creates about 45 closures per mount: its local helpers, the 19 backend delegates and the `Mounted` callbacks | 1.5 KiB of the 5.8 KiB per one-row mount; a class holding the mount state would replace them with methods |
-| Range boundary comments: two `createComment` calls, three `WeakSet` claims and two extra `remove` calls per mount | `createComment` 6.8 ms, `claim` 13.2 ms and `unclaim` 9.4 ms in the one-row profiles; Solid 2 owns its host and clears it with `textContent` |
-| The template services record, created on a mount's first template | 10 closures, 0.24 KiB per mount |
-| `collect` and `write` per row | 94 and 68 ms of the 128-row mount profile |
+| Range boundary comments: two `createComment` calls, two of three `WeakSet` claims and two of three `remove` calls per mount | about 32 ms of 352 ms busy over 40960 one-row mounts and disposals; Solid 2 owns its host and clears it with `textContent` |
+| `TemplateDom.materialise` per instance: the state array, the render effect and its closures | about 0.4 KiB per one-row mount |
+| Setup callbacks handed to core: `Graph.Run`, `createRoot`, `onCleanup`, `Scope.OnCleanup` and `untrack` | 5 closures per mount |
+| `collect` and `write` per row | 94 and 68 ms of the 128-row mount profile at `8762e5c` |
 
 The render effect still allocates an `untrack` arrow per run; it recurs on updates, not on mount. Removing it needs a value Fable does not inline, or an untracked entry point in core that takes no closure.
 
@@ -166,4 +210,4 @@ The fixture gives every Ranvier mount its own `Graph`; its construction and acti
 
 ## Acceptance
 
-The playground suites pass 249 Node tests and 22 Chromium tests; the 7 portable .NET representation checks print `PASS`, and the 8 pure lifetime checks pass.
+The playground suites pass 258 Node tests and 22 Chromium tests; the 7 portable .NET representation checks print `PASS`, and the 8 pure lifetime checks pass.
