@@ -388,8 +388,12 @@ type private OwnedRange(host: Node) =
         if staged then
             insert parent staging before
         else
-            for index in 0 .. entries.Count - 1 do
+            let mutable index = 0
+
+            // An insertion that disposes the mount empties `entries`, ending the loop.
+            while index < entries.Count do
                 insert parent (at entries index).Node before
+                index <- index + 1
 
         placement <- parent
 
