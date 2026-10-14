@@ -613,6 +613,75 @@ let private movedBeforeStaging () =
     equal None moved.Value.parentNode
     equal None native.parentNode
 
+[<Emit("Array.from($0.childNodes, n => n.nodeType === 1 ? n.tagName : n.nodeType === 3 ? 'text:' + n.data : n.data)")>]
+let private describe (node: Node) : string array = jsNative
+
+let private stagedAfterDetachedRoot () =
+    use graph = new Graph ()
+    let host = Dom.element "section" [] []
+    let sibling = Dom.element "aside" [] []
+    host.appendChild sibling |> ignore
+
+    let view =
+        Tree.ops.Fragment
+            [|
+                Tree.ops.Text "a"
+                Keyed.list Tree.ops (=) id (fun () -> [ 1 ]) (fun current -> Tree.ops.Text (string (current ())))
+                Tree.ops.Text "b"
+            |]
+
+    let handle =
+        mounted graph None host (Some sibling) (fun ctx -> Tree.run view ctx.Backend)
+
+    equal
+        [|
+            "ranvier:start"
+            "text:a"
+            "ranvier:list:start"
+            "ranvier:start"
+            "text:1"
+            "ranvier:end"
+            "ranvier:list:end"
+            "text:b"
+            "ranvier:end"
+            "ASIDE"
+        |]
+        (describe host)
+
+    handle.Dispose ()
+    equal [| "ASIDE" |] (describe host)
+
+[<Emit("(() => { const old = $0.insertBefore; let done = false; $0.insertBefore = function(n,b) { const result = old.call(this,n,b); if (!done) { done = true; $1.remove(); } return result; }; return () => $0.insertBefore = old; })()")>]
+let private removeAnchorAfterFirstInsert (host: Node) (anchor: Node) : unit -> unit = jsNative
+
+[<Emit("$0.name")>]
+let private errorName (error: exn) : string = jsNative
+
+let private anchorRemovedDuringAttach () =
+    use graph = new Graph ()
+    let host = Dom.element "section" [] []
+    let kept, anchor = Dom.element "header" [] [], Dom.element "aside" [] []
+    host.appendChild kept |> ignore
+    host.appendChild anchor |> ignore
+    let restore = removeAnchorAfterFirstInsert host anchor
+    let mutable cleaned = false
+    let mutable name = ""
+
+    try
+        try
+            mounted graph None host (Some anchor) (fun ctx ->
+                ctx.OnCleanup (fun () -> cleaned <- true)
+                ctx.Backend.Text "x")
+            |> ignore
+        with error ->
+            name <- errorName error
+    finally
+        restore ()
+
+    equal "NotFoundError" name
+    equal true cleaned
+    equal [| "HEADER" |] (describe host)
+
 let private overlappingMounts () =
     use graph = new Graph ()
     let host, other = Dom.element "section" [] [], Dom.element "section" [] []
@@ -1185,6 +1254,8 @@ let allCases =
             "disposal during attachment cannot revive a mount", attachmentReentry
             "native ownership cannot overlap another live mount", overlappingMounts
             "staging rejects a root moved elsewhere by a browser hook and unwinds", movedBeforeStaging
+            "detached roots keep their order and before sibling when a keyed region stages them", stagedAfterDetachedRoot
+            "an anchor removed during attachment fails with NotFoundError and unwinds the mount", anchorRemovedDuringAttach
             "equality-triggered disposal prevents a late DOM write", equalityDisposal
             "direct child mount disposal uses its explicit reporter", childReporter
             "failed movement rollback disposes resources instead of stranding bindings", failedMovementRollback

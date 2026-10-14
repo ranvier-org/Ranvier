@@ -131,6 +131,122 @@ let private sharedHost () =
     second.Dispose ()
     equal [| 1; 1 |] (listenerCounts counts)
 
+let private button (host: Node) index =
+    (host :?> HTMLElement).querySelectorAll("button").item index
+    |> unbox<HTMLButtonElement>
+
+let private independentHosts () =
+    use graph = new Graph ()
+    let first, second = element "main", element "main"
+    let counts = spyClickListeners second
+    let mutable clicks = 0
+    let a = mount graph first (H.Program.button [| H.Events.onClick ignore |] [||])
+
+    let b =
+        mount graph second (H.Program.button [| H.Events.onClick (fun _ -> clicks <- clicks + 1) |] [||])
+
+    a.Dispose ()
+    (button second 0.).click()
+    equal 1 clicks
+    equal [| 1; 0 |] (listenerCounts counts)
+    b.Dispose ()
+    equal [| 1; 1 |] (listenerCounts counts)
+
+let private selfDisposal () =
+    use graph = new Graph ()
+    let host = element "main"
+    let counts = spyClickListeners host
+    let mutable mounted: Mounting.Mounted = Unchecked.defaultof<_>
+    let mutable clicks = 0
+
+    mounted <-
+        mount
+            graph
+            host
+            (H.Program.button
+                [|
+                    H.Events.onClick (fun _ ->
+                        clicks <- clicks + 1
+                        mounted.Dispose ())
+                |]
+                [||])
+
+    let target = button host 0.
+    target.click ()
+    equal 1 clicks
+    equal Disposed mounted.Phase
+    equal [| 1; 1 |] (listenerCounts counts)
+    target.click ()
+    equal 1 clicks
+
+let private remountDuringDispatch () =
+    use graph = new Graph ()
+    let host = element "main"
+    let counts = spyClickListeners host
+    let mutable outer, inner = 0, 0
+    let mounts = ResizeArray<Mounting.Mounted>()
+
+    let fresh =
+        H.Program.button [| H.Events.onClick (fun _ -> inner <- inner + 1) |] [||]
+
+    let view =
+        H.Program.button
+            [|
+                H.Events.onClick (fun _ ->
+                    outer <- outer + 1
+
+                    if mounts.Count = 1 then
+                        mounts.Add (mount graph host fresh))
+            |]
+            [||]
+
+    mounts.Add (mount graph host view)
+    (button host 0.).click()
+    equal 1 outer
+    equal 0 inner
+    (button host 1.).click()
+    equal 1 outer
+    equal 1 inner
+    (button host 0.).click()
+    equal 2 outer
+    equal 1 inner
+    equal [| 1; 0 |] (listenerCounts counts)
+
+    for mounted in mounts do
+        mounted.Dispose ()
+
+    equal [| 1; 1 |] (listenerCounts counts)
+
+let private nestedHosts stop =
+    use graph = new Graph ()
+    let host = element "main"
+    let mutable outer, inner = 0, 0
+
+    let a =
+        mount graph host (H.Program.div [| H.Events.onClick (fun _ -> outer <- outer + 1) |] [| H.Program.section [||] [||] |])
+
+    let innerHost = host.querySelector "section" |> unbox<HTMLElement>
+
+    let b =
+        mount
+            graph
+            innerHost
+            (H.Program.button
+                [|
+                    H.Events.onClick (fun event ->
+                        inner <- inner + 1
+
+                        if stop then
+                            event.stopPropagation ())
+                |]
+                [||])
+
+    (button innerHost 0.).click()
+    equal 1 inner
+    equal (if stop then 0 else 1) outer
+    b.Dispose ()
+    a.Dispose ()
+
 /// <summary>Checks delegated event dispatch from mount hosts.</summary>
 let cases =
     [|
@@ -140,4 +256,9 @@ let cases =
         "non-bubbling events use direct listeners removed on disposal", nonBubbling
         "moved mounts dispatch from their new host", moved
         "a shared host keeps one listener until its last mount is disposed", sharedHost
+        "disposing a mount on one host leaves another host's dispatch and listener unchanged", independentHosts
+        "a handler disposing its own sole mount removes the delegated listener", selfDisposal
+        "a handler mounting a fresh view on its host leaves later clicks dispatching once", remountDuringDispatch
+        "an inner host's handler resumes dispatch in the outer mount", fun () -> nestedHosts false
+        "stopPropagation in an inner host's handler stops the outer mount's handler", fun () -> nestedHosts true
     |]

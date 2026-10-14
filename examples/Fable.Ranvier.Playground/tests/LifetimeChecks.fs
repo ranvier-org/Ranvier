@@ -393,6 +393,55 @@ let private attachmentPhases () =
 
     equal true rejected
 
+let private crossTreeDisposal () =
+    let trace = ResizeArray<string>()
+    let aReports, bReports = ResizeArray<exn list>(), ResizeArray<exn list>()
+
+    let a =
+        Scope ((fun errors -> aReports.Add errors), (fun () -> trace.Add "a:release"))
+
+    let aChild = a.Child (fun () -> trace.Add "a-child:release")
+
+    let b =
+        Scope ((fun errors -> bReports.Add errors), (fun () -> trace.Add "b:release"))
+
+    let bChild = b.Child (fun () -> trace.Add "b-child:release")
+
+    bChild.OnCleanup (fun () ->
+        trace.Add "b-child:clean"
+        failwith "b")
+
+    aChild.OnCleanup (fun () ->
+        trace.Add "a-child:clean"
+        bChild.Dispose ())
+
+    a.OnCleanup (fun () -> trace.Add "a:clean")
+    a.Dispose ()
+
+    equal
+        [
+            "a-child:clean"
+            "b-child:clean"
+            "b-child:release"
+            "a:clean"
+            "a-child:release"
+            "a:release"
+        ]
+        (List.ofSeq trace)
+
+    equal 0 aReports.Count
+
+    equal
+        [ "b" ]
+        (bReports
+         |> Seq.concat
+         |> Seq.map _.Message
+         |> List.ofSeq)
+
+    equal [] a.Failures
+    equal false b.IsDisposed
+    b.Dispose ()
+
 let cases: (string * (unit -> unit)) array =
     [|
         "attachment cannot revive disposed scopes", attachmentPhases
@@ -406,4 +455,5 @@ let cases: (string * (unit -> unit)) array =
         "cleanup release and reporter failures do not strand siblings", teardownFailures
         "teardown rejects registration and survives reentry", reentrantAndRejected
         "disposed children unlink in Fable", unlinkChildren
+        "a cleanup disposing a scope in another tree reports on that tree and keeps its own order", crossTreeDisposal
     |]
