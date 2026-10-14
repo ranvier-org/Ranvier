@@ -92,7 +92,7 @@ A template instance has no owner of its own. It cannot outlive or be disposed ap
 4. Direct bindings: each `T.from` slot attaches a fixed-dependency binding to its source (see Direct bindings), writes the current value, and writes again when the source changes.
 5. Events: each event node receives one property, `node.$$ranvier = state`. The delegated dispatcher, finding that property, locates the node among the state's dynamic nodes, takes the event slot for that node and event type from the template's slot table, and calls `handler state.Inst event` under the state's graph and owner, untracked; it does nothing if that owner is disposed. Non-bubbling events attach a direct listener as today.
 6. Inlined child templates: each child instance runs its setup, receives its own state object and render effect over its slot range, and reuses the parent's cloned nodes.
-7. Regions mount their content at the anchors. `T.matchWith` compiles each arm's definition once and switches arms when the union case tag changes; a payload change within the same case updates the current arm's props without remounting it. `T.branch`, `T.each` and view holes use the existing branch, keyed and interpreter paths.
+7. Regions mount their content at the anchors. `T.matchWith` compiles each arm's definition once and switches arms when the union case tag changes; a payload change within the same case updates the current arm's props without remounting it. `T.branch`, `T.each` and view holes use the existing branch, keyed and interpreter paths. An arm switch of `T.matchWith` or `T.branch` runs the previous arm's cleanups and removes its nodes before the new arm is set up; `T.each` sets up and places new rows before removed rows' cleanups run.
 8. The clone joins the mount through the existing append path.
 
 ### Direct bindings
@@ -103,7 +103,7 @@ Ranvier's core exposes no such primitive: sources notify observers through the i
 
 ## Non-DOM backends
 
-`Backend` gains `abstract Template: ComponentDefinition * obj -> unit` with a default implementation that runs setup and expands the template into existing `Backend` calls: static parts to `Attribute`, `Property` and `Text`; slots to `ReactiveAttribute`, `ReactiveProperty` and `Bind` with readers applying the slot to the instance; events to `Listen`; structure to `Component`, `Keyed` and branch calls. The mount backend overrides it with the compiled path. Server HTML, the tree representation and `Browser.fs` use the default; prepared skeletons reject templates through it.
+`Backend` gains `abstract Template: ComponentDefinition * obj -> unit` with a default implementation that runs setup and expands the template into existing `Backend` calls: static parts to `Attribute`, `Property` and `Text`; slots to `ReactiveAttribute`, `ReactiveProperty` and `Bind` with readers applying the slot to the instance; events to `Listen`; structure to `Component`, `Keyed` for lists and `Switch` for arm switches. The mount backend overrides it with the compiled path. Server HTML, the tree representation and `Browser.fs` use the default; prepared skeletons reject templates through it.
 
 Server HTML for a template is the same markup function's output with slot values filled, so markers and escaping are identical on .NET and under Fable.
 
@@ -116,7 +116,7 @@ Server HTML for a template is the same markup function's output with slot values
 - Equivalence: each template feature has a `createComponent` twin; both produce identical server HTML on .NET and under Fable, and identical live DOM under the same updates.
 - Cross-runtime: a template's HTML on .NET byte-matches its HTML under Fable.
 - Materialisation: clone and walk including `<template>` content, multiple roots and separators; comparison and writes for each slot kind; first-run writes; `T.isolated`; direct bindings including batching, flush, pending and failed memos, and disposal; reader failure confined to its slot; setter failure rolling back the mount; delegated template handlers including after disposal and after movement; cleanup order without an instance owner; materialisers composed without absent stages.
-- `T.matchWith`: arm switching by case, payload updates within a case, disposal of the previous arm, and compile-time exhaustiveness.
+- `T.matchWith`: arm switching by case, payload updates within a case, disposal of the previous arm before the new arm's setup, and compile-time exhaustiveness.
 - Structure: inlined child templates, view holes, branch switching and disposal, keyed lists of template rows.
 - Round-trip: every test skeleton round-trips.
 - Fallback: templates render through `Browser.fs` and the tree representation, and prepared skeletons reject them.
