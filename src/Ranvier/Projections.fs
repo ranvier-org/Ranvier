@@ -2102,9 +2102,11 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
 
     /// <summary>
     /// Reconciles the positions whose item differs from the last installed pass, after trimming the common prefix and
-    /// suffix, and stages the removed keys and the key array.
+    /// suffix, and stages the removed keys and the key array. A pass nested in a <c>keyOf</c> call ends the trimming: the
+    /// item of that call and every later item are visited as a full pass visits them.
     /// </summary>
     member private this.Trim() =
+        let runs = this.Runs
         let prev = lastItems
         let prevKeys = lastKeys
         let n0 = lastCount
@@ -2128,65 +2130,78 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
 
         // Equal-length middles compare index by index.
         let aligned = n0 = n1
-        changedAt.Clear ()
-
-        for i in start..end0 do
-            if not aligned || not (same.Equals (prev[i], cur[i])) then
-                changedAt.Add i
-                previousChanged.Add (prevKeys[i]) |> ignore
-
         let mutable nextKeys: 'K[] = null
-
-        if not aligned then
-            nextKeys <- Array.zeroCreate n1
-            Array.blit prevKeys 0 nextKeys 0 start
-            Array.blit prevKeys (end0 + 1) nextKeys (end1 + 1) (n0 - end0 - 1)
+        let mutable nestedAt = -1
+        let mutable nestedKey = Unchecked.defaultof<'K>
 
         let visit (i: int) =
             let item = cur[i]
             let key = this.KeyOf item
 
-            if not (changed.Add key) then
-                raise (ProjectionFailures.duplicateKey key)
-
-            changedKeys.Add key
-
-            if
-                not (previousChanged.Contains key)
-                && this.HasRow key
-            then
-                // The key belongs to a kept position.
-                raise (ProjectionFailures.duplicateKey key)
-
-            this.Stage (key, item)
-
-            if aligned then
-                if not (EqualityComparer<'K>.Default.Equals(key, prevKeys[i])) then
-                    if isNull nextKeys then
-                        nextKeys <- Array.copy prevKeys
-
-                    nextKeys[i] <- key
+            if this.Runs <> runs then
+                nestedAt <- i
+                nestedKey <- key
             else
-                nextKeys[i] <- key
+                if not (changed.Add key) then
+                    raise (ProjectionFailures.duplicateKey key)
+
+                changedKeys.Add key
+
+                if
+                    not (previousChanged.Contains key)
+                    && this.HasRow key
+                then
+                    // The key belongs to a kept position.
+                    raise (ProjectionFailures.duplicateKey key)
+
+                this.Stage (key, item)
+
+                if aligned then
+                    if not (EqualityComparer<'K>.Default.Equals(key, prevKeys[i])) then
+                        if isNull nextKeys then
+                            nextKeys <- Array.copy prevKeys
+
+                        nextKeys[i] <- key
+                else
+                    nextKeys[i] <- key
+
+        changedAt.Clear ()
 
         try
+            for i in start..end0 do
+                if not aligned || not (same.Equals (prev[i], cur[i])) then
+                    changedAt.Add i
+                    previousChanged.Add (prevKeys[i]) |> ignore
+
+            if not aligned then
+                nextKeys <- Array.zeroCreate n1
+                Array.blit prevKeys 0 nextKeys 0 start
+                Array.blit prevKeys (end0 + 1) nextKeys (end1 + 1) (n0 - end0 - 1)
+
             if aligned then
-                for i in changedAt do
-                    visit i
+                let mutable k = 0
+
+                while nestedAt < 0 && k < changedAt.Count do
+                    visit changedAt[k]
+                    k <- k + 1
             else
-                for i in start..end1 do
+                let mutable i = start
+
+                while nestedAt < 0 && i <= end1 do
                     visit i
+                    i <- i + 1
 
-            let removed = this.Removed
+            if nestedAt < 0 then
+                let removed = this.Removed
 
-            for i in changedAt do
-                let key = prevKeys[i]
+                for i in changedAt do
+                    let key = prevKeys[i]
 
-                if not (changed.Contains key) then
-                    removed.Add key
+                    if not (changed.Contains key) then
+                        removed.Add key
 
-            this.StageRemovals ()
-            this.StageKeys nextKeys
+                this.StageRemovals ()
+                this.StageKeys nextKeys
         finally
             for i in changedAt do
                 previousChanged.Remove (prevKeys[i])
@@ -2195,6 +2210,14 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
                 changed.Remove key
 
             changedKeys.Clear ()
+
+        if nestedAt >= 0 then
+            // Continues as a full pass from the item whose keyOf call nested a pass.
+            this.Visit (nestedKey, cur[nestedAt])
+
+            for i in nestedAt + 1 .. n1 - 1 do
+                let item = cur[i]
+                this.Visit (this.KeyOf item, item)
 
     override this.Enumerate() =
         let trim = trimValid && keyPure

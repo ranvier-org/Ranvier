@@ -48,8 +48,8 @@ let private duplicateAfter (edit: Item[] -> Item[]) =
     Expect.isEmpty disposed "the failed pass retired no row"
 
 /// <summary>
-/// A seeded pseudo-random sequence (MINSTD). Every intermediate is an exact double, so .NET and Fable produce the same
-/// values. <c>seed</c> must be positive.
+/// A seeded pseudo-random sequence (MINSTD). Produces identical sequences on .NET and Fable. <c>seed</c> must be
+/// positive.
 /// </summary>
 type private Lcg(seed: int) =
     let mutable state = float seed
@@ -76,8 +76,8 @@ type private Side =
 
 /// <summary>
 /// A projection of <c>kind</c> (0: createProjectionWith, 1: createProjectionWithOptions CreateFirst, 2:
-/// createProjectionOnce CreateFirst) over <c>items</c>. With <c>full</c>, keyOf reads <c>unused</c>, so every pass runs
-/// in full. The factory raises for an Id of 10000 or more.
+/// createProjectionOnce CreateFirst) over <c>items</c>. With <c>full</c>, every pass runs in full. The factory raises for
+/// an Id of 10000 or more.
 /// </summary>
 let private side (kind: int) (full: bool) (unused: Signal<int>) (items: Signal<Item[]>) =
     let created = ResizeArray<int>()
@@ -131,11 +131,14 @@ let private side (kind: int) (full: bool) (unused: Signal<int>) (items: Signal<I
 
 /// <summary>
 /// Everything the differential test compares after an operation; <c>disposedFrom</c> starts the operation's disposals.
-/// A failure compares by message: under Fable a <c>System</c> exception type does not survive as a type.
+/// A failure compares by its message, or as "duplicate key" when it is the duplicate-key failure.
 /// </summary>
 let private observe (s: Side) (disposedFrom: int) =
     let name (ex: exn) =
-        ex.Message
+        if ex.Message.Contains "twice in one pass" then
+            "duplicate key"
+        else
+            ex.Message
 
     let keys =
         try
@@ -698,5 +701,69 @@ let tests =
                     first, read (), proj.Status
 
                 Expect.equal (script false) (script true) "trimmed and full passes agree"
+            }
+
+            test "a pass nested in keyOf during a trimmed pass matches a full pass, and the next pass runs in full" {
+                let script (forceFull: bool) =
+                    use g = new Graph ()
+                    use _ = g.Activate ()
+                    let unused = createSignal 0
+                    let items = createSignal [| 1; 2; 3 |]
+                    let keyCalls = ref 0
+                    let mutable armed = false
+                    let mutable proj: Projection<int, int> = Unchecked.defaultof<_>
+
+                    proj <-
+                        createProjectionWith
+                            (fun x ->
+                                keyCalls.Value <- keyCalls.Value + 1
+
+                                if forceFull then
+                                    unused.Value |> ignore
+
+                                if x = 9 && armed then
+                                    armed <- false
+                                    items.Value <- [| 1 |]
+
+                                    try
+                                        untrack (fun () -> proj.Keys) |> ignore
+                                    with _ ->
+                                        ()
+
+                                x)
+                            (fun item -> fun () -> item () * 10)
+                            (fun () -> items.Value :> seq<_>)
+
+                    let read () =
+                        try
+                            proj.Keys
+                            |> Array.map (fun k ->
+                                k,
+                                (try
+                                    Ok (proj.Get k)
+                                 with ex ->
+                                     Error ex.Message))
+                            |> Array.toList
+                            |> Ok
+                        with ex ->
+                            Error ex.Message
+
+                    proj.Keys |> ignore
+                    items.Value <- Array.copy items.Value
+                    proj.Keys |> ignore
+                    armed <- true
+                    items.Value <- [| 1; 9; 3 |]
+                    let nested = read (), proj.Status
+                    // The items the nested-in pass read, republished.
+                    keyCalls.Value <- 0
+                    items.Value <- [| 1; 9; 3 |]
+                    let after = read ()
+                    nested, after, keyCalls.Value
+
+                let (nested, after, calls) = script false
+                let (nested', after', _) = script true
+                Expect.equal nested nested' "keys, rows and status after the nested pass"
+                Expect.equal after after' "keys and rows on the next pass"
+                Expect.equal calls 3 "the next pass calls keyOf for every item"
             }
         ]
