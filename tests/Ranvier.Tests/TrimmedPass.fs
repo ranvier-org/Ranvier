@@ -766,4 +766,224 @@ let tests =
                 Expect.equal after after' "keys and rows on the next pass"
                 Expect.equal calls 3 "the next pass calls keyOf for every item"
             }
+
+            test "a pending row stays pending through a swap and ends with its removal" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+
+                let items =
+                    createSignal (Array.init 20 (fun i -> { Id = i + 1; Text = string (i + 1) }))
+
+                let flight = createAsyncSource<int>()
+
+                let proj =
+                    createProjectionWith
+                        (fun (item: Item) -> item.Id)
+                        (fun item ->
+                            let id = (item ()).Id
+                            fun () -> if id = 3 then flight.Value else id)
+                        (fun () -> items.Value :> seq<_>)
+
+                createEffect (fun () ->
+                    try
+                        for key in proj.Keys do
+                            proj.Get key |> ignore
+                    with _ ->
+                        ())
+
+                items.Value <- Array.copy items.Value
+                Expect.isTrue proj.AnyPending "the row is in flight"
+                Expect.sequenceEqual proj.PendingKeys [| 3 |] "and listed"
+                let swapped = Array.copy items.Value
+                let t = swapped[10]
+                swapped[10] <- swapped[15]
+                swapped[15] <- t
+                items.Value <- swapped
+                Expect.sequenceEqual proj.PendingKeys [| 3 |] "still listed after a swap"
+                items.Value <- Array.filter (fun item -> item.Id <> 3) swapped
+                Expect.isFalse proj.AnyPending "nothing is pending once the row is removed"
+            }
+
+            test "a key reader sees the deltas of trimmed passes" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let items, _, _, _, proj = counted 20
+                let reader = proj.NewKeyReader ()
+                reader.Read () |> ignore
+                items.Value <- Array.copy items.Value
+
+                let changes () =
+                    set [ for kv in reader.Read().Changes -> kv.Key, kv.Value ]
+
+                let swapped = Array.copy items.Value
+                let t = swapped[2]
+                swapped[2] <- swapped[12]
+                swapped[12] <- t
+                items.Value <- swapped
+                Expect.equal (changes ()) Set.empty "a swap adds and removes nothing"
+                items.Value <- Array.filter (fun item -> item.Id <> 4) swapped
+                Expect.equal (changes ()) (set [ 4, KeyChange.Removed ]) "a removal"
+                items.Value <- Array.insertAt 7 { Id = 500; Text = "500" } items.Value
+                Expect.equal (changes ()) (set [ 500, KeyChange.Added ]) "an insert"
+                let at = Array.findIndex (fun item -> item.Id = 6) items.Value
+                items.Value <- Array.updateAt at { Id = 600; Text = "600" } items.Value
+
+                Expect.equal (changes ()) (set [ 6, KeyChange.Removed; 600, KeyChange.Added ]) "a replacement at one position"
+            }
+
+            test "a create-first failure after a trimmed swap rolls back and the next pass recovers" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+
+                let items =
+                    createSignal (Array.init 20 (fun i -> { Id = i + 1; Text = string (i + 1) }))
+
+                let keyCalls = ref 0
+                let runs = ref 0
+                let created = ResizeArray<int>()
+                let disposed = ResizeArray<int>()
+
+                let proj =
+                    createProjectionOnce
+                        ProjectionOptions.CreateFirst
+                        (fun (item: Item) ->
+                            keyCalls.Value <- keyCalls.Value + 1
+                            item.Id)
+                        (fun item ->
+                            let id = (item ()).Id
+                            runs.Value <- runs.Value + 1
+                            created.Add id
+                            onCleanup (fun () -> disposed.Add id)
+
+                            if id = 666 then
+                                failwith "factory failed"
+
+                            string id)
+                        (fun () -> items.Value :> seq<_>)
+
+                proj.Keys |> ignore
+                items.Value <- Array.copy items.Value
+                let swapped = Array.copy items.Value
+                let t = swapped[1]
+                swapped[1] <- swapped[18]
+                swapped[18] <- t
+                items.Value <- swapped
+                Expect.equal proj.Keys.Length 20 "the swap applied"
+                items.Value <- Array.insertAt 10 { Id = 666; Text = "666" } swapped
+                Expect.throws (fun () -> proj.Keys |> ignore) "the failing factory fails the pass"
+                let runsAfter = runs.Value
+                Expect.throws (fun () -> proj.Keys |> ignore) "the failure is held"
+                Expect.equal runs.Value runsAfter "no factory ran for the held failure"
+                Expect.sequenceEqual disposed [ 666 ] "no previous row was disposed and the failed row did not leak"
+                Expect.sequenceEqual (created |> Seq.filter (fun id -> id = 666)) [ 666 ] "666 was created once"
+                items.Value <- Array.insertAt 10 { Id = 667; Text = "667" } swapped
+
+                let expected =
+                    swapped
+                    |> Array.map (fun item -> item.Id)
+                    |> Array.insertAt 10 667
+
+                Expect.sequenceEqual proj.Keys expected "the retry applied"
+                let again = Array.copy items.Value
+                let u = again[3]
+                again[3] <- again[5]
+                again[5] <- u
+                keyCalls.Value <- 0
+                items.Value <- again
+                proj.Keys |> ignore
+                Expect.equal keyCalls.Value 2 "trimming resumed"
+            }
+
+            test "a held duplicate-key failure is followed by trimmed passes" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let items, keyCalls, _, _, proj = counted 10
+                items.Value <- Array.copy items.Value
+                let original = items.Value
+                items.Value <- Array.updateAt 5 { Id = 1; Text = "dup" } original
+                Expect.throwsT<InvalidOperationException> (fun () -> proj.Keys |> ignore) "the pass fails"
+                items.Value <- Array.removeAt 5 original
+                Expect.sequenceEqual proj.Keys [ 1; 2; 3; 4; 5; 7; 8; 9; 10 ] "the removal recovers"
+                keyCalls.Value <- 0
+                items.Value <- Array.removeAt 2 items.Value
+                Expect.equal proj.Keys.Length 8 "one key fewer"
+                Expect.equal keyCalls.Value 0 "trimming resumed"
+            }
+
+            test "combinators over a trimmed upstream follow it" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+
+                let items =
+                    createSignal (Array.init 12 (fun i -> { Id = i + 1; Text = string (i + 1) }))
+
+                let up =
+                    createProjection (fun (i: Item) -> i.Id) (fun i -> i.Id) (fun () -> items.Value :> seq<_>)
+
+                let filtered = up |> Projection.filter (fun v -> v % 2 = 0)
+                let sorted = up |> Projection.sortBy (fun v -> -v)
+                let grouped = up |> Projection.groupBy (fun v -> v % 3)
+
+                let check (label: string) =
+                    let plain =
+                        items.Value
+                        |> Array.map (fun i -> i.Id)
+                        |> List.ofArray
+
+                    Expect.equal (List.ofArray filtered.Keys) (List.filter (fun v -> v % 2 = 0) plain) $"{label}: filter"
+                    Expect.equal (List.ofArray sorted.Keys) (List.sortBy (fun v -> -v) plain) $"{label}: sortBy"
+                    let expected = plain |> List.groupBy (fun v -> v % 3)
+
+                    Expect.equal (List.sort (List.ofArray grouped.Keys)) (expected |> List.map fst |> List.sort) $"{label}: group keys"
+
+                    for (gk, members) in expected do
+                        Expect.equal (List.sort (List.ofArray (grouped.Get gk).Keys)) (List.sort members) $"{label}: members of {gk}"
+
+                check "first pass"
+                items.Value <- Array.copy items.Value
+                check "republish"
+                let swapped = Array.copy items.Value
+                let t = swapped[2]
+                swapped[2] <- swapped[9]
+                swapped[9] <- t
+                items.Value <- swapped
+                check "swap"
+                items.Value <- Array.removeAt 4 items.Value
+                check "removal"
+                items.Value <- Array.insertAt 3 { Id = 50; Text = "50" } items.Value
+                check "insert"
+                let at = Array.findIndex (fun i -> i.Id = 7) items.Value
+                items.Value <- Array.updateAt at { Id = 7; Text = "7" } items.Value
+                check "equal copy"
+                let at = Array.findIndex (fun i -> i.Id = 8) items.Value
+                items.Value <- Array.updateAt at { Id = 109; Text = "x" } items.Value
+                check "replacement moves an item between groups"
+            }
+
+            test "a removed row's cleanup that disposes the projection during a trimmed pass leaves it empty" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+
+                let items =
+                    createSignal (Array.init 10 (fun i -> { Id = i + 1; Text = string (i + 1) }))
+
+                let mutable proj = Unchecked.defaultof<Projection<int, string>>
+
+                proj <-
+                    createProjectionWith
+                        (fun (item: Item) -> item.Id)
+                        (fun item ->
+                            if (item ()).Id = 4 then
+                                onCleanup (fun () -> proj.Dispose ())
+
+                            fun () -> (item ()).Text)
+                        (fun () -> items.Value :> seq<_>)
+
+                createEffect (fun () -> proj.Keys |> ignore)
+                items.Value <- Array.copy items.Value
+                items.Value <- Array.filter (fun item -> item.Id <> 4) items.Value
+                Expect.equal proj.Status Status.None "the pass did not fail"
+                Expect.isNull proj.Error "and recorded no error"
+                Expect.sequenceEqual proj.Keys [] "the projection reads empty"
+            }
         ]

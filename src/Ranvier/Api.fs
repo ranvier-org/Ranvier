@@ -523,6 +523,13 @@ module Api =
     /// Solid's unkeyed semantics. Duplicate keys fail the pass.
     /// </para>
     /// <para>
+    /// Equal items produce equal keys: an item equal, under the graph's equality policy, to the item it replaces in the
+    /// previous pass's order (same index from the start, or same offset from the end) keeps its key and row without a
+    /// call to <c>keyOf</c>. <c>keyOf</c> must return equal keys for equal items. A <c>keyOf</c> that reads a tracked
+    /// source, creates a node or registers a cleanup runs for every item of every pass. <c>source</c> is enumerated in
+    /// full before the first <c>keyOf</c> call of a pass.
+    /// </para>
+    /// <para>
     /// <c>factory</c> runs once per key, untracked, when the key enters, inside a
     /// scope that lives until the key is removed. It receives an accessor for
     /// the key's latest item and returns the row's reader. The row's value is

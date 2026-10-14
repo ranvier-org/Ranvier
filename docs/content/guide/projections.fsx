@@ -162,6 +162,8 @@ controls [
 - Key by the whole item (`id`) to create a new row for an edited item. This follows Solid's
   unkeyed semantics.
 
+Equal items keep their keys: a pass calls `keyOf` only for the positions whose item changed since the previous pass.
+
 :::warning Keys must be unique
 Records and unions used as keys compare by contents. Two equal items therefore produce the same
 key and fail the projection pass.

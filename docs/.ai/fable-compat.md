@@ -47,7 +47,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Batching.fs | 11 | 11 | 11 | 11 | 11 | 11 | 0 | 0 |
 | AsyncEdges.fs | 25 | 22 | 7 | 25 | 22 | 7 | 4 | 0 |
 | Projections.fs | 114 | 114 | 114 | 114 | 114 | 114 | 10 | 0 |
-| TrimmedPass.fs | 24 | 24 | 24 | 24 | 24 | 24 | 0 | 0 |
+| TrimmedPass.fs | 30 | 30 | 30 | 30 | 30 | 30 | 0 | 0 |
 | Lookups.fs | 31 | 31 | 31 | 31 | 31 | 31 | 0 | 0 |
 | MemoScopes.fs | 24 | 24 | 22 | 24 | 24 | 22 | 0 | 0 |
 | MemoPurity.fs | 13 | 13 | 13 | 13 | 13 | 13 | 0 | 0 |
@@ -69,7 +69,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | QueryDictionary.fs | 2 | 2 | 2 | 2 | 2 | 2 | 0 | 0 |
 | QueryErgonomics.fs | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | QueryNavigationTests.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 914 | 896 | 852 | 998 | 976 | 927 | 87 | 1 |
+| **Total** | 920 | 902 | 858 | 1004 | 982 | 933 | 87 | 1 |
 
 ## Tests.fs
 
@@ -982,7 +982,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## TrimmedPass.fs
 
-<details><summary>24 passed in every build and delivery that runs them</summary>
+<details><summary>30 passed in every build and delivery that runs them</summary>
 
 - list, lazy seq and array sources give the same keys and rows
 - an array mutated in place and republished is compared against the previous pass's copy
@@ -1008,6 +1008,12 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - random edits give a trimmed pass the same results as a full pass
 - a keyOf that writes the source and reads the projection matches a full pass
 - a pass nested in keyOf during a trimmed pass matches a full pass, and the next pass runs in full
+- a pending row stays pending through a swap and ends with its removal
+- a key reader sees the deltas of trimmed passes
+- a create-first failure after a trimmed swap rolls back and the next pass recovers
+- a held duplicate-key failure is followed by trimmed passes
+- combinators over a trimmed upstream follow it
+- a removed row's cleanup that disposes the projection during a trimmed pass leaves it empty
 
 </details>
 
