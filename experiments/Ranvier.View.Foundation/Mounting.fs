@@ -1190,25 +1190,20 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
                 invalid "Keyed-list boundaries were externally reordered"
 
         match placement with
-        | NewRegion ->
-            range.AddRegion (
-                regionStart,
-                regionEnd,
-                (fun () -> validateRegion (getRegionParent ())),
-                (fun () ->
-                    for entry in entries do
-                        entry.Mount.Relocate ())
-            )
-        | RootRegion ->
-            range.SpanRegion (
-                regionStart,
-                regionEnd,
-                (fun () -> validateRegion (getRegionParent ())),
-                (fun () ->
-                    for entry in entries do
-                        entry.Mount.Relocate ())
-            )
         | NestedRegion -> ()
+        | NewRegion
+        | RootRegion ->
+            let validate () =
+                validateRegion (getRegionParent ())
+
+            let relocate () =
+                for entry in entries do
+                    entry.Mount.Relocate ()
+
+            match placement with
+            | NewRegion -> range.AddRegion (regionStart, regionEnd, validate, relocate)
+            | RootRegion -> range.SpanRegion (regionStart, regionEnd, validate, relocate)
+            | NestedRegion -> ()
 
         let moveToOrder regionParent (ordered: KeyedEntry array) =
             let mutable anchor: Node option = Some regionEnd
