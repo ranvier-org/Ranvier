@@ -47,7 +47,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Batching.fs | 11 | 11 | 11 | 11 | 11 | 11 | 0 | 0 |
 | AsyncEdges.fs | 25 | 22 | 7 | 25 | 22 | 7 | 4 | 0 |
 | Projections.fs | 114 | 114 | 114 | 114 | 114 | 114 | 10 | 0 |
-| TrimmedPass.fs | 5 | 5 | 5 | 5 | 5 | 5 | 0 | 0 |
+| TrimmedPass.fs | 23 | 23 | 23 | 23 | 23 | 23 | 0 | 0 |
 | Lookups.fs | 31 | 31 | 31 | 31 | 31 | 31 | 0 | 0 |
 | MemoScopes.fs | 24 | 24 | 22 | 24 | 24 | 22 | 0 | 0 |
 | MemoPurity.fs | 13 | 13 | 13 | 13 | 13 | 13 | 0 | 0 |
@@ -69,7 +69,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | QueryDictionary.fs | 2 | 2 | 2 | 2 | 2 | 2 | 0 | 0 |
 | QueryErgonomics.fs | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | QueryNavigationTests.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 895 | 877 | 833 | 979 | 957 | 908 | 87 | 1 |
+| **Total** | 913 | 895 | 851 | 997 | 975 | 926 | 87 | 1 |
 
 ## Tests.fs
 
@@ -982,13 +982,31 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## TrimmedPass.fs
 
-<details><summary>5 passed in every build and delivery that runs them</summary>
+<details><summary>23 passed in every build and delivery that runs them</summary>
 
 - list, lazy seq and array sources give the same keys and rows
 - an array mutated in place and republished is compared against the previous pass's copy
 - an int array source reads by index
 - a lazy source is enumerated to completion before keyOf runs
 - a nested pass failing in its source leaves the outer pass's items intact
+- a swap of two items calls keyOf twice and creates no row
+- removing one item calls keyOf zero times and disposes its row
+- prepending one item calls keyOf once
+- replacing one item with an equal-key copy calls keyOf once and updates that row
+- an int array swap calls keyOf twice
+- a changed key equal to a prefix key fails the pass
+- a changed key equal to a suffix key fails the pass
+- a changed key equal to a key kept at an unchanged middle position fails the pass
+- two changed positions with one key fail the pass
+- a length change whose new middle repeats a prefix key fails the pass
+- an item mutated in place at the same position keeps its key
+- a keyOf that reads a signal for one item keeps updating
+- a keyOf that reads a signal for an item entering later turns trimming off
+- a keyOf that registers a cleanup keeps registering it every pass
+- a caller reversing the Keys array in place does not change the next pass
+- a create-first factory that writes the source and reads a sibling row matches a full pass
+- random edits give a trimmed pass the same results as a full pass
+- a keyOf that writes the source and reads the projection matches a full pass
 
 </details>
 

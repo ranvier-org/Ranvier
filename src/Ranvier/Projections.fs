@@ -2015,6 +2015,20 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
     /// <summary>False once a <c>keyOf</c> call has read a tracked source, created a node or used the pass's owner. Never reset.</summary>
     let mutable keyPure = true
 
+    /// <summary>The keys at the changed positions of the last installed pass, while a trimmed pass runs.</summary>
+    let previousChanged = Platform.KeySet<'K>()
+
+    /// <summary>The keys at the changed positions of the trimmed pass in progress.</summary>
+    let changed = Platform.KeySet<'K>()
+
+    /// <summary>The keys this pass added to <c>changed</c>.</summary>
+    let changedKeys = ResizeArray<'K>()
+
+    /// <summary>The changed previous positions of the trimmed pass in progress.</summary>
+    let changedAt = ResizeArray<int>()
+
+    let same = graph.Options.Equality.Comparer<'T>()
+
     /// <summary>A buffer of at least <c>size</c> items: <c>spare</c> when it fits, else a new array.</summary>
     let take (size: int) =
         let buffer = spare
@@ -2086,15 +2100,116 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
             then
                 keyPure <- false
 
+    /// <summary>
+    /// Reconciles the positions whose item differs from the last installed pass, after trimming the common prefix and
+    /// suffix, and stages the removed keys and the key array.
+    /// </summary>
+    member private this.Trim() =
+        let prev = lastItems
+        let prevKeys = lastKeys
+        let n0 = lastCount
+        let cur = passItems
+        let n1 = passCount
+        let limit = min n0 n1
+        let mutable start = 0
+
+        while start < limit
+              && same.Equals (prev[start], cur[start]) do
+            start <- start + 1
+
+        let mutable end0 = n0 - 1
+        let mutable end1 = n1 - 1
+
+        while end0 >= start
+              && end1 >= start
+              && same.Equals (prev[end0], cur[end1]) do
+            end0 <- end0 - 1
+            end1 <- end1 - 1
+
+        // Equal-length middles compare index by index.
+        let aligned = n0 = n1
+        changedAt.Clear ()
+
+        for i in start..end0 do
+            if not aligned || not (same.Equals (prev[i], cur[i])) then
+                changedAt.Add i
+                previousChanged.Add (prevKeys[i]) |> ignore
+
+        let mutable nextKeys: 'K[] = null
+
+        if not aligned then
+            nextKeys <- Array.zeroCreate n1
+            Array.blit prevKeys 0 nextKeys 0 start
+            Array.blit prevKeys (end0 + 1) nextKeys (end1 + 1) (n0 - end0 - 1)
+
+        let visit (i: int) =
+            let item = cur[i]
+            let key = this.KeyOf item
+
+            if not (changed.Add key) then
+                raise (ProjectionFailures.duplicateKey key)
+
+            changedKeys.Add key
+
+            if
+                not (previousChanged.Contains key)
+                && this.HasRow key
+            then
+                // The key belongs to a kept position.
+                raise (ProjectionFailures.duplicateKey key)
+
+            this.Stage (key, item)
+
+            if aligned then
+                if not (EqualityComparer<'K>.Default.Equals(key, prevKeys[i])) then
+                    if isNull nextKeys then
+                        nextKeys <- Array.copy prevKeys
+
+                    nextKeys[i] <- key
+            else
+                nextKeys[i] <- key
+
+        try
+            if aligned then
+                for i in changedAt do
+                    visit i
+            else
+                for i in start..end1 do
+                    visit i
+
+            let removed = this.Removed
+
+            for i in changedAt do
+                let key = prevKeys[i]
+
+                if not (changed.Contains key) then
+                    removed.Add key
+
+            this.StageRemovals ()
+            this.StageKeys nextKeys
+        finally
+            for i in changedAt do
+                previousChanged.Remove (prevKeys[i])
+
+            for key in changedKeys do
+                changed.Remove key
+
+            changedKeys.Clear ()
+
     override this.Enumerate() =
+        let trim = trimValid && keyPure
         trimValid <- false
         this.Read ()
-        let items = passItems
-        let count = passCount
 
-        for i in 0 .. count - 1 do
-            let item = items[i]
-            this.Visit (this.KeyOf item, item)
+        if trim then
+            this.Trim ()
+        else
+            let items = passItems
+            let count = passCount
+
+            for i in 0 .. count - 1 do
+                let item = items[i]
+                this.Visit (this.KeyOf item, item)
 
     override this.Applied() =
         if this.Runs = passRun && keyPure then
