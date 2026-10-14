@@ -290,9 +290,9 @@ The surface, condensed from the [spec clarifications](../superpowers/specs/2026-
 | `t` | one per tag of `HTMLElementTagNameMap`: `t.div parts children`; void tags take parts only | |
 | `t.Attrs` | the policy's common attributes, plus `data` and `aria` | `t.Attrs.Button`, `t.Attrs.Input`, `t.Attrs.Select`, `t.Attrs.TextArea`, `t.Attrs.Option` |
 | `t.Props` | settable primitive properties declared on `HTMLElement` or its ancestors and mixins | one per other declaring type: `t.Props.Input.value` |
-| `t.Events` | events of `HTMLElementEventMap`: `t.Events.onClick` | element-specific events by the tag's native type: `t.Events.Video.onWaitingforkey` |
+| `t.Events` | events of `HTMLElementEventMap`: `t.Events.onClick` | element-specific events by the tag's native type: `t.Events.Video.onWaitingforkey`; media events appear under `Audio` and `Video` |
 
-Names follow `Html.fs`, with the `authoring.json` renames for attributes (`t.Attrs.className`). A group is named by its native type without `HTML` and `Element` (`TableCell`); attribute groups use the same names, while `Html.Attrs` keeps the policy module names (`Html.Attrs.Textarea`). Flat and grouped members are generic in `'native :> <declaring native type>` and a tag fixes `'native`, so an element-specific member on another element is a compile error. A value gives a static part, an `'inst -> value` reader a dynamic part and a `Source` from `t.from` a source part; string and ARIA boolean attributes add `option` forms that remove the attribute on `None`, and string readers and sources map `null` to `None`. Template markup lists static attributes before dynamic ones, while `Html.Program` keeps authoring order; the two agree up to attribute order.
+Names follow `Html.fs`, with the `authoring.json` renames for attributes (`t.Attrs.className`). A group is named by its native type without `HTML` and `Element` (`TableCell`); attribute groups use the same names, while `Html.Attrs` keeps the policy module names (`Html.Attrs.Textarea`). Flat and grouped attribute and property members are generic in `'native :> <declaring native type>`, grouped events in `'native :> <tag native type>`, and a tag fixes `'native`, so an element-specific member on another element is a compile error. Property members exclude the seven setters that replace child nodes (`t.Props.Anchor.text`, `t.Props.Output.value` and others), which `Html.fs` keeps. Raw-text tags (`t.iframe`, `t.script`, `t.style`, `t.noscript`) mount without children; server markup rejects them. A value gives a static part, an `'inst -> value` reader a dynamic part and a `Source` from `t.from` a source part; string and ARIA boolean attributes add `option` forms that remove the attribute on `None`, and string readers and sources map `null` to `None`. Template markup lists static attributes before dynamic ones, while `Html.Program` keeps authoring order; the two agree up to attribute order.
 
 Counts from `Generated/Html.coverage.json`:
 
@@ -300,10 +300,10 @@ Counts from `Generated/Html.coverage.json`:
 |---|---|
 | `templateTagCount` | 112 |
 | `templateAttributeCount` | 34, plus `data` and `aria` |
-| `templatePropertyCount` | 409: 68 flat, 341 in 60 groups (`templatePropertyGroups`) |
+| `templatePropertyCount` | 402: 68 flat, 334 in 59 groups (`templatePropertyGroups`); 7 child-replacing setters in `templateOmissions` |
 | `templateEventCount` | 132: 108 flat, 24 in 3 groups (`templateEventGroups`: `Audio`, `Body`, `Video`) |
 
-`HtmlTemplate.fs` has 5,298 lines and 405,494 bytes. `Html.fs` is byte-identical to its pre-plan output (587,597 bytes).
+`HtmlTemplate.fs` has 5,230 lines and 399,960 bytes. `Html.fs` is byte-identical to its pre-plan output (587,597 bytes).
 
 ### Bundle and emitted JavaScript
 

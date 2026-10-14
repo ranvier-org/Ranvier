@@ -68,13 +68,15 @@ Plan 2c ([implementation plan](../plans/2026-10-14-component-templates-catalogue
 
   | Builder | Flat members | Groups |
   |---|---|---|
-  | `t` | one member per tag of `HTMLElementTagNameMap` (112); void tags take parts only | |
+  | `t` | one member per tag of `HTMLElementTagNameMap` (112); void tags take parts only; raw-text tags (`iframe`, `script`, `style`, `noscript`) take no children | |
   | `t.Attrs` | the policy group with `"module": ""`, plus `data` and `aria` | one group per other policy group (`t.Attrs.Button.disabled`) |
   | `t.Props` | settable properties declared on `HTMLElement` or its ancestors and mixins | one group per other declaring type (`t.Props.Input.value`) |
-  | `t.Events` | events of `HTMLElementEventMap` | element-specific events, grouped by the tag's native type (`t.Events.Video.onWaitingforkey`) |
+  | `t.Events` | events of `HTMLElementEventMap` | element-specific events, grouped by the tag's native type (`t.Events.Video.onWaitingforkey`); media events appear under `Audio` and `Video` |
 
   A group is named by its native type with a leading `HTML` and a trailing `Element` removed: `HTMLInputElement` gives `Input`, `HTMLTableCellElement` gives `TableCell`. Template attribute groups are named by native type too, so `t.Attrs.TextArea` matches `t.Props.TextArea`; `Html.Attrs` keeps the policy module names (`Html.Attrs.Textarea`).
-- **Element typing.** A flat or grouped member is generic in `'native` with `'native :> <declaring native type>`, and a tag member fixes `'native` to the tag's native type, so `t.Props.Input.value` inside `t.div` is a compile error.
+- **Element typing.** A flat or grouped attribute or property member is generic in `'native` with `'native :> <declaring native type>`, and a tag member fixes `'native` to the tag's native type, so `t.Props.Input.value` inside `t.div` is a compile error. Grouped events are constrained to the tag's native type: `t.Events.Video.onWaitingforkey` takes `'native :> HTMLVideoElement`, although `HTMLMediaElementEventMap` declares the event.
+- **Child-replacing setters.** Template property members exclude setters that replace the element's child nodes: `text` on `HTMLAnchorElement`, `HTMLOptionElement`, `HTMLTitleElement` and `HTMLScriptElement`, `value` and `defaultValue` on `HTMLOutputElement`, and `defaultValue` on `HTMLTextAreaElement`. `Html.fs` keeps them. Coverage lists them under `templateOmissions` with the reason "setter replaces child nodes".
+- **Raw-text elements.** A raw-text element (`iframe`, `script`, `style`, `noscript`) mounts in the DOM when it has no children. A raw-text element with children fails when the template compiles, and server markup rejects every raw-text element, as `Html.render` does.
 - **Overloads.**
 
   | Kind | Overloads |
