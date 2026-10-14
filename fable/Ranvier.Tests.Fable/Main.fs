@@ -54,6 +54,7 @@ let all =
                     Ranvier.Tests.Projections.tests
                     Ranvier.Tests.Projections.summaryTests
                     Ranvier.Tests.Projections.deltaReaderTests
+                    Ranvier.Tests.Projections.rowOptionTests
                 ]
             testList "Lookups.fs" [ Ranvier.Tests.Lookups.tests ]
             testList "MemoScopes.fs" [ Ranvier.Tests.MemoScopes.tests ]

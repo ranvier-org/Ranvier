@@ -547,6 +547,27 @@ module Api =
         new KeyedProjection<'T, 'K, 'V> (Graph.Current, keyOf, Unchecked.defaultof<'T -> 'V>, factory, source) :> Projection<'K, 'V>
 
     /// <summary>
+    /// <c>createProjectionWith</c> with <c>options</c>.
+    /// </summary>
+    /// <remarks>
+    /// With <c>ProjectionOptions.CreateFirst</c> a pass creates its added rows, then retires its removed rows, then
+    /// writes survivors' items and publishes the key set. A factory that raises fails the pass: the rows the pass created
+    /// are disposed, last first, and every row, item and key stays as the previous pass applied it. The next change to a
+    /// source retries the pass.
+    /// </remarks>
+    let createProjectionWithOptions
+        (options: ProjectionOptions)
+        (keyOf: 'T -> 'K)
+        (factory: (unit -> 'T) -> (unit -> 'V))
+        (source: unit -> 'T seq)
+        : Projection<'K, 'V> =
+        let rows =
+            new KeyedProjection<'T, 'K, 'V> (Graph.Current, keyOf, Unchecked.defaultof<'T -> 'V>, factory, source)
+
+        rows.CreateFirst <- (options &&& ProjectionOptions.CreateFirst) = ProjectionOptions.CreateFirst
+        rows :> Projection<'K, 'V>
+
+    /// <summary>
     /// <c>createProjectionWith keyOf (fun item -> fun () -> map (item ())) source</c>,
     /// with one fewer node per key. <c>map</c> re-runs when the key's item changes or
     /// a value it read changes, and raises <c>InvalidOperationException</c> if it
