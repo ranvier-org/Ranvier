@@ -311,8 +311,8 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     /// </summary>
     let mutable failure: Failure = null
 
-    /// <summary>The <c>NotReadyException</c> that suspended the last pass, or null.</summary>
-    let mutable suspension: exn = null
+    /// <summary>The captured <c>NotReadyException</c> that suspended the last pass, or null.</summary>
+    let mutable suspension: Platform.CapturedFailure = null
     let mutable status = Status.None
     let mutable disposed = false
     let mutable link: OwnerLink = null
@@ -719,8 +719,8 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
                         inCleanup <- false))
 
     /// <summary>
-    /// Runs a pass. A nested pass that runs during the enumeration or the diff supersedes the pass: the pass applies
-    /// nothing further, discards its own exception, and leaves the projection in the nested pass's state. The caller
+    /// Runs a pass. A nested pass that runs during the enumeration or the diff supersedes the pass: the pass stops
+    /// applying, discards its own exception, and leaves the projection in the nested pass's state. The caller
     /// receives the nested pass's outcome: its failure, its suspension, or a normal return.
     /// </summary>
     member private this.Run() =
@@ -805,7 +805,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             this.Pass.ClearStaged ()
             this.Abandon ()
             status <- Status.Pending
-            suspension <- ex
+            suspension <- Platform.captureFailure null ex
 
             if not (previousStatus.HasFlag Status.Pending) then
                 Tracer.Moved (graph, id, null)
@@ -855,7 +855,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             if status = Status.Error then
                 graph.Raise failure
             elif status = Status.Pending then
-                raise suspension
+                Platform.rethrowStored suspension
             elif previousStatus <> Status.None then
                 Tracer.Moved (graph, id, null)
                 beacon.NotifyFailure this.Running
@@ -1055,7 +1055,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
                     graph.Raise failure
                 elif freshness = Freshness.Dirty then
                     if isNull (box passScope) then
-                        this.RunCurrent ()
+                        this.Run ()
                     else
                         // A pass run by a cleanup's read replaces this one,
                         // and a write after that read starts over, as on
@@ -1066,25 +1066,11 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
                         if not disposed then
                             if runs = before then
-                                this.RunCurrent ()
+                                this.Run ()
                             elif freshness = Freshness.Dirty then
                                 this.EnsureCurrent ()
             finally
                 graph.ExitPull ()
-
-    /// <summary>
-    /// Runs a pass, and runs again while a write after a pass that superseded it left the projection dirty.
-    /// </summary>
-    member private this.RunCurrent() =
-        let before = runs
-        this.Run ()
-
-        if
-            runs <> before + 1
-            && freshness = Freshness.Dirty
-            && not disposed
-        then
-            this.EnsureCurrent ()
 
     /// <summary><c>EnsureCurrent</c> for <c>reader</c>, which reads the result of the pass in its current run.</summary>
     member private this.PullFor(reader: IComputation) =
@@ -1215,9 +1201,19 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
     /// <summary>
     /// A tracked read of a row. A pending row raises <c>NotReadyException</c> naming the source its reader awaits, and
-    /// links the caller to that source as well as to the row. A memo-free row is a tracked read of the key set.
+    /// links the caller to that source as well as to the row. A memo-free row is a tracked read of the key set. A memo
+    /// row whose factory is still running raises <c>InvalidOperationException</c>.
     /// </summary>
     member private this.ReadRow(entry: RowEntry<'K, 'V>) : 'V =
+        if isNull (box entry.Row) && isNull this.OnceValue then
+            raise (
+                InvalidOperationException (
+                    "The row of key "
+                    + string entry.Key
+                    + " is still being created."
+                )
+            )
+
         if isNull (box entry.Row) then
             graph.Track (keys :> ISource)
 
@@ -1886,10 +1882,12 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
 
     /// <summary>
     /// A reader that raises the failure of the factory for <c>key</c>. Under <c>CreateFirst</c> the failure is raised at
-    /// once instead. A pending-source read becomes an <c>InvalidOperationException</c> whose message ends with
-    /// <c>advice</c>.
+    /// once instead, unless the factory ran a nested pass since <c>Runs</c> was <c>before</c>. A pending-source read
+    /// becomes an <c>InvalidOperationException</c> whose message ends with <c>advice</c>.
     /// </summary>
-    member private this.FactoryFailure(key: 'K, error: exn, advice: string) : unit -> 'V =
+    member private this.FactoryFailure(key: 'K, error: exn, advice: string, before: int) : unit -> 'V =
+        let raiseNow = this.CreateFirst && this.Runs = before
+
         match error with
         | NotReadyException _ ->
             let message =
@@ -1907,14 +1905,14 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
                 InvalidOperationException (message, error)
 #endif
 
-            if this.CreateFirst then
+            if raiseNow then
                 raise failure
 
             fun () -> raise failure
         | _ ->
             let captured = Platform.captureFailure null error
 
-            if this.CreateFirst then
+            if raiseNow then
                 Platform.rethrowStored captured
 
             fun () -> Platform.rethrowStored captured
@@ -1929,6 +1927,7 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
 #if RANVIER_COUNTERS
         Counters.FactoryRowCreated ()
 #endif
+        let before = this.Runs
 
         graph.RunOwned (
             keyScope,
@@ -1937,7 +1936,7 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
                     try
                         factory (fun () -> source.Value)
                     with ex ->
-                        this.FactoryFailure (key, ex, " Read the source inside the reader the factory returns.")
+                        this.FactoryFailure (key, ex, " Read the source inside the reader the factory returns.", before)
 
                 entry.Row <- Memo<'V>.Create(graph, this.Compute entry, rowMode)
                 Tracer.Part (graph, (entry.Row :> INode).Id, (this :> INode).Id, box key)
@@ -1965,6 +1964,7 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
 #if RANVIER_COUNTERS
         Counters.OnceRowCreated ()
 #endif
+        let before = this.Runs
 
         graph.RunOwned (
             keyScope,
@@ -1972,7 +1972,7 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
                 try
                     entry.Value <- once (fun () -> source.Value)
                 with ex ->
-                    entry.Reader <- this.FactoryFailure (key, ex, "")
+                    entry.Reader <- this.FactoryFailure (key, ex, "", before)
         )
 
     abstract Enumerate: unit -> unit

@@ -47,7 +47,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Batching.fs | 11 | 11 | 11 | 11 | 11 | 11 | 0 | 0 |
 | AsyncEdges.fs | 25 | 22 | 7 | 25 | 22 | 7 | 4 | 0 |
 | Projections.fs | 114 | 114 | 114 | 114 | 114 | 114 | 10 | 0 |
-| TrimmedPass.fs | 33 | 33 | 33 | 33 | 33 | 33 | 0 | 0 |
+| TrimmedPass.fs | 36 | 36 | 36 | 36 | 36 | 36 | 0 | 0 |
 | Lookups.fs | 31 | 31 | 31 | 31 | 31 | 31 | 0 | 0 |
 | MemoScopes.fs | 24 | 24 | 22 | 24 | 24 | 22 | 0 | 0 |
 | MemoPurity.fs | 13 | 13 | 13 | 13 | 13 | 13 | 0 | 0 |
@@ -69,7 +69,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | QueryDictionary.fs | 2 | 2 | 2 | 2 | 2 | 2 | 0 | 0 |
 | QueryErgonomics.fs | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | QueryNavigationTests.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 923 | 905 | 861 | 1007 | 985 | 936 | 87 | 1 |
+| **Total** | 926 | 908 | 864 | 1010 | 988 | 939 | 87 | 1 |
 
 ## Tests.fs
 
@@ -982,7 +982,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## TrimmedPass.fs
 
-<details><summary>33 passed in every build and delivery that runs them</summary>
+<details><summary>36 passed in every build and delivery that runs them</summary>
 
 - list, lazy seq and array sources give the same keys and rows
 - an array mutated in place and republished is compared against the previous pass's copy
@@ -990,6 +990,9 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a lazy source is enumerated to completion before keyOf runs
 - a nested pass failing in its source leaves the projection failed with that failure
 - a nested pass suspending in its source leaves the projection pending
+- a keyOf that writes the source on every call and reads the projection once returns, and later reads converge
+- a create-first factory that raises after a nested pass kept its key leaves that failure on the row
+- a row read while its factory runs raises naming the key
 - a swap of two items calls keyOf twice and creates no row
 - removing one item calls keyOf zero times and disposes its row
 - prepending one item calls keyOf once

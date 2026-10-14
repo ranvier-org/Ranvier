@@ -370,42 +370,204 @@ let tests =
             }
 
             test "a nested pass suspending in its source leaves the projection pending" {
+                for createFirst in [ false; true ] do
+                    let label = if createFirst then "create-first" else "default"
+                    use g = new Graph ()
+                    use _ = g.Activate ()
+                    let tick = createSignal 0
+                    let flight = createAsyncSource<int>()
+                    let mutable waiting = false
+                    let mutable fired = false
+                    let mutable proj: Projection<int, int> = Unchecked.defaultof<_>
+
+                    let keyOf x =
+                        if x = 2 && not fired then
+                            fired <- true
+                            waiting <- true
+                            tick.Value <- 1
+
+                            try
+                                proj.Keys |> ignore
+                            with _ ->
+                                ()
+
+                        x
+
+                    let factory (item: unit -> int) =
+                        fun () -> item () * 10
+
+                    let source () =
+                        tick.Value |> ignore
+
+                        if waiting then
+                            [| flight.Value |] :> seq<_>
+                        else
+                            [| 1; 2; 3 |] :> seq<_>
+
+                    proj <-
+                        if createFirst then
+                            createProjectionWithOptions ProjectionOptions.CreateFirst keyOf factory source
+                        else
+                            createProjectionWith keyOf factory source
+
+                    Expect.throwsT<NotReadyException> (fun () -> proj.Keys |> ignore) $"{label}: the read raises the nested pass's suspension"
+
+                    Expect.equal proj.Status Status.Pending $"{label}: the projection reports the suspension"
+                    flight.Settle 5
+                    Expect.sequenceEqual proj.Keys [ 5 ] $"{label}: the keys of the settled source"
+                    Expect.equal (proj.Get 5) 50 $"{label}: and its row"
+            }
+
+            test "a keyOf that writes the source on every call and reads the projection once returns, and later reads converge" {
                 use g = new Graph ()
                 use _ = g.Activate ()
-                let tick = createSignal 0
-                let flight = createAsyncSource<int>()
-                let mutable waiting = false
-                let mutable fired = false
+                let counter = createSignal 0
+                let items = createSignal [| 1; 2 |]
+                let mutable guard = false
                 let mutable proj: Projection<int, int> = Unchecked.defaultof<_>
 
                 proj <-
                     createProjection
                         (fun x ->
-                            if x = 2 && not fired then
-                                fired <- true
-                                waiting <- true
-                                tick.Value <- 1
+                            if x = 1 && counter.Peek < 4 then
+                                counter.Value <- counter.Value + 1
 
-                                try
-                                    proj.Keys |> ignore
-                                with _ ->
-                                    ()
+                                if not guard then
+                                    guard <- true
+
+                                    try
+                                        untrack (fun () -> proj.Keys) |> ignore
+                                    with _ ->
+                                        ()
+
+                                    guard <- false
 
                             x)
                         (fun x -> x * 10)
                         (fun () ->
-                            tick.Value |> ignore
+                            counter.Value |> ignore
+                            items.Value :> seq<_>)
 
-                            if waiting then
-                                [| flight.Value |] :> seq<_>
-                            else
-                                [| 1; 2; 3 |] :> seq<_>)
+                Expect.sequenceEqual proj.Keys [ 1; 2 ] "the first read returns"
+                let first = proj.Runs
+                Expect.sequenceEqual proj.Keys [ 1; 2 ] "the second read"
+                Expect.isGreaterThan proj.Runs first "the projection was left dirty, and the next read ran a fresh pass"
+                let mutable reads = 0
+                let mutable before = -1
 
-                Expect.throwsT<NotReadyException> (fun () -> proj.Keys |> ignore) "the read raises the nested pass's suspension"
-                Expect.equal proj.Status Status.Pending "the projection reports the suspension"
-                flight.Settle 5
-                Expect.sequenceEqual proj.Keys [ 5 ] "the keys of the settled source"
-                Expect.equal (proj.Get 5) 50 "and its row"
+                while reads < 10 && before <> proj.Runs do
+                    before <- proj.Runs
+                    Expect.sequenceEqual proj.Keys [ 1; 2 ] $"read {reads}"
+                    reads <- reads + 1
+
+                Expect.equal before proj.Runs "a later read runs no pass"
+                Expect.sequenceEqual (proj.Keys |> Array.map proj.Get) [ 10; 20 ] "every key has a row"
+            }
+
+            test "a create-first factory that raises after a nested pass kept its key leaves that failure on the row" {
+                for memoFree in [ false; true ] do
+                    let label =
+                        if memoFree then
+                            "createProjectionOnce"
+                        else
+                            "createProjectionWithOptions"
+
+                    use g = new Graph ()
+                    use _ = g.Activate ()
+                    let items = createSignal [| 1 |]
+                    let mutable armed = false
+                    let mutable proj: Projection<int, unit -> int> = Unchecked.defaultof<_>
+
+                    // Key 2's factory writes a source that keeps key 2, reads the projection, then raises.
+                    let factory (item: unit -> int) =
+                        let x = item ()
+
+                        if x = 2 && armed then
+                            armed <- false
+                            items.Value <- [| 1; 2 |]
+
+                            try
+                                untrack (fun () -> proj.Keys) |> ignore
+                            with _ ->
+                                ()
+
+                            failwith "factory 2 failed"
+
+                        fun () -> item () * 10
+
+                    let source () =
+                        items.Value :> seq<_>
+
+                    proj <-
+                        if memoFree then
+                            createProjectionOnce ProjectionOptions.CreateFirst id factory source
+                        else
+                            createProjectionWithOptions
+                                ProjectionOptions.CreateFirst
+                                id
+                                (fun item ->
+                                    let read = factory item
+                                    fun () -> read)
+                                source
+
+                    proj.Keys |> ignore
+                    armed <- true
+                    items.Value <- [| 1; 2; 4 |]
+                    Expect.sequenceEqual proj.Keys [ 1; 2 ] $"{label}: the keys of the source the factory wrote"
+                    Expect.equal ((proj.Get 1) ()) 10 $"{label}: row 1"
+
+                    let raised =
+                        try
+                            proj.Get 2 |> ignore
+                            ""
+                        with ex ->
+                            ex.Message
+
+                    Expect.equal raised "factory 2 failed" $"{label}: row 2 raises the factory's failure"
+            }
+
+            test "a row read while its factory runs raises naming the key" {
+                for createFirst in [ false; true ] do
+                    let label = if createFirst then "create-first" else "default"
+                    use g = new Graph ()
+                    use _ = g.Activate ()
+                    let items = createSignal [| 1 |]
+                    let mutable armed = false
+                    let inner = ref ""
+                    let mutable proj: Projection<int, int> = Unchecked.defaultof<_>
+
+                    let factory (item: unit -> int) =
+                        let x = item ()
+
+                        if x = 2 && armed then
+                            armed <- false
+                            items.Value <- [| 1; 2 |]
+
+                            inner.Value <-
+                                try
+                                    untrack (fun () -> proj.Get 2) |> ignore
+                                    ""
+                                with ex ->
+                                    ex.Message
+
+                        fun () -> item () * 10
+
+                    let source () =
+                        items.Value :> seq<_>
+
+                    proj <-
+                        if createFirst then
+                            createProjectionWithOptions ProjectionOptions.CreateFirst id factory source
+                        else
+                            createProjectionWith id factory source
+
+                    proj.Keys |> ignore
+                    armed <- true
+                    items.Value <- [| 1; 2; 4 |]
+                    let keys = proj.Keys
+                    Expect.equal inner.Value "The row of key 2 is still being created." $"{label}: the read inside the factory"
+                    Expect.sequenceEqual keys [ 1; 2 ] $"{label}: the keys of the source the factory wrote"
+                    Expect.sequenceEqual (keys |> Array.map proj.Get) [ 10; 20 ] $"{label}: the rows once created"
             }
 
             test "a swap of two items calls keyOf twice and creates no row" {
