@@ -2644,4 +2644,107 @@ let rowOptionTests =
                 Expect.isNull proj.Error "and recorded no error"
                 Expect.containsAll retired [ 1; 2; 3 ] "the disposal took the created row with it"
             }
+
+            test "a memo-free row is its factory's result, built once per key" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let items = createSignal [ (1, "a"); (2, "b") ]
+                let mutable builds = 0
+
+                let proj =
+                    createProjectionOnce
+                        ProjectionOptions.None
+                        fst
+                        (fun item ->
+                            builds <- builds + 1
+                            ref (snd (item ())))
+                        (fun () -> items.Value)
+
+                let one = proj.Get 1
+                items.Value <- [ (1, "c"); (2, "b") ]
+
+                Expect.isTrue (obj.ReferenceEquals (one, proj.Get 1)) "the row value is stored, not recomputed"
+                Expect.equal builds 2 "one build per key"
+            }
+
+            test "a tracked read of a memo-free row wakes when its key leaves" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let items = createSignal [ 1; 2 ]
+
+                let proj =
+                    createProjectionOnce ProjectionOptions.None id (fun item -> item () * 10) (fun () -> items.Value)
+
+                let seen = ResizeArray<int option>()
+                createEffect (fun () -> seen.Add (proj.TryGet 2))
+                items.Value <- [ 1 ]
+
+                Expect.sequenceEqual seen [ Some 20; None ] "the reader re-ran when key 2 left"
+            }
+
+            test "a memo-free factory failure is raised by reads of its row" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let items = createSignal [ 1 ]
+
+                let proj =
+                    createProjectionOnce ProjectionOptions.None id (fun item -> if item () = 1 then failwith "factory" else item ()) (fun () ->
+                        items.Value)
+
+                Expect.sequenceEqual proj.Keys [ 1 ] "the pass succeeds"
+                Expect.throwsC (fun () -> proj.Get 1 |> ignore) (fun error -> Expect.equal error.Message "factory" "the stored failure")
+            }
+
+            test "memo-free create-first rows keep the previous rows when a factory fails" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let items = createSignal [ 1 ]
+                let retired = ResizeArray<int>()
+                let mutable failOn = 0
+
+                let proj =
+                    createProjectionOnce
+                        ProjectionOptions.CreateFirst
+                        id
+                        (fun item ->
+                            let key = item ()
+                            onCleanup (fun () -> retired.Add key)
+
+                            if key = failOn then
+                                failwith "factory"
+
+                            key * 10)
+                        (fun () -> items.Value)
+
+                createEffect (fun () ->
+                    try
+                        proj.Keys |> ignore
+                    with _ ->
+                        ())
+
+                failOn <- 3
+                items.Value <- [ 2; 3 ]
+
+                Expect.sequenceEqual retired [ 3; 2 ] "this pass's rows retire, last first"
+                Expect.equal proj.Status Status.Error "the pass failed"
+                failOn <- 0
+                items.Value <- [ 1; 4 ]
+                Expect.sequenceEqual proj.Keys [ 1; 4 ] "the next pass applies"
+                Expect.equal (proj.Get 1) 10 "row 1 survived"
+            }
+
+            test "value readers and combinators reject memo-free rows" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let items = createSignal [ 1 ]
+
+                let proj =
+                    createProjectionOnce ProjectionOptions.None id (fun item -> item ()) (fun () -> items.Value)
+
+                Expect.throwsT<NotSupportedException> (fun () -> proj.NewValueReader () |> ignore) "NewValueReader"
+                Expect.throwsT<NotSupportedException> (fun () -> Projection.filter (fun _ -> true) proj |> ignore) "filter"
+                Expect.throwsT<NotSupportedException> (fun () -> Projection.map id proj |> ignore) "map"
+                Expect.throwsT<NotSupportedException> (fun () -> Projection.sortBy id proj |> ignore) "sortBy"
+                Expect.throwsT<NotSupportedException> (fun () -> Projection.fold (+) 0 proj |> ignore) "fold"
+            }
         ]

@@ -569,6 +569,34 @@ module Api =
         rows :> Projection<'K, 'V>
 
     /// <summary>
+    /// A keyed projection whose row value is the factory's result, stored once per key and read without a row memo.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>factory</c> runs once per key, untracked, inside a scope that lives until the key is removed, and receives an
+    /// accessor for the key's latest item. A tracked read of a row tracks the key set, so the reader wakes when the key
+    /// leaves. Without <c>ProjectionOptions.CreateFirst</c> a factory failure is stored and raised by every read of the
+    /// row; with it, the failure fails the pass as <c>createProjectionWithOptions</c> describes.
+    /// </para>
+    /// <para>
+    /// <c>NewValueReader</c>, <c>AsObservableCollection</c> and the <c>Projection</c> combinators raise
+    /// <c>NotSupportedException</c> on the projection.
+    /// </para>
+    /// </remarks>
+    let createProjectionOnce
+        (options: ProjectionOptions)
+        (keyOf: 'T -> 'K)
+        (factory: (unit -> 'T) -> 'V)
+        (source: unit -> 'T seq)
+        : Projection<'K, 'V> =
+        let rows =
+            new KeyedProjection<'T, 'K, 'V> (Graph.Current, keyOf, Unchecked.defaultof<'T -> 'V>, Unchecked.defaultof<_>, source)
+
+        rows.CreateFirst <- (options &&& ProjectionOptions.CreateFirst) = ProjectionOptions.CreateFirst
+        rows.UseOnce factory
+        rows :> Projection<'K, 'V>
+
+    /// <summary>
     /// <c>createProjectionWith keyOf (fun item -> fun () -> map (item ())) source</c>,
     /// with one fewer node per key. <c>map</c> re-runs when the key's item changes or
     /// a value it read changes, and raises <c>InvalidOperationException</c> if it
