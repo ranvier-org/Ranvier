@@ -6,7 +6,6 @@ open Fable.Core.TS.Dom
 open Ranvier.View.Foundation
 open Ranvier.View.Foundation.Representation
 open Ranvier.View.Foundation.Template
-open Ranvier.View.Foundation.Generated.HtmlTemplate
 
 [<Global>]
 let private globalThis: TS.Es.GlobalThis = jsNative
@@ -21,8 +20,6 @@ let private host () =
 let private mount graph (host: HTMLElement) view =
     Mounting.mount graph None (fun errors -> failwithf "%A" errors) host None (fun context -> Program.run view context.Backend)
 
-type Decoy = { Index: string }
-
 type Card =
     {
         Index: int
@@ -30,6 +27,9 @@ type Card =
         Busy: Signal<bool>
         Value: Signal<string>
     }
+
+/// <summary>The most recent record with an <c>Index</c> label in scope for the <c>card</c> template.</summary>
+type Decoy = { Index: string }
 
 let private card =
     Component.define (fun _ (props: Card) -> props) (fun t ->
@@ -64,7 +64,14 @@ let private labelInference () =
                     Value = value
                 })
 
-    equal (Some "card-7") ((host.querySelector "div" |> unbox<HTMLElement>).getAttribute "id")
+    let div = host.querySelector "div" |> unbox<HTMLElement>
+
+    let button =
+        host.querySelector "button"
+        |> unbox<HTMLButtonElement>
+
+    equal (Some "card") (div.getAttribute "class")
+    equal (Some "card-7") (div.getAttribute "id")
 
     equal
         "v"
@@ -72,15 +79,9 @@ let private labelInference () =
          |> unbox<HTMLInputElement>)
             .value
 
-    (host.querySelector "button"
-     |> unbox<HTMLButtonElement>)
-        .click()
-
-    equal
-        true
-        (host.querySelector "button"
-         |> unbox<HTMLButtonElement>)
-            .disabled
+    equal false button.disabled
+    button.click ()
+    equal true button.disabled
 
     mounted.Dispose ()
 
