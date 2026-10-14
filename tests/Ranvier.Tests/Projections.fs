@@ -2571,6 +2571,49 @@ let rowOptionTests =
                 Expect.equal (proj.Get 1) "c" "with the survivor's latest item"
             }
 
+            test "a source written by a rolled-back row's cleanup lets the next read retry the failed pass" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let items = createSignal [ 1 ]
+                let poke = createSignal 0
+                let created = ResizeArray<int>()
+                let mutable failOn = 3
+
+                let proj =
+                    createProjectionWithOptions
+                        ProjectionOptions.CreateFirst
+                        id
+                        (fun item ->
+                            let key = item ()
+                            created.Add key
+
+                            onCleanup (fun () ->
+                                if key = 2 then
+                                    poke.Value <- poke.Value + 1)
+
+                            if key = failOn then
+                                failOn <- 0
+                                failwith "factory"
+
+                            fun () -> item ())
+                        (fun () ->
+                            poke.Value |> ignore
+                            items.Value)
+
+                let readKeys () =
+                    try
+                        proj.Keys |> ignore
+                    with _ ->
+                        ()
+
+                createEffect readKeys
+                items.Value <- [ 1; 2; 3 ]
+                readKeys ()
+
+                Expect.sequenceEqual proj.Keys [ 1; 2; 3 ] "the retry applied the pass"
+                Expect.equal proj.Status Status.None "and cleared the failure"
+            }
+
             test "a removed row's cleanup that disposes the projection stops a create-first pass" {
                 use g = new Graph ()
                 use _ = g.Activate ()
