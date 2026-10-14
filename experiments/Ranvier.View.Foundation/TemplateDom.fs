@@ -203,7 +203,8 @@ let private validateParsed (content: DocumentFragment) (walk: int array) (target
 let private readsOnce (row: RegionRow) =
     match row with
     | ViewRow -> true
-    | ArmRow -> false
+    | ArmRow
+    | ItemRow _ -> false
 
 /// <summary>Compiles a definition once: parses its skeleton markup and builds its walk, slot and region tables.</summary>
 /// <remarks>The skeleton belongs to the main document, as do its clones.</remarks>

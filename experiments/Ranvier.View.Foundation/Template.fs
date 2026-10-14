@@ -68,6 +68,8 @@ and [<NoEquality; NoComparison>] RegionRow =
     | ViewRow
     /// <summary>The item is an <c>Arm</c>; the arm's definition receives a reader of the current arm's payload.</summary>
     | ArmRow
+    /// <summary>The item is a row value; the conversion turns a reader of the current item into the definition's props.</summary>
+    | ItemRow of TemplateComponent * Func<(unit -> obj), obj>
 
 /// <summary>A template component definition without its props type.</summary>
 and [<AbstractClass>] TemplateComponent internal (setup: Func<Setup, obj, obj>, root: TemplateNode) =
@@ -154,6 +156,7 @@ let internal rowRenderer (row: RegionRow) (current: unit -> obj) (backend: Backe
     | ArmRow ->
         let arm = unbox<Arm>(current ())
         backend.Template (arm.Definition, arm.Reader.Invoke current)
+    | ItemRow (definition, props) -> backend.Template (definition, props.Invoke current)
 
 let private serverRow (backend: Backend) (row: RegionRow) (item: obj) =
     rowRenderer row (fun () -> item) backend
@@ -286,13 +289,19 @@ let rec private expandNode (ops: Operations<'view>) (instance: obj) (node: Templ
         match region.Row with
         | ViewRow ->
             let _, item = (region.Items.Invoke instance)[0]
-            ops.Embed (rowRenderer region.Row (fun () -> item))
-        | ArmRow -> ops.Keyed (fun left right -> region.Same.Invoke (left, right)) (fun () -> region.Items.Invoke instance) (expandArm ops)
+            expandRow ops region.Row (fun () -> item)
+        | ArmRow
+        | ItemRow _ ->
+            ops.Keyed (fun left right -> region.Same.Invoke (left, right)) (fun () -> region.Items.Invoke instance) (expandRow ops region.Row)
 
-/// <summary>Expands the current arm's definition through the operations.</summary>
-and private expandArm (ops: Operations<'view>) (current: unit -> obj) : 'view =
-    let arm = unbox<Arm>(current ())
-    expandWith ops arm.Definition (arm.Reader.Invoke current)
+/// <summary>Expands a region row through the operations; the reader returns the row's current item.</summary>
+and private expandRow (ops: Operations<'view>) (row: RegionRow) (current: unit -> obj) : 'view =
+    match row with
+    | ViewRow -> ops.Embed (rowRenderer row current)
+    | ArmRow ->
+        let arm = unbox<Arm>(current ())
+        expandWith ops arm.Definition (arm.Reader.Invoke current)
+    | ItemRow (definition, props) -> expandWith ops definition (props.Invoke current)
 
 /// <summary>Expands a definition into any view representation through its operations.</summary>
 and expandWith (ops: Operations<'view>) (definition: TemplateComponent) (props: obj) : 'view =
@@ -570,6 +579,25 @@ type TemplateBuilder<'inst> internal () =
                             let current = key (unbox instance)
                             [| box current, box (arms current) |])
                     Row = ArmRow
+                }
+        )
+
+    /// <summary>Renders one <c>row</c> instance per item, between region markers; items with equal keys under <c>=</c> keep their row, whose props read the current item.</summary>
+    /// <remarks>Duplicate keys fail before the rows change.</remarks>
+    member _.each<'item, 'key when 'key: equality>
+        (key: 'item -> 'key)
+        (items: 'inst -> 'item array)
+        (row: Component<unit -> 'item>)
+        : TemplateView<'inst> =
+        TemplateView (
+            RegionNode
+                {
+                    Region.Same = Func<obj, obj, bool>(fun left right -> unbox<'key> left = unbox<'key> right)
+                    Items =
+                        Func<obj, (obj * obj) array>(fun instance ->
+                            items (unbox instance)
+                            |> Array.map (fun item -> box (key item), box item))
+                    Row = ItemRow (row :> TemplateComponent, Func<(unit -> obj), obj>(fun current -> box (fun () -> unbox<'item>(current ()))))
                 }
         )
 

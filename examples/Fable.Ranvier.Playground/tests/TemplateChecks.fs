@@ -1288,6 +1288,277 @@ let private branchMarkup () =
 
     equal "<div><!--[--><span>4</span><!--]--></div>" (graph.Run (fun () -> Html.render Omit (Program.run (Component.render decades value))))
 
+type Listed = { Id: int; Text: string }
+
+let private listedLog = ResizeArray<string>()
+
+let private listedRow =
+    Component.define
+        (fun setup (item: unit -> Listed) ->
+            let id = (item ()).Id
+            listedLog.Add ("setup " + string id)
+            setup.OnCleanup (fun () -> listedLog.Add ("cleanup " + string id))
+            item)
+        (fun t ->
+            t.element
+                (HtmlTag "li")
+                [|
+                    t.Events.onClick (fun item _ -> listedLog.Add ("click " + string (item ()).Id))
+                |]
+                [| t.text (fun item -> (item ()).Text) |])
+
+let private listed =
+    Component.define (fun _ (items: Signal<Listed array>) -> items) (fun t ->
+        t.element
+            (HtmlTag "ul")
+            [||]
+            [|
+                t.each (fun (item: Listed) -> item.Id) (fun items -> items.Value) listedRow
+            |])
+
+let private rootListed =
+    Component.define (fun _ (items: Signal<Listed array>) -> items) (fun t ->
+        t.fragment
+            [|
+                t.each (fun (item: Listed) -> item.Id) (fun items -> items.Value) listedRow
+            |])
+
+let private eachRows () =
+    use graph = new Graph ()
+    listedLog.Clear ()
+
+    let items =
+        graph.Run (fun () -> Api.createSignal [| { Id = 1; Text = "a" }; { Id = 2; Text = "b" } |])
+
+    let host = host ()
+    let mounted = mount graph host (Component.render listed items)
+    let first = host.querySelector "li" |> unbox<HTMLElement>
+    equal "ab" host.textContent
+    graph.Run (fun () -> items.Value <- [| { Id = 2; Text = "B" }; { Id = 1; Text = "a" } |])
+    equal ("Ba", true) (host.textContent, obj.ReferenceEquals (first, host.querySelectorAll("li").item 1.))
+    first.click ()
+    graph.Run (fun () -> items.Value <- [| { Id = 1; Text = "a" } |])
+    equal "a" host.textContent
+    mounted.Dispose ()
+
+    equal ([ "setup 1"; "setup 2"; "click 1"; "cleanup 2"; "cleanup 1" ], 0.) (List.ofSeq listedLog, host.childNodes.length)
+
+let private eachDuplicates () =
+    use graph = new Graph ()
+    let first, second = host (), host ()
+    first.innerHTML <- "<span>keep</span>"
+
+    let duplicated =
+        graph.Run (fun () -> Api.createSignal [| { Id = 1; Text = "a" }; { Id = 1; Text = "b" } |])
+
+    let mutable rejected = false
+
+    try
+        mount graph first (Component.render listed duplicated)
+        |> ignore
+    with :? System.ArgumentException ->
+        rejected <- true
+
+    equal (true, "<span>keep</span>") (rejected, first.innerHTML)
+
+    let items =
+        graph.Run (fun () -> Api.createSignal [| { Id = 1; Text = "a" }; { Id = 2; Text = "b" } |])
+
+    let reported = ResizeArray<exn>()
+
+    let mounted =
+        Mounting.mount graph None reported.AddRange second None (fun context -> Program.run (Component.render listed items) context.Backend)
+
+    graph.Run (fun () -> items.Value <- [| { Id = 3; Text = "c" }; { Id = 3; Text = "d" } |])
+    equal ("ab", 1, true) (second.textContent, reported.Count, reported[0] :? System.ArgumentException)
+    graph.Run (fun () -> items.Value <- [| { Id = 2; Text = "b" } |])
+    equal ("b", 1) (second.textContent, reported.Count)
+    mounted.Dispose ()
+
+let private eachEmpty () =
+    use graph = new Graph ()
+    listedLog.Clear ()
+    let nested = graph.Run (fun () -> Api.createSignal ([||]: Listed array))
+    let rooted = graph.Run (fun () -> Api.createSignal ([||]: Listed array))
+    let first, second = host (), host ()
+    let a = mount graph first (Component.render listed nested)
+    let b = mount graph second (Component.render rootListed rooted)
+    let list = first.querySelector "ul" |> unbox<HTMLElement>
+    equal (2., 2, "") (list.childNodes.length, regionMarkers second, second.textContent)
+
+    graph.Run (fun () ->
+        nested.Value <- [| { Id = 1; Text = "a" } |]
+        rooted.Value <- [| { Id = 2; Text = "b" } |])
+
+    equal ("a", "b") (first.textContent, second.textContent)
+    (second.querySelector "li" |> unbox<HTMLElement>).click()
+    equal true (listedLog.Contains "click 2")
+
+    graph.Run (fun () ->
+        nested.Value <- [||]
+        rooted.Value <- [||])
+
+    equal (2., 2, "", "") (list.childNodes.length, regionMarkers second, first.textContent, second.textContent)
+    a.Dispose ()
+    b.Dispose ()
+    equal (0., 0.) (first.childNodes.length, second.childNodes.length)
+
+let private eachTwin () =
+    use graph = new Graph ()
+    listedLog.Clear ()
+
+    let items =
+        graph.Run (fun () -> Api.createSignal [| { Id = 1; Text = "a" }; { Id = 2; Text = "b" } |])
+
+    let first, second = host (), host ()
+    let templateMount = mount graph first (Component.render listed items)
+    let twinMount = mount graph second (Component.renderWith Program.ops listed items)
+
+    let matches expected =
+        equal (withoutComments second, expected) (withoutComments first, withoutComments second)
+
+    matches "<ul><li>a</li><li>b</li></ul>"
+    graph.Run (fun () -> items.Value <- [| { Id = 1; Text = "a" }; { Id = 3; Text = "c" }; { Id = 2; Text = "b" } |])
+    matches "<ul><li>a</li><li>c</li><li>b</li></ul>"
+    graph.Run (fun () -> items.Value <- [| { Id = 1; Text = "a" }; { Id = 2; Text = "b" } |])
+    matches "<ul><li>a</li><li>b</li></ul>"
+    graph.Run (fun () -> items.Value <- [| { Id = 2; Text = "b" }; { Id = 1; Text = "a" } |])
+    matches "<ul><li>b</li><li>a</li></ul>"
+    let retained = first.querySelector "li" |> unbox<HTMLElement>
+    graph.Run (fun () -> items.Value <- [| { Id = 2; Text = "B" }; { Id = 1; Text = "a" } |])
+    matches "<ul><li>B</li><li>a</li></ul>"
+    equal true (obj.ReferenceEquals (retained, first.querySelector "li"))
+    templateMount.Dispose ()
+    twinMount.Dispose ()
+    equal (0., 0.) (first.childNodes.length, second.childNodes.length)
+
+type Shelf =
+    {
+        Label: Signal<string>
+        Left: Signal<Listed array>
+        Right: Signal<Listed array>
+    }
+
+let private shelved =
+    Component.define (fun _ (shelf: Shelf) -> shelf) (fun t ->
+        t.fragment
+            [|
+                t.text "<"
+                t.each (fun (item: Listed) -> item.Id) (fun shelf -> shelf.Left.Value) listedRow
+                t.text (fun shelf -> shelf.Label.Value)
+                t.each (fun (item: Listed) -> item.Id) (fun shelf -> shelf.Right.Value) listedRow
+            |])
+
+let private rootRegions () =
+    use graph = new Graph ()
+    listedLog.Clear ()
+
+    let shelf =
+        graph.Run (fun () ->
+            {
+                Label = Api.createSignal "|"
+                Left = Api.createSignal [| { Id = 1; Text = "a" } |]
+                Right = Api.createSignal [| { Id = 2; Text = "b" }; { Id = 3; Text = "c" } |]
+            })
+
+    let first, second = host (), host ()
+    let mounted = mount graph first (Component.render shelved shelf)
+    equal ("<a|bc", 4) (first.textContent, regionMarkers first)
+
+    let moved =
+        first.querySelectorAll("li").item 2.
+        |> unbox<HTMLElement>
+
+    graph.Run (fun () ->
+        shelf.Left.Value <- [| { Id = 4; Text = "d" }; { Id = 1; Text = "A" } |]
+        shelf.Right.Value <- [| { Id = 3; Text = "c" }; { Id = 2; Text = "b" } |]
+        shelf.Label.Value <- "/")
+
+    equal ("<dA/cb", true) (first.textContent, obj.ReferenceEquals (moved, first.querySelectorAll("li").item 2.))
+    mounted.MoveBefore (second, None)
+    equal (0., "<dA/cb", 4) (first.childNodes.length, second.textContent, regionMarkers second)
+    moved.click ()
+
+    graph.Run (fun () ->
+        shelf.Left.Value <- [||]
+        shelf.Right.Value <- [| { Id = 2; Text = "b" }; { Id = 5; Text = "e" } |])
+
+    equal ("</be", 4) (second.textContent, regionMarkers second)
+    mounted.Dispose ()
+    equal (0., 0.) (first.childNodes.length, second.childNodes.length)
+
+    equal
+        (List.sort
+            [
+                "setup 1"
+                "setup 2"
+                "setup 3"
+                "setup 4"
+                "setup 5"
+                "click 3"
+                "cleanup 1"
+                "cleanup 2"
+                "cleanup 3"
+                "cleanup 4"
+                "cleanup 5"
+            ])
+        (List.sort (List.ofSeq listedLog))
+
+type Job = { JobId: int; Stage: Stage }
+
+let private jobRow =
+    Component.define (fun _ (job: unit -> Job) -> job) (fun t ->
+        t.element (HtmlTag "li") [||] [| t.matchWith (fun job -> (job ()).Stage) (stageArms t) |])
+
+let private jobs =
+    Component.define (fun _ (items: Signal<Job array>) -> items) (fun t ->
+        t.element (HtmlTag "ul") [||] [| t.each (fun (job: Job) -> job.JobId) (fun items -> items.Value) jobRow |])
+
+let private nestedRegions () =
+    use graph = new Graph ()
+    stageLog.Clear ()
+
+    let items =
+        graph.Run (fun () -> Api.createSignal [| { JobId = 1; Stage = Waiting }; { JobId = 2; Stage = Working 1 } |])
+
+    let host = host ()
+    let mounted = mount graph host (Component.render jobs items)
+
+    let second =
+        host.querySelectorAll("li").item 1.
+        |> unbox<HTMLElement>
+
+    equal "waitingworking 1" host.textContent
+
+    graph.Run (fun () -> items.Value <- [| { JobId = 2; Stage = Working 2 }; { JobId = 1; Stage = Complete "ok" } |])
+
+    equal ("working 2complete ok", true) (host.textContent, obj.ReferenceEquals (second, host.querySelector "li" |> unbox<HTMLElement>))
+    graph.Run (fun () -> items.Value <- [| { JobId = 1; Stage = Complete "ok" } |])
+    equal "complete ok" host.textContent
+    mounted.Dispose ()
+    equal 0. host.childNodes.length
+
+    equal
+        [
+            "setup waiting"
+            "setup working"
+            "setup complete"
+            "cleanup waiting"
+            "cleanup working"
+            "cleanup complete"
+        ]
+        (List.ofSeq stageLog)
+
+let private eachMarkup () =
+    use graph = new Graph ()
+
+    let items =
+        graph.Run (fun () -> Api.createSignal [| { Id = 1; Text = "a" }; { Id = 2; Text = "<b>" } |])
+
+    equal
+        "<ul><!--[--><li>a</li><li>&lt;b&gt;</li><!--]--></ul>"
+        (graph.Run (fun () -> Html.render Omit (Program.run (Component.render listed items))))
+
 /// <summary>Checks template compilation and DOM materialisation.</summary>
 let cases =
     [|
@@ -1341,4 +1612,11 @@ let cases =
         "branch remounts on a key change and keeps the arm for an equal key", branchSwitching
         "branch renders the same DOM as its default expansion across a key change", branchTwin
         "branch server markup under Fable matches .NET", branchMarkup
+        "each renders template rows, retains them by key and dispatches their clicks", eachRows
+        "duplicate each keys fail the mount, are reported on update and keep the rows", eachDuplicates
+        "an empty each region keeps its markers, fills and empties", eachEmpty
+        "each renders the same DOM as its default expansion across insert, remove, reorder and an item change", eachTwin
+        "root-level each regions beside other roots update, reorder, move and dispose", rootRegions
+        "a matchWith inside each rows follows, moves and leaves with its row", nestedRegions
+        "each server markup under Fable matches .NET", eachMarkup
     |]

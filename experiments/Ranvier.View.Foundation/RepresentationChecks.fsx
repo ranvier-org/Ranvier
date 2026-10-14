@@ -341,3 +341,36 @@ equal "<div><!--[--><span>4</span><!--]--></div>" (render Omit (Component.render
 equal "<div><span>4</span></div>" (Html.render Omit (Tree.run (Component.renderWith Tree.ops decades 42)))
 
 printfn "PASS template branch"
+
+type Listed = { Id: int; Text: string }
+
+let listedRow =
+    Component.define (fun _ (item: unit -> Listed) -> item) (fun t -> t.element (HtmlTag "li") [||] [| t.text (fun item -> (item ()).Text) |])
+
+let listed =
+    Component.define (fun _ (items: Listed array) -> items) (fun t ->
+        t.element (HtmlTag "ul") [||] [| t.each (fun (item: Listed) -> item.Id) id listedRow |])
+
+let listedItems = [| { Id = 1; Text = "a" }; { Id = 2; Text = "<b>" } |]
+
+equal "<ul><!--[--><li>a</li><li>&lt;b&gt;</li><!--]--></ul>" (render Omit (Component.render listed listedItems))
+
+equal
+    (stripMarkers (render Omit (Component.render listed listedItems)))
+    (Html.render Omit (Tree.run (Component.renderWith Tree.ops listed listedItems)))
+
+// An empty list keeps its markers.
+equal "<ul><!--[--><!--]--></ul>" (render Omit (Component.render listed [||]))
+
+let mutable duplicateRejected = false
+
+try
+    render Omit (Component.render listed [| { Id = 1; Text = "a" }; { Id = 1; Text = "b" } |])
+    |> ignore
+with :? System.ArgumentException ->
+    duplicateRejected <- true
+
+// Duplicate keys fail server rendering.
+equal true duplicateRejected
+
+printfn "PASS template each"
