@@ -121,9 +121,15 @@ Raises the exception a projection pass raises for the first duplicate key, with 
 A list region owns two markers and creates, under its owner:
 
 ```fsharp
+let version = Api.createSignal 0
+
 let rows =
-    Api.createProjectionOnce ProjectionOptions.CreateFirst fst buildRow (fun () -> read () :> seq<_>)
+    Api.createProjectionOnce ProjectionOptions.CreateFirst fst buildRow (fun () ->
+        version.Value |> ignore
+        snapshot :> seq<_>)
 ```
+
+`snapshot` holds the items of the region's latest reconcile, and `version` is the region's own signal. The projection reads only these two.
 
 `buildRow (item: unit -> obj * obj) : Row` runs in the key's scope:
 
@@ -137,9 +143,9 @@ The region's reconcile effect:
 
 1. Returns without work if the region's owner is disposed, as `KeyedDisposed` does today.
 2. Validates the markers: both share a parent. Validates the laid-out rows' first and last nodes in order between them. A failure raises "externally mutated" before the pass runs, as today.
-3. Reads `rows.Keys` (tracked), which runs the pass. Duplicate keys and factory failures raise here, with the previous rows and DOM in place.
+3. Inside the teardown window, reads `read ()` once, tracked, into `snapshot`, and bumps `version` untracked. The effect's only tracked source is the items. Then it reads `rows.Keys` untracked, and that read runs the pass inside the window. Errors from the pass's row setup, rollback and retirement are therefore reported with the update. Duplicate keys and factory failures raise here, with the previous rows and DOM in place. A tracked `Keys` read would run the pass before the effect body, when the core resolves the effect's `Check` through the projection beacon, which is outside the window. Key callbacks see one snapshot per update. Cost: one signal per region, and a reconcile on every items change, including changes to item values alone.
 4. Lays out, untracked: `Get` for each key gives the target row array; the laid-out array is the previous one with removed rows skipped. The step matches the common prefix and suffix, then moves only the rows outside one longest run of rows already in order, each as a unit (`first` to `last`). When every row between the prefix and suffix is new and the rows are the region's staging content, one insertion places them all. A two-row swap moves two rows.
-5. Stores the target array as the laid-out array.
+5. Stores the target array as the laid-out array. A layout failure after the region's own disposal (for example a disposal run by a DOM insertion) ends the update silently; any other layout failure disposes the mount and is reported (decision 3).
 
 The pass, its row creation and its retirement run inside the core's batch. Errors recorded while it runs are reported once, after layout (see [Teardown reporting](#teardown-reporting)).
 
