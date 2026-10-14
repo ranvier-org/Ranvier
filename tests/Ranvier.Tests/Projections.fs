@@ -2473,6 +2473,17 @@ let deltaReaderTests =
             }
         ]
 
+/// <summary>The message <c>action</c> raises; the test fails when it raises nothing.</summary>
+let private raisedMessage (action: unit -> unit) : string =
+    let message = ref ""
+    Expect.throwsC action (fun error -> message.Value <- error.Message)
+    message.Value
+
+/// <summary>The messages a projection pass over <c>items</c> and <c>ensureUniqueKeys</c> over them raise.</summary>
+let private duplicateMessages<'T when 'T: equality> (items: 'T list) : string * string =
+    let proj = createProjection id id (fun () -> items)
+    raisedMessage (fun () -> proj.Keys |> ignore), raisedMessage (fun () -> Projection.ensureUniqueKeys id items)
+
 [<Tests>]
 let rowOptionTests =
     testList
@@ -2747,4 +2758,20 @@ let rowOptionTests =
                 Expect.throwsT<NotSupportedException> (fun () -> Projection.sortBy id proj |> ignore) "sortBy"
                 Expect.throwsT<NotSupportedException> (fun () -> Projection.fold (+) 0 proj |> ignore) "fold"
             }
+
+            test "ensureUniqueKeys raises the pass's message for int, string, record and tuple keys" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+
+                for label, (fromPass, fromCheck) in
+                    [
+                        "int", duplicateMessages [ 1; 2; 1 ]
+                        "string", duplicateMessages [ "a"; "a" ]
+                        "record", duplicateMessages [ {| Id = 1 |}; {| Id = 1 |} ]
+                        "tuple", duplicateMessages [ (1, "a"); (1, "a") ]
+                    ] do
+                    Expect.equal fromCheck fromPass label
+            }
+
+            test "ensureUniqueKeys keeps boxed keys of different types apart, as = does" { Projection.ensureUniqueKeys id [ box 1; box 1L; box "1" ] }
         ]
