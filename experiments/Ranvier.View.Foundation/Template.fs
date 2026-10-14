@@ -559,6 +559,20 @@ type TemplateBuilder<'inst> internal () =
                 }
         )
 
+    /// <summary>Renders the arm selected for the instance's key, between region markers; a key change under <c>=</c> remounts the arm.</summary>
+    member _.branch<'key when 'key: equality> (key: 'inst -> 'key) (arms: 'key -> Arm) : TemplateView<'inst> =
+        TemplateView (
+            RegionNode
+                {
+                    Region.Same = Func<obj, obj, bool>(fun left right -> unbox<'key> left = unbox<'key> right)
+                    Items =
+                        Func<obj, (obj * obj) array>(fun instance ->
+                            let current = key (unbox instance)
+                            [| box current, box (arms current) |])
+                    Row = ArmRow
+                }
+        )
+
 module Component =
     /// <summary>Defines a component from per-instance setup and a template built once.</summary>
     /// <remarks><c>setup</c> runs untracked for each instance and returns the instance that dynamic parts receive.</remarks>

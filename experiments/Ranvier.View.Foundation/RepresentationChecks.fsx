@@ -329,3 +329,15 @@ equal "<div><!--[--><span>complete &lt;ok&gt;</span><!--]--></div>" (render Omit
 equal (stripMarkers (render Omit (Component.render staged Waiting))) (Html.render Omit (Tree.run (Component.renderWith Tree.ops staged Waiting)))
 
 printfn "PASS template matchWith"
+
+let decadeArm =
+    Component.define (fun _ (decade: unit -> int) -> decade) (fun t -> t.span [||] [| t.text (fun decade -> string (decade ())) |])
+
+let decades =
+    Component.define (fun _ (value: int) -> value) (fun t ->
+        t.div [||] [| t.branch (fun value -> value / 10) (fun decade -> t.arm decadeArm decade) |])
+
+equal "<div><!--[--><span>4</span><!--]--></div>" (render Omit (Component.render decades 42))
+equal "<div><span>4</span></div>" (Html.render Omit (Tree.run (Component.renderWith Tree.ops decades 42)))
+
+printfn "PASS template branch"

@@ -1234,6 +1234,60 @@ let private stagedServer =
 let private matchMarkup () =
     equal "<div><!--[--><span>working 3</span><!--]--></div>" (Html.render Omit (Program.run (Component.render stagedServer (Working 3))))
 
+let private decadeLog = ResizeArray<string>()
+
+let private decadeArm =
+    Component.define
+        (fun setup (decade: unit -> int) ->
+            let initial = decade ()
+            decadeLog.Add ("setup " + string initial)
+            setup.OnCleanup (fun () -> decadeLog.Add ("cleanup " + string initial))
+            decade)
+        (fun t -> t.span [||] [| t.text (fun decade -> string (decade ())) |])
+
+let private decades =
+    Component.define (fun _ (value: Signal<int>) -> value) (fun t ->
+        t.div
+            [||]
+            [|
+                t.branch (fun value -> value.Value / 10) (fun decade -> t.arm decadeArm decade)
+            |])
+
+let private branchSwitching () =
+    use graph = new Graph ()
+    decadeLog.Clear ()
+    let value = graph.Run (fun () -> Api.createSignal 11)
+    let host = host ()
+    let mounted = mount graph host (Component.render decades value)
+    graph.Run (fun () -> value.Value <- 12)
+    equal ("1", [ "setup 1" ]) (host.textContent, List.ofSeq decadeLog)
+    graph.Run (fun () -> value.Value <- 21)
+    equal ("2", [ "setup 1"; "setup 2"; "cleanup 1" ]) (host.textContent, List.ofSeq decadeLog)
+    mounted.Dispose ()
+    equal ([ "setup 1"; "setup 2"; "cleanup 1"; "cleanup 2" ], 0.) (List.ofSeq decadeLog, host.childNodes.length)
+
+let private branchTwin () =
+    use graph = new Graph ()
+    decadeLog.Clear ()
+    let value = graph.Run (fun () -> Api.createSignal 11)
+    let first, second = host (), host ()
+    let templateMount = mount graph first (Component.render decades value)
+    let twinMount = mount graph second (Component.renderWith Program.ops decades value)
+    equal (withoutComments second, "<div><span>1</span></div>") (withoutComments first, withoutComments second)
+    graph.Run (fun () -> value.Value <- 12)
+    equal (withoutComments second, "<div><span>1</span></div>") (withoutComments first, withoutComments second)
+    graph.Run (fun () -> value.Value <- 21)
+    equal (withoutComments second, "<div><span>2</span></div>") (withoutComments first, withoutComments second)
+    templateMount.Dispose ()
+    twinMount.Dispose ()
+    equal (0., 0.) (first.childNodes.length, second.childNodes.length)
+
+let private branchMarkup () =
+    use graph = new Graph ()
+    let value = graph.Run (fun () -> Api.createSignal 42)
+
+    equal "<div><!--[--><span>4</span><!--]--></div>" (graph.Run (fun () -> Html.render Omit (Program.run (Component.render decades value))))
+
 /// <summary>Checks template compilation and DOM materialisation.</summary>
 let cases =
     [|
@@ -1284,4 +1338,7 @@ let cases =
         "matchWith renders the same DOM as its default expansion across a switch and a payload change", matchTwin
         "disposing the mount during an arm's setup ends the switch cleanly", disposedMidSwitch
         "matchWith server markup under Fable matches .NET", matchMarkup
+        "branch remounts on a key change and keeps the arm for an equal key", branchSwitching
+        "branch renders the same DOM as its default expansion across a key change", branchTwin
+        "branch server markup under Fable matches .NET", branchMarkup
     |]
