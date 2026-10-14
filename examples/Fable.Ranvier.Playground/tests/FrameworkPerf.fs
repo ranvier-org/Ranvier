@@ -5,6 +5,7 @@ open Fable.Core.TS.Dom
 open Ranvier.View.Foundation
 open Ranvier.View.Foundation.Representation
 open Ranvier.View.Foundation.Generated.Html.Authoring
+open Ranvier.View.Foundation.Generated.HtmlTemplate
 
 module H = Ranvier.View.Foundation.Generated.Html
 
@@ -40,10 +41,10 @@ let private perfRow =
                     t.Attrs.title (t.from (fun r -> r.Source))
                 |]
                 [|
-                    t.input [| t.Props.value (t.from (fun r -> r.Source)) |]
+                    t.input [| t.Props.Input.value (t.from (fun r -> r.Source)) |]
                     t.button
                         [|
-                            t.Props.disabled (t.from (fun r -> r.Disabled))
+                            t.Props.Button.disabled (t.from (fun r -> r.Disabled))
                             t.Events.onClick (fun r _ -> r.Local.Value <- r.Local.Value + 1)
                         |]
                         [| t.text (fun r -> string r.Local.Value) |]

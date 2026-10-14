@@ -7,6 +7,7 @@ open Fable.Core.TS.Dom
 open Ranvier.View.Foundation
 open Ranvier.View.Foundation.Representation
 open Ranvier.View.Foundation.Template
+open Ranvier.View.Foundation.Generated.HtmlTemplate
 
 [<Global>]
 let private globalThis: TS.Es.GlobalThis = jsNative
@@ -87,10 +88,10 @@ let private row =
                     t.Attrs.title (fun r -> r.Source.Value)
                 |]
                 [|
-                    t.input [| t.Props.value (fun r -> r.Source.Value) |]
+                    t.input [| t.Props.Input.value (fun r -> r.Source.Value) |]
                     t.button
                         [|
-                            t.Props.disabled (fun r -> r.Disabled.Value)
+                            t.Props.Button.disabled (fun r -> r.Disabled.Value)
                             t.Events.onClick (fun r _ -> r.Local.Value <- r.Local.Value + 1)
                         |]
                         [| t.text (fun r -> string r.Local.Value) |]

@@ -433,6 +433,7 @@ type Part<'native, 'inst> =
     | StaticProperty of Func<obj, obj, unit> * obj
     | DynamicPart of Slot
     | EventPart of string * Func<obj, obj, unit>
+    | NoPart
 
 /// <summary>A template subtree for instances of type <c>'inst</c>.</summary>
 [<NoEquality; NoComparison>]
@@ -458,12 +459,6 @@ let private sourceSlot target (Source read: Source<'inst, 'value>) same =
         Same = same
     }
 
-let private present (value: string) =
-    if isNull value then None else Some value
-
-let private someOf (Source read: Source<'inst, string>) : Source<'inst, string option> =
-    Source (Func<obj, obj>(fun instance -> box (present (unbox<string>(read.Invoke instance)))))
-
 let private writer (write: 'native -> 'value -> unit) =
     Func<obj, obj, unit>(fun node value -> write (unbox node) (unbox value))
 
@@ -483,6 +478,7 @@ let private elementNode tag (parts: Part<'native, 'inst> array) (children: Templ
         | StaticProperty (write, value) -> properties.Add (write, value)
         | DynamicPart slot -> slots.Add slot
         | EventPart (name, handler) -> events.Add (name, handler)
+        | NoPart -> ()
 
     TemplateView (ElementNode (tag, attributes.ToArray (), properties.ToArray (), slots.ToArray (), events.ToArray (), Array.map nodeOf children))
 
@@ -490,6 +486,58 @@ let private anySame = Func<obj, obj, bool>(fun _ _ -> true)
 
 let private definitionSame =
     Func<obj, obj, bool>(fun left right -> obj.ReferenceEquals (left, right))
+
+/// <summary>Part constructors used by the generated template catalogue.</summary>
+module internal TemplateParts =
+    let element tag (parts: Part<'native, 'inst> array) (children: TemplateView<'inst> array) : TemplateView<'inst> =
+        elementNode tag parts children
+
+    let attribute name (value: string) : Part<'native, 'inst> =
+        validateAttribute name
+        StaticAttribute (name, value)
+
+    let optionalAttribute name (value: string option) : Part<'native, 'inst> =
+        validateAttribute name
+
+        match value with
+        | Some value -> StaticAttribute (name, value)
+        | None -> NoPart
+
+    let readAttribute name (read: 'inst -> string option) : Part<'native, 'inst> =
+        validateAttribute name
+        DynamicPart (slot (AttributeTarget name) RenderMode read primitiveSame)
+
+    let sourceAttribute name (source: Source<'inst, string option>) : Part<'native, 'inst> =
+        validateAttribute name
+        DynamicPart (sourceSlot (AttributeTarget name) source primitiveSame)
+
+    let mapSource (map: 'value -> 'next) (Source read: Source<'inst, 'value>) : Source<'inst, 'next> =
+        Source (Func<obj, obj>(fun instance -> box (map (unbox<'value>(read.Invoke instance)))))
+
+    /// <summary>A string attribute value; <c>null</c> removes the attribute.</summary>
+    let present (value: string) =
+        if isNull value then None else Some value
+
+    let presence enabled =
+        if enabled then Some "" else None
+
+    let ariaText enabled =
+        if enabled then "true" else "false"
+
+    let ariaOption (value: bool option) =
+        Option.map ariaText value
+
+    let property (write: 'native -> 'value -> unit) (value: 'value) : Part<'native, 'inst> =
+        StaticProperty (writer write, box value)
+
+    let readProperty (write: 'native -> 'value -> unit) (read: 'inst -> 'value) : Part<'native, 'inst> =
+        DynamicPart (slot (PropertyTarget (writer write)) RenderMode read primitiveSame)
+
+    let sourceProperty (write: 'native -> 'value -> unit) (source: Source<'inst, 'value>) : Part<'native, 'inst> =
+        DynamicPart (sourceSlot (PropertyTarget (writer write)) source primitiveSame)
+
+    let event name (handler: 'inst -> 'event -> unit) : Part<'native, 'inst> =
+        EventPart (name, Func<obj, obj, unit>(fun instance event -> handler (unbox instance) (unbox event)))
 
 /// <summary>Attribute parts: a value is static, a reader or source is dynamic.</summary>
 [<Sealed>]
@@ -505,33 +553,6 @@ type AttributeBuilder<'inst> internal () =
         validateAttribute name
         DynamicPart (sourceSlot (AttributeTarget name) source primitiveSame)
 
-    member this.className(value: string) : Part<'native, 'inst> =
-        this.attribute ("class", value)
-
-    member this.className(read: 'inst -> string) : Part<'native, 'inst> =
-        this.attribute ("class", fun instance -> present (read instance))
-
-    member this.className(source: Source<'inst, string>) : Part<'native, 'inst> =
-        this.attribute ("class", someOf source)
-
-    member this.id(value: string) : Part<'native, 'inst> =
-        this.attribute ("id", value)
-
-    member this.id(read: 'inst -> string) : Part<'native, 'inst> =
-        this.attribute ("id", fun instance -> present (read instance))
-
-    member this.id(source: Source<'inst, string>) : Part<'native, 'inst> =
-        this.attribute ("id", someOf source)
-
-    member this.title(value: string) : Part<'native, 'inst> =
-        this.attribute ("title", value)
-
-    member this.title(read: 'inst -> string) : Part<'native, 'inst> =
-        this.attribute ("title", fun instance -> present (read instance))
-
-    member this.title(source: Source<'inst, string>) : Part<'native, 'inst> =
-        this.attribute ("title", someOf source)
-
 /// <summary>Property parts: a value is written once per instance, a reader or source is dynamic.</summary>
 /// <remarks>A writer sets properties and leaves the element's child nodes intact: nodes moved into a template clone by a writer bypass the mount's ownership checks.</remarks>
 [<Sealed>]
@@ -545,38 +566,11 @@ type PropertyBuilder<'inst> internal () =
     member _.propertyFrom(write: 'native -> 'value -> unit, source: Source<'inst, 'value>, same: Func<obj, obj, bool>) : Part<'native, 'inst> =
         DynamicPart (sourceSlot (PropertyTarget (writer write)) source same)
 
-    member this.value(value: string) : Part<HTMLInputElement, 'inst> =
-        this.propertyStatic ((fun (node: HTMLInputElement) next -> node.value <- next), value)
-
-    member this.value(read: 'inst -> string) : Part<HTMLInputElement, 'inst> =
-        this.propertyWith ((fun (node: HTMLInputElement) next -> node.value <- next), read, primitiveSame)
-
-    member this.value(source: Source<'inst, string>) : Part<HTMLInputElement, 'inst> =
-        this.propertyFrom ((fun (node: HTMLInputElement) next -> node.value <- next), source, primitiveSame)
-
-    member this.disabled(value: bool) : Part<HTMLButtonElement, 'inst> =
-        this.propertyStatic ((fun (node: HTMLButtonElement) next -> node.disabled <- next), value)
-
-    member this.disabled(read: 'inst -> bool) : Part<HTMLButtonElement, 'inst> =
-        this.propertyWith ((fun (node: HTMLButtonElement) next -> node.disabled <- next), read, primitiveSame)
-
-    member this.disabled(source: Source<'inst, bool>) : Part<HTMLButtonElement, 'inst> =
-        this.propertyFrom ((fun (node: HTMLButtonElement) next -> node.disabled <- next), source, primitiveSame)
-
 /// <summary>Event parts: one shared handler per template, given the instance and the event.</summary>
 [<Sealed>]
 type EventBuilder<'inst> internal () =
     member _.on(eventName: string, handler: 'inst -> Event -> unit) : Part<'native, 'inst> =
         EventPart (eventName, Func<obj, obj, unit>(fun instance event -> handler (unbox instance) (unbox event)))
-
-    member this.onClick(handler: 'inst -> MouseEvent -> unit) : Part<'native, 'inst> =
-        this.on ("click", fun instance event -> handler instance (unbox event))
-
-    member this.onInput(handler: 'inst -> InputEvent -> unit) : Part<'native, 'inst> =
-        this.on ("input", fun instance event -> handler instance (unbox event))
-
-    member this.onFocus(handler: 'inst -> FocusEvent -> unit) : Part<'native, 'inst> =
-        this.on ("focus", fun instance event -> handler instance (unbox event))
 
 /// <summary>Builds a template for instances of type <c>'inst</c>; dynamic parts receive the instance as their argument.</summary>
 [<Sealed>]
@@ -591,21 +585,6 @@ type TemplateBuilder<'inst> internal () =
 
     member _.element (tag: Tag) (parts: Part<'native, 'inst> array) (children: TemplateView<'inst> array) : TemplateView<'inst> =
         elementNode tag parts children
-
-    member _.div (parts: Part<HTMLDivElement, 'inst> array) (children: TemplateView<'inst> array) =
-        elementNode Div parts children
-
-    member _.section (parts: Part<HTMLElement, 'inst> array) (children: TemplateView<'inst> array) =
-        elementNode (HtmlTag "section") parts children
-
-    member _.span (parts: Part<HTMLSpanElement, 'inst> array) (children: TemplateView<'inst> array) =
-        elementNode (HtmlTag "span") parts children
-
-    member _.button (parts: Part<HTMLButtonElement, 'inst> array) (children: TemplateView<'inst> array) =
-        elementNode Button parts children
-
-    member _.input(parts: Part<HTMLInputElement, 'inst> array) : TemplateView<'inst> =
-        elementNode Input parts [||]
 
     member _.fragment(children: TemplateView<'inst> array) : TemplateView<'inst> =
         TemplateView (FragmentNode (Array.map nodeOf children))

@@ -10,6 +10,8 @@ open Fable.Core.TS
 open Ranvier.View.Foundation.Representation
 module H = Ranvier.View.Foundation.Generated.Html
 open Ranvier.View.Foundation.Generated.Html.Authoring
+open Ranvier.View.Foundation.Template
+open Ranvier.View.Foundation.Generated.HtmlTemplate
 """
 examples = [
     ("valid helpers", "let view = H.div Tree.ops [| H.Properties.HTMLElement.titleStatic \"shared\"; H.Events.onClick (fun (_: Dom.PointerEvent) -> ()) |] [| H.input Tree.ops [| H.Input.checkedStatic true |]; H.select Tree.ops [||] [| H.option Tree.ops [||] [||] |]; H.br Tree.ops [||] |]", None),
@@ -37,6 +39,18 @@ examples = [
     ("overloaded input property rejects div", "let view = H.Program.div [| Props.Input.value \"input\" |] [||]", "FS0193"),
     ("overloaded property rejects wrong source type", "let modifier (source: global.Ranvier.Signal<int>) = Props.Input.value source", "FS0041"),
     ("overloaded attribute rejects wrong reader result", "let modifier = Attrs.title (fun () -> 123)", "FS0041"),
+    ("template catalogue keywords", '''
+type R = { Kind: string }
+let view = Component.define (fun _ (p: R) -> p) (fun t -> t.div [||] [| t.``base`` [||]; t.button [| t.Attrs.Button.``type`` (fun r -> r.Kind) |] [||] |])
+''', None),
+    ("template property on another element", '''
+type R = { Value: string }
+let view = Component.define (fun _ (p: R) -> p) (fun t -> t.div [| t.Props.Input.value (fun r -> r.Value) |] [||])
+''', "FS0193"),
+    ("template void tag with children", '''
+type R = { Value: string }
+let view = Component.define (fun _ (p: R) -> p) (fun t -> t.br [||] [||])
+''', "FS0003"),
 ]
 
 with tempfile.TemporaryDirectory(prefix="ranvier-generated-types-") as directory:

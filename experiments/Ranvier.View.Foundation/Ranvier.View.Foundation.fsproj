@@ -13,6 +13,7 @@
         <Compile Include="Representation.fs" />
         <Compile Include="Typed.fs" />
         <Compile Include="Template.fs" />
+        <Compile Include="Generated/HtmlTemplate.fs" />
         <Compile Include="Generated/Html.fs" />
         <Compile Include="Prepared.fs" />
         <Compile Include="TemplateDom.fs" />

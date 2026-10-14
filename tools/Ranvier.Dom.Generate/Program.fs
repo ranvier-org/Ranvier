@@ -353,6 +353,37 @@ let generate compilerRoot packageRoot output =
     let omissions = ResizeArray<string * string * string>()
     let counts = ResizeArray<string * int * int * int>()
     let programElements = ResizeArray<string>()
+    let templateTags = ResizeArray<string>()
+
+    let templateProperties =
+        System.Collections.Generic.SortedDictionary<string, ResizeArray<string * string * string>>()
+
+    let templatePropertyOwners = System.Collections.Generic.Dictionary<string, Type>()
+
+    let templateGroupEvents =
+        System.Collections.Generic.SortedDictionary<string, System.Collections.Generic.SortedDictionary<string, string * string>>()
+
+    let templateAttributes = ResizeArray<string * string * string * string * string>()
+
+    let nativeGroupName (native: Type) =
+        let name = native.Name
+
+        let name =
+            if
+                name.StartsWith ("HTML", StringComparison.Ordinal)
+                && name.Length > 4
+            then
+                name.Substring 4
+            else
+                name
+
+        if
+            name.EndsWith ("Element", StringComparison.Ordinal)
+            && name.Length > 7
+        then
+            name.Substring (0, name.Length - 7)
+        else
+            name
 
     let sharedProperties =
         System.Collections.Generic.SortedDictionary<string, ResizeArray<string>>()
@@ -455,6 +486,13 @@ let generate compilerRoot packageRoot output =
             programElements.Add
                 $"    let inline ``{tag}`` (modifiers: Typed.Modifier<{name}> array) (children: Representation.Program.View array) : Representation.Program.View = Typed.programElement {expression} modifiers children"
 
+        if voidTags.Contains tag then
+            templateTags.Add
+                $"    member _.``{tag}``(parts: Part<{name}, 'inst> array) : TemplateView<'inst> = TemplateParts.element {expression} parts [||]"
+        else
+            templateTags.Add
+                $"    member _.``{tag}`` (parts: Part<{name}, 'inst> array) (children: TemplateView<'inst> array) : TemplateView<'inst> = TemplateParts.element {expression} parts children"
+
         emit ""
         emit $"module {moduleName tag} ="
         let members = properties symbol
@@ -518,6 +556,12 @@ let generate compilerRoot packageRoot output =
                         shared.Add $"        let ``{memberName}`` (node: #{ownerName}) : {valueType} = node.``{memberName}``"
 
                         if canSet then
+                            if not (templateProperties.ContainsKey owner.Name) then
+                                templateProperties.Add (owner.Name, ResizeArray ())
+                                templatePropertyOwners.Add (owner.Name, owner)
+
+                            templateProperties[owner.Name].Add(memberName, ownerName, valueType)
+
                             shared.Add
                                 $"        let {memberName}Static<'native when 'native :> {ownerName}> (value: {valueType}) : Typed.Modifier<'native> ="
 
@@ -616,6 +660,16 @@ let generate compilerRoot packageRoot output =
                 match sharedEvents.TryGetValue event.Key with
                 | true, previous -> require (previous = event.Value) $"Conflicting common event: {event.Key}"
                 | _ -> sharedEvents.Add (event.Key, event.Value)
+            else
+                let group = nativeGroupName native
+
+                if not (templateGroupEvents.ContainsKey group) then
+                    templateGroupEvents.Add (group, System.Collections.Generic.SortedDictionary ())
+
+                match templateGroupEvents[group].TryGetValue event.Key with
+                | true, (previous, previousNative) ->
+                    require (previous = eventType && previousNative = name) $"Conflicting template event type: {group}.{event.Key}"
+                | _ -> templateGroupEvents[group].Add(event.Key, (eventType, name))
 
             if
                 not (commonEvents.Contains event.Key)
@@ -717,6 +771,7 @@ let generate compilerRoot packageRoot output =
                 | _ -> fail $"Unknown attribute policy kind: {kind}"
 
             attributeCount.Value <- attributeCount.Value + 1
+            templateAttributes.Add (groupName, nativeName, helper, attribute, kind)
             emit $"{indent}let {helper}Static<'native when 'native :> {nativeName}> (value: {staticType}) : Typed.Modifier<'native> ="
             emit $"{indent}    Typed.{staticFunction} \"{attribute}\" value"
             emit $"{indent}let {helper}Reactive<'native when 'native :> {nativeName}> (read: unit -> {readType}) : Typed.Modifier<'native> ="
@@ -918,6 +973,328 @@ let generate compilerRoot packageRoot output =
         |> Async.RunSynchronously
         |> fun formatted -> formatted.Code.Replace ("\r\n", "\n")
 
+    let reserved =
+        dict
+            [
+                "TemplateBuilder",
+                set
+                    [
+                        "Attrs"
+                        "Props"
+                        "Events"
+                        "element"
+                        "fragment"
+                        "text"
+                        "from"
+                        "isolated"
+                        "view"
+                        "arm"
+                        "matchWith"
+                        "branch"
+                        "each"
+                        "render"
+                    ]
+                "AttributeBuilder", set [ "attribute"; "data"; "aria" ]
+                "PropertyBuilder", set [ "propertyStatic"; "propertyWith"; "propertyFrom" ]
+                "EventBuilder", set [ "on" ]
+            ]
+
+    let authoringRenames =
+        authoringPolicy.RootElement.GetProperty("attributes").EnumerateArray()
+        |> Seq.map (fun selection -> (str "group" selection, str "helper" selection), str "name" selection)
+        |> dict
+
+    let templateName group helper =
+        match authoringRenames.TryGetValue ((group, helper)) with
+        | true, name -> name
+        | _ -> helper
+
+    let t = ResizeArray<string>()
+
+    let tEmit (line: string) =
+        t.Add line
+
+    tEmit "// <auto-generated> tools/Ranvier.Dom.Generate; regenerate instead of editing. </auto-generated>"
+    tEmit "[<AutoOpen>]"
+    tEmit "module Ranvier.View.Foundation.Generated.HtmlTemplate"
+    tEmit ""
+    tEmit "open Fable.Core.TS"
+    tEmit "open Ranvier.View.Foundation"
+    tEmit "open Ranvier.View.Foundation.Representation"
+    tEmit "open Ranvier.View.Foundation.Template"
+    tEmit ""
+
+    let flatOwner (owner: Type) =
+        owner.IsAssignableFrom typeof<Dom.HTMLElement>
+
+    let attributeGroups =
+        templateAttributes
+        |> Seq.map (fun (group, native, _, _, _) -> group, native)
+        |> Seq.filter (fun (group, _) -> group <> "")
+        |> Seq.distinct
+        |> Seq.toArray
+
+    let propertyGroups =
+        templateProperties.Keys
+        |> Seq.filter (fun owner -> not (flatOwner templatePropertyOwners[owner]))
+        |> Seq.map (fun owner -> nativeGroupName templatePropertyOwners[owner], owner)
+        |> Seq.sortBy fst
+        |> Seq.toArray
+
+    let eventGroups = templateGroupEvents.Keys |> Seq.toArray
+
+    let unique (scope: string) (names: string seq) =
+        let seen = System.Collections.Generic.HashSet<string>()
+
+        for name in names do
+            require (seen.Add name) $"Duplicate template member: {scope}.{name}"
+
+    let checkBuilder builder (flat: string array) (groups: string array) =
+        unique builder (Seq.append flat groups)
+
+        for name in Seq.append flat groups do
+            require (not (reserved[builder].Contains name)) $"Template member takes a reserved name: {builder}.{name}"
+
+    tEmit "module Groups ="
+
+    for group, _ in attributeGroups do
+        tEmit $"    [<Sealed>] type {group}Attributes<'inst> internal () = class end"
+
+    for group, _ in propertyGroups do
+        tEmit $"    [<Sealed>] type {group}Properties<'inst> internal () = class end"
+
+    for group in eventGroups do
+        tEmit $"    [<Sealed>] type {group}Events<'inst> internal () = class end"
+
+    tEmit ""
+
+    let tagNames =
+        templateTags
+        |> Seq.map (fun line -> line.Split("``")[1])
+        |> Seq.toArray
+
+    checkBuilder "TemplateBuilder" tagNames [||]
+    tEmit "type TemplateBuilder<'inst> with"
+    t.AddRange templateTags
+    tEmit ""
+
+    let attributeMembers indent (name: string) (native: string) (attribute: string) kind =
+        let signature argument =
+            $"{indent}member _.``{name}``<'native when 'native :> {native}>({argument}) : Part<'native, 'inst> ="
+
+        let overload argument body =
+            tEmit (signature argument)
+            tEmit $"{indent}    {body}"
+
+        match kind with
+        | "string" ->
+            overload "value: string" $"TemplateParts.attribute \"{attribute}\" value"
+            overload "value: string option" $"TemplateParts.optionalAttribute \"{attribute}\" value"
+            overload "read: 'inst -> string" $"TemplateParts.readAttribute \"{attribute}\" (fun instance -> TemplateParts.present (read instance))"
+            overload "read: 'inst -> string option" $"TemplateParts.readAttribute \"{attribute}\" read"
+
+            overload
+                "source: Source<'inst, string>"
+                $"TemplateParts.sourceAttribute \"{attribute}\" (TemplateParts.mapSource TemplateParts.present source)"
+
+            overload "source: Source<'inst, string option>" $"TemplateParts.sourceAttribute \"{attribute}\" source"
+        | "boolean" ->
+            overload "value: bool" $"TemplateParts.optionalAttribute \"{attribute}\" (TemplateParts.presence value)"
+            overload "read: 'inst -> bool" $"TemplateParts.readAttribute \"{attribute}\" (fun instance -> TemplateParts.presence (read instance))"
+
+            overload
+                "source: Source<'inst, bool>"
+                $"TemplateParts.sourceAttribute \"{attribute}\" (TemplateParts.mapSource TemplateParts.presence source)"
+        | "ariaBoolean" ->
+            overload "value: bool" $"TemplateParts.attribute \"{attribute}\" (TemplateParts.ariaText value)"
+            overload "value: bool option" $"TemplateParts.optionalAttribute \"{attribute}\" (TemplateParts.ariaOption value)"
+
+            overload
+                "read: 'inst -> bool"
+                $"TemplateParts.readAttribute \"{attribute}\" (fun instance -> Some (TemplateParts.ariaText (read instance)))"
+
+            overload
+                "read: 'inst -> bool option"
+                $"TemplateParts.readAttribute \"{attribute}\" (fun instance -> TemplateParts.ariaOption (read instance))"
+
+            overload
+                "source: Source<'inst, bool>"
+                $"TemplateParts.sourceAttribute \"{attribute}\" (TemplateParts.mapSource (fun value -> Some (TemplateParts.ariaText value)) source)"
+
+            overload
+                "source: Source<'inst, bool option>"
+                $"TemplateParts.sourceAttribute \"{attribute}\" (TemplateParts.mapSource TemplateParts.ariaOption source)"
+        | _ -> fail $"Unknown attribute policy kind: {kind}"
+
+        tEmit ""
+
+    let flatAttributes =
+        templateAttributes
+        |> Seq.filter (fun (group, _, _, _, _) -> group = "")
+        |> Seq.toArray
+
+    checkBuilder
+        "AttributeBuilder"
+        (flatAttributes
+         |> Array.map (fun (group, _, helper, _, _) -> templateName group helper))
+        (attributeGroups |> Array.map fst)
+
+    tEmit "type AttributeBuilder<'inst> with"
+
+    for prefix in [ "data"; "aria" ] do
+        let signature argument =
+            $"    member _.{prefix}<'native when 'native :> Dom.HTMLElement>(suffix: string, {argument}) : Part<'native, 'inst> ="
+
+        let name = $"(Typed.prefixedAttributeName \"{prefix}-\" suffix)"
+        tEmit (signature "value: string")
+        tEmit $"        TemplateParts.attribute {name} value"
+        tEmit (signature "read: 'inst -> string option")
+        tEmit $"        TemplateParts.readAttribute {name} read"
+        tEmit (signature "source: Source<'inst, string option>")
+        tEmit $"        TemplateParts.sourceAttribute {name} source"
+        tEmit ""
+
+    for group, native, helper, attribute, kind in flatAttributes do
+        attributeMembers "    " (templateName group helper) native attribute kind
+
+    for group, _ in attributeGroups do
+        tEmit $"    member _.{group}: Groups.{group}Attributes<'inst> = Groups.{group}Attributes ()"
+
+    tEmit ""
+
+    for group, _ in attributeGroups do
+        let entries =
+            templateAttributes
+            |> Seq.filter (fun (entryGroup, _, _, _, _) -> entryGroup = group)
+            |> Seq.toArray
+
+        let names =
+            entries
+            |> Array.map (fun (_, _, helper, _, _) -> templateName group helper)
+
+        unique group names
+
+        for name in names do
+            require (not (reserved["AttributeBuilder"].Contains name)) $"Template member takes a reserved name: {group}.{name}"
+
+        tEmit $"type Groups.{group}Attributes<'inst> with"
+
+        for _, native, helper, attribute, kind in entries do
+            attributeMembers "    " (templateName group helper) native attribute kind
+
+    let propertyMembers (memberName: string) (ownerName: string) (valueType: string) =
+        let signature argument =
+            $"    member _.``{memberName}``<'native when 'native :> {ownerName}>({argument}) : Part<'native, 'inst> ="
+
+        let write =
+            $"(fun (node: 'native) (value: {valueType}) -> (node :> {ownerName}).``{memberName}`` <- value)"
+
+        tEmit (signature $"value: {valueType}")
+        tEmit $"        TemplateParts.property {write} value"
+        tEmit (signature $"read: 'inst -> {valueType}")
+        tEmit $"        TemplateParts.readProperty {write} read"
+        tEmit (signature $"source: Source<'inst, {valueType}>")
+        tEmit $"        TemplateParts.sourceProperty {write} source"
+        tEmit ""
+
+    let flatProperties =
+        templateProperties
+        |> Seq.filter (fun owner -> flatOwner templatePropertyOwners[owner.Key])
+        |> Seq.collect _.Value
+        |> Seq.sortBy (fun (memberName, ownerName, _) -> memberName, ownerName)
+        |> Seq.toArray
+
+    checkBuilder
+        "PropertyBuilder"
+        (flatProperties
+         |> Array.map (fun (memberName, _, _) -> memberName))
+        (propertyGroups |> Array.map fst)
+
+    tEmit "type PropertyBuilder<'inst> with"
+
+    for memberName, ownerName, valueType in flatProperties do
+        propertyMembers memberName ownerName valueType
+
+    for group, _ in propertyGroups do
+        tEmit $"    member _.{group}: Groups.{group}Properties<'inst> = Groups.{group}Properties ()"
+
+    tEmit ""
+
+    for group, owner in propertyGroups do
+        let entries = templateProperties[owner]
+
+        unique
+            group
+            (entries
+             |> Seq.map (fun (memberName, _, _) -> memberName))
+
+        for memberName, _, _ in entries do
+            require (not (reserved["PropertyBuilder"].Contains memberName)) $"Template member takes a reserved name: {group}.{memberName}"
+
+        tEmit $"type Groups.{group}Properties<'inst> with"
+
+        for memberName, ownerName, valueType in entries do
+            propertyMembers memberName ownerName valueType
+
+    let eventMember (eventName: string) (native: string) (eventType: string) =
+        tEmit
+            $"    member _.on{moduleName eventName}<'native when 'native :> {native}>(handler: 'inst -> {eventType} -> unit) : Part<'native, 'inst> ="
+
+        tEmit $"        TemplateParts.event \"{eventName}\" handler"
+        tEmit ""
+
+    checkBuilder
+        "EventBuilder"
+        (sharedEvents.Keys
+         |> Seq.map (fun event -> "on" + moduleName event)
+         |> Seq.toArray)
+        eventGroups
+
+    tEmit "type EventBuilder<'inst> with"
+
+    for event in sharedEvents do
+        eventMember event.Key "Dom.HTMLElement" (typeName declarations event.Value)
+
+    for group in eventGroups do
+        tEmit $"    member _.{group}: Groups.{group}Events<'inst> = Groups.{group}Events ()"
+
+    tEmit ""
+
+    for group in eventGroups do
+        let events = templateGroupEvents[group]
+
+        for event in events.Keys do
+            require (not (reserved["EventBuilder"].Contains("on" + moduleName event))) $"Template member takes a reserved name: {group}.{event}"
+
+        unique
+            group
+            (events.Keys
+             |> Seq.map (fun event -> "on" + moduleName event))
+
+        tEmit $"type Groups.{group}Events<'inst> with"
+
+        for event in events do
+            let eventType, native = event.Value
+            eventMember event.Key native eventType
+
+    let templateContents =
+        Fantomas.Core.CodeFormatter.FormatDocumentAsync (false, String.concat "\n" t + "\n", format)
+        |> Async.RunSynchronously
+        |> fun formatted -> formatted.Code.Replace ("\r\n", "\n")
+
+    let templateOutput =
+        Path.Combine (
+            Path.GetDirectoryName (Path.GetFullPath output),
+            Path.GetFileNameWithoutExtension output
+            + "Template.fs"
+        )
+
+    let templateEventCount =
+        sharedEvents.Count
+        + (templateGroupEvents.Values |> Seq.sumBy _.Count)
+
+    let templatePropertyCount = templateProperties.Values |> Seq.sumBy _.Count
+
     Directory.CreateDirectory (Path.GetDirectoryName (Path.GetFullPath output))
     |> ignore
 
@@ -942,6 +1319,12 @@ let generate compilerRoot packageRoot output =
                 authoringPolicySha256 = hashFile authoringPath
                 sharedPropertyCount = emittedProperties.Count
                 sharedEventCount = sharedEvents.Count
+                templateTagCount = templateTags.Count
+                templateAttributeCount = templateAttributes.Count
+                templatePropertyCount = templatePropertyCount
+                templateEventCount = templateEventCount
+                templatePropertyGroups = propertyGroups.Length
+                templateEventGroups = eventGroups.Length
                 omissions =
                     omissions
                     |> Seq.map (fun (tag, memberName, reason) ->
@@ -957,6 +1340,7 @@ let generate compilerRoot packageRoot output =
 
     File.WriteAllText (output, contents, UTF8Encoding (false))
     File.WriteAllText (Path.ChangeExtension (output, ".coverage.json"), coverage + "\n", UTF8Encoding (false))
+    File.WriteAllText (templateOutput, templateContents, UTF8Encoding (false))
     printfn "Generated %d HTML tags from Core.TS 0.2.1 catalogue + Wire 0.3.0 + pinned TypeScript; SHA256 %s" counts.Count (hashFile output)
 
 [<EntryPoint>]

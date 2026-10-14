@@ -68323,5 +68323,11 @@
       "setters": 0,
       "tag": "wbr"
     }
-  ]
+  ],
+  "templateAttributeCount": 34,
+  "templateEventCount": 132,
+  "templateEventGroups": 3,
+  "templatePropertyCount": 409,
+  "templatePropertyGroups": 60,
+  "templateTagCount": 112
 }
