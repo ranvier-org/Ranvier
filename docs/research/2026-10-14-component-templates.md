@@ -211,3 +211,57 @@ The fixture gives every Ranvier mount its own `Graph`; its construction and acti
 ## Acceptance
 
 The playground suites pass 258 Node tests and 22 Chromium tests; the 7 portable .NET representation checks print `PASS`, and the 8 pure lifetime checks pass.
+
+## Dynamic structure
+
+Plan 2b ([implementation plan](../superpowers/plans/2026-10-14-component-templates-structure.md)) adds dynamic structure to templates:
+
+- `t.view (fun r -> view)` renders a `Program.View` read once per instance.
+- `t.matchWith (fun r -> union) arms` renders the arm that `arms` selects, an `Arm` built by `t.arm definition payload` from a `Component<unit -> 'payload>`. Arms are compared by definition: a different definition remounts, the same definition receives the new payload through its props reader.
+- `t.branch (fun r -> key) arms` remounts its arm whenever the key changes under `=`.
+- `t.each key (fun r -> items) row` renders one `Component<unit -> 'item>` row per item of an array, retained by key.
+- `t.render child (fun r -> props)` inlines a child template's markup into the parent's skeleton.
+
+A region (view hole, match, branch or list) is a pair of comment markers, `<!--[-->` and `<!--]-->`, in the skeleton and in server HTML. The DOM compiler records the start marker as a dynamic node; after the clone is appended, each region mounts its rows through the mount backend's keyed path, one nested mount per item, between the markers. Markers that are roots of a multi-root skeleton become one entry of the mount's range spanning the rows. An inlined child's dynamic nodes are part of its parent's walk; the child receives its own state array over that node range, its own render effect, and the delegated dispatcher calls its handlers with the child instance. Regions and inlined children of every depth are hoisted into the root compiled form.
+
+Every region kind (view hole, `matchWith`, `branch` and `each`) mounts through the keyed path. An arm switch therefore follows the keyed path's create-then-retire order: the new arm is set up before the previous arm's cleanups run. Solid 2 disposes the previous arm first. `materialise` iterates the compiled form's children and regions arrays for every instance, including a template whose arrays are empty.
+
+Server HTML writes the markers and renders region rows through the HTML backend. The default expansion maps regions to `Keyed`, view holes to `Operations.Embed` and inlined children to `Component`; its HTML equals the template's once comments are removed.
+
+Rows of a region at a mount's top level delegate events at the range's staging fragment while the mount is built. Attaching a staged range now relocates its entries, and a relocated mount moves its delegation to its new parent; authored top-level keyed lists gained the same fix.
+
+### Cost of templates without structure
+
+At `729a5a2`, the end of the structure tasks, the benchmark row (no dynamic structure) had regressed against `19c8a8f`, the commit before them. Paired runs of `run.mjs --template-comparison`, alternating the two commits three times in one session, median ratio to Solid 2 with the range of the three runs:
+
+| Phase, rows | `19c8a8f` | `729a5a2` | `64f8bf7` (fixed) | `19c8a8f`, same session as `64f8bf7` |
+|---|---|---|---|---|
+| Mount, 1 | 1.12 (1.11–1.15) | 1.16 (1.16–1.17) | 1.13 (1.10–1.14) | 1.12 (1.09–1.13) |
+| Mount, 16 | 1.15 (1.14–1.16) | 1.21 (1.20–1.23) | 1.16 (1.16–1.17) | 1.16 (1.14–1.17) |
+| Mount, 128 | 1.13 (1.13–1.15) | 1.21 (1.17–1.21) | 1.15 (1.14–1.20) | 1.16 (1.15–1.19) |
+| Update, 1 | 0.78 (0.76–0.78) | 0.78 (0.78–0.81) | 0.78 (0.78–0.79) | 0.80 (0.78–0.81) |
+| Update, 16 | 1.03 (1.03–1.04) | 1.04 (1.04–1.04) | 1.04 (1.03–1.05) | 1.04 (1.04–1.04) |
+| Update, 128 | 1.06 (1.06–1.06) | 1.07 (1.07–1.08) | 1.07 (1.06–1.07) | 1.07 (1.06–1.07) |
+| Dispose, 1 | 1.33 (1.25–1.40) | 1.36 (1.35–1.39) | 1.26 (1.17–1.35) | 1.31 (1.26–1.39) |
+| Dispose, 16 | 1.21 (1.15–1.25) | 1.43 (1.28–1.62) | 1.28 (1.27–1.29) | 1.25 (1.19–1.34) |
+| Dispose, 128 | 1.35 (1.32–1.48) | 1.59 (1.51–1.75) | 1.39 (1.37–1.39) | 1.35 (1.34–1.35) |
+
+The cause was the skeleton's document. Task 2 made `compile` import every skeleton into the main document, so that region rows insert between the markers of a clone that belongs to the main document. Clones of an imported skeleton cost more to mount and to dispose than clones of the template element's inert content, which the browser adopts on insertion. A shorter interleaved sampler (both frameworks alternating, 18 rounds in each of three processes) measured the 16-row mount at 1.19–1.20× Solid 2 with the inert skeleton against 1.25–1.27× with the imported one, and the 16-row disposal at 1.23–1.32× against 1.47–1.51×. `8e4fec2` imports a skeleton only when the template has regions.
+
+The split of `materialise` into `stateFor` and `bind` added one closure context per instance: the effect closures captured `bind`'s context and the setup closure `materialise`'s. Allocation sampling of 4096 one-row mounts at a 128-byte interval measured `TemplateDom.js` at 550 bytes per mount against 514 at `19c8a8f`. `c85916f` inlines `bind`; `materialise` and `stateFor` then allocate 441 bytes per mount. The remaining difference is within the sampler's spread. At 128 rows, two allocation samples per commit, interleaved: the template allocates 146.1 and 146.8 KiB per mount at `c85916f` (1.01 and 1.05× Solid 2), against 147.5 and 147.2 KiB at `19c8a8f` (1.02 and 1.07×).
+
+The benchmark row has no dynamic structure. One run of `run.mjs --template-comparison` at commit `c85916f`, all 45 correctness checks passing, overall medians, µs per operation, with the template's ratio to Solid 2:
+
+| Phase, rows | Template | Solid 2 | × Solid 2 |
+|---|---|---|---|
+| Mount, 1 | 5.9 | 5.1 | 1.14 |
+| Mount, 16 | 45.1 | 37.9 | 1.19 |
+| Mount, 128 | 484.7 | 416.9 | 1.16 |
+| Update, 1 | 1.0 | 1.3 | 0.78 |
+| Update, 16 | 14.8 | 14.1 | 1.05 |
+| Update, 128 | 155.2 | 156.5 | 0.99 |
+| Dispose, 1 | 1.4 | 1.1 | 1.31 |
+| Dispose, 16 | 8.8 | 6.5 | 1.35 |
+| Dispose, 128 | 55.2 | 39.1 | 1.41 |
+
+The run fell in one of the machine's slow phases: Solid 2's 128-row mount took 416.9 µs against 285.9 µs in the `a0de558` run, and the 128-row update ratio per process was 1.03 / 1.18 / 1.24. The paired `64f8bf7` columns above, which differ from `c85916f` only by the inlined `bind`, are the comparison with `19c8a8f`.

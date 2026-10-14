@@ -26,6 +26,8 @@ This is plan 2b. Plan 2a (`docs/superpowers/plans/2026-10-13-component-templates
 - **Server HTML and expansion parity.** `Html.render` of `Component.render` writes the markup writer's output, with markers, and renders region rows through the HTML backend. The default expansion (`Component.renderWith`, `Tree.ops`, queued DOM mounts) has no comment operation; its HTML equals the template's once comments are removed. This expansion is the `createComponent` twin of every structure feature.
 - **`Operations` gains `Embed: (Backend -> unit) -> 'view`**, so the default expansion can place a view hole's `Program.View` in any representation.
 - **Browser interpreter.** `Browser.fs` renders view holes and inlined children through the expansion; its existing `Keyed` member rejects keyed lists, so `matchWith`, `branch` and `each` raise its `InvalidOperationException` there.
+- **One mount path for every region kind.** View holes, `matchWith`, `branch` and `each` all mount through the mount backend's keyed path. An arm switch sets up the new arm before the previous arm's cleanups run, the keyed path's create-then-retire order; Solid 2 disposes the previous arm first.
+- **Per-instance cost of structure.** `materialise` iterates the compiled form's children and regions arrays for every instance, including templates whose arrays are empty.
 
 ## Global Constraints
 
