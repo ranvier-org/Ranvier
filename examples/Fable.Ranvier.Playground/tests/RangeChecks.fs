@@ -895,7 +895,7 @@ let private keyedSetupRecovery initial =
         equal [ 1; 2; 2; 3; 3 ] (cleanups |> Seq.sort |> List.ofSeq)
         equal 0. host.childNodes.length
 
-let private keyedMoveRecovery rollbackFailure =
+let private keyedLayoutFailure () =
     use graph = new Graph ()
     let host = Dom.element "section" [] []
     let rows = graph.Run (fun () -> Api.createSignal [ 1; 2 ])
@@ -912,14 +912,13 @@ let private keyedMoveRecovery rollbackFailure =
     let handle =
         mount graph None (List.iter reports.Add) host None (fun ctx -> Tree.run view ctx.Backend)
 
-    let one, two = at host 3, at host 6
     let mutable inserts = 0
 
     let restore =
         afterAttachment host (fun () ->
             inserts <- inserts + 1
 
-            if rollbackFailure || inserts = 1 then
+            if inserts = 1 then
                 failwith "insert")
 
     try
@@ -928,23 +927,9 @@ let private keyedMoveRecovery rollbackFailure =
         restore ()
 
     equal 1 reports.Count
-
-    if rollbackFailure then
-        equal Disposed handle.Phase
-        equal 0. host.childNodes.length
-        equal [ 1; 2; 3 ] (cleanups |> Seq.sort |> List.ofSeq)
-    else
-        equal "12" host.textContent
-        same one (at host 3)
-        same two (at host 6)
-        equal [ 3 ] (List.ofSeq cleanups)
-        graph.Run (fun () -> rows.Value <- [ 2; 1; 3 ])
-        equal "213" host.textContent
-        same one (at host 6)
-        same two (at host 3)
-
-    handle.Dispose ()
+    equal Disposed handle.Phase
     equal 0. host.childNodes.length
+    equal [ 1; 2; 3 ] (cleanups |> Seq.sort |> List.ofSeq)
 
 let private keyedNestedMovement () =
     use graph = new Graph ()
@@ -1221,8 +1206,7 @@ let allCases =
             "duplicate keyed updates report once and recover without replacing retained rows", keyedReportsAndRecovery
             "initial keyed row setup failure unwinds the entire mount", fun () -> keyedSetupRecovery true
             "failed live row setup retains prior rows and permits recovery", fun () -> keyedSetupRecovery false
-            "failed keyed movement restores prior order and permits recovery", fun () -> keyedMoveRecovery false
-            "failed keyed rollback terminates the mount and all row resources", fun () -> keyedMoveRecovery true
+            "a failed keyed layout disposes the mount and reports once", keyedLayoutFailure
             "nested keyed rows update and dispose after outer movement", keyedNestedMovement
             "keyed reader disposal prevents further reconciliation", fun () -> keyedDisposal "read"
             "keyed row setup disposal cannot attach new rows", fun () -> keyedDisposal "setup"

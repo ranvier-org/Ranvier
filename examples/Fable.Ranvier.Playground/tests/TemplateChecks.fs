@@ -1633,6 +1633,401 @@ let private eachDuplicates () =
     equal ("b", 1) (second.textContent, reported.Count)
     mounted.Dispose ()
 
+[<Emit("(() => { let count = 0; const old = $0.insertBefore; $0.insertBefore = function(n, b) { count++; return old.call(this, n, b); }; return () => { $0.insertBefore = old; return count; }; })()")>]
+let private countInserts (node: Node) : unit -> int = jsNative
+
+[<Emit("Array.from($0.childNodes).filter(n => n.nodeType === 8 && n.data === 'ranvier:row')")>]
+let private rowMarkers (node: Node) : obj array = jsNative
+
+[<Emit("document.activeElement === $0")>]
+let private isFocused (node: obj) : bool = jsNative
+
+[<Emit("$0.selectionStart + ',' + $0.selectionEnd")>]
+let private selectionOf (node: obj) : string = jsNative
+
+let private reported graph host view =
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        Mounting.mount graph None reports.Add host None (fun context -> Program.run view context.Backend)
+
+    mounted, reports
+
+let private eachSwapMovesTwo () =
+    use graph = new Graph ()
+    listedLog.Clear ()
+
+    let items =
+        graph.Run (fun () -> Api.createSignal (Array.init 1000 (fun index -> { Id = index; Text = "" })))
+
+    let host = host ()
+    let mounted = mount graph host (Component.render listed items)
+    let list = host.querySelector "ul" |> unbox<HTMLElement>
+    let next = Array.copy items.Value
+    let first = next[1]
+    next[1] <- next[998]
+    next[998] <- first
+    let inserts = countInserts list
+    graph.Run (fun () -> items.Value <- next)
+    equal 2 (inserts ())
+    mounted.Dispose ()
+
+let private eachMatchesReferenceOrder () =
+    use graph = new Graph ()
+    listedLog.Clear ()
+    let mutable state = 7.0
+
+    let next bound =
+        state <- (state * 48271.0) % 2147483647.0
+        int (state % float bound)
+
+    let items = graph.Run (fun () -> Api.createSignal ([||]: Listed array))
+    let host = host ()
+    let mounted = mount graph host (Component.render listed items)
+    let nodes = System.Collections.Generic.Dictionary<int, obj>()
+    let mutable nextId = 1
+
+    for _ in 1..200 do
+        let current = items.Value |> Array.map _.Id |> ResizeArray
+
+        for _ in 1 .. next 3 do
+            if current.Count > 0 then
+                current.RemoveAt (next current.Count)
+
+        for _ in 1 .. next 3 do
+            current.Insert (next (current.Count + 1), nextId)
+            nextId <- nextId + 1
+
+        for _ in 1 .. next 3 do
+            if current.Count > 1 then
+                let i, j = next current.Count, next current.Count
+                let swapped = current[i]
+                current[i] <- current[j]
+                current[j] <- swapped
+
+        let order = current.ToArray ()
+
+        graph.Run (fun () ->
+            items.Value <-
+                order
+                |> Array.map (fun id -> { Id = id; Text = string id + "," }))
+
+        equal
+            (order
+             |> Array.map (fun id -> string id + ",")
+             |> String.concat "")
+            host.textContent
+
+        let rendered = host.querySelectorAll "li"
+
+        for index in 0 .. order.Length - 1 do
+            let node = box (rendered.item (float index))
+
+            match nodes.TryGetValue order[index] with
+            | true, known -> equal true (obj.ReferenceEquals (known, node))
+            | _ -> nodes[order[index]] <- node
+
+    mounted.Dispose ()
+    equal 0. host.childNodes.length
+
+let private emptyRow =
+    Component.define (fun _ (item: unit -> Listed) -> item) (fun t -> t.fragment [||])
+
+let private emptyListed =
+    Component.define (fun _ (items: Signal<Listed array>) -> items) (fun t ->
+        t.element (HtmlTag "ul") [||] [| t.each (fun (item: Listed) -> item.Id) (fun items -> items.Value) emptyRow |])
+
+let private zeroNodeRows () =
+    use graph = new Graph ()
+
+    let items =
+        graph.Run (fun () -> Api.createSignal [| for id in 1..3 -> { Id = id; Text = "" } |])
+
+    let host = host ()
+    let mounted = mount graph host (Component.render emptyListed items)
+    let list = host.querySelector "ul" |> unbox<HTMLElement>
+    let markers = rowMarkers list
+    equal 3 markers.Length
+    graph.Run (fun () -> items.Value <- [| for id in [ 3; 1; 2 ] -> { Id = id; Text = "" } |])
+    let moved = rowMarkers list
+
+    equal
+        true
+        (obj.ReferenceEquals (moved[0], markers[2])
+         && obj.ReferenceEquals (moved[1], markers[0])
+         && obj.ReferenceEquals (moved[2], markers[1]))
+
+    graph.Run (fun () -> items.Value <- [||])
+    equal 0 (rowMarkers list).Length
+    mounted.Dispose ()
+
+let private disposalCleansBeforeRelease () =
+    use graph = new Graph ()
+    let host = host ()
+    let counts = ResizeArray<float>()
+
+    let watching =
+        Component.define
+            (fun setup (item: unit -> Listed) ->
+                setup.OnCleanup (fun () -> counts.Add (host.querySelectorAll "li").length)
+                item)
+            (fun t -> t.element (HtmlTag "li") [||] [| t.text (fun item -> (item ()).Text) |])
+
+    let watched =
+        Component.define (fun _ (items: Signal<Listed array>) -> items) (fun t ->
+            t.element (HtmlTag "ul") [||] [| t.each (fun (item: Listed) -> item.Id) (fun items -> items.Value) watching |])
+
+    let items =
+        graph.Run (fun () -> Api.createSignal [| for id in 1..3 -> { Id = id; Text = string id } |])
+
+    let mounted = mount graph host (Component.render watched items)
+    mounted.Dispose ()
+    equal ([ 3.; 3.; 3. ], 0.) (List.ofSeq counts, host.childNodes.length)
+
+let private clicksFollowMovedRows () =
+    use graph = new Graph ()
+    listedLog.Clear ()
+
+    let items =
+        graph.Run (fun () -> Api.createSignal [| for id in 1..3 -> { Id = id; Text = string id } |])
+
+    let other = host ()
+    let host = host ()
+
+    globalThis.document.body.appendChild host
+    |> ignore
+
+    globalThis.document.body.appendChild other
+    |> ignore
+
+    let mounted = mount graph host (Component.render listed items)
+    let one = host.querySelector "li" |> unbox<HTMLElement>
+    graph.Run (fun () -> items.Value <- [| for id in [ 3; 1; 2 ] -> { Id = id; Text = string id } |])
+    one.click ()
+    mounted.MoveBefore (other, None)
+    one.click ()
+    graph.Run (fun () -> items.Value <- [| for id in [ 3; 2 ] -> { Id = id; Text = string id } |])
+    one.click ()
+    mounted.Dispose ()
+    host.remove ()
+    other.remove ()
+
+    equal
+        2
+        (listedLog
+         |> Seq.filter (fun line -> line = "click 1")
+         |> Seq.length)
+
+let private throwingRowCleanup () =
+    use graph = new Graph ()
+    let host = host ()
+    let seen = ResizeArray<float>()
+
+    let throwing =
+        Component.define
+            (fun setup (item: unit -> Listed) ->
+                setup.OnCleanup (fun () ->
+                    seen.Add (host.querySelectorAll "li").length
+                    failwith "row cleanup")
+
+                item)
+            (fun t -> t.element (HtmlTag "li") [||] [| t.text (fun item -> (item ()).Text) |])
+
+    let list =
+        Component.define (fun _ (items: Signal<Listed array>) -> items) (fun t ->
+            t.element (HtmlTag "ul") [||] [| t.each (fun (item: Listed) -> item.Id) (fun items -> items.Value) throwing |])
+
+    let items =
+        graph.Run (fun () -> Api.createSignal [| for id in 1..2 -> { Id = id; Text = string id } |])
+
+    let mutable atReport = -1.
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        Mounting.mount
+            graph
+            None
+            (fun errors ->
+                atReport <- (host.querySelectorAll "li").length
+                reports.Add errors)
+            host
+            None
+            (fun context -> Program.run (Component.render list items) context.Backend)
+
+    graph.Run (fun () -> items.Value <- [| { Id = 2; Text = "2" } |])
+    equal ([ 2. ], 1, [ "row cleanup" ], 1.) (List.ofSeq seen, reports.Count, reports[0] |> List.map _.Message, atReport)
+    mounted.Dispose ()
+
+let private disposalFromRowSetup () =
+    use graph = new Graph ()
+    let host = host ()
+    let mutable handle: Mounting.Mounted = Unchecked.defaultof<_>
+
+    let disposing =
+        Component.define
+            (fun _ (item: unit -> Listed) ->
+                if (item ()).Id = 3 then
+                    handle.Dispose ()
+
+                item)
+            (fun t -> t.element (HtmlTag "li") [||] [| t.text (fun item -> (item ()).Text) |])
+
+    let list =
+        Component.define (fun _ (items: Signal<Listed array>) -> items) (fun t ->
+            t.element
+                (HtmlTag "ul")
+                [||]
+                [|
+                    t.each (fun (item: Listed) -> item.Id) (fun items -> items.Value) disposing
+                |])
+
+    let items = graph.Run (fun () -> Api.createSignal [| { Id = 1; Text = "a" } |])
+    let mounted, reports = reported graph host (Component.render list items)
+    handle <- mounted
+    graph.Run (fun () -> items.Value <- [| { Id = 1; Text = "a" }; { Id = 3; Text = "c" } |])
+    equal (Disposed, 0., 0) (handle.Phase, host.childNodes.length, reports.Count)
+
+type Grouped = { Group: int; Members: Listed array }
+
+let private groupRow =
+    Component.define (fun _ (item: unit -> Grouped) -> item) (fun t ->
+        t.element
+            (HtmlTag "li")
+            [||]
+            [|
+                t.text (fun item -> string (item ()).Group + ":")
+                t.each (fun (member': Listed) -> member'.Id) (fun item -> (item ()).Members) listedRow
+            |])
+
+let private grouped =
+    Component.define (fun _ (items: Signal<Grouped array>) -> items) (fun t ->
+        t.element
+            (HtmlTag "ul")
+            [||]
+            [|
+                t.each (fun (group: Grouped) -> group.Group) (fun items -> items.Value) groupRow
+            |])
+
+let private nestedListsMoveWhole () =
+    use graph = new Graph ()
+    listedLog.Clear ()
+
+    let listedOf texts =
+        texts
+        |> Array.map (fun (id, text) -> { Id = id; Text = text })
+
+    let items =
+        graph.Run (fun () ->
+            Api.createSignal
+                [|
+                    {
+                        Group = 1
+                        Members = listedOf [| 10, "a"; 11, "b" |]
+                    }
+                    {
+                        Group = 2
+                        Members = listedOf [| 20, "c" |]
+                    }
+                |])
+
+    let host = host ()
+    let mounted = mount graph host (Component.render grouped items)
+    equal "1:ab2:c" host.textContent
+
+    graph.Run (fun () ->
+        items.Value <-
+            [|
+                {
+                    Group = 2
+                    Members = listedOf [| 20, "c"; 21, "d" |]
+                }
+                {
+                    Group = 1
+                    Members = listedOf [| 11, "b" |]
+                }
+            |])
+
+    equal "2:cd1:b" host.textContent
+
+    graph.Run (fun () ->
+        items.Value <-
+            [|
+                {
+                    Group = 1
+                    Members = listedOf [| 11, "b" |]
+                }
+            |])
+
+    equal "1:b" host.textContent
+    mounted.Dispose ()
+    equal 0. host.childNodes.length
+
+let private boxedRow =
+    Component.define (fun _ (item: unit -> obj * string) -> item) (fun t -> t.element (HtmlTag "li") [||] [| t.text (fun item -> snd (item ())) |])
+
+let private boxedListed =
+    Component.define (fun _ (items: Signal<(obj * string) array>) -> items) (fun t ->
+        t.element
+            (HtmlTag "ul")
+            [||]
+            [|
+                t.each (fun (item: obj * string) -> fst item) (fun items -> items.Value) boxedRow
+            |])
+
+let private boxedKeys () =
+    use graph = new Graph ()
+
+    let items =
+        graph.Run (fun () -> Api.createSignal [| box 1, "int"; box 1L, "long"; box "1", "string" |])
+
+    let host = host ()
+    let mounted = mount graph host (Component.render boxedListed items)
+    let rendered = host.querySelectorAll "li"
+    let long = box (rendered.item 1.)
+    graph.Run (fun () -> items.Value <- [| box 1L, "LONG"; box "1", "string" |])
+    equal "LONGstring" host.textContent
+    equal true (obj.ReferenceEquals (long, box ((host.querySelectorAll "li").item 0.)))
+    mounted.Dispose ()
+
+let private focusSurvivesOtherMoves () =
+    use graph = new Graph ()
+
+    let field =
+        Component.define (fun _ (item: unit -> Listed) -> item) (fun t ->
+            t.element (HtmlTag "li") [||] [| t.input [| t.Props.Input.value (fun item -> (item ()).Text) |] |])
+
+    let fields =
+        Component.define (fun _ (items: Signal<Listed array>) -> items) (fun t ->
+            t.element (HtmlTag "ul") [||] [| t.each (fun (item: Listed) -> item.Id) (fun items -> items.Value) field |])
+
+    let items =
+        graph.Run (fun () -> Api.createSignal [| for id in 1..4 -> { Id = id; Text = "value" + string id } |])
+
+    let host = host ()
+
+    globalThis.document.body.appendChild host
+    |> ignore
+
+    let mounted = mount graph host (Component.render fields items)
+
+    let third =
+        (host.querySelectorAll "input").item 2.
+        |> unbox<HTMLInputElement>
+
+    third.focus ()
+    third.setSelectionRange (1., 3.)
+    graph.Run (fun () -> items.Value <- [| for id in [ 2; 3; 4; 1 ] -> { Id = id; Text = "value" + string id } |])
+    let focused = isFocused third
+    let selection = selectionOf third
+    mounted.Dispose ()
+    host.remove ()
+    equal (true, "1,3") (focused, selection)
+
+let browserCases: (string * (unit -> unit)) array =
+    [|
+        "focus and selection inside a row survive moving another row", focusSurvivesOtherMoves
+    |]
+
 let private eachEmpty () =
     use graph = new Graph ()
     listedLog.Clear ()
@@ -2195,6 +2590,15 @@ let cases =
         "each renders template rows, retains them by key and dispatches their clicks", eachRows
         "each sets up a replacing row before the replaced row's cleanup", eachReplacement
         "duplicate each keys fail the mount, are reported on update and keep the rows", eachDuplicates
+        "a two-row swap of 1,000 rows moves two rows", eachSwapMovesTwo
+        "list updates match a reference order and keep node identities", eachMatchesReferenceOrder
+        "zero-node rows keep their place through their marker", zeroNodeRows
+        "disposing a mount runs every row cleanup before a node leaves", disposalCleansBeforeRelease
+        "delegated clicks reach a moved row and stop after its removal", clicksFollowMovedRows
+        "a throwing row cleanup is reported once with its update after the row leaves", throwingRowCleanup
+        "disposing the mount from a row's setup ends the update silently", disposalFromRowSetup
+        "rows holding nested lists move and leave whole", nestedListsMoveWhole
+        "boxed keys of different types keep separate rows", boxedKeys
         "an empty each region keeps its markers, fills and empties", eachEmpty
         "each renders the same DOM as its default expansion across insert, remove, reorder and an item change", eachTwin
         "root-level each regions beside other roots update, reorder, move and dispose", rootRegions

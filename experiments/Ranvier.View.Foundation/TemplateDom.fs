@@ -38,6 +38,15 @@ let StateGraph = 3
 [<Literal>]
 let StateNodes = 4
 
+/// <summary>How a region mounts its rows.</summary>
+type RegionKind =
+    /// <summary>One row per keyed item; new rows are created before removed rows retire.</summary>
+    | ListRows
+    /// <summary>The row of the selected arm; the previous arm is disposed before the next is created.</summary>
+    | SelectedArm
+    /// <summary>One view, read and mounted once.</summary>
+    | ViewHole
+
 [<NoEquality; NoComparison>]
 type CompiledRegion =
     {
@@ -47,12 +56,10 @@ type CompiledRegion =
         Owner: int
         /// <summary>True when the markers are roots of a multi-root skeleton.</summary>
         RootLevel: bool
+        Kind: RegionKind
         Items: Func<obj, (obj * obj) array>
-        /// <summary>True when the items are read once, as the instance is created.</summary>
-        Once: bool
-        /// <summary>True when the region is an arm switch: the previous row is disposed before the next is created.</summary>
-        DisposeFirst: bool
         Render: (unit -> obj) -> Backend -> unit
+        Row: RegionRow
     }
 
 /// <summary>A definition compiled for the DOM: a skeleton, the walk to its dynamic nodes, and its slot tables.</summary>
@@ -216,12 +223,6 @@ let private validateParsed (content: DocumentFragment) (walk: int array) (target
             else
                 cursor <- unbox cursor.parentNode
 
-let private readsOnce (row: RegionRow) =
-    match row with
-    | ViewRow -> true
-    | ArmRow
-    | ItemRow _ -> false
-
 let private tables (targets: (TemplateNode * int array) array) (owners: int array) (part: int) (first: int) (count: int) =
     let renderSlots = ResizeArray<int * Slot>()
     let isolatedSlots = ResizeArray<int * Slot>()
@@ -308,13 +309,13 @@ let compile (definition: TemplateComponent) : Compiled =
                         Owner = layout.Owners[index]
                         RootLevel = rootCount > 1 && path.Length = 1
                         Items = region.Items
-                        Once = readsOnce region.Row
-                        DisposeFirst =
+                        Kind =
                             match region.Row with
-                            | ArmRow -> true
-                            | ViewRow
-                            | ItemRow _ -> false
+                            | ItemRow _ -> ListRows
+                            | ArmRow -> SelectedArm
+                            | ViewRow -> ViewHole
                         Render = rowRenderer region.Row
+                        Row = region.Row
                     }
                 | _ -> ()
         |]
@@ -372,8 +373,12 @@ type internal MountServices =
     abstract ListenDirect: Node * string * (obj -> unit) -> unit
     abstract ReportFailure: exn -> unit
     abstract ClearFailure: unit -> unit
-    /// <summary>Mounts keyed rows between a region's start and end markers; the first flag marks markers that are roots of the appended clone, and the second disposes a replaced row before its replacement is created.</summary>
-    abstract Region: Node * Node * bool * bool * (unit -> (obj * obj) array) * ((unit -> obj) -> Backend -> unit) -> unit
+
+    /// <summary>Mounts a region between its start and end markers. The flag marks markers that are roots of the appended
+    /// clone; the materialiser is null for a view hole.</summary>
+    abstract Region:
+        Node * Node * bool * RegionKind * (unit -> (obj * obj) array) * ((unit -> obj) -> Backend -> unit) * Func<(unit -> obj), MountServices, unit> ->
+            unit
 
 let private unset = obj ()
 
@@ -591,7 +596,7 @@ let private partInstance (state: obj array) (childBase: int) (part: int) : obj =
         at (unbox<obj array>(at state (childBase + part - 1))) StateInstance
 
 /// <summary>Materialises one instance: runs setup, clones the skeleton, binds its slots and events and those of its inlined children, appends it and mounts its regions.</summary>
-let internal materialise (definition: TemplateDefinition) (props: obj) (services: MountServices) =
+let rec internal materialise (definition: TemplateDefinition) (props: obj) (services: MountServices) =
     let template = definition :?> TemplateComponent
 
     if isNull definition.Compiled then
@@ -646,10 +651,21 @@ let internal materialise (definition: TemplateDefinition) (props: obj) (services
         let items = region.Items
 
         let read =
-            if region.Once then
+            match region.Kind with
+            | ViewHole ->
                 let snapshot = items.Invoke owner
                 fun () -> snapshot
-            else
-                fun () -> items.Invoke owner
+            | ListRows
+            | SelectedArm -> fun () -> items.Invoke owner
 
-        services.Region (start, finish, region.RootLevel, region.DisposeFirst, read, region.Render)
+        let rows =
+            match region.Row with
+            | ItemRow (rowDefinition, rowProps) ->
+                Func<(unit -> obj), MountServices, unit>(fun current rowServices -> materialise rowDefinition (rowProps.Invoke current) rowServices)
+            | ArmRow ->
+                Func<(unit -> obj), MountServices, unit>(fun current rowServices ->
+                    let arm = unbox<Arm>(current ())
+                    materialise arm.Definition (arm.Reader.Invoke current) rowServices)
+            | ViewRow -> null
+
+        services.Region (start, finish, region.RootLevel, region.Kind, read, region.Render, rows)

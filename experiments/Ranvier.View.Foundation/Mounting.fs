@@ -156,6 +156,87 @@ let private at (items: ResizeArray<'T>) (index: int) : 'T = jsNative
 
 let private skip: unit -> unit = ignore
 
+[<Emit("new Set()")>]
+let private nameSet () : obj = jsNative
+
+[<Emit("$0.has($1)")>]
+let private setHas (set: obj) (name: string) : bool = jsNative
+
+[<Emit("$0.add($1)")>]
+let private setAdd (set: obj) (name: string) : unit = jsNative
+
+[<Emit("$0.forEach($1)")>]
+let private setIter (set: obj) (action: string -> unit) : unit = jsNative
+
+/// <summary>For each position of <c>sources</c>, whether it belongs to one longest increasing run of its non-negative values.</summary>
+let private increasingRun (sources: int array) : bool array =
+    let keep: bool array = Array.zeroCreate sources.Length
+    let tails = ResizeArray<int>()
+    let previous = Array.create sources.Length -1
+
+    for index in 0 .. sources.Length - 1 do
+        let value = sources[index]
+
+        if value >= 0 then
+            let mutable low = 0
+            let mutable high = tails.Count
+
+            while low < high do
+                let middle = (low + high) >>> 1
+
+                if sources[tails[middle]] < value then
+                    low <- middle + 1
+                else
+                    high <- middle
+
+            if low > 0 then
+                previous[index] <- tails[low - 1]
+
+            if low = tails.Count then
+                tails.Add index
+            else
+                tails[low] <- index
+
+    if tails.Count > 0 then
+        let mutable cursor = tails[tails.Count - 1]
+
+        while cursor >= 0 do
+            keep[cursor] <- true
+            cursor <- previous[cursor]
+
+    keep
+
+/// <summary>A region's failure state: set up failures recorded during the first pass, reports after it.</summary>
+type private RegionErrors(report: exn list -> unit) =
+    member val Initializing = true with get, set
+    member val SetupFailure: exn option = None with get, set
+
+    member _.Report(errors: exn list) =
+        if not errors.IsEmpty then
+            try
+                Api.untrack (fun () -> report errors)
+            with reporterError ->
+                raise (AggregateException ("Keyed update and reporter failed", List.toArray (errors @ [ reporterError ])))
+
+    /// <summary>Records <c>errors</c> as the region's setup failure during the first pass; afterwards reports them and raises <c>error</c>.</summary>
+    member this.Fail(error: exn, errors: exn list) =
+        if this.Initializing then
+            this.SetupFailure <-
+                Some (
+                    match errors with
+                    | [ single ] -> single
+                    | _ ->
+                        AggregateException (
+                            "Keyed row setup and cleanup failed: "
+                            + String.concat "; " (errors |> List.map _.Message),
+                            errors
+                        )
+                        :> exn
+                )
+        else
+            this.Report errors
+            raise error
+
 type private Entry =
     {
         Node: Node
@@ -625,6 +706,245 @@ and Mounted internal (state: MountState) =
 
         state.Move (parent, before)
 
+/// <summary>The nodes of a row or arm, from its first node to its last.</summary>
+and [<Sealed; AllowNullLiteral>] private Row(first: Node, last: Node) =
+    member _.First = first
+    member _.Last = last
+    /// <summary>The row's position among its region's laid-out rows, or -1 before its first layout.</summary>
+    member val Index = -1 with get, set
+    member val Removed = false with get, set
+    /// <summary>The nested mount of an authored row, or null for a template row.</summary>
+    member val Mount: Mounted = Unchecked.defaultof<_> with get, set
+
+    static member MoveBefore(row: Row, parent: Node, anchor: Node) =
+        let mutable cursor = row.First
+        let mutable going = true
+
+        while going do
+            let next = nextOrNull cursor
+
+            if same cursor row.Last then
+                going <- false
+
+            parent.insertBefore (cursor, anchor) |> ignore
+            cursor <- next
+
+    static member Remove(row: Row) =
+        if not row.Removed then
+            row.Removed <- true
+            let mutable cursor = row.First
+            let mutable going = true
+
+            while going do
+                let next = nextOrNull cursor
+
+                if same cursor row.Last then
+                    going <- false
+
+                remove (cursor :?> ChildNode)
+                cursor <- next
+
+    /// <summary>Raises unless the markers share <c>parent</c> and the laid-out rows sit between them in order.</summary>
+    static member Validate(regionStart: Node, regionEnd: Node, laidOut: ResizeArray<Row>, parent: Node) =
+        if
+            not (
+                regionStart.parentNode
+                |> Option.exists (same parent)
+            )
+            || not (
+                regionEnd.parentNode
+                |> Option.exists (same parent)
+            )
+        then
+            invalid "Keyed-list boundaries were externally mutated"
+
+        let mutable cursor = nextOrNull regionStart
+
+        for index in 0 .. laidOut.Count - 1 do
+            let row = laidOut[index]
+
+            if not row.Removed then
+                if not (isNull (box row.Mount)) then
+                    row.Mount.Validate ()
+
+                if not (same cursor row.First) then
+                    invalid "Keyed-list rows or contents were externally mutated"
+
+                cursor <- nextOrNull row.Last
+
+        if not (same cursor regionEnd) then
+            invalid "Keyed-list boundaries were externally reordered"
+
+    static member Relocate(laidOut: ResizeArray<Row>) =
+        for index in 0 .. laidOut.Count - 1 do
+            let row = laidOut[index]
+
+            if not (isNull (box row.Mount)) then
+                row.Mount.Relocate ()
+
+    static member private Place(row: Row, parent: Node, anchor: Node) =
+        Row.MoveBefore (row, parent, anchor)
+
+        if not (isNull (box row.Mount)) then
+            row.Mount.Relocate ()
+
+    /// <summary>
+    /// Moves the region's rows into the order of <c>next</c> and stores it as the laid-out rows. Rows outside the
+    /// common prefix and suffix move only when they fall outside one longest run of rows already in order. Stops when
+    /// <c>live</c> turns false.
+    /// </summary>
+    static member Layout(live: unit -> bool, laidOut: ResizeArray<Row>, staging: DocumentFragment, parent: Node, regionEnd: Node, next: Row array) =
+        let previous = ResizeArray<Row>(laidOut.Count)
+
+        for index in 0 .. laidOut.Count - 1 do
+            let row = laidOut[index]
+
+            if not row.Removed then
+                row.Index <- previous.Count
+                previous.Add row
+
+        let mutable aStart = 0
+        let mutable bStart = 0
+        let mutable aEnd = previous.Count
+        let mutable bEnd = next.Length
+
+        while aStart < aEnd
+              && bStart < bEnd
+              && same previous[aStart] next[bStart] do
+            aStart <- aStart + 1
+            bStart <- bStart + 1
+
+        while aEnd > aStart
+              && bEnd > bStart
+              && same previous[aEnd - 1] next[bEnd - 1] do
+            aEnd <- aEnd - 1
+            bEnd <- bEnd - 1
+
+        if bStart < bEnd && live () then
+            let anchor = if bEnd < next.Length then next[bEnd].First else regionEnd
+
+            if aStart = aEnd then
+                let staged =
+                    staging.firstChild
+                    |> Option.exists (same next[bStart].First)
+                    && staging.lastChild
+                       |> Option.exists (same next[bEnd - 1].Last)
+
+                if staged then
+                    parent.insertBefore (staging, anchor) |> ignore
+                else
+                    let mutable index = bStart
+
+                    while index < bEnd && live () do
+                        Row.Place (next[index], parent, anchor)
+                        index <- index + 1
+            else
+                let count = bEnd - bStart
+                let sources = Array.create count -1
+
+                for offset in 0 .. count - 1 do
+                    let index = next[bStart + offset].Index
+
+                    if
+                        index >= aStart
+                        && index < aEnd
+                        && same previous[index] next[bStart + offset]
+                    then
+                        sources[offset] <- index
+
+                let keep = increasingRun sources
+                let mutable before = anchor
+                let mutable offset = count - 1
+
+                while offset >= 0 && live () do
+                    let row = next[bStart + offset]
+
+                    if not keep[offset] then
+                        Row.Place (row, parent, before)
+
+                    before <- row.First
+                    offset <- offset - 1
+
+        laidOut.Clear ()
+
+        for index in 0 .. next.Length - 1 do
+            next[index].Index <- index
+            laidOut.Add next[index]
+
+/// <summary>Materialises the template rows and arms of one region into the region's staging fragment and serves their setup.</summary>
+and private RowBuilder(state: MountState) =
+    let roots = ResizeArray<Node>()
+    let mutable staging: DocumentFragment = Unchecked.defaultof<_>
+    let mutable settingUp = false
+    let mutable setupFailure: exn option = None
+
+    let setup: Setup =
+        {
+            OnCleanup = fun callback -> state.OwnedCleanup (Api.getOwner (), callback)
+        }
+
+    member _.Staging =
+        if isNull (box staging) then
+            staging <- fragment ()
+
+        staging
+
+    member this.Build(materialise: Func<(unit -> obj), TemplateDom.MountServices, unit>, current: unit -> obj) : Row =
+        roots.Clear ()
+        setupFailure <- None
+        settingUp <- true
+
+        try
+            try
+                materialise.Invoke (current, this :> TemplateDom.MountServices)
+            with _ ->
+                for index in 0 .. roots.Count - 1 do
+                    remove (roots[index] :?> ChildNode)
+
+                reraise ()
+        finally
+            settingUp <- false
+
+        if roots.Count = 0 then
+            let marker = comment "ranvier:row"
+            this.Staging.appendChild marker |> ignore
+            roots.Add marker
+
+        Row (roots[0], roots[roots.Count - 1])
+
+    interface TemplateDom.MountServices with
+        member this.Append(node) =
+            this.Staging.appendChild node |> ignore
+            roots.Add node
+
+        member _.Setup = setup
+
+        member _.SettingUp() = settingUp
+
+        member _.SetupFailed(error) =
+            setupFailure <- Some error
+
+        member _.RaiseSetupFailure() =
+            setupFailure |> Option.iter raise
+
+        member _.IsDelegated(eventName) =
+            isDelegated delegatedEvents eventName
+
+        member _.Delegate(eventName) =
+            state.DelegateLate eventName
+
+        member _.ListenDirect(node, eventName, invoke) =
+            state.ListenDirect (node, eventName, invoke)
+
+        member _.ReportFailure(error) =
+            state.ReportReaderFailure error
+
+        member _.ClearFailure() =
+            state.ClearReported ()
+
+        member _.Region(start, finish, _, kind, read, render, rows) =
+            state.NestedRegion (start, finish, kind, read, render, rows)
+
 and private KeyedEntry =
     {
         Key: obj
@@ -816,27 +1136,23 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
         bindingSetupFailure |> Option.iter raise
 #endif
 
-    // Null until a delegated event is registered; registration is valid only during setup.
-    let mutable delegatedNames: ResizeArray<string> = null
+    // A set of event names; null until a delegated event is registered.
+    let mutable delegatedNames: obj = null
     let mutable delegatedHost: Node = Unchecked.defaultof<_>
 
-    let delegateAt (target: Node) =
+    let delegateAt (host: Node) =
         if not (isNull delegatedNames) then
-            for index in 0 .. delegatedNames.Count - 1 do
-                let eventName = delegatedNames[index]
-                delegateFrom.Invoke (target, eventName)
+            setIter delegatedNames (fun eventName -> delegateFrom.Invoke (host, eventName))
 
-        delegatedHost <- target
+        delegatedHost <- host
 
     let releaseDelegation () =
         if
             not (isNull (box delegatedHost))
             && not (isNull delegatedNames)
         then
-            for index in 0 .. delegatedNames.Count - 1 do
-                let eventName = delegatedNames[index]
-                undelegateFrom.Invoke (delegatedHost, eventName)
-
+            let releasedHost = delegatedHost
+            setIter delegatedNames (fun eventName -> undelegateFrom.Invoke (releasedHost, eventName))
             delegatedHost <- Unchecked.defaultof<_>
 
     let mutable preparedRoot: Node = Unchecked.defaultof<_>
@@ -861,16 +1177,26 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
 
     let registerDelegated (eventName: string) =
         if isNull delegatedNames then
-            delegatedNames <- ResizeArray ()
+            delegatedNames <- nameSet ()
 
-        let mutable known = false
+        setAdd delegatedNames eventName
 
-        for index in 0 .. delegatedNames.Count - 1 do
-            if delegatedNames[index] = eventName then
-                known <- true
+    let mutable delegationReleased = false
 
-        if not known then
-            delegatedNames.Add eventName
+    // A row registers delegated events after its mount attached: the name joins the mount's host at once.
+    let delegateLate (eventName: string) =
+        if
+            isNull delegatedNames
+            || not (setHas delegatedNames eventName)
+        then
+            registerDelegated eventName
+
+            if not (isNull (box delegatedHost)) then
+                delegateFrom.Invoke (delegatedHost, eventName)
+
+                if not delegationReleased then
+                    delegationReleased <- true
+                    root.OnCleanup releaseDelegation
 
     let listenDirect (node: Node) eventName (invoke: obj -> unit) =
         let cleanup = Typed.listenDirect (box node) eventName invoke
@@ -884,6 +1210,21 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
     let mutable templateSetup: Setup = Unchecked.defaultof<_>
 
     member _.Root: MountLifetime = root
+
+    member internal _.OwnedCleanup(owner: Owner, callback: unit -> unit) =
+        ownedCleanup owner callback
+
+    member internal _.DelegateLate(eventName: string) =
+        delegateLate eventName
+
+    member internal _.ListenDirect(node: Node, eventName: string, invoke: obj -> unit) =
+        listenDirect node eventName invoke
+
+    member internal _.ReportReaderFailure(error: exn) =
+        reportReaderFailure error
+
+    member internal _.ClearReported() =
+        clearReported ()
 
     member _.Native(node: Node, ownership: NativeOwnership) : unit =
         ensureSetup ()
@@ -946,6 +1287,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
             delegateAt host
 
             if not (isNull delegatedNames) then
+                delegationReleased <- true
                 root.OnCleanup releaseDelegation
 
             Mounted this
@@ -1085,28 +1427,213 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
         startBinding (Func<_, _, _>(fun left right -> equals left right)) read (fun value -> node.textContent <- value)
 
     override this.Keyed(read, render) =
-        this.AuthoredRegion (false, read, render)
+        this.AuthoredRegion (TemplateDom.ListRows, read, render)
 
     override this.Switch(read, render) =
-        this.AuthoredRegion (true, read, render)
+        this.AuthoredRegion (TemplateDom.SelectedArm, read, render)
 
-    /// <summary>Adds boundary nodes at the current position and mounts a keyed region between them.</summary>
-    member private this.AuthoredRegion(disposeFirst: bool, read, render) =
+    /// <summary>Adds boundary nodes at the current position and mounts a region of <c>kind</c> between them.</summary>
+    member private this.AuthoredRegion(kind, read, render) =
         ensureSetup ()
 
         let regionStart, regionEnd =
             comment "ranvier:list:start", comment "ranvier:list:end"
 
-        if isNull (box target) then
-            this.KeyedRegion (regionStart, regionEnd, NewRegion, disposeFirst, read, render)
-        else
-            range.AppendGenerated (target, regionStart)
-            range.AppendGenerated (target, regionEnd)
-            this.KeyedRegion (regionStart, regionEnd, NestedRegion, disposeFirst, read, render)
+        let placement =
+            if isNull (box target) then
+                NewRegion
+            else
+                range.AppendGenerated (target, regionStart)
+                range.AppendGenerated (target, regionEnd)
+                NestedRegion
+
+        this.RegionOf (regionStart, regionEnd, placement, kind, read, render, null)
+
+    member internal this.NestedRegion
+        (
+            start: Node,
+            finish: Node,
+            kind: TemplateDom.RegionKind,
+            read: unit -> (obj * obj) array,
+            render: (unit -> obj) -> Backend -> unit,
+            rows: Func<(unit -> obj), TemplateDom.MountServices, unit>
+        ) =
+        this.RegionOf (start, finish, NestedRegion, kind, read, render, rows)
+
+    member private _.RegionParent(regionStart: Node, regionEnd: Node) : Node =
+        let regionParent =
+            regionStart.parentNode
+            |> Option.defaultWith (fun () -> invalid "Keyed-list boundaries have no parent")
+
+        if
+            not (
+                regionEnd.parentNode
+                |> Option.exists (same regionParent)
+            )
+        then
+            invalid "Keyed-list boundaries were externally mutated"
+
+        regionParent
+
+    member private _.PlaceRegion(regionStart: Node, regionEnd: Node, placement: RegionPlacement, validate: unit -> unit, relocate: unit -> unit) =
+        match placement with
+        | NestedRegion -> ()
+        | NewRegion -> range.AddRegion (regionStart, regionEnd, validate, relocate)
+        | RootRegion -> range.SpanRegion (regionStart, regionEnd, validate, relocate)
+
+    /// <summary>Mounts an authored row as a nested mount and returns its nodes.</summary>
+    member private _.MountRow(current: unit -> obj, render: (unit -> obj) -> Backend -> unit) : Row =
+        let rowHost = fragment ()
+
+        let mounted =
+            MountState(scheduling, graph, root, Unchecked.defaultof<_>, report, rowHost).Run(None, (fun context -> render current context.Backend))
+
+        let first =
+            rowHost.firstChild
+            |> Option.defaultWith (fun () -> invalid "A keyed row has no start boundary")
+
+        let last =
+            rowHost.lastChild
+            |> Option.defaultWith (fun () -> invalid "A keyed row has no end boundary")
+
+        Row (first, last, Mount = mounted)
+
+    /// <summary>
+    /// Mounts one row per keyed item between the region's markers, on a core projection that creates new rows before it
+    /// retires removed ones. Template rows (<c>rows</c>) are cloned into the region; authored rows (<c>render</c>) are
+    /// nested mounts.
+    /// </summary>
+    member private this.ListRegion
+        (
+            regionStart: Node,
+            regionEnd: Node,
+            placement: RegionPlacement,
+            read: unit -> (obj * obj) array,
+            render: (unit -> obj) -> Backend -> unit,
+            rows: Func<(unit -> obj), TemplateDom.MountServices, unit>
+        ) =
+        let laidOut = ResizeArray<Row>()
+        let builder = RowBuilder this
+        let errors = RegionErrors report
+        let nested = (placement = NestedRegion)
+        let mutable regionOwner: Owner = Unchecked.defaultof<_>
+        let mutable projection: Projection<obj, Row> = Unchecked.defaultof<_>
+        // The items of the latest reconcile, the projection's only input; each write is followed by a bump of `version`,
+        // which marks the projection stale.
+        let mutable version: Signal<int> = Unchecked.defaultof<_>
+        let mutable snapshot: (obj * obj) array = [||]
+
+        let live () =
+            not root.IsDisposed && not regionOwner.IsDisposed
+
+        let regionParent () =
+            this.RegionParent (regionStart, regionEnd)
+
+        this.PlaceRegion (
+            regionStart,
+            regionEnd,
+            placement,
+            (fun () -> Row.Validate (regionStart, regionEnd, laidOut, regionParent ())),
+            fun () -> Row.Relocate laidOut
+        )
+
+        let buildRow (item: unit -> obj * obj) : Row =
+            let mutable row: Row = null
+
+            // Runs after the row's own cleanups.
+            Api.onCleanup (fun () ->
+                if not (isNull row) then
+                    if not (isNull (box row.Mount)) then
+                        row.Removed <- true
+                    elif not (nested && regionOwner.IsDisposed) then
+                        Row.Remove row)
+
+            let current () =
+                snd (item ())
+
+            row <-
+                if isNull rows then
+                    this.MountRow (current, render)
+                else
+                    builder.Build (rows, current)
+
+            row
+
+        let reconcile () =
+            if live () then
+                let parent = ref Unchecked.defaultof<Node>
+                let keys = ref Unchecked.defaultof<obj array>
+
+                let recorded, failure =
+                    MountLifetime.Capture (
+                        graph,
+                        fun () ->
+                            snapshot <- read ()
+                            Api.untrack (fun () -> version.Value <- version.Value + 1)
+                            parent.Value <- regionParent ()
+                            Row.Validate (regionStart, regionEnd, laidOut, parent.Value)
+                            // Runs the pass inside the window: its row setup, rollback and retirement errors are reported with this update.
+                            keys.Value <- Api.untrack (fun () -> projection.Keys)
+                    )
+
+                if live () then
+                    match failure with
+                    | Some error -> errors.Fail (error, error :: recorded)
+                    | None ->
+                        let layoutFailure =
+                            try
+                                Api.untrack (fun () ->
+                                    let next =
+                                        keys.Value
+                                        |> Array.map (fun key -> projection.Get key)
+
+                                    Row.Layout (live, laidOut, builder.Staging, parent.Value, regionEnd, next))
+
+                                None
+                            with error ->
+                                Some error
+
+                        match layoutFailure with
+                        // A layout that disposed its own region ends silently.
+                        | Some _ when not (live ()) -> ()
+                        | Some error ->
+                            root.Dispose ()
+                            errors.Fail (error, recorded @ [ error ])
+                        | None -> errors.Report recorded
+
+        Api.createRoot (fun owner ->
+            regionOwner <- owner
+            version <- Api.createSignal 0
+
+            projection <-
+                Api.createProjectionOnce ProjectionOptions.CreateFirst (fun (item: obj * obj) -> fst item) buildRow (fun () ->
+                    version.Value |> ignore
+                    snapshot :> seq<_>)
+
+            Api.untrack (fun () -> Api.createEffect reconcile))
+
+        errors.Initializing <- false
+        errors.SetupFailure |> Option.iter raise
+
+    member private this.RegionOf
+        (
+            start: Node,
+            finish: Node,
+            placement: RegionPlacement,
+            kind: TemplateDom.RegionKind,
+            read: unit -> (obj * obj) array,
+            render: (unit -> obj) -> Backend -> unit,
+            rows: Func<(unit -> obj), TemplateDom.MountServices, unit>
+        ) =
+        match kind with
+        | TemplateDom.ListRows -> this.ListRegion (start, finish, placement, read, render, rows)
+        | TemplateDom.SelectedArm -> this.KeyedRegion (start, finish, placement, true, read, render)
+        | TemplateDom.ViewHole -> this.KeyedRegion (start, finish, placement, false, read, render)
+
 
     /// <summary>Mounts one nested mount per keyed item between two boundary nodes and reconciles them as the items change.</summary>
     /// <remarks>With <c>disposeFirst</c>, rows whose keys leave the items are disposed before new rows are created; otherwise they are disposed after the new rows are in place.</remarks>
-    member private _.KeyedRegion
+    member private this.KeyedRegion
         (
             regionStart: Node,
             regionEnd: Node,
@@ -1174,21 +1701,14 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
             if not (cursor |> Option.exists (same regionEnd)) then
                 invalid "Keyed-list boundaries were externally reordered"
 
-        match placement with
-        | NestedRegion -> ()
-        | NewRegion
-        | RootRegion ->
-            let validate () =
-                validateRegion (getRegionParent ())
+        let validate () =
+            validateRegion (getRegionParent ())
 
-            let relocate () =
-                for entry in entries do
-                    entry.Mount.Relocate ()
+        let relocate () =
+            for entry in entries do
+                entry.Mount.Relocate ()
 
-            match placement with
-            | NewRegion -> range.AddRegion (regionStart, regionEnd, validate, relocate)
-            | RootRegion -> range.SpanRegion (regionStart, regionEnd, validate, relocate)
-            | NestedRegion -> ()
+        this.PlaceRegion (regionStart, regionEnd, placement, validate, relocate)
 
         let moveToOrder regionParent (ordered: KeyedEntry array) =
             let mutable anchor: Node option = Some regionEnd
@@ -1485,7 +2005,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
         member _.ClearFailure() =
             clearReported ()
 
-        member this.Region(start, finish, rootLevel, disposeFirst, read, render) =
+        member this.Region(start, finish, rootLevel, kind, read, render, rows) =
             ensureSetup ()
 
             let placement =
@@ -1494,7 +2014,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                 else
                     NestedRegion
 
-            this.KeyedRegion (start, finish, placement, disposeFirst, read, render)
+            this.RegionOf (start, finish, placement, kind, read, render, rows)
 
 /// <summary>Mounts a view with an owned commit queue when deferred scheduling is selected.</summary>
 /// <remarks>Nested keyed mounts share the containing mount's scheduler.</remarks>

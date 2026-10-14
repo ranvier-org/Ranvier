@@ -33,3 +33,17 @@ test("binding microtasks coalesce and cancel in Chromium", async ({ page }) => {
   });
   expect(values).toEqual([[], [3], [3]]);
 });
+
+test("template rows keep focus and selection across list moves in Chromium", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", error => errors.push(error.message));
+  await page.goto("/tests/range.html");
+  await page.waitForFunction(() => window.templateBrowserCases);
+  const results = await page.evaluate(() => window.templateBrowserCases.map(([name, check]) => {
+    try { check(); return { name, passed: true }; }
+    catch (error) { return { name, passed: false, error: String(error) }; }
+  }));
+  expect(results.length).toBeGreaterThan(0);
+  expect(results.filter(result => !result.passed)).toEqual([]);
+  expect(errors).toEqual([]);
+});
