@@ -33,7 +33,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Invalidation.fs | 4 | 4 | 4 | 4 | 4 | 4 | 0 | 0 |
 | Lifetime.fs | 6 | 6 | 6 | 6 | 6 | 6 | 0 | 0 |
 | Retention.fs | 2 | 2 | 2 | 2 | 2 | 2 | 10 | 0 |
-| Tracing.fs | 2 | 2 | 2 | 72 | 68 | 63 | 1 | 0 |
+| Tracing.fs | 2 | 2 | 2 | 75 | 71 | 66 | 1 | 0 |
 | TraceModelTests.fs | 0 | 0 | 0 | 12 | 12 | 12 | 2 | 0 |
 | Observers.fs | 24 | 24 | 24 | 24 | 24 | 24 | 0 | 0 |
 | Api.fs | 7 | 7 | 7 | 7 | 7 | 7 | 2 | 0 |
@@ -69,7 +69,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | QueryDictionary.fs | 2 | 2 | 2 | 2 | 2 | 2 | 0 | 0 |
 | QueryErgonomics.fs | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | QueryNavigationTests.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 929 | 911 | 867 | 1018 | 996 | 947 | 87 | 1 |
+| **Total** | 929 | 911 | 867 | 1021 | 999 | 950 | 87 | 1 |
 
 ## Tests.fs
 
@@ -482,7 +482,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | --- | --- |
 | an Unchecked graph creating nodes from two threads records every NodeNew | JavaScript has one thread. |
 
-<details><summary>63 passed in every build and delivery that runs them</summary>
+<details><summary>66 passed in every build and delivery that runs them</summary>
 
 - the assembly is traced exactly when RANVIER_TRACE is defined
 - named returns the thunk's result
@@ -547,6 +547,9 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - Rerun guard / a guarded self-write of ten steps runs to completion (traced only)
 - Rerun guard / a flush of many distinct effects runs each once (traced only)
 - Rerun guard / an effect run once in each of many flushes runs every time (traced only)
+- Rerun guard / a chain of writers that each wake one reader in turn runs to completion (traced only)
+- Rerun guard / a chain of writers behind an unchanged memo runs to completion (traced only)
+- Rerun guard / two effects writing each other's dependencies raise, naming a cycle (traced only)
 
 </details>
 

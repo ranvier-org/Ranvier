@@ -1542,6 +1542,91 @@ let tests =
 
                         Expect.equal runs (2 * RerunGuard.Limit + 1) "the limit counts runs within one flush"
                     }
+
+                    test "a chain of writers that each wake one reader in turn runs to completion" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let count = RerunGuard.Limit + RerunGuard.Limit / 2
+                        let shared = Signal (g, 0)
+                        let links = Array.init (count + 1) (fun _ -> Signal (g, 0))
+                        let mutable readerRuns = 0
+
+                        createEffect (fun () ->
+                            shared.Value |> ignore
+                            readerRuns <- readerRuns + 1)
+
+                        for i in 1..count do
+                            createEffect (fun () ->
+                                let v = links[i - 1].Value
+
+                                if v > 0 then
+                                    shared.Value <- v * 10000 + i
+                                    links[i].Value <- v)
+
+                        links[0].Value <- 1
+                        Expect.equal links[count].Value 1 "the chain reaches its end"
+                        Expect.equal readerRuns (count + 1) "the reader runs once per writer"
+                    }
+
+                    test "a chain of writers behind an unchanged memo runs to completion" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let count = RerunGuard.Limit + RerunGuard.Limit / 2
+                        let shared = Signal (g, 0)
+                        let nonNegative = createMemo (fun _ -> shared.Value >= 0)
+                        let links = Array.init (count + 1) (fun _ -> Signal (g, 0))
+                        let mutable readerRuns = 0
+
+                        createEffect (fun () ->
+                            nonNegative.Value |> ignore
+                            readerRuns <- readerRuns + 1)
+
+                        for i in 1..count do
+                            createEffect (fun () ->
+                                let v = links[i - 1].Value
+
+                                if v > 0 then
+                                    shared.Value <- v * 10000 + i
+                                    links[i].Value <- v)
+
+                        links[0].Value <- 1
+                        Expect.equal links[count].Value 1 "the chain reaches its end"
+                        Expect.equal readerRuns 1 "the reader's checks find the memo unchanged"
+                    }
+
+                    test "two effects writing each other's dependencies raise, naming a cycle" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let x = Signal (g, 0)
+                        let y = Signal (g, 0)
+                        let mutable runs = 0
+                        let cap = 3 * RerunGuard.CycleLimit
+
+                        let message =
+                            try
+                                batch (fun () ->
+                                    createEffect (fun () ->
+                                        runs <- runs + 1
+                                        let v = y.Value
+
+                                        if runs < cap then
+                                            x.Value <- v + 1)
+
+                                    createEffect (fun () ->
+                                        runs <- runs + 1
+                                        let v = x.Value
+
+                                        if runs < cap then
+                                            y.Value <- v + 1))
+
+                                None
+                            with :? System.InvalidOperationException as ex ->
+                                Some ex.Message
+
+                        Expect.isTrue message.IsSome "the cycle raises"
+                        Expect.isLessThan runs cap "the guard raises before the cap"
+                        Expect.stringContains message.Value "cycle" "the message names a cycle"
+                    }
                 ]
 #endif
         ]

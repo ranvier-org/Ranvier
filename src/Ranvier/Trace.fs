@@ -6,14 +6,16 @@ open System.Diagnostics
 open System
 open System.Collections.Generic
 
-/// <summary>The traced build's limit on reruns of a scheduled node.</summary>
+/// <summary>The traced build's limits on reruns of a scheduled node within a flush.</summary>
+/// <remarks>The flush raises <c>InvalidOperationException</c> in place of the dequeue past a limit.</remarks>
 module internal RerunGuard =
-    /// <summary>
-    /// The most runs of one node in one flush. The flush raises <c>InvalidOperationException</c> in place of the next
-    /// run.
-    /// </summary>
+    /// <summary>The most times a node's own runs queue it again in a flush.</summary>
     [<Literal>]
     let Limit = 1000
+
+    /// <summary>The most times a node is dequeued in a flush.</summary>
+    [<Literal>]
+    let CycleLimit = 100000
 
 /// <summary>A node's live observer set or source list, or a binding's single source edge, read by edge reconciliation.</summary>
 type internal ITracedEdges =
@@ -98,8 +100,22 @@ type internal TraceLog(locked: bool) =
     // Flush number and running-stack depth of each open flush, innermost last.
     let flushFrames = ResizeArray<struct (int * int)>()
 
-    // Node id to its runs in the open flushes.
-    let flushRuns = Dictionary<int, int>()
+    // Node id to its dequeues in the open flushes.
+    let mutable flushRuns = Dictionary<int, int>()
+
+    // Node id to the times its own run queued it again in the open flushes.
+    let mutable selfRequeues = Dictionary<int, int>()
+
+    // The node id of the item the open flush dequeued last, or 0.
+    let mutable executing = 0
+
+    // The table emptied; a table above 1,024 entries is replaced, so a large flush leaves no large buckets behind.
+    let reset (table: Dictionary<int, int>) =
+        if table.Count > 1024 then
+            Dictionary<int, int>()
+        else
+            table.Clear ()
+            table
 
     // Observer sets and source lists bound to the log. Fable holds them strongly.
 #if FABLE_COMPILER
@@ -366,30 +382,40 @@ type internal TraceLog(locked: bool) =
                 let struct (number, depth) = flushFrames[flushFrames.Count - 1]
                 flushFrames.RemoveAt (flushFrames.Count - 1)
 
-                if flushFrames.Count = 0 && flushRuns.Count > 0 then
-                    flushRuns.Clear ()
+                if flushFrames.Count = 0 then
+                    flushRuns <- reset flushRuns
+                    selfRequeues <- reset selfRequeues
+                    executing <- 0
 
                 let open' = [| for i in running.Count - 1 .. -1 .. depth -> running[i] |]
                 struct (number, open'))
 
     /// <summary>
-    /// Counts a run of node <c>id</c> in the open flush. False, with nothing counted, when the node already ran
-    /// <c>RerunGuard.Limit</c> times in it.
+    /// Counts a dequeue of node <c>id</c> in the open flush, and marks it the executing node. Returns 0, or, with
+    /// nothing counted, 1 when the node's own runs queued it again <c>RerunGuard.Limit</c> times in the flush and 2
+    /// when it was dequeued <c>RerunGuard.CycleLimit</c> times.
     /// </summary>
-    member _.CountRun(id: int) : bool =
+    member _.Admit(id: int) : int =
         sync (fun () ->
-            let runs = lookup flushRuns id
-
-            if runs < RerunGuard.Limit then
-                flushRuns[id] <- runs + 1
-                true
+            if lookup selfRequeues id >= RerunGuard.Limit then
+                1
             else
-                false)
+                let runs = lookup flushRuns id
 
-    /// <summary>
-    /// Node <c>id</c>'s kind, id, label and creation site, from its <c>NodeNew</c> and the label it took, for a
-    /// message.
-    /// </summary>
+                if runs >= RerunGuard.CycleLimit then
+                    2
+                else
+                    flushRuns[id] <- runs + 1
+                    executing <- id
+                    0)
+
+    /// <summary>Counts a queueing of node <c>id</c> while it is the executing node of the open flush.</summary>
+    member _.Requeued(id: int) =
+        sync (fun () ->
+            if id <> 0 && id = executing then
+                selfRequeues[id] <- lookup selfRequeues id + 1)
+
+    /// <summary>The node's kind, id, label and creation site.</summary>
     member _.Describe(id: int) : string =
         sync (fun () ->
             let mutable kind = "node"
@@ -1359,6 +1385,8 @@ type internal Tracer =
 
         log.Append (TraceEventKind.Schedule, id, 0, ahead, 0, log.MarkOf id, null)
         |> ignore
+
+        log.Requeued id
 #else
         ()
 #endif
@@ -1396,25 +1424,39 @@ type internal Tracer =
         ()
 #endif
 
-    /// <summary>Counts a run of <c>item</c>, a scheduled node, in <c>graph</c>'s open flush.</summary>
+    /// <summary>Counts a dequeue of <c>item</c>, a scheduled node, in <c>graph</c>'s open flush.</summary>
     /// <exception cref="T:System.InvalidOperationException">
-    /// The node already ran <c>RerunGuard.Limit</c> times in the flush.
+    /// The node's own runs queued it again <c>RerunGuard.Limit</c> times in the flush, or the node was dequeued
+    /// <c>RerunGuard.CycleLimit</c> times in it.
     /// </exception>
     [<Conditional("RANVIER_TRACE")>]
     static member Dequeue(graph: obj, item: obj) =
 #if RANVIER_TRACE
         let id = Tracer.IdOf item
         let log = Tracer.LogOf graph
+        let verdict = if id = 0 then 0 else log.Admit id
 
-        if id <> 0 && not (log.CountRun id) then
+        if verdict = 1 then
             raise (
                 InvalidOperationException (
                     String.Concat (
                         "The ",
                         log.Describe id,
-                        " ran ",
+                        " was queued again by its own run ",
                         string RerunGuard.Limit,
-                        " times in one flush and was queued again. Each run writes a signal the node depends on; make the write conditional, or move it out of the node."
+                        " times in one flush. Its run writes a signal it depends on; make the write conditional, or move it out of the node."
+                    )
+                )
+            )
+        elif verdict = 2 then
+            raise (
+                InvalidOperationException (
+                    String.Concat (
+                        "The ",
+                        log.Describe id,
+                        " was dequeued ",
+                        string RerunGuard.CycleLimit,
+                        " times in one flush; nodes may be writing each other's dependencies in a cycle."
                     )
                 )
             )
