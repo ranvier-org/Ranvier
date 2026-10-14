@@ -292,18 +292,12 @@ let private compilePart
     }
 
 /// <summary>Compiles a definition once: parses its skeleton markup and builds its walk, its slot tables, its regions and its inlined children's slot tables.</summary>
-/// <remarks>The skeleton belongs to the main document, as do its clones.</remarks>
+/// <remarks>A skeleton with regions belongs to the main document, as do its clones; a skeleton without regions belongs to the template element's inert document.</remarks>
 /// <exception cref="T:System.InvalidOperationException">The HTML parser restructures the markup, moving a dynamic node or changing the root count.</exception>
 let compile (definition: TemplateComponent) : Compiled =
     let layout = skeletonLayout definition.Root
     let targets = layout.Targets
     let rootCount = layout.RootCount
-    let template = document.createElement "template" :?> HTMLTemplateElement
-    template.innerHTML <- layout.Markup
-    let content = importDeep template.content :?> DocumentFragment
-    let paths = Array.map snd targets
-    let walk = walkProgram paths
-    validateParsed content walk targets rootCount
 
     let regions =
         [|
@@ -323,6 +317,19 @@ let compile (definition: TemplateComponent) : Compiled =
                     }
                 | _ -> ()
         |]
+
+    let template = document.createElement "template" :?> HTMLTemplateElement
+    template.innerHTML <- layout.Markup
+
+    let content =
+        if regions.Length = 0 then
+            template.content
+        else
+            importDeep template.content :?> DocumentFragment
+
+    let paths = Array.map snd targets
+    let walk = walkProgram paths
+    validateParsed content walk targets rootCount
 
     let children =
         layout.Children
