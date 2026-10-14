@@ -1,6 +1,6 @@
 # Keyed rows and arms on core primitives
 
-Date: 2026-10-14. Status: approved; decisions 1–3 confirmed by the user on 2026-10-14; amended with the plan's rulings ([plan](../plans/2026-10-14-keyed-rows-on-core.md)). Nothing below is implemented.
+Date: 2026-10-14. Status: approved; decisions 1–3 confirmed by the user on 2026-10-14; amended with the plan's rulings ([plan](../plans/2026-10-14-keyed-rows-on-core.md)). Implemented on `poc/fable-ranvier-dom`; measurements in [keyed rows on core](../../research/2026-10-14-keyed-rows-on-core.md).
 
 Baseline: `31e4a4b` on `poc/fable-ranvier-dom` (PR #42 head `be4e4cc` plus the view rule). Evidence: [keyed-row cost](../../research/2026-10-14-keyed-row-cost.md) on branch `research/keyed-row-cost` (`aa5b811`), whose prototypes 6 and 7 this design turns into production code. Rule: [`.claude/rules/view-uses-core.md`](../../../.claude/rules/view-uses-core.md).
 
@@ -254,11 +254,13 @@ Targets on `keyed-rows.mjs` against Solid 2 (2.0.0-rc.14, native compiler), shuf
 
 - **Row interiors are not validated.** External mutation between a row's first and last node is undetected; moved first or last nodes are detected.
 - **Cleanup order inside a row** is core owner order: reverse registration, interleaved with child owners. Nested-mount rows ran scope callbacks first.
+- **Nested lists inside a row retired by a normal update** detach their rows' nodes before the outer row's earlier-registered cleanups run.
 - **`Graph.Root` windows include any error recorded during the window**, including from a cleanup of an unrelated tree that the window's teardown triggers. Nested windows exclude their own slices; other sources are reported with the teardown that ran them.
 - **A teardown driven by the core rather than by `Dispose`** (for example `Graph.Dispose`) reports the mount's owner errors, adopted owners' errors and release failures; errors that computation scopes record into `Graph.Root` meanwhile are not grouped into it.
 - **`Graph.Root.Errors` grows without bound**, as it does today; the view reads slices and never clears it.
 - **`createProjectionOnce` code is present in every bundle that uses `createProjectionWith`** (+850 B minified), because `CreateAdded` references it.
 - **.NET `create1k` of the pure-core workload was 1–2% slower with the option compiled in**, unattributed. The measurement above repeats it with `ItemRow` kept sealed.
+- **The cast to the unsealed `ItemRow` is unmeasured in isolation.** `ItemRow` stays unsealed so that `OnceRow` inherits it. .NET `create10k` B / A of the pure-core workload was 1.183 (interquartile range [1.050, 1.233]), unexplained in the measurement write-up.
 
 ## Follow-ups
 
