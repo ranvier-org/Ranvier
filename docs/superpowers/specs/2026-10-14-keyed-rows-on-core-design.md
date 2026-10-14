@@ -137,7 +137,7 @@ let rows =
 2. Materialises the row: a template clone bound to the item reader for `t.each`, or a nested mount for an authored `Program` row (see [Authored views](#authored-views)).
 3. Returns `Row (first, last)`. A row with no nodes gets one `ranvier:row` comment.
 
-The row's release removes its nodes from `first` to `last`, and marks the row removed. In a nested region it does nothing while the region's owner is disposing (`IsDisposed`), because the region's content leaves with its container.
+The row's release removes its nodes from `first` to `last`, and marks the row removed. A template row that is retired while its mount tears down hands its removal to the mount's node release. So its nodes leave after every cleanup of the disposed tree, in the order given in [Lifetime](#lifetime-scope-replaced-by-owner).
 
 The region's reconcile effect:
 
@@ -149,7 +149,7 @@ The region's reconcile effect:
 
 The pass, its row creation and its retirement run inside the core's batch. Errors recorded while it runs are reported once, after layout (see [Teardown reporting](#teardown-reporting)).
 
-On the region owner's teardown, rows of a nested region skip their own removal: their nodes leave with the element or row that holds the markers, so disposing a mount with a nested list costs no per-row DOM work. Rows of a top-level region (`NewRegion`, `RootRegion`) remove their own nodes; a range deletion between the markers would also delete foreign nodes inserted inside rows (ruling in the plan).
+Every row removes its own nodes, in nested and top-level regions alike. The element that holds a nested region's markers can be moved out of the mount and adopted by another mount (`BuildContext.Native`), and then it outlives the mount that created the rows. A range deletion between the markers would also delete foreign nodes inserted inside rows (ruling in the plan).
 
 Rows register delegated events at the containing mount's host, once per event name per host. Direct listeners register on the row's node and are removed by the row's owner.
 
