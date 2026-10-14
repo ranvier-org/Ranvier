@@ -119,19 +119,25 @@ let private setDelegatedHandler (node: Node) (eventName: string) (handler: obj -
 [<Emit("new Map()")>]
 let private createSharedListeners () : obj = jsNative
 
-/// <summary>Per event name: the listener shared by every host, and the host property counting the mounts using it.</summary>
+/// <summary>Per event name: the listener shared by every host.</summary>
 let private sharedListeners = createSharedListeners ()
 
-// The listener runs with its host as `this` and walks from the target to that host, presenting each handled node as currentTarget. A node with a handler runs it; a template event node passes its instance state to `$1`. An inner host records itself on the event, so an outer host resumes above it.
+[<Emit("new WeakMap()")>]
+let private createHostCounts () : obj = jsNative
+
+/// <summary>Per host: the number of mounts using each shared listener.</summary>
+let private hostCounts = createHostCounts ()
+
+// The listener runs with its host as `this` and walks from the target to that host, presenting each handled node as currentTarget. A node with a handler runs it; a template event node passes its instance state to `TemplateDom.dispatch`. An inner host records itself on the event, so an outer host resumes above it.
 let private delegateFrom: Func<Node, string, unit> =
     JsInterop.emitJsExpr
-        (sharedListeners, TemplateDom.dispatch)
-        """(host, eventName) => { let shared = $0.get(eventName); if (!shared) { const key = '$$ranvier:' + eventName; shared = { count: '$$ranvier:count:' + eventName, listener: function (event) { const host = this; let node = event.$$ranvierHost ? event.$$ranvierHost.parentNode : event.target; Object.defineProperty(event, 'currentTarget', { configurable: true, get: () => node }); while (node) { const handler = node[key]; if (handler) { handler(event); if (event.cancelBubble) break; } else if (node.$$ranvier !== undefined) { $1(node.$$ranvier, node, event); if (event.cancelBubble) break; } if (node === host) break; node = node.parentNode; } event.$$ranvierHost = host; } }; $0.set(eventName, shared); } const count = host[shared.count] | 0; if (count === 0) host.addEventListener(eventName, shared.listener); host[shared.count] = count + 1; }"""
+        (sharedListeners, TemplateDom.dispatch, hostCounts)
+        """(host, eventName) => { let listener = $0.get(eventName); if (!listener) { const key = '$$ranvier:' + eventName; listener = function (event) { const host = this; let node = event.$$ranvierHost ? event.$$ranvierHost.parentNode : event.target; Object.defineProperty(event, 'currentTarget', { configurable: true, get: () => node }); while (node) { const handler = node[key]; if (handler) { handler(event); if (event.cancelBubble) break; } else if (node.$$ranvier !== undefined) { $1(node.$$ranvier, node, event); if (event.cancelBubble) break; } if (node === host) break; node = node.parentNode; } event.$$ranvierHost = host; }; $0.set(eventName, listener); } let counts = $2.get(host); if (!counts) $2.set(host, counts = new Map()); const count = counts.get(eventName) | 0; if (count === 0) host.addEventListener(eventName, listener); counts.set(eventName, count + 1); }"""
 
 let private undelegateFrom: Func<Node, string, unit> =
     JsInterop.emitJsExpr
-        sharedListeners
-        """(host, eventName) => { const shared = $0.get(eventName); const count = shared ? host[shared.count] | 0 : 0; if (count === 1) host.removeEventListener(eventName, shared.listener); if (count > 0) host[shared.count] = count - 1; }"""
+        (sharedListeners, hostCounts)
+        """(host, eventName) => { const counts = $1.get(host); const count = counts ? counts.get(eventName) | 0 : 0; if (count === 1) host.removeEventListener(eventName, $0.get(eventName)); if (count > 0) counts.set(eventName, count - 1); }"""
 
 let private claim (registry: WeakSet<Node>) (node: Node) : unit =
     registry.add node |> ignore
