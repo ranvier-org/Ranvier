@@ -33,7 +33,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Invalidation.fs | 4 | 4 | 4 | 4 | 4 | 4 | 0 | 0 |
 | Lifetime.fs | 6 | 6 | 6 | 6 | 6 | 6 | 0 | 0 |
 | Retention.fs | 2 | 2 | 2 | 2 | 2 | 2 | 10 | 0 |
-| Tracing.fs | 2 | 2 | 2 | 67 | 63 | 58 | 1 | 0 |
+| Tracing.fs | 2 | 2 | 2 | 72 | 68 | 63 | 1 | 0 |
 | TraceModelTests.fs | 0 | 0 | 0 | 12 | 12 | 12 | 2 | 0 |
 | Observers.fs | 24 | 24 | 24 | 24 | 24 | 24 | 0 | 0 |
 | Api.fs | 7 | 7 | 7 | 7 | 7 | 7 | 2 | 0 |
@@ -69,7 +69,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | QueryDictionary.fs | 2 | 2 | 2 | 2 | 2 | 2 | 0 | 0 |
 | QueryErgonomics.fs | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | QueryNavigationTests.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 929 | 911 | 867 | 1013 | 991 | 942 | 87 | 1 |
+| **Total** | 929 | 911 | 867 | 1018 | 996 | 947 | 87 | 1 |
 
 ## Tests.fs
 
@@ -482,7 +482,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | --- | --- |
 | an Unchecked graph creating nodes from two threads records every NodeNew | JavaScript has one thread. |
 
-<details><summary>58 passed in every build and delivery that runs them</summary>
+<details><summary>63 passed in every build and delivery that runs them</summary>
 
 - the assembly is traced exactly when RANVIER_TRACE is defined
 - named returns the thunk's result
@@ -542,6 +542,11 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - waitingOn names the pending source the last run read (traced only)
 - why through an async source ends at its settle (traced only)
 - a binding is traced as a binding (traced only)
+- Rerun guard / an effect that writes its own dependency on every run raises, naming the effect (traced only)
+- Rerun guard / a keyOf that writes its projection's source on every call raises once an effect reads the projection (traced only)
+- Rerun guard / a guarded self-write of ten steps runs to completion (traced only)
+- Rerun guard / a flush of many distinct effects runs each once (traced only)
+- Rerun guard / an effect run once in each of many flushes runs every time (traced only)
 
 </details>
 

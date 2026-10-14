@@ -6,6 +6,15 @@ open System.Diagnostics
 open System
 open System.Collections.Generic
 
+/// <summary>The traced build's limit on reruns of a scheduled node.</summary>
+module internal RerunGuard =
+    /// <summary>
+    /// The most runs of one node in one flush. The flush raises <c>InvalidOperationException</c> in place of the next
+    /// run.
+    /// </summary>
+    [<Literal>]
+    let Limit = 1000
+
 /// <summary>A node's live observer set or source list, or a binding's single source edge, read by edge reconciliation.</summary>
 type internal ITracedEdges =
     /// <summary>The owning node id.</summary>
@@ -88,6 +97,9 @@ type internal TraceLog(locked: bool) =
 
     // Flush number and running-stack depth of each open flush, innermost last.
     let flushFrames = ResizeArray<struct (int * int)>()
+
+    // Node id to its runs in the open flushes.
+    let flushRuns = Dictionary<int, int>()
 
     // Observer sets and source lists bound to the log. Fable holds them strongly.
 #if FABLE_COMPILER
@@ -353,8 +365,79 @@ type internal TraceLog(locked: bool) =
             else
                 let struct (number, depth) = flushFrames[flushFrames.Count - 1]
                 flushFrames.RemoveAt (flushFrames.Count - 1)
+
+                if flushFrames.Count = 0 && flushRuns.Count > 0 then
+                    flushRuns.Clear ()
+
                 let open' = [| for i in running.Count - 1 .. -1 .. depth -> running[i] |]
                 struct (number, open'))
+
+    /// <summary>
+    /// Counts a run of node <c>id</c> in the open flush. False, with nothing counted, when the node already ran
+    /// <c>RerunGuard.Limit</c> times in it.
+    /// </summary>
+    member _.CountRun(id: int) : bool =
+        sync (fun () ->
+            let runs = lookup flushRuns id
+
+            if runs < RerunGuard.Limit then
+                flushRuns[id] <- runs + 1
+                true
+            else
+                false)
+
+    /// <summary>
+    /// Node <c>id</c>'s kind, id, label and creation site, from its <c>NodeNew</c> and the label it took, for a
+    /// message.
+    /// </summary>
+    member _.Describe(id: int) : string =
+        sync (fun () ->
+            let mutable kind = "node"
+            let mutable site: obj = null
+            let mutable label: obj = null
+            let mutable created = -2
+
+            for i in 0 .. events.Count - 1 do
+                let e = events[i]
+
+                if e.Node = id then
+                    if e.Kind = TraceEventKind.NodeNew then
+                        created <- i
+                        site <- e.Payload
+
+                        kind <-
+                            match enum<TraceNodeKind> e.Arg with
+                            | TraceNodeKind.Signal -> "signal"
+                            | TraceNodeKind.AsyncSource -> "async source"
+                            | TraceNodeKind.Memo -> "memo"
+                            | TraceNodeKind.Effect -> "effect"
+                            | TraceNodeKind.AsyncMemo -> "async memo"
+                            | TraceNodeKind.Boundary -> "boundary"
+                            | TraceNodeKind.Projection -> "projection"
+                            | TraceNodeKind.ProjectionBeacon -> "projection beacon"
+                            | TraceNodeKind.RowWatch -> "row watch"
+                            | TraceNodeKind.LookupCell -> "lookup cell"
+                            | TraceNodeKind.Timed -> "timed node"
+                            | TraceNodeKind.Binding -> "binding"
+                            | _ -> "node"
+                    elif
+                        e.Kind = TraceEventKind.Label
+                        && (e.Arg = 1 || i = created + 1)
+                    then
+                        label <- e.Payload
+
+            let named =
+                if isNull label then
+                    ""
+                else
+                    String.Concat (" \"", string label, "\"")
+
+            let at =
+                match site with
+                | :? string as site when site <> "?" -> String.Concat (" (created at ", site, ")")
+                | _ -> ""
+
+            String.Concat (kind, " ", string id, named, at))
 
     /// <summary>Counts a run-scope discharge in progress, or ends one when <c>entering</c> is false.</summary>
     member _.Discharging(entering: bool) =
@@ -1309,6 +1392,32 @@ type internal Tracer =
 
         log.Append (TraceEventKind.FlushStart, 0, 0, number, 0, 0, null)
         |> ignore
+#else
+        ()
+#endif
+
+    /// <summary>Counts a run of <c>item</c>, a scheduled node, in <c>graph</c>'s open flush.</summary>
+    /// <exception cref="T:System.InvalidOperationException">
+    /// The node already ran <c>RerunGuard.Limit</c> times in the flush.
+    /// </exception>
+    [<Conditional("RANVIER_TRACE")>]
+    static member Dequeue(graph: obj, item: obj) =
+#if RANVIER_TRACE
+        let id = Tracer.IdOf item
+        let log = Tracer.LogOf graph
+
+        if id <> 0 && not (log.CountRun id) then
+            raise (
+                InvalidOperationException (
+                    String.Concat (
+                        "The ",
+                        log.Describe id,
+                        " ran ",
+                        string RerunGuard.Limit,
+                        " times in one flush and was queued again. Each run writes a signal the node depends on; make the write conditional, or move it out of the node."
+                    )
+                )
+            )
 #else
         ()
 #endif

@@ -1410,5 +1410,138 @@ let tests =
                 Expect.isFalse (bindings |> Array.exists sources.ContainsKey) "disposal removes the source edges"
                 Expect.isEmpty (Trace.reconcile g) "the removed edges fold to the live lists"
             }
+
+            testList
+                "Rerun guard"
+                [
+                    test "an effect that writes its own dependency on every run raises, naming the effect" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let x = Signal (g, 0)
+                        let mutable runaway = true
+                        let mutable runs = 0
+
+                        let message =
+                            try
+                                Trace.named "bumper" (fun () ->
+                                    createEffect (fun () ->
+                                        runs <- runs + 1
+                                        let v = x.Value
+
+                                        if runaway && runs < 5000 then
+                                            x.Value <- v + 1))
+
+                                None
+                            with :? System.InvalidOperationException as ex ->
+                                Some ex.Message
+
+                        Expect.isTrue message.IsSome "the runaway effect raises"
+                        Expect.equal runs RerunGuard.Limit "the guard raises in place of the run after the limit"
+                        Expect.stringContains message.Value "effect" "the message names the node's kind"
+                        Expect.stringContains message.Value "\"bumper\"" "the message names the effect's label"
+
+                        runaway <- false
+                        let other = Signal (g, 0)
+                        let mutable seen = -1
+                        createEffect (fun () -> seen <- other.Value)
+                        other.Value <- 5
+                        Expect.equal seen 5 "a later write and flush run"
+                        Expect.equal runs (RerunGuard.Limit + 1) "the effect left queued runs once in the next flush"
+                        Expect.equal x.Value RerunGuard.Limit "the queued run reads the last write"
+                    }
+
+                    test "a keyOf that writes its projection's source on every call raises once an effect reads the projection" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let counter = Signal (g, 0)
+                        let items = Signal (g, [| 1; 2 |])
+                        let mutable bumping = true
+
+                        let proj =
+                            Trace.named "rows" (fun () ->
+                                createProjection
+                                    (fun x ->
+                                        if bumping && x = 1 && counter.Value < 5000 then
+                                            counter.Value <- counter.Value + 1
+
+                                        x)
+                                    (fun x -> x * 10)
+                                    (fun () ->
+                                        counter.Value |> ignore
+                                        items.Value :> seq<_>))
+
+                        let mutable reads = 0
+
+                        let message =
+                            try
+                                createEffect (fun () ->
+                                    reads <- reads + 1
+                                    proj.Keys |> ignore)
+
+                                None
+                            with :? System.InvalidOperationException as ex ->
+                                Some ex.Message
+
+                        Expect.isTrue message.IsSome "the runaway projection raises"
+                        Expect.isLessThan counter.Peek 5000 "the guard raises before the cap"
+                        Expect.stringContains message.Value "projection" "the message names the node's kind"
+                        Expect.stringContains message.Value "\"rows\"" "the message names the projection's label"
+
+                        bumping <- false
+                        items.Value <- [| 1; 2; 3 |]
+                        Expect.equal proj.Keys [| 1; 2; 3 |] "a later write runs the pass"
+                        Expect.isGreaterThan reads 1 "the reader runs again"
+                    }
+
+                    test "a guarded self-write of ten steps runs to completion" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let x = Signal (g, 0)
+                        let mutable runs = 0
+
+                        createEffect (fun () ->
+                            runs <- runs + 1
+
+                            if x.Value < 10 then
+                                x.Value <- x.Value + 1)
+
+                        Expect.equal x.Value 10 "the effect stops at ten"
+                        Expect.equal runs 11 "one run per step and a last run that writes nothing"
+                    }
+
+                    test "a flush of many distinct effects runs each once" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let s = Signal (g, 0)
+                        let count = 20 * RerunGuard.Limit
+                        let mutable total = 0
+
+                        batch (fun () ->
+                            for _ in 1..count do
+                                createEffect (fun () ->
+                                    s.Value |> ignore
+                                    total <- total + 1))
+
+                        Expect.equal total count "every effect runs in the batch's flush"
+                        s.Value <- 1
+                        Expect.equal total (2 * count) "every effect runs again in the write's flush"
+                    }
+
+                    test "an effect run once in each of many flushes runs every time" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let s = Signal (g, 0)
+                        let mutable runs = 0
+
+                        createEffect (fun () ->
+                            s.Value |> ignore
+                            runs <- runs + 1)
+
+                        for i in 1 .. 2 * RerunGuard.Limit do
+                            s.Value <- i
+
+                        Expect.equal runs (2 * RerunGuard.Limit + 1) "the limit counts runs within one flush"
+                    }
+                ]
 #endif
         ]

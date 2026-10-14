@@ -1908,6 +1908,7 @@ type Graph(options: GraphOptions) =
             try
                 while queueHead < queueCount do
                     let item = Platform.entryAt queueHead queue
+                    Tracer.Dequeue (this, item)
 
                     // Released as it is consumed, so a disposed effect is not
                     // kept alive by a spent slot until a later turn overwrites

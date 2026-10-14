@@ -40,6 +40,10 @@ dotnet build src/Ranvier -c Release -p:RanvierTrace=true
 A traced build defines `RANVIER_TRACE` for every project in the repository, so tests and samples see
 the same build as the library.
 
+A traced build also stops runaway reruns: in place of running one node for the 1,001st time in a flush,
+the flush raises `InvalidOperationException` naming the node. An effect or projection that writes a
+signal it depends on, on every run, trips the limit. An untraced build has no limit.
+
 ### From NuGet
 
 The traced build ships as `Ranvier.Traced`, and the C# façade's as `Ranvier.CSharp.Traced`. Each holds
