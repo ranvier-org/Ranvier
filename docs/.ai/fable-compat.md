@@ -24,7 +24,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Bindings.fs | 17 | 17 | 17 | 17 | 17 | 17 | 0 | 0 |
 | EffectSplit.fs | 26 | 26 | 21 | 26 | 26 | 21 | 0 | 0 |
 | AmbientGraph.fs | 6 | 6 | 6 | 6 | 6 | 6 | 0 | 0 |
-| Owners.fs | 14 | 14 | 14 | 14 | 14 | 14 | 0 | 0 |
+| Owners.fs | 16 | 16 | 16 | 16 | 16 | 16 | 0 | 0 |
 | Equality.fs | 25 | 24 | 24 | 25 | 24 | 24 | 8 | 0 |
 | Async.fs | 30 | 22 | 7 | 30 | 22 | 7 | 2 | 0 |
 | Boundaries.fs | 27 | 27 | 23 | 27 | 27 | 23 | 1 | 0 |
@@ -46,7 +46,8 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Reads.fs | 14 | 14 | 14 | 14 | 14 | 14 | 0 | 0 |
 | Batching.fs | 11 | 11 | 11 | 11 | 11 | 11 | 0 | 0 |
 | AsyncEdges.fs | 25 | 22 | 7 | 25 | 22 | 7 | 4 | 0 |
-| Projections.fs | 102 | 102 | 102 | 102 | 102 | 102 | 10 | 0 |
+| Projections.fs | 114 | 114 | 114 | 114 | 114 | 114 | 10 | 0 |
+| TrimmedPass.fs | 4 | 4 | 4 | 4 | 4 | 4 | 0 | 0 |
 | Lookups.fs | 31 | 31 | 31 | 31 | 31 | 31 | 0 | 0 |
 | MemoScopes.fs | 24 | 24 | 22 | 24 | 24 | 22 | 0 | 0 |
 | MemoPurity.fs | 13 | 13 | 13 | 13 | 13 | 13 | 0 | 0 |
@@ -68,7 +69,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | QueryDictionary.fs | 2 | 2 | 2 | 2 | 2 | 2 | 0 | 0 |
 | QueryErgonomics.fs | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | QueryNavigationTests.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 876 | 858 | 814 | 960 | 938 | 889 | 87 | 1 |
+| **Total** | 894 | 876 | 832 | 978 | 956 | 907 | 87 | 1 |
 
 ## Tests.fs
 
@@ -185,7 +186,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## Owners.fs
 
-<details><summary>14 passed in every build and delivery that runs them</summary>
+<details><summary>16 passed in every build and delivery that runs them</summary>
 
 - disposing a root disposes the effects created inside it
 - a cleanup runs before the next run of the same effect
@@ -201,6 +202,8 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - an effect created outside a root belongs to the graph root
 - a memo and an effect created in an effect body are disposed before the effect's next run
 - an effect body may create nodes conditionally and in a loop of varying length
+- ErrorsFrom returns the errors recorded at or after an index, in order
+- ErrorCount of a scope that recorded nothing is zero
 
 </details>
 
@@ -858,7 +861,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | a view stops following when the scope that created it re-runs | AsObservableCollection returns an ObservableCollection, which the library omits under Fable. |
 | AsObservableCollection over a pending pass resets once when the pass settles | AsObservableCollection returns an ObservableCollection, which the library omits under Fable. |
 
-<details><summary>102 passed in every build and delivery that runs them</summary>
+<details><summary>114 passed in every build and delivery that runs them</summary>
 
 - the key order follows the source
 - a projection nothing reads is never recomputed
@@ -962,6 +965,29 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - sortBy keys follow the law while sort keys fail and recover (seed 4242)
 - a filter key whose predicate starts failing reads as Removed, and as Added once it recovers
 - a new sortBy key whose sort key fails reads as no change, and is removed without a change
+- create-first runs an added row's factory before a removed row's cleanup
+- without options a pass retires before it creates
+- a failing create-first factory leaves the previous rows, items and keys
+- a source written by a rolled-back row's cleanup lets the next read retry the failed pass
+- a removed row's cleanup that disposes the projection stops a create-first pass
+- a memo-free row is its factory's result, built once per key
+- a tracked read of a memo-free row wakes when its key leaves
+- a memo-free factory failure is raised by reads of its row
+- memo-free create-first rows keep the previous rows when a factory fails
+- value readers and combinators reject memo-free rows
+- ensureUniqueKeys raises the pass's message for int, string, record and tuple keys
+- ensureUniqueKeys keeps boxed keys of different types apart, as = does
+
+</details>
+
+## TrimmedPass.fs
+
+<details><summary>4 passed in every build and delivery that runs them</summary>
+
+- list, lazy seq and array sources give the same keys and rows
+- an array mutated in place and republished is compared against the previous pass's copy
+- an int array source reads by index
+- a lazy source is enumerated to completion before keyOf runs
 
 </details>
 

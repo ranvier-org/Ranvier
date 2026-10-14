@@ -503,6 +503,9 @@ type Grouping<'G, 'K, 'V when 'G: equality and 'K: equality> internal (graph: Gr
             adds.Clear ()
             writes.Clear ()
 
+        member _.Applied() = ()
+        member _.Abandoned() = ()
+
 /// <summary>
 /// The reads of an aggregate's <c>add</c>, <c>subtract</c> or folder since its last full recompute. A change to any of them
 /// runs <c>changed</c>.

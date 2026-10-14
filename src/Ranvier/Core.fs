@@ -2162,6 +2162,9 @@ type Graph(options: GraphOptions) =
         nextId <- nextId + 1
         nextId
 
+    /// <summary>The last id <c>NextId</c> issued.</summary>
+    member internal _.NodeCount = nextId
+
     /// <summary>
     /// Links <c>source</c> into the computation currently being evaluated, if any.
     /// </summary>
