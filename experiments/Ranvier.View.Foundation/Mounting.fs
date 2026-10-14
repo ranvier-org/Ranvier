@@ -166,7 +166,7 @@ type private Entry =
     }
 
 type private OwnedRange(host: Node) =
-    // Created by the first staging or movement.
+    // Null until the range is first staged or moved.
     let mutable staging: DocumentFragment = Unchecked.defaultof<_>
     let first, last = comment "ranvier:start", comment "ranvier:end"
     let entries = ResizeArray<Entry>()
@@ -802,7 +802,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
         bindingSetupFailure |> Option.iter raise
 #endif
 
-    // Created by the first delegated event; registration ends with setup.
+    // Null until a delegated event is registered; registration is valid only during setup.
     let mutable delegatedNames: ResizeArray<string> = null
     let mutable delegatedHost: Node = Unchecked.defaultof<_>
 
