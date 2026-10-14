@@ -361,22 +361,21 @@ let roled =
                         t.arm userArm tab.Length)
             |])
 
-let mutable regionReads: ((obj -> obj -> bool) * (unit -> (obj * obj) array)) list =
-    []
+let mutable regionReads: (unit -> (obj * obj) array) list = []
 
 let capturing =
     { Tree.ops with
         Switch =
-            fun same read render ->
-                regionReads <- regionReads @ [ same, read ]
-                Tree.ops.Switch same read render
+            fun read render ->
+                regionReads <- regionReads @ [ read ]
+                Tree.ops.Switch read render
     }
 
 let renderRoled tab =
     Html.render Omit (Tree.run (Component.renderWith capturing roled tab))
 
 equal "<div><span>user 4</span></div>" (renderRoled "home")
-let roleSame, readHome = regionReads[0]
+let readHome = regionReads[0]
 
 let firstKey (read: unit -> (obj * obj) array) =
     fst (read ()).[0]
@@ -387,21 +386,21 @@ let homeKey () =
 let userHome = homeKey ()
 
 // An equal key with the same definition keeps the arm.
-equal true (roleSame userHome (homeKey ()))
+equal true (userHome = homeKey ())
 
 roleAdmin <- true
 let adminHome = homeKey ()
 
 // An equal key selecting another definition remounts the arm.
-equal false (roleSame userHome adminHome)
+equal false (userHome = adminHome)
 equal "<div><span>admin home</span></div>" (renderRoled "home")
 equal "<div><!--[--><span>admin home</span><!--]--></div>" (render Omit (Component.render roled "home"))
 
 equal "<div><span>admin away</span></div>" (renderRoled "away")
-let _, readAway = regionReads[2]
+let readAway = regionReads[2]
 
 // A key change under the same definition remounts the arm.
-equal false (roleSame adminHome (firstKey readAway))
+equal false (adminHome = firstKey readAway)
 
 printfn "PASS template branch"
 
@@ -430,7 +429,7 @@ let mutable duplicateRejected = false
 try
     render Omit (Component.render listed [| { Id = 1; Text = "a" }; { Id = 1; Text = "b" } |])
     |> ignore
-with :? System.ArgumentException ->
+with :? System.InvalidOperationException ->
     duplicateRejected <- true
 
 // Duplicate keys fail server rendering.
@@ -443,13 +442,13 @@ let mutable regionKinds: string list = []
 let recording =
     { Tree.ops with
         Keyed =
-            fun same read render ->
+            fun read render ->
                 regionKinds <- regionKinds @ [ "keyed" ]
-                Tree.ops.Keyed same read render
+                Tree.ops.Keyed read render
         Switch =
-            fun same read render ->
+            fun read render ->
                 regionKinds <- regionKinds @ [ "switch" ]
-                Tree.ops.Switch same read render
+                Tree.ops.Switch read render
     }
 
 let switchedThenListed =

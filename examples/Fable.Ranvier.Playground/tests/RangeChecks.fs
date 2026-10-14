@@ -403,7 +403,7 @@ let private keyedReconciliation () =
     let clicks = ResizeArray<int>()
 
     let view =
-        Keyed.list Tree.ops (=) fst (fun () -> rows.Value) (fun current ->
+        Keyed.list Tree.ops fst (fun () -> rows.Value) (fun current ->
             Tree.ops.Component (fun context ->
                 let key = fst (current ())
                 setups.Add key
@@ -469,7 +469,7 @@ let private keyedRootMovement () =
         Tree.ops.Fragment
             [|
                 Tree.ops.Text "before:"
-                Keyed.list Tree.ops (=) fst (fun () -> rows.Value) (fun current -> Tree.ops.Bind (=) (fun () -> snd (current ())))
+                Keyed.list Tree.ops fst (fun () -> rows.Value) (fun current -> Tree.ops.Bind (=) (fun () -> snd (current ())))
                 Tree.ops.Text ":after"
             |]
 
@@ -491,7 +491,7 @@ let private keyedForeignMutation () =
     let host, other = Dom.element "section" [] [], Dom.element "section" [] []
 
     let view =
-        Keyed.list Tree.ops (=) fst (fun () -> [ 1, "one" ]) (fun current -> Tree.ops.Text (snd (current ())))
+        Keyed.list Tree.ops fst (fun () -> [ 1, "one" ]) (fun current -> Tree.ops.Text (snd (current ())))
 
     let handle = tree graph host view
     let foreign = Dom.element "aside" [] []
@@ -512,7 +512,7 @@ let private keyedReleaseFailure () =
     let host = Dom.element "section" [] []
 
     let view =
-        Keyed.list Tree.ops (=) fst (fun () -> [ 1, "one" ]) (fun current -> Tree.ops.Text (snd (current ())))
+        Keyed.list Tree.ops fst (fun () -> [ 1, "one" ]) (fun current -> Tree.ops.Text (snd (current ())))
 
     let handle = tree graph host view
     let start, finish = at host 1, at host 5
@@ -532,13 +532,13 @@ let private duplicateKeys () =
     let host = Dom.element "section" [] []
 
     let view =
-        Keyed.list Tree.ops (=) fst (fun () -> [ 1, "first"; 1, "duplicate" ]) (fun _ -> Tree.ops.Text "row")
+        Keyed.list Tree.ops fst (fun () -> [ 1, "first"; 1, "duplicate" ]) (fun _ -> Tree.ops.Text "row")
 
     let mutable caught = false
 
     try
         tree graph host view |> ignore
-    with :? ArgumentException ->
+    with :? InvalidOperationException ->
         caught <- true
 
     equal true caught
@@ -550,7 +550,7 @@ let private duplicateKeys () =
     let mutable setups = 0
 
     let liveView =
-        Keyed.list Tree.ops (=) fst (fun () -> rows.Value) (fun current ->
+        Keyed.list Tree.ops fst (fun () -> rows.Value) (fun current ->
             Tree.ops.Component (fun _ ->
                 setups <- setups + 1
                 Tree.ops.Text (snd (current ()))))
@@ -626,7 +626,7 @@ let private stagedAfterDetachedRoot () =
         Tree.ops.Fragment
             [|
                 Tree.ops.Text "a"
-                Keyed.list Tree.ops (=) id (fun () -> [ 1 ]) (fun current -> Tree.ops.Text (string (current ())))
+                Keyed.list Tree.ops id (fun () -> [ 1 ]) (fun current -> Tree.ops.Text (string (current ())))
                 Tree.ops.Text "b"
             |]
 
@@ -822,7 +822,7 @@ let private keyedReportsAndRecovery () =
     let mutable setups = 0
 
     let view =
-        Keyed.list Tree.ops (=) fst (fun () -> rows.Value) (fun current ->
+        Keyed.list Tree.ops fst (fun () -> rows.Value) (fun current ->
             Tree.ops.Component (fun _ ->
                 setups <- setups + 1
                 Tree.ops.Bind (=) (fun () -> snd (current ()))))
@@ -835,7 +835,7 @@ let private keyedReportsAndRecovery () =
     equal "onetwo" host.textContent
     equal 2 setups
     equal 1 reports.Count
-    equal true (reports[0] :? ArgumentException)
+    equal true (reports[0] :? InvalidOperationException)
     graph.Run (fun () -> rows.Value <- [ 2, "TWO"; 1, "ONE" ])
     equal "TWOONE" host.textContent
     same one (at host 6)
@@ -856,7 +856,7 @@ let private keyedSetupRecovery initial =
     let mutable fail = true
 
     let view =
-        Keyed.list Tree.ops (=) id (fun () -> rows.Value) (fun current ->
+        Keyed.list Tree.ops id (fun () -> rows.Value) (fun current ->
             Tree.ops.Component (fun ctx ->
                 let key = current ()
                 ctx.OnCleanup (fun () -> cleanups.Add key)
@@ -906,7 +906,7 @@ let private keyedMoveRecovery rollbackFailure =
     let cleanups = ResizeArray<int>()
 
     let view =
-        Keyed.list Tree.ops (=) id (fun () -> rows.Value) (fun current ->
+        Keyed.list Tree.ops id (fun () -> rows.Value) (fun current ->
             Tree.ops.Component (fun ctx ->
                 let key = current ()
                 ctx.OnCleanup (fun () -> cleanups.Add key)
@@ -960,8 +960,8 @@ let private keyedNestedMovement () =
     let cleanups = ResizeArray<int>()
 
     let view =
-        Keyed.list Tree.ops (=) fst (fun () -> rows.Value) (fun outer ->
-            Keyed.list Tree.ops (=) fst (fun () -> snd (outer ())) (fun inner ->
+        Keyed.list Tree.ops fst (fun () -> rows.Value) (fun outer ->
+            Keyed.list Tree.ops fst (fun () -> snd (outer ())) (fun inner ->
                 Tree.ops.Component (fun ctx ->
                     let key = fst (inner ())
                     setups.Add key
@@ -1009,7 +1009,6 @@ let private keyedDisposal point =
     let cleanups = ResizeArray<int>()
     let mutable updating = false
     let mutable setups = 0
-    let mutable comparisonsAfterDisposal = 0
 
     let dispose atPoint =
         if updating && point = atPoint then
@@ -1018,12 +1017,6 @@ let private keyedDisposal point =
     let view =
         Keyed.list
             Tree.ops
-            (fun a b ->
-                if parent.IsDisposed then
-                    comparisonsAfterDisposal <- comparisonsAfterDisposal + 1
-
-                dispose "equals"
-                a = b)
             id
             (fun () ->
                 dispose "read"
@@ -1055,13 +1048,12 @@ let private keyedDisposal point =
     equal 0. host.childNodes.length
 
     let expected =
-        if point = "read" || point = "equals" then [ 1; 2 ]
+        if point = "read" then [ 1; 2 ]
         elif point = "setup" then [ 1; 2; 3 ]
         else [ 1; 2; 3; 4 ]
 
     equal expected (cleanups |> Seq.sort |> List.ofSeq)
     equal 0 reports.Count
-    equal 0 comparisonsAfterDisposal
     let before = setups
     graph.Run (fun () -> rows.Value <- [ 4; 5 ])
     equal before setups
@@ -1082,7 +1074,7 @@ let private keyedReporter throws =
             failwith "reporter"
 
     let view =
-        Keyed.list Tree.ops (=) id (fun () -> rows.Value) (fun current -> Tree.ops.Text (string (current ())))
+        Keyed.list Tree.ops id (fun () -> rows.Value) (fun current -> Tree.ops.Text (string (current ())))
 
     let handle =
         mount graph None report host None (fun ctx -> Tree.run view ctx.Backend)
@@ -1110,9 +1102,6 @@ let private keyedTracksOnlySnapshot () =
     let view =
         Keyed.list
             Tree.ops
-            (fun a b ->
-                unrelated.Value |> ignore
-                a = b)
             id
             (fun () ->
                 reads <- reads + 1
@@ -1130,25 +1119,18 @@ let private keyedTracksOnlySnapshot () =
     equal before reads
     handle.Dispose ()
 
-let private keyedInitialDisposal fromReader =
+let private keyedInitialDisposal () =
     use graph = new Graph ()
     let host = Dom.element "section" [] []
     let parent = Scope (ignore, ignore)
-    let mutable comparisons = 0
     let mutable rendered = 0
 
     let view =
         Keyed.list
             Tree.ops
-            (fun a b ->
-                comparisons <- comparisons + 1
-                parent.Dispose ()
-                a = b)
             id
             (fun () ->
-                if fromReader then
-                    parent.Dispose ()
-
+                parent.Dispose ()
                 [ 1; 2; 3 ])
             (fun _ ->
                 rendered <- rendered + 1
@@ -1158,7 +1140,6 @@ let private keyedInitialDisposal fromReader =
         mounted graph (Some parent) host None (fun ctx -> Tree.run view ctx.Backend)
         |> ignore)
 
-    equal (if fromReader then 0 else 1) comparisons
     equal 0 rendered
     equal 0. host.childNodes.length
     equal 0 parent.ChildCount
@@ -1170,7 +1151,7 @@ let private keyedSetupAndCleanupFailure () =
     let reports = ResizeArray<exn list>()
 
     let view =
-        Keyed.list Tree.ops (=) id (fun () -> rows.Value) (fun current ->
+        Keyed.list Tree.ops id (fun () -> rows.Value) (fun current ->
             Tree.ops.Component (fun ctx ->
                 let key = current ()
 
@@ -1204,7 +1185,6 @@ let private arrayKeyMutation () =
     let view =
         Keyed.array
             Tree.ops
-            (=)
             (fun (key, _) ->
                 if key = 1 then
                     slots[1] <- 9, "changed"
@@ -1221,30 +1201,11 @@ let private arrayKeyMutation () =
     handle.Dispose ()
     equal 0. host.childNodes.length
 
-let private arrayComparerMutation () =
-    use graph = new Graph ()
-    let host = Dom.element "section" [] []
-    let slots = [| box 1, box "one"; box 2, box "two" |]
-
-    let view =
-        Tree.ops.Keyed
-            (fun left right ->
-                slots[1] <- box 9, box "changed"
-                left = right)
-            (fun () -> slots)
-            (fun current -> Tree.ops.Text (unbox<string>(current ())))
-
-    let handle = tree graph host view
-    equal "onetwo" host.textContent
-    handle.Dispose ()
-    equal 0. host.childNodes.length
-
 let allCases =
     Array.append
         cases
         [|
             "array key callbacks cannot change unread snapshot slots", arrayKeyMutation
-            "array comparers cannot change renderer snapshot slots", arrayComparerMutation
             "reusable bindings retain identity across range movement", reactiveMoves
             "keyed rows preserve identity and current data across reorder and removal", keyedReconciliation
             "top-level keyed regions retain sibling order and move with their mount", keyedRootMovement
@@ -1267,14 +1228,12 @@ let allCases =
             "failed keyed rollback terminates the mount and all row resources", fun () -> keyedMoveRecovery true
             "nested keyed rows update and dispose after outer movement", keyedNestedMovement
             "keyed reader disposal prevents further reconciliation", fun () -> keyedDisposal "read"
-            "keyed comparer disposal prevents further reconciliation", fun () -> keyedDisposal "equals"
             "keyed row setup disposal cannot attach new rows", fun () -> keyedDisposal "setup"
             "keyed movement disposal cannot revive row ranges", fun () -> keyedDisposal "move"
             "keyed row cleanup disposal cancels the remaining update", fun () -> keyedDisposal "cleanup"
             "keyed error reporting does not subscribe to reporter reads", fun () -> keyedReporter false
             "throwing keyed reporters cannot prevent later recovery or disposal", fun () -> keyedReporter true
             "keyed reconciliation tracks snapshots but not comparers or cleanup", keyedTracksOnlySnapshot
-            "initial keyed reader disposal stops before comparer calls", fun () -> keyedInitialDisposal true
-            "initial keyed comparer disposal stops before further callbacks", fun () -> keyedInitialDisposal false
+            "initial keyed reader disposal stops before row callbacks", keyedInitialDisposal
             "keyed setup and its cleanup failure report together and recover", keyedSetupAndCleanupFailure
         |]

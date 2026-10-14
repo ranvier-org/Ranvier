@@ -168,7 +168,6 @@ let private keyedPortable (ops: Operations<'view>) run =
     let view =
         Keyed.list
             ops
-            (=)
             fst
             (fun () ->
                 reads <- reads + 1
@@ -182,13 +181,13 @@ let private keyedPortable (ops: Operations<'view>) run =
     equal 2 reads
 
     let duplicate =
-        Keyed.list ops (=) fst (fun () -> [ 1, "first"; 1, "duplicate" ]) (fun _ -> ops.Text "row")
+        Keyed.list ops fst (fun () -> [ 1, "first"; 1, "duplicate" ]) (fun _ -> ops.Text "row")
 
     let mutable rejected = false
 
     try
         Html.render Reject (run duplicate) |> ignore
-    with :? ArgumentException ->
+    with :? InvalidOperationException ->
         rejected <- true
 
     equal true rejected

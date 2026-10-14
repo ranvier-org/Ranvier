@@ -124,7 +124,7 @@ let private nested (ops: Operations<'view>) run =
     let rows = graph.Run (fun () -> Api.createSignal [ 1, "one"; 2, "two" ])
 
     let view =
-        Keyed.list ops (=) fst (fun () -> rows.Value) (fun current -> ops.Component (fun _ -> Typed.reactiveText ops (fun () -> snd (current ()))))
+        Keyed.list ops fst (fun () -> rows.Value) (fun current -> ops.Component (fun _ -> Typed.reactiveText ops (fun () -> snd (current ()))))
 
     let host = host ()
 
@@ -192,7 +192,7 @@ let private structuralBoundary (ops: Operations<'view>) run queued =
                     let left, right = flight.Value
                     2, (left.Value, right.Value))
 
-            Branch.select ops (=) fst (fun () -> selected.Value) (fun current ->
+            Branch.select ops fst (fun () -> selected.Value) (fun current ->
                 ops.Component (fun setup ->
                     let key = fst (current ())
                     setups.Add key
@@ -323,7 +323,7 @@ let private serverStructuralBoundary (ops: Operations<'view>) run =
                 Api.createBoundary (fun _ -> 0, ("<loading>", "")) (fun error _ -> 1, (error.Message, "")) (fun () -> 2, (left.Value, right.Value))
 
             let view =
-                Branch.select ops (=) fst (fun () -> selected.Value) (fun current ->
+                Branch.select ops fst (fun () -> selected.Value) (fun current ->
                     Typed.div
                         ops
                         [||]
@@ -359,7 +359,7 @@ let private descendantFailure queued =
                         1)
                     (fun () -> 0)
 
-            Branch.select Tree.ops (=) id (fun () -> selection.Value) (fun _ ->
+            Branch.select Tree.ops id (fun () -> selection.Value) (fun _ ->
                 Typed.reactiveText Tree.ops (fun () ->
                     let fails, value = failing.Value
                     attempts.Add fails
@@ -515,7 +515,7 @@ let private keyedRowReaderFailure () =
     let reported = ResizeArray<exn>()
 
     let view =
-        Keyed.list Program.ops (=) id (fun () -> rows.Value) (fun _ -> Program.bind (=) (fun () -> failing.Value))
+        Keyed.list Program.ops id (fun () -> rows.Value) (fun _ -> Program.bind (=) (fun () -> failing.Value))
 
     let mounted = collectingMount graph (host ()) reported view
     equal [ "memo"; "memo" ] [ for error in reported -> error.Message ]

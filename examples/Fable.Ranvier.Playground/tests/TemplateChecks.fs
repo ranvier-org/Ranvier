@@ -422,7 +422,7 @@ let private keyedRows () =
     let host = host ()
 
     let view =
-        Keyed.list Program.ops (=) id (fun () -> rows.Value) (fun current ->
+        Keyed.list Program.ops id (fun () -> rows.Value) (fun current ->
             Component.render
                 row
                 {
@@ -1614,7 +1614,7 @@ let private eachDuplicates () =
     try
         mount graph first (Component.render listed duplicated)
         |> ignore
-    with :? System.ArgumentException ->
+    with :? System.InvalidOperationException ->
         rejected <- true
 
     equal (true, "<span>keep</span>") (rejected, first.innerHTML)
@@ -1628,7 +1628,7 @@ let private eachDuplicates () =
         Mounting.mount graph None reported.AddRange second None (fun context -> Program.run (Component.render listed items) context.Backend)
 
     graph.Run (fun () -> items.Value <- [| { Id = 3; Text = "c" }; { Id = 3; Text = "d" } |])
-    equal ("ab", 1, true) (second.textContent, reported.Count, reported[0] :? System.ArgumentException)
+    equal ("ab", 1, true) (second.textContent, reported.Count, reported[0] :? System.InvalidOperationException)
     graph.Run (fun () -> items.Value <- [| { Id = 2; Text = "b" } |])
     equal ("b", 1) (second.textContent, reported.Count)
     mounted.Dispose ()

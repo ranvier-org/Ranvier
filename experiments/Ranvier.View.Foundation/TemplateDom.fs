@@ -47,7 +47,6 @@ type CompiledRegion =
         Owner: int
         /// <summary>True when the markers are roots of a multi-root skeleton.</summary>
         RootLevel: bool
-        Same: obj -> obj -> bool
         Items: Func<obj, (obj * obj) array>
         /// <summary>True when the items are read once, as the instance is created.</summary>
         Once: bool
@@ -304,13 +303,10 @@ let compile (definition: TemplateComponent) : Compiled =
             for index in 0 .. targets.Length - 1 do
                 match targets[index] with
                 | RegionNode region, path ->
-                    let same = region.Same
-
                     {
                         CompiledRegion.Marker = index
                         Owner = layout.Owners[index]
                         RootLevel = rootCount > 1 && path.Length = 1
-                        Same = fun left right -> same.Invoke (left, right)
                         Items = region.Items
                         Once = readsOnce region.Row
                         DisposeFirst =
@@ -377,7 +373,7 @@ type internal MountServices =
     abstract ReportFailure: exn -> unit
     abstract ClearFailure: unit -> unit
     /// <summary>Mounts keyed rows between a region's start and end markers; the first flag marks markers that are roots of the appended clone, and the second disposes a replaced row before its replacement is created.</summary>
-    abstract Region: Node * Node * bool * bool * (obj -> obj -> bool) * (unit -> (obj * obj) array) * ((unit -> obj) -> Backend -> unit) -> unit
+    abstract Region: Node * Node * bool * bool * (unit -> (obj * obj) array) * ((unit -> obj) -> Backend -> unit) -> unit
 
 let private unset = obj ()
 
@@ -656,4 +652,4 @@ let internal materialise (definition: TemplateDefinition) (props: obj) (services
             else
                 fun () -> items.Invoke owner
 
-        services.Region (start, finish, region.RootLevel, region.DisposeFirst, region.Same, read, region.Render)
+        services.Region (start, finish, region.RootLevel, region.DisposeFirst, read, region.Render)

@@ -92,7 +92,7 @@ let private build (view: Program.View) =
             member _.Bind(_, _) =
                 unsupported ()
 
-            member _.Keyed(_, _, _) =
+            member _.Keyed(_, _) =
                 unsupported ()
 
             member _.Component _ =

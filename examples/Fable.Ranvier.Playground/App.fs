@@ -332,7 +332,7 @@ let start () : unit -> unit =
         foundationGraph.Run (fun () -> loadSource.Value.Settle "Loaded result")
 
         let foundationRowsView =
-            View.keyedArray (=) fst (fun () -> foundationRows.Value) (fun current ->
+            View.keyedArray fst (fun () -> foundationRows.Value) (fun current ->
                 let key = fst (current ())
 
                 Elements.div [| GeneratedAttrs.idStatic ("foundation-row-" + string key) |] [| View.reactiveText (fun () -> snd (current ())) |])

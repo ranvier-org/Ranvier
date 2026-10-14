@@ -58,7 +58,7 @@ let private nested stop =
         H.Program.div
             [| H.Events.onClick (fun _ -> outerClicks.Add 0) |]
             [|
-                Keyed.list Program.ops (=) id (fun () -> rows.Value) (fun current ->
+                Keyed.list Program.ops id (fun () -> rows.Value) (fun current ->
                     H.Program.button
                         [|
                             H.Events.onClick (fun event ->
@@ -272,7 +272,7 @@ let private topLevelList () =
     let clicks = ResizeArray<int>()
 
     let view =
-        Keyed.list Program.ops (=) id (fun () -> rows.Value) (fun current ->
+        Keyed.list Program.ops id (fun () -> rows.Value) (fun current ->
             H.Program.button [| H.Events.onClick (fun _ -> clicks.Add (current ())) |] [||])
 
     let mounted = mount graph first view

@@ -28,11 +28,11 @@ let inline createComponent (setup: Setup -> 'props -> Program.View) (props: 'pro
     Program.createComponent (fun context -> setup context props)
 
 /// <summary>Retains keyed rows and supplies readers for their current values.</summary>
-/// <remarks>The input array is copied before key callbacks run. Equal keys retain mounted rows.</remarks>
-let inline keyedArray equals key read render =
-    Keyed.array Program.ops equals key read render
+/// <remarks>The input array is copied before key callbacks run. Equal keys under <c>=</c> retain mounted rows.</remarks>
+let inline keyedArray key read render =
+    Keyed.array Program.ops key read render
 
-/// <summary>Retains a selected instance while its key remains equal.</summary>
+/// <summary>Retains a selected instance while its key remains equal under <c>=</c>.</summary>
 /// <remarks>Include the branch discriminator in the key when the component shape changes.</remarks>
-let inline branch equals key read render =
-    Branch.select Program.ops equals key read render
+let inline branch key read render =
+    Branch.select Program.ops key read render

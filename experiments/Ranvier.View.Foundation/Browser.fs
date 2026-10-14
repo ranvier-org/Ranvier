@@ -163,7 +163,7 @@ let mount (graph: Graph) (host: HTMLElement) (report: exn list -> unit) (counts:
                         committed <- Some value
                         count (fun c -> c.Writes <- c.Writes + 1))
 
-            member _.Keyed(_, _, _) =
+            member _.Keyed(_, _) =
                 invalidOp "The baseline browser interpreter does not support keyed dynamic lists"
 
             member _.Component setup =

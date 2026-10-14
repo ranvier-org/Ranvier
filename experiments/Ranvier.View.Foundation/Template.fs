@@ -57,8 +57,6 @@ type TemplateNode =
 /// <summary>Dynamic structure of a template: keyed items read from an instance, rendered one row per item.</summary>
 and [<NoEquality; NoComparison>] Region =
     {
-        /// <summary>Compares two item keys.</summary>
-        Same: Func<obj, obj, bool>
         /// <summary>Reads the keyed items from an instance.</summary>
         Items: Func<obj, (obj * obj) array>
         Row: RegionRow
@@ -332,7 +330,7 @@ let private writeMarkup (append: string -> unit) (mode: MarkupMode) (state: Writ
                 append "<!--[--><!--]-->"
             | Server (_, _, backend) ->
                 let items = Array.copy (region.Items.Invoke state.Instance)
-                Keyed.validateUniqueKeys (fun left right -> region.Same.Invoke (left, right)) items
+                Projection.ensureUniqueKeys fst items
                 append "<!--[-->"
 
                 for _, item in items do
@@ -397,10 +395,8 @@ let rec private expandNode (ops: Operations<'view>) (instance: obj) (node: Templ
         | ViewRow ->
             let _, item = (region.Items.Invoke instance)[0]
             expandRow ops region.Row (fun () -> item)
-        | ArmRow ->
-            ops.Switch (fun left right -> region.Same.Invoke (left, right)) (fun () -> region.Items.Invoke instance) (expandRow ops region.Row)
-        | ItemRow _ ->
-            ops.Keyed (fun left right -> region.Same.Invoke (left, right)) (fun () -> region.Items.Invoke instance) (expandRow ops region.Row)
+        | ArmRow -> ops.Switch (fun () -> region.Items.Invoke instance) (expandRow ops region.Row)
+        | ItemRow _ -> ops.Keyed (fun () -> region.Items.Invoke instance) (expandRow ops region.Row)
     | ChildNode (definition, props) -> expandWith ops definition (props.Invoke instance)
 
 /// <summary>Expands a region row through the operations; the reader returns the row's current item.</summary>
@@ -483,11 +479,6 @@ let private elementNode tag (parts: Part<'native, 'inst> array) (children: Templ
         | NoPart -> ()
 
     TemplateView (ElementNode (tag, attributes.ToArray (), properties.ToArray (), slots.ToArray (), events.ToArray (), Array.map nodeOf children))
-
-let private anySame = Func<obj, obj, bool>(fun _ _ -> true)
-
-let private definitionSame =
-    Func<obj, obj, bool>(fun left right -> obj.ReferenceEquals (left, right))
 
 /// <summary>Part constructors used by the generated template catalogue.</summary>
 module internal TemplateParts =
@@ -620,7 +611,6 @@ type TemplateBuilder<'inst> internal () =
         TemplateView (
             RegionNode
                 {
-                    Region.Same = anySame
                     Items = Func<obj, (obj * obj) array>(fun instance -> [| (null: obj), box (read (unbox instance)) |])
                     Row = ViewRow
                 }
@@ -640,12 +630,11 @@ type TemplateBuilder<'inst> internal () =
         }
 
     /// <summary>Renders the arm that <c>arms</c> selects for the instance's union value, between region markers.</summary>
-    /// <remarks>Arms are compared by definition: selecting another definition remounts, and selecting the same definition updates the payload read by its props. Writing <c>arms</c> as a <c>function</c> match lets the compiler check that every case has an arm. A remount runs the previous arm's cleanups and removes its nodes before the new arm is set up.</remarks>
+    /// <remarks>Arms are compared by key under <c>=</c>; a <c>matchWith</c> key is the arm's definition. Selecting another definition remounts, and selecting the same definition updates the payload read by its props. Writing <c>arms</c> as a <c>function</c> match lets the compiler check that every case has an arm. A remount runs the previous arm's cleanups and removes its nodes before the new arm is set up.</remarks>
     member _.matchWith (read: 'inst -> 'union) (arms: 'union -> Arm) : TemplateView<'inst> =
         TemplateView (
             RegionNode
                 {
-                    Region.Same = definitionSame
                     Items =
                         Func<obj, (obj * obj) array>(fun instance ->
                             let arm = arms (read (unbox instance))
@@ -660,13 +649,6 @@ type TemplateBuilder<'inst> internal () =
         TemplateView (
             RegionNode
                 {
-                    Region.Same =
-                        Func<obj, obj, bool>(fun left right ->
-                            let leftKey, leftDefinition = unbox<obj * TemplateComponent> left
-                            let rightKey, rightDefinition = unbox<obj * TemplateComponent> right
-
-                            obj.ReferenceEquals (leftDefinition, rightDefinition)
-                            && unbox<'key> leftKey = unbox<'key> rightKey)
                     Items =
                         Func<obj, (obj * obj) array>(fun instance ->
                             let current = key (unbox instance)
@@ -686,7 +668,6 @@ type TemplateBuilder<'inst> internal () =
         TemplateView (
             RegionNode
                 {
-                    Region.Same = Func<obj, obj, bool>(fun left right -> unbox<'key> left = unbox<'key> right)
                     Items =
                         Func<obj, (obj * obj) array>(fun instance ->
                             items (unbox instance)

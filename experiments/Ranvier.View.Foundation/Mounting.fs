@@ -1103,25 +1103,25 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
         append node
         startBinding (Func<_, _, _>(fun left right -> equals left right)) read (fun value -> node.textContent <- value)
 
-    override this.Keyed(equals, read, render) =
-        this.AuthoredRegion (false, equals, read, render)
+    override this.Keyed(read, render) =
+        this.AuthoredRegion (false, read, render)
 
-    override this.Switch(equals, read, render) =
-        this.AuthoredRegion (true, equals, read, render)
+    override this.Switch(read, render) =
+        this.AuthoredRegion (true, read, render)
 
     /// <summary>Adds boundary nodes at the current position and mounts a keyed region between them.</summary>
-    member private this.AuthoredRegion(disposeFirst: bool, equals, read, render) =
+    member private this.AuthoredRegion(disposeFirst: bool, read, render) =
         ensureSetup ()
 
         let regionStart, regionEnd =
             comment "ranvier:list:start", comment "ranvier:list:end"
 
         if isNull (box parent) then
-            this.KeyedRegion (regionStart, regionEnd, NewRegion, disposeFirst, equals, read, render)
+            this.KeyedRegion (regionStart, regionEnd, NewRegion, disposeFirst, read, render)
         else
             range.AppendGenerated (parent, regionStart)
             range.AppendGenerated (parent, regionEnd)
-            this.KeyedRegion (regionStart, regionEnd, NestedRegion, disposeFirst, equals, read, render)
+            this.KeyedRegion (regionStart, regionEnd, NestedRegion, disposeFirst, read, render)
 
     /// <summary>Mounts one nested mount per keyed item between two boundary nodes and reconciles them as the items change.</summary>
     /// <remarks>With <c>disposeFirst</c>, rows whose keys leave the items are disposed before new rows are created; otherwise they are disposed after the new rows are in place.</remarks>
@@ -1131,7 +1131,6 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
             regionEnd: Node,
             placement: RegionPlacement,
             disposeFirst: bool,
-            equals: obj -> obj -> bool,
             read: unit -> (obj * obj) array,
             render: (unit -> obj) -> Backend -> unit
         ) =
@@ -1150,12 +1149,6 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
         let ensureRegionLive () =
             if root.IsDisposed || regionScope.IsDisposed then
                 raise KeyedDisposed
-
-        let liveEquals left right =
-            ensureRegionLive ()
-            let result = equals left right
-            ensureRegionLive ()
-            result
 
         let getRegionParent () =
             let regionParent =
@@ -1298,7 +1291,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
             ensureRegionLive ()
             let regionParent = getRegionParent ()
             validateRegion regionParent
-            Keyed.validateUniqueKeys liveEquals items
+            Projection.ensureUniqueKeys fst items
             ensureRegionLive ()
 
             let matches =
@@ -1306,7 +1299,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
                 |> Array.map (fun (key, value) ->
                     let matched =
                         entries
-                        |> Array.tryFind (fun entry -> liveEquals entry.Key key)
+                        |> Array.tryFind (fun entry -> entry.Key = key)
 
                     ensureRegionLive ()
 
@@ -1509,7 +1502,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
         member _.ClearFailure() =
             clearReported ()
 
-        member this.Region(start, finish, rootLevel, disposeFirst, equals, read, render) =
+        member this.Region(start, finish, rootLevel, disposeFirst, read, render) =
             ensureSetup ()
 
             let placement =
@@ -1518,7 +1511,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parentScope: Scope
                 else
                     NestedRegion
 
-            this.KeyedRegion (start, finish, placement, disposeFirst, equals, read, render)
+            this.KeyedRegion (start, finish, placement, disposeFirst, read, render)
 
 /// <summary>Mounts a view with an owned commit queue when deferred scheduling is selected.</summary>
 /// <remarks>Nested keyed mounts share the containing mount's scheduler.</remarks>

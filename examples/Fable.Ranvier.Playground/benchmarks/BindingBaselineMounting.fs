@@ -526,7 +526,7 @@ let rec mount (graph: Graph) (parentScope: Scope option) (report: exn list -> un
                             Api.untrack (fun () -> node.textContent <- Some value)
                             committed <- Some value)
 
-            member _.Keyed(equals, read, render) =
+            member _.Keyed(read, render) =
                 let read () =
                     Array.toList (read ())
 
@@ -534,13 +534,7 @@ let rec mount (graph: Graph) (parentScope: Scope option) (report: exn list -> un
                 let initialItems = read ()
                 ensureSetup ()
 
-                let setupEquals left right =
-                    ensureSetup ()
-                    let result = equals left right
-                    ensureSetup ()
-                    result
-
-                Keyed.validateUniqueKeys setupEquals initialItems
+                Projection.ensureUniqueKeys fst initialItems
 
                 let regionStart, regionEnd =
                     comment "ranvier:list:start", comment "ranvier:list:end"
@@ -564,12 +558,6 @@ let rec mount (graph: Graph) (parentScope: Scope option) (report: exn list -> un
                 let ensureRegionLive () =
                     if root.IsDisposed || regionScope.IsDisposed then
                         raise KeyedDisposed
-
-                let liveEquals left right =
-                    ensureRegionLive ()
-                    let result = equals left right
-                    ensureRegionLive ()
-                    result
 
                 let getRegionParent () =
                     let regionParent =
@@ -689,7 +677,7 @@ let rec mount (graph: Graph) (parentScope: Scope option) (report: exn list -> un
                     ensureRegionLive ()
                     let regionParent = getRegionParent ()
                     validateRegion regionParent
-                    Keyed.validateUniqueKeys liveEquals items
+                    Projection.ensureUniqueKeys fst items
                     ensureRegionLive ()
 
                     let matches =
@@ -697,7 +685,7 @@ let rec mount (graph: Graph) (parentScope: Scope option) (report: exn list -> un
                         |> List.map (fun (key, value) ->
                             let matched =
                                 entries
-                                |> List.tryFind (fun entry -> liveEquals entry.Key key)
+                                |> List.tryFind (fun entry -> entry.Key = key)
 
                             ensureRegionLive ()
 

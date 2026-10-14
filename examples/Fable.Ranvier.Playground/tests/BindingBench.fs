@@ -49,9 +49,9 @@ let sample path queued width phase iterations =
             if phase = "replace" then value % 2 else 0
 
         if path = "branch" then
-            Branch.select Tree.ops (=) key (fun () -> source.Value) contents
+            Branch.select Tree.ops key (fun () -> source.Value) contents
         elif path = "branch-list" then
-            Keyed.list Tree.ops (=) key (fun () -> [ source.Value ]) contents
+            Keyed.list Tree.ops key (fun () -> [ source.Value ]) contents
         else
             Tree.ops.Element
                 Div

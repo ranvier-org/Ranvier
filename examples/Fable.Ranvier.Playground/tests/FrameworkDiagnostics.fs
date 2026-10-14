@@ -150,8 +150,8 @@ let private modifierTokens: Operations<ModifierAction array> =
         Fragment = fun _ -> invalidOp "Token extraction requires an element"
         Element = fun _ tokens _ -> tokens
         Bind = fun _ _ -> invalidOp "Token extraction requires an element"
-        Keyed = fun _ _ _ -> invalidOp "Token extraction requires an element"
-        Switch = fun _ _ _ -> invalidOp "Token extraction requires an element"
+        Keyed = fun _ _ -> invalidOp "Token extraction requires an element"
+        Switch = fun _ _ -> invalidOp "Token extraction requires an element"
         Component = fun _ -> invalidOp "Token extraction requires an element"
         Embed = fun _ -> invalidOp "Token extraction requires an element"
     }

@@ -98,8 +98,8 @@ let private portableAuthoring () =
             [|
                 propText (Constant "<&")
                 Html.br [||]
-                keyedArray (=) fst (fun () -> [| 1, "one"; 2, "two" |]) (fun current -> Html.p [||] [| reactiveText (fun () -> snd (current ())) |])
-                branch (=) id (fun () -> "selected") (fun current -> text (current ()))
+                keyedArray fst (fun () -> [| 1, "one"; 2, "two" |]) (fun current -> Html.p [||] [| reactiveText (fun () -> snd (current ())) |])
+                branch id (fun () -> "selected") (fun current -> text (current ()))
                 empty
             |]
 

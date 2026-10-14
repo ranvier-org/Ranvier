@@ -49,13 +49,13 @@ type Backend() =
     abstract ReactiveProperty: (unit -> obj) * System.Func<obj, obj, unit> -> unit
     abstract Bind: (string -> string -> bool) * (unit -> string) -> unit
     /// <summary>Interprets a keyed item snapshot and renders its items into this backend.</summary>
-    abstract Keyed: (obj -> obj -> bool) * (unit -> (obj * obj) array) * ((unit -> obj) -> Backend -> unit) -> unit
+    abstract Keyed: (unit -> (obj * obj) array) * ((unit -> obj) -> Backend -> unit) -> unit
 
     /// <summary>Renders the single keyed row selected by a switch; the previous row is disposed before the next is created.</summary>
-    abstract Switch: (obj -> obj -> bool) * (unit -> (obj * obj) array) * ((unit -> obj) -> Backend -> unit) -> unit
+    abstract Switch: (unit -> (obj * obj) array) * ((unit -> obj) -> Backend -> unit) -> unit
 
-    default this.Switch(equals, read, render) =
-        this.Keyed (equals, read, render)
+    default this.Switch(read, render) =
+        this.Keyed (read, render)
 
     abstract Component: (Setup -> unit) -> unit
 
@@ -111,40 +111,16 @@ type Operations<'view> =
         Element: Tag -> ModifierAction array -> 'view array -> 'view
         Bind: (string -> string -> bool) -> (unit -> string) -> 'view
         /// <summary>Creates the internal keyed-list representation used by <c>Keyed.list</c>.</summary>
-        Keyed: (obj -> obj -> bool) -> (unit -> (obj * obj) array) -> ((unit -> obj) -> 'view) -> 'view
+        Keyed: (unit -> (obj * obj) array) -> ((unit -> obj) -> 'view) -> 'view
         /// <summary>Creates the single keyed row selected by a switch; the previous row is disposed before the next is created.</summary>
-        Switch: (obj -> obj -> bool) -> (unit -> (obj * obj) array) -> ((unit -> obj) -> 'view) -> 'view
+        Switch: (unit -> (obj * obj) array) -> ((unit -> obj) -> 'view) -> 'view
         Component: (Setup -> 'view) -> 'view
         /// <summary>Runs backend operations in the view's place; a template view hole embeds its view through it.</summary>
         Embed: (Backend -> unit) -> 'view
     }
 
 module Keyed =
-    let internal validateUniqueKeys equals items =
-        let seen = ResizeArray<obj>()
-
-        for key, _ in items do
-            let mutable duplicate = false
-
-            for previous in seen do
-                if equals previous key then
-                    duplicate <- true
-
-            if duplicate then
-                raise (System.ArgumentException ("Keyed items must have unique keys", "items"))
-
-            seen.Add key
-
-    let private create
-        (ops: Operations<'view>)
-        (equals: 'key -> 'key -> bool)
-        (key: 'item -> 'key)
-        (read: unit -> 'item array)
-        (render: (unit -> 'item) -> 'view)
-        =
-        if isNull (box equals) then
-            invalidArg "equals" "Key comparer cannot be null"
-
+    let private create (ops: Operations<'view>) (key: 'item -> 'key) (read: unit -> 'item array) (render: (unit -> 'item) -> 'view) =
         if isNull (box read) then
             invalidArg "read" "Keyed item reader cannot be null"
 
@@ -154,9 +130,6 @@ module Keyed =
         if isNull (box render) then
             invalidArg "render" "Keyed row renderer cannot be null"
 
-        let equalsObjects left right =
-            equals (unbox left) (unbox right)
-
         let readObjects () =
             read ()
             |> Array.map (fun item -> box (key item), box item)
@@ -164,33 +137,46 @@ module Keyed =
         let renderObject (current: unit -> obj) =
             render (fun () -> unbox<'item>(current ()))
 
-        ops.Keyed equalsObjects readObjects renderObject
+        ops.Keyed readObjects renderObject
 
     /// <summary>Retains keyed rows and supplies their current item values.</summary>
-    /// <remarks>The input array's slots are copied before key callbacks run.
-    /// Duplicate keys fail before reconciliation mutates the DOM.</remarks>
-    let array ops equals key (read: unit -> 'item array) render =
+    /// <remarks>The input array's slots are copied before key callbacks run. Keys are compared with <c>=</c>. Duplicate
+    /// keys fail before reconciliation mutates the DOM.</remarks>
+    let array<'item, 'key, 'view when 'key: equality>
+        (ops: Operations<'view>)
+        (key: 'item -> 'key)
+        (read: unit -> 'item array)
+        (render: (unit -> 'item) -> 'view)
+        =
         if isNull (box read) then
             invalidArg "read" "Keyed item reader cannot be null"
 
-        create ops equals key (fun () -> Array.copy (read ())) render
+        create ops key (fun () -> Array.copy (read ())) render
 
     /// <summary>Adapts list snapshots to the array-backed keyed renderer.</summary>
-    /// <remarks>Equal keys retain rows; their item readers return current values.</remarks>
-    let list ops equals key (read: unit -> 'item list) render =
+    /// <remarks>Equal keys under <c>=</c> retain rows; their item readers return current values.</remarks>
+    let list<'item, 'key, 'view when 'key: equality>
+        (ops: Operations<'view>)
+        (key: 'item -> 'key)
+        (read: unit -> 'item list)
+        (render: (unit -> 'item) -> 'view)
+        =
         if isNull (box read) then
             invalidArg "read" "Keyed item reader cannot be null"
 
-        create ops equals key (fun () -> List.toArray (read ())) render
+        create ops key (fun () -> List.toArray (read ())) render
 
 module Branch =
     /// <summary>Selects a mounted instance by key and supplies a reader for its current selection.</summary>
-    /// <remarks>Equal keys retain the instance; a changed key runs the previous instance's cleanups and removes its nodes before the next instance is set up.
-    /// Include the branch discriminator in the key when component shape changes.</remarks>
-    let select (ops: Operations<'view>) (equals: 'key -> 'key -> bool) (key: 'item -> 'key) (read: unit -> 'item) (render: (unit -> 'item) -> 'view) =
-        if isNull (box equals) then
-            invalidArg "equals" "Key comparer cannot be null"
-
+    /// <remarks>Equal keys under <c>=</c> retain the instance; a changed key runs the previous instance's cleanups and
+    /// removes its nodes before the next instance is set up. Include the branch discriminator in the key when component
+    /// shape changes.</remarks>
+    let select<'item, 'key, 'view when 'key: equality>
+        (ops: Operations<'view>)
+        (key: 'item -> 'key)
+        (read: unit -> 'item)
+        (render: (unit -> 'item) -> 'view)
+        =
         if isNull (box key) then
             invalidArg "key" "Key selector cannot be null"
 
@@ -204,7 +190,7 @@ module Branch =
             let item = read ()
             [| box (key item), box item |]
 
-        ops.Switch (fun left right -> equals (unbox left) (unbox right)) readObjects (fun current -> render (fun () -> unbox (current ())))
+        ops.Switch readObjects (fun current -> render (fun () -> unbox (current ())))
 
 module Tree =
     type View =
@@ -214,7 +200,7 @@ module Tree =
         | Fragment of View array
         | Element of Tag * ModifierAction array * View array
         | Bind of (string -> string -> bool) * (unit -> string)
-        | Keyed of (obj -> obj -> bool) * (unit -> (obj * obj) array) * ((unit -> obj) -> View)
+        | Keyed of (unit -> (obj * obj) array) * ((unit -> obj) -> View)
         | Component of (Setup -> View)
         | Embed of (Backend -> unit)
 
@@ -234,7 +220,7 @@ module Tree =
                         run child backend
             )
         | Bind (equals, read) -> backend.Bind (equals, read)
-        | Keyed (equals, read, render) -> backend.Keyed (equals, read, fun current target -> run (render current) target)
+        | Keyed (read, render) -> backend.Keyed (read, fun current target -> run (render current) target)
         | Component setup -> backend.Component (fun context -> run (setup context) backend)
         | Embed build -> build backend
 
@@ -245,8 +231,8 @@ module Tree =
             Fragment = Fragment
             Element = fun tag tokens children -> Element (tag, tokens, children)
             Bind = fun equals read -> Bind (equals, read)
-            Keyed = fun equals read render -> Keyed (equals, read, render)
-            Switch = fun equals read render -> Embed (fun backend -> backend.Switch (equals, read, fun current target -> run (render current) target))
+            Keyed = fun read render -> Keyed (read, render)
+            Switch = fun read render -> Embed (fun backend -> backend.Switch (read, fun current target -> run (render current) target))
             Component = Component
             Embed = Embed
         }
@@ -295,9 +281,8 @@ module Program =
             Fragment = fragment
             Element = element
             Bind = bind
-            Keyed = fun equals read render -> View (fun backend -> backend.Keyed (equals, read, fun current target -> (render current).Invoke target))
-            Switch =
-                fun equals read render -> View (fun backend -> backend.Switch (equals, read, fun current target -> (render current).Invoke target))
+            Keyed = fun read render -> View (fun backend -> backend.Keyed (read, fun current target -> (render current).Invoke target))
+            Switch = fun read render -> View (fun backend -> backend.Switch (read, fun current target -> (render current).Invoke target))
             Component = createComponent
             Embed = fun build -> View (fun backend -> build backend)
         }
@@ -448,9 +433,9 @@ module Html =
                 member _.Bind(_, read) =
                     append (escape false (read ()))
 
-                member this.Keyed(equals, read, render) =
-                    let items = Array.copy (read ())
-                    Keyed.validateUniqueKeys equals items
+                member this.Keyed(read, render) =
+                    let items = read ()
+                    Ranvier.Projection.ensureUniqueKeys fst items
 
                     for _, item in items do
                         render (fun () -> item) this
