@@ -155,7 +155,7 @@ let private hasBrowserParts properties (slots: Slot array) (events: (string * Fu
            | PropertyTarget _ -> true
            | _ -> false)
 
-/// <summary>The number of skeleton sibling nodes a flattened node occupies.</summary>
+/// <summary>The number of skeleton sibling nodes occupied by a flattened node.</summary>
 let private width node =
     match node with
     | RegionNode _ -> 2
@@ -173,7 +173,6 @@ let internal rowRenderer (row: RegionRow) (current: unit -> obj) (backend: Backe
 let private serverRow (backend: Backend) (row: RegionRow) (item: obj) =
     rowRenderer row (fun () -> item) backend
 
-/// <summary>A child template inlined into a skeleton.</summary>
 [<NoEquality; NoComparison>]
 type InlinedChild =
     {

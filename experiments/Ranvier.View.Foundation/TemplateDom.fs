@@ -38,7 +38,6 @@ let StateGraph = 3
 [<Literal>]
 let StateNodes = 4
 
-/// <summary>A region of a compiled template.</summary>
 [<NoEquality; NoComparison>]
 type CompiledRegion =
     {
@@ -74,7 +73,6 @@ type Compiled =
         Children: CompiledChild array
     }
 
-/// <summary>An inlined child template of a compiled template.</summary>
 and [<NoEquality; NoComparison>] CompiledChild =
     {
         Definition: TemplateComponent
@@ -467,7 +465,7 @@ let private stateFor (compiled: Compiled) (instance: obj) (extra: int) =
     state
 
 /// <summary>Writes a part's static properties, starts its render and isolated effects, and attaches its events.</summary>
-/// <remarks>Inlined, so the effect closures share the caller's closure context with the caller's own closures.</remarks>
+/// <remarks>Effect closures share <c>materialise</c>'s closure context.</remarks>
 let inline private bind (services: MountServices) (compiled: Compiled) (state: obj array) (instance: obj) =
     let renderCount = compiled.RenderSlots.Length
     let isolatedCount = compiled.IsolatedSlots.Length

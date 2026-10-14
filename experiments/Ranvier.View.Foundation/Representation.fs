@@ -106,7 +106,7 @@ type Operations<'view> =
         /// <summary>Creates the internal keyed-list representation used by <c>Keyed.list</c>.</summary>
         Keyed: (obj -> obj -> bool) -> (unit -> (obj * obj) array) -> ((unit -> obj) -> 'view) -> 'view
         Component: (Setup -> 'view) -> 'view
-        /// <summary>Runs backend operations at this position; a template view hole embeds its view through it.</summary>
+        /// <summary>Runs backend operations in the view's place; a template view hole embeds its view through it.</summary>
         Embed: (Backend -> unit) -> 'view
     }
 
