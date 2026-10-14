@@ -4,7 +4,7 @@
 
 **Goal:** Generate the template builder's element, attribute, property and event members from the same catalogue as `Html.Program.*`, so templates reach every HTML tag and every generated modifier with the same element typing.
 
-**Architecture:** `tools/Ranvier.Dom.Generate` gains a second output, `Generated/HtmlTemplate.fs`, written from the data it already resolves for `Generated/Html.fs`. The new file holds optional type extensions on the handwritten builders in `Template.fs` (`TemplateBuilder`, `AttributeBuilder`, `PropertyBuilder`, `EventBuilder`) and on generated group marker classes. Every generated member is one call into a small handwritten `TemplateParts` module in `Template.fs`. Optional extensions compile under Fable to module-level functions, so an unused member is removed by the bundler.
+**Architecture:** `tools/Ranvier.Dom.Generate` gains a second output, `Generated/HtmlTemplate.fs`, written from the data it already resolves for `Generated/Html.fs`. The new file holds optional type extensions on the handwritten builders in `Template.fs` (`TemplateBuilder`, `AttributeBuilder`, `PropertyBuilder`, `EventBuilder`) and on generated group marker classes. Every generated member is one call into a small handwritten `TemplateParts` module in `Template.fs`. Optional extensions compile under Fable to module-level functions, so a bundler (the Playground's `vite build`) can remove unused members.
 
 **Tech Stack:** F#, Fable 5, Fantomas.Core 7.0.5 (pinned in the generator), Xantham.Fable.Core.TS 0.2.1 catalogue, Node test runner with jsdom, Playwright/Chromium, Vite production builds.
 
@@ -16,7 +16,7 @@
 - "`T.*` helpers are generated from the same catalogue as `H.Program.*`, with the same element typing. A value argument gives a static part; an `'inst -> value` argument gives a dynamic part. Static and dynamic forms are overloads." A `Source<'inst, 'value>` from `t.from` gives a direct part.
 - "the generator must emit both forms from one catalogue entry."
 - "Fable function adaptation can reintroduce closures where typed slots meet the backend; the implementation must verify emitted JavaScript." After any change to `Template.fs`, `TemplateDom.fs`, `Mounting.fs` or `Generated/HtmlTemplate.fs`, grep the emitted `Template.js`, `TemplateDom.js` and `HtmlTemplate.js` (Playground `generated-tests/`) for `curry`, `uncurry` and `partialApply`; none may be new.
-- Generated code is regenerated, never hand-edited, once Task 2 lands. Output is deterministic (byte-identical across runs), UTF-8, LF, formatted by the generator's pinned Fantomas.
+- Generated code is regenerated, never hand-edited. Output is deterministic (byte-identical across runs), UTF-8, LF, formatted by the generator's pinned Fantomas.
 - Generated attribute semantics equal `Typed`'s: string attributes remove on `None`; boolean attributes are present as `""` when true and absent when false; ARIA booleans write `"true"`/`"false"` and remove on `None`; `data-`/`aria-` names go through `Typed.prefixedAttributeName`. Event-handler attributes and `srcdoc` stay rejected.
 - Property setters exist only for writable primitive properties (`string`, `bool`, `float`, options of them) outside the generator's `excluded` set, exactly as `Html.fs`.
 - Fable: no interface type tests (they compile to false); no secondary constructors with a self-identifier.
@@ -30,10 +30,10 @@
 ## Review Focus
 
 - Two records in scope that share a field name, used in a template lambda (`fun r -> r.Index`): the lambda must type against the builder's instance type, not the most recent record with that label. Pinned in Task 1.
-- A `string option` reader on a string attribute (`t.Attrs.title (fun r -> r.Nickname)`) must pick the removal overload and remove the attribute on `None`; a `string` reader keeps it. Pinned in Task 3.
-- Boolean attributes at `false` are absent and ARIA booleans at `false` read `"false"`, identical to `Html.Program` output. Pinned in Task 3.
-- Members whose names are F# keywords (`t.``base```, `t.Attrs.Button.``type```) compile and render. Pinned in Task 2's type checks.
-- An element-specific property on another element (`t.Props.Input.value` inside `t.div`) fails to compile. Pinned in Task 2's type checks.
+- A `string option` reader on a string attribute (`t.Attrs.title (fun r -> r.Nickname)`) must pick the removal overload and remove the attribute on `None`; a `string` reader keeps it. Pinned in Task 2.
+- Boolean attributes at `false` are absent and ARIA booleans at `false` read `"false"`, identical to `Html.Program` output. Pinned in Task 2.
+- Members whose names are F# keywords (`t.``base```, `t.Attrs.Button.``type```) compile and render. Pinned in Task 1's type checks.
+- An element-specific property on another element (`t.Props.Input.value` inside `t.div`) fails to compile. Pinned in Task 1's type checks.
 
 ---
 
@@ -68,7 +68,7 @@ These rules define the generated surface. Every task follows them.
 ## File Structure
 
 - Modify `experiments/Ranvier.View.Foundation/Template.fs`: add `NoPart` to `Part`; add `module internal TemplateParts`; remove the handwritten members the catalogue replaces (`div`, `section`, `span`, `button`, `input`, `Attrs.className/id/title`, `Props.value/disabled`, `Events.onClick/onInput/onFocus`).
-- Create `experiments/Ranvier.View.Foundation/Generated/HtmlTemplate.fs`: handwritten in Task 1 for the members tests use today, generated from Task 2 on.
+- Create `experiments/Ranvier.View.Foundation/Generated/HtmlTemplate.fs`: generated.
 - Modify `tools/Ranvier.Dom.Generate/Program.fs`: collect template entries in the existing loops; write `HtmlTemplate.fs`; add coverage counts.
 - Modify `tools/Ranvier.Dom.Generate/tests.py`, `check-types.py`, `README.md`.
 - Modify compile lists: `experiments/Ranvier.View.Foundation/Ranvier.View.Foundation.fsproj`, `RepresentationChecks.fsproj`, `examples/Fable.Ranvier.Playground/tests/DomTests.fsproj`, and any other project that compiles `Template.fs` (grep for `Template.fs" ` in `*.fsproj`).
@@ -78,20 +78,25 @@ These rules define the generated surface. Every task follows them.
 
 ---
 
-### Task 1: Part helpers and the extension surface
+### Task 1: Generate the template catalogue
 
-Prove the surface shape on the members in use today, before the generator writes 100+ KB of it.
+Generate the whole surface in one pass from the generator's existing data, migrate the property call sites, and pin type inference. The generated output can be sliced, regenerated and corrected; nothing is hand-written first.
 
 **Files:**
 - Modify: `experiments/Ranvier.View.Foundation/Template.fs:428-631`
-- Create: `experiments/Ranvier.View.Foundation/Generated/HtmlTemplate.fs`
+- Modify: `tools/Ranvier.Dom.Generate/Program.fs:340-960`, `tools/Ranvier.Dom.Generate/tests.py`, `tools/Ranvier.Dom.Generate/check-types.py`
+- Create (generated): `experiments/Ranvier.View.Foundation/Generated/HtmlTemplate.fs`; modify (generated): `Generated/Html.coverage.json`
 - Modify: the `.fsproj` compile lists named in File Structure (insert `Generated/HtmlTemplate.fs` directly after `Template.fs`)
 - Create: `examples/Fable.Ranvier.Playground/tests/TemplateCatalogueChecks.fs`, `examples/Fable.Ranvier.Playground/tests/template-catalogue.test.mjs`
 - Modify: `examples/Fable.Ranvier.Playground/package.json` (`test:dom`), `tests/TemplateChecks.fs`, `tests/FrameworkPerf.fs`
 
 **Interfaces:**
 - Produces in `Template`: `Part.NoPart`; `module internal TemplateParts` with `element`, `attribute`, `optionalAttribute`, `readAttribute`, `sourceAttribute`, `mapSource`, `presence`, `ariaText`, `ariaOption`, `property`, `readProperty`, `sourceProperty`, `event` (signatures in Step 3).
-- Produces in `Generated.HtmlTemplate` (`[<AutoOpen>]`): the extension shapes of the Surface decisions table, which Task 2's generator reproduces exactly.
+- Produces in `Generated.HtmlTemplate` (`[<AutoOpen>]`): all 112 tags, every `attributes.json` entry, every settable property and every event that `Html.fs` covers, in the shapes of the Surface decisions table; coverage keys `templateTagCount`, `templateAttributeCount`, `templatePropertyCount`, `templateEventCount`, `templatePropertyGroups`, `templateEventGroups`.
+
+- [ ] **Step 0: Record baselines**
+
+From the Playground at the plan's starting commit: run `rtk npm run test:dom` once, then record `rtk grep -c "curry\|uncurry\|partialApply" generated-tests/Template.js`. Build the benchmark bundles with `rtk node benchmarks/frameworks/run.mjs --build --template-comparison` (stop it after the Vite build if it proceeds to run). Locate the bundle containing the `ranvier-template` adapter (read `run.mjs` and `benchmarks/frameworks/vite.config.mjs` for the output directory) and record its raw and gzip byte sizes.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -157,10 +162,53 @@ Adjust the `use _ = mount ...` and `Graph.create`/`graph.Run` lines to the exact
 
 Create `tests/template-catalogue.test.mjs` as a copy of `tests/template.test.mjs` importing `../generated-tests/TemplateCatalogueChecks.js`. Add `TemplateCatalogueChecks.fs` to `tests/DomTests.fsproj` directly after `TemplateChecks.fs`, and `tests/template-catalogue.test.mjs` to the end of the `test:dom` script.
 
+Generator tests. Append to `tests.py`, inside the `with` block:
+
+```python
+    template = first.with_name(first.stem + "Template.fs")
+    template_second = second.with_name(second.stem + "Template.fs")
+    assert template.read_bytes() == template_second.read_bytes(), "template catalogue must be byte-identical"
+    ttext = template.read_text()
+    assert ttext.startswith("// <auto-generated>")
+    assert "module Ranvier.View.Foundation.Generated.HtmlTemplate" in ttext
+    assert coverage["templateTagCount"] == 112
+    assert coverage["templateAttributeCount"] == coverage["attributeCount"]
+    assert coverage["templatePropertyCount"] == ttext.count("TemplateParts.property ")
+    assert coverage["templatePropertyCount"] == text.count("Typed.staticProperty (fun (node: 'native)"), "every shared settable property needs a template part"
+    assert coverage["templateEventCount"] == ttext.count("TemplateParts.event ")
+    assert "member _.``div`` (parts: Part<Dom.HTMLDivElement, 'inst> array) (children: TemplateView<'inst> array)" in ttext
+    assert "member _.``br``(parts: Part<Dom.HTMLBRElement, 'inst> array) : TemplateView<'inst>" in ttext
+    assert "type Groups.InputProperties<'inst> with" in ttext
+    assert "member _.onClick<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.MouseEvent -> unit)" in ttext
+    assert "TemplateParts.readAttribute \"aria-expanded\" (fun instance -> Some (TemplateParts.ariaText (read instance)))" in ttext
+    assert "uncurry" not in ttext and "curry" not in ttext
+```
+
+Adjust the two `templatePropertyCount` lines if the shared-property count and the per-tag exposure counts differ by design: the requirement is that every setter emitted under `Html.Properties.<owner>` has exactly one template property entry (three overloads), and the test must assert that equality using whichever count the generator records for it.
+
+Append to `check-types.py`'s `examples` (each entry is `(name, body, expected diagnostic or None)`; follow the file's existing `prefix`, which must also open `Ranvier.View.Foundation.Template` and `Ranvier.View.Foundation.Generated.HtmlTemplate`):
+
+```python
+    ("template catalogue keywords", '''
+type R = { Kind: string }
+let view = Component.define (fun _ (p: R) -> p) (fun t -> t.div [||] [| t.``base`` [||]; t.button [| t.Attrs.Button.``type`` (fun r -> r.Kind) |] [||] |])
+''', None),
+    ("template property on another element", '''
+type R = { Value: string }
+let view = Component.define (fun _ (p: R) -> p) (fun t -> t.div [| t.Props.Input.value (fun r -> r.Value) |] [||])
+''', "FS0001"),
+    ("template void tag with children", '''
+type R = { Value: string }
+let view = Component.define (fun _ (p: R) -> p) (fun t -> t.br [||] [||])
+''', "FS0003"),
+```
+
+Use the diagnostic codes the compiler actually reports for the last two (run once and read them); the requirement is that both fail to compile.
+
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run (from `examples/Fable.Ranvier.Playground`): `rtk npm run test:dom`
-Expected: compilation fails at `t.Props.Input` (no member `Input` on `PropertyBuilder`).
+Run: `rtk proxy python tools/Ranvier.Dom.Generate/tests.py`
+Expected: FAIL, because `firstTemplate.fs` does not exist.
 
 - [ ] **Step 3: Add `NoPart` and `TemplateParts` to `Template.fs`**
 
@@ -234,7 +282,118 @@ module internal TemplateParts =
 
 Remove from the builders: `AttributeBuilder.className/id/title` (all overloads), `PropertyBuilder.value/disabled` (all overloads), `EventBuilder.onClick/onInput/onFocus`, and `TemplateBuilder.div/section/span/button/input`. Keep `attribute`, `propertyStatic`, `propertyWith`, `propertyFrom`, `on`, `element` and every structure member. Remove `someOf` if nothing else uses it (use `TemplateParts.mapSource present`).
 
-- [ ] **Step 4: Write `Generated/HtmlTemplate.fs` by hand, in the exact shape Task 2 generates**
+- [ ] **Step 4: Collect template entries in the generator's existing loops**
+
+In `generate`, beside `programElements`:
+
+```fsharp
+    let templateTags = ResizeArray<string>()
+    let templateProperties = System.Collections.Generic.SortedDictionary<string, ResizeArray<string * string * string>>()
+    let templatePropertyOwners = System.Collections.Generic.Dictionary<string, Type>()
+    let templateGroupEvents = System.Collections.Generic.SortedDictionary<string, System.Collections.Generic.SortedDictionary<string, string * string>>()
+    let templateAttributes = ResizeArray<string * string * string * string * string>()
+
+    let groupName (native: Type) =
+        let name = native.Name
+        let name = if name.StartsWith ("HTML", StringComparison.Ordinal) && name.Length > 4 then name.Substring 4 else name
+
+        if name.EndsWith ("Element", StringComparison.Ordinal) && name.Length > 7 then
+            name.Substring (0, name.Length - 7)
+        else
+            name
+```
+
+In the tag loop, after the `programElements.Add` calls:
+
+```fsharp
+        if voidTags.Contains tag then
+            templateTags.Add
+                $"    member _.``{tag}``(parts: Part<{name}, 'inst> array) : TemplateView<'inst> = TemplateParts.element {expression} parts [||]"
+        else
+            templateTags.Add
+                $"    member _.``{tag}`` (parts: Part<{name}, 'inst> array) (children: TemplateView<'inst> array) : TemplateView<'inst> = TemplateParts.element {expression} parts children"
+```
+
+Inside `if emittedProperties.Add (...)`, under `if canSet then`:
+
+```fsharp
+                            if not (templateProperties.ContainsKey owner.Name) then
+                                templateProperties.Add (owner.Name, ResizeArray())
+                                templatePropertyOwners.Add (owner.Name, owner)
+
+                            templateProperties[owner.Name].Add (memberName, ownerName, valueType)
+```
+
+In the event loop, for an event that is not common (the branch that emits `on{...}` into the tag module, excluding the `input`/`click` compatibility re-emission):
+
+```fsharp
+            if not (commonEvents.Contains event.Key) then
+                let group = groupName native
+
+                if not (templateGroupEvents.ContainsKey group) then
+                    templateGroupEvents.Add (group, System.Collections.Generic.SortedDictionary())
+
+                match templateGroupEvents[group].TryGetValue event.Key with
+                | true, (previous, _) -> require (previous = eventType) $"Conflicting template event type: {group}.{event.Key}"
+                | _ -> templateGroupEvents[group].Add (event.Key, (eventType, name))
+```
+
+In the attribute policy loop, beside the `emit` calls for each entry:
+
+```fsharp
+            templateAttributes.Add (groupName, nativeName, helper, attribute, kind)
+```
+
+(`groupName` here is the attribute loop's existing local, the policy's `"module"` value; rename the new function above to `nativeGroupName` if the names clash.)
+
+- [ ] **Step 5: Emit `HtmlTemplate.fs`**
+
+After `contents` is computed, build and write the template file with the same `format`:
+
+```fsharp
+    let reserved =
+        dict
+            [
+                "TemplateBuilder", set [ "Attrs"; "Props"; "Events"; "element"; "fragment"; "text"; "from"; "isolated"; "view"; "arm"; "matchWith"; "branch"; "each"; "render" ]
+                "AttributeBuilder", set [ "attribute"; "data"; "aria" ]
+                "PropertyBuilder", set [ "propertyStatic"; "propertyWith"; "propertyFrom" ]
+                "EventBuilder", set [ "on" ]
+            ]
+
+    let t = ResizeArray<string>()
+    let tEmit (line: string) = t.Add line
+    tEmit "// <auto-generated> tools/Ranvier.Dom.Generate; regenerate instead of editing. </auto-generated>"
+    tEmit "[<AutoOpen>]"
+    tEmit "module Ranvier.View.Foundation.Generated.HtmlTemplate"
+    tEmit ""
+    tEmit "open Fable.Core.TS"
+    tEmit "open Ranvier.View.Foundation"
+    tEmit "open Ranvier.View.Foundation.Representation"
+    tEmit "open Ranvier.View.Foundation.Template"
+    tEmit ""
+```
+
+Then, in this order, each with `require` checks that no member name repeats within a builder or group, no name is in `reserved` for its builder, and no group name equals a flat member name of the same builder:
+
+1. `module Groups =` with one `[<Sealed>] type <Group><Kind><'inst> internal () = class end` per attribute group (`Kind` = `Attributes`), property group (`Properties`) and event group (`Events`).
+2. `type TemplateBuilder<'inst> with` + `templateTags` (tags are emitted sorted by name, as the loop already iterates).
+3. `type AttributeBuilder<'inst> with`: `data` and `aria` (three overloads each, `TemplateParts.attribute (Typed.prefixedAttributeName "data-" suffix) value`, `readAttribute`, `sourceAttribute` with the same prefixed name), the flat attributes, then one `member _.<Group> = Groups.<Group>Attributes<'inst>()` per attribute group; then `type Groups.<Group>Attributes<'inst> with` + its entries.
+4. `type PropertyBuilder<'inst> with`: flat properties (owners for which `owner.IsAssignableFrom typeof<Dom.HTMLElement>`), then group accessors; then each `type Groups.<Group>Properties<'inst> with` + its properties.
+5. `type EventBuilder<'inst> with`: one member per `sharedEvents` entry, then group accessors; then each `type Groups.<Group>Events<'inst> with` + its events, constrained to the group's native type.
+
+The member bodies, with `{c}` the constraint `'native when 'native :> {owner}`:
+
+| Kind | Member lines |
+|---|---|
+| string attribute | `({c}) (value: string) = TemplateParts.attribute "{attr}" value`; `(value: string option) = TemplateParts.optionalAttribute "{attr}" value`; `(read: 'inst -> string) = TemplateParts.readAttribute "{attr}" (fun instance -> Some (read instance))`; `(read: 'inst -> string option) = TemplateParts.readAttribute "{attr}" read`; `(source: Source<'inst, string>) = TemplateParts.sourceAttribute "{attr}" (TemplateParts.mapSource Some source)`; `(source: Source<'inst, string option>) = TemplateParts.sourceAttribute "{attr}" source` |
+| boolean attribute | `(value: bool) = TemplateParts.optionalAttribute "{attr}" (TemplateParts.presence value)`; `(read: 'inst -> bool) = TemplateParts.readAttribute "{attr}" (fun instance -> TemplateParts.presence (read instance))`; `(source: Source<'inst, bool>) = TemplateParts.sourceAttribute "{attr}" (TemplateParts.mapSource TemplateParts.presence source)` |
+| ARIA boolean | `(value: bool) = TemplateParts.attribute "{attr}" (TemplateParts.ariaText value)`; `(value: bool option) = TemplateParts.optionalAttribute "{attr}" (TemplateParts.ariaOption value)`; `(read: 'inst -> bool) = TemplateParts.readAttribute "{attr}" (fun instance -> Some (TemplateParts.ariaText (read instance)))`; `(read: 'inst -> bool option) = TemplateParts.readAttribute "{attr}" (fun instance -> TemplateParts.ariaOption (read instance))`; `(source: Source<'inst, bool>) = TemplateParts.sourceAttribute "{attr}" (TemplateParts.mapSource (fun value -> Some (TemplateParts.ariaText value)) source)`; `(source: Source<'inst, bool option>) = TemplateParts.sourceAttribute "{attr}" (TemplateParts.mapSource TemplateParts.ariaOption source)` |
+| property `'v` | `(value: {v}) = TemplateParts.property (fun (node: 'native) (value: {v}) -> (node :> {owner}).``{m}`` <- value) value`; the same writer with `TemplateParts.readProperty ... read` for `(read: 'inst -> {v})` and `TemplateParts.sourceProperty ... source` for `(source: Source<'inst, {v}>)` |
+| event | `on{E}<{c}>(handler: 'inst -> {eventType} -> unit) : Part<'native, 'inst> = TemplateParts.event "{event}" handler` |
+
+Every attribute, property and event member is `member _.``{name}``<{c}>(...) : Part<'native, 'inst> =`. Format `t` with `format`, then write it to `Path.Combine (Path.GetDirectoryName (Path.GetFullPath output), Path.GetFileNameWithoutExtension output + "Template.fs")` with `UTF8Encoding (false)`. Add the six coverage keys to the anonymous record.
+
+Expected output, excerpted for the members tests use today:
 
 ```fsharp
 // <auto-generated> tools/Ranvier.Dom.Generate; regenerate instead of editing. </auto-generated>
@@ -322,211 +481,15 @@ type EventBuilder<'inst> with
         TemplateParts.event "input" handler
 ```
 
-Write out every overload in full in the file; the comments above mark repetition in this plan only. Use the event types `Generated/Html.fs` uses for `click`, `focus` and `input`. `Template.fs`'s `Tag` cases `Div`, `Button`, `Input`, `Select`, `Option` are used for those tags, `HtmlTag "<tag>"` otherwise.
+This excerpt is the expected shape of the generated output for the members tests use today; the generator writes every overload in full. Use the event types `Generated/Html.fs` uses for `click`, `focus` and `input`. `Template.fs`'s `Tag` cases `Div`, `Button`, `Input`, `Select`, `Option` are used for those tags, `HtmlTag "<tag>"` otherwise.
 
-If the compiler rejects optional extensions on these generic builders, curried extension members, or overloads of generic extension members: stop, record the exact error in the report, and fall back to intrinsic members. To do that, split `Template.fs` into `TemplateModel.fs` (everything before `AttributeBuilder`) and `TemplateBuilder.fs` (the builders, `Component`), and make `HtmlTemplate.fs` define the four builder classes whole between them, with the handwritten members moved into it as a fixed preamble the generator copies. Record that ruling in the report; Task 2 then generates whole classes.
+If the compiler rejects optional extensions on these generic builders, curried extension members, or overloads of generic extension members: record the exact error in the report and switch the generator to intrinsic members. To do that, split `Template.fs` into `TemplateModel.fs` (everything before `AttributeBuilder`) and `TemplateBuilder.fs` (the builders, `Component`), and make the generated `HtmlTemplate.fs` define the four builder classes whole between them, with the handwritten members emitted from a fixed preamble the generator copies. Record that ruling in the report.
 
-- [ ] **Step 5: Add the file to every compile list and migrate the two property uses**
+- [ ] **Step 6: Add the file to every compile list and migrate the property call sites**
 
 Insert `<Compile Include="...Generated/HtmlTemplate.fs" .../>` directly after each `Template.fs` entry found by `rtk grep -n "Template.fs\"" --glob "*.fsproj"`. Replace `t.Props.value` with `t.Props.Input.value` and `t.Props.disabled` with `t.Props.Button.disabled` in `tests/TemplateChecks.fs` and `tests/FrameworkPerf.fs`.
 
-- [ ] **Step 6: Run the gates**
-
-Run: `rtk npm run test:dom`, `rtk npm run test:browser`, `rtk dotnet run --project experiments/Ranvier.View.Foundation/RepresentationChecks.fsproj -c Release`.
-Expected: all pass; the new catalogue case passes; 13 PASS lines.
-
-- [ ] **Step 7: Check emitted JavaScript**
-
-Before Step 1, record the baseline: `rtk grep -c "curry\|uncurry\|partialApply" generated-tests/Template.js` (from the Playground, after a `test:dom` run at `0e82e46`). Now run `rtk grep -n "curry\|uncurry\|partialApply" generated-tests/HtmlTemplate.js generated-tests/Template.js`.
-Expected: no matches in `HtmlTemplate.js`; the `Template.js` count is at most the baseline. Confirm the extension members are emitted as module-level functions, not class methods, and record two of their emitted names in the report.
-
-- [ ] **Step 8: Commit**
-
-```bash
-rtk dotnet fantomas experiments/Ranvier.View.Foundation/Template.fs experiments/Ranvier.View.Foundation/Generated/HtmlTemplate.fs examples/Fable.Ranvier.Playground/tests/TemplateCatalogueChecks.fs
-rtk git add -A experiments/Ranvier.View.Foundation examples/Fable.Ranvier.Playground/tests examples/Fable.Ranvier.Playground/package.json
-rtk git commit -m "feat(view): move template element, attribute, property and event members into catalogue extensions"
-```
-
----
-
-### Task 2: Generate the template catalogue
-
-**Files:**
-- Modify: `tools/Ranvier.Dom.Generate/Program.fs:340-960`
-- Modify: `tools/Ranvier.Dom.Generate/tests.py`, `tools/Ranvier.Dom.Generate/check-types.py`
-- Overwrite (generated): `experiments/Ranvier.View.Foundation/Generated/HtmlTemplate.fs`, `Generated/Html.coverage.json`
-
-**Interfaces:**
-- Consumes: `TemplateParts.*`, `Part.NoPart` and the extension shapes of Task 1, unchanged.
-- Produces: `Generated/HtmlTemplate.fs` covering all 112 tags, every `attributes.json` entry, every settable property and every event that `Html.fs` covers; coverage keys `templateTagCount`, `templateAttributeCount`, `templatePropertyCount`, `templateEventCount`, `templatePropertyGroups`, `templateEventGroups`.
-
-- [ ] **Step 0: Record the bundle baseline**
-
-Build the benchmark bundles at Task 1's commit: `rtk node benchmarks/frameworks/run.mjs --build --template-comparison` (from the Playground; stop it after the build if it proceeds to run). Locate the bundle that contains the `ranvier-template` adapter (read `run.mjs` for its output directory). Record its raw and gzip byte sizes in the report. Pick a sentinel: the emitted name of one generated property member that the benchmark never uses, absent from this bundle.
-
-- [ ] **Step 1: Write the failing generator tests**
-
-Append to `tests.py`, inside the `with` block:
-
-```python
-    template = first.with_name(first.stem + "Template.fs")
-    template_second = second.with_name(second.stem + "Template.fs")
-    assert template.read_bytes() == template_second.read_bytes(), "template catalogue must be byte-identical"
-    ttext = template.read_text()
-    assert ttext.startswith("// <auto-generated>")
-    assert "module Ranvier.View.Foundation.Generated.HtmlTemplate" in ttext
-    assert coverage["templateTagCount"] == 112
-    assert coverage["templateAttributeCount"] == coverage["attributeCount"]
-    assert coverage["templatePropertyCount"] == ttext.count("TemplateParts.property ")
-    assert coverage["templatePropertyCount"] == text.count("Typed.staticProperty (fun (node: 'native)"), "every shared settable property needs a template part"
-    assert coverage["templateEventCount"] == ttext.count("TemplateParts.event ")
-    assert "member _.``div`` (parts: Part<Dom.HTMLDivElement, 'inst> array) (children: TemplateView<'inst> array)" in ttext
-    assert "member _.``br``(parts: Part<Dom.HTMLBRElement, 'inst> array) : TemplateView<'inst>" in ttext
-    assert "type Groups.InputProperties<'inst> with" in ttext
-    assert "member _.onClick<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.MouseEvent -> unit)" in ttext
-    assert "TemplateParts.readAttribute \"aria-expanded\" (fun instance -> Some (TemplateParts.ariaText (read instance)))" in ttext
-    assert "uncurry" not in ttext and "curry" not in ttext
-```
-
-Adjust the two `templatePropertyCount` lines if the shared-property count and the per-tag exposure counts differ by design: the requirement is that every setter emitted under `Html.Properties.<owner>` has exactly one template property entry (three overloads), and the test must assert that equality using whichever count the generator records for it.
-
-Append to `check-types.py`'s `examples` (each entry is `(name, body, expected diagnostic or None)`; follow the file's existing `prefix`, which must also open `Ranvier.View.Foundation.Template` and `Ranvier.View.Foundation.Generated.HtmlTemplate`):
-
-```python
-    ("template catalogue keywords", '''
-type R = { Kind: string }
-let view = Component.define (fun _ (p: R) -> p) (fun t -> t.div [||] [| t.``base`` [||]; t.button [| t.Attrs.Button.``type`` (fun r -> r.Kind) |] [||] |])
-''', None),
-    ("template property on another element", '''
-type R = { Value: string }
-let view = Component.define (fun _ (p: R) -> p) (fun t -> t.div [| t.Props.Input.value (fun r -> r.Value) |] [||])
-''', "FS0001"),
-    ("template void tag with children", '''
-type R = { Value: string }
-let view = Component.define (fun _ (p: R) -> p) (fun t -> t.br [||] [||])
-''', "FS0003"),
-```
-
-Use the diagnostic codes the compiler actually reports for the last two (run once and read them); the requirement is that both fail to compile.
-
-- [ ] **Step 2: Run them to verify they fail**
-
-Run: `rtk proxy python tools/Ranvier.Dom.Generate/tests.py`
-Expected: FAIL — `firstTemplate.fs` does not exist.
-
-- [ ] **Step 3: Collect template entries in the existing loops**
-
-In `generate`, beside `programElements`:
-
-```fsharp
-    let templateTags = ResizeArray<string>()
-    let templateProperties = System.Collections.Generic.SortedDictionary<string, ResizeArray<string * string * string>>()
-    let templatePropertyOwners = System.Collections.Generic.Dictionary<string, Type>()
-    let templateGroupEvents = System.Collections.Generic.SortedDictionary<string, System.Collections.Generic.SortedDictionary<string, string * string>>()
-    let templateAttributes = ResizeArray<string * string * string * string * string>()
-
-    let groupName (native: Type) =
-        let name = native.Name
-        let name = if name.StartsWith ("HTML", StringComparison.Ordinal) && name.Length > 4 then name.Substring 4 else name
-
-        if name.EndsWith ("Element", StringComparison.Ordinal) && name.Length > 7 then
-            name.Substring (0, name.Length - 7)
-        else
-            name
-```
-
-In the tag loop, after the `programElements.Add` calls:
-
-```fsharp
-        if voidTags.Contains tag then
-            templateTags.Add
-                $"    member _.``{tag}``(parts: Part<{name}, 'inst> array) : TemplateView<'inst> = TemplateParts.element {expression} parts [||]"
-        else
-            templateTags.Add
-                $"    member _.``{tag}`` (parts: Part<{name}, 'inst> array) (children: TemplateView<'inst> array) : TemplateView<'inst> = TemplateParts.element {expression} parts children"
-```
-
-Inside `if emittedProperties.Add (...)`, under `if canSet then`:
-
-```fsharp
-                            if not (templateProperties.ContainsKey owner.Name) then
-                                templateProperties.Add (owner.Name, ResizeArray())
-                                templatePropertyOwners.Add (owner.Name, owner)
-
-                            templateProperties[owner.Name].Add (memberName, ownerName, valueType)
-```
-
-In the event loop, for an event that is not common (the branch that emits `on{...}` into the tag module, excluding the `input`/`click` compatibility re-emission):
-
-```fsharp
-            if not (commonEvents.Contains event.Key) then
-                let group = groupName native
-
-                if not (templateGroupEvents.ContainsKey group) then
-                    templateGroupEvents.Add (group, System.Collections.Generic.SortedDictionary())
-
-                match templateGroupEvents[group].TryGetValue event.Key with
-                | true, (previous, _) -> require (previous = eventType) $"Conflicting template event type: {group}.{event.Key}"
-                | _ -> templateGroupEvents[group].Add (event.Key, (eventType, name))
-```
-
-In the attribute policy loop, beside the `emit` calls for each entry:
-
-```fsharp
-            templateAttributes.Add (groupName, nativeName, helper, attribute, kind)
-```
-
-(`groupName` here is the attribute loop's existing local, the policy's `"module"` value; rename the new function above to `nativeGroupName` if the names clash.)
-
-- [ ] **Step 4: Emit `HtmlTemplate.fs`**
-
-After `contents` is computed, build and write the template file with the same `format`:
-
-```fsharp
-    let reserved =
-        dict
-            [
-                "TemplateBuilder", set [ "Attrs"; "Props"; "Events"; "element"; "fragment"; "text"; "from"; "isolated"; "view"; "arm"; "matchWith"; "branch"; "each"; "render" ]
-                "AttributeBuilder", set [ "attribute"; "data"; "aria" ]
-                "PropertyBuilder", set [ "propertyStatic"; "propertyWith"; "propertyFrom" ]
-                "EventBuilder", set [ "on" ]
-            ]
-
-    let t = ResizeArray<string>()
-    let tEmit (line: string) = t.Add line
-    tEmit "// <auto-generated> tools/Ranvier.Dom.Generate; regenerate instead of editing. </auto-generated>"
-    tEmit "[<AutoOpen>]"
-    tEmit "module Ranvier.View.Foundation.Generated.HtmlTemplate"
-    tEmit ""
-    tEmit "open Fable.Core.TS"
-    tEmit "open Ranvier.View.Foundation"
-    tEmit "open Ranvier.View.Foundation.Representation"
-    tEmit "open Ranvier.View.Foundation.Template"
-    tEmit ""
-```
-
-Then, in this order, each with `require` checks that no member name repeats within a builder or group, no name is in `reserved` for its builder, and no group name equals a flat member name of the same builder:
-
-1. `module Groups =` with one `[<Sealed>] type <Group><Kind><'inst> internal () = class end` per attribute group (`Kind` = `Attributes`), property group (`Properties`) and event group (`Events`).
-2. `type TemplateBuilder<'inst> with` + `templateTags` (tags are emitted sorted by name, as the loop already iterates).
-3. `type AttributeBuilder<'inst> with`: `data` and `aria` (three overloads each, `TemplateParts.attribute (Typed.prefixedAttributeName "data-" suffix) value`, `readAttribute`, `sourceAttribute` with the same prefixed name), the flat attributes, then one `member _.<Group> = Groups.<Group>Attributes<'inst>()` per attribute group; then `type Groups.<Group>Attributes<'inst> with` + its entries.
-4. `type PropertyBuilder<'inst> with`: flat properties (owners for which `owner.IsAssignableFrom typeof<Dom.HTMLElement>`), then group accessors; then each `type Groups.<Group>Properties<'inst> with` + its properties.
-5. `type EventBuilder<'inst> with`: one member per `sharedEvents` entry, then group accessors; then each `type Groups.<Group>Events<'inst> with` + its events, constrained to the group's native type.
-
-The member bodies, with `{c}` the constraint `'native when 'native :> {owner}`:
-
-| Kind | Member lines |
-|---|---|
-| string attribute | `({c}) (value: string) = TemplateParts.attribute "{attr}" value`; `(value: string option) = TemplateParts.optionalAttribute "{attr}" value`; `(read: 'inst -> string) = TemplateParts.readAttribute "{attr}" (fun instance -> Some (read instance))`; `(read: 'inst -> string option) = TemplateParts.readAttribute "{attr}" read`; `(source: Source<'inst, string>) = TemplateParts.sourceAttribute "{attr}" (TemplateParts.mapSource Some source)`; `(source: Source<'inst, string option>) = TemplateParts.sourceAttribute "{attr}" source` |
-| boolean attribute | `(value: bool) = TemplateParts.optionalAttribute "{attr}" (TemplateParts.presence value)`; `(read: 'inst -> bool) = TemplateParts.readAttribute "{attr}" (fun instance -> TemplateParts.presence (read instance))`; `(source: Source<'inst, bool>) = TemplateParts.sourceAttribute "{attr}" (TemplateParts.mapSource TemplateParts.presence source)` |
-| ARIA boolean | `(value: bool) = TemplateParts.attribute "{attr}" (TemplateParts.ariaText value)`; `(value: bool option) = TemplateParts.optionalAttribute "{attr}" (TemplateParts.ariaOption value)`; `(read: 'inst -> bool) = TemplateParts.readAttribute "{attr}" (fun instance -> Some (TemplateParts.ariaText (read instance)))`; `(read: 'inst -> bool option) = TemplateParts.readAttribute "{attr}" (fun instance -> TemplateParts.ariaOption (read instance))`; `(source: Source<'inst, bool>) = TemplateParts.sourceAttribute "{attr}" (TemplateParts.mapSource (fun value -> Some (TemplateParts.ariaText value)) source)`; `(source: Source<'inst, bool option>) = TemplateParts.sourceAttribute "{attr}" (TemplateParts.mapSource TemplateParts.ariaOption source)` |
-| property `'v` | `(value: {v}) = TemplateParts.property (fun (node: 'native) (value: {v}) -> (node :> {owner}).``{m}`` <- value) value`; the same writer with `TemplateParts.readProperty ... read` for `(read: 'inst -> {v})` and `TemplateParts.sourceProperty ... source` for `(source: Source<'inst, {v}>)` |
-| event | `on{E}<{c}>(handler: 'inst -> {eventType} -> unit) : Part<'native, 'inst> = TemplateParts.event "{event}" handler` |
-
-Every attribute, property and event member is `member _.``{name}``<{c}>(...) : Part<'native, 'inst> =`. Format `t` with `format`, then write it to `Path.Combine (Path.GetDirectoryName (Path.GetFullPath output), Path.GetFileNameWithoutExtension output + "Template.fs")` with `UTF8Encoding (false)`. Add the six coverage keys to the anonymous record.
-
-- [ ] **Step 5: Regenerate and run the generator tests**
+- [ ] **Step 7: Regenerate and run the generator tests**
 
 Run from the repository root:
 ```bash
@@ -534,33 +497,38 @@ rtk dotnet run --project tools/Ranvier.Dom.Generate/Ranvier.Dom.Generate.fsproj 
 rtk proxy python tools/Ranvier.Dom.Generate/tests.py
 rtk proxy python tools/Ranvier.Dom.Generate/check-types.py
 ```
-Expected: generation succeeds; `Generated/HtmlTemplate.fs` replaces Task 1's file as a superset of it; both scripts pass. `git diff --stat` shows `Generated/Html.fs` unchanged except for nothing at all (the Html output must stay byte-identical), and `Html.coverage.json` changed only by the new keys.
+Expected: generation succeeds; `Generated/HtmlTemplate.fs` is written; both scripts pass. `git diff --stat` shows `Generated/Html.fs` unchanged except for nothing at all (the Html output must stay byte-identical), and `Html.coverage.json` changed only by the new keys.
 
-- [ ] **Step 6: Run the gates and the emitted-JS check**
+- [ ] **Step 8: Run the gates and check emitted JavaScript**
 
-Run the three gates. Then `rtk grep -c "curry\|uncurry\|partialApply" generated-tests/HtmlTemplate.js` — expected `0`.
+Run: `rtk npm run test:dom`, `rtk npm run test:browser`, `rtk dotnet run --project experiments/Ranvier.View.Foundation/RepresentationChecks.fsproj -c Release`.
+Expected: all pass; the catalogue case passes; 13 PASS lines.
 
-- [ ] **Step 7: Check the bundle**
+Then `rtk grep -n "curry\|uncurry\|partialApply" generated-tests/HtmlTemplate.js generated-tests/Template.js`.
+Expected: no matches in `HtmlTemplate.js`; the `Template.js` count is at most Step 0's. Confirm the extension members are emitted as module-level functions, not class methods, and record two emitted names in the report.
 
-Rebuild the benchmark bundles as in Step 0. Record raw and gzip sizes. Expected: the sentinel from Step 0 is absent, and the template bundle grows by less than 1 KiB gzip over Step 0. If unused members are present, report which construct keeps them (for example group accessors or class methods) and stop: the fix is a ruling for the controller.
+- [ ] **Step 9: Measure the bundle**
 
-- [ ] **Step 8: Commit**
+Rebuild the benchmark bundles as in Step 0 and record raw and gzip sizes. Pick a generated property member the benchmark never uses and report whether its emitted name appears in the bundle, and the size change against Step 0. This is a measurement, not a gate. If unused members are retained, name the construct that keeps them (for example group accessors or class methods).
+
+- [ ] **Step 10: Commit**
 
 ```bash
-rtk git add tools/Ranvier.Dom.Generate experiments/Ranvier.View.Foundation/Generated
-rtk git commit -m "feat(dom-generate): generate the template catalogue from the HTML element map"
+rtk dotnet fantomas experiments/Ranvier.View.Foundation/Template.fs examples/Fable.Ranvier.Playground/tests/TemplateCatalogueChecks.fs
+rtk git add -A tools/Ranvier.Dom.Generate experiments/Ranvier.View.Foundation examples/Fable.Ranvier.Playground/tests examples/Fable.Ranvier.Playground/package.json
+rtk git commit -m "feat(view): generate the template catalogue from the HTML element map"
 ```
 
 ---
 
-### Task 3: Equivalence with `Html.Program`
+### Task 2: Equivalence with `Html.Program`
 
 **Files:**
 - Modify: `examples/Fable.Ranvier.Playground/tests/TemplateCatalogueChecks.fs`
 - Modify: `experiments/Ranvier.View.Foundation/RepresentationChecks.fsx` (server-markup parity on .NET)
 
 **Interfaces:**
-- Consumes: the generated catalogue (Task 2), `Html.Program.*`, `Html.Authoring.*`, `Html.render`.
+- Consumes: the generated catalogue (Task 1), `Html.Program.*`, `Html.Authoring.*`, `Html.render`.
 
 - [ ] **Step 1: Write the equivalence tests**
 
@@ -632,7 +600,7 @@ rtk git commit -m "test(view): pin generated template parts to Html.Program outp
 
 ---
 
-### Task 4: Measurement and documentation
+### Task 3: Measurement and documentation
 
 **Files:**
 - Modify: `docs/research/2026-10-14-component-templates.md`
@@ -648,7 +616,7 @@ Run the template comparison at `0e82e46` and at this branch's head alternately, 
 
 - [ ] **Step 2: Research note**
 
-Add a section "Generated catalogue (plan 2c)" stating: the surface rules (the Surface decisions table, condensed); the generated counts from `Html.coverage.json`; the generated file size; the bundle sizes from Task 2 Steps 0 and 7 and the sentinel result; the benchmark table with links to the raw JSON; the emitted-JS check result. Update the Acceptance line's test totals to the suites' current counts.
+Add a section "Generated catalogue (plan 2c)" stating: the surface rules (the Surface decisions table, condensed); the generated counts from `Html.coverage.json`; the generated file size; the bundle sizes and the unused-member result from Task 1 Steps 0 and 9; the benchmark table with links to the raw JSON; the emitted-JS check result. Update the Acceptance line's test totals to the suites' current counts.
 
 - [ ] **Step 3: Spec clarifications and generator README**
 
