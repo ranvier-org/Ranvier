@@ -239,7 +239,7 @@ let compile (definition: TemplateComponent) : Compiled =
     }
 
 /// <summary>The mount-owned operations a template instance uses.</summary>
-type MountServices =
+type internal MountServices =
     abstract Append: Node -> unit
     abstract Setup: Setup
     abstract SettingUp: unit -> bool
@@ -323,7 +323,7 @@ let private collect (root: Node) (walk: int array) (state: obj array) =
             count <- count + 1
 
 /// <summary>Materialises one instance: runs setup, clones the skeleton, binds its slots and events, and appends it.</summary>
-let materialise (definition: TemplateDefinition) (props: obj) (services: MountServices) =
+let internal materialise (definition: TemplateDefinition) (props: obj) (services: MountServices) =
     let template = definition :?> TemplateComponent
 
     if isNull definition.Compiled then
