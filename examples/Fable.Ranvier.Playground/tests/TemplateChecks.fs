@@ -1989,6 +1989,75 @@ let private boxedKeys () =
     equal true (obj.ReferenceEquals (long, box ((host.querySelectorAll "li").item 0.)))
     mounted.Dispose ()
 
+let private disposalAfterCleanupFailure () =
+    use graph = new Graph ()
+    let host = host ()
+    let mutable handle: Mounting.Mounted = Unchecked.defaultof<_>
+    let mutable cleanups = 0
+
+    let ending =
+        Component.define
+            (fun setup (item: unit -> Listed) ->
+                setup.OnCleanup (fun () ->
+                    cleanups <- cleanups + 1
+
+                    if cleanups = 1 then
+                        failwith "first cleanup"
+                    else
+                        handle.Dispose ())
+
+                item)
+            (fun t -> t.element (HtmlTag "li") [||] [| t.text (fun item -> (item ()).Text) |])
+
+    let list =
+        Component.define (fun _ (items: Signal<Listed array>) -> items) (fun t ->
+            t.element (HtmlTag "ul") [||] [| t.each (fun (item: Listed) -> item.Id) (fun items -> items.Value) ending |])
+
+    let items =
+        graph.Run (fun () -> Api.createSignal [| for id in 1..3 -> { Id = id; Text = string id } |])
+
+    let mounted, reports = reported graph host (Component.render list items)
+    handle <- mounted
+    graph.Run (fun () -> items.Value <- [| { Id = 3; Text = "3" } |])
+
+    equal
+        (Disposed, 0., [ [ "first cleanup" ] ])
+        (handle.Phase,
+         host.childNodes.length,
+         reports
+         |> Seq.map (List.map _.Message)
+         |> List.ofSeq)
+
+let private adoptedElementLosesRows () =
+    use graph = new Graph ()
+    listedLog.Clear ()
+
+    let items =
+        graph.Run (fun () -> Api.createSignal [| for id in 1..2 -> { Id = id; Text = string id } |])
+
+    let host, other = host (), host ()
+
+    let mounted =
+        Mounting.mount graph None (fun errors -> failwithf "%A" errors) host None (fun context ->
+            let backend = context.Backend
+
+            backend.Element (
+                HtmlTag "div",
+                [||],
+                fun () -> backend.Element (HtmlTag "section", [||], (fun () -> Program.run (Component.render listed items) backend))
+            ))
+
+    let section = host.querySelector "section" |> unbox<HTMLElement>
+    other.appendChild section |> ignore
+
+    let adopted =
+        Mounting.mount graph None ignore other None (fun context -> context.Native (section, Mounting.Owned))
+
+    mounted.Dispose ()
+    let rows = (section.querySelectorAll "li").length
+    adopted.Dispose ()
+    equal (0., 0., 0.) (rows, host.childNodes.length, other.childNodes.length)
+
 let private focusSurvivesOtherMoves () =
     use graph = new Graph ()
 
@@ -2599,6 +2668,8 @@ let cases =
         "disposing the mount from a row's setup ends the update silently", disposalFromRowSetup
         "rows holding nested lists move and leave whole", nestedListsMoveWhole
         "boxed keys of different types keep separate rows", boxedKeys
+        "a cleanup failure before a row cleanup disposes the mount is reported once", disposalAfterCleanupFailure
+        "an adopted element holding a list keeps no row nodes after its mount is disposed", adoptedElementLosesRows
         "an empty each region keeps its markers, fills and empties", eachEmpty
         "each renders the same DOM as its default expansion across insert, remove, reorder and an item change", eachTwin
         "root-level each regions beside other roots update, reorder, move and dispose", rootRegions

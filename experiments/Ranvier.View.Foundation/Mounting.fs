@@ -960,8 +960,31 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
 
     let range = OwnedRange host
 
+    // Template rows retired while the mount tears down; their nodes leave in the mount's release, before the range's.
+    let mutable releasedRows: ResizeArray<Row> = null
+
     let release () =
-        range.Release ()
+        let errors = ResizeArray<exn>()
+
+        if not (isNull releasedRows) then
+            let rows = releasedRows
+            releasedRows <- null
+
+            for index in 0 .. rows.Count - 1 do
+                try
+                    Row.Remove rows[index]
+                with error ->
+                    errors.Add error
+
+        try
+            range.Release ()
+        with error ->
+            errors.Add error
+
+        if errors.Count = 1 then
+            raise errors[0]
+        elif errors.Count > 1 then
+            raise (AggregateException ("Range release failed", errors))
 
     let ownedCleanup (owner: Owner) (callback: unit -> unit) =
         if owner.IsDisposed then
@@ -1515,7 +1538,6 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
         let laidOut = ResizeArray<Row>()
         let builder = RowBuilder this
         let errors = RegionErrors report
-        let nested = (placement = NestedRegion)
         let mutable regionOwner: Owner = Unchecked.defaultof<_>
         let mutable projection: Projection<obj, Row> = Unchecked.defaultof<_>
         // The items of the latest reconcile, the projection's only input; each write is followed by a bump of `version`,
@@ -1545,7 +1567,12 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                 if not (isNull row) then
                     if not (isNull (box row.Mount)) then
                         row.Removed <- true
-                    elif not (nested && regionOwner.IsDisposed) then
+                    elif root.IsDisposed then
+                        if isNull releasedRows then
+                            releasedRows <- ResizeArray ()
+
+                        releasedRows.Add row
+                    else
                         Row.Remove row)
 
             let current () =
@@ -1576,7 +1603,10 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                             keys.Value <- Api.untrack (fun () -> projection.Keys)
                     )
 
-                if live () then
+                // A region disposed during the pass reports the errors recorded before the disposal and ends the update.
+                if not (live ()) then
+                    errors.Report recorded
+                else
                     match failure with
                     | Some error -> errors.Fail (error, error :: recorded)
                     | None ->
@@ -1594,8 +1624,8 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                                 Some error
 
                         match layoutFailure with
-                        // A layout that disposed its own region ends silently.
-                        | Some _ when not (live ()) -> ()
+                        // A layout that disposed its own region reports the pass's errors and ends the update.
+                        | Some _ when not (live ()) -> errors.Report recorded
                         | Some error ->
                             root.Dispose ()
                             errors.Fail (error, recorded @ [ error ])
