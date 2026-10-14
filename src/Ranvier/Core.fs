@@ -680,6 +680,21 @@ and Owner internal (sink: Owner) =
     member _.Errors =
         Seq.delay (fun () -> if isNull errors then Seq.empty else errors :> seq<exn>)
 
+    member _.ErrorCount = if isNull errors then 0 else errors.Count
+
+    /// <summary>
+    /// The errors of <c>Errors</c> recorded at or after position <c>index</c>, in recording order.
+    /// </summary>
+    /// <exception cref="T:System.ArgumentOutOfRangeException"><c>index</c> is negative.</exception>
+    member _.ErrorsFrom(index: int) : exn[] =
+        if index < 0 then
+            raise (ArgumentOutOfRangeException (nameof index))
+
+        if isNull errors || index >= errors.Count then
+            [||]
+        else
+            errors.GetRange(index, errors.Count - index).ToArray()
+
     /// <summary>
     /// Takes ownership of <c>child</c> without a handle: it is disposed with the
     /// scope, and cannot be released before then. On a disposed scope <c>child</c> is disposed immediately, in the context
