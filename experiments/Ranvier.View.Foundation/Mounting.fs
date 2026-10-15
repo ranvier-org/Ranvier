@@ -164,6 +164,9 @@ module internal ListCounters =
 
     /// <summary>Rows looked up in a keyed list's projection.</summary>
     let lookups = ref 0
+
+    /// <summary>Longest-run computations made by keyed-list layout.</summary>
+    let increasingRuns = ref 0
 #endif
 
 [<Emit("new Set()")>]
@@ -180,6 +183,9 @@ let private setIter (set: obj) (action: string -> unit) : unit = jsNative
 
 /// <summary>For each position of <c>sources</c>, whether it belongs to one longest increasing run of its non-negative values.</summary>
 let private increasingRun (sources: int array) : bool array =
+#if RANVIER_VIEW_COUNTERS
+    ListCounters.increasingRuns.Value <- ListCounters.increasingRuns.Value + 1
+#endif
     let keep: bool array = Array.zeroCreate sources.Length
     let tails = ResizeArray<int>()
     let previous = Array.create sources.Length -1
@@ -883,30 +889,49 @@ and [<Sealed; AllowNullLiteral>] private Row(first: Node, last: Node) =
                         index <- index + 1
             else
                 let count = bEnd - bStart
-                let sources = Array.create count -1
 
-                for offset in 0 .. count - 1 do
-                    let index = next[bStart + offset].Index
+                let mutable swapped =
+                    count >= 2
+                    && aEnd - aStart = count
+                    && same previous[aStart] next[bEnd - 1]
+                    && same previous[aEnd - 1] next[bStart]
 
-                    if
-                        index >= aStart
-                        && index < aEnd
-                        && same previous[index] next[bStart + offset]
-                    then
-                        sources[offset] <- index
+                let mutable offset = 1
 
-                let keep = increasingRun sources
-                let mutable before = anchor
-                let mutable offset = count - 1
+                while swapped && offset < count - 1 do
+                    swapped <- same previous[aStart + offset] next[bStart + offset]
+                    offset <- offset + 1
 
-                while offset >= 0 && live () do
-                    let row = next[bStart + offset]
+                if swapped then
+                    Row.Place (next[bStart], parent, previous[aStart].First)
 
-                    if not keep[offset] then
-                        Row.Place (row, parent, before)
+                    if live () then
+                        Row.Place (next[bEnd - 1], parent, anchor)
+                else
+                    let sources = Array.create count -1
 
-                    before <- row.First
-                    offset <- offset - 1
+                    for offset in 0 .. count - 1 do
+                        let index = next[bStart + offset].Index
+
+                        if
+                            index >= aStart
+                            && index < aEnd
+                            && same previous[index] next[bStart + offset]
+                        then
+                            sources[offset] <- index
+
+                    let keep = increasingRun sources
+                    let mutable before = anchor
+                    let mutable offset = count - 1
+
+                    while offset >= 0 && live () do
+                        let row = next[bStart + offset]
+
+                        if not keep[offset] then
+                            Row.Place (row, parent, before)
+
+                        before <- row.First
+                        offset <- offset - 1
 
         laidOut.Clear ()
 

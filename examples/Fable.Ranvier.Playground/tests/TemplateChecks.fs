@@ -1781,6 +1781,104 @@ let private sameNodes (expected: obj array) (actual: obj array) =
     expected.Length = actual.Length
     && Array.forall2 (fun a b -> obj.ReferenceEquals (a, b)) expected actual
 
+let private swapEnds (keyed: bool) (count: int) (left: int) (right: int) =
+    use graph = new Graph ()
+    let items = graph.Run (fun () -> Api.createSignal (listedItems count))
+    let host = host ()
+    let mounted = mount graph host (listedView keyed items)
+    let before = rowNodes host
+    let next = Array.copy items.Value
+    let held = next[left]
+    next[left] <- next[right]
+    next[right] <- held
+    let list = (before[0] :?> Node).parentNode.Value :> Node
+    let inserts = countInserts list
+    graph.Run (fun () -> items.Value <- next)
+    let moved = inserts ()
+    let expectedNodes = Array.copy before
+    expectedNodes[left] <- before[right]
+    expectedNodes[right] <- before[left]
+    equal (next |> Array.map _.Text |> String.concat "", true) (host.textContent, sameNodes expectedNodes (rowNodes host))
+    mounted.Dispose ()
+    moved
+
+/// <summary>Node moves for two swapped rows; a Keyed.array row holds three nodes.</summary>
+let private rowMoves (keyed: bool) =
+    if keyed then 6 else 2
+
+let private swapShapes () =
+    for keyed in [ false; true ] do
+        equal (rowMoves keyed) (swapEnds keyed 1000 1 998)
+        equal (rowMoves keyed) (swapEnds keyed 1000 0 999)
+        equal true (swapEnds keyed 6 2 3 <= rowMoves keyed)
+        equal true (swapEnds keyed 2 0 1 <= rowMoves keyed)
+        equal true (swapEnds keyed 3 0 2 <= rowMoves keyed)
+
+[<Emit("(() => { const w = document.defaultView; if (!w.customElements.get('x-probe')) w.customElements.define('x-probe', class extends w.HTMLElement { disconnectedCallback() { const hook = w.probeHook; w.probeHook = null; if (hook) hook(); } }); })()")>]
+let private defineProbe () : unit = jsNative
+
+[<Emit("document.defaultView.probeHook = $0")>]
+let private setProbeHook (hook: unit -> unit) : unit = jsNative
+
+let private probeRow =
+    Component.define (fun _ (item: unit -> Listed) -> item) (fun t -> t.element (HtmlTag "li") [||] [| t.element (HtmlTag "x-probe") [||] [||] |])
+
+let private probeList =
+    Component.define (fun _ (items: Signal<Listed array>) -> items) (fun t ->
+        t.element (HtmlTag "ul") [||] [| t.each (fun (item: Listed) -> item.Id) (fun items -> items.Value) probeRow |])
+
+let private swapStopsWhenDisposed () =
+    defineProbe ()
+    use graph = new Graph ()
+    let items = graph.Run (fun () -> Api.createSignal (listedItems 6))
+    let host = host ()
+
+    globalThis.document.body.appendChild host
+    |> ignore
+
+    let mounted = mount graph host (Component.render probeList items)
+    let list = host.querySelector "ul" |> unbox<HTMLElement>
+    let inserts = countInserts list
+    let next = Array.copy items.Value
+    let held = next[1]
+    next[1] <- next[4]
+    next[4] <- held
+    setProbeHook (fun () -> mounted.Dispose ())
+    graph.Run (fun () -> items.Value <- next)
+    equal 1 (inserts ())
+    host.remove ()
+
+#if RANVIER_VIEW_COUNTERS
+let private swapSkipsRun () =
+    use graph = new Graph ()
+    let items = graph.Run (fun () -> Api.createSignal (listedItems 1000))
+    let host = host ()
+    let mounted = mount graph host (listedView false items)
+    let next = Array.copy items.Value
+    let held = next[1]
+    next[1] <- next[998]
+    next[998] <- held
+    Mounting.ListCounters.increasingRuns.Value <- 0
+    graph.Run (fun () -> items.Value <- next)
+    equal 0 Mounting.ListCounters.increasingRuns.Value
+
+    let adjacent = Array.copy next
+    let neighbour = adjacent[3]
+    adjacent[3] <- adjacent[4]
+    adjacent[4] <- neighbour
+    graph.Run (fun () -> items.Value <- adjacent)
+    equal 0 Mounting.ListCounters.increasingRuns.Value
+
+    let rotated = Array.copy adjacent
+    let first = rotated[2]
+    rotated[2] <- rotated[3]
+    rotated[3] <- rotated[4]
+    rotated[4] <- first
+    graph.Run (fun () -> items.Value <- rotated)
+    equal 1 Mounting.ListCounters.increasingRuns.Value
+    mounted.Dispose ()
+#endif
+
 #if RANVIER_VIEW_COUNTERS
 let private windowedRemove (keyed: bool) =
     use graph = new Graph ()
@@ -3184,6 +3282,11 @@ let cases =
         "each sets up a replacing row before the replaced row's cleanup", eachReplacement
         "duplicate each keys fail the mount, are reported on update and keep the rows", eachDuplicates
         "a two-row swap of 1,000 rows moves two rows", eachSwapMovesTwo
+        "swapping the ends of a changed window moves two rows and keeps node identity", swapShapes
+        "an each end swap stops placing rows once the mount is disposed", swapStopsWhenDisposed
+#if RANVIER_VIEW_COUNTERS
+        "a keyed end swap computes no longest run and a rotation computes one", swapSkipsRun
+#endif
         "removing a kept item from each sets up no row and keys no item", eachStableRemove
         "removing a kept item from Keyed.array sets up no row and keys no item", keyedStableRemove
 #if RANVIER_VIEW_COUNTERS
