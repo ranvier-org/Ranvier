@@ -2200,7 +2200,8 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
     /// Reconciles the positions whose item differs from the last installed pass, after trimming the common prefix and
     /// suffix, and stages the removed keys and the key array. Stops after a <c>keyOf</c> call that runs a nested pass.
     /// Returns false before any staging when every position is changed: at equal lengths, every item differs from the
-    /// previous item at its position; at unequal lengths, the first and the last items both differ.
+    /// previous item at its position; at unequal lengths, the first and last items differ from the previous pass's
+    /// first and last items.
     /// </summary>
     member private this.Trim() : bool =
         let mine = this.Runs
@@ -2259,15 +2260,14 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
 
         changedAt.Clear ()
 
-        let untrimmable =
-            if aligned then
-                for i in start..end0 do
-                    if not (same.Equals (prev[i], cur[i])) then
-                        changedAt.Add i
+        let mutable untrimmable = start = 0 && end0 = n0 - 1
 
-                changedAt.Count = n0
-            else
-                start = 0 && end0 = n0 - 1
+        if aligned then
+            for i in start..end0 do
+                if not (same.Equals (prev[i], cur[i])) then
+                    changedAt.Add i
+
+            untrimmable <- changedAt.Count = n0
 
         if untrimmable then
             changedAt.Clear ()
@@ -2278,8 +2278,9 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
                     changedAt.Add i
 
             try
-                for i in changedAt do
-                    previousChanged.Add (prevKeys[i]) |> ignore
+                for k in 0 .. changedAt.Count - 1 do
+                    previousChanged.Add (prevKeys[changedAt[k]])
+                    |> ignore
 
                 if not aligned then
                     nextKeys <- Array.zeroCreate n1
@@ -2302,8 +2303,8 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
                 if this.Runs = mine then
                     let removed = this.Removed
 
-                    for i in changedAt do
-                        let key = prevKeys[i]
+                    for k in 0 .. changedAt.Count - 1 do
+                        let key = prevKeys[changedAt[k]]
 
                         if not (changed.Contains key) then
                             removed.Add key
@@ -2311,11 +2312,11 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
                     this.StageRemovals ()
                     this.StageKeys nextKeys
             finally
-                for i in changedAt do
-                    previousChanged.Remove (prevKeys[i])
+                for k in 0 .. changedAt.Count - 1 do
+                    previousChanged.Remove (prevKeys[changedAt[k]])
 
-                for key in changedKeys do
-                    changed.Remove key
+                for k in 0 .. changedKeys.Count - 1 do
+                    changed.Remove (changedKeys[k])
 
                 changedKeys.Clear ()
 

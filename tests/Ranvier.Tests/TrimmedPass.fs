@@ -864,6 +864,46 @@ let tests =
                 Expect.equal calls.Value 2 "two changed positions"
             }
 
+            test "a swap of the first and last items calls keyOf twice" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let items, keyCalls, created, _, proj = counted 1000
+                keyCalls.Value <- 0
+                created.Clear ()
+                let swapped = Array.copy items.Value
+                swapped[0] <- items.Value[999]
+                swapped[999] <- items.Value[0]
+                items.Value <- swapped
+                Expect.equal keyCalls.Value 2 "keyOf runs for the two moved positions"
+                Expect.isEmpty created "no row is created"
+                Expect.equal proj.Keys[0] 1000 "the keys moved"
+                Expect.equal proj.Keys[999] 1 "the keys moved"
+            }
+
+            test "a pass over new items calls keyOf once per item" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let calls = ref 0
+                let items = createSignal (Array.init 1000 (fun i -> Box (i, i)))
+
+                let proj =
+                    createProjection
+                        (fun (item: Box) ->
+                            calls.Value <- calls.Value + 1
+                            item.Id)
+                        (fun item -> item.Value)
+                        (fun () -> items.Value :> seq<_>)
+
+                proj.Keys |> ignore
+
+                for edit in [ Array.removeAt 500; Array.insertAt 0 5000; Array.rev ] do
+                    calls.Value <- 0
+                    let next = edit (proj.Keys |> Array.copy)
+                    items.Value <- next |> Array.map (fun id -> Box (id, id))
+                    Expect.sequenceEqual proj.Keys next "the keys"
+                    Expect.equal calls.Value next.Length "keyOf runs once per item"
+            }
+
             test "new items prepended with one new key keep every other row" { freshAfter (Array.insertAt 0 5000) }
 
             test "new items with the middle key removed keep every other row" { freshAfter (Array.removeAt 500) }
