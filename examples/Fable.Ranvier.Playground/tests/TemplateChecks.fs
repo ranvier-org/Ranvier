@@ -1879,6 +1879,9 @@ let private recreatedRows (keyed: bool) =
     set [| 4; 1; 99; 3; 0 |]
     set [| 0; 3; 99; 1; 4 |]
     set [| 4; 1; 99; 3; 0 |]
+    set [| 0; 3; 99; 1; 4 |]
+    set [| 3; 99; 1; 4 |]
+    set [| 3; 99; 1 |]
     set [||]
     equal 0. (host.querySelectorAll "li").length
     mounted.Dispose ()
