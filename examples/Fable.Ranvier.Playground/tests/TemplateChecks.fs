@@ -1822,6 +1822,117 @@ let private eachMatchesReferenceOrder () =
     mounted.Dispose ()
     equal 0. host.childNodes.length
 
+let private recreatedView (keyed: bool) (items: Signal<Listed array>) =
+    let read () =
+        items.Value
+        |> Array.map (fun row -> { row with Text = row.Text })
+
+    let key (item: Listed) = item.Id
+
+    if keyed then
+        Keyed.array Program.ops key read (fun current -> Component.render listedRow current)
+    else
+        let recreated =
+            Component.define (fun _ (items: Signal<Listed array>) -> items) (fun t ->
+                t.element (HtmlTag "ul") [||] [| t.each key (fun _ -> read ()) listedRow |])
+
+        Component.render recreated items
+
+let private recreatedRows (keyed: bool) =
+    use graph = new Graph ()
+    listedLog.Clear ()
+
+    let row id =
+        { Id = id; Text = string id + "," }
+
+    let items = graph.Run (fun () -> Api.createSignal (Array.init 5 row))
+    let host = host ()
+    let mounted = mount graph host (recreatedView keyed items)
+    let nodes = System.Collections.Generic.Dictionary<int, obj>()
+
+    let remember () =
+        let rendered = host.querySelectorAll "li"
+
+        for index in 0 .. int rendered.length - 1 do
+            let node = rendered.item (float index)
+            let text = node.textContent |> Option.defaultValue ""
+            let id = int (text.TrimEnd ',')
+
+            match nodes.TryGetValue id with
+            | true, known -> equal true (obj.ReferenceEquals (known, box node))
+            | _ -> nodes[id] <- box node
+
+    let set (order: int array) =
+        graph.Run (fun () -> items.Value <- Array.map row order)
+
+        equal
+            (order
+             |> Array.map (fun id -> string id + ",")
+             |> String.concat "")
+            host.textContent
+
+        remember ()
+
+    remember ()
+    set [| 0; 1; 99; 2; 3; 4 |]
+    set [| 0; 1; 99; 3; 4 |]
+    set [| 4; 1; 99; 3; 0 |]
+    set [| 0; 3; 99; 1; 4 |]
+    set [| 4; 1; 99; 3; 0 |]
+    set [||]
+    equal 0. (host.querySelectorAll "li").length
+    mounted.Dispose ()
+
+let private eachRecreatedRows () =
+    recreatedRows false
+
+let private keyedRecreatedRows () =
+    recreatedRows true
+
+let private recreatedDuplicates (keyed: bool) =
+    use graph = new Graph ()
+
+    let items =
+        graph.Run (fun () -> Api.createSignal [| { Id = 1; Text = "a" }; { Id = 2; Text = "b" } |])
+
+    let host = host ()
+    let reported = ResizeArray<exn>()
+
+    let mounted =
+        Mounting.mount graph None reported.AddRange host None (fun context -> Program.run (recreatedView keyed items) context.Backend)
+
+    let before = host.innerHTML
+    graph.Run (fun () -> items.Value <- [| { Id = 3; Text = "c" }; { Id = 3; Text = "d" } |])
+    equal (before, 1, true) (host.innerHTML, reported.Count, reported[0] :? System.InvalidOperationException)
+    graph.Run (fun () -> items.Value <- [| { Id = 2; Text = "B" } |])
+    equal ("B", 1) (host.textContent, reported.Count)
+    mounted.Dispose ()
+
+let private eachRecreatedDuplicates () =
+    recreatedDuplicates false
+
+let private keyedRecreatedDuplicates () =
+    recreatedDuplicates true
+
+let private recreatedEqualKeyUpdate (keyed: bool) =
+    use graph = new Graph ()
+
+    let items =
+        graph.Run (fun () -> Api.createSignal [| { Id = 1; Text = "a" }; { Id = 2; Text = "b" } |])
+
+    let host = host ()
+    let mounted = mount graph host (recreatedView keyed items)
+    let first = host.querySelector "li"
+    graph.Run (fun () -> items.Value <- [| { Id = 1; Text = "A" }; { Id = 2; Text = "b" } |])
+    equal ("Ab", true) (host.textContent, obj.ReferenceEquals (first, host.querySelector "li"))
+    mounted.Dispose ()
+
+let private eachRecreatedEqualKeyUpdate () =
+    recreatedEqualKeyUpdate false
+
+let private keyedRecreatedEqualKeyUpdate () =
+    recreatedEqualKeyUpdate true
+
 let private emptyRow =
     Component.define (fun _ (item: unit -> Listed) -> item) (fun t -> t.fragment [||])
 
@@ -2829,6 +2940,12 @@ let cases =
         "removing a kept item from each sets up no row and keys no item", eachStableRemove
         "removing a kept item from Keyed.array sets up no row and keys no item", keyedStableRemove
         "list updates match a reference order and keep node identities", eachMatchesReferenceOrder
+        "each over recreated items keeps order and node identities", eachRecreatedRows
+        "Keyed.array over recreated items keeps order and node identities", keyedRecreatedRows
+        "each over recreated items reports a duplicate key and keeps the rows", eachRecreatedDuplicates
+        "Keyed.array over recreated items reports a duplicate key and keeps the rows", keyedRecreatedDuplicates
+        "each over recreated items updates the text of an equal-key row", eachRecreatedEqualKeyUpdate
+        "Keyed.array over recreated items updates the text of an equal-key row", keyedRecreatedEqualKeyUpdate
         "zero-node rows keep their place through their marker", zeroNodeRows
         "disposing a mount runs every row cleanup before a node leaves", fun () -> disposalCleansBeforeRelease false
         "disposing a mount runs every root-level row cleanup before a node leaves", fun () -> disposalCleansBeforeRelease true
