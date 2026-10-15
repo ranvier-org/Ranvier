@@ -52,6 +52,19 @@ type private Box(id: int, value: int) =
     member _.Id = id
     member _.Value = value
 
+/// <summary>A key equal by <c>Id</c> that counts its <c>GetHashCode</c> calls in <c>hashes</c>.</summary>
+type private HashedKey(id: int, hashes: int ref) =
+    member _.Id = id
+
+    override _.GetHashCode() =
+        hashes.Value <- hashes.Value + 1
+        id
+
+    override _.Equals(other) =
+        match other with
+        | :? HashedKey as key -> key.Id = id
+        | _ -> false
+
 /// <summary>
 /// A createProjectionWith over boxes with Ids 1..<c>n</c>, recording factory runs and cleanups. <c>write generation
 /// ids</c> publishes a new box for every Id, whose row reads <c>generation * 10000 + id</c>.
@@ -828,6 +841,18 @@ let tests =
                 Expect.equal proj.Keys[0] 5000 "the new key leads"
             }
 
+            test "appending one item calls keyOf once" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let items, keyCalls, created, _, proj = counted 1000
+                keyCalls.Value <- 0
+                created.Clear ()
+                items.Value <- Array.append items.Value [| { Id = 5000; Text = "new" } |]
+                Expect.equal keyCalls.Value 1 "only the new item"
+                Expect.sequenceEqual created [ 5000 ] "one row created"
+                Expect.equal proj.Keys[1000] 5000 "the new key trails"
+            }
+
             test "replacing one item with an equal-key copy calls keyOf once and updates that row" {
                 use g = new Graph ()
                 use _ = g.Activate ()
@@ -902,6 +927,65 @@ let tests =
                     items.Value <- next |> Array.map (fun id -> Box (id, id))
                     Expect.sequenceEqual proj.Keys next "the keys"
                     Expect.equal calls.Value next.Length "keyOf runs once per item"
+            }
+
+            test "a pass over new items hashes its keys as often as a full pass" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let items = createSignal (Array.init 1000 (fun i -> Box (i + 1, i + 1)))
+                let tracked = createSignal 0
+                let hashes = ref 0
+                let fullHashes = ref 0
+
+                let projection (keyOf: Box -> HashedKey) =
+                    createProjection keyOf (fun item -> item.Value) (fun () -> items.Value :> seq<_>)
+
+                let proj = projection (fun item -> HashedKey (item.Id, hashes))
+
+                // A keyOf that reads a tracked source turns trimming off.
+                let full =
+                    projection (fun item ->
+                        tracked.Value |> ignore
+                        HashedKey (item.Id, fullHashes))
+
+                proj.Keys |> ignore
+                full.Keys |> ignore
+
+                for edit in [ Array.removeAt 500; Array.insertAt 0 5000; Array.rev; id ] do
+                    let next = edit (proj.Keys |> Array.map (fun k -> k.Id))
+                    hashes.Value <- 0
+                    fullHashes.Value <- 0
+                    items.Value <- next |> Array.map (fun id -> Box (id, id))
+                    Expect.sequenceEqual (proj.Keys |> Array.map (fun k -> k.Id)) next "the keys"
+                    Expect.sequenceEqual (full.Keys |> Array.map (fun k -> k.Id)) next "the full pass's keys"
+                    Expect.equal hashes.Value fullHashes.Value "key hashes against the full pass"
+            }
+
+            test "every swap of the same two items hashes its keys as often" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let hashes = ref 0
+                let items = createSignal (Array.init 100 (fun i -> HashedKey (i + 1, hashes)))
+
+                let proj =
+                    createProjection id (fun (key: HashedKey) -> key.Id) (fun () -> items.Value :> seq<_>)
+
+                proj.Keys |> ignore
+
+                let swap () =
+                    let swapped = Array.copy items.Value
+                    let first = swapped[10]
+                    swapped[10] <- swapped[90]
+                    swapped[90] <- first
+                    hashes.Value <- 0
+                    items.Value <- swapped
+                    proj.Keys |> ignore
+                    hashes.Value
+
+                let first = swap ()
+
+                for pass in 2..5 do
+                    Expect.equal (swap ()) first $"swap {pass}: key hashes against the first swap"
             }
 
             test "new items prepended with one new key keep every other row" { freshAfter (Array.insertAt 0 5000) }
