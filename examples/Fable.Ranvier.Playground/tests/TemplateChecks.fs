@@ -2979,6 +2979,125 @@ let private retiredRowLosesNestedRows () =
     equal (true, 0., 3.) (first.parentNode.IsNone, (first.querySelectorAll "li").length, (host.querySelectorAll "li li").length)
     mounted.Dispose ()
 
+let private disposalLeavesDetachedHeldRows () =
+    use graph = new Graph ()
+    let host = host ()
+    let mutable handle: Mounting.Mounted = Unchecked.defaultof<_>
+    let mutable cleanups = 0
+
+    let pair =
+        Component.define
+            (fun setup (item: unit -> Listed) ->
+                setup.OnCleanup (fun () ->
+                    cleanups <- cleanups + 1
+
+                    if cleanups = 2 then
+                        handle.Dispose ())
+
+                item)
+            (fun t ->
+                t.fragment
+                    [|
+                        t.element (HtmlTag "li") [||] [| t.text (fun item -> (item ()).Text) |]
+                        t.element (HtmlTag "li") [||] [| t.text (fun item -> (item ()).Text) |]
+                    |])
+
+    let group =
+        Component.define (fun _ (item: unit -> Grouped) -> item) (fun t ->
+            t.fragment
+                [|
+                    t.each (fun (member': Listed) -> member'.Id) (fun item -> (item ()).Members) pair
+                |])
+
+    let groups =
+        Component.define (fun _ (items: Signal<Grouped array>) -> items) (fun t ->
+            t.element
+                (HtmlTag "ul")
+                [||]
+                [|
+                    t.each (fun (group: Grouped) -> group.Group) (fun items -> items.Value) group
+                |])
+
+    let items =
+        graph.Run (fun () ->
+            Api.createSignal
+                [|
+                    {
+                        Group = 1
+                        Members = [| for id in 1..3 -> { Id = id; Text = string id } |]
+                    }
+                |])
+
+    let mounted, reports = reported graph host (Component.render groups items)
+    handle <- mounted
+    let list = host.querySelector "ul" |> unbox<HTMLElement>
+    graph.Run (fun () -> items.Value <- [| { items.Value[0] with Members = [||] } |])
+
+    equal
+        (Disposed, 0., 0., [])
+        (mounted.Phase,
+         host.childNodes.length,
+         (list.querySelectorAll "li").length,
+         reports
+         |> Seq.map (List.map _.Message)
+         |> List.ofSeq)
+
+let private loggedGrouped =
+    Component.define (fun _ (items: Signal<Grouped array>) -> items) (fun t ->
+        t.element
+            (HtmlTag "ul")
+            [||]
+            [|
+                t.each (fun (group: Grouped) -> group.Group) (fun items -> items.Value) loggedGroupRow
+            |])
+
+let private nestedClearKeepsOrder () =
+    use graph = new Graph ()
+    listedLog.Clear ()
+
+    let groups =
+        [|
+            for group in 1..3 ->
+                {
+                    Group = group
+                    Members = [| for id in 1..2 -> { Id = group * 10 + id; Text = "" } |]
+                }
+        |]
+
+    let items = graph.Run (fun () -> Api.createSignal groups)
+    let host = host ()
+    let mounted = mount graph host (Component.render loggedGrouped items)
+    let list = host.querySelector "ul" |> unbox<HTMLElement>
+    let before = childrenOf list
+    listedLog.Clear ()
+    graph.Run (fun () -> items.Value <- [||])
+    let after = childrenOf list
+
+    equal
+        ([
+            "cleanup 12"
+            "cleanup 11"
+            "group cleanup 1"
+            "cleanup 22"
+            "cleanup 21"
+            "group cleanup 2"
+            "cleanup 32"
+            "cleanup 31"
+            "group cleanup 3"
+         ],
+         0.,
+         2,
+         true)
+        (List.ofSeq listedLog,
+         (list.querySelectorAll "li").length,
+         after.Length,
+         obj.ReferenceEquals (after[0], before[0])
+         && obj.ReferenceEquals (after[1], before[before.Length - 1]))
+
+    graph.Run (fun () -> items.Value <- groups[0..0])
+    equal "1:" host.textContent
+    mounted.Dispose ()
+
 let browserCases: (string * (unit -> unit)) array =
     [|
         "focus and selection inside a row survive moving another row", focusSurvivesOtherMoves
@@ -3601,6 +3720,8 @@ let cases =
         "a clear whose row cleanup throws reports it and leaves no row nodes", failingClearLeavesNoRows
         "a clear and an insertion after a failed row setup each take one operation", failedInsertionLeavesStagingEmpty
         "a retired row holding a nested list keeps none of the nested rows", retiredRowLosesNestedRows
+        "a nested row cleanup disposing the mount leaves no nodes and reports nothing", disposalLeavesDetachedHeldRows
+        "clearing template rows holding nested lists keeps their cleanup order and markers", nestedClearKeepsOrder
         "an empty each region keeps its markers, fills and empties", eachEmpty
         "each renders the same DOM as its default expansion across insert, remove, reorder and an item change", eachTwin
         "root-level each regions beside other roots update, reorder, move and dispose", rootRegions

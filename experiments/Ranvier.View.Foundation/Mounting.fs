@@ -776,7 +776,7 @@ and [<Sealed; AllowNullLiteral>] private Row(first: Node, last: Node) =
                 remove (cursor :?> ChildNode)
                 cursor <- next
 
-    /// <summary>Removes the nodes between the markers, children of <c>parent</c>, and keeps both markers in place.</summary>
+    /// <summary>Removes the nodes between the markers, which are children of <c>parent</c>; both markers stay in place.</summary>
     static member ClearBetween(parent: Node, regionStart: Node, regionEnd: Node) =
         if
             parent.firstChild
@@ -1095,7 +1095,8 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
             else
                 releaseNodes row
 
-    /// <summary>Whether the held rows are exactly the region's laid-out rows that are not removed.</summary>
+    /// <summary>Whether the held rows are exactly the region's live laid-out rows.</summary>
+    /// <remarks>Guards an invariant: a successful pass that empties the list holds every live laid-out row.</remarks>
     member _.ReleasedAll() =
         let mutable live = 0
 
@@ -1181,9 +1182,18 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
     let range = OwnedRange host
 
     // Template rows retired while the mount tears down, before its release; their nodes leave in the release, before
-    // the range's. A row retired after the release removes its nodes at once.
+    // the range's. A row retired after the release removes its nodes at once. A row a region holds until its flush
+    // leaves in that flush, which can follow the release.
     let mutable releasedRows: ResizeArray<Row> = null
     let mutable rowsReleased = false
+
+    // Removes the nodes of a template row. A row whose first node is detached left with an enclosing row's nodes and is
+    // only marked removed.
+    let removeRow (row: Row) =
+        if isDetached row.First then
+            row.Removed <- true
+        else
+            Row.Remove row
 
     let release () =
         rowsReleased <- true
@@ -1195,7 +1205,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
 
             for index in 0 .. rows.Count - 1 do
                 try
-                    Row.Remove rows[index]
+                    removeRow rows[index]
                 with error ->
                     errors.Add error
 
@@ -1225,7 +1235,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
 
             releasedRows.Add row
         else
-            Row.Remove row
+            removeRow row
 
     // The element receiving created nodes; null at the top level of the range.
     let mutable target: Node = Unchecked.defaultof<_>
@@ -1832,19 +1842,30 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                             // Runs the pass inside the window: its row setup, rollback and retirement errors are reported with this update.
                             // Rows retired by the pass keep their nodes until the flush.
                             site.Deferring <- true
+                            let errors = ResizeArray<exn>()
 
                             try
                                 try
                                     keys.Value <- Api.untrack (fun () -> projection.Keys)
                                 finally
                                     site.Deferring <- false
-                            finally
+                            with error ->
+                                errors.Add error
+
+                            try
                                 site.FlushReleased (
                                     not (isNull keys.Value)
                                     && keys.Value.Length = 0
                                     && site.Live ()
                                     && site.ReleasedAll ()
                                 )
+                            with error ->
+                                errors.Add error
+
+                            if errors.Count = 1 then
+                                raise errors[0]
+                            elif errors.Count > 1 then
+                                raise (AggregateException ("Keyed update and row release failed", errors))
                     )
 
                 site.Settle (
