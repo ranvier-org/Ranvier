@@ -768,9 +768,10 @@ and [<Sealed; AllowNullLiteral>] private Row(first: Node, last: Node) =
         Row.ValidateWindow (regionStart, regionEnd, laidOut, parent, 0, laidOut.Count - 1)
 
     /// <summary>
-    /// Raises unless the markers share <c>parent</c> and each laid-out row from <c>first</c> to <c>last</c>, clamped to
-    /// the laid-out range, starts at the node after the preceding row or after <c>regionStart</c>. A window reaching the
-    /// final row also ends at <c>regionEnd</c>. Removed rows are skipped.
+    /// Requires the markers to share <c>parent</c>, and each non-removed laid-out row from <c>first</c> to <c>last</c>
+    /// (clamped to the laid-out range) to start at the node after the preceding row, or after <c>regionStart</c>, and to
+    /// pass its nested mount's validation. A window that reaches the final row also requires the next node to be
+    /// <c>regionEnd</c>. Raises <c>InvalidOperationException</c> otherwise.
     /// </summary>
     static member ValidateWindow(regionStart: Node, regionEnd: Node, laidOut: ResizeArray<Row>, parent: Node, first: int, last: int) =
         if
@@ -1655,7 +1656,8 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
         // which marks the projection stale.
         let mutable version: Signal<int> = Unchecked.defaultof<_>
         let mutable snapshot: obj array = [||]
-        // The items and rows of the last successful pass, or empty after a failed pass. The items are the region's own copy.
+        // The items and rows of the last successful pass; empty until a pass succeeds, and after a failed pass. The items
+        // are the region's own copy.
         let mutable previousItems: obj array = [||]
         let mutable previousRows: Row array = [||]
 

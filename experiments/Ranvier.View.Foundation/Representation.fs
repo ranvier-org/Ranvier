@@ -175,7 +175,7 @@ module Keyed =
 
     /// <summary>Retains keyed rows and supplies their current item values.</summary>
     /// <remarks>The input array's slots are copied before key callbacks run. Keys are compared with <c>=</c> and must be pure.
-    /// Duplicate keys fail before reconciliation mutates the DOM.</remarks>
+    /// An item keeps its key while it is in the list; replace the item to change its key. Duplicate keys fail before reconciliation mutates the DOM.</remarks>
     let array<'item, 'key, 'view when 'key: equality>
         (ops: Operations<'view>)
         (key: 'item -> 'key)
@@ -188,7 +188,8 @@ module Keyed =
         create ops key (fun () -> Array.copy (read ())) render
 
     /// <summary>Adapts list snapshots to the array-backed keyed renderer.</summary>
-    /// <remarks>Equal keys under <c>=</c> retain rows; their item readers return current values. Keys must be pure.</remarks>
+    /// <remarks>Equal keys under <c>=</c> retain rows; their item readers return current values. Keys must be pure.
+    /// An item keeps its key while it is in the list; replace the item to change its key.</remarks>
     let list<'item, 'key, 'view when 'key: equality>
         (ops: Operations<'view>)
         (key: 'item -> 'key)
