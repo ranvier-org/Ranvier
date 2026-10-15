@@ -1182,8 +1182,8 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
     let range = OwnedRange host
 
     // Template rows retired while the mount tears down, before its release; their nodes leave in the release, before
-    // the range's. A row retired after the release removes its nodes at once. A row a region holds until its flush
-    // leaves in that flush, which can follow the release.
+    // the range's. A row retired after the release removes its nodes at once. A row held for a region's flush leaves
+    // in that flush, which can follow the release.
     let mutable releasedRows: ResizeArray<Row> = null
     let mutable rowsReleased = false
 
@@ -1808,6 +1808,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                 let start = ref 0
                 let end0 = ref -1
                 let end1 = ref -1
+                let passItems = ref ([||]: obj array)
 
                 let recorded, failure =
                     MountLifetime.Capture (
@@ -1816,6 +1817,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                         fun () ->
                             let current = items.Read ()
                             snapshot <- current
+                            passItems.Value <- current
                             Api.untrack (fun () -> version.Value <- version.Value + 1)
                             parent.Value <- site.Parent ()
                             let n0 = priorItems.Length
@@ -1910,7 +1912,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                             site.Errors.Fail (error, recorded @ [ error ])
                         | Ok next ->
                             if site.Live () then
-                                previousItems <- Array.copy snapshot
+                                previousItems <- Array.copy passItems.Value
                                 previousRows <- next
 
                             site.Errors.Report recorded

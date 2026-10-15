@@ -2116,6 +2116,88 @@ let private eachMatchesReferenceOrder () =
     mounted.Dispose ()
     equal 0. host.childNodes.length
 
+let private stableView (keyed: bool) (items: Signal<Listed array>) =
+    if keyed then
+        Keyed.array Program.ops (fun (item: Listed) -> item.Id) (fun () -> items.Value) (fun current -> Component.render listedRow current)
+    else
+        Component.render listed items
+
+let private stableItemsMatchReferenceOrder (keyed: bool) =
+    use graph = new Graph ()
+    listedLog.Clear ()
+    let mutable state = 20261015.0
+
+    let next bound =
+        state <- (state * 48271.0) % 2147483647.0
+        int (state % float bound)
+
+    let items = graph.Run (fun () -> Api.createSignal ([||]: Listed array))
+    let host = host ()
+    let mounted = mount graph host (stableView keyed items)
+    let nodes = System.Collections.Generic.Dictionary<int, obj>()
+    let records = System.Collections.Generic.Dictionary<int, Listed>()
+    let mutable nextId = 1
+
+    let record id =
+        match records.TryGetValue id with
+        | true, known -> known
+        | _ ->
+            let created = { Id = id; Text = string id + "," }
+            records[id] <- created
+            created
+
+    let apply (order: int array) =
+        graph.Run (fun () -> items.Value <- Array.map record order)
+
+        equal
+            (order
+             |> Array.map (fun id -> string id + ",")
+             |> String.concat "")
+            host.textContent
+
+        let rendered = host.querySelectorAll "li"
+        equal (float order.Length) rendered.length
+
+        for index in 0 .. order.Length - 1 do
+            let node = box (rendered.item (float index))
+
+            match nodes.TryGetValue order[index] with
+            | true, known -> equal true (obj.ReferenceEquals (known, node))
+            | _ -> nodes[order[index]] <- node
+
+    let initial = Array.init 30 id
+    nextId <- 30
+    apply initial
+
+    for _ in 1..300 do
+        let current = items.Value |> Array.map _.Id |> ResizeArray
+
+        for _ in 1 .. 1 + next 3 do
+            if current.Count > 0 then
+                current.RemoveAt (next current.Count)
+
+        for _ in 1 .. 1 + next 3 do
+            current.Insert (next (current.Count + 1), nextId)
+            nextId <- nextId + 1
+
+        for _ in 1 .. 1 + next 3 do
+            if current.Count > 1 then
+                let i, j = next current.Count, next current.Count
+                let swapped = current[i]
+                current[i] <- current[j]
+                current[j] <- swapped
+
+        apply (current.ToArray ())
+
+    mounted.Dispose ()
+    equal 0. host.childNodes.length
+
+let private eachStableItemsMatchReferenceOrder () =
+    stableItemsMatchReferenceOrder false
+
+let private keyedStableItemsMatchReferenceOrder () =
+    stableItemsMatchReferenceOrder true
+
 let private recreatedView (keyed: bool) (items: Signal<Listed array>) =
     let read () =
         items.Value
@@ -3692,6 +3774,8 @@ let cases =
         "a foreign row before each's end marker is reported when the last row is removed and on the next pass", eachForeignBeforeEnd
         "a foreign row before Keyed.array's end marker is reported when the last row is removed and on the next pass", keyedForeignBeforeEnd
         "list updates match a reference order and keep node identities", eachMatchesReferenceOrder
+        "each over stable items matches a reference order through mixed edits and keeps node identities", eachStableItemsMatchReferenceOrder
+        "Keyed.array over stable items matches a reference order through mixed edits and keeps node identities", keyedStableItemsMatchReferenceOrder
         "each over recreated items keeps order and node identities", eachRecreatedRows
         "Keyed.array over recreated items keeps order and node identities", keyedRecreatedRows
         "each over recreated items reports a duplicate key and keeps the rows", eachRecreatedDuplicates
