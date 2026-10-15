@@ -1930,6 +1930,54 @@ let private recreatedEqualKeyUpdate (keyed: bool) =
     equal ("Ab", true) (host.textContent, obj.ReferenceEquals (first, host.querySelector "li"))
     mounted.Dispose ()
 
+let private stableEqualKeyUpdate (keyed: bool) =
+    use graph = new Graph ()
+    listedLog.Clear ()
+
+    let items =
+        graph.Run (fun () -> Api.createSignal (Array.init 5 (fun id -> { Id = id; Text = string id + "," })))
+
+    let read () =
+        items.Value
+
+    let key (item: Listed) = item.Id
+
+    let view =
+        if keyed then
+            Keyed.array Program.ops key read (fun current -> Component.render listedRow current)
+        else
+            let stable =
+                Component.define (fun _ (items: Signal<Listed array>) -> items) (fun t ->
+                    t.element (HtmlTag "ul") [||] [| t.each key (fun _ -> read ()) listedRow |])
+
+            Component.render stable items
+
+    let host = host ()
+    let mounted = mount graph host view
+
+    let before =
+        Array.init 5 (fun index -> box ((host.querySelectorAll "li").item(float index)))
+
+    let setups = listedLog.Count
+
+    graph.Run (fun () ->
+        items.Value <-
+            items.Value
+            |> Array.mapi (fun index it -> if index = 3 then { it with Text = "X" } else it))
+
+    let after =
+        Array.init 5 (fun index -> box ((host.querySelectorAll "li").item(float index)))
+
+    equal "0,1,2,X4," host.textContent
+    equal (true, setups) (Array.forall2 (fun a b -> obj.ReferenceEquals (a, b)) before after, listedLog.Count)
+    mounted.Dispose ()
+
+let private eachStableEqualKeyUpdate () =
+    stableEqualKeyUpdate false
+
+let private keyedStableEqualKeyUpdate () =
+    stableEqualKeyUpdate true
+
 let private eachRecreatedEqualKeyUpdate () =
     recreatedEqualKeyUpdate false
 
@@ -2949,6 +2997,8 @@ let cases =
         "Keyed.array over recreated items reports a duplicate key and keeps the rows", keyedRecreatedDuplicates
         "each over recreated items updates the text of an equal-key row", eachRecreatedEqualKeyUpdate
         "Keyed.array over recreated items updates the text of an equal-key row", keyedRecreatedEqualKeyUpdate
+        "each over stable items updates the text of an equal-key row and keeps every node", eachStableEqualKeyUpdate
+        "Keyed.array over stable items updates the text of an equal-key row and keeps every node", keyedStableEqualKeyUpdate
         "zero-node rows keep their place through their marker", zeroNodeRows
         "disposing a mount runs every row cleanup before a node leaves", fun () -> disposalCleansBeforeRelease false
         "disposing a mount runs every root-level row cleanup before a node leaves", fun () -> disposalCleansBeforeRelease true
