@@ -1764,6 +1764,202 @@ let private eachStableRemove () =
 let private keyedStableRemove () =
     stableRemove (fun key items -> Keyed.array Program.ops key (fun () -> items.Value) (fun current -> Component.render listedRow current))
 
+let private listedView (keyed: bool) (items: Signal<Listed array>) =
+    if keyed then
+        Keyed.array Program.ops (fun (item: Listed) -> item.Id) (fun () -> items.Value) (fun current -> Component.render listedRow current)
+    else
+        Component.render listed items
+
+let private listedItems count =
+    Array.init count (fun id -> { Id = id; Text = string id + "," })
+
+let private rowNodes (host: HTMLElement) =
+    let rendered = host.querySelectorAll "li"
+    Array.init (int rendered.length) (fun index -> box (rendered.item (float index)))
+
+let private sameNodes (expected: obj array) (actual: obj array) =
+    expected.Length = actual.Length
+    && Array.forall2 (fun a b -> obj.ReferenceEquals (a, b)) expected actual
+
+#if RANVIER_VIEW_COUNTERS
+let private windowedRemove (keyed: bool) =
+    use graph = new Graph ()
+    let items = graph.Run (fun () -> Api.createSignal (listedItems 200))
+    let host = host ()
+    let mounted = mount graph host (listedView keyed items)
+    Mounting.ListCounters.validatedRows.Value <- 0
+    Mounting.ListCounters.lookups.Value <- 0
+    graph.Run (fun () -> items.Value <- Array.removeAt 100 items.Value)
+
+    let validated, lookups =
+        Mounting.ListCounters.validatedRows.Value, Mounting.ListCounters.lookups.Value
+
+    equal 199. (host.querySelectorAll "li").length
+
+    if validated > 4 || lookups > 1 then
+        failwithf "Removing one of 200 rows validated %d rows and looked up %d" validated lookups
+
+    mounted.Dispose ()
+
+let private eachWindowedRemove () =
+    windowedRemove false
+
+let private keyedWindowedRemove () =
+    windowedRemove true
+#endif
+
+let private inPlaceView (keyed: bool) (tick: Signal<int>) (read: unit -> Listed array) =
+    let key (item: Listed) = item.Id
+
+    let current () =
+        tick.Value |> ignore
+        read ()
+
+    if keyed then
+        Keyed.array Program.ops key current (fun item -> Component.render listedRow item)
+    else
+        let view =
+            Component.define (fun _ (tick: Signal<int>) -> tick) (fun t ->
+                t.element (HtmlTag "ul") [||] [| t.each key (fun _ -> current ()) listedRow |])
+
+        Component.render view tick
+
+let private inPlaceMutation (keyed: bool) =
+    use graph = new Graph ()
+    let shared = listedItems 6
+    let mutable fresh = Array.copy shared
+    let tick = graph.Run (fun () -> Api.createSignal 0)
+    let sharedHost, freshHost = host (), host ()
+    let sharedMount = mount graph sharedHost (inPlaceView keyed tick (fun () -> shared))
+    let freshMount = mount graph freshHost (inPlaceView keyed tick (fun () -> fresh))
+    let sharedNodes = System.Collections.Generic.Dictionary<int, obj>()
+    let freshNodes = System.Collections.Generic.Dictionary<int, obj>()
+
+    let kept (known: System.Collections.Generic.Dictionary<int, obj>) (host: HTMLElement) =
+        let nodes = rowNodes host
+
+        shared
+        |> Array.mapi (fun index item ->
+            match known.TryGetValue item.Id with
+            | true, node -> obj.ReferenceEquals (node, nodes[index])
+            | _ ->
+                known[item.Id] <- nodes[index]
+                true)
+
+    let check () =
+        let expected = shared |> Array.map _.Text |> String.concat ""
+        equal (expected, expected) (sharedHost.textContent, freshHost.textContent)
+        equal (kept freshNodes freshHost) (kept sharedNodes sharedHost)
+
+    let edit (change: unit -> unit) =
+        change ()
+        fresh <- Array.copy shared
+        graph.Run (fun () -> tick.Value <- tick.Value + 1)
+        check ()
+
+    check ()
+    edit (fun () -> shared[3] <- { Id = 50; Text = "50," })
+    edit (fun () -> shared[1] <- { Id = 1; Text = "X," })
+
+    edit (fun () ->
+        let first = shared[0]
+        shared[0] <- shared[5]
+        shared[5] <- first)
+
+    edit (fun () -> shared[3] <- { Id = 3; Text = "3," })
+    sharedMount.Dispose ()
+    freshMount.Dispose ()
+
+let private eachInPlaceMutation () =
+    inPlaceMutation false
+
+let private keyedInPlaceMutation () =
+    inPlaceMutation true
+
+let private failedPassThenValid (keyed: bool) =
+    use graph = new Graph ()
+    let original = listedItems 10
+    let items = graph.Run (fun () -> Api.createSignal original)
+    let host = host ()
+    let mounted, reports = reported graph host (listedView keyed items)
+    let before = rowNodes host
+    graph.Run (fun () -> items.Value <- Array.append original [| original[2] |])
+    equal 1 reports.Count
+    let valid = Array.removeAt 5 original
+    graph.Run (fun () -> items.Value <- valid)
+    let expectedNodes = Array.removeAt 5 before
+
+    equal (valid |> Array.map _.Text |> String.concat "", true, 1) (host.textContent, sameNodes expectedNodes (rowNodes host), reports.Count)
+
+    mounted.Dispose ()
+
+let private eachFailedPassThenValid () =
+    failedPassThenValid false
+
+let private keyedFailedPassThenValid () =
+    failedPassThenValid true
+
+// Removes row `removed` of 10 with a foreign row inserted before row `position`, or before the region's end marker at 10.
+let private foreignNearWindow (keyed: bool) (position: int) (removed: int) (eachMessage: string) =
+    use graph = new Graph ()
+    let original = listedItems 10
+    let items = graph.Run (fun () -> Api.createSignal original)
+    let host = host ()
+    let mounted, reports = reported graph host (listedView keyed items)
+    let before = rowNodes host
+
+    let anchor =
+        if position < before.Length then
+            before[position] :?> Node
+        else
+            (before[position - 1] :?> Node).nextSibling.Value
+
+    let foreign = globalThis.document.createElement "li"
+
+    anchor.parentNode.Value.insertBefore (foreign, anchor)
+    |> ignore
+
+    let expectedNodes = Array.insertAt position (box foreign) before
+
+    // An authored row's own mount reports the foreign node first.
+    let message =
+        if keyed then
+            "Range boundaries or owned roots were externally mutated"
+        else
+            eachMessage
+
+    graph.Run (fun () -> items.Value <- Array.removeAt removed original)
+    equal ([ message ], true) (reports[0] |> List.map _.Message, sameNodes expectedNodes (rowNodes host))
+    graph.Run (fun () -> items.Value <- Array.removeAt 0 original)
+    equal (2, [ message ], true) (reports.Count, reports[1] |> List.map _.Message, sameNodes expectedNodes (rowNodes host))
+    mounted.Dispose ()
+
+let private rowsMutated = "Keyed-list rows or contents were externally mutated"
+
+let private eachForeignBeforeNeighbour () =
+    foreignNearWindow false 4 5 rowsMutated
+
+let private keyedForeignBeforeNeighbour () =
+    foreignNearWindow true 4 5 rowsMutated
+
+let private eachForeignBeforeWindow () =
+    foreignNearWindow false 5 5 rowsMutated
+
+let private keyedForeignBeforeWindow () =
+    foreignNearWindow true 5 5 rowsMutated
+
+let private eachForeignAfterWindow () =
+    foreignNearWindow false 6 5 rowsMutated
+
+let private keyedForeignAfterWindow () =
+    foreignNearWindow true 6 5 rowsMutated
+
+let private eachForeignBeforeEnd () =
+    foreignNearWindow false 10 9 "Keyed-list boundaries were externally reordered"
+
+let private keyedForeignBeforeEnd () =
+    foreignNearWindow true 10 9 "Keyed-list boundaries were externally reordered"
+
 let private eachMatchesReferenceOrder () =
     use graph = new Graph ()
     listedLog.Clear ()
@@ -2990,6 +3186,22 @@ let cases =
         "a two-row swap of 1,000 rows moves two rows", eachSwapMovesTwo
         "removing a kept item from each sets up no row and keys no item", eachStableRemove
         "removing a kept item from Keyed.array sets up no row and keys no item", keyedStableRemove
+#if RANVIER_VIEW_COUNTERS
+        "removing one of 200 each rows validates at most 4 rows and looks up at most 1", eachWindowedRemove
+        "removing one of 200 Keyed.array rows validates at most 4 rows and looks up at most 1", keyedWindowedRemove
+#endif
+        "each over an array mutated in place matches a fresh array", eachInPlaceMutation
+        "Keyed.array over an array mutated in place matches a fresh array", keyedInPlaceMutation
+        "each after a duplicate-key pass renders the next valid items and keeps their nodes", eachFailedPassThenValid
+        "Keyed.array after a duplicate-key pass renders the next valid items and keeps their nodes", keyedFailedPassThenValid
+        "a foreign row before the row preceding each's changed window is reported on that pass and the next", eachForeignBeforeNeighbour
+        "a foreign row before the row preceding Keyed.array's changed window is reported on that pass and the next", keyedForeignBeforeNeighbour
+        "a foreign row before each's changed window is reported on that pass and the next", eachForeignBeforeWindow
+        "a foreign row before Keyed.array's changed window is reported on that pass and the next", keyedForeignBeforeWindow
+        "a foreign row after each's changed window is reported on that pass and the next", eachForeignAfterWindow
+        "a foreign row after Keyed.array's changed window is reported on that pass and the next", keyedForeignAfterWindow
+        "a foreign row before each's end marker is reported when the last row is removed and on the next pass", eachForeignBeforeEnd
+        "a foreign row before Keyed.array's end marker is reported when the last row is removed and on the next pass", keyedForeignBeforeEnd
         "list updates match a reference order and keep node identities", eachMatchesReferenceOrder
         "each over recreated items keeps order and node identities", eachRecreatedRows
         "Keyed.array over recreated items keeps order and node identities", keyedRecreatedRows

@@ -156,6 +156,16 @@ let private at (items: ResizeArray<'T>) (index: int) : 'T = jsNative
 
 let private skip: unit -> unit = ignore
 
+#if RANVIER_VIEW_COUNTERS
+/// <summary>Counts of keyed-list work, defined only in the DOM test build.</summary>
+module internal ListCounters =
+    /// <summary>Laid-out rows checked by keyed-list validation.</summary>
+    let validatedRows = ref 0
+
+    /// <summary>Rows looked up in a keyed list's projection.</summary>
+    let lookups = ref 0
+#endif
+
 [<Emit("new Set()")>]
 let private nameSet () : obj = jsNative
 
@@ -755,6 +765,14 @@ and [<Sealed; AllowNullLiteral>] private Row(first: Node, last: Node) =
 
     /// <summary>Raises unless the markers share <c>parent</c> and the laid-out rows sit between them in order.</summary>
     static member Validate(regionStart: Node, regionEnd: Node, laidOut: ResizeArray<Row>, parent: Node) =
+        Row.ValidateWindow (regionStart, regionEnd, laidOut, parent, 0, laidOut.Count - 1)
+
+    /// <summary>
+    /// Raises unless the markers share <c>parent</c> and each laid-out row from <c>first</c> to <c>last</c>, clamped to
+    /// the laid-out range, starts at the node after the preceding row or after <c>regionStart</c>. A window reaching the
+    /// final row also ends at <c>regionEnd</c>. Removed rows are skipped.
+    /// </summary>
+    static member ValidateWindow(regionStart: Node, regionEnd: Node, laidOut: ResizeArray<Row>, parent: Node, first: int, last: int) =
         if
             not (
                 regionStart.parentNode
@@ -767,12 +785,22 @@ and [<Sealed; AllowNullLiteral>] private Row(first: Node, last: Node) =
         then
             invalid "Keyed-list boundaries were externally mutated"
 
-        let mutable cursor = nextOrNull regionStart
+        let last = min last (laidOut.Count - 1)
+        let mutable index = max first 0
 
-        for index in 0 .. laidOut.Count - 1 do
+        let mutable cursor =
+            if index = 0 then
+                nextOrNull regionStart
+            else
+                nextOrNull laidOut[index - 1].Last
+
+        while index <= last do
             let row = laidOut[index]
 
             if not row.Removed then
+#if RANVIER_VIEW_COUNTERS
+                ListCounters.validatedRows.Value <- ListCounters.validatedRows.Value + 1
+#endif
                 if not (isNull (box row.Mount)) then
                     row.Mount.Validate ()
 
@@ -781,7 +809,12 @@ and [<Sealed; AllowNullLiteral>] private Row(first: Node, last: Node) =
 
                 cursor <- nextOrNull row.Last
 
-        if not (same cursor regionEnd) then
+            index <- index + 1
+
+        if
+            last = laidOut.Count - 1
+            && not (same cursor regionEnd)
+        then
             invalid "Keyed-list boundaries were externally reordered"
 
     static member Relocate(laidOut: ResizeArray<Row>) =
@@ -1622,6 +1655,9 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
         // which marks the projection stale.
         let mutable version: Signal<int> = Unchecked.defaultof<_>
         let mutable snapshot: obj array = [||]
+        // The items and rows of the last successful pass, or empty after a failed pass. The items are the region's own copy.
+        let mutable previousItems: obj array = [||]
+        let mutable previousRows: Row array = [||]
 
         let buildRow (current: unit -> obj) : Row =
             let mutable row: Row = null
@@ -1641,16 +1677,45 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
             if site.Live () then
                 let parent = ref Unchecked.defaultof<Node>
                 let keys = ref Unchecked.defaultof<obj array>
+                let priorItems = previousItems
+                let priorRows = previousRows
+                previousItems <- [||]
+                previousRows <- [||]
+                // Items before `start` and after `end0` (previous) or `end1` (current) are the same references in both passes.
+                let start = ref 0
+                let end0 = ref -1
+                let end1 = ref -1
 
                 let recorded, failure =
                     MountLifetime.Capture (
                         graph,
                         report,
                         fun () ->
-                            snapshot <- items.Read ()
+                            let current = items.Read ()
+                            snapshot <- current
                             Api.untrack (fun () -> version.Value <- version.Value + 1)
                             parent.Value <- site.Parent ()
-                            Row.Validate (regionStart, regionEnd, site.LaidOut, parent.Value)
+                            let n0 = priorItems.Length
+                            let n1 = current.Length
+
+                            while start.Value < n0
+                                  && start.Value < n1
+                                  && obj.ReferenceEquals (priorItems[start.Value], current[start.Value]) do
+                                start.Value <- start.Value + 1
+
+                            end0.Value <- n0 - 1
+                            end1.Value <- n1 - 1
+
+                            while end0.Value >= start.Value
+                                  && end1.Value >= start.Value
+                                  && obj.ReferenceEquals (priorItems[end0.Value], current[end1.Value]) do
+                                end0.Value <- end0.Value - 1
+                                end1.Value <- end1.Value - 1
+
+                            if priorRows.Length = site.LaidOut.Count then
+                                Row.ValidateWindow (regionStart, regionEnd, site.LaidOut, parent.Value, start.Value - 1, end0.Value + 1)
+                            else
+                                Row.Validate (regionStart, regionEnd, site.LaidOut, parent.Value)
                             // Runs the pass inside the window: its row setup, rollback and retirement errors are reported with this update.
                             keys.Value <- Api.untrack (fun () -> projection.Keys)
                     )
@@ -1659,26 +1724,48 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                     recorded,
                     failure,
                     fun recorded ->
-                        let layoutFailure =
+                        let layout =
                             try
                                 Api.untrack (fun () ->
-                                    let next =
-                                        keys.Value
-                                        |> Array.map (fun key -> projection.Get key)
+                                    let keys = keys.Value
+                                    let next: Row array = Array.zeroCreate keys.Length
 
-                                    Row.Layout ((fun () -> site.Live ()), site.LaidOut, site.Builder.Staging, parent.Value, regionEnd, next))
+                                    for index in 0 .. keys.Length - 1 do
+                                        let kept =
+                                            if index < start.Value then
+                                                priorRows[index]
+                                            elif index > end1.Value then
+                                                priorRows[end0.Value + index - end1.Value]
+                                            else
+                                                null
 
-                                None
+                                        next[index] <-
+                                            if isNull kept || kept.Removed then
+#if RANVIER_VIEW_COUNTERS
+                                                ListCounters.lookups.Value <- ListCounters.lookups.Value + 1
+#endif
+                                                projection.Get keys[index]
+                                            else
+                                                kept
+
+                                    Row.Layout ((fun () -> site.Live ()), site.LaidOut, site.Builder.Staging, parent.Value, regionEnd, next)
+                                    next)
+                                |> Ok
                             with error ->
-                                Some error
+                                Error error
 
-                        match layoutFailure with
+                        match layout with
                         // A layout that disposed its own region reports the pass's errors and ends the update.
-                        | Some _ when not (site.Live ()) -> site.Errors.Report recorded
-                        | Some error ->
+                        | Error _ when not (site.Live ()) -> site.Errors.Report recorded
+                        | Error error ->
                             root.Dispose ()
                             site.Errors.Fail (error, recorded @ [ error ])
-                        | None -> site.Errors.Report recorded
+                        | Ok next ->
+                            if site.Live () then
+                                previousItems <- Array.copy snapshot
+                                previousRows <- next
+
+                            site.Errors.Report recorded
                 )
 
         site.Own (fun () ->
