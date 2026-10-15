@@ -1802,7 +1802,7 @@ let private swapEnds (keyed: bool) (count: int) (left: int) (right: int) =
     mounted.Dispose ()
     moved
 
-/// <summary>Node moves for two swapped rows; a Keyed.array row holds three nodes.</summary>
+/// <summary>Node moves for a swap of two non-adjacent rows; a Keyed.array row holds three nodes.</summary>
 let private rowMoves (keyed: bool) =
     if keyed then 6 else 2
 
@@ -1810,8 +1810,8 @@ let private swapShapes () =
     for keyed in [ false; true ] do
         equal (rowMoves keyed) (swapEnds keyed 1000 1 998)
         equal (rowMoves keyed) (swapEnds keyed 1000 0 999)
-        equal true (swapEnds keyed 6 2 3 <= rowMoves keyed)
-        equal true (swapEnds keyed 2 0 1 <= rowMoves keyed)
+        equal (rowMoves keyed / 2) (swapEnds keyed 6 2 3)
+        equal (rowMoves keyed / 2) (swapEnds keyed 2 0 1)
         equal true (swapEnds keyed 3 0 2 <= rowMoves keyed)
 
 [<Emit("(() => { const w = document.defaultView; if (!w.customElements.get('x-probe')) w.customElements.define('x-probe', class extends w.HTMLElement { disconnectedCallback() { const hook = w.probeHook; w.probeHook = null; if (hook) hook(); } }); })()")>]

@@ -838,9 +838,9 @@ and [<Sealed; AllowNullLiteral>] private Row(first: Node, last: Node) =
             row.Mount.Relocate ()
 
     /// <summary>
-    /// Moves the region's rows into the order of <c>next</c> and stores it as the laid-out rows. Rows outside the
-    /// common prefix and suffix move only when they fall outside one longest run of rows already in order. Stops when
-    /// <c>live</c> turns false.
+    /// Moves the region's rows into the order of <c>next</c> and stores it as the laid-out rows. A window that exchanges
+    /// its first and last rows moves those two rows; any other window moves the rows outside one longest increasing run.
+    /// Stops when <c>live</c> turns false.
     /// </summary>
     static member Layout(live: unit -> bool, laidOut: ResizeArray<Row>, staging: DocumentFragment, parent: Node, regionEnd: Node, next: Row array) =
         let previous = ResizeArray<Row>(laidOut.Count)
@@ -905,7 +905,7 @@ and [<Sealed; AllowNullLiteral>] private Row(first: Node, last: Node) =
                 if swapped then
                     Row.Place (next[bStart], parent, previous[aStart].First)
 
-                    if live () then
+                    if count > 2 && live () then
                         Row.Place (next[bEnd - 1], parent, anchor)
                 else
                     let sources = Array.create count -1
