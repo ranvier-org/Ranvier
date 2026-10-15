@@ -14,7 +14,7 @@ type BrowserPolicy =
 
 type Setup = { OnCleanup: (unit -> unit) -> unit }
 
-/// <summary>A keyed list's items, as the caller's array, with the key of each item.</summary>
+/// <summary>The items of a keyed region, with the key of each item; list items keep the caller's references.</summary>
 [<NoEquality; NoComparison>]
 type KeyedItems =
     internal
@@ -174,8 +174,8 @@ module Keyed =
         ops.Keyed items renderObject
 
     /// <summary>Retains keyed rows and supplies their current item values.</summary>
-    /// <remarks>The input array's slots are copied before key callbacks run. Keys are compared with <c>=</c>. Duplicate
-    /// keys fail before reconciliation mutates the DOM.</remarks>
+    /// <remarks>The input array's slots are copied before key callbacks run. Keys are compared with <c>=</c> and must be pure.
+    /// Duplicate keys fail before reconciliation mutates the DOM.</remarks>
     let array<'item, 'key, 'view when 'key: equality>
         (ops: Operations<'view>)
         (key: 'item -> 'key)
@@ -188,7 +188,7 @@ module Keyed =
         create ops key (fun () -> Array.copy (read ())) render
 
     /// <summary>Adapts list snapshots to the array-backed keyed renderer.</summary>
-    /// <remarks>Equal keys under <c>=</c> retain rows; their item readers return current values.</remarks>
+    /// <remarks>Equal keys under <c>=</c> retain rows; their item readers return current values. Keys must be pure.</remarks>
     let list<'item, 'key, 'view when 'key: equality>
         (ops: Operations<'view>)
         (key: 'item -> 'key)

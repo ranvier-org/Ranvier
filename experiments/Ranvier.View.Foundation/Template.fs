@@ -677,7 +677,7 @@ type TemplateBuilder<'inst> internal () =
         )
 
     /// <summary>Renders one <c>row</c> instance per item, between region markers; items with equal keys under <c>=</c> keep their row, whose props read the current item.</summary>
-    /// <remarks>Duplicate keys fail before the rows change.</remarks>
+    /// <remarks>Keys must be pure. Duplicate keys fail before the rows change.</remarks>
     member _.each<'item, 'key when 'key: equality>
         (key: 'item -> 'key)
         (items: 'inst -> 'item array)
