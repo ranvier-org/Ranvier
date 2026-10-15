@@ -12,47 +12,46 @@
 
 Status (2026-10-14): the experimental Foundation renderer has owned ranges, components on owner lifetime with delegated listeners, keyed lists and keyed branches, component templates with dynamic structure (view holes, `matchWith`, `branch`, `each` and inlined children), the generated DOM catalogue (`Generated/Html.fs`, all 112 tags of `HTMLElementTagNameMap`) and the generated template catalogue (`Generated/HtmlTemplate.fs`), and production benchmarks against Solid 2 (2.0.0-rc.14), Ripple and React. The [checkpoint index](../../research/2026-10-11-view-poc-checkpoint.md) links each step. Keyed lists and arms run on core projections, memos and owners ([spec](../specs/2026-10-14-keyed-rows-on-core-design.md), [measurements](../../research/2026-10-14-keyed-rows-on-core.md)). Open: list performance (`swap1k` at 4.556x and `remove1k` at 5.000x Solid, against the <=3x targets; see the [measurements](../../research/2026-10-14-keyed-rows-on-core.md)), structural boundaries, server HTML and hydration, and sugar; production integration, public API freeze and release budgets follow them. The core indexed-edges work (draft PR #54) is deferred. See the [baseline report](../../research/2026-10-08-fable-ranvier-baseline.md) for fresh results and known whole-solution/Fable-test failures. The user approved explicit typed functions subject to extreme performance and efficient Oxpecker-style or Feliz-style sugar; the [DSL design](../specs/2026-10-08-ranvier-view-dsl-design.md) records the proof requirements. File names below are proposed seams; verify existing symbols before choosing final names. API descriptions are design sketches, not compiler-validated signatures.
 
-## Where we stand (2026-10-14)
+## Where we stand (2026-10-15)
 
-Branch `poc/fable-ranvier-dom` at `eb39b96`, pushed as [PR #42](https://github.com/shayanhabibi/Ranvier/pull/42). Gates at that commit: 2106 core .NET tests; 872 Fable core tests with inline delivery, plus the 18 known Fable/.NET differences; 328 Node DOM tests; 23 Chromium tests; 14 portable representation checks.
+Branch `poc/fable-ranvier-dom` at `85e0f8c`, pushed as [PR #42](https://github.com/shayanhabibi/Ranvier/pull/42), with master at `bef1521` merged in. Master now carries the core list work as [PR #55](https://github.com/shayanhabibi/Ranvier/pull/55). Gates at `85e0f8c`: 2184 untraced and 2360 traced core .NET tests; 911 of 929 Fable core tests pass with inline delivery, the other 18 being the known Fable/.NET differences; 328 Node DOM tests; 23 Chromium tests; the portable representation checks pass.
 
 ### Performance
 
-Ratios are Ranvier's time over the other framework's; below 1 is faster. Every figure is a measurement, not a budget.
+Ratios are Ranvier's time over the other framework's; below 1 is faster. Every figure is a measurement, not a budget. All rows below were measured at `85e0f8c` ([rerun note](../../research/2026-10-15-poc-rerun.md)), with the earlier figure in brackets. Rider used about one core during the run.
 
-Components, template path, at `a0de558` ([component templates note](../../research/2026-10-14-component-templates.md#measurements)). This benchmark predates the keyed-rows work, which changed mount ownership and teardown, so the dispose rows need a fresh run.
+Components, template path:
 
 | Phase, rows | × Solid 2 | × Ripple |
 |---|---|---|
-| Mount, 1 / 16 / 128 | 1.18 / 1.16 / 1.17 | 0.97 / 0.88 / 0.81 |
-| Update, 1 / 16 / 128 | 0.80 / 1.05 / 1.07 | 0.93 / 1.01 / 0.99 |
-| Dispose, 1 / 16 / 128 | 1.32 / 1.25 / 1.56 | 2.28 / 0.80 / 0.95 |
-| Retained heap, 128-row mount | 0.96 (111 / 116 KiB) | 0.68 (111 / 163 KiB) |
+| Mount, 1 / 16 / 128 | 1.13 / 1.17 / 1.15 (1.18 / 1.16 / 1.17) | 0.99 / 0.82 / 0.74 (0.97 / 0.88 / 0.81) |
+| Update, 1 / 16 / 128 | 0.79 / 1.02 / 1.07 (0.80 / 1.05 / 1.07) | 0.91 / 0.97 / 0.98 (0.93 / 1.01 / 0.99) |
+| Dispose, 1 / 16 / 128 | 1.43 / 1.33 / 1.39 (1.32 / 1.25 / 1.56) | 2.33 / 0.93 / 0.88 (2.28 / 0.80 / 0.95) |
+| Retained heap, 128-row mount | 0.97 (112 / 116 KiB) | — |
 
-Plan 2c's paired runs against Solid 2 left these within run-to-run variation.
+The authored path retains 383 KiB per 128-row mount, against 345 KiB at `a0de558`.
 
-Keyed lists and arms, production rows at `4353219` against Solid 2 only ([keyed rows on core](../../research/2026-10-14-keyed-rows-on-core.md#production-against-solid-2)):
+Keyed lists and arms, production rows against Solid 2 only:
 
 | Operation | × Solid 2 | Target |
 |---|---|---|
-| create1k / create10k | 1.69 / 1.69 | ≤ 2 (met) |
-| append1k / replace1k | 1.63 / 1.51 | ≤ 2 (met) / — |
-| update10th1k | 0.21 | — |
-| swap1k | 4.56 | ≤ 3 (not met) |
-| remove1k / remove10k | 5.00 / 11.0 | ≤ 3 (not met) / — |
-| clear1k / clear10k | 1.61 (2.23 in the six-mode page) / 2.56 | ≤ 2 |
-| armsCreate1k / armsSwitch1k | 1.70 / 1.77 | — / ≤ 2 (met) |
-| armsPayload1k / armsClear1k | 0.54 / 2.33 | — |
-| Retained heap per row | 1,228 / 905 B (snapshot); 1,448 / 1,057 B (`getHeapUsage`) | ≤ 1,300 B |
+| create1k / create10k | 1.81 / 1.67 (1.69 / 1.69) | ≤ 2 (met) |
+| append1k / replace1k | 1.62 / 1.55 (1.63 / 1.51) | ≤ 2 (met) / — |
+| update10th1k | 0.13 (0.21) | — |
+| swap1k | 2.20 (4.56) | ≤ 3 (met at the median only) |
+| remove1k / remove10k | 6.83 / 13.3 (5.00 / 11.0) | ≤ 3 (not met) / — |
+| clear1k / clear10k | 2.27 / 2.80 (1.61 / 2.56) | ≤ 2 (not met) |
+| armsCreate1k / armsSwitch1k | 1.62 / 1.78 (1.70 / 1.77) | — / ≤ 2 (met) |
+| armsPayload1k / armsClear1k | 0.54 / 2.49 (0.54 / 2.33) | — |
+| Retained heap per row | 1,225 / 905 B (snapshot); 1,455 / 1,058 B (`getHeapUsage`) | ≤ 1,300 B |
+
+- `swap1k`: Solid 2 runs in about 0.14 ms in some processes and 0.45 ms in others. Against the fast processes the ratio is 6.4–6.9. Production's own median rose from 0.62 to 0.91 ms.
+- `remove1k`: production rose from 0.59 to 0.81 ms; Solid 2 stayed at 0.12 ms.
+- `clear1k`: production stayed at 1.36 ms; Solid 2 fell from 0.85 to 0.61 ms.
 
 The list benchmark has no Ripple adapter.
 
-The core alone, with no DOM, against Solid 2's `mapArray` in the same Node processes ([core lists against Solid 2](../../research/2026-10-14-core-list-solid.md)):
-- Creating, appending, replacing and clearing take 2.1–3.5× Solid 2.
-- Item updates take 0.70×.
-- Swaps and removals take 4–9×, and grow with list length.
-
-The projection pass visits and hashes every item on each write; `Positional.diff` is off this path.
+The core alone, with no DOM ([trimmed pass](../../research/2026-10-14-core-trimmed-pass.md)): since #55 a keyed pass trims the common prefix and suffix and skips `keyOf` for unchanged items, and swaps and removals take 0.45–0.51 of their earlier time under Node. The DOM-level swap and remove times above did not fall with it.
 
 ### Done
 
@@ -64,8 +63,8 @@ The projection pass visits and hashes every item on each write; `Positional.diff
 
 ### Open, in proposed order
 
-1. List structural edits: `swap1k`, `remove1k` and `remove10k`, and the unexplained 26–32% `remove10k` slowdown with memo-free rows. The cost is in the core pass; the [core comparison](../../research/2026-10-14-core-list-solid.md#what-would-close-the-gap) lists the changes that would make it follow the size of the change. Indexed edges ([#54](https://github.com/shayanhabibi/Ranvier/pull/54)) stay deferred until the whole picture is measured.
-2. Re-run the component comparison at the current head, for Solid 2 and Ripple.
+1. List structural edits: `remove1k`, `remove10k` and `clear1k` against Solid 2, and `swap1k` against Solid 2's fast processes. The core pass now follows the size of the change, but the DOM-level times did not fall, so the next step is profiling the view's remove and swap path (`ListRegion`, row teardown and node moves) at `85e0f8c`. Indexed edges ([#54](https://github.com/shayanhabibi/Ranvier/pull/54)) stay deferred until that profile exists.
+2. Component dispose: 1.33–1.43× Solid 2 at every width.
 3. Investigate the queued commit `Queue` (`Scheduling.fs`) as binding effects under a microtask `IGraphDispatcher` (agreed follow-up).
 4. Structural view boundaries and live setter-failure handling (Task 5).
 5. Owned async cancellation and the playground screen migration (Task 7).
