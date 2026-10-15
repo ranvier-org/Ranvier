@@ -57,7 +57,8 @@ type CompiledRegion =
         /// <summary>True when the markers are roots of a multi-root skeleton.</summary>
         RootLevel: bool
         Kind: RegionKind
-        Items: Func<obj, (obj * obj) array>
+        Items: Func<obj, obj array>
+        Key: Func<obj, obj>
         Render: (unit -> obj) -> Backend -> unit
         Row: RegionRow
     }
@@ -309,6 +310,7 @@ let compile (definition: TemplateComponent) : Compiled =
                         Owner = layout.Owners[index]
                         RootLevel = rootCount > 1 && path.Length = 1
                         Items = region.Items
+                        Key = region.Key
                         Kind =
                             match region.Row with
                             | ItemRow _ -> ListRows
@@ -377,8 +379,7 @@ type internal MountServices =
     /// <summary>Mounts a region between its start and end markers. The flag marks markers that are roots of the appended
     /// clone; the materialiser is null for a view hole.</summary>
     abstract Region:
-        Node * Node * bool * RegionKind * (unit -> (obj * obj) array) * ((unit -> obj) -> Backend -> unit) * Func<(unit -> obj), MountServices, unit> ->
-            unit
+        Node * Node * bool * RegionKind * KeyedItems * ((unit -> obj) -> Backend -> unit) * Func<(unit -> obj), MountServices, unit> -> unit
 
 let private unset = obj ()
 
@@ -668,4 +669,4 @@ let rec internal materialise (definition: TemplateDefinition) (props: obj) (serv
                     materialise arm.Definition (arm.Reader.Invoke current) rowServices)
             | ViewRow -> null
 
-        services.Region (start, finish, region.RootLevel, region.Kind, read, region.Render, rows)
+        services.Region (start, finish, region.RootLevel, region.Kind, { Read = read; Key = region.Key }, region.Render, rows)

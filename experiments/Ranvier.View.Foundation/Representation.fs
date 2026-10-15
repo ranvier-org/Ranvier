@@ -14,6 +14,38 @@ type BrowserPolicy =
 
 type Setup = { OnCleanup: (unit -> unit) -> unit }
 
+/// <summary>A keyed list's items, as the caller's array, with the key of each item.</summary>
+[<NoEquality; NoComparison>]
+type KeyedItems =
+    internal
+        {
+            Read: unit -> obj array
+            Key: System.Func<obj, obj>
+        }
+
+module internal KeyedItems =
+    /// <summary>The items as an <c>obj</c> array holding the same references; Fable returns the array itself.</summary>
+    let inline boxAll (items: 'item array) : obj array =
+#if FABLE_COMPILER
+        unbox items
+#else
+        Array.map box items
+#endif
+
+    /// <summary>The key of a boxed <c>(key, value)</c> pair.</summary>
+    let pairKey = System.Func<obj, obj>(fun pair -> fst (unbox<obj * obj> pair))
+
+    /// <summary>Items that are boxed <c>(key, value)</c> pairs, keyed by the pair's key.</summary>
+    let ofPairs (read: unit -> (obj * obj) array) =
+        {
+            Read = fun () -> boxAll (read ())
+            Key = pairKey
+        }
+
+    /// <summary>The value of a boxed <c>(key, value)</c> pair.</summary>
+    let value (pair: obj) =
+        snd (unbox<obj * obj> pair)
+
 [<AbstractClass>]
 type Backend() =
     abstract Text: string -> unit
@@ -48,14 +80,14 @@ type Backend() =
     /// <summary>Binds a property reader and target-aware writer to the element currently receiving modifiers.</summary>
     abstract ReactiveProperty: (unit -> obj) * System.Func<obj, obj, unit> -> unit
     abstract Bind: (string -> string -> bool) * (unit -> string) -> unit
-    /// <summary>Interprets a keyed item snapshot and renders its items into this backend.</summary>
-    abstract Keyed: (unit -> (obj * obj) array) * ((unit -> obj) -> Backend -> unit) -> unit
+    /// <summary>Interprets a keyed item snapshot and renders its items into this backend; a row's reader returns its current item.</summary>
+    abstract Keyed: KeyedItems * ((unit -> obj) -> Backend -> unit) -> unit
 
     /// <summary>Renders the single keyed row selected by a switch; the previous row is disposed before the next is created.</summary>
     abstract Switch: (unit -> (obj * obj) array) * ((unit -> obj) -> Backend -> unit) -> unit
 
     default this.Switch(read, render) =
-        this.Keyed (read, render)
+        this.Keyed (KeyedItems.ofPairs read, (fun current -> render (fun () -> KeyedItems.value (current ()))))
 
     abstract Component: (Setup -> unit) -> unit
 
@@ -111,7 +143,7 @@ type Operations<'view> =
         Element: Tag -> ModifierAction array -> 'view array -> 'view
         Bind: (string -> string -> bool) -> (unit -> string) -> 'view
         /// <summary>Creates the internal keyed-list representation used by <c>Keyed.list</c>.</summary>
-        Keyed: (unit -> (obj * obj) array) -> ((unit -> obj) -> 'view) -> 'view
+        Keyed: KeyedItems -> ((unit -> obj) -> 'view) -> 'view
         /// <summary>Creates the single keyed row selected by a switch; the previous row is disposed before the next is created.</summary>
         Switch: (unit -> (obj * obj) array) -> ((unit -> obj) -> 'view) -> 'view
         Component: (Setup -> 'view) -> 'view
@@ -130,14 +162,16 @@ module Keyed =
         if isNull (box render) then
             invalidArg "render" "Keyed row renderer cannot be null"
 
-        let readObjects () =
-            read ()
-            |> Array.map (fun item -> box (key item), box item)
+        let items =
+            {
+                Read = fun () -> KeyedItems.boxAll (read ())
+                Key = System.Func<obj, obj>(fun item -> box (key (unbox<'item> item)))
+            }
 
         let renderObject (current: unit -> obj) =
             render (fun () -> unbox<'item>(current ()))
 
-        ops.Keyed readObjects renderObject
+        ops.Keyed items renderObject
 
     /// <summary>Retains keyed rows and supplies their current item values.</summary>
     /// <remarks>The input array's slots are copied before key callbacks run. Keys are compared with <c>=</c>. Duplicate
@@ -200,7 +234,7 @@ module Tree =
         | Fragment of View array
         | Element of Tag * ModifierAction array * View array
         | Bind of (string -> string -> bool) * (unit -> string)
-        | Keyed of (unit -> (obj * obj) array) * ((unit -> obj) -> View)
+        | Keyed of KeyedItems * ((unit -> obj) -> View)
         | Component of (Setup -> View)
         | Embed of (Backend -> unit)
 
@@ -220,7 +254,7 @@ module Tree =
                         run child backend
             )
         | Bind (equals, read) -> backend.Bind (equals, read)
-        | Keyed (read, render) -> backend.Keyed (read, fun current target -> run (render current) target)
+        | Keyed (items, render) -> backend.Keyed (items, fun current target -> run (render current) target)
         | Component setup -> backend.Component (fun context -> run (setup context) backend)
         | Embed build -> build backend
 
@@ -231,7 +265,7 @@ module Tree =
             Fragment = Fragment
             Element = fun tag tokens children -> Element (tag, tokens, children)
             Bind = fun equals read -> Bind (equals, read)
-            Keyed = fun read render -> Keyed (read, render)
+            Keyed = fun items render -> Keyed (items, render)
             Switch = fun read render -> Embed (fun backend -> backend.Switch (read, fun current target -> run (render current) target))
             Component = Component
             Embed = Embed
@@ -281,7 +315,7 @@ module Program =
             Fragment = fragment
             Element = element
             Bind = bind
-            Keyed = fun read render -> View (fun backend -> backend.Keyed (read, fun current target -> (render current).Invoke target))
+            Keyed = fun items render -> View (fun backend -> backend.Keyed (items, fun current target -> (render current).Invoke target))
             Switch = fun read render -> View (fun backend -> backend.Switch (read, fun current target -> (render current).Invoke target))
             Component = createComponent
             Embed = fun build -> View (fun backend -> build backend)
@@ -433,11 +467,11 @@ module Html =
                 member _.Bind(_, read) =
                     append (escape false (read ()))
 
-                member this.Keyed(read, render) =
-                    let items = read ()
-                    Ranvier.Projection.ensureUniqueKeys fst items
+                member this.Keyed(items, render) =
+                    let values = items.Read ()
+                    Ranvier.Projection.ensureUniqueKeys items.Key.Invoke values
 
-                    for _, item in items do
+                    for item in values do
                         render (fun () -> item) this
 
                 member _.Attribute(key, value) =

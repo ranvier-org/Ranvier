@@ -57,8 +57,10 @@ type TemplateNode =
 /// <summary>Dynamic structure of a template: keyed items read from an instance, rendered one row per item.</summary>
 and [<NoEquality; NoComparison>] Region =
     {
-        /// <summary>Reads the keyed items from an instance.</summary>
-        Items: Func<obj, (obj * obj) array>
+        /// <summary>Reads the items from an instance: an <c>ItemRow</c> region's row values, otherwise one boxed <c>(key, value)</c> pair.</summary>
+        Items: Func<obj, obj array>
+        /// <summary>The key of an item.</summary>
+        Key: Func<obj, obj>
         Row: RegionRow
     }
 
@@ -168,8 +170,16 @@ let internal rowRenderer (row: RegionRow) (current: unit -> obj) (backend: Backe
         backend.Template (arm.Definition, arm.Reader.Invoke current)
     | ItemRow (definition, props) -> backend.Template (definition, props.Invoke current)
 
+/// <summary>The value a region item's row reads: the item of an <c>ItemRow</c>, otherwise the value of its pair.</summary>
+let private rowValue (row: RegionRow) (item: obj) =
+    match row with
+    | ItemRow _ -> item
+    | ViewRow
+    | ArmRow -> KeyedItems.value item
+
 let private serverRow (backend: Backend) (row: RegionRow) (item: obj) =
-    rowRenderer row (fun () -> item) backend
+    let value = rowValue row item
+    rowRenderer row (fun () -> value) backend
 
 [<NoEquality; NoComparison>]
 type InlinedChild =
@@ -330,10 +340,10 @@ let private writeMarkup (append: string -> unit) (mode: MarkupMode) (state: Writ
                 append "<!--[--><!--]-->"
             | Server (_, _, backend) ->
                 let items = Array.copy (region.Items.Invoke state.Instance)
-                Projection.ensureUniqueKeys fst items
+                Projection.ensureUniqueKeys region.Key.Invoke items
                 append "<!--[-->"
 
-                for _, item in items do
+                for item in items do
                     serverRow backend region.Row item
 
                 append "<!--]-->"
@@ -393,10 +403,16 @@ let rec private expandNode (ops: Operations<'view>) (instance: obj) (node: Templ
     | RegionNode region ->
         match region.Row with
         | ViewRow ->
-            let _, item = (region.Items.Invoke instance)[0]
+            let item = KeyedItems.value ((region.Items.Invoke instance)[0])
             expandRow ops region.Row (fun () -> item)
-        | ArmRow -> ops.Switch (fun () -> region.Items.Invoke instance) (expandRow ops region.Row)
-        | ItemRow _ -> ops.Keyed (fun () -> region.Items.Invoke instance) (expandRow ops region.Row)
+        | ArmRow -> ops.Switch (fun () -> Array.map unbox<obj * obj> (region.Items.Invoke instance)) (expandRow ops region.Row)
+        | ItemRow _ ->
+            ops.Keyed
+                {
+                    Read = fun () -> region.Items.Invoke instance
+                    Key = region.Key
+                }
+                (expandRow ops region.Row)
     | ChildNode (definition, props) -> expandWith ops definition (props.Invoke instance)
 
 /// <summary>Expands a region row through the operations; the reader returns the row's current item.</summary>
@@ -611,7 +627,8 @@ type TemplateBuilder<'inst> internal () =
         TemplateView (
             RegionNode
                 {
-                    Items = Func<obj, (obj * obj) array>(fun instance -> [| (null: obj), box (read (unbox instance)) |])
+                    Items = Func<obj, obj array>(fun instance -> [| box ((null: obj), box (read (unbox instance))) |])
+                    Key = KeyedItems.pairKey
                     Row = ViewRow
                 }
         )
@@ -636,9 +653,10 @@ type TemplateBuilder<'inst> internal () =
             RegionNode
                 {
                     Items =
-                        Func<obj, (obj * obj) array>(fun instance ->
+                        Func<obj, obj array>(fun instance ->
                             let arm = arms (read (unbox instance))
-                            [| box arm.Definition, box arm |])
+                            [| box (box arm.Definition, box arm) |])
+                    Key = KeyedItems.pairKey
                     Row = ArmRow
                 }
         )
@@ -650,10 +668,11 @@ type TemplateBuilder<'inst> internal () =
             RegionNode
                 {
                     Items =
-                        Func<obj, (obj * obj) array>(fun instance ->
+                        Func<obj, obj array>(fun instance ->
                             let current = key (unbox instance)
                             let arm = arms current
-                            [| box (box current, arm.Definition), box arm |])
+                            [| box (box (box current, arm.Definition), box arm) |])
+                    Key = KeyedItems.pairKey
                     Row = ArmRow
                 }
         )
@@ -668,10 +687,8 @@ type TemplateBuilder<'inst> internal () =
         TemplateView (
             RegionNode
                 {
-                    Items =
-                        Func<obj, (obj * obj) array>(fun instance ->
-                            items (unbox instance)
-                            |> Array.map (fun item -> box (key item), box item))
+                    Items = Func<obj, obj array>(fun instance -> KeyedItems.boxAll (items (unbox instance)))
+                    Key = Func<obj, obj>(fun item -> box (key (unbox<'item> item)))
                     Row = ItemRow (row :> TemplateComponent, Func<(unit -> obj), obj>(fun current -> box (fun () -> unbox<'item>(current ()))))
                 }
         )

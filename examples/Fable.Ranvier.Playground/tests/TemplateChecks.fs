@@ -1725,6 +1725,45 @@ let private eachSwapMovesTwo () =
     equal 2 (inserts ())
     mounted.Dispose ()
 
+let private stableRemove (view: (Listed -> int) -> Signal<Listed array> -> Program.View) =
+    use graph = new Graph ()
+    listedLog.Clear ()
+    let keyCalls = ref 0
+
+    let key (item: Listed) =
+        keyCalls.Value <- keyCalls.Value + 1
+        item.Id
+
+    let items =
+        graph.Run (fun () ->
+            Api.createSignal (
+                Array.init 200 (fun index ->
+                    {
+                        Id = index
+                        Text = string index + ","
+                    })
+            ))
+
+    let host = host ()
+    let mounted = mount graph host (view key items)
+    listedLog.Clear ()
+    keyCalls.Value <- 0
+    graph.Run (fun () -> items.Value <- Array.removeAt 100 items.Value)
+    equal (199., [ "cleanup 100" ]) ((host.querySelectorAll "li").length, List.ofSeq listedLog)
+    equal true (keyCalls.Value <= 2)
+    mounted.Dispose ()
+
+let private eachStableRemove () =
+    stableRemove (fun key items ->
+        let counted =
+            Component.define (fun _ (items: Signal<Listed array>) -> items) (fun t ->
+                t.element (HtmlTag "ul") [||] [| t.each key (fun items -> items.Value) listedRow |])
+
+        Component.render counted items)
+
+let private keyedStableRemove () =
+    stableRemove (fun key items -> Keyed.array Program.ops key (fun () -> items.Value) (fun current -> Component.render listedRow current))
+
 let private eachMatchesReferenceOrder () =
     use graph = new Graph ()
     listedLog.Clear ()
@@ -2787,6 +2826,8 @@ let cases =
         "each sets up a replacing row before the replaced row's cleanup", eachReplacement
         "duplicate each keys fail the mount, are reported on update and keep the rows", eachDuplicates
         "a two-row swap of 1,000 rows moves two rows", eachSwapMovesTwo
+        "removing a kept item from each sets up no row and keys at most two items", eachStableRemove
+        "removing a kept item from Keyed.array sets up no row and keys at most two items", keyedStableRemove
         "list updates match a reference order and keep node identities", eachMatchesReferenceOrder
         "zero-node rows keep their place through their marker", zeroNodeRows
         "disposing a mount runs every row cleanup before a node leaves", fun () -> disposalCleansBeforeRelease false

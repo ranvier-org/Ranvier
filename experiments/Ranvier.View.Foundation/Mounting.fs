@@ -951,8 +951,8 @@ and private RowBuilder(state: MountState) =
         member _.ClearFailure() =
             state.ClearReported ()
 
-        member _.Region(start, finish, _, kind, read, render, rows) =
-            state.NestedRegion (start, finish, kind, read, render, rows)
+        member _.Region(start, finish, _, kind, items, render, rows) =
+            state.NestedRegion (start, finish, kind, items, render, rows)
 
 /// <summary>
 /// The markers and laid-out rows of one region, with the region's owner, row builder and failure state.
@@ -1537,14 +1537,14 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
         append node
         startBinding (Func<_, _, _>(fun left right -> equals left right)) read (fun value -> node.textContent <- value)
 
-    override this.Keyed(read, render) =
-        this.AuthoredRegion (TemplateDom.ListRows, read, render)
+    override this.Keyed(items, render) =
+        this.AuthoredRegion (TemplateDom.ListRows, items, render)
 
     override this.Switch(read, render) =
-        this.AuthoredRegion (TemplateDom.SelectedArm, read, render)
+        this.AuthoredRegion (TemplateDom.SelectedArm, KeyedItems.ofPairs read, render)
 
     /// <summary>Adds boundary nodes at the current position and mounts a region of <c>kind</c> between them.</summary>
-    member private this.AuthoredRegion(kind, read, render) =
+    member private this.AuthoredRegion(kind, items, render) =
         ensureSetup ()
 
         let regionStart, regionEnd =
@@ -1558,18 +1558,18 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                 range.AppendGenerated (target, regionEnd)
                 NestedRegion
 
-        this.RegionOf (regionStart, regionEnd, placement, kind, read, render, null)
+        this.RegionOf (regionStart, regionEnd, placement, kind, items, render, null)
 
     member internal this.NestedRegion
         (
             start: Node,
             finish: Node,
             kind: TemplateDom.RegionKind,
-            read: unit -> (obj * obj) array,
+            items: KeyedItems,
             render: (unit -> obj) -> Backend -> unit,
             rows: Func<(unit -> obj), TemplateDom.MountServices, unit>
         ) =
-        this.RegionOf (start, finish, NestedRegion, kind, read, render, rows)
+        this.RegionOf (start, finish, NestedRegion, kind, items, render, rows)
 
     member private _.PlaceRegion(regionStart: Node, regionEnd: Node, placement: RegionPlacement, validate: unit -> unit, relocate: unit -> unit) =
         match placement with
@@ -1612,7 +1612,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
             regionStart: Node,
             regionEnd: Node,
             placement: RegionPlacement,
-            read: unit -> (obj * obj) array,
+            items: KeyedItems,
             render: (unit -> obj) -> Backend -> unit,
             rows: Func<(unit -> obj), TemplateDom.MountServices, unit>
         ) =
@@ -1621,16 +1621,13 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
         // The items of the latest reconcile, the projection's only input; each write is followed by a bump of `version`,
         // which marks the projection stale.
         let mutable version: Signal<int> = Unchecked.defaultof<_>
-        let mutable snapshot: (obj * obj) array = [||]
+        let mutable snapshot: obj array = [||]
 
-        let buildRow (item: unit -> obj * obj) : Row =
+        let buildRow (current: unit -> obj) : Row =
             let mutable row: Row = null
 
             // Runs after the row's own cleanups.
             Api.onCleanup (fun () -> site.ReleaseRow row)
-
-            let current () =
-                snd (item ())
 
             row <-
                 if isNull rows then
@@ -1650,7 +1647,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                         graph,
                         report,
                         fun () ->
-                            snapshot <- read ()
+                            snapshot <- items.Read ()
                             Api.untrack (fun () -> version.Value <- version.Value + 1)
                             parent.Value <- site.Parent ()
                             Row.Validate (regionStart, regionEnd, site.LaidOut, parent.Value)
@@ -1688,7 +1685,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
             version <- Api.createSignal 0
 
             projection <-
-                Api.createProjectionOnce ProjectionOptions.CreateFirst (fun (item: obj * obj) -> fst item) buildRow (fun () ->
+                Api.createProjectionOnce ProjectionOptions.CreateFirst items.Key.Invoke buildRow (fun () ->
                     version.Value |> ignore
                     snapshot :> seq<_>)
 
@@ -1704,12 +1701,12 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
             regionStart: Node,
             regionEnd: Node,
             placement: RegionPlacement,
-            read: unit -> (obj * obj) array,
+            read: unit -> obj array,
             render: (unit -> obj) -> Backend -> unit,
             rows: Func<(unit -> obj), TemplateDom.MountServices, unit>
         ) =
         let site = this.Site (regionStart, regionEnd, placement)
-        let mutable items: Memo<(obj * obj) array> = Unchecked.defaultof<_>
+        let mutable items: Memo<obj array> = Unchecked.defaultof<_>
         let mutable selection: Memo<obj> = Unchecked.defaultof<_>
         // The mounted arm's root owner, item signal and key; null while the region is empty.
         let mutable armOwner: Owner = Unchecked.defaultof<_>
@@ -1789,7 +1786,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
 
             Api.untrack (fun () ->
                 if current.Length > 0 && not (isNull (box armItem)) then
-                    let key, value = current[0]
+                    let key, value = unbox<obj * obj> current[0]
 
                     if key = armKey then
                         armItem.Value <- value)
@@ -1801,18 +1798,18 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                 Api.createMemoWithComparer sameArm (fun _ ->
                     let current = items.Value
 
-                    if current.Length = 0 then null else box current[0])
+                    if current.Length = 0 then null else current[0])
 
             Api.untrack (fun () -> Api.createEffect reconcile)
             Api.untrack (fun () -> Api.createEffect updatePayload))
 
     /// <summary>Mounts the view read once from the region's single item between its markers.</summary>
     member private this.HoleRegion
-        (regionStart: Node, regionEnd: Node, placement: RegionPlacement, read: unit -> (obj * obj) array, render: (unit -> obj) -> Backend -> unit)
+        (regionStart: Node, regionEnd: Node, placement: RegionPlacement, read: unit -> obj array, render: (unit -> obj) -> Backend -> unit)
         =
         let site = this.Site (regionStart, regionEnd, placement)
         let items = read ()
-        let view = snd items[0]
+        let view = KeyedItems.value (items[0])
         let row = this.MountRow ((fun () -> view), render)
         Row.MoveBefore (row, site.Parent (), regionEnd)
         row.Mount.Relocate ()
@@ -1824,14 +1821,14 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
             finish: Node,
             placement: RegionPlacement,
             kind: TemplateDom.RegionKind,
-            read: unit -> (obj * obj) array,
+            items: KeyedItems,
             render: (unit -> obj) -> Backend -> unit,
             rows: Func<(unit -> obj), TemplateDom.MountServices, unit>
         ) =
         match kind with
-        | TemplateDom.ListRows -> this.ListRegion (start, finish, placement, read, render, rows)
-        | TemplateDom.SelectedArm -> this.ArmRegion (start, finish, placement, read, render, rows)
-        | TemplateDom.ViewHole -> this.HoleRegion (start, finish, placement, read, render)
+        | TemplateDom.ListRows -> this.ListRegion (start, finish, placement, items, render, rows)
+        | TemplateDom.SelectedArm -> this.ArmRegion (start, finish, placement, items.Read, render, rows)
+        | TemplateDom.ViewHole -> this.HoleRegion (start, finish, placement, items.Read, render)
 
     override _.Component(setup) =
         ensureSetup ()
@@ -1898,7 +1895,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
         member _.ClearFailure() =
             clearReported ()
 
-        member this.Region(start, finish, rootLevel, kind, read, render, rows) =
+        member this.Region(start, finish, rootLevel, kind, items, render, rows) =
             ensureSetup ()
 
             let placement =
@@ -1907,7 +1904,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                 else
                     NestedRegion
 
-            this.RegionOf (start, finish, placement, kind, read, render, rows)
+            this.RegionOf (start, finish, placement, kind, items, render, rows)
 
 /// <summary>Mounts a view with an owned commit queue when deferred scheduling is selected.</summary>
 /// <remarks>Nested keyed mounts share the containing mount's scheduler.</remarks>

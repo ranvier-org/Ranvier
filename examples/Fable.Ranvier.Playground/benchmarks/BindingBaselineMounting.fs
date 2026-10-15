@@ -661,9 +661,11 @@ let rec internal mount
                             Api.untrack (fun () -> node.textContent <- Some value)
                             committed <- Some value)
 
-            member _.Keyed(read, render) =
+            member _.Keyed(items, render) =
                 let read () =
-                    Array.toList (read ())
+                    items.Read ()
+                    |> Array.map (fun item -> items.Key.Invoke item, item)
+                    |> Array.toList
 
                 ensureSetup ()
                 let initialItems = read ()
