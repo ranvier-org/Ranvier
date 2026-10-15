@@ -1750,7 +1750,7 @@ let private stableRemove (view: (Listed -> int) -> Signal<Listed array> -> Progr
     keyCalls.Value <- 0
     graph.Run (fun () -> items.Value <- Array.removeAt 100 items.Value)
     equal (199., [ "cleanup 100" ]) ((host.querySelectorAll "li").length, List.ofSeq listedLog)
-    equal true (keyCalls.Value <= 2)
+    equal 0 keyCalls.Value
     mounted.Dispose ()
 
 let private eachStableRemove () =
@@ -2826,8 +2826,8 @@ let cases =
         "each sets up a replacing row before the replaced row's cleanup", eachReplacement
         "duplicate each keys fail the mount, are reported on update and keep the rows", eachDuplicates
         "a two-row swap of 1,000 rows moves two rows", eachSwapMovesTwo
-        "removing a kept item from each sets up no row and keys at most two items", eachStableRemove
-        "removing a kept item from Keyed.array sets up no row and keys at most two items", keyedStableRemove
+        "removing a kept item from each sets up no row and keys no item", eachStableRemove
+        "removing a kept item from Keyed.array sets up no row and keys no item", keyedStableRemove
         "list updates match a reference order and keep node identities", eachMatchesReferenceOrder
         "zero-node rows keep their place through their marker", zeroNodeRows
         "disposing a mount runs every row cleanup before a node leaves", fun () -> disposalCleansBeforeRelease false

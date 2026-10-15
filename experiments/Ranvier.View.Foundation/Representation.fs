@@ -24,7 +24,7 @@ type KeyedItems =
         }
 
 module internal KeyedItems =
-    /// <summary>The items as an <c>obj</c> array holding the same references; Fable returns the array itself.</summary>
+    /// <summary>The items as an <c>obj</c> array; an item of a reference type keeps its reference, and Fable returns the array itself.</summary>
     let inline boxAll (items: 'item array) : obj array =
 #if FABLE_COMPILER
         unbox items
@@ -468,7 +468,7 @@ module Html =
                     append (escape false (read ()))
 
                 member this.Keyed(items, render) =
-                    let values = items.Read ()
+                    let values = Array.copy (items.Read ())
                     Ranvier.Projection.ensureUniqueKeys items.Key.Invoke values
 
                     for item in values do

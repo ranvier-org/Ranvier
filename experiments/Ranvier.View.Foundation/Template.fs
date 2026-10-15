@@ -59,7 +59,6 @@ and [<NoEquality; NoComparison>] Region =
     {
         /// <summary>Reads the items from an instance: an <c>ItemRow</c> region's row values, otherwise one boxed <c>(key, value)</c> pair.</summary>
         Items: Func<obj, obj array>
-        /// <summary>The key of an item.</summary>
         Key: Func<obj, obj>
         Row: RegionRow
     }
