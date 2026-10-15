@@ -1,6 +1,6 @@
 # Keyed list region passes — 2026-10-15
 
-- Machine: AMD Ryzen 9 9900X (12 cores, 62 GB), Windows 11 10.0.26200. Rider open and idle; every timing and profile ran one at a time, with no build alongside.
+- Machine: AMD Ryzen 9 9900X (12 cores, 62 GB), Windows 11 10.0.26200. Rider open; every timing and profile ran one at a time, with no build alongside. A game process (`deadlock.exe`) used about six cores until shortly before the runs; the runs started after it exited and the CPU load read 2–15%. Of three timing runs, two had one disturbed process (remove10k 4.50 and 5.22 ms against about 3.1 ms in the others); their cause is unknown and they were discarded. The third discarded run read swap1k at 2.321× and remove1k at 2.792×, with Solid 2 in its slow mode in two of its processes for each operation.
 - Chromium 153.0.8010.12 (Playwright 1.63.0), Node 26.7.0, Fable 5.18.0 (`--noCache`, Release), Vite 8.3.2. Solid 2: `solid-js`, `@solidjs/web`, `@solidjs/compiler` 2.0.0-rc.14.
 - Production code: `e447e21` (`poc/fable-ranvier-dom`). Against `1f1f1df` it adds:
   - `506e04b`, `86a476b`: each keyed pass validates and looks up only the rows around the changed window; unchanged items are found by reference against the region's own copy of the previous items;
@@ -11,7 +11,7 @@
 - The production and profile bundles do not define `RANVIER_VIEW_COUNTERS` (only the PoC's `test:dom` script does): neither `validatedRows` nor `increasingRuns` appears in the compiled `Mounting.js` or the unminified bundle.
 - Baseline: the `1f1f1df` figures of the item identity note. The protocol is unchanged, so `1f1f1df` was not re-measured. The function totals in the `1f1f1df` column of [Per-task attribution](#per-task-attribution) are recomputed from that note's raw CPU profiles with the script used for the new ones.
 
-Absolute times are not comparable across days on this machine; ratios between frameworks measured in the same processes are. Ratios below 1 mean Ranvier is faster.
+Absolute times are not comparable across days on this machine; ratios between frameworks measured in the same processes are. The absolute-time deltas against `1f1f1df` below are indicative only. Ratios below 1 mean Ranvier is faster.
 
 Raw data in [`framework-performance/investigation/list-region-passes/`](framework-performance/investigation/list-region-passes/):
 
@@ -57,7 +57,7 @@ Per-process medians, ms (Production, then Solid 2), with the `1f1f1df` productio
 - Two other runs of the same protocol each had one process with production remove10k at 4.50 and 5.22 ms, against about 3.1 ms in the others. They were discarded and are not reported here.
 - Solid 2's `swap1k` ran in its fast mode (0.11–0.14 ms) in all five processes, as at `1f1f1df` (0.10–0.14 ms). Against the fast mode, swap1k moved from 3.25–4.67× to 2.71–3.46×.
 - Solid 2's `remove1k` ran its fast mode (0.11–0.12 ms) in all five processes; at `1f1f1df` the fifth process ran its slow mode.
-- Heap snapshot diff ([`heap.json`](framework-performance/investigation/list-region-passes/heap.json), unminified, two processes): 1,179.9 bytes per row at 1,000 rows in both processes; 1,184.0 and 1,163.2 at 10,000 rows. Solid 2: 905.4 and 936.0, as before. The 8 bytes per row added at 1,000 rows match one array slot per row; the region now holds its own copy of the previous items.
+- Heap snapshot diff ([`heap.json`](framework-performance/investigation/list-region-passes/heap.json), unminified, two processes): 1,179.9 bytes per row at 1,000 rows in both processes; 1,184.0 and 1,163.2 at 10,000 rows. Solid 2: 905.4 and 936.0, as before. The 8 bytes per row added at 1,000 rows match two retained 1,000-slot arrays (4-byte compressed slots): the region's copy of the previous items and the previous pass's rows. In `heap.json` the `array (object elements)` count rose from 4,008 to 4,010.
 
 ## Steady-state loop
 
@@ -116,15 +116,15 @@ Total time per function, ms per operation (share of the operation), from [`profi
 
 ## Targets
 
-- **swap1k ≤ 3×: not met.** 3.040× at the median, 2.71–3.46× per process, with Solid 2 in its fast mode (0.11–0.14 ms) in every process. Production fell 0.46 → 0.355 ms. In the loop, 2.0–2.2×.
+- **swap1k ≤ 3×: not met.** 3.040× at the median, 2.71–3.46× per process, with Solid 2 in its fast mode (0.11–0.14 ms) in every process. The median lies within the run-to-run spread of the 3× target. Production fell 0.46 → 0.355 ms. In the loop, 2.0–2.2×.
 - **remove1k ≤ 3×: not met.** 3.286× at the median, 3.04–3.43× per process, with Solid 2 in its fast mode in every process. Production is 0.36 ms in both runs. In the loop, 2.1–2.5×.
-- **clear1k ≤ 2×: met.** 1.920× at the median, 1.65–2.00× per process. Production fell 1.18 → 1.115 ms.
+- **clear1k ≤ 2×: met.** 1.920× at the median, 1.65–2.00× per process; one process is at 2.00. Solid 2's clear1k rose from 0.540 to 0.575 ms, and against the `1f1f1df` Solid 2 median production's 1.115 ms would be 2.06×, so about half of the drop from 2.160× comes from Solid 2. The loop ratio of 1.4–1.5×, with Solid 2 unchanged at 0.265 ms, is the stronger evidence of the gain. Production fell 1.18 → 1.115 ms.
 
 ## What moved
 
 - **swap1k:** 4.333× → 3.040×; production 0.46 → 0.355 ms. In the loop, 0.19 → 0.09–0.10 ms.
 - **remove1k:** 3.333× → 3.286×; production 0.36 ms in both runs. In the loop, 0.100 → 0.075 ms.
-- **remove10k:** 4.844× → 4.674×; production 2.87 → 3.06 ms. In the loop, 0.99–1.14 → 0.645–0.685 ms.
+- **remove10k:** 4.844× → 4.674×; production 2.87 → 3.06 ms, with all five processes (3.02–3.10 ms) above the `1f1f1df` range of 2.84–2.95 ms. In the loop, 0.99–1.14 → 0.645–0.685 ms.
 - **clear1k:** 2.160× → 1.920×; production 1.18 → 1.115 ms. In the loop, 0.525–0.530 → 0.360–0.385 ms. clear10k 2.441× → 2.087×.
 - Under the timing protocol, remove1k and remove10k did not fall with the loop: after a CDP GC, remove1k is 0.33 ms against 0.075 ms in the loop, and remove10k 3.25 ms against 0.67 ms.
 - **Create, append, replace, create10k, update10th1k, armsSwitch1k, armsCreate1k, armsPayload1k:** each ratio within 0.06 of `1f1f1df`. armsClear1k moved 2.344× → 2.595× (2.37–2.70 per process, 2.29–2.44 at `1f1f1df`); it was not profiled.
@@ -139,6 +139,6 @@ Total time per function, ms per operation (share of the operation), from [`profi
 - Behaviour changes recorded by the region passes:
   - rows outside the changed window are not validated on each pass, so a foreign node inserted among them raises no error on a pass whose window excludes them;
   - an item keeps its key while it is in the list;
-  - removed rows leave the document at the end of a pass, after the pass's row cleanups have run;
+  - removed rows leave the document after the pass's projection and its row cleanups, before layout;
   - a node inserted inside the region by a cleanup during a clear is deleted with the region's rows, as in Solid.
 - Key functions must be pure, and `KeyedItems` has internal fields, as recorded by the item identity note.

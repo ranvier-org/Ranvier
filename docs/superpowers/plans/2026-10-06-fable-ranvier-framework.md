@@ -10,7 +10,7 @@
 
 **Spec:** [framework brief](../specs/2026-10-06-fable-ranvier-framework-brief.md). **Tradeoffs and risk IDs:** [variants and gotchas](../specs/2026-10-06-fable-ranvier-framework-variants-and-risks.md).
 
-Status (2026-10-15): the experimental Foundation renderer has owned ranges, components on owner lifetime with delegated listeners, keyed lists and keyed branches, component templates with dynamic structure (view holes, `matchWith`, `branch`, `each` and inlined children), the generated DOM catalogue (`Generated/Html.fs`, all 112 tags of `HTMLElementTagNameMap`) and the generated template catalogue (`Generated/HtmlTemplate.fs`), and production benchmarks against Solid 2 (2.0.0-rc.14), Ripple and React. The [checkpoint index](../../research/2026-10-11-view-poc-checkpoint.md) links each step. Keyed lists and arms run on core projections, memos and owners ([spec](../specs/2026-10-14-keyed-rows-on-core-design.md), [measurements](../../research/2026-10-14-keyed-rows-on-core.md)). Open: list performance (`swap1k` at 3.04x and `remove1k` at 3.29x Solid, against the <=3x targets, measured at `e447e21` on 2026-10-15; `clear1k` meets its <=2x target at 1.92x; see [Where we stand](#where-we-stand-2026-10-15)), structural boundaries, server HTML and hydration, and sugar; production integration, public API freeze and release budgets follow them. The core indexed-edges work (draft PR #54) is deferred. See the [baseline report](../../research/2026-10-08-fable-ranvier-baseline.md) for fresh results and known whole-solution/Fable-test failures. The user approved explicit typed functions subject to extreme performance and efficient Oxpecker-style or Feliz-style sugar; the [DSL design](../specs/2026-10-08-ranvier-view-dsl-design.md) records the proof requirements. File names below are proposed seams; verify existing symbols before choosing final names. API descriptions are design sketches, not compiler-validated signatures.
+Status (2026-10-15): the experimental Foundation renderer has owned ranges, components on owner lifetime with delegated listeners, keyed lists and keyed branches, component templates with dynamic structure (view holes, `matchWith`, `branch`, `each` and inlined children), the generated DOM catalogue (`Generated/Html.fs`, all 112 tags of `HTMLElementTagNameMap`) and the generated template catalogue (`Generated/HtmlTemplate.fs`), and production benchmarks against Solid 2 (2.0.0-rc.14), Ripple and React. The [checkpoint index](../../research/2026-10-11-view-poc-checkpoint.md) links each step. Keyed lists and arms run on core projections, memos and owners ([spec](../specs/2026-10-14-keyed-rows-on-core-design.md), [measurements](../../research/2026-10-14-keyed-rows-on-core.md)). Open: list performance (`swap1k` at 3.04x, within the run-to-run spread of its target, and `remove1k` at 3.29x Solid, against the <=3x targets, measured at `e447e21` on 2026-10-15; `clear1k` meets its <=2x target at 1.92x, part of which is Solid 2's shift; see [Where we stand](#where-we-stand-2026-10-15)), structural boundaries, server HTML and hydration, and sugar; production integration, public API freeze and release budgets follow them. The core indexed-edges work (draft PR #54) is deferred. See the [baseline report](../../research/2026-10-08-fable-ranvier-baseline.md) for fresh results and known whole-solution/Fable-test failures. The user approved explicit typed functions subject to extreme performance and efficient Oxpecker-style or Feliz-style sugar; the [DSL design](../specs/2026-10-08-ranvier-view-dsl-design.md) records the proof requirements. File names below are proposed seams; verify existing symbols before choosing final names. API descriptions are design sketches, not compiler-validated signatures.
 
 ## Where we stand (2026-10-15)
 
@@ -45,10 +45,10 @@ Keyed lists and arms, production rows against Solid 2 only, measured at `e447e21
 | armsPayload1k / armsClear1k | 0.55 / 2.60 (0.53 / 2.34) | — |
 | Retained heap per row | 1,180 / 905 B (snapshot); 1,405 / 1,050 B (`getHeapUsage`) | ≤ 1,300 B |
 
-- `swap1k`: production fell from 0.46 to 0.355 ms; Solid 2 ran its fast mode (0.11–0.14 ms) in all five processes, as at `1f1f1df`. Per process the ratio is 2.71–3.46 (3.25–4.67 at `1f1f1df`).
+- `swap1k`: production fell from 0.46 to 0.355 ms; Solid 2 ran its fast mode (0.11–0.14 ms) in all five processes, as at `1f1f1df`. Per process the ratio is 2.71–3.46 (3.25–4.67 at `1f1f1df`); the median is within the run-to-run spread of the 3x target.
 - `remove1k`: production is 0.36 ms in both runs; Solid 2 is 0.11 ms. In the steady-state loop remove1k fell from 0.100 to 0.075 ms (2.1–2.5x Solid 2), but after the timing protocol's forced GC it is 0.33 ms.
-- `clear1k`: production fell from 1.18 to 1.115 ms. One `textContent` write replaces the per-row native `remove` calls.
-- In the steady-state loop all three targets are met: swap1k 2.0–2.2x, remove1k 2.1–2.5x, clear1k 1.4–1.5x.
+- `clear1k`: production fell from 1.18 to 1.115 ms; Solid 2 rose from 0.540 to 0.575 ms, so against the `1f1f1df` Solid 2 median the ratio would be 2.06x, and the loop (1.4–1.5x, Solid 2 unchanged) is the stronger evidence. One `textContent` write replaces the per-row native `remove` calls.
+- In the steady-state loop the ratios are swap1k 2.0–2.2x, remove1k 2.1–2.5x and clear1k 1.4–1.5x, below the targets, which are defined on the timing protocol.
 
 The list benchmark has no Ripple adapter.
 
@@ -85,7 +85,7 @@ Recorded by the region passes:
 
 - Rows outside a pass's changed window are not validated on that pass, so a foreign node inserted among them raises no error on that pass (accepted).
 - An item keeps its key while it is in the list.
-- Removed rows leave the document at the end of a pass, after the pass's row cleanups have run.
+- Removed rows leave the document after the pass's projection and its row cleanups, before layout.
 - A node inserted inside the region by a cleanup during a clear is deleted with the region's rows, as in Solid.
 
 Smaller items recorded by the keyed-rows plan:
