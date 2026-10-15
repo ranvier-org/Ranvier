@@ -150,6 +150,13 @@ let private isDetached (node: Node) : bool = jsNative
 [<Emit("$0.nextSibling")>]
 let private nextOrNull (node: Node) : Node = jsNative
 
+[<Emit("$0.textContent = ''")>]
+let private clearChildren (parent: Node) : unit = jsNative
+
+/// <summary>Removes the siblings between <c>first</c> and <c>last</c> in one operation.</summary>
+[<Emit("(() => { const range = $0.ownerDocument.createRange(); range.setStartAfter($0); range.setEndBefore($1); range.deleteContents(); })()")>]
+let private deleteBetween (first: Node) (last: Node) : unit = jsNative
+
 /// <summary>Reads an element without a bounds check.</summary>
 [<Emit("$0[$1]")>]
 let private at (items: ResizeArray<'T>) (index: int) : 'T = jsNative
@@ -769,6 +776,19 @@ and [<Sealed; AllowNullLiteral>] private Row(first: Node, last: Node) =
                 remove (cursor :?> ChildNode)
                 cursor <- next
 
+    /// <summary>Removes the nodes between the markers, children of <c>parent</c>, and keeps both markers in place.</summary>
+    static member ClearBetween(parent: Node, regionStart: Node, regionEnd: Node) =
+        if
+            parent.firstChild
+            |> Option.exists (same regionStart)
+            && parent.lastChild |> Option.exists (same regionEnd)
+        then
+            clearChildren parent
+            parent.appendChild regionStart |> ignore
+            parent.appendChild regionEnd |> ignore
+        else
+            deleteBetween regionStart regionEnd
+
     /// <summary>Raises unless the markers share <c>parent</c> and the laid-out rows sit between them in order.</summary>
     static member Validate(regionStart: Node, regionEnd: Node, laidOut: ResizeArray<Row>, parent: Node) =
         Row.ValidateWindow (regionStart, regionEnd, laidOut, parent, 0, laidOut.Count - 1)
@@ -1019,6 +1039,8 @@ and private RowBuilder(state: MountState) =
 and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, report: exn list -> unit, releaseNodes: Row -> unit) =
     let laidOut = ResizeArray<Row>()
     let errors = RegionErrors report
+    // Template rows released while `Deferring` is set, with their nodes still in place.
+    let pending = ResizeArray<Row>()
     let mutable owner: Owner = Unchecked.defaultof<_>
     let mutable builder: RowBuilder = Unchecked.defaultof<_>
 
@@ -1057,13 +1079,77 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
     member this.Validate() =
         Row.Validate (regionStart, regionEnd, laidOut, this.Parent ())
 
-    /// <summary>Marks an authored row removed, and releases the nodes of a template row through the mount.</summary>
-    member _.ReleaseRow(row: Row) =
+    /// <summary>Whether <c>ReleaseRow</c> holds released template rows for <c>FlushReleased</c> while the mount is live.</summary>
+    member val Deferring = false with get, set
+
+    /// <summary>
+    /// Marks an authored row removed. Holds a template row for <c>FlushReleased</c> while <c>Deferring</c> is set and the
+    /// mount is live, and otherwise releases its nodes through the mount.
+    /// </summary>
+    member this.ReleaseRow(row: Row) =
         if not (isNull row) then
             if not (isNull (box row.Mount)) then
                 row.Removed <- true
+            elif this.Deferring && not state.Root.IsDisposed then
+                pending.Add row
             else
                 releaseNodes row
+
+    /// <summary>Whether the held rows are exactly the region's laid-out rows that are not removed.</summary>
+    member _.ReleasedAll() =
+        let mutable live = 0
+
+        for index in 0 .. laidOut.Count - 1 do
+            if not laidOut[index].Removed then
+                live <- live + 1
+
+        let mutable all = live = pending.Count
+        let mutable index = 0
+
+        while all && index < pending.Count do
+            let row = pending[index]
+
+            all <-
+                row.Index >= 0
+                && row.Index < laidOut.Count
+                && same laidOut[row.Index] row
+
+            index <- index + 1
+
+        all
+
+    /// <summary>
+    /// Releases the held rows. When <c>cleared</c> and the markers share a parent, removes the region's contents in one
+    /// operation and marks the rows removed; otherwise releases each row's nodes through the mount, in release order.
+    /// </summary>
+    member _.FlushReleased(cleared: bool) =
+        if pending.Count > 0 then
+            let rows = pending.ToArray ()
+            pending.Clear ()
+
+            let parent =
+                match regionStart.parentNode with
+                | Some parent when isChildOf regionEnd parent -> parent
+                | _ -> Unchecked.defaultof<_>
+
+            if cleared && not (isNull (box parent)) then
+                Row.ClearBetween (parent, regionStart, regionEnd)
+
+                for index in 0 .. rows.Length - 1 do
+                    rows[index].Removed <- true
+            else
+                let errors = ResizeArray<exn>()
+
+                for index in 0 .. rows.Length - 1 do
+                    try
+                        releaseNodes rows[index]
+                    with error ->
+                        errors.Add error
+
+                if errors.Count = 1 then
+                    raise errors[0]
+                elif errors.Count > 1 then
+                    raise (AggregateException ("Row release failed", errors))
 
     /// <summary>
     /// Runs <c>body</c> in a new root owner of the region, then raises the setup failure recorded during that first pass.
@@ -1744,7 +1830,21 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                             else
                                 Row.Validate (regionStart, regionEnd, site.LaidOut, parent.Value)
                             // Runs the pass inside the window: its row setup, rollback and retirement errors are reported with this update.
-                            keys.Value <- Api.untrack (fun () -> projection.Keys)
+                            // Rows retired by the pass keep their nodes until the flush.
+                            site.Deferring <- true
+
+                            try
+                                try
+                                    keys.Value <- Api.untrack (fun () -> projection.Keys)
+                                finally
+                                    site.Deferring <- false
+                            finally
+                                site.FlushReleased (
+                                    not (isNull keys.Value)
+                                    && keys.Value.Length = 0
+                                    && site.Live ()
+                                    && site.ReleasedAll ()
+                                )
                     )
 
                 site.Settle (

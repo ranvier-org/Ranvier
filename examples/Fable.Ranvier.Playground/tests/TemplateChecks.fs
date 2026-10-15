@@ -2713,9 +2713,276 @@ let private focusSurvivesOtherMoves () =
     host.remove ()
     equal (true, "1,3") (focused, selection)
 
+[<Emit("(() => { const w = document.defaultView; const protos = [w.Element.prototype, w.CharacterData.prototype]; const olds = protos.map(p => p.remove); let count = 0; protos.forEach((p, i) => { p.remove = function () { count++; return olds[i].call(this); }; }); return () => { protos.forEach((p, i) => { p.remove = olds[i]; }); return count; }; })()")>]
+let private countRemoves () : unit -> int = jsNative
+
+[<Emit("Array.from($0.childNodes)")>]
+let private childrenOf (node: Node) : obj array = jsNative
+
+let private clearsWithoutRemoves () =
+    use graph = new Graph ()
+    listedLog.Clear ()
+    let items = graph.Run (fun () -> Api.createSignal (listedItems 1000))
+    let host = host ()
+    let mounted = mount graph host (Component.render listed items)
+    let list = host.querySelector "ul" |> unbox<HTMLElement>
+    let before = childrenOf list
+    let removes = countRemoves ()
+    graph.Run (fun () -> items.Value <- [||])
+    let removed = removes ()
+    let after = childrenOf list
+
+    equal
+        (0, 2, true, 1000)
+        (removed,
+         after.Length,
+         obj.ReferenceEquals (after[0], before[0])
+         && obj.ReferenceEquals (after[1], before[before.Length - 1]),
+         listedLog
+         |> Seq.filter (fun line -> line.StartsWith "cleanup")
+         |> Seq.length)
+
+    graph.Run (fun () -> items.Value <- listedItems 3)
+    equal "0,1,2," host.textContent
+    mounted.Dispose ()
+
+let private bordered =
+    Component.define (fun _ (items: Signal<Listed array>) -> items) (fun t ->
+        t.element
+            (HtmlTag "ul")
+            [||]
+            [|
+                t.element (HtmlTag "p") [||] [| t.text "before" |]
+                t.each (fun (item: Listed) -> item.Id) (fun items -> items.Value) listedRow
+                t.element (HtmlTag "p") [||] [| t.text "after" |]
+            |])
+
+let private clearsBetweenSiblings () =
+    use graph = new Graph ()
+    let items = graph.Run (fun () -> Api.createSignal (listedItems 50))
+    let rooted = graph.Run (fun () -> Api.createSignal (listedItems 50))
+    let host, other = host (), host ()
+    other.innerHTML <- "<p>outside</p>"
+    let a = mount graph host (Component.render bordered items)
+    let b = mount graph other (Component.render rootListed rooted)
+    let removes = countRemoves ()
+
+    graph.Run (fun () ->
+        items.Value <- [||]
+        rooted.Value <- [||])
+
+    let removed = removes ()
+    let list = host.querySelector "ul" |> unbox<HTMLElement>
+
+    equal
+        (0, 4., "beforeafter", 5., "outside", 0.)
+        (removed, list.childNodes.length, list.textContent, other.childNodes.length, other.textContent, (other.querySelectorAll "li").length)
+
+    graph.Run (fun () ->
+        items.Value <- listedItems 2
+        rooted.Value <- listedItems 2)
+
+    equal ("before0,1,after", "outside0,1,") (host.textContent, other.textContent)
+    a.Dispose ()
+    b.Dispose ()
+    equal (0., "<p>outside</p>") (host.childNodes.length, other.innerHTML)
+
+let private loggedGroupRow =
+    Component.define
+        (fun setup (item: unit -> Grouped) ->
+            let group = (item ()).Group
+            setup.OnCleanup (fun () -> listedLog.Add ("group cleanup " + string group))
+            item)
+        (fun t ->
+            t.element
+                (HtmlTag "li")
+                [||]
+                [|
+                    t.text (fun item -> string (item ()).Group + ":")
+                    t.each (fun (member': Listed) -> member'.Id) (fun item -> (item ()).Members) listedRow
+                |])
+
+let private keyedClearKeepsOrder () =
+    use graph = new Graph ()
+    listedLog.Clear ()
+
+    let groups =
+        [|
+            for group in 1..3 ->
+                {
+                    Group = group
+                    Members = [| for id in 1..2 -> { Id = group * 10 + id; Text = "" } |]
+                }
+        |]
+
+    let items = graph.Run (fun () -> Api.createSignal groups)
+    let host = host ()
+
+    let mounted =
+        mount graph host (Keyed.array Program.ops (fun (group: Grouped) -> group.Group) (fun () -> items.Value) (Component.render loggedGroupRow))
+
+    listedLog.Clear ()
+    graph.Run (fun () -> items.Value <- [||])
+
+    equal
+        ([
+            "cleanup 12"
+            "cleanup 11"
+            "group cleanup 1"
+            "cleanup 22"
+            "cleanup 21"
+            "group cleanup 2"
+            "cleanup 32"
+            "cleanup 31"
+            "group cleanup 3"
+         ],
+         0.,
+         4.)
+        (List.ofSeq listedLog, (host.querySelectorAll "li").length, host.childNodes.length)
+
+    graph.Run (fun () -> items.Value <- groups[0..0])
+    equal "1:" host.textContent
+    mounted.Dispose ()
+    equal 0. host.childNodes.length
+
+let private cleanupsSeeConnectedRows () =
+    use graph = new Graph ()
+    let host = host ()
+    let nodes = System.Collections.Generic.Dictionary<int, HTMLElement>()
+    let seen = ResizeArray<string>()
+
+    let watching =
+        Component.define
+            (fun setup (item: unit -> Listed) ->
+                let id = (item ()).Id
+                setup.OnCleanup (fun () -> seen.Add (string id + ":" + string nodes[id].isConnected))
+                item)
+            (fun t -> t.element (HtmlTag "li") [||] [| t.text (fun item -> string (item ()).Id) |])
+
+    let watched =
+        Component.define (fun _ (items: Signal<Listed array>) -> items) (fun t ->
+            t.element (HtmlTag "ul") [||] [| t.each (fun (item: Listed) -> item.Id) (fun items -> items.Value) watching |])
+
+    let record () =
+        let rendered = host.querySelectorAll "li"
+
+        for index in 0 .. int rendered.length - 1 do
+            let node = rendered.item (float index) |> unbox<HTMLElement>
+            nodes[int node.textContent] <- node
+
+    globalThis.document.body.appendChild host
+    |> ignore
+
+    let items = graph.Run (fun () -> Api.createSignal (listedItems 4))
+    let mounted = mount graph host (Component.render watched items)
+    record ()
+    graph.Run (fun () -> items.Value <- Array.removeAt 1 items.Value)
+    graph.Run (fun () -> items.Value <- [||])
+    graph.Run (fun () -> items.Value <- listedItems 2)
+    record ()
+    mounted.Dispose ()
+    host.remove ()
+
+    equal
+        (6, true)
+        (seen.Count,
+         seen
+         |> Seq.forall (fun line -> line.EndsWith ":true"))
+
+let private failingClearLeavesNoRows () =
+    use graph = new Graph ()
+    let host = host ()
+
+    let throwing =
+        Component.define
+            (fun setup (item: unit -> Listed) ->
+                let id = (item ()).Id
+
+                setup.OnCleanup (fun () ->
+                    if id = 1 then
+                        failwith "row cleanup")
+
+                item)
+            (fun t -> t.element (HtmlTag "li") [||] [| t.text (fun item -> (item ()).Text) |])
+
+    let list =
+        Component.define (fun _ (items: Signal<Listed array>) -> items) (fun t ->
+            t.element (HtmlTag "ul") [||] [| t.each (fun (item: Listed) -> item.Id) (fun items -> items.Value) throwing |])
+
+    globalThis.document.body.appendChild host
+    |> ignore
+
+    let items = graph.Run (fun () -> Api.createSignal (listedItems 3))
+    let mounted, reports = reported graph host (Component.render list items)
+    graph.Run (fun () -> items.Value <- [||])
+    let rows = (globalThis.document.querySelectorAll "li").length
+    let list = host.querySelector "ul" |> unbox<HTMLElement>
+
+    equal
+        (0., 2., [ [ "row cleanup" ] ])
+        (rows,
+         list.childNodes.length,
+         reports
+         |> Seq.map (List.map _.Message)
+         |> List.ofSeq)
+
+    mounted.Dispose ()
+    host.remove ()
+
+let private failedInsertionLeavesStagingEmpty () =
+    use graph = new Graph ()
+
+    let failing =
+        Component.define
+            (fun _ (item: unit -> Listed) ->
+                if (item ()).Id = 3 then
+                    failwith "row setup"
+
+                item)
+            (fun t -> t.element (HtmlTag "li") [||] [| t.text (fun item -> (item ()).Text) |])
+
+    let list =
+        Component.define (fun _ (items: Signal<Listed array>) -> items) (fun t ->
+            t.element (HtmlTag "ul") [||] [| t.each (fun (item: Listed) -> item.Id) (fun items -> items.Value) failing |])
+
+    let items = graph.Run (fun () -> Api.createSignal (listedItems 2))
+    let host = host ()
+    let mounted, reports = reported graph host (Component.render list items)
+    graph.Run (fun () -> items.Value <- listedItems 4)
+    let removes = countRemoves ()
+    graph.Run (fun () -> items.Value <- [||])
+    let removed = removes ()
+    let ul = host.querySelector "ul" |> unbox<HTMLElement>
+    let inserts = countInserts ul
+    graph.Run (fun () -> items.Value <- [| { Id = 4; Text = "4," }; { Id = 5; Text = "5," } |])
+    equal (0, 1, "4,5,", 1) (removed, inserts (), host.textContent, reports.Count)
+    mounted.Dispose ()
+
+let private retiredRowLosesNestedRows () =
+    use graph = new Graph ()
+
+    let items =
+        graph.Run (fun () ->
+            Api.createSignal
+                [|
+                    for group in 1..2 ->
+                        {
+                            Group = group
+                            Members = [| for id in 1..3 -> { Id = group * 10 + id; Text = "" } |]
+                        }
+                |])
+
+    let host = host ()
+    let mounted = mount graph host (Component.render grouped items)
+    let first = host.querySelector "li" |> unbox<HTMLElement>
+    graph.Run (fun () -> items.Value <- items.Value[1..])
+    equal (true, 0., 3.) (first.parentNode.IsNone, (first.querySelectorAll "li").length, (host.querySelectorAll "li li").length)
+    mounted.Dispose ()
+
 let browserCases: (string * (unit -> unit)) array =
     [|
         "focus and selection inside a row survive moving another row", focusSurvivesOtherMoves
+        "clearing a list between foreign siblings removes only the list's nodes", clearsBetweenSiblings
     |]
 
 let private eachEmpty () =
@@ -3327,6 +3594,13 @@ let cases =
         "a row cleanup disposing the mount leaves no row nodes at the mount's top level", fun () -> disposalAfterCleanupFailure "root"
         "a row cleanup disposing the mount leaves no row nodes in an adopted element", fun () -> disposalAfterCleanupFailure "adopted"
         "an adopted element holding a list keeps no row nodes after its mount is disposed", adoptedElementLosesRows
+        "clearing 1,000 each rows removes no row node by itself and keeps the region's markers", clearsWithoutRemoves
+        "clearing a list between foreign siblings removes only the list's nodes", clearsBetweenSiblings
+        "clearing Keyed.array rows holding nested lists keeps their cleanup order", keyedClearKeepsOrder
+        "row cleanups see their row connected on remove, clear and mount disposal", cleanupsSeeConnectedRows
+        "a clear whose row cleanup throws reports it and leaves no row nodes", failingClearLeavesNoRows
+        "a clear and an insertion after a failed row setup each take one operation", failedInsertionLeavesStagingEmpty
+        "a retired row holding a nested list keeps none of the nested rows", retiredRowLosesNestedRows
         "an empty each region keeps its markers, fills and empties", eachEmpty
         "each renders the same DOM as its default expansion across insert, remove, reorder and an item change", eachTwin
         "root-level each regions beside other roots update, reorder, move and dispose", rootRegions
