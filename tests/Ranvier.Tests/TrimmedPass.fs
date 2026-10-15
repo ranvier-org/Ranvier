@@ -47,6 +47,105 @@ let private duplicateAfter (edit: Item[] -> Item[]) =
     Expect.stringContains proj.Error.Message "twice in one pass" "the duplicate-key failure"
     Expect.isEmpty disposed "the failed pass retired no row"
 
+/// <summary>An item compared by reference under every equality policy.</summary>
+type private Box(id: int, value: int) =
+    member _.Id = id
+    member _.Value = value
+
+/// <summary>
+/// A createProjectionWith over boxes with Ids 1..<c>n</c>, recording factory runs and cleanups. <c>write generation
+/// ids</c> publishes a new box for every Id, whose row reads <c>generation * 10000 + id</c>.
+/// </summary>
+let private boxed (n: int) =
+    let boxes (generation: int) (ids: int[]) =
+        ids
+        |> Array.map (fun id -> Box (id, generation * 10000 + id))
+
+    let ids = Array.init n (fun i -> i + 1)
+    let items = createSignal (boxes 0 ids)
+    let created = ResizeArray<int>()
+    let disposed = ResizeArray<int>()
+
+    let proj =
+        createProjectionWith
+            (fun (item: Box) -> item.Id)
+            (fun item ->
+                let id = (item ()).Id
+                created.Add id
+                onCleanup (fun () -> disposed.Add id)
+                fun () -> (item ()).Value)
+            (fun () -> items.Value :> seq<_>)
+
+    createEffect (fun () ->
+        try
+            for key in proj.Keys do
+                proj.Get key |> ignore
+        with _ ->
+            ())
+
+    let write (generation: int) (next: int[]) =
+        items.Value <- boxes generation next
+
+    ids, write, created, disposed, proj
+
+/// <summary>
+/// Writes new boxes at the Ids <c>edit</c> returns over 1,000 boxes, then new boxes at the same Ids again. After each
+/// write, the keys are the written Ids, only added keys create rows, only removed keys dispose rows, and every row reads
+/// its new box.
+/// </summary>
+let private freshAfter (edit: int[] -> int[]) =
+    use g = new Graph ()
+    use _ = g.Activate ()
+    let ids, write, created, disposed, proj = boxed 1000
+    let next = edit ids
+
+    for generation, before in [ 1, ids; 2, next ] do
+        created.Clear ()
+        disposed.Clear ()
+        write generation next
+        let kept = set before
+        let now = set next
+        Expect.sequenceEqual proj.Keys next $"write {generation}: the keys"
+
+        Expect.sequenceEqual
+            (Seq.sort created)
+            (next
+             |> Array.filter (kept.Contains >> not)
+             |> Array.sort)
+            $"write {generation}: rows are created for added keys alone"
+
+        Expect.sequenceEqual
+            (Seq.sort disposed)
+            (before
+             |> Array.filter (now.Contains >> not)
+             |> Array.sort)
+            $"write {generation}: rows are disposed for removed keys alone"
+
+        for key in next do
+            Expect.equal (proj.Get key) (generation * 10000 + key) $"write {generation}: row {key} reads its new box"
+
+/// <summary>
+/// Writes new boxes at the Ids <c>edit</c> returns, which repeat a key, over 10 boxes; then new boxes at the original
+/// Ids.
+/// </summary>
+let private freshDuplicate (edit: int[] -> int[]) =
+    use g = new Graph ()
+    use _ = g.Activate ()
+    let ids, write, created, disposed, proj = boxed 10
+    created.Clear ()
+    write 1 (edit ids)
+    Expect.throwsT<InvalidOperationException> (fun () -> proj.Keys |> ignore) "the pass fails"
+    Expect.stringContains proj.Error.Message "twice in one pass" "the duplicate-key failure"
+    Expect.isEmpty disposed "the failed pass retired no row"
+    Expect.isEmpty created "the failed pass created no row"
+    write 2 ids
+    Expect.sequenceEqual proj.Keys ids "the original keys"
+    Expect.isEmpty created "every row survived the failed pass"
+    Expect.isEmpty disposed "no row was retired"
+
+    for key in ids do
+        Expect.equal (proj.Get key) (20000 + key) $"row {key} reads its new box"
+
 /// <summary>
 /// A seeded pseudo-random sequence (MINSTD). Produces identical sequences on .NET and Fable. <c>seed</c> must be
 /// positive.
@@ -764,6 +863,26 @@ let tests =
                 Expect.equal proj.Keys[10] 90 "swapped"
                 Expect.equal calls.Value 2 "two changed positions"
             }
+
+            test "new items prepended with one new key keep every other row" { freshAfter (Array.insertAt 0 5000) }
+
+            test "new items with the middle key removed keep every other row" { freshAfter (Array.removeAt 500) }
+
+            test "new items with the second and second-to-last keys swapped keep every row" {
+                freshAfter (fun ids ->
+                    let swapped = Array.copy ids
+                    swapped[1] <- ids[ids.Length - 2]
+                    swapped[ids.Length - 2] <- ids[1]
+                    swapped)
+            }
+
+            test "new items in reverse order keep every row" { freshAfter Array.rev }
+
+            test "an empty list of new items disposes every row" { freshAfter (fun _ -> [||]) }
+
+            test "new items of equal length repeating a key fail the pass" { freshDuplicate (Array.updateAt 5 1) }
+
+            test "new items of a new length repeating a key fail the pass" { freshDuplicate (Array.insertAt 4 2) }
 
             test "a changed key equal to a prefix key fails the pass" { duplicateAfter (Array.updateAt 5 { Id = 1; Text = "dup" }) }
 
