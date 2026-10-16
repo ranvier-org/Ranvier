@@ -29,4 +29,13 @@ async function resolve({ github, repo, provenance }) {
   return run.head_sha;
 }
 
-module.exports = { hasProvenance, resolve };
+async function shouldDeploy({ github, repo, eventName, measured }) {
+  if (eventName === 'workflow_dispatch') return true;
+  assert.equal(eventName, 'workflow_run');
+  assert.match(measured, /^[0-9a-f]{40}$/);
+  assert.equal(measured.length, 40);
+  const { data } = await github.rest.git.getRef({ ...repo, ref: 'heads/master' });
+  return data.object.sha === measured;
+}
+
+module.exports = { hasProvenance, resolve, shouldDeploy };

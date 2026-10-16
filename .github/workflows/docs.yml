@@ -84,14 +84,29 @@ jobs:
           path: docs/output
 
   deploy:
-    needs: build
+    needs: [resolve, build]
     runs-on: ubuntu-latest
     concurrency:
       group: pages
-      cancel-in-progress: true
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: master
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+      - id: current
+        uses: actions/github-script@v8
+        env:
+          MEASURED: ${{ needs.resolve.outputs.ref }}
+        with:
+          script: |
+            const {shouldDeploy} = require('./.github/scripts/docs-perf.cjs');
+            core.setOutput('deploy', await shouldDeploy({github, repo: context.repo,
+              eventName: context.eventName, measured: process.env.MEASURED}));
       - id: deployment
+        if: steps.current.outputs.deploy == 'true'
         uses: actions/deploy-pages@v5

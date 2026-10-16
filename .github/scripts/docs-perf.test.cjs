@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { hasProvenance, resolve } = require('./docs-perf.cjs');
+const { hasProvenance, resolve, shouldDeploy } = require('./docs-perf.cjs');
 
 const repo = { owner: 'owner', repo: 'ranvier' };
 const repository = { full_name: 'owner/ranvier' };
@@ -59,4 +59,36 @@ test('reject PRs, other branches, repositories, workflows, pending runs and mism
     { repository: { full_name: 'attacker/fork' } }, { head_repository: { full_name: 'attacker/fork' } }]) {
     await assert.rejects(resolve({ github: mock({ ...perf, ...override }), repo, provenance }));
   }
+});
+
+test('a slow older build cannot replace the newer automatic deployment', async () => {
+  const newer = 'b'.repeat(40);
+  let calls = 0;
+  const github = { rest: { git: { getRef: async options => {
+    calls++;
+    assert.deepEqual(options, { ...repo, ref: 'heads/master' });
+    return { data: { object: { sha: newer } } };
+  } } } };
+  const deployed = [];
+  for (const measured of [newer, head]) {
+    if (await shouldDeploy({ github, repo, eventName: 'workflow_run', measured })) deployed.push(measured);
+  }
+  assert.deepEqual(deployed, [newer]);
+  assert.equal(calls, 2);
+});
+
+test('manual dispatch intentionally deploys its selected SHA without checking master', async () => {
+  assert.equal(await shouldDeploy({ github: {}, repo, eventName: 'workflow_dispatch', measured: head }), true);
+});
+
+test('deployment is serialized without cancellation and checks freshness immediately before publication', () => {
+  const fs = require('node:fs');
+  const workflow = fs.readFileSync(require('node:path').join(__dirname, '../workflows/docs.yml'), 'utf8');
+  const deploy = workflow.slice(workflow.indexOf('\n  deploy:'));
+  assert.match(deploy, /needs: \[resolve, build\]/);
+  assert.match(deploy, /concurrency:\s+group: pages\s+cancel-in-progress: false/);
+  assert.match(deploy, /MEASURED: \$\{\{ needs\.resolve\.outputs\.ref \}\}/);
+  assert.match(deploy, /shouldDeploy\(\{github, repo: context\.repo,\s+eventName: context\.eventName, measured: process\.env\.MEASURED\}\)/);
+  assert.match(deploy, /- id: deployment\s+if: steps\.current\.outputs\.deploy == 'true'\s+uses: actions\/deploy-pages@v5/);
+  assert.equal(deploy.slice(deploy.indexOf('- id: current'), deploy.indexOf('- id: deployment')).includes('\n      - ', 1), false);
 });
