@@ -51,12 +51,26 @@ let attributes (config: uint64) : byte[] =
     let bytes = Array.zeroCreate<byte> 112
     BitConverter.GetBytes(112u).CopyTo(bytes, 4)
     BitConverter.GetBytes(config).CopyTo(bytes, 8)
+    BitConverter.GetBytes(3UL).CopyTo(bytes, 32)
     BitConverter.GetBytes(0x61UL).CopyTo(bytes, 40)
     bytes
 
 /// <summary>Parses CPU nanoseconds from the first whitespace-separated schedstat field.</summary>
 let parseSchedstat (text: string) =
     Int64.Parse (text.Split((null: char[]), StringSplitOptions.RemoveEmptyEntries).[0], CultureInfo.InvariantCulture)
+
+/// <summary>Returns the raw count for positive, equal enabled/running deltas; incomplete regions return -1.</summary>
+let internal regionCount (value: int64) (enabledStart: uint64) (runningStart: uint64) (enabledEnd: uint64) (runningEnd: uint64) =
+    if
+        value < 0L
+        || enabledEnd <= enabledStart
+        || runningEnd <= runningStart
+        || enabledEnd - enabledStart
+           <> runningEnd - runningStart
+    then
+        -1L
+    else
+        value
 
 /// <summary>Returns the calling Linux thread's native ID.</summary>
 let currentThreadId () =
@@ -79,6 +93,8 @@ type ThreadCounters private (pid: int, tid: int, opened: int[]) =
     let mutable disposed = false
     let mutable running = false
     let mutable cpuStart = 0L
+    let timingStart = Array.zeroCreate<uint64 * uint64> 3
+    let buffer = Array.zeroCreate<byte> 24
 
     let release () =
         for fd in fds do
@@ -99,6 +115,12 @@ type ThreadCounters private (pid: int, tid: int, opened: int[]) =
 
         if not succeeded then
             release ()
+
+    let readCounter fd =
+        if Native.read (fd, buffer, 24un) = 24n then
+            Some (BitConverter.ToInt64 (buffer, 0), BitConverter.ToUInt64 (buffer, 8), BitConverter.ToUInt64 (buffer, 16))
+        else
+            None
 
     /// <summary>Opens counters for positive process and thread IDs; unavailable hardware falls back to CPU time.</summary>
     static member Open(pid: int, tid: int) =
@@ -139,10 +161,20 @@ type ThreadCounters private (pid: int, tid: int, opened: int[]) =
 
         cpuStart <- parseSchedstat (File.ReadAllText schedstat)
         command 0x2403un
+        let mutable valid = true
+
+        for index in 0 .. fds.Length - 1 do
+            match readCounter fds[index] with
+            | Some (_, enabled, running) -> timingStart[index] <- enabled, running
+            | None -> valid <- false
+
+        if not valid then
+            release ()
+
         command 0x2400un
         running <- true
 
-    /// <summary>Stops the active region; failed hardware reads produce -1 for all hardware measurements.</summary>
+    /// <summary>Stops the region; failed reads or partial PMU runtime produce -1 for all hardware measurements.</summary>
     member _.Stop() : Counts =
         ensureAlive ()
 
@@ -155,17 +187,17 @@ type ThreadCounters private (pid: int, tid: int, opened: int[]) =
         let values = Array.create 3 -1L
 
         if fds.Length = 3 then
-            let buffer = Array.zeroCreate<byte> 8
             let mutable valid = true
 
             for index in 0..2 do
-                if Native.read (fds[index], buffer, 8un) = 8n then
-                    values[index] <- BitConverter.ToInt64 (buffer, 0)
+                match readCounter fds[index] with
+                | Some (value, enabled, running) ->
+                    let enabledStart, runningStart = timingStart[index]
+                    values[index] <- regionCount value enabledStart runningStart enabled running
 
                     if values[index] < 0L then
                         valid <- false
-                else
-                    valid <- false
+                | None -> valid <- false
 
             if not valid then
                 release ()
