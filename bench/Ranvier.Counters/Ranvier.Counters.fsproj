@@ -21,6 +21,7 @@
     <ItemGroup>
         <Compile Include="Model.fs" />
         <Compile Include="Markers.fs" />
+        <Compile Include="LinuxPmc.fs" />
         <Compile Include="Workloads.fs" />
         <Compile Include="Scenarios.fs" />
         <Compile Include="Reconcile.fs" />
