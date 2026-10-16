@@ -5,6 +5,14 @@ order: 6
 
 > **Preview** — Ranvier is pre-release; its APIs may change.
 
+## CI instruction counts
+The chart compares retired instructions per operation across engines for the latest CI measurement.
+Choose a runtime or recorded commit, filter scenarios by name, and toggle libraries in the legend.
+
+<div class="rv-perf" data-perf-compare data-perf-group="project-,keyed-"><p role="status">Loading recorded measurements…</p></div>
+<link rel="stylesheet" href="/Ranvier/benchmarks/perf-charts.css">
+<script src="/Ranvier/benchmarks/perf-charts.js"></script>
+
 Projections keep keyed, per-row reactive state over a collection source. Selectors (`Lookup`) track, per key, whether that key matches a source value. See [Benchmarks](index.md) for configuration, environment and caveats.
 
 ## Keyed-pass follow-ups
@@ -93,12 +101,3 @@ Recorded 2026-09-28. Source: `Ranvier.Benchmarks.Projections.LookupBenchmarks` a
 | RemountKey     | 101.88 ns | 1.721 ns | 1.525 ns |  9,815,568.7 | 0.0257 |     432 B |
 | ReadAheadOfGet |  54.37 ns | 0.434 ns | 0.406 ns | 18,392,960.7 | 0.0014 |      24 B |
 | UntrackedGet   |  21.15 ns | 0.170 ns | 0.159 ns | 47,272,722.8 | 0.0014 |      24 B |
-
-## CI instruction counts
-
-The chart compares retired instructions per operation across engines for the latest CI measurement.
-Choose a runtime and scenario to explore the data.
-
-<div class="rv-perf" data-perf-compare data-perf-group="project-,keyed-"><p role="status">Loading recorded measurements…</p></div>
-<link rel="stylesheet" href="/Ranvier/benchmarks/perf-charts.css">
-<script src="/Ranvier/benchmarks/perf-charts.js"></script>
