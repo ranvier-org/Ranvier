@@ -75,9 +75,9 @@
       const valid = row.Value >= 0;
       const value = !valid ? 'unavailable' : relativeAvailable ? `${ratio(row.Value / baseline)}×` : number(row.Value);
       group.append(svgElement('text', { x: 0, y, class: 'rv-perf-svg-label' }, row.Engine));
-      group.append(svgElement('text', { x: 630, y, 'text-anchor': 'end', class: 'rv-perf-svg-value' }, value));
-      group.append(svgElement('line', { x1: 0, x2: 630, y1: y + 22, y2: y + 22, class: 'rv-perf-track' }));
-      if (valid) group.append(svgElement('rect', { x: 0, y: y + 15, width: Math.max(row.Value === 0 ? 0 : 1.5, row.Value / max * 630), height: 14, rx: 2, fill: colour(row.Engine) }));
+      group.append(svgElement('text', { x: 640, y, 'text-anchor': 'end', class: 'rv-perf-svg-value' }, value));
+      group.append(svgElement('line', { x1: 0, x2: 640, y1: y + 22, y2: y + 22, class: 'rv-perf-track' }));
+      if (valid) group.append(svgElement('rect', { x: 0, y: y + 15, width: Math.max(row.Value === 0 ? 0 : 1.5, row.Value / max * 640), height: 14, rx: 2, fill: colour(row.Engine) }));
       group.append(svgElement('rect', { x: 0, y: y - 12, width: 640, height: 48, fill: 'transparent' }));
       inspectable(group, `${scenario} · ${row.Engine}: ${valid ? `${number(row.Value)} instructions/op` : 'measurement unavailable'}${relativeAvailable && valid ? ` · ${ratio(row.Value / baseline)}× Ranvier` : ''}`, output);
       svg.append(group);
@@ -162,7 +162,7 @@
 
   function renderTrend(body, commits, runtime, scenario, engines, relative, detail, selected, onSelect) {
     const svg = makeSvg(`${scenario}: instruction history. Select a commit to inspect its library comparison.`, 300);
-    const left = 62, right = 500, top = 25, bottom = 240;
+    const left = 62, right = 608, top = 25, bottom = 240;
     const x = index => commits.length === 1 ? (left + right) / 2 : left + index / (commits.length - 1) * (right - left);
     const valueFor = (commit, engine) => {
       const rows = measurements(commit, runtime).filter(row => row.Scenario === scenario);
