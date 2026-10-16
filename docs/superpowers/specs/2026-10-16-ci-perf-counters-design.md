@@ -110,7 +110,7 @@ The bench tool and its scripts stay where they are. The Python driver of the pro
 - **`ab` subcommand (new).** Takes the base and head build folders (each with its compiled Fable harness and .NET worker) and writes one JSON of process figures for both commits in the round order above. The head's tool drives both commits.
 - **`compare` subcommand (new).** Applies [Verdict](#verdict) and [Accepting a regression](#accepting-a-regression) to the `ab` output, writes `verdict.json` and the Markdown comment, and exits 1 on a regression that is not accepted. Takes `--accept <names|all>`, `--accept-reason`, `--threshold`, `--floor`.
 - **`timeline` subcommand (new).** Rebuilds `timeline.md` from `runs/*.json`.
-- **`build.fsx` drives the CI steps.** New Partas.Build commands `perf-build <ref> <dir>` (worktree, Fable build, .NET worker build), `perf-ab`, `perf-compare` (collects the label and the trailers and calls `compare`) and `perf-record` (writes `runs/<sha>.json` and calls `timeline`). The workflows call `dotnet fsi build.fsx -- <command>`. In GitHub Actions the commands write the step summary and annotations through Partas.Build where the pinned version supports it, and otherwise write `GITHUB_STEP_SUMMARY` and `::warning::` lines themselves.
+- **`build.fsx` drives the CI steps.** New Partas.Build commands `perf-build <ref> <dir>` (worktree, Fable build, .NET worker build), `perf-ab`, `perf-compare` (collects the label and the trailers and calls `compare`) and `perf-record` (writes `runs/<sha>.json` and calls `timeline`). The workflows call `dotnet fsi build.fsx -- <command>`. In GitHub Actions the commands write the step summary and annotations through Partas.Build 0.8.1.
 
 ### Bootstrap
 
@@ -135,6 +135,6 @@ Until the merge base contains the Linux backend and the `ab` subcommand, the pul
 - Charts on the documentation site.
 - Absolute comparison between arm64 CI figures and x64 local figures.
 
-## Open
+## Prerequisite
 
-- **Partas.Build version.** `build.fsx` pins `0.4.0-alpha.3`; nuget.org has `0.6.5`; the `Partas.Build` repository is at `0.8.1`, whose GitHub Actions step summaries and annotations the design uses where available. Which version the `perf-*` commands target decides whether the upgrade is part of this work. `.github/workflows/ci.yml` notes that the build CLI exits non-zero with redirected output ("Console width must be greater than zero"); the chosen version must run under Actions.
+`build.fsx` is upgraded to Partas.Build 0.8.1 (published to Cloudsmith) outside this work, together with any fix for the CLI exiting non-zero under redirected output ("Console width must be greater than zero", noted in `.github/workflows/ci.yml`). The `perf-*` commands target 0.8.1 and use its GitHub Actions step summaries and annotations; the fallback that writes `GITHUB_STEP_SUMMARY` and `::warning::` lines directly is dropped. The workflows add the Cloudsmith feed to restore it.
