@@ -9,6 +9,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="LinuxPmcTests.fs" />
+    <Compile Include="WorkerTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
   <ItemGroup>

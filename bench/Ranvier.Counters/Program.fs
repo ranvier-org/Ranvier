@@ -5,6 +5,22 @@ open System.Diagnostics
 open System.IO
 open System.Reflection
 open System.Text.Json
+open System.Text.Json.Serialization.Metadata
+
+/// <summary>Serialization options for the legacy published report, retaining its original measurement fields.</summary>
+let reportJsonOptions () =
+    let resolver = DefaultJsonTypeInfoResolver ()
+
+    resolver.Modifiers.Add (fun info ->
+        if info.Type = typeof<Measurement> then
+            for property in info.Properties |> Seq.toArray do
+                if
+                    [ "Instructions"; "Cycles"; "BranchMisses"; "CpuNs" ]
+                    |> List.contains property.Name
+                then
+                    info.Properties.Remove property |> ignore)
+
+    JsonSerializerOptions (WriteIndented = true, TypeInfoResolver = resolver)
 
 let private usage =
     """Ranvier.Counters: instructions, allocations and library operation counts per operation.
@@ -530,7 +546,7 @@ let main argv =
                     Runs = runs
                     Fable = Option.toObj (node |> Option.map box)
                 |},
-                JsonSerializerOptions (WriteIndented = true)
+                reportJsonOptions ()
             )
 
         File.WriteAllText (stem + ".json", json)
