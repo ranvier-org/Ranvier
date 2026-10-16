@@ -221,3 +221,70 @@ let hardwareAvailable () =
     OperatingSystem.IsLinux ()
     && (use counters = ThreadCounters.Open (Environment.ProcessId, currentThreadId ())
         counters.Hardware)
+
+/// <summary>Owns sequential region measurements for a fixed Linux process and thread.</summary>
+/// <remarks>Region IDs must be nonnegative and unique. Dispose releases descriptors and is idempotent.</remarks>
+[<Sealed>]
+type RegionRecorder() =
+    let regions = System.Collections.Generic.Dictionary<int, Counts>()
+    let view = System.Collections.ObjectModel.ReadOnlyDictionary<int, Counts> regions
+    let mutable counters: ThreadCounters option = None
+    let mutable target: (int * int) option = None
+    let mutable active: int option = None
+    let mutable disposed = false
+
+    /// <summary>Completed regions, exposed through a read-only view.</summary>
+    member _.Regions = view :> System.Collections.Generic.IReadOnlyDictionary<int, Counts>
+
+    /// <summary>Marks a boundary; rejects changed targets, overlapping regions and unmatched ends.</summary>
+    member _.MarkThread (pid: int) (tid: int) (isBegin: bool) (region: int) =
+        if disposed then
+            raise (ObjectDisposedException (nameof RegionRecorder))
+
+        if pid <= 0 || tid <= 0 then
+            invalidArg (nameof pid) "Positive process and thread IDs are required."
+
+        if region < 0 then
+            invalidArg (nameof region) "A nonnegative region ID is required."
+
+        match target with
+        | Some previous when previous <> (pid, tid) -> invalidOp "The recorder target cannot change."
+        | _ -> ()
+
+        if isBegin then
+            if active.IsSome then
+                invalidOp "A region is already running."
+
+            if regions.ContainsKey region then
+                invalidOp "A region can only be recorded once."
+
+            let c =
+                match counters with
+                | Some c -> c
+                | None ->
+                    let c = ThreadCounters.Open (pid, tid)
+                    counters <- Some c
+                    target <- Some (pid, tid)
+                    c
+
+            c.Start ()
+            active <- Some region
+        else
+            if active <> Some region then
+                invalidOp "The end must match the active region."
+
+            let counts = counters.Value.Stop ()
+            active <- None
+            regions.Add (region, counts)
+
+    /// <summary>Marks a boundary on the main thread of the specified process.</summary>
+    member this.Mark (pid: int) (isBegin: bool) (region: int) =
+        this.MarkThread pid pid isBegin region
+
+    interface IDisposable with
+        member _.Dispose() =
+            if not disposed then
+                disposed <- true
+
+                counters
+                |> Option.iter (fun c -> (c :> IDisposable).Dispose())

@@ -13,6 +13,109 @@ let tests =
     testList
         "LinuxPmc"
         [
+            test "Linux report conversion preserves source order and rejects unavailable counters" {
+                let regions = System.Collections.Generic.Dictionary<int, LinuxPmc.Counts>()
+
+                let counts: LinuxPmc.Counts =
+                    {
+                        Instructions = 11L
+                        Cycles = 22L
+                        BranchMisses = 33L
+                        CpuNs = 44L
+                    }
+
+                regions.Add (8, counts)
+                regions.Add (3, counts)
+                let converted = Report.linuxNodeRegionCounts regions
+                Expect.equal (converted |> Array.map (fun r -> r.Region)) [| 3; 8 |] "sorted region IDs"
+                Expect.equal converted[0].Values [| 11UL; 22UL; 33UL |] "default source order"
+                Expect.equal converted[0].Intervals 1 "one measured interval"
+
+                for bad in
+                    [
+                        { counts with Instructions = -1L }
+                        { counts with Cycles = -1L }
+                        { counts with BranchMisses = -1L }
+                    ] do
+                    regions[3] <- bad
+
+                    Expect.throwsT<InvalidOperationException>
+                        (fun () -> Report.linuxNodeRegionCounts regions |> ignore)
+                        "unavailable never becomes uint64"
+            }
+            test "Linux worker conversion requires every hardware source in every region" {
+                let m: Measurement =
+                    {
+                        Ops = 1
+                        Region = 7
+                        Bytes = 0L
+                        Gen0Collections = 0
+                        NoGcRegion = true
+                        Counters = [||]
+                        Instructions = 11L
+                        Cycles = 22L
+                        BranchMisses = 33L
+                        CpuNs = 44L
+                    }
+
+                let worker measurement : WorkerRun =
+                    {
+                        ProcessId = 1
+                        ThreadId = 1
+                        CountersCompiled = false
+                        Cases =
+                            [|
+                                {
+                                    Scenario = "fixture"
+                                    Engine = "Test"
+                                    Unit = "op"
+                                    Measurements = [| m; measurement |]
+                                }
+                            |]
+                    }
+
+                let converted = Report.linuxRegionCounts (worker { m with Region = 8 })
+                Expect.equal (converted |> Array.map (fun r -> r.Region)) [| 7; 8 |] "worker region IDs"
+                Expect.equal converted[1].Values [| 11UL; 22UL; 33UL |] "worker source order"
+
+                for bad in
+                    [
+                        { m with Instructions = -1L }
+                        { m with Cycles = -1L }
+                        { m with BranchMisses = -1L }
+                    ] do
+                    Expect.throwsT<InvalidOperationException>
+                        (fun () -> Report.linuxRegionCounts (worker bad) |> ignore)
+                        "partial worker hardware fails"
+            }
+            test "region lifecycle rejects unmatched ends and use after disposal" {
+                use recorder = new LinuxPmc.RegionRecorder ()
+                Expect.throws (fun () -> recorder.Mark 1 false 0) "end requires a begin"
+                Expect.throws (fun () -> recorder.Mark 1 true -1) "nonnegative region"
+                (recorder :> IDisposable).Dispose()
+                (recorder :> IDisposable).Dispose()
+                Expect.throwsT<ObjectDisposedException> (fun () -> recorder.Mark 1 true 0) "disposed recorder"
+            }
+            test "a region recorder keeps counts and enforces its target and boundaries" {
+                linuxOnly ()
+                use recorder = new LinuxPmc.RegionRecorder ()
+                let pid = Environment.ProcessId
+                let tid = LinuxPmc.currentThreadId ()
+                recorder.MarkThread pid tid true 7
+                Expect.throws (fun () -> recorder.MarkThread pid tid true 8) "nested begin"
+                Expect.throws (fun () -> recorder.MarkThread (pid + 1) tid false 7) "different process"
+                Expect.throws (fun () -> recorder.MarkThread pid (tid + 1) false 7) "different thread"
+                Expect.throws (fun () -> recorder.MarkThread pid tid false 8) "different end"
+                recorder.MarkThread pid tid false 7
+                Expect.isTrue (recorder.Regions.ContainsKey 7) "region recorded"
+
+                let writable =
+                    recorder.Regions :?> System.Collections.Generic.IDictionary<int, LinuxPmc.Counts>
+
+                Expect.throwsT<NotSupportedException> (fun () -> writable.Add (9, LinuxPmc.Counts.Unmeasured)) "view rejects mutation"
+                Expect.throws (fun () -> recorder.MarkThread pid tid true 7) "repeated region"
+                Expect.throws (fun () -> recorder.MarkThread pid tid false 7) "repeated end"
+            }
             test "attributes encode a disabled user-mode hardware counter" {
                 let bytes = LinuxPmc.attributes 1UL
                 Expect.equal bytes.Length 112 "PERF_ATTR_SIZE_VER5"

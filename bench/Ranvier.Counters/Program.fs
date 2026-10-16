@@ -270,7 +270,15 @@ let private measure (options: Options) (index: int) =
 
                 run)
 
-        if options.Pmc then
+        if options.Pmc && OperatingSystem.IsLinux () then
+            let worker = runWorker (selfWorker ()) options.Scale options.Only resultFile
+
+            {
+                Report.Worker = worker
+                Report.Pmc = Some (Report.linuxRegionCounts worker)
+                Report.Counters = counters
+            }
+        elif options.Pmc then
             let collector = Pmc.start directory options.Sources
 
             let worker =
@@ -316,7 +324,7 @@ let private withScratch (name: string) (body: string -> 'T) =
 /// <summary>
 /// Brackets a region of the node process with this process's markers.
 /// </summary>
-let private mark (isBegin: bool) (region: int) =
+let private mark (_: int) (isBegin: bool) (region: int) =
     if isBegin then
         Markers.Log.Begin region
     else
@@ -347,7 +355,22 @@ let private measureNode (options: Options) (sha: string) (output: string) : Repo
             [||]
 
     let pmc =
-        if options.Pmc then
+        if options.Pmc && OperatingSystem.IsLinux () then
+            Array.init options.Repeat (fun i ->
+                withScratch $"node-pmc-%d{i}" (fun dir ->
+                    use recorder = new LinuxPmc.RegionRecorder ()
+
+                    let run =
+                        NodeRuns.runHandshake options.Node plain options.Scale options.Only (Path.Combine (dir, "node.json")) recorder.Mark
+
+                    let regions = Report.linuxNodeRegionCounts recorder.Regions
+
+                    {
+                        NodeRuns.Run = run
+                        NodeRuns.MainThread = regions
+                        NodeRuns.AllThreads = regions
+                    }))
+        elif options.Pmc then
             Array.init options.Repeat (fun i ->
                 withScratch $"node-pmc-%d{i}" (fun dir ->
                     let collector = Pmc.start dir options.Sources
@@ -379,7 +402,11 @@ let private measureNode (options: Options) (sha: string) (output: string) : Repo
     let sources = if options.Pmc then options.Sources else [||]
 
     let mode =
-        if options.Pmc then
+        if options.Pmc && OperatingSystem.IsLinux () then
+            "perf_event_open user-mode counters ("
+            + String.Join (", ", sources)
+            + "); main and all: the main thread"
+        elif options.Pmc then
             "per-context-switch PMC counters ("
             + String.Join (", ", sources)
             + "); main: the main thread, all: every thread of the process"
@@ -439,11 +466,34 @@ let main argv =
         0
     | None when options.Reconcile -> if Reconcile.run options.Scale = 0 then 0 else 1
     | None when options.ListSources ->
-        for name, id in Pmc.availableSources () do
-            printfn "%3d  %s" id name
+        if OperatingSystem.IsLinux () then
+            if LinuxPmc.hardwareAvailable () then
+                for name in Pmc.DefaultSources do
+                    printfn "%s" name
+        else
+            for name, id in Pmc.availableSources () do
+                printfn "%3d  %s" id name
 
         0
-    | None when options.Pmc && not (Pmc.isElevated ()) ->
+    | None when
+        options.Pmc
+        && OperatingSystem.IsLinux ()
+        && options.Sources <> Pmc.DefaultSources
+        ->
+        eprintfn "On Linux the processor counters are fixed: %s." (String.Join (", ", Pmc.DefaultSources))
+        2
+    | None when
+        options.Pmc
+        && OperatingSystem.IsLinux ()
+        && not (LinuxPmc.hardwareAvailable ())
+        ->
+        eprintfn "This machine offers no hardware counters to perf_event_open. Pass --no-pmc, or lower kernel.perf_event_paranoid."
+        2
+    | None when
+        options.Pmc
+        && OperatingSystem.IsWindows ()
+        && not (Pmc.isElevated ())
+        ->
         eprintfn "%s" elevationMessage
         2
     | None ->
@@ -469,7 +519,11 @@ let main argv =
                         |]
                     )
                 Mode =
-                    if options.Pmc then
+                    if options.Pmc && OperatingSystem.IsLinux () then
+                        "perf_event_open user-mode counters ("
+                        + String.Join (", ", sources)
+                        + ")"
+                    elif options.Pmc then
                         "per-context-switch PMC counters ("
                         + String.Join (", ", sources)
                         + ")"
