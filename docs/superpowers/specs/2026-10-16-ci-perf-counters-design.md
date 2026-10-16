@@ -137,4 +137,6 @@ Until the merge base contains the Linux backend and the `ab` subcommand, the pul
 
 ## Prerequisite
 
-`build.fsx` is upgraded to Partas.Build 0.8.1 (published to Cloudsmith) outside this work, together with any fix for the CLI exiting non-zero under redirected output ("Console width must be greater than zero", noted in `.github/workflows/ci.yml`). The `perf-*` commands target 0.8.1 and use its GitHub Actions step summaries and annotations; the fallback that writes `GITHUB_STEP_SUMMARY` and `::warning::` lines directly is dropped. The workflows add the Cloudsmith feed to restore it.
+The user subsequently included the prerequisite upgrade in this work. `build.fsx` now uses Partas.Build 0.8.1 and Partas.Build.Baked 0.3.0, with the public Cloudsmith feed in root `nuget.config`, also included in the solution's `/.environment/` folder. Cold-cache bootstrap and execution under redirected output have been verified. The `perf-*` commands use the package's automatic GitHub Actions stage summaries and warning annotations; detailed verdicts remain in report artifacts and comments. No direct `GITHUB_STEP_SUMMARY` or `::warning::` fallback is used.
+
+The privileged `workflow_run` reporter must exist on the default branch before GitHub triggers it. Measurement and artifact-reuse checks can run on this PR; live comment and history checks follow the user's merge. An existing PR is reused rather than creating another one.
