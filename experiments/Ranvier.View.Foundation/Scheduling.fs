@@ -3,6 +3,10 @@ module Ranvier.View.Foundation.Scheduling
 open System
 open Ranvier
 
+#if FABLE_COMPILER
+open Fable.Core
+#endif
+
 type CommitFailure =
     | CollectAndContinue
     | FailFastCancel
@@ -12,6 +16,12 @@ type Slot internal (owner: obj) =
     member val internal Version = 0 with get, set
     member val internal Listed = false with get, set
     member val internal Action: (unit -> unit) option = None with get, set
+
+#if FABLE_COMPILER
+[<Fable.Core.Emit("$0.map($1)")>]
+let private snapshot (pending: ResizeArray<Slot>) (project: Slot -> Slot * int * (unit -> unit) option) : (Slot * int * (unit -> unit) option) array =
+    jsNative
+#endif
 
 type Queue(graph: Graph, failure: CommitFailure, post: (unit -> unit) -> unit) as this =
     let pending = ResizeArray<Slot>()
@@ -82,9 +92,13 @@ type Queue(graph: Graph, failure: CommitFailure, post: (unit -> unit) -> unit) a
                     Api.flush ()
 
                     let work =
+#if FABLE_COMPILER
+                        snapshot pending (fun slot -> slot, slot.Version, slot.Action)
+#else
                         pending
                         |> Seq.map (fun slot -> slot, slot.Version, slot.Action)
                         |> Seq.toArray
+#endif
 
                     pending.Clear ()
 

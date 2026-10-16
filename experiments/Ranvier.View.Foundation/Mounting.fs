@@ -72,6 +72,13 @@ let private invalid message =
 let private same a b =
     obj.ReferenceEquals (a, b)
 
+#if FABLE_COMPILER
+let inline private optionSame expected candidate =
+    match candidate with
+    | Some actual -> obj.ReferenceEquals (expected, actual)
+    | None -> false
+#endif
+
 let rec private walkPrepared visit (node: Node) =
     visit node
 
@@ -466,7 +473,11 @@ type private OwnedRange(host: Node) =
                     | Some parent ->
                         let before =
                             originalNext
+#if FABLE_COMPILER
+                            |> Option.filter (fun next -> next.parentNode |> optionSame parent)
+#else
                             |> Option.filter (fun next -> next.parentNode |> Option.exists (same parent))
+#endif
 
                         insert parent node before)
 
@@ -570,7 +581,13 @@ type private OwnedRange(host: Node) =
         this.Validate ()
         this.ValidateDestination (parent, before)
 
-        if not (before |> Option.exists (same first)) then
+        if
+#if FABLE_COMPILER
+            not (before |> optionSame first)
+#else
+            not (before |> Option.exists (same first))
+#endif
+        then
             let originalParent, originalNext = placement, last.nextSibling
             let staging = stagingFragment ()
 
@@ -779,9 +796,14 @@ and [<Sealed; AllowNullLiteral>] private Row(first: Node, last: Node) =
     /// <summary>Removes the nodes between the markers, which are children of <c>parent</c>; both markers stay in place.</summary>
     static member ClearBetween(parent: Node, regionStart: Node, regionEnd: Node) =
         if
+#if FABLE_COMPILER
+            parent.firstChild |> optionSame regionStart
+            && parent.lastChild |> optionSame regionEnd
+#else
             parent.firstChild
             |> Option.exists (same regionStart)
             && parent.lastChild |> Option.exists (same regionEnd)
+#endif
         then
             clearChildren parent
             parent.appendChild regionStart |> ignore
@@ -801,6 +823,10 @@ and [<Sealed; AllowNullLiteral>] private Row(first: Node, last: Node) =
     /// </summary>
     static member ValidateWindow(regionStart: Node, regionEnd: Node, laidOut: ResizeArray<Row>, parent: Node, first: int, last: int) =
         if
+#if FABLE_COMPILER
+            not (regionStart.parentNode |> optionSame parent)
+            || not (regionEnd.parentNode |> optionSame parent)
+#else
             not (
                 regionStart.parentNode
                 |> Option.exists (same parent)
@@ -809,6 +835,7 @@ and [<Sealed; AllowNullLiteral>] private Row(first: Node, last: Node) =
                 regionEnd.parentNode
                 |> Option.exists (same parent)
             )
+#endif
         then
             invalid "Keyed-list boundaries were externally mutated"
 
@@ -894,10 +921,17 @@ and [<Sealed; AllowNullLiteral>] private Row(first: Node, last: Node) =
 
             if aStart = aEnd then
                 let staged =
+#if FABLE_COMPILER
+                    staging.firstChild
+                    |> optionSame next[bStart].First
+                    && staging.lastChild
+                       |> optionSame next[bEnd - 1].Last
+#else
                     staging.firstChild
                     |> Option.exists (same next[bStart].First)
                     && staging.lastChild
                        |> Option.exists (same next[bEnd - 1].Last)
+#endif
 
                 if staged then
                     parent.insertBefore (staging, anchor) |> ignore
@@ -1067,10 +1101,14 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
             |> Option.defaultWith (fun () -> invalid "Keyed-list boundaries have no parent")
 
         if
+#if FABLE_COMPILER
+            not (regionEnd.parentNode |> optionSame regionParent)
+#else
             not (
                 regionEnd.parentNode
                 |> Option.exists (same regionParent)
             )
+#endif
         then
             invalid "Keyed-list boundaries were externally mutated"
 
