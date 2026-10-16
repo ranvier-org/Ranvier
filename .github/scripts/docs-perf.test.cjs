@@ -86,7 +86,7 @@ test('deployment is serialized without cancellation and checks freshness immedia
   const workflow = fs.readFileSync(require('node:path').join(__dirname, '../workflows/docs.yml'), 'utf8');
   const deploy = workflow.slice(workflow.indexOf('\n  deploy:'));
   assert.match(deploy, /needs: \[resolve, build\]/);
-  assert.match(deploy, /concurrency:\s+group: pages\s+cancel-in-progress: false/);
+  assert.match(deploy, /concurrency:\s+group: pages\s+cancel-in-progress: false\s+queue: max/);
   assert.match(deploy, /MEASURED: \$\{\{ needs\.resolve\.outputs\.ref \}\}/);
   assert.match(deploy, /shouldDeploy\(\{github, repo: context\.repo,\s+eventName: context\.eventName, measured: process\.env\.MEASURED\}\)/);
   assert.match(deploy, /- id: deployment\s+if: steps\.current\.outputs\.deploy == 'true'\s+uses: actions\/deploy-pages@v5/);
