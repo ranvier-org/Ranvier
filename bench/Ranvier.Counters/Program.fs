@@ -6,6 +6,7 @@ open System.IO
 open System.Reflection
 open System.Text.Json
 open System.Text.Json.Serialization.Metadata
+open CounterBench.Workers
 
 /// <summary>Serialization options for the legacy published report, retaining its original measurement fields.</summary>
 let reportJsonOptions () =
@@ -27,6 +28,8 @@ let private usage =
 
 Usage: Ranvier.Counters [options]
 
+  ab --leg <name> --base <sha> <dir> --head <sha> <dir> --out <file>
+                    Alternate base and head builds (optional --rounds, --scale, --only, --node).
   --no-pmc          Skip processor counters. Runs without elevation.
   --counters-worker <path>
                     Read the library counters from a second worker: the
@@ -55,20 +58,6 @@ Usage: Ranvier.Counters [options]
 Processor counters need an elevated process. Build with -p:RanvierCounters=true,
 or pass --counters-worker, for the library counter columns. counters.ps1 at the
 repository root compiles both Fable builds and runs this tool with --fable."""
-
-/// <summary>
-/// The environment the worker runs in. Tiered compilation off: every method is
-/// compiled once, fully optimised, on first call. No PGO: the code is the same
-/// in every run. ReadyToRun off: framework code is JIT-compiled at the same
-/// optimisation level, rather than served precompiled.
-/// </summary>
-let workerEnvironment =
-    [
-        "DOTNET_TieredCompilation", "0"
-        "DOTNET_TieredPGO", "0"
-        "DOTNET_ReadyToRun", "0"
-        "DOTNET_gcServer", "0"
-    ]
 
 type private Options =
     {
@@ -209,46 +198,6 @@ let private selfWorker () =
         host, [ Assembly.GetEntryAssembly().Location ]
     else
         host, []
-
-/// <summary>
-/// The worker at <c>path</c>: a <c>.dll</c> runs under <c>dotnet</c>, anything else runs
-/// directly.
-/// </summary>
-let private workerAt (path: string) =
-    if not (File.Exists path) then
-        failwith $"No counter worker at %s{path}."
-
-    if Path.GetExtension(path).Equals(".dll", StringComparison.OrdinalIgnoreCase) then
-        "dotnet", [ path ]
-    else
-        path, []
-
-/// <summary>
-/// Starts the worker in worker mode and waits for its result.
-/// </summary>
-let private runWorker (host: string, prefix: string list) (scale: int) (only: string option) (resultFile: string) =
-    let info = ProcessStartInfo host
-
-    for arg in
-        prefix
-        @ [ "--worker"; resultFile; "--scale"; string scale ]
-        @ (only
-           |> Option.map (fun p -> [ "--only"; p ])
-           |> Option.defaultValue []) do
-        info.ArgumentList.Add arg
-
-    info.UseShellExecute <- false
-
-    for name, value in workerEnvironment do
-        info.Environment[name] <- value
-
-    use p = Process.Start info
-    p.WaitForExit ()
-
-    if p.ExitCode <> 0 then
-        failwith $"The worker exited with %d{p.ExitCode}."
-
-    JsonSerializer.Deserialize<WorkerRun>(File.ReadAllText resultFile)
 
 let private measure (options: Options) (index: int) =
     let directory =
@@ -435,8 +384,7 @@ configuration are restricted to administrators.
 Run again from an administrator shell, or pass --no-pmc to measure allocations
 and library counters only."""
 
-[<EntryPoint>]
-let main argv =
+let private legacyMain argv =
     let options =
         parse
             {
@@ -607,3 +555,9 @@ let main argv =
         File.WriteAllText (stem + ".md", markdown)
         eprintfn "Wrote %s.json and %s.md" stem stem
         0
+
+[<EntryPoint>]
+let main argv =
+    match List.ofArray argv with
+    | "ab" :: rest -> Ab.main rest
+    | _ -> legacyMain argv

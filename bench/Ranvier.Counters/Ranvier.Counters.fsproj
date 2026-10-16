@@ -20,6 +20,7 @@
 
     <ItemGroup>
         <Compile Include="Model.fs" />
+        <Compile Include="AbModel.fs" />
         <Compile Include="Markers.fs" />
         <Compile Include="LinuxPmc.fs" />
         <Compile Include="Workloads.fs" />
@@ -28,6 +29,8 @@
         <Compile Include="Worker.fs" />
         <Compile Include="Pmc.fs" />
         <Compile Include="NodeRuns.fs" />
+        <Compile Include="Workers.fs" />
+        <Compile Include="Ab.fs" />
         <Compile Include="Report.fs" />
         <Compile Include="Charts.fs" />
         <Compile Include="Program.fs" />

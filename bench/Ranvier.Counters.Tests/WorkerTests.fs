@@ -2,6 +2,7 @@ module CounterBench.Tests.WorkerTests
 
 open System
 open System.Runtime
+open System.IO
 open System.Text.Json
 open Expecto
 open CounterBench
@@ -29,6 +30,58 @@ let tests =
     testList
         "Worker.measure"
         [
+            test "fresh Linux workers retain warm scale-invariant first-region instruction differentials" {
+                if
+                    not (OperatingSystem.IsLinux ())
+                    || not (LinuxPmc.hardwareAvailable ())
+                then
+                    skiptest "Linux hardware counters required"
+
+                let directory =
+                    Path.Combine (Path.GetTempPath (), "ranvier-jit-test-" + Guid.NewGuid().ToString("N"))
+
+                Directory.CreateDirectory directory |> ignore
+
+                try
+                    let figure scale =
+                        let run =
+                            Workers.runWorker
+                                (Workers.workerAt typeof<WorkerRun>.Assembly.Location)
+                                scale
+                                (Some "cutoff")
+                                (Path.Combine (directory, $"{scale}.json"))
+
+                        let first = run.Cases[0]
+                        Expect.equal (first.Measurements |> Array.map _.Region) [| 0; 1 |] "discarded warmup does not leak into retained regions"
+                        let a, b = first.Measurements[0], first.Measurements[1]
+                        Expect.isGreaterThan a.Instructions 0L "N instructions"
+                        Expect.isGreaterThan b.Instructions 0L "2N instructions"
+
+                        let value =
+                            float (b.Instructions - a.Instructions)
+                            / float a.Ops
+
+                        Expect.isGreaterThan value 0. "first differential is positive"
+                        value
+
+                    let one, two = figure 1, figure 2
+                    Expect.isLessThan (abs (one - two) / max one two) 0.10 "normalized first-region counts agree across scales"
+                finally
+                    Directory.Delete (directory, true)
+            }
+            test "empty Linux selection publishes no warmup measurement" {
+                if not (OperatingSystem.IsLinux ()) then
+                    skiptest "Linux only"
+
+                let output = Path.GetTempFileName ()
+
+                try
+                    Worker.run 1 (Some "no-such-counter-scenario") output
+                    let run = JsonSerializer.Deserialize<WorkerRun>(File.ReadAllText output)
+                    Expect.isEmpty run.Cases "no selected case"
+                finally
+                    File.Delete output
+            }
             test "without Linux counters every native figure reads -1" {
                 let m = Worker.measure None allocating 1000 0
                 Expect.equal (m.Instructions, m.Cycles, m.BranchMisses, m.CpuNs) (-1L, -1L, -1L, -1L) "unmeasured"

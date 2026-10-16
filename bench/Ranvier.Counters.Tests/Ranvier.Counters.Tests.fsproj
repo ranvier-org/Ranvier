@@ -11,6 +11,7 @@
     <Compile Include="LinuxPmcTests.fs" />
     <Compile Include="NodeRunsTests.fs" />
     <Compile Include="WorkerTests.fs" />
+    <Compile Include="AbTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
   <ItemGroup>

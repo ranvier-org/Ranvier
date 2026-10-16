@@ -157,6 +157,9 @@ let run (scale: int) (only: string option) (output: string) =
             finally
                 warm.Teardown ()
 
+            if index = 0 && hardware.IsSome then
+                measure hardware case case.Ops -1 |> ignore
+
             {
                 Scenario = case.Scenario
                 Engine = case.Engine
