@@ -168,6 +168,7 @@ let private processFigures commit runtime index scenarios =
 /// <summary>Projects validated N/2N worker regions; unavailable native metrics are omitted. The caller assigns <c>Side</c>.</summary>
 let dotnetFigures commit index (run: WorkerRun) =
     validateDotnet run
+    require (not run.CountersCompiled) "Timing worker must be built without RanvierCounters."
 
     run.Cases
     |> Array.map (fun case ->
@@ -216,6 +217,7 @@ let dotnetCounterFigures commit (run: WorkerRun) =
 /// <summary>Projects Node measurements using exactly the regions recorded by its handshake; missing regions are errors.</summary>
 let nodeFigures commit index (run: NodeRuns.NodeRun) (recorded: IReadOnlyDictionary<int, LinuxPmc.Counts>) =
     validateNode run
+    require (not run.CountersCompiled) "Timing Node harness must be built without RanvierCounters."
 
     let expected =
         run.Cases

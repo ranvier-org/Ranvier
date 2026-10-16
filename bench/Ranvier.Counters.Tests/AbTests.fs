@@ -29,7 +29,7 @@ let private worker =
     {
         ProcessId = 1
         ThreadId = 1
-        CountersCompiled = true
+        CountersCompiled = false
         Cases =
             [|
                 {
@@ -69,7 +69,17 @@ let tests =
                 Expect.equal (metric f "instructions") (Some 100.0) "instruction differential"
                 Expect.equal (metric f "bytes") (Some 20.0) "allocation differential"
                 Expect.equal (metric f "cycles") None "sentinel omitted"
-                Expect.equal (metric (Ab.dotnetCounterFigures "abc" worker) "lib:EffectRuns") (Some 1.0) "library differential"
+
+                Expect.equal
+                    (metric (Ab.dotnetCounterFigures "abc" { worker with CountersCompiled = true }) "lib:EffectRuns")
+                    (Some 1.0)
+                    "library differential"
+
+                Expect.throws
+                    (fun () ->
+                        figure { worker with CountersCompiled = true }
+                        |> ignore)
+                    "timing rejects instrumentation"
             }
             test "GC in either region flags the scenario" {
                 let ms = Array.copy worker.Cases[0].Measurements
@@ -155,6 +165,13 @@ let tests =
                     }
 
                 let f = Ab.nodeFigures "abc" 0 run regions
+
+                Expect.throws
+                    (fun () ->
+                        Ab.nodeFigures "abc" 0 { run with CountersCompiled = true } regions
+                        |> ignore)
+                    "Node timing rejects instrumentation"
+
                 Expect.equal (metric f "instructions") (Some 40.) "hardware differential"
                 Expect.equal (metric f "cpu_ns") (Some 20.) "CPU differential"
                 Expect.equal (metric f "bytes") (Some 4.) "bytes differential"

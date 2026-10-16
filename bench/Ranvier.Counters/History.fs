@@ -266,7 +266,8 @@ let private options allowed repeated (args: string list) =
         | [] -> acc
         | key :: value :: rest when
             Set.contains key allowed
-            && not (value.StartsWith ("--", StringComparison.Ordinal))
+            && (key = "--subject"
+                || not (value.StartsWith ("--", StringComparison.Ordinal)))
             ->
             require (key = repeated || not (Map.containsKey key acc)) ("Repeated option " + key)
             loop (Map.change key (fun old -> Some (defaultArg old [] @ [ value ])) acc) rest

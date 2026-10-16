@@ -231,7 +231,7 @@ let tests =
                             "--date"
                             "2026-10-16T00:00:00Z"
                             "--subject"
-                            "s"
+                            "--subject $(echo unsafe); `literal` | \"quoted\"\nnext line"
                             "--message"
                             msg
                             "--out"
@@ -241,6 +241,7 @@ let tests =
                     Expect.equal (History.main args) 0 "record"
                     let r = JsonSerializer.Deserialize<History.RecordedRun>(File.ReadAllText output)
                     Expect.equal r.Accepted [ "x" ] "actual accepted"
+                    Expect.equal r.Subject "--subject $(echo unsafe); `literal` | \"quoted\"\nnext line" "subject is literal data"
 
                     let runDir = Path.Combine (dir, "runs")
                     Directory.CreateDirectory runDir |> ignore

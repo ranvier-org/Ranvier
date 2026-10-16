@@ -347,11 +347,376 @@ module Stage =
                 }
         }
 
+module private Perf =
+    open System
+    open System.IO
+    open System.Text.Json
+
+    let private argument name =
+        Input.argument<string> name
+
+    let private absolute path =
+        Path.GetFullPath (path, __REPOSITORY_DIRECTORY__)
+
+    let private combine path leaf =
+        Path.Combine (path, leaf)
+
+    let private args files =
+        files
+        |> List.collect (fun file -> [ "--ab"; absolute file ])
+
+    let private git arguments =
+        Cmd.ofList "git" arguments
+
+    let private dotnet arguments =
+        Cmd.ofList "dotnet" arguments
+
+    let private effect action =
+        Operation.ofAsync (async { return action () })
+
+    let private require condition message =
+        if not condition then
+            failwith message
+
+    let private readJson file =
+        JsonDocument.Parse (File.ReadAllText file)
+
+    let private tool output =
+        combine output "../head/worker/Ranvier.Counters.dll"
+        |> Path.GetFullPath
+
+    let build =
+        input {
+            let! reference = argument "REF"
+            and! directory = argument "DIR"
+            let output = absolute directory
+            let source = combine output "src"
+
+            return
+                stage "perf build" {
+                    run (fun _ ->
+                        require (not (Directory.Exists source)) "Perf source directory already exists; choose a fresh output directory."
+                        Directory.CreateDirectory output |> ignore)
+
+                    run (git [ "worktree"; "add"; "--detach"; source; reference ])
+
+                    stage "side tools" {
+                        workingDir source
+                        run (dotnet [ "tool"; "restore" ])
+                    }
+
+                    for counters, folder in [ true, "counters-worker"; false, "worker" ] do
+                        stage folder {
+                            workingDir source
+
+                            run (
+                                dotnet
+                                    [
+                                        "build"
+                                        combine source "bench/Ranvier.Counters"
+                                        "-c"
+                                        "Release"
+                                        "-p:RanvierTrace=false"
+                                        "-p:RanvierCounters=" + string counters
+                                        "-o"
+                                        combine output folder
+                                    ]
+                            )
+                        }
+
+                    for counters, folder in [ false, "plain"; true, "counters" ] do
+                        stage ("fable " + folder) {
+                            workingDir source
+                            envVars [ "RanvierCounters", string counters; "RanvierTrace", "false" ]
+
+                            run (
+                                dotnet
+                                    [
+                                        "fable"
+                                        "fable/Ranvier.Counters"
+                                        "-e"
+                                        ".fs.js"
+                                        "-o"
+                                        combine output ("fable/" + folder)
+                                        "--noCache"
+                                        "--configuration"
+                                        "Release"
+                                    ]
+                            )
+                        }
+
+                    stage "portable build metadata" {
+                        workingDir source
+
+                        runOperation (
+                            executeCapture (dotnet [ "fable"; "--version" ])
+                            |> Operation.bind (fun version ->
+                                effect (fun () ->
+                                    use tools = readJson (combine source ".config/dotnet-tools.json")
+
+                                    let compiler =
+                                        tools.RootElement.GetProperty("tools").GetProperty("fable").GetProperty("version").GetString()
+
+                                    require (version.Stdout.Contains compiler) "Resolved Fable compiler differs from the side's tool manifest."
+
+                                    let libraryVersions =
+                                        Directory.GetFiles (combine output "fable/plain", "package.json", SearchOption.AllDirectories)
+                                        |> Array.choose (fun file ->
+                                            use package = readJson file
+                                            let mutable name = Unchecked.defaultof<JsonElement>
+
+                                            if
+                                                package.RootElement.TryGetProperty ("name", &name)
+                                                && name.GetString () = "@fable-org/fable-library-js"
+                                            then
+                                                Some (package.RootElement.GetProperty("version").GetString())
+                                            else
+                                                None)
+                                        |> Array.distinct
+
+                                    require (libraryVersions.Length = 1) "Expected one generated fable-library version."
+                                    use runtime = readJson (combine output "worker/Ranvier.Counters.runtimeconfig.json")
+
+                                    let framework =
+                                        runtime.RootElement.GetProperty("runtimeOptions").GetProperty("framework")
+
+                                    let target = Version.Parse (framework.GetProperty("version").GetString())
+
+                                    require
+                                        (framework.GetProperty("name").GetString() = "Microsoft.NETCore.App"
+                                         && target.Major = Environment.Version.Major
+                                         && target.Minor = Environment.Version.Minor)
+                                        "Worker runtime differs from build host; cannot label its actual runtime."
+
+                                    File.WriteAllText (
+                                        combine output "versions.json",
+                                        JsonSerializer.Serialize
+                                            {|
+                                                Dotnet = string Environment.Version
+                                                Fable = compiler
+                                                FableLibrary = libraryVersions[0]
+                                            |}
+                                    )
+
+                                    File.WriteAllText (combine output "fable/package.json", "{\"type\":\"module\"}")))
+                        )
+                    }
+                }
+        }
+
+    let ab =
+        input {
+            let! leg = argument "LEG"
+            and! baseSha = argument "BASE_SHA"
+            and! baseDir = argument "BASE_DIR"
+            and! headSha = argument "HEAD_SHA"
+            and! headDir = argument "HEAD_DIR"
+            and! output = argument "OUT"
+
+            return
+                stage "perf alternating measurements" {
+                    run (
+                        dotnet
+                            [
+                                combine (absolute headDir) "worker/Ranvier.Counters.dll"
+                                "ab"
+                                "--leg"
+                                leg
+                                "--base"
+                                baseSha
+                                absolute baseDir
+                                "--head"
+                                headSha
+                                absolute headDir
+                                "--out"
+                                absolute output
+                            ]
+                    )
+                }
+        }
+
+    let compare =
+        input {
+            let! baseSha = argument "BASE_SHA"
+            and! headSha = argument "HEAD_SHA"
+            and! label = argument "LABEL"
+            and! directory = argument "OUT"
+            and! files = Input.argument<string list> "AB"
+            let output = absolute directory
+            let verdictFile = combine output "verdict.json"
+
+            return
+                stage "performance verdict" {
+                    run (fun _ ->
+                        Directory.CreateDirectory output |> ignore
+
+                        for file in [ verdictFile; combine output "comment.md" ] do
+                            File.Delete file
+
+                        require (not files.IsEmpty) "At least one AB artifact is required."
+
+                        for file in files do
+                            use artifact = readJson (absolute file)
+
+                            require
+                                (artifact.RootElement.GetProperty("Base").GetString() = baseSha
+                                 && artifact.RootElement.GetProperty("Head").GetString() = headSha)
+                                "AB artifact does not match requested immutable revisions.")
+
+                    run (
+                        git
+                            [
+                                "log"
+                                "-z"
+                                "--format=%B"
+                                "--output=" + combine output "messages.bin"
+                                baseSha + ".." + headSha
+                                "--"
+                            ]
+                    )
+
+                    runOperation (
+                        attemptCapture (
+                            dotnet (
+                                [ tool output; "compare" ]
+                                @ args files
+                                @ [
+                                    "--label"
+                                    label
+                                    "--messages"
+                                    combine output "messages.bin"
+                                    "--out"
+                                    output
+                                ]
+                            )
+                        )
+                        |> Operation.bind (fun result ->
+                            require (result.ExitCode = 0 || result.ExitCode = 1) ("Compare process failed: " + result.Stderr)
+
+                            require
+                                (File.Exists verdictFile
+                                 && File.Exists (combine output "comment.md"))
+                                ("Compare produced no fresh report: "
+                                 + result.Stderr)
+
+                            use report = readJson verdictFile
+                            let acceptance = report.RootElement.GetProperty ("Acceptance")
+
+                            let verdicts =
+                                report.RootElement.GetProperty("Verdicts").EnumerateArray()
+                                |> Seq.toArray
+
+                            require (verdicts.Length = files.Length) "Verdict count differs from the measurement artifacts."
+
+                            let failed =
+                                acceptance.GetProperty("Unknown").GetArrayLength() > 0
+                                || verdicts
+                                   |> Array.exists (fun v -> v.GetProperty("Fails").GetBoolean())
+
+                            require ((result.ExitCode = 1) = failed) "Compare exit code contradicts its fresh verdict."
+
+                            let expectedLegs =
+                                files
+                                |> List.map (fun f -> use j = readJson (absolute f) in j.RootElement.GetProperty("Leg").GetString())
+                                |> Set.ofList
+
+                            require
+                                (expectedLegs =
+                                    (verdicts
+                                     |> Array.map (fun v -> v.GetProperty("Leg").GetString())
+                                     |> Set.ofArray))
+                                "Unexpected verdict legs."
+
+                            verdicts
+                            |> Array.collect (fun v ->
+                                v.GetProperty("Warnings").EnumerateArray()
+                                |> Seq.map _.GetString()
+                                |> Seq.toArray)
+                            |> Array.map (fun warning ->
+                                annotate
+                                    { Annotation.warning warning with
+                                        Title = ValueSome "Performance (x64 timing)"
+                                    })
+                            |> Array.toList
+                            |> Operation.sequence
+                            |> Operation.map (fun _ -> require (not failed) "Performance verdict rejected; see the report artifact."))
+                    )
+                }
+        }
+
+    let record =
+        input {
+            let! sha = argument "SHA"
+            and! file = argument "OUT_FILE"
+            and! files = Input.argument<string list> "AB"
+            let output = absolute file
+            let directory = Path.GetDirectoryName output
+            let message = output + ".message"
+
+            return
+                stage "record performance history" {
+                    run (fun _ -> Directory.CreateDirectory directory |> ignore)
+                    run (git [ "log"; "-1"; "--format=%B"; "--output=" + message; sha; "--" ])
+
+                    runOperation (
+                        executeCapture (git [ "rev-parse"; sha + "^1" ])
+                        |> Operation.bind (fun parent ->
+                            executeCapture (git [ "log"; "-1"; "--format=%cI"; sha; "--" ])
+                            |> Operation.bind (fun date ->
+                                executeCapture (git [ "log"; "-1"; "--format=%s"; sha; "--" ])
+                                |> Operation.bind (fun subject ->
+                                    execute (
+                                        dotnet (
+                                            [
+                                                combine __REPOSITORY_DIRECTORY__ "out/head/worker/Ranvier.Counters.dll"
+                                                "record"
+                                            ]
+                                            @ args files
+                                            @ [
+                                                "--commit"
+                                                sha
+                                                "--parent"
+                                                parent.Stdout.Trim ()
+                                                "--date"
+                                                date.Stdout.Trim ()
+                                                "--subject"
+                                                subject.Stdout.TrimEnd ('\r', '\n')
+                                                "--message"
+                                                message
+                                                "--out"
+                                                output
+                                            ]
+                                        )
+                                    ))))
+                    )
+
+                    run (fun _ -> File.Delete message)
+
+                    run (
+                        dotnet
+                            [
+                                combine __REPOSITORY_DIRECTORY__ "out/head/worker/Ranvier.Counters.dll"
+                                "timeline"
+                                "--runs"
+                                directory
+                                "--out"
+                                combine directory "../timeline.md"
+                                |> Path.GetFullPath
+                            ]
+                    )
+                }
+        }
+
 exit
 <| rootCommandOfScript {
     name "build.fsx"
     description "Build CLI"
     workingDir __REPOSITORY_DIRECTORY__
+
+    command "perf-build" { Perf.build }
+    command "perf-ab" { Perf.ab }
+    command "perf-compare" { Perf.compare }
+    command "perf-record" { Perf.record }
 
     command "build" {
         description "Builds the solution"
