@@ -12,6 +12,7 @@
     <Compile Include="NodeRunsTests.fs" />
     <Compile Include="WorkerTests.fs" />
     <Compile Include="AbTests.fs" />
+    <Compile Include="CompareTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
   <ItemGroup>

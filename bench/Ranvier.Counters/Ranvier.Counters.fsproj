@@ -31,6 +31,7 @@
         <Compile Include="NodeRuns.fs" />
         <Compile Include="Workers.fs" />
         <Compile Include="Ab.fs" />
+        <Compile Include="Compare.fs" />
         <Compile Include="Report.fs" />
         <Compile Include="Charts.fs" />
         <Compile Include="Program.fs" />

@@ -30,6 +30,10 @@ Usage: Ranvier.Counters [options]
 
   ab --leg <name> --base <sha> <dir> --head <sha> <dir> --out <file>
                     Alternate base and head builds (optional --rounds, --scale, --only, --node).
+  compare --ab <file> [--ab <file>] --out <dir>
+                    Write verdict.json and comment.md. Overrides: --label true,
+                    --messages <NUL-separated file>, --accept <names|all>
+                    --accept-reason <reason>; optional --threshold and --floor.
   --no-pmc          Skip processor counters. Runs without elevation.
   --counters-worker <path>
                     Read the library counters from a second worker: the
@@ -560,4 +564,5 @@ let private legacyMain argv =
 let main argv =
     match List.ofArray argv with
     | "ab" :: rest -> Ab.main rest
+    | "compare" :: rest -> Compare.main rest
     | _ -> legacyMain argv

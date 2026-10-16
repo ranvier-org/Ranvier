@@ -93,8 +93,22 @@ let tests =
                 use counters =
                     LinuxPmc.ThreadCounters.Open (Environment.ProcessId, LinuxPmc.currentThreadId ())
 
-                let without = Worker.measure None allocating 1_000_000 0
-                let measured = Worker.measure (Some counters) allocating 1_000_000 1
+                let accountingWork =
+                    { allocating with
+                        Prepare =
+                            fun ops ->
+                                let work = allocating.Prepare ops
+
+                                { work with
+                                    Run =
+                                        fun () ->
+                                            work.Run ()
+                                            Threading.Thread.Sleep 1
+                                }
+                    }
+
+                let without = Worker.measure None accountingWork 1_000_000 0
+                let measured = Worker.measure (Some counters) accountingWork 1_000_000 1
                 Expect.equal measured.Bytes without.Bytes "counter reads sit outside allocation reads"
                 Expect.isGreaterThan measured.CpuNs 0L "a substantial allocation workload records thread CPU"
             }
