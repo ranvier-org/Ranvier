@@ -28,6 +28,11 @@ let private usage =
 
 Usage: Ranvier.Counters [options]
 
+  record --ab <file>... --commit <sha> --parent <sha> --date <iso> --subject <text> --message <file> --out <file>
+                    Record validated process figures, medians and accepted regressions.
+  timeline --runs <dir> --out <file>
+                    Regenerate the arm64 instruction timeline from recorded runs.
+
   ab --leg <name> --base <sha> <dir> --head <sha> <dir> --out <file>
                     Alternate base and head builds (optional --rounds, --scale, --only, --node).
   compare --ab <file> [--ab <file>] --out <dir>
@@ -565,4 +570,5 @@ let main argv =
     match List.ofArray argv with
     | "ab" :: rest -> Ab.main rest
     | "compare" :: rest -> Compare.main rest
+    | ("record" | "timeline") :: _ -> History.main (List.ofArray argv)
     | _ -> legacyMain argv
