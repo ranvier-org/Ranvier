@@ -186,13 +186,10 @@ module internal Platform =
 
     /// <summary>A task that completes when <c>resolve</c> is called. Its awaiters resume on a later microtask.</summary>
     let deferred<'T> () : Deferred<'T> =
-        let resolver = ref Unchecked.defaultof<'T -> unit>
-        let task = promiseOf (fun resolve -> resolver.Value <- resolve)
+        let mutable resolver = Unchecked.defaultof<'T -> unit>
+        let task = promiseOf (fun resolve -> resolver <- resolve)
 
-        {
-            Task = task
-            Resolve = resolver.Value
-        }
+        { Task = task; Resolve = resolver }
 
     /// <summary>The task a <c>Deferred</c> completes.</summary>
     let deferredTask (d: Deferred<'T>) : Task<'T> = d.Task
@@ -499,6 +496,30 @@ module internal Platform =
         slots[index]
 #endif
 
+#if FABLE_COMPILER
+    [<Emit("$0.has($1)")>]
+    let private tableHas (table: Dictionary<'K, 'V>) (key: 'K) : bool = jsNative
+
+    [<Emit("$0.get($1)")>]
+    let private tableGet (table: Dictionary<'K, 'V>) (key: 'K) : 'V = jsNative
+
+    /// <summary>
+    /// The value at <c>key</c>, or <c>Unchecked.defaultof&lt;'V></c> for an absent key. Under Fable it runs the
+    /// <c>has</c> and <c>get</c> calls of fable-library's <c>tryGetValue</c>, without the <c>FSharpRef</c> for the out
+    /// argument.
+    /// </summary>
+    let findOrDefault (table: Dictionary<'K, 'V>) (key: 'K) : 'V =
+        if tableHas table key then
+            tableGet table key
+        else
+            Unchecked.defaultof<'V>
+#else
+    let inline findOrDefault (table: Dictionary<'K, 'V>) (key: 'K) =
+        match table.TryGetValue key with
+        | true, value -> value
+        | _ -> Unchecked.defaultof<'V>
+#endif
+
     /// <summary>
     /// A position index keyed by object identity. Under Fable, removing a key
     /// releases the key's entry. On .NET the table keeps its peak capacity.
@@ -588,9 +609,7 @@ module internal Platform =
             if primitiveKey key then
                 jsMapFind prims key
             else
-                match objs.TryGetValue key with
-                | true, value -> value
-                | _ -> Unchecked.defaultof<'V>
+                findOrDefault objs key
 
         member _.Set(key: 'K, value: 'V) =
             if primitiveKey key then
