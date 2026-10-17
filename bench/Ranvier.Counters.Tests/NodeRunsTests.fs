@@ -220,10 +220,13 @@ let perScenario =
                         Expect.equal (NodeRuns.scenarios "node" path) (Some [| "alpha"; "beta" |]) "listed names"
                         Expect.equal (File.ReadAllText (Path.Combine (directory, "flags"))) (String.Join (" ", NodeRuns.flags)) "flags")
             }
-            test "scenarios is None for a harness that rejects --list or lists nothing" {
+            test "scenarios is None for a harness that rejects --list, lists nothing or fails" {
                 script "console.error('Unknown argument'); process.exit(1);" (fun _ path -> Expect.isNone (NodeRuns.scenarios "node" path) "rejected")
 
                 script "" (fun _ path -> Expect.isNone (NodeRuns.scenarios "node" path) "empty")
+
+                script "process.stdout.write('alpha\\n'); process.exit(1);" (fun _ path ->
+                    Expect.isNone (NodeRuns.scenarios "node" path) "names from a failed run")
             }
             test "runScenario selects its scenario by exact name" {
                 script
