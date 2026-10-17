@@ -1121,12 +1121,18 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
     member val Deferring = false with get, set
 
     /// <summary>
-    /// Marks an authored row removed. Holds a template row for <c>FlushReleased</c> while <c>Deferring</c> is set and the
-    /// mount is live, and otherwise releases its nodes through the mount.
+    /// Marks an authored row removed, and a template row removed while the region's owner is disposed in a live mount:
+    /// its nodes leave with the enclosing row. Holds a template row for <c>FlushReleased</c> while <c>Deferring</c> is
+    /// set and the mount is live, and otherwise releases its nodes through the mount.
     /// </summary>
     member this.ReleaseRow(row: Row) =
         if not (isNull row) then
-            if not (isNull (box row.Mount)) then
+            if
+                not (isNull (box row.Mount))
+                || not (isNull (box owner))
+                   && owner.IsDisposed
+                   && not state.Root.IsDisposed
+            then
                 row.Removed <- true
             elif this.Deferring && not state.Root.IsDisposed then
                 pending.Add row

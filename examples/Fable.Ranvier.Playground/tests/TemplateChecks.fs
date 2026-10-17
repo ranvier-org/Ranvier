@@ -3040,7 +3040,7 @@ let private failedInsertionLeavesStagingEmpty () =
     equal (0, 1, "4,5,", 1) (removed, inserts (), host.textContent, reports.Count)
     mounted.Dispose ()
 
-let private retiredRowLosesNestedRows () =
+let private retiredRowLeavesWhole () =
     use graph = new Graph ()
 
     let items =
@@ -3057,9 +3057,14 @@ let private retiredRowLosesNestedRows () =
     let host = host ()
     let mounted = mount graph host (Component.render grouped items)
     let first = host.querySelector "li" |> unbox<HTMLElement>
+    let removes = countRemoves ()
     graph.Run (fun () -> items.Value <- items.Value[1..])
-    equal (true, 0., 3.) (first.parentNode.IsNone, (first.querySelectorAll "li").length, (host.querySelectorAll "li li").length)
+    let removed = removes ()
+
+    equal (1, true, 3., 3.) (removed, first.parentNode.IsNone, (first.querySelectorAll "li").length, (host.querySelectorAll "li li").length)
+
     mounted.Dispose ()
+    equal 0. host.childNodes.length
 
 let private disposalLeavesDetachedHeldRows () =
     use graph = new Graph ()
@@ -3359,6 +3364,53 @@ let private nestedRegions () =
             "cleanup complete"
         ]
         (List.ofSeq stageLog)
+
+let private jobItems count =
+    Array.init count (fun id ->
+        {
+            JobId = id
+            Stage = if id % 2 = 0 then Waiting else Working id
+        })
+
+let private clearsArmRowsWithoutRemoves () =
+    use graph = new Graph ()
+    stageLog.Clear ()
+    let items = graph.Run (fun () -> Api.createSignal (jobItems 100))
+    let host = host ()
+    let mounted = mount graph host (Component.render jobs items)
+    let removes = countRemoves ()
+    graph.Run (fun () -> items.Value <- [||])
+    let removed = removes ()
+
+    equal
+        (0, 0., 100)
+        (removed,
+         (host.querySelectorAll "li").length,
+         stageLog
+         |> Seq.filter (fun line -> line.StartsWith "cleanup")
+         |> Seq.length)
+
+    graph.Run (fun () -> items.Value <- jobItems 2)
+    equal "waitingworking 1" host.textContent
+    mounted.Dispose ()
+    equal 0. host.childNodes.length
+
+let private removesArmRowLikePlainRow () =
+    use graph = new Graph ()
+    let armed = graph.Run (fun () -> Api.createSignal (jobItems 3))
+    let plain = graph.Run (fun () -> Api.createSignal (listedItems 3))
+    let armedHost, plainHost = host (), host ()
+    let a = mount graph armedHost (Component.render jobs armed)
+    let b = mount graph plainHost (Component.render listed plain)
+    let removes = countRemoves ()
+    graph.Run (fun () -> armed.Value <- [| armed.Value[0]; armed.Value[2] |])
+    let armedRemoved = removes ()
+    let removes = countRemoves ()
+    graph.Run (fun () -> plain.Value <- [| plain.Value[0]; plain.Value[2] |])
+    let plainRemoved = removes ()
+    equal (plainRemoved, "waitingwaiting") (armedRemoved, armedHost.textContent)
+    a.Dispose ()
+    b.Dispose ()
 
 let private eachMarkup () =
     use graph = new Graph ()
@@ -3803,13 +3855,15 @@ let cases =
         "row cleanups see their row connected on remove, clear and mount disposal", cleanupsSeeConnectedRows
         "a clear whose row cleanup throws reports it and leaves no row nodes", failingClearLeavesNoRows
         "a clear and an insertion after a failed row setup each take one operation", failedInsertionLeavesStagingEmpty
-        "a retired row holding a nested list keeps none of the nested rows", retiredRowLosesNestedRows
+        "a retired row holding a nested list leaves whole in one remove", retiredRowLeavesWhole
         "a nested row cleanup disposing the mount leaves no nodes and reports nothing", disposalLeavesDetachedHeldRows
         "clearing template rows holding nested lists keeps their cleanup order and markers", nestedClearKeepsOrder
         "an empty each region keeps its markers, fills and empties", eachEmpty
         "each renders the same DOM as its default expansion across insert, remove, reorder and an item change", eachTwin
         "root-level each regions beside other roots update, reorder, move and dispose", rootRegions
         "a matchWith inside each rows follows, moves and leaves with its row", nestedRegions
+        "clearing each rows holding matchWith arms removes no arm node by itself", clearsArmRowsWithoutRemoves
+        "removing an each row holding a matchWith arm takes the removes of a plain row", removesArmRowLikePlainRow
         "each server markup under Fable matches .NET", eachMarkup
         "an inlined child shares the clone and keeps its own instance, effect and handlers", inlinedChild
         "a grandchild inlined through a child is hoisted and updates", inlinedGrandchild
