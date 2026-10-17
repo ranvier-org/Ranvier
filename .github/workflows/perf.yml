@@ -17,6 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       run: ${{ steps.previous.outputs.run }}
+      ignored: ${{ steps.ignore.outputs.ignored }}
       base: ${{ steps.refs.outputs.base }}
       head: ${{ steps.refs.outputs.head }}
     steps:
@@ -39,6 +40,16 @@ jobs:
           fi
           [[ "$base" =~ ^[0-9a-f]{40}$ ]]
           printf 'head=%s\nbase=%s\n' "$HEAD" "$base" >> "$GITHUB_OUTPUT"
+      # A `Perf-Ignore: <reason>` footer keeps a master commit out of the performance history.
+      - id: ignore
+        if: github.event_name == 'push'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const {ignoreReason} = require('./.github/scripts/perf-ignore.cjs');
+            const reason = ignoreReason(context.payload.head_commit?.message);
+            if (reason !== null) core.notice(`Perf-Ignore: ${reason}. This commit is not measured or recorded.`);
+            core.setOutput('ignored', String(reason !== null));
       - id: previous
         if: github.event.action == 'labeled' || github.event.action == 'unlabeled'
         uses: actions/github-script@v8
@@ -52,7 +63,7 @@ jobs:
 
   measure:
     needs: find
-    if: needs.find.outputs.run == ''
+    if: needs.find.outputs.run == '' && needs.find.outputs.ignored != 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -96,7 +107,7 @@ jobs:
 
   verdict:
     needs: [find, measure]
-    if: always() && needs.find.result == 'success' && (needs.measure.result == 'success' || needs.measure.result == 'skipped')
+    if: always() && needs.find.result == 'success' && needs.find.outputs.ignored != 'true' && (needs.measure.result == 'success' || needs.measure.result == 'skipped')
     runs-on: ubuntu-latest
     env:
       BASE: ${{ needs.find.outputs.base }}
