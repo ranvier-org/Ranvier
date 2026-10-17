@@ -369,7 +369,9 @@ let tests =
                 for lazySource in [ false; true ] do
                     let source = if lazySource then "a lazy" else "an array"
 
-                    test $"the items and keys {name} from a projection over {source} source are released" {
+                    // The trace log keeps every written value and every row key.
+                    untracedOnly
+                    <| test $"the items and keys {name} from a projection over {source} source are released" {
                         let g = new Graph ()
                         let proj, items, dropped = shrink g step lazySource
                         Expect.equal (aliveOf dropped) 0 "the projection keeps no dropped item or key"
