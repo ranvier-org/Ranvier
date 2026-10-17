@@ -8,6 +8,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 101,890 | 694,466 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 101,889 | 694,691 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 101,890 | 694,775 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 102,022 | 695,263 |
 
 ## app-table
 
@@ -17,6 +18,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 9,255,854 | 11,922,488 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 9,255,710 | 11,917,743 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 9,255,710 | 11,919,484 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 9,255,733 | 11,916,154 |
 
 ## async-recover
 
@@ -26,6 +28,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 138,706 | 301 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 138,706 | 339 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 138,806 | 320 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 138,738 | 314 |
 
 ## async-resolve
 
@@ -35,6 +38,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 2,793,821 | 2,791,481 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 2,793,821 | 2,788,424 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 2,796,621 | 2,787,890 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 2,795,421 | 2,789,817 |
 
 ## chain
 
@@ -44,6 +48,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 13,042 | 318 | 2,470 | 4,671 | 3,911 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 13,042 | 318 | 2,470 | 4,671 | 3,911 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 13,106 | 318 | 2,470 | 4,671 | 3,911 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 13,042 | 318 | 2,470 | 4,671 | 3,911 |
 
 ## chain-affinity
 
@@ -53,6 +58,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 2,569 | 3,087 | 2,516 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 2,569 | 3,087 | 2,516 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 2,569 | 3,087 | 2,516 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 2,569 | 3,087 | 2,516 |
 
 ## create
 
@@ -62,6 +68,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 13,618,826 | 2,865,677 | 3,043,319 | 7,795,439 | 6,319,990 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 13,477,327 | 2,881,677 | 3,043,243 | 7,806,041 | 6,324,076 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 13,744,352 | 2,881,677 | 3,043,255 | 7,801,802 | 6,329,754 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 13,461,358 | 2,865,678 | 3,043,256 | 7,808,774 | 6,313,417 |
 
 ## create-on
 
@@ -71,6 +78,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 3,456,854 | 6,651,806 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 3,424,854 | 6,652,295 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 3,424,870 | 6,654,339 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 3,440,854 | 6,653,995 |
 
 ## cutoff
 
@@ -80,6 +88,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 1,181 | 50 | 111 | 51 | 35 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 1,181 | 50 | 111 | 51 | 35 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 1,181 | 50 | 111 | 51 | 35 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 1,181 | 50 | 111 | 51 | 35 |
 
 ## derive-effect
 
@@ -89,6 +98,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 765 | -1,632 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 765 | -1,632 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 765 | -1,632 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 765 | -1,632 |
 
 ## derive-on
 
@@ -98,6 +108,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 740 | -1,380 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 740 | -1,380 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 740 | -1,380 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 756 | -1,380 |
 
 ## dispose
 
@@ -107,6 +118,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 2,707,580 | 806,291 | 498,486 | 471,252 | 1,027,669 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 2,706,689 | 806,290 | 498,486 | 471,252 | 1,027,643 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 2,707,581 | 806,291 | 498,486 | 471,252 | 1,027,470 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 2,706,102 | 806,292 | 498,486 | 471,252 | 1,026,446 |
 
 ## dispose-on
 
@@ -116,6 +128,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 477,486 | 1,141,547 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 477,486 | 1,127,690 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 477,486 | 1,141,638 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 477,486 | 1,087,005 |
 
 ## editable-edit
 
@@ -125,6 +138,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 181,106 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 181,106 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 181,106 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 181,106 |
 
 ## editable-upstream
 
@@ -134,6 +148,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 232,756 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 232,756 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 232,756 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 232,756 |
 
 ## fail-recompute
 
@@ -143,6 +158,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 64,848 | 1,376 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 64,848 | 1,376 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 64,872 | 1,376 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 64,940 | 1,376 |
 
 ## flight
 
@@ -152,33 +168,37 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 11,041 | 11,368 | 10,809 | 22,381 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 11,041 | 11,367 | 10,809 | 22,381 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 11,041 | 11,368 | 10,809 | 22,381 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 11,039 | 11,365 | 10,807 | 22,381 |
 
 ## keyed-insert
 
-| Commit | Date | Subject | dotnet Ranvier (fresh items) | dotnet Ranvier (stable items) | node Ranvier (fresh items) | node Ranvier (stable items) |
-|---|---|---|---:|---:|---:|---:|
-| `878e5bd` | 2026-10-16 | feat(ci): CI performance/benchmark automation (#64) | 1,944,611 | 73,358 | 4,548,866 | 214,055 |
-| `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 1,944,587 | 73,334 | 4,548,960 | 214,109 |
-| `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 1,944,587 | 73,334 | 4,548,807 | 213,809 |
-| `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 1,944,587 | 73,334 | 4,543,663 | 213,991 |
+| Commit | Date | Subject | dotnet Ranvier (fresh items) | dotnet Ranvier (memo-free rows) | dotnet Ranvier (stable items) | node Ranvier (fresh items) | node Ranvier (memo-free rows) | node Ranvier (stable items) |
+|---|---|---|---:|---:|---:|---:|---:|---:|
+| `878e5bd` | 2026-10-16 | feat(ci): CI performance/benchmark automation (#64) | 1,944,611 | — | 73,358 | 4,548,866 | — | 214,055 |
+| `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 1,944,587 | — | 73,334 | 4,548,960 | — | 214,109 |
+| `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 1,944,587 | — | 73,334 | 4,548,807 | — | 213,809 |
+| `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 1,944,587 | — | 73,334 | 4,543,663 | — | 213,991 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 1,944,609 | 72,667 | 73,324 | 4,547,218 | 246,069 | 214,072 |
 
 ## keyed-remove
 
-| Commit | Date | Subject | dotnet Ranvier (fresh items) | dotnet Ranvier (stable items) | node Ranvier (fresh items) | node Ranvier (stable items) |
-|---|---|---|---:|---:|---:|---:|
-| `878e5bd` | 2026-10-16 | feat(ci): CI performance/benchmark automation (#64) | 1,943,561 | 66,481 | 4,150,967 | 187,077 |
-| `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 1,943,538 | 66,457 | 4,154,900 | 184,034 |
-| `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 1,943,553 | 66,463 | 4,153,664 | 181,760 |
-| `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 1,943,547 | 66,463 | 4,152,875 | 184,851 |
+| Commit | Date | Subject | dotnet Ranvier (fresh items) | dotnet Ranvier (memo-free rows) | dotnet Ranvier (stable items) | node Ranvier (fresh items) | node Ranvier (memo-free rows) | node Ranvier (stable items) |
+|---|---|---|---:|---:|---:|---:|---:|---:|
+| `878e5bd` | 2026-10-16 | feat(ci): CI performance/benchmark automation (#64) | 1,943,561 | — | 66,481 | 4,150,967 | — | 187,077 |
+| `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 1,943,538 | — | 66,457 | 4,154,900 | — | 184,034 |
+| `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 1,943,553 | — | 66,463 | 4,153,664 | — | 181,760 |
+| `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 1,943,547 | — | 66,463 | 4,152,875 | — | 184,851 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 1,943,547 | 65,120 | 66,456 | 4,146,197 | 272,464 | 182,669 |
 
 ## keyed-swap
 
-| Commit | Date | Subject | dotnet Ranvier (fresh items) | dotnet Ranvier (stable items) | node Ranvier (fresh items) | node Ranvier (stable items) |
-|---|---|---|---:|---:|---:|---:|
-| `878e5bd` | 2026-10-16 | feat(ci): CI performance/benchmark automation (#64) | 1,996,310 | 71,544 | 4,492,185 | 181,044 |
-| `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 1,996,294 | 71,528 | 4,491,416 | 181,067 |
-| `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 1,996,294 | 71,528 | 4,492,820 | 181,072 |
-| `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 1,996,294 | 71,528 | 4,494,937 | 179,703 |
+| Commit | Date | Subject | dotnet Ranvier (fresh items) | dotnet Ranvier (memo-free rows) | dotnet Ranvier (stable items) | node Ranvier (fresh items) | node Ranvier (memo-free rows) | node Ranvier (stable items) |
+|---|---|---|---:|---:|---:|---:|---:|---:|
+| `878e5bd` | 2026-10-16 | feat(ci): CI performance/benchmark automation (#64) | 1,996,310 | — | 71,544 | 4,492,185 | — | 181,044 |
+| `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 1,996,294 | — | 71,528 | 4,491,416 | — | 181,067 |
+| `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 1,996,294 | — | 71,528 | 4,492,820 | — | 181,072 |
+| `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 1,996,294 | — | 71,528 | 4,494,937 | — | 179,703 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 1,996,301 | 71,111 | 71,526 | 4,491,295 | 229,835 | 179,487 |
 
 ## mvu-dispatch
 
@@ -188,6 +208,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 58,391 | 772 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 58,391 | 772 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 58,391 | 772 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 58,391 | 772 |
 
 ## project-chain
 
@@ -197,6 +218,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 3,865,951 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 3,865,852 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 3,865,856 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 3,865,882 |
 
 ## project-churn
 
@@ -206,6 +228,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 61,103 | 59,026 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 61,103 | 59,026 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 61,103 | 59,022 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 61,102 | 59,022 |
 
 ## project-edit
 
@@ -215,6 +238,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 68,343 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 68,343 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 68,378 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 68,378 |
 
 ## project-reorder
 
@@ -224,6 +248,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 802,031 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 802,031 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 802,066 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 802,069 |
 
 ## shape-diamond
 
@@ -233,6 +258,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 60,899 | 116,575 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 60,899 | 116,578 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 60,899 | 116,611 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 60,899 | 116,579 |
 
 ## shape-dynamic
 
@@ -242,6 +268,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 82,420 | -24,701 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 82,420 | -24,728 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 82,420 | -24,425 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 82,420 | -24,744 |
 
 ## timed-admit-both
 
@@ -251,6 +278,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 130,748 | 166,581 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 130,748 | 166,630 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 133,820 | 166,570 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 130,748 | 166,851 |
 
 ## timed-admit-debounce
 
@@ -260,6 +288,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 129,654 | 162,898 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 129,654 | 162,868 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 132,726 | 162,881 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 129,654 | 162,874 |
 
 ## timed-admit-first
 
@@ -269,6 +298,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 76,517 | 101,552 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 76,517 | 101,552 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 78,565 | 101,552 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 76,517 | 101,552 |
 
 ## timed-admit-last
 
@@ -278,6 +308,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 129,916 | 162,139 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 129,916 | 162,134 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 132,988 | 162,139 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 129,916 | 162,141 |
 
 ## timed-capture-both
 
@@ -287,6 +318,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 42,700 | 52,067 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 42,700 | 52,067 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 43,724 | 52,067 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 42,700 | 52,067 |
 
 ## timed-capture-debounce
 
@@ -296,6 +328,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 42,572 | 54,165 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 42,572 | 54,165 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 43,596 | 54,165 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 42,572 | 54,165 |
 
 ## timed-capture-first
 
@@ -305,6 +338,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 37,772 | 47,381 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 37,772 | 47,381 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 38,796 | 47,381 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 37,772 | 47,381 |
 
 ## timed-capture-last
 
@@ -314,6 +348,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 42,508 | 51,303 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 42,508 | 51,303 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 43,532 | 51,303 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 42,508 | 51,303 |
 
 ## update
 
@@ -323,6 +358,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 1,095,080 | 38,805 | 83,005 | 472,299 | 377,285 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 1,090,280 | 38,805 | 83,005 | 472,399 | 377,202 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 1,095,080 | 38,805 | 83,005 | 472,204 | 377,236 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 1,088,680 | 38,805 | 83,005 | 471,711 | 377,241 |
 
 ## update-on
 
@@ -332,6 +368,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 93,805 | 402,349 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 93,805 | 402,224 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 93,805 | 402,195 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 95,405 | 402,258 |
 
 ## work-form
 
@@ -341,6 +378,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 174,678 | 168,144 | 340,579 | 309,540 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 174,678 | 168,144 | 340,750 | 309,540 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 174,678 | 168,144 | 340,714 | 309,540 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 174,678 | 168,144 | 340,961 | 309,519 |
 
 ## work-status
 
@@ -350,6 +388,7 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 100,445 | 79,115 | 712,580 | 976,604 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 100,445 | 79,115 | 712,610 | 976,647 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 100,445 | 79,115 | 712,615 | 976,593 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 100,445 | 80,715 | 712,424 | 976,952 |
 
 ## work-value
 
@@ -359,4 +398,5 @@
 | `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | 107,569 | 119,770 | 766,630 | 767,077 |
 | `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | 107,569 | 119,770 | 766,628 | 766,926 |
 | `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | 107,569 | 119,771 | 766,556 | 766,953 |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 107,570 | 121,369 | 766,614 | 766,837 |
 
