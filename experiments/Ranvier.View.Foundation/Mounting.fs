@@ -180,6 +180,10 @@ let private truncate (items: ResizeArray<'T>) (count: int) : unit = jsNative
 [<Emit("$0[$1]")>]
 let private item (items: 'T array) (index: int) : 'T = jsNative
 
+/// <summary>Writes an array element without a bounds check.</summary>
+[<Emit("$0[$1] = $2")>]
+let private setItem (items: 'T array) (index: int) (value: 'T) : unit = jsNative
+
 [<Emit("$0 == null")>]
 let private isNullish (value: 'T) : bool = jsNative
 
@@ -1901,19 +1905,25 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                             let n0 = priorItems.Length
                             let n1 = current.Length
 
-                            while start.Value < n0
-                                  && start.Value < n1
-                                  && obj.ReferenceEquals (item priorItems start.Value, item current start.Value) do
-                                start.Value <- start.Value + 1
+                            let mutable first = 0
 
-                            end0.Value <- n0 - 1
-                            end1.Value <- n1 - 1
+                            while first < n0
+                                  && first < n1
+                                  && obj.ReferenceEquals (item priorItems first, item current first) do
+                                first <- first + 1
 
-                            while end0.Value >= start.Value
-                                  && end1.Value >= start.Value
-                                  && obj.ReferenceEquals (item priorItems end0.Value, item current end1.Value) do
-                                end0.Value <- end0.Value - 1
-                                end1.Value <- end1.Value - 1
+                            let mutable last0 = n0 - 1
+                            let mutable last1 = n1 - 1
+
+                            while last0 >= first
+                                  && last1 >= first
+                                  && obj.ReferenceEquals (item priorItems last0, item current last1) do
+                                last0 <- last0 - 1
+                                last1 <- last1 - 1
+
+                            start.Value <- first
+                            end0.Value <- last0
+                            end1.Value <- last1
 
                             if priorRows.Length = site.LaidOut.Count then
                                 Row.ValidateWindow (regionStart, regionEnd, site.LaidOut, parent.Value, start.Value - 1, end0.Value + 1)
@@ -1957,17 +1967,15 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                                 Api.untrack (fun () ->
                                     let keys = keys.Value
                                     let next: Row array = Array.zeroCreate keys.Length
+                                    let start, end0, end1 = start.Value, end0.Value, end1.Value
 
                                     for index in 0 .. keys.Length - 1 do
                                         let kept =
-                                            if index < start.Value then
-                                                item priorRows index
-                                            elif index > end1.Value then
-                                                item priorRows (end0.Value + index - end1.Value)
-                                            else
-                                                null
+                                            if index < start then item priorRows index
+                                            elif index > end1 then item priorRows (end0 + index - end1)
+                                            else null
 
-                                        next[index] <-
+                                        let row =
                                             if isNullish kept || kept.Removed then
 #if RANVIER_VIEW_COUNTERS
                                                 ListCounters.lookups.Value <- ListCounters.lookups.Value + 1
@@ -1975,6 +1983,8 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                                                 projection.Get (item keys index)
                                             else
                                                 kept
+
+                                        setItem next index row
 
                                     Row.Layout ((fun () -> site.Live ()), site.LaidOut, site.Builder.Staging, parent.Value, regionEnd, next)
                                     next)
