@@ -906,16 +906,27 @@ and [<Sealed; AllowNullLiteral>] private Row(first: Node, last: Node) =
     /// <summary>
     /// Moves the region's rows into the order of <c>next</c> and stores it as the laid-out rows. A window that exchanges
     /// its first and last rows moves those two rows; any other window moves the rows outside one longest increasing run.
-    /// Stops when <c>live</c> turns false.
+    /// Stops when <c>live</c> turns false. The first <c>leading</c> and last <c>trailing</c> rows of <c>next</c> must be
+    /// the laid-out rows at the same offsets from the start and from the end.
     /// </summary>
-    static member Layout(live: unit -> bool, laidOut: ResizeArray<Row>, staging: DocumentFragment, parent: Node, regionEnd: Node, next: Row array) =
+    static member Layout
+        (
+            live: unit -> bool,
+            laidOut: ResizeArray<Row>,
+            staging: DocumentFragment,
+            parent: Node,
+            regionEnd: Node,
+            next: Row array,
+            leading: int,
+            trailing: int
+        ) =
         // Removed rows stay in `previous`: they are absent from `next`, so they fall inside the changed window.
         let previous = laidOut
 
-        let mutable aStart = 0
-        let mutable bStart = 0
-        let mutable aEnd = previous.Count
-        let mutable bEnd = next.Length
+        let mutable aStart = leading
+        let mutable bStart = leading
+        let mutable aEnd = previous.Count - trailing
+        let mutable bEnd = next.Length - trailing
 
         while aStart < aEnd
               && bStart < bEnd
@@ -1850,12 +1861,18 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
         // are the region's own copy.
         let mutable previousItems: obj array = [||]
         let mutable previousRows: Row array = [||]
+        // The rows released since the last layout.
+        let retired = ResizeArray<Row>()
 
         let buildRow (current: unit -> obj) : Row =
             let mutable row: Row = null
 
             // Runs after the row's own cleanups.
-            Api.onCleanup (fun () -> site.ReleaseRow row)
+            Api.onCleanup (fun () ->
+                if not (isNull row) then
+                    retired.Add row
+
+                site.ReleaseRow row)
 
             row <-
                 if isNull rows then
@@ -1873,6 +1890,9 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                 let priorRows = previousRows
                 previousItems <- [||]
                 previousRows <- [||]
+
+                if priorRows.Length = 0 then
+                    retired.Clear ()
                 // Items before `start` and after `end0` (previous) or `end1` (current) are the same references in both passes.
                 let start = ref 0
                 let end0 = ref -1
@@ -1953,27 +1973,70 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                             try
                                 Api.untrack (fun () ->
                                     let keys = keys.Value
-                                    let next: Row array = Array.zeroCreate keys.Length
+                                    let count = keys.Length
+                                    let next: Row array = Array.zeroCreate count
                                     let start, end0, end1 = start.Value, end0.Value, end1.Value
 
-                                    for index in 0 .. keys.Length - 1 do
+                                    let lookup index =
+#if RANVIER_VIEW_COUNTERS
+                                        ListCounters.lookups.Value <- ListCounters.lookups.Value + 1
+#endif
+                                        projection.Get (item keys index)
+
+                                    for index in 0 .. count - 1 do
                                         let kept =
                                             if index < start then item priorRows index
                                             elif index > end1 then item priorRows (end0 + index - end1)
                                             else null
 
-                                        let row =
-                                            if isNullish kept || kept.Removed then
-#if RANVIER_VIEW_COUNTERS
-                                                ListCounters.lookups.Value <- ListCounters.lookups.Value + 1
-#endif
-                                                projection.Get (item keys index)
-                                            else
-                                                kept
+                                        setItem next index (if isNullish kept then lookup index else kept)
 
-                                        setItem next index row
+                                    // Kept rows released since the last layout are replaced, and bound the rows that
+                                    // `Row.Layout` can skip.
+                                    let mutable leading = min start count
+                                    let mutable trailing = max 0 (count - 1 - end1)
+                                    let checkedRows = if leading + trailing > 0 then retired.Count else 0
 
-                                    Row.Layout ((fun () -> site.Live ()), site.LaidOut, site.Builder.Staging, parent.Value, regionEnd, next)
+                                    for index in 0 .. checkedRows - 1 do
+                                        let row = at retired index
+                                        let previous = row.Index
+
+                                        if
+                                            previous >= 0
+                                            && previous < priorRows.Length
+                                            && same (item priorRows previous) row
+                                        then
+                                            let position =
+                                                if previous < start then previous
+                                                elif previous > end0 then end1 + previous - end0
+                                                else -1
+
+                                            if
+                                                position >= 0
+                                                && position < count
+                                                && same (item next position) row
+                                            then
+                                                setItem next position (lookup position)
+                                                leading <- min leading position
+                                                trailing <- min trailing (count - 1 - position)
+
+                                    retired.Clear ()
+
+                                    if priorRows.Length <> site.LaidOut.Count then
+                                        leading <- 0
+                                        trailing <- 0
+
+                                    Row.Layout (
+                                        (fun () -> site.Live ()),
+                                        site.LaidOut,
+                                        site.Builder.Staging,
+                                        parent.Value,
+                                        regionEnd,
+                                        next,
+                                        leading,
+                                        trailing
+                                    )
+
                                     next)
                                 |> Ok
                             with error ->
