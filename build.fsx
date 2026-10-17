@@ -516,9 +516,9 @@ module private Perf =
         input {
             let! leg = argument "LEG" "Measurement leg: arm64-counters or x64-timing"
             and! baseSha = argument "BASE_SHA" "Commit of the base build"
-            and! baseDir = argument "BASE_DIR" "perf-build output of the base"
+            and! baseDir = argument "BASE_DIR" "perf build output of the base"
             and! headSha = argument "HEAD_SHA" "Commit of the head build"
-            and! headDir = argument "HEAD_DIR" "perf-build output of the head"
+            and! headDir = argument "HEAD_DIR" "perf build output of the head"
             and! output = argument "OUT" "File to write the measurements to"
 
             return
@@ -555,7 +555,7 @@ module private Perf =
 
             and! files =
                 Input.argument<string list> "AB"
-                |> Input.description "perf-ab measurement files, one per leg"
+                |> Input.description "perf ab measurement files, one per leg"
 
             let output = absolute directory
             let verdictFile = combine output "verdict.json"
@@ -668,7 +668,7 @@ module private Perf =
 
             and! files =
                 Input.argument<string list> "AB"
-                |> Input.description "perf-ab measurement files, one per leg"
+                |> Input.description "perf ab measurement files, one per leg"
 
             let output = absolute file
             let directory = Path.GetDirectoryName output
@@ -734,28 +734,29 @@ exit
     description "Build CLI"
     workingDir __REPOSITORY_DIRECTORY__
 
-    command "perf-build" {
-        description "CI: builds the counter bench of a revision in a fresh worktree"
+    command "perf" {
+        description "CI: counter-bench measurements, verdicts and history"
         hidden
-        Perf.build
-    }
 
-    command "perf-ab" {
-        description "CI: measures a base and a head build in alternating processes"
-        hidden
-        Perf.ab
-    }
+        command "build" {
+            description "Builds the counter bench of a revision in a fresh worktree"
+            Perf.build
+        }
 
-    command "perf-compare" {
-        description "CI: applies the regression verdict to the measurements and writes the report"
-        hidden
-        Perf.compare
-    }
+        command "ab" {
+            description "Measures a base and a head build in alternating processes"
+            Perf.ab
+        }
 
-    command "perf-record" {
-        description "CI: records a commit's measurements in the performance history and rebuilds its timeline"
-        hidden
-        Perf.record
+        command "compare" {
+            description "Applies the regression verdict to the measurements and writes the report"
+            Perf.compare
+        }
+
+        command "record" {
+            description "Records a commit's measurements in the performance history and rebuilds its timeline"
+            Perf.record
+        }
     }
 
     command "build" {

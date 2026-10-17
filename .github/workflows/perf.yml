@@ -84,10 +84,10 @@ jobs:
         run: dotnet test bench/Ranvier.Counters.Tests -c Release
       - name: Workflow logic tests
         run: node --test .github/scripts/*.test.cjs
-      - run: dotnet fsi build.fsx -- perf-build "$BASE" "$RUNNER_TEMP/perf/base"
-      - run: dotnet fsi build.fsx -- perf-build "$HEAD" "$RUNNER_TEMP/perf/head"
+      - run: dotnet fsi build.fsx -- perf build "$BASE" "$RUNNER_TEMP/perf/base"
+      - run: dotnet fsi build.fsx -- perf build "$HEAD" "$RUNNER_TEMP/perf/head"
       - name: Alternating measurements (arm64 asserts hardware in every region)
-        run: dotnet fsi build.fsx -- perf-ab "$LEG" "$BASE" "$RUNNER_TEMP/perf/base" "$HEAD" "$RUNNER_TEMP/perf/head" "out/ab-$LEG.json"
+        run: dotnet fsi build.fsx -- perf ab "$LEG" "$BASE" "$RUNNER_TEMP/perf/base" "$HEAD" "$RUNNER_TEMP/perf/head" "out/ab-$LEG.json"
       - uses: actions/upload-artifact@v4
         with:
           name: ab-${{ matrix.leg }}
@@ -132,7 +132,7 @@ jobs:
           if-no-files-found: error
       - run: dotnet build bench/Ranvier.Counters -c Release -p:RanvierTrace=false -p:RanvierCounters=false -o out/head/worker
       - name: Compare and annotate
-        run: dotnet fsi build.fsx -- perf-compare "$BASE" "$HEAD" "$ACCEPTED" out/report out/ab-arm64-counters.json out/ab-x64-timing.json
+        run: dotnet fsi build.fsx -- perf compare "$BASE" "$HEAD" "$ACCEPTED" out/report out/ab-arm64-counters.json out/ab-x64-timing.json
       - name: Bind report to this run
         if: always()
         uses: actions/github-script@v8

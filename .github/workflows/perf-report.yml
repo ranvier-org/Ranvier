@@ -76,7 +76,7 @@ jobs:
       - name: Record master measurement
         env:
           HEAD: ${{ github.event.workflow_run.head_sha }}
-        run: dotnet fsi build.fsx -- perf-record "$HEAD" "$RUNNER_TEMP/record/runs/$HEAD.json" "$RUNNER_TEMP/report/ab-arm64-counters.json" "$RUNNER_TEMP/report/ab-x64-timing.json"
+        run: dotnet fsi build.fsx -- perf record "$HEAD" "$RUNNER_TEMP/record/runs/$HEAD.json" "$RUNNER_TEMP/report/ab-arm64-counters.json" "$RUNNER_TEMP/report/ab-x64-timing.json"
       - name: Preserve and publish history with optimistic retries
         env:
           HEAD: ${{ github.event.workflow_run.head_sha }}
