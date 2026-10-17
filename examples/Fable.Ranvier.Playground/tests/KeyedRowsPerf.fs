@@ -2,12 +2,17 @@
 module KeyedRowsPerf
 
 open global.Ranvier
+open Fable.Core
 open Fable.Core.TS.Dom
 open Ranvier.View.Foundation
 open Ranvier.View.Foundation.Representation
 open Ranvier.View.Foundation.Template
 
 type KeyedRow = { Id: int; Label: Signal<string> }
+
+/// <summary>A copy of the rows without the row at <c>index</c>, built with <c>slice</c> and <c>splice</c> as the Solid fixture builds it.</summary>
+[<Emit("(() => { const next = $1.slice(); next.splice($0, 1); return next; })()")>]
+let private without (index: int) (rows: KeyedRow array) : KeyedRow array = jsNative
 
 /// <summary>Counts row clicks; the handlers exist to match the benchmark's row shape.</summary>
 let mutable private clicks = 0
@@ -112,7 +117,7 @@ let mountKeyed (host: HTMLElement) : KeyedOperations =
                         next[998] <- first
 
                     rows.Value <- next)
-        Remove = fun index -> graph.Run (fun () -> rows.Value <- Array.removeAt index rows.Value)
+        Remove = fun index -> graph.Run (fun () -> rows.Value <- without index rows.Value)
         Clear = fun () -> graph.Run (fun () -> rows.Value <- [||])
         Dispose =
             fun () ->
