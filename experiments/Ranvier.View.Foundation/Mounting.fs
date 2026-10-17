@@ -194,6 +194,13 @@ let private copyRows (rows: 'T array) : 'T array = jsNative
 [<Emit("$0.splice($1, $2, ...$3)")>]
 let private spliceRows (rows: 'T array) (start: int) (count: int) (inserted: 'T array) : unit = jsNative
 
+/// <summary>Replaces <c>count</c> elements from <c>start</c> with <c>inserted</c>.</summary>
+[<Emit("$0.splice($1, $2, ...$3)")>]
+let private spliceList (items: ResizeArray<'T>) (start: int) (count: int) (inserted: 'T array) : unit = jsNative
+
+[<Emit("$0.slice($1, $2)")>]
+let private sliceRows (rows: 'T array) (start: int) (finish: int) : 'T array = jsNative
+
 /// <summary>The largest changed window whose rows a keyed pass splices into a copy of the previous rows.</summary>
 let private smallWindow = 64
 
@@ -1035,22 +1042,29 @@ and [<Sealed; AllowNullLiteral>] private Row(first: Node, last: Node) =
                         before <- row.First
                         offset <- offset - 1
 
-        // Rows before `bStart` are in place; rows after `bEnd` keep their positions when the row count is unchanged.
-        let last =
-            if previous.Count = next.Length then
-                bEnd - 1
-            else
-                next.Length - 1
+        // Rows before `bStart` are in place; rows after `bEnd` keep their positions when the row count is unchanged, and
+        // are the rows after `aEnd` otherwise.
+        if
+            previous.Count <> next.Length
+            && bEnd - bStart <= smallWindow
+        then
+            spliceList laidOut aStart (aEnd - aStart) (sliceRows next bStart bEnd)
+        else
+            let last =
+                if previous.Count = next.Length then
+                    bEnd - 1
+                else
+                    next.Length - 1
 
-        for index in bStart..last do
-            let row = item next index
+            for index in bStart..last do
+                let row = item next index
 
-            if index < laidOut.Count then
-                setAt laidOut index row
-            else
-                laidOut.Add row
+                if index < laidOut.Count then
+                    setAt laidOut index row
+                else
+                    laidOut.Add row
 
-        truncate laidOut next.Length
+            truncate laidOut next.Length
 
 /// <summary>Materialises the template rows and arms of one region into the region's staging fragment and serves their setup.</summary>
 and private RowBuilder(state: MountState) =
