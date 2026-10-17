@@ -5,6 +5,14 @@ order: 2
 
 > **Preview** — Ranvier is pre-release; its APIs may change.
 
+## CI instruction counts
+The chart compares retired instructions per operation across engines for the latest CI measurement.
+Choose a runtime or recorded commit, filter scenarios by name, and toggle libraries in the legend.
+
+<div class="rv-perf" data-perf-compare data-perf-group="chain,cutoff"><p role="status">Loading recorded measurements…</p></div>
+<link rel="stylesheet" href="/Ranvier/benchmarks/perf-charts.css">
+<script src="/Ranvier/benchmarks/perf-charts.js"></script>
+
 The write path is the most frequently executed path in the library. These benchmarks measure reads, writes and the equality cutoff on a single signal. See [Benchmarks](index.md) for configuration, environment and caveats.
 
 ## SignalBenchmarks
