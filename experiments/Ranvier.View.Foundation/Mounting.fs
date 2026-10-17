@@ -197,6 +197,25 @@ let private spliceRows (rows: 'T array) (start: int) (count: int) (inserted: 'T 
 /// <summary>The largest changed window whose rows a keyed pass splices into a copy of the previous rows.</summary>
 let private smallWindow = 64
 
+[<Emit("new Map()")>]
+let private rowMap () : obj = jsNative
+
+[<Emit("$0.set($1, $2)")>]
+let private rowMapSet (map: obj) (key: 'T) (value: int) : unit = jsNative
+
+/// <summary>The value stored for <c>key</c>, or -1.</summary>
+[<Emit("($0.get($1) ?? -1)")>]
+let private rowMapGet (map: obj) (key: 'T) : int = jsNative
+
+[<Emit("new Set()")>]
+let private rowSet () : obj = jsNative
+
+[<Emit("$0.add($1)")>]
+let private rowSetAdd (set: obj) (value: 'T) : unit = jsNative
+
+[<Emit("$0.has($1)")>]
+let private rowSetHas (set: obj) (value: 'T) : bool = jsNative
+
 let private skip: unit -> unit = ignore
 
 #if RANVIER_VIEW_COUNTERS
@@ -788,8 +807,6 @@ and Mounted internal (state: MountState) =
 and [<Sealed; AllowNullLiteral>] private Row(first: Node, last: Node) =
     member _.First = first
     member _.Last = last
-    /// <summary>The row's position among its region's laid-out rows, or -1 before its first layout.</summary>
-    member val Index = -1 with get, set
     member val Removed = false with get, set
     /// <summary>The nested mount of an authored row, or null for a template row.</summary>
     member val Mount: Mounted = Unchecked.defaultof<_> with get, set
@@ -997,16 +1014,13 @@ and [<Sealed; AllowNullLiteral>] private Row(first: Node, last: Node) =
                         Row.Place (next[bEnd - 1], parent, anchor)
                 else
                     let sources = Array.create count -1
+                    let positions = rowMap ()
+
+                    for index in aStart .. aEnd - 1 do
+                        rowMapSet positions (at previous index) index
 
                     for offset in 0 .. count - 1 do
-                        let index = next[bStart + offset].Index
-
-                        if
-                            index >= aStart
-                            && index < aEnd
-                            && same previous[index] next[bStart + offset]
-                        then
-                            sources[offset] <- index
+                        setItem sources offset (rowMapGet positions (item next (bStart + offset)))
 
                     let keep = increasingRun sources
                     let mutable before = anchor
@@ -1030,7 +1044,6 @@ and [<Sealed; AllowNullLiteral>] private Row(first: Node, last: Node) =
 
         for index in bStart..last do
             let row = item next index
-            row.Index <- index
 
             if index < laidOut.Count then
                 setAt laidOut index row
@@ -1189,22 +1202,20 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
     /// <remarks>Guards an invariant: a successful pass that empties the list holds every live laid-out row.</remarks>
     member _.ReleasedAll() =
         let mutable live = 0
+        let rows = rowSet ()
 
         for index in 0 .. laidOut.Count - 1 do
-            if not laidOut[index].Removed then
+            let row = at laidOut index
+
+            if not row.Removed then
                 live <- live + 1
+                rowSetAdd rows row
 
         let mutable all = live = pending.Count
         let mutable index = 0
 
         while all && index < pending.Count do
-            let row = pending[index]
-
-            all <-
-                row.Index >= 0
-                && row.Index < laidOut.Count
-                && same laidOut[row.Index] row
-
+            all <- rowSetHas rows (at pending index)
             index <- index + 1
 
         all
@@ -2022,28 +2033,24 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                                     let mutable trailing = max 0 (count - 1 - end1)
                                     let checkedRows = if leading + trailing > 0 then retired.Count else 0
 
-                                    for index in 0 .. checkedRows - 1 do
-                                        let row = at retired index
-                                        let previous = row.Index
+                                    if checkedRows > 0 then
+                                        let window = rowSet ()
 
-                                        if
-                                            previous >= 0
-                                            && previous < priorRows.Length
-                                            && same (item priorRows previous) row
-                                        then
-                                            let position =
-                                                if previous < start then previous
-                                                elif previous > end0 then end1 + previous - end0
-                                                else -1
+                                        for index in start..end0 do
+                                            rowSetAdd window (item priorRows index)
 
-                                            if
-                                                position >= 0
-                                                && position < count
-                                                && same (item next position) row
-                                            then
-                                                setItem next position (lookup position)
-                                                leading <- min leading position
-                                                trailing <- min trailing (count - 1 - position)
+                                        for index in 0 .. checkedRows - 1 do
+                                            let row = at retired index
+
+                                            if not (rowSetHas window row) then
+                                                for position in 0 .. count - 1 do
+                                                    if
+                                                        (position < start || position > end1)
+                                                        && same (item next position) row
+                                                    then
+                                                        setItem next position (lookup position)
+                                                        leading <- min leading position
+                                                        trailing <- min trailing (count - 1 - position)
 
                                     retired.Clear ()
 
