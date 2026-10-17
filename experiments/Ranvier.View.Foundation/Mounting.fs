@@ -187,6 +187,16 @@ let private setItem (items: 'T array) (index: int) (value: 'T) : unit = jsNative
 [<Emit("$0 == null")>]
 let private isNullish (value: 'T) : bool = jsNative
 
+[<Emit("$0.slice()")>]
+let private copyRows (rows: 'T array) : 'T array = jsNative
+
+/// <summary>Replaces <c>count</c> elements from <c>start</c> with <c>inserted</c>.</summary>
+[<Emit("$0.splice($1, $2, ...$3)")>]
+let private spliceRows (rows: 'T array) (start: int) (count: int) (inserted: 'T array) : unit = jsNative
+
+/// <summary>The largest changed window whose rows a keyed pass splices into a copy of the previous rows.</summary>
+let private smallWindow = 64
+
 let private skip: unit -> unit = ignore
 
 #if RANVIER_VIEW_COUNTERS
@@ -1974,7 +1984,6 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                                 Api.untrack (fun () ->
                                     let keys = keys.Value
                                     let count = keys.Length
-                                    let next: Row array = Array.zeroCreate count
                                     let start, end0, end1 = start.Value, end0.Value, end1.Value
 
                                     let lookup index =
@@ -1983,13 +1992,29 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
 #endif
                                         projection.Get (item keys index)
 
-                                    for index in 0 .. count - 1 do
-                                        let kept =
-                                            if index < start then item priorRows index
-                                            elif index > end1 then item priorRows (end0 + index - end1)
-                                            else null
+                                    let removed = end0 - start + 1
+                                    let inserted = end1 - start + 1
 
-                                        setItem next index (if isNullish kept then lookup index else kept)
+                                    let next: Row array =
+                                        if
+                                            inserted <= smallWindow
+                                            && priorRows.Length - removed + inserted = count
+                                        then
+                                            let next = copyRows priorRows
+                                            spliceRows next start removed (Array.init inserted (fun offset -> lookup (start + offset)))
+                                            next
+                                        else
+                                            let next = Array.zeroCreate count
+
+                                            for index in 0 .. count - 1 do
+                                                let kept =
+                                                    if index < start then item priorRows index
+                                                    elif index > end1 then item priorRows (end0 + index - end1)
+                                                    else null
+
+                                                setItem next index (if isNullish kept then lookup index else kept)
+
+                                            next
 
                                     // Kept rows released since the last layout are replaced, and bound the rows that
                                     // `Row.Layout` can skip.
