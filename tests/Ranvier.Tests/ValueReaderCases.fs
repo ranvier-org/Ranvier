@@ -36,6 +36,24 @@ let independentReaders () =
         check "retained delta is unchanged" [ 1, KeyChange.Changed ] (changes retained)
         check "idle value read" true (fast.Read().IsEmpty))
 
+let repeatedChanges () =
+    use graph = new Graph ()
+
+    graph.Run (fun () ->
+        let input = createSignal [| 1, 10; 2, 20; 3, 30 |]
+        let rows = createProjection fst snd (fun () -> input.Value)
+        use fast = rows.NewValueReader ()
+        use slow = rows.NewValueReader ()
+        fast.Read () |> ignore
+        slow.Read () |> ignore
+        input.Value <- [| 1, 11; 2, 20; 3, 30 |]
+        fast.Read () |> ignore
+        input.Value <- [| 1, 11; 2, 22; 3, 30 |]
+        fast.Read () |> ignore
+        input.Value <- [| 1, 12; 2, 22; 3, 30 |]
+        fast.Read () |> ignore
+        check "a key changed twice is one change, beside the other key's" [ 1, KeyChange.Changed; 2, KeyChange.Changed ] (changes (slow.Read ())))
+
 let reactiveCutoffs () =
     use graph = new Graph ()
 
@@ -560,6 +578,7 @@ let mappedRetryAfterFailedDelta () =
 let cases =
     [|
         "value readers have independent baselines and immutable deltas", independentReaders
+        "a value reader merges repeated changes to a key in place", repeatedChanges
         "value readers preserve reactive cutoffs", reactiveCutoffs
         "value readers report first settlement but not pending/error states", firstSettlementAndStates
         "new value readers retain rows settled before observation", previouslySettledRows
