@@ -909,20 +909,7 @@ and [<Sealed; AllowNullLiteral>] private Row(first: Node, last: Node) =
     /// Stops when <c>live</c> turns false.
     /// </summary>
     static member Layout(live: unit -> bool, laidOut: ResizeArray<Row>, staging: DocumentFragment, parent: Node, regionEnd: Node, next: Row array) =
-        // Compacts the removed rows out of the laid-out rows in place; a row keeps its index until a removed row precedes it.
-        let mutable kept = 0
-
-        for index in 0 .. laidOut.Count - 1 do
-            let row = at laidOut index
-
-            if not row.Removed then
-                if kept <> index then
-                    setAt laidOut kept row
-                    row.Index <- kept
-
-                kept <- kept + 1
-
-        truncate laidOut kept
+        // Removed rows stay in `previous`: they are absent from `next`, so they fall inside the changed window.
         let previous = laidOut
 
         let mutable aStart = 0
