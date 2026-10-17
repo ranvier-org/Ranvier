@@ -144,7 +144,7 @@ try {
         profiles.push({ mode, operation: name, repeats, ...summarizeCpu(cpu) });
         console.log(`Profiled ${mode}/${name}`);
       }
-      for (const name of process.argv.includes("--no-alloc") ? [] : only(["create1k", "clear1k", "swap1k"], "ops")) for (const mode of modes) {
+      for (const name of process.argv.includes("--no-alloc") ? [] : only(["create1k", "clear1k", "swap1k", "remove1k", "remove10k"], "ops")) for (const mode of modes) {
         const runs = 10;
         await page.evaluate(({ mode, name, runs }) => { window.keyedSteps = Array.from({ length: runs }, () => window.keyedPerf.prepared(mode, name)); }, { mode, name, runs });
         await cdp.send("HeapProfiler.collectGarbage");
