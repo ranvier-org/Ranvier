@@ -168,6 +168,21 @@ let private deleteBetween (first: Node) (last: Node) : unit = jsNative
 [<Emit("$0[$1]")>]
 let private at (items: ResizeArray<'T>) (index: int) : 'T = jsNative
 
+/// <summary>Writes an element without a bounds check.</summary>
+[<Emit("$0[$1] = $2")>]
+let private setAt (items: ResizeArray<'T>) (index: int) (value: 'T) : unit = jsNative
+
+/// <summary>Removes the elements from <c>count</c> onwards.</summary>
+[<Emit("$0.length = $1")>]
+let private truncate (items: ResizeArray<'T>) (count: int) : unit = jsNative
+
+/// <summary>Reads an array element without a bounds check.</summary>
+[<Emit("$0[$1]")>]
+let private item (items: 'T array) (index: int) : 'T = jsNative
+
+[<Emit("$0 == null")>]
+let private isNullish (value: 'T) : bool = jsNative
+
 let private skip: unit -> unit = ignore
 
 #if RANVIER_VIEW_COUNTERS
@@ -890,14 +905,21 @@ and [<Sealed; AllowNullLiteral>] private Row(first: Node, last: Node) =
     /// Stops when <c>live</c> turns false.
     /// </summary>
     static member Layout(live: unit -> bool, laidOut: ResizeArray<Row>, staging: DocumentFragment, parent: Node, regionEnd: Node, next: Row array) =
-        let previous = ResizeArray<Row>(laidOut.Count)
+        // Compacts the removed rows out of the laid-out rows in place; a row keeps its index until a removed row precedes it.
+        let mutable kept = 0
 
         for index in 0 .. laidOut.Count - 1 do
-            let row = laidOut[index]
+            let row = at laidOut index
 
             if not row.Removed then
-                row.Index <- previous.Count
-                previous.Add row
+                if kept <> index then
+                    setAt laidOut kept row
+                    row.Index <- kept
+
+                kept <- kept + 1
+
+        truncate laidOut kept
+        let previous = laidOut
 
         let mutable aStart = 0
         let mutable bStart = 0
@@ -987,11 +1009,23 @@ and [<Sealed; AllowNullLiteral>] private Row(first: Node, last: Node) =
                         before <- row.First
                         offset <- offset - 1
 
-        laidOut.Clear ()
+        // Rows before `bStart` are in place; rows after `bEnd` keep their positions when the row count is unchanged.
+        let last =
+            if previous.Count = next.Length then
+                bEnd - 1
+            else
+                next.Length - 1
 
-        for index in 0 .. next.Length - 1 do
-            next[index].Index <- index
-            laidOut.Add next[index]
+        for index in bStart..last do
+            let row = item next index
+            row.Index <- index
+
+            if index < laidOut.Count then
+                setAt laidOut index row
+            else
+                laidOut.Add row
+
+        truncate laidOut next.Length
 
 /// <summary>Materialises the template rows and arms of one region into the region's staging fragment and serves their setup.</summary>
 and private RowBuilder(state: MountState) =
@@ -1869,7 +1903,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
 
                             while start.Value < n0
                                   && start.Value < n1
-                                  && obj.ReferenceEquals (priorItems[start.Value], current[start.Value]) do
+                                  && obj.ReferenceEquals (item priorItems start.Value, item current start.Value) do
                                 start.Value <- start.Value + 1
 
                             end0.Value <- n0 - 1
@@ -1877,7 +1911,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
 
                             while end0.Value >= start.Value
                                   && end1.Value >= start.Value
-                                  && obj.ReferenceEquals (priorItems[end0.Value], current[end1.Value]) do
+                                  && obj.ReferenceEquals (item priorItems end0.Value, item current end1.Value) do
                                 end0.Value <- end0.Value - 1
                                 end1.Value <- end1.Value - 1
 
@@ -1927,18 +1961,18 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                                     for index in 0 .. keys.Length - 1 do
                                         let kept =
                                             if index < start.Value then
-                                                priorRows[index]
+                                                item priorRows index
                                             elif index > end1.Value then
-                                                priorRows[end0.Value + index - end1.Value]
+                                                item priorRows (end0.Value + index - end1.Value)
                                             else
                                                 null
 
                                         next[index] <-
-                                            if isNull kept || kept.Removed then
+                                            if isNullish kept || kept.Removed then
 #if RANVIER_VIEW_COUNTERS
                                                 ListCounters.lookups.Value <- ListCounters.lookups.Value + 1
 #endif
-                                                projection.Get keys[index]
+                                                projection.Get (item keys index)
                                             else
                                                 kept
 

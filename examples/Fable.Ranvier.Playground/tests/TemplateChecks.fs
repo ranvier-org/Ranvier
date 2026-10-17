@@ -3248,6 +3248,104 @@ let private eachTwin () =
     twinMount.Dispose ()
     equal (0., 0.) (first.childNodes.length, second.childNodes.length)
 
+let private eachRandomEdits () =
+    use graph = new Graph ()
+    listedLog.Clear ()
+    // Park–Miller in floats: the sequence is identical under .NET and Fable.
+    let mutable seed = 20261017.0
+
+    let next bound =
+        seed <- (seed * 16807.0) % 2147483647.0
+        int (seed % float bound)
+
+    let mutable fresh = 0
+
+    let created () =
+        fresh <- fresh + 1
+
+        {
+            Id = fresh
+            Text = "t" + string fresh
+        }
+
+    let items =
+        graph.Run (fun () -> Api.createSignal (Array.init 8 (fun _ -> created ())))
+
+    let first, second = host (), host ()
+    let templateMount = mount graph first (Component.render listed items)
+    let twinMount = mount graph second (Component.renderWith Program.ops listed items)
+
+    let rowsOf (node: HTMLElement) =
+        let rows = node.querySelectorAll "li"
+        Array.init (int rows.length) (fun index -> rows.item (float index) |> unbox<HTMLElement>)
+
+    let edit (current: Listed array) =
+        let rows = ResizeArray current
+
+        match next 7 with
+        | 0 when rows.Count > 0 -> rows.RemoveRange (next rows.Count, 1)
+        | 1 when rows.Count > 2 ->
+            let start = next (rows.Count - 1)
+            rows.RemoveRange (start, 1 + next (rows.Count - start))
+        | 2 ->
+            for _ in 0 .. next 3 do
+                rows.Insert (next (rows.Count + 1), created ())
+        | 3 when rows.Count > 1 ->
+            let moved = rows[next rows.Count]
+            rows.Remove moved |> ignore
+            rows.Insert (next (rows.Count + 1), moved)
+        | 4 when rows.Count > 1 ->
+            let left, right = next rows.Count, next rows.Count
+            let swapped = rows[left]
+            rows[left] <- rows[right]
+            rows[right] <- swapped
+        | 5 when rows.Count > 0 ->
+            let index = next rows.Count
+
+            rows[index] <-
+                { rows[index] with
+                    Text = rows[index].Text + "!"
+                }
+        | 6 when rows.Count > 0 ->
+            rows.RemoveAt (next rows.Count)
+
+            if rows.Count > 1 then
+                let left = next (rows.Count - 1)
+                let swapped = rows[left]
+                rows[left] <- rows[left + 1]
+                rows[left + 1] <- swapped
+
+            rows.Insert (next (rows.Count + 1), created ())
+        | _ -> rows.Clear ()
+
+        rows.ToArray ()
+
+    for _ in 1..400 do
+        let before = items.Value
+        let nodes = Map.ofArray (Array.zip (before |> Array.map _.Id) (rowsOf first))
+        let after = edit before
+        graph.Run (fun () -> items.Value <- after)
+
+        let expected =
+            "<ul>"
+            + String.concat
+                ""
+                (after
+                 |> Array.map (fun item -> "<li>" + item.Text + "</li>"))
+            + "</ul>"
+
+        equal (expected, expected) (withoutComments first, withoutComments second)
+
+        Array.zip after (rowsOf first)
+        |> Array.iter (fun (item, node) ->
+            match Map.tryFind item.Id nodes with
+            | Some retained -> equal true (obj.ReferenceEquals (retained, node))
+            | None -> ())
+
+    templateMount.Dispose ()
+    twinMount.Dispose ()
+    equal (0., 0.) (first.childNodes.length, second.childNodes.length)
+
 type Shelf =
     {
         Label: Signal<string>
@@ -3860,6 +3958,7 @@ let cases =
         "clearing template rows holding nested lists keeps their cleanup order and markers", nestedClearKeepsOrder
         "an empty each region keeps its markers, fills and empties", eachEmpty
         "each renders the same DOM as its default expansion across insert, remove, reorder and an item change", eachTwin
+        "each rows match their items and keep their nodes across seeded random edits", eachRandomEdits
         "root-level each regions beside other roots update, reorder, move and dispose", rootRegions
         "a matchWith inside each rows follows, moves and leaves with its row", nestedRegions
         "clearing each rows holding matchWith arms removes no arm node by itself", clearsArmRowsWithoutRemoves
