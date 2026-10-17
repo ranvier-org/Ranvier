@@ -481,6 +481,18 @@ module internal Platform =
 #endif
 
     /// <summary>
+    /// <c>slots[index] &lt;- value</c>, without fable-library's bounds check: a generic array write compiles to
+    /// <c>setItem(xs, i, v)</c> under Fable. Same caller obligation as <c>itemAt</c>.
+    /// </summary>
+#if FABLE_COMPILER
+    [<Emit("$1[$0] = $2")>]
+    let setItemAt (index: int) (slots: 'T[]) (value: 'T) : unit = jsNative
+#else
+    let inline setItemAt (index: int) (slots: 'T[]) (value: 'T) =
+        slots[index] <- value
+#endif
+
+    /// <summary>
     /// <c>slots[index]</c> for a <c>ResizeArray</c>, without the bounds check. Same
     /// contract, same reason, same caller obligation as <c>itemAt</c>.
     /// </summary>
@@ -494,6 +506,9 @@ module internal Platform =
 #else
     let inline entryAt (index: int) (slots: ResizeArray<'T>) =
         slots[index]
+
+    let inline setEntryAt (index: int) (slots: ResizeArray<'T>) (value: 'T) =
+        slots[index] <- value
 #endif
 
 #if FABLE_COMPILER

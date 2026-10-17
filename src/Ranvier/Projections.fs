@@ -2200,7 +2200,7 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
                 if count = buffer.Length then
                     buffer <- grow buffer count (count + 1)
 
-                buffer[count] <- item
+                Platform.setItemAt count buffer item
                 count <- count + 1
 
             struct (buffer, count, true)
@@ -2280,7 +2280,7 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
             elif aligned then
                 for k in 0 .. changedAt.Count - 1 do
                     let i = Platform.entryAt k changedAt
-                    prev[i] <- Platform.itemAt i cur
+                    Platform.setItemAt i prev (Platform.itemAt i cur)
             else
                 lastItems <- grow prev start n1
                 Array.blit cur start lastItems start (n1 - start)
@@ -2325,10 +2325,10 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
                                 else
                                     next
 
-                            next[i] <- key
+                            Platform.setItemAt i next key
                             next
                     else
-                        next[i] <- key
+                        Platform.setItemAt i next key
                         next
 
             try
