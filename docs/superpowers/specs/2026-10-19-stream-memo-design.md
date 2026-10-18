@@ -127,7 +127,7 @@ Trace builds record the node's creation, each stream start with its generation, 
 - `TraceEventKind.StreamPublished`, with the published status in `Arg` and the state as the payload;
 - `TraceEventKind.StreamEnded`, with the reason (completed, failed, cancelled by a restart, cancelled by disposal) in `Arg`.
 
-Items folded between publications are not traced one by one: a burst would flood the log, and the publication carries the state they produced. `StreamPublished` records the number of items folded since the previous publication in `Other`.
+Items folded between publications are not traced one by one: a burst would flood the log, and the publication carries the state they produced. `StreamPublished` records the number of items folded since the previous publication in `Flag`; `Other` stays a node id, as in every other event.
 
 ## Testing
 
