@@ -6,6 +6,27 @@ Baseline: `31fc732` (plus the research commits after it)
 Plan: [Task 5](../plans/2026-10-06-fable-ranvier-framework.md#task-5--minimal-bindings-boundaries-and-scheduling), open item 5.
 Status: approved 2026-10-19. The user accepted the recommendation of every **Decision**: 1 (a), 2 (a), 3 (keep throwing), 4 (a).
 
+## Core and view state
+
+Required by `.claude/rules/view-uses-core.md`; added 2026-10-19 with the implementation plan.
+
+**Core primitives used:**
+
+- `Api.createRoot`, `Api.runWithOwner`, `Owner` and `MountLifetime` (`Lifetime.fs`, over core owners): the boundary region owns one root (`RegionSite.Own`); its content, pending view and error view are each a nested mount whose root is a child of that root. Disposing the region disposes all three.
+- `Api.onCleanup`: a binding under a boundary unregisters its pending read when its owner is disposed.
+- `Api.createEffect` with an `Api.createSignal` (`wake`): the boundary's reveal and teardown run in this effect, after the effect that requested them.
+- `Api.createSignal false`: `BoundaryStatus.IsPending`, a tracked reader.
+- `NotReadyException` (core async sources and async memos): what a pending read is.
+- `MountLifetime.Capture`: the teardown window that collects the content's cleanup errors for the failure report.
+
+**View-owned state:**
+
+- The waiting count of a boundary, and a `Waiting` bit in each binding's state word. Core suspense (`createSuspense`, `createBoundary`) catches pending reads inside its own body only; a binding reads in its own effect, outside every core boundary body (spec, "What happens today"). The approved spec places this count in the view.
+- The content's detached fragment and the row shown between the markers: DOM nodes and their layout.
+- The failures a boundary received before its effect runs, and the failures held while its content sets up.
+- The scope of each commit slot. The commit `Queue` is view state already under review (rule file, last paragraph); this plan adds one field to its slots.
+- A `$$ranvierScope` property on template event nodes under a boundary: event delegation state.
+
 ## Purpose and boundaries
 
 Task 5 has two open contracts:
@@ -30,7 +51,7 @@ Read from the code at `31fc732`:
 - **Pending reads.** A reader that raises `NotReadyException` leaves the binding's last committed value on screen. Nothing records that the binding is waiting.
 - **Failed reads.** `reportReaderFailure` sends the exception to the mount's `report` callback, once per exception object until the reader recovers. The binding keeps its last value.
 - **Setter failures during setup** unwind the mount: cleanups run, the nodes are removed, and the exception is rethrown from `mountWith` (`BindingIntegrationChecks.fs` "initial synchronous/queued DOM setter failure unwinds setup").
-- **Live synchronous setter failures** escape `commit` (the `with` only handles `SettingUp`). The exception lands on the core effect's `Error`, where nothing reads it, and the mount's `report` callback is never called. The committed value is unchanged, so an equal later value retries the write.
+- **Live synchronous setter failures** in Tree and Program bindings (and templates under queued commits, which expand through them) escape `commit` (the `with` only handles `SettingUp`). The exception lands on the core effect's `Error`, where nothing reads it, and the mount's `report` callback is never called. The committed value is unchanged, so an equal later value retries the write. Template DOM commits (`TemplateDom.commit`) already report live setter failures through `report` (the `laterSetterFailure` test).
 - **Queued setter failures** are collected in `Queue.Errors` after each flush (`CollectAndContinue`), or stop the flush (`FailFastCancel`). Nothing reports them; a caller must read `Errors`.
 - **Row and arm setup failures** after the initial mount leave the region empty and report through `report`.
 
@@ -47,10 +68,8 @@ The scope is carried by `MountState`, which every nested mount already reaches t
 Templates:
 
 ```fsharp
-t.boundary
-    (pending = Loading.definition)
-    (failed = fun (failure: BoundaryFailure) -> ErrorPanel.arm failure)
-    (content = Profile.definition)
+t.boundary Loading.definition ErrorPanel.definition Profile.definition
+// pending: Component<unit>, failed: Component<BoundaryFailure>, content: Component<BoundaryStatus>
 ```
 
 `BoundaryFailure` carries `Error: exn` and `Retry: unit -> unit`. Program and Tree authoring get `ops.Boundary (pending, failed, content)` with the same meaning. The pending and error views are ordinary views; a failure inside them goes to the enclosing boundary.
