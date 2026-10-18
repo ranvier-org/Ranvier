@@ -12,6 +12,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 101,893 | 691,623 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 101,894 | 755,171 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 101,724 | 140,584 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 101,724 | 140,671 |
 
 ## app-table
 
@@ -25,6 +26,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 9,259,218 | 11,292,665 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 9,264,959 | 10,844,545 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 9,233,272 | 9,776,957 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 9,233,235 | 9,825,499 |
 
 ## async-recover
 
@@ -38,6 +40,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 138,805 | 382 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 138,829 | -7,037 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 138,757 | 37,543 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 138,757 | 37,516 |
 
 ## async-resolve
 
@@ -51,6 +54,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 2,796,619 | 2,788,702 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 2,798,220 | 3,239,160 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 2,795,019 | 1,170,731 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 2,795,019 | 1,174,766 |
 
 ## chain
 
@@ -64,6 +68,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 13,042 | 318 | 2,470 | 4,671 | 3,911 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 13,042 | 318 | 2,470 | 4,671 | 3,464 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 13,042 | 318 | 2,470 | 4,491 | 3,180 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 13,042 | 318 | 2,470 | 4,491 | 3,180 |
 
 ## chain-affinity
 
@@ -77,6 +82,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 2,569 | 3,087 | 2,516 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 2,569 | 3,087 | 2,516 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 2,569 | 3,087 | 2,516 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 2,569 | 3,087 | 2,516 |
 
 ## control
 
@@ -90,6 +96,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | — | — |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 74,719 | 734,920 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 74,719 | 846,628 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 74,719 | 845,939 |
 
 ## create
 
@@ -103,6 +110,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 13,461,358 | 2,881,677 | 3,043,272 | 7,801,309 | 8,370,484 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 13,461,365 | 2,865,677 | 3,043,240 | 7,788,481 | 3,847,642 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 13,586,828 | 2,877,676 | 3,043,258 | 2,186,132 | 4,208,779 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 13,461,445 | 2,861,677 | 3,043,230 | 2,185,843 | 4,208,429 |
 
 ## create-on
 
@@ -116,6 +124,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 3,440,854 | 6,817,932 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 3,424,855 | 8,787,748 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 3,429,854 | 4,619,737 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 3,509,854 | 4,630,395 |
 
 ## cutoff
 
@@ -129,6 +138,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 1,181 | 50 | 111 | 51 | 35 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 1,181 | 50 | 111 | 51 | 35 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 1,181 | 50 | 111 | 65 | 35 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 1,181 | 50 | 111 | 65 | 35 |
 
 ## derive-effect
 
@@ -142,6 +152,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 765 | -807 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 765 | -2,002 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 765 | 716 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 765 | 716 |
 
 ## derive-on
 
@@ -155,6 +166,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 756 | -798 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 740 | -1,541 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 740 | 684 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 756 | 684 |
 
 ## dispose
 
@@ -168,6 +180,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 2,707,584 | 806,293 | 498,486 | 471,082 | 1,037,758 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 2,707,581 | 806,288 | 498,486 | 471,238 | 787,101 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 2,706,184 | 806,288 | 498,486 | 465,871 | 703,008 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 2,707,578 | 806,290 | 498,486 | 466,112 | 703,398 |
 
 ## dispose-on
 
@@ -181,6 +194,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 477,486 | 1,100,499 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 477,486 | 883,282 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 477,486 | 699,680 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 477,486 | 699,312 |
 
 ## editable-edit
 
@@ -194,6 +208,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 181,106 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 181,106 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 181,106 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 181,106 |
 
 ## editable-upstream
 
@@ -207,6 +222,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 232,755 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 232,755 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 232,755 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 232,755 |
 
 ## fail-recompute
 
@@ -220,6 +236,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 64,940 | 1,376 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 65,108 | 1,376 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 64,880 | 1,376 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 64,880 | 1,376 |
 
 ## flight
 
@@ -233,6 +250,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 11,035 | 11,366 | 10,807 | 22,381 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 11,035 | 11,365 | 10,807 | 22,381 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 11,033 | 11,363 | 10,805 | 22,379 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 11,033 | 11,363 | 10,805 | 22,379 |
 
 ## keyed-insert
 
@@ -246,6 +264,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 1,921,657 | 54,104 | 54,752 | 4,543,583 | 209,597 | 194,141 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 1,921,671 | 54,104 | 54,767 | 4,296,964 | 209,171 | 192,218 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 1,921,560 | 53,846 | 54,581 | 3,092,666 | 162,633 | 172,627 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 1,921,560 | 53,846 | 54,582 | 3,092,565 | 162,828 | 172,579 |
 
 ## keyed-remove
 
@@ -259,6 +278,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 1,920,611 | 43,808 | 45,128 | 4,333,715 | 165,760 | 123,085 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 1,920,614 | 43,793 | 45,145 | 3,746,188 | 164,238 | 114,438 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 1,920,500 | 43,539 | 44,963 | 3,092,572 | 130,252 | 142,773 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 1,920,789 | 43,539 | 45,100 | 3,092,513 | 130,276 | 142,726 |
 
 ## keyed-swap
 
@@ -272,6 +292,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 1,973,263 | 46,335 | 46,760 | 4,469,743 | 98,302 | 82,515 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 1,973,283 | 46,335 | 46,776 | 4,233,627 | 98,015 | 81,077 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 1,973,152 | 46,080 | 46,557 | 3,215,194 | 76,966 | 83,156 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 1,973,152 | 46,081 | 46,558 | 3,215,157 | 77,033 | 82,398 |
 
 ## mvu-dispatch
 
@@ -285,6 +306,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 58,391 | 772 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 58,391 | 772 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 58,391 | 772 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 58,391 | 772 |
 
 ## project-chain
 
@@ -298,6 +320,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 3,847,882 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 3,847,866 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 3,837,487 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 3,837,396 |
 
 ## project-churn
 
@@ -311,6 +334,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 36,375 | 34,218 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 36,375 | 34,204 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 36,202 | 34,033 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 36,202 | 34,033 |
 
 ## project-edit
 
@@ -324,6 +348,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 50,364 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 50,364 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 50,173 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 50,188 |
 
 ## project-reorder
 
@@ -337,6 +362,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 779,022 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 779,020 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 778,875 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 778,875 |
 
 ## shape-diamond
 
@@ -350,6 +376,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 60,899 | 117,208 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 60,899 | 106,625 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 60,899 | 88,455 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 60,899 | 88,455 |
 
 ## shape-dynamic
 
@@ -363,6 +390,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 82,420 | -19,948 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 82,420 | -130,233 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 82,420 | 97,997 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 82,420 | 98,007 |
 
 ## timed-admit-both
 
@@ -376,6 +404,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 131,772 | 166,599 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 130,748 | 150,665 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 118,909 | 133,573 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 119,933 | 133,572 |
 
 ## timed-admit-debounce
 
@@ -389,6 +418,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 130,678 | 162,874 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 129,654 | 146,428 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 117,814 | 132,166 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 118,838 | 132,165 |
 
 ## timed-admit-first
 
@@ -402,6 +432,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 77,541 | 101,552 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 76,517 | 93,948 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 69,925 | 81,964 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 70,949 | 81,964 |
 
 ## timed-admit-last
 
@@ -415,6 +446,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 130,940 | 162,139 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 129,916 | 146,061 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 118,076 | 132,485 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 119,100 | 132,483 |
 
 ## timed-capture-both
 
@@ -428,6 +460,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 42,700 | 52,065 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 42,700 | 50,543 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 36,044 | 44,956 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 36,044 | 44,958 |
 
 ## timed-capture-debounce
 
@@ -441,6 +474,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 42,572 | 54,165 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 42,572 | 49,892 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 35,916 | 43,583 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 35,916 | 43,583 |
 
 ## timed-capture-first
 
@@ -454,6 +488,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 37,772 | 47,381 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 37,772 | 45,452 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 32,396 | 38,804 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 32,396 | 38,804 |
 
 ## timed-capture-last
 
@@ -467,6 +502,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 42,508 | 51,303 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 42,508 | 49,779 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 35,852 | 43,519 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 35,852 | 43,519 |
 
 ## update
 
@@ -480,6 +516,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 1,088,680 | 38,805 | 83,005 | 473,466 | 382,448 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 1,088,680 | 38,805 | 83,005 | 472,939 | 362,204 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 1,088,680 | 38,805 | 83,005 | 263,397 | 207,816 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 1,090,272 | 38,805 | 83,005 | 263,444 | 207,813 |
 
 ## update-on
 
@@ -493,6 +530,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 95,405 | 407,658 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 93,805 | 379,712 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 93,805 | 222,107 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 95,405 | 222,117 |
 
 ## work-form
 
@@ -506,6 +544,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 174,678 | 168,144 | 269,046 | 306,828 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 174,678 | 168,144 | 405,151 | 291,380 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 174,678 | 168,144 | 288,773 | 287,120 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 174,678 | 168,161 | 288,770 | 287,116 |
 
 ## work-status
 
@@ -519,6 +558,7 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 100,445 | 80,715 | 861,993 | 654,738 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 100,445 | 79,115 | 616,750 | 919,678 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 100,445 | 79,115 | 315,937 | 155,377 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 100,445 | 80,715 | 315,963 | 155,385 |
 
 ## work-value
 
@@ -532,4 +572,5 @@
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 107,571 | 121,370 | 756,707 | 742,054 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 107,569 | 119,771 | 629,511 | 691,109 |
 | `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 107,571 | 119,770 | 316,167 | 283,706 |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 107,569 | 121,369 | 316,178 | 283,728 |
 
