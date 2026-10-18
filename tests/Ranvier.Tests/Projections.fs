@@ -2355,6 +2355,39 @@ let deltaReaderTests =
                 Expect.isTrue (reader.Read ()).IsEmpty "later reads are empty"
             }
 
+            test "a removed row's cleanup that disposes the projection runs each removed row's cleanup once and records a reset alone" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let items = createSignal [ 1; 2; 3 ]
+                let target = ref Unchecked.defaultof<Projection<int, int>>
+                let cleaned = ResizeArray<int>()
+
+                let proj =
+                    createProjectionWith
+                        id
+                        (fun item ->
+                            let x = item ()
+
+                            onCleanup (fun () ->
+                                cleaned.Add x
+
+                                if x = 1 then
+                                    target.Value.Dispose ())
+
+                            fun () -> x)
+                        (fun () -> items.Value)
+
+                target.Value <- proj
+                createEffect (fun () -> proj.Keys |> ignore)
+                let reader = proj.NewKeyReader ()
+                reader.Read () |> ignore
+                items.Value <- []
+                Expect.equal (List.ofSeq cleaned |> List.sort) [ 1; 2; 3 ] "each removed row's cleanup ran once"
+                let delta = reader.Read ()
+                Expect.equal (delta.IsReset, List.ofSeq delta.Keys, List.ofSeq delta.Changes) (true, [], []) "a reset with empty keys"
+                Expect.isTrue (reader.Read ()).IsEmpty "later reads are empty"
+            }
+
             test "disposing the last reader, or its owner, stops recording" {
                 use g = new Graph ()
                 use _ = g.Activate ()

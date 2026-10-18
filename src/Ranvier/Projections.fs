@@ -419,6 +419,10 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     let inFlightVersion = Signal<int>(graph, 0, EqualityComparer<int>.Default)
 
     let removed = ResizeArray<'K>()
+
+    /// <summary>The row of each key of <c>removed</c>, at the same index, when the diff walked the entries.</summary>
+    let removedEntries = ResizeArray<RowEntry<'K, 'V>>()
+
     let refreshing = ResizeArray<RowEntry<'K, 'V>>()
 
     /// <summary>Marks the readers of the summary for a check, which brings the pending rows current.</summary>
@@ -781,6 +785,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
         this.Pass.ClearStaged ()
         removed.Clear ()
+        removedEntries.Clear ()
         removalsStaged <- false
         keysStaged <- false
         stagedKeys <- null
@@ -896,6 +901,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     member private this.Superseded(previousStatus: Status) =
         this.Pass.ClearStaged ()
         removed.Clear ()
+        removedEntries.Clear ()
         Tracer.RunEnd (graph, id, status)
 
         if not disposed then
@@ -933,9 +939,10 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     /// </summary>
     member private this.ApplyDiff(mine: int) =
         if not removalsStaged then
-            entries.Iterate (fun key _ ->
+            entries.Iterate (fun key entry ->
                 if not (seen.Contains key) then
-                    removed.Add key)
+                    removed.Add key
+                    removedEntries.Add entry)
 
         try
             if this.CreateFirst then
@@ -956,8 +963,10 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
                         this.SettleAdditions ()
         finally
             removed.Clear ()
+            removedEntries.Clear ()
 
     /// <summary>Retires the rows of <c>removed</c>, and stops when a cleanup runs a nested pass.</summary>
+    /// <remarks>An entry leaves <c>entries</c> exactly when it stops being live.</remarks>
     member private this.RetireRemoved(mine: int) =
         if removed.Count > 0 then
             inCleanup <- true
@@ -965,10 +974,19 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             try
                 let mutable i = 0
 
+                let walked = removedEntries.Count = removed.Count
+
                 while i < removed.Count && runs = mine do
                     let key = Platform.entryAt i removed
+
+                    let entry =
+                        if walked then
+                            let entry = Platform.entryAt i removedEntries
+                            if entry.Live then entry else Unchecked.defaultof<_>
+                        else
+                            entries.Find key
+
                     i <- i + 1
-                    let entry = entries.Find key
 
                     if not (Platform.isNull entry) then
                         entries.Remove key

@@ -47,7 +47,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Reads.fs | 14 | 14 | 14 | 14 | 14 | 14 | 0 | 0 |
 | Batching.fs | 11 | 11 | 11 | 11 | 11 | 11 | 0 | 0 |
 | AsyncEdges.fs | 25 | 22 | 7 | 25 | 22 | 7 | 4 | 0 |
-| Projections.fs | 116 | 116 | 116 | 116 | 116 | 116 | 10 | 0 |
+| Projections.fs | 117 | 117 | 117 | 117 | 117 | 117 | 10 | 0 |
 | TrimmedPass.fs | 59 | 59 | 59 | 59 | 59 | 59 | 0 | 0 |
 | Lookups.fs | 31 | 31 | 31 | 31 | 31 | 31 | 0 | 0 |
 | MemoScopes.fs | 24 | 24 | 22 | 24 | 24 | 22 | 0 | 0 |
@@ -71,7 +71,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | QueryDictionary.fs | 2 | 2 | 2 | 2 | 2 | 2 | 0 | 0 |
 | QueryErgonomics.fs | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | QueryNavigationTests.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1004 | 986 | 922 | 1141 | 1118 | 1044 | 91 | 1 |
+| **Total** | 1005 | 987 | 923 | 1142 | 1119 | 1045 | 91 | 1 |
 
 ## Tests.fs
 
@@ -956,7 +956,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | a view stops following when the scope that created it re-runs | AsObservableCollection returns an ObservableCollection, which the library omits under Fable. |
 | AsObservableCollection over a pending pass resets once when the pass settles | AsObservableCollection returns an ObservableCollection, which the library omits under Fable. |
 
-<details><summary>116 passed in every build and delivery that runs them</summary>
+<details><summary>117 passed in every build and delivery that runs them</summary>
 
 - the key order follows the source
 - a projection nothing reads is never recomputed
@@ -1049,6 +1049,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a reader past max(64, N) unread changes reads a reset
 - a disposed projection gives a reset with empty keys
 - a removal whose cleanup disposes the projection gives a reset with empty keys
+- a removed row's cleanup that disposes the projection runs each removed row's cleanup once and records a reset alone
 - disposing the last reader, or its owner, stops recording
 - groupBy groups follow the law (seed 11)
 - index projection keys follow the law (seed 11)
