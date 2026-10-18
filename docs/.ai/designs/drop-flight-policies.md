@@ -1,6 +1,7 @@
 # Drop and DropWhilePending flight policies: design
 
-**Status:** design, not implemented. Issue #61, "[Flight Policy] Drop new runs while one is in progress". Maintainer
+**Status:** implemented on `feat/drop-flight-policies`, pending the §7 benchmark gate; §11 records how the
+implementation differs from this note. Issue #61, "[Flight Policy] Drop new runs while one is in progress". Maintainer
 decision: two new `FlightPolicy` cases, `Drop` and `DropWhilePending`, provided they add no cost to the existing
 four. Line references are to `src/Ranvier/Core.fs` and `src/Ranvier/Types.fs` at `c4275bd`. Costs are read from the
 code; nothing was measured. §6 names the benchmarks that check them.
@@ -273,3 +274,29 @@ Fable and AOT: two nullary cases and no new field; outcomes already arrive on a 
 3. `FinishCurrent`'s trailing-run notification has the same cause gap as §5's replacing run; fix both together?
 4. Per-memo policy remains a separate design (`finish-current-flight-policy.md` §8): a submit memo wants `Drop` while
    a search memo in the same graph wants `CancelPrevious`.
+
+## 11. Implementation notes
+
+1. **Discarding at the settle brings the sources current.** §4 step 6 clears a Dirty or Check freshness at the
+   settle without walking the sources. That strands a memo source: a `Memo` left Dirty or Check notifies its
+   observers only on its Clean transition (`Memo.MarkDirty`, `Memo.MarkCheck`), so once the async memo is Clean,
+   the source's next change never reaches it and the memo serves the settled value forever. The same holds for a
+   change discarded at `Start` when the pull's check walk stopped early on a Dirty freshness. The settle therefore
+   runs `refreshSources` (each source's `UpdateIfNecessary`, inside `EnterPull`/`ExitPull`, as `Pull`'s check walk)
+   before clearing freshness, whenever `queued = 2` or freshness is not Clean. `RunDropped` with `Flag` 1 is recorded
+   only when freshness is still Dirty after the walk; a Check that resolves unchanged is no discarded change. Two
+   tests pin it: "Drop keeps a memo source current across a change discarded at the settle" and "... at a read".
+   The walk is in the `Drop` and `DropWhilePending` arms only and costs the other policies nothing. A source memo's
+   body may now run at the settle rather than at a later read.
+2. **`DropWhilePending` failure test.** A Check alone at a failed settle is resolved by the same walk first, so a
+   memo source that recomputes to the same value does not owe a replacing run. `owed` is set when `queued = 2` or
+   the walk leaves freshness Dirty.
+3. **Disposed.** Both arms skip the discard when the memo is disposed; the outcome is dropped as `Disposed`.
+4. **Trace.** `Tracer.RunDeferred` takes a `deferred` flag, `graph.Options.FlightPolicy.IsFinishCurrent`, evaluated
+   only in trace builds, and records `RunDropped` (`Flag` 0) when false. `Tracer.RunDropped` records the settle-time
+   discard (`Flag` 1). Both forget the node's first dirty mark (`TraceLog.ClearDirty`), so the next run's cause is
+   its own mark rather than the discarded one. `Tracer.FlightDrop` notes its sequence number for reasons `Trailing`
+   and `Retried`, so the trailing or replacing run's notification names the dropped failure; this closes §10 open
+   question 3 for `FinishCurrent` too. The signal-map model renders the `retried` reason.
+5. §10 questions 1, 2 and 4 are answered as the design proposed: the replacing run is lazy, a body-time change is
+   discarded, and per-memo policy stays a separate design.
