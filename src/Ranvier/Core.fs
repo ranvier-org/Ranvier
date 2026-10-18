@@ -167,22 +167,23 @@ type internal ObserverSet() =
         elif obj.ReferenceEquals ((Platform.itemAt last items).Observer, c) then
             last
         else
-            let mutable i = if hint < last then hint else 0
-            let stop = i
+            let start = if hint < last then hint else 0
             let mutable found = -1
-            let mutable scanning = last > 0
+            let mutable i = start
 
-            while scanning do
+            while found < 0 && i < last do
                 if obj.ReferenceEquals ((Platform.itemAt i items).Observer, c) then
                     found <- i
-                    scanning <- false
-                else
-                    i <- i + 1
 
-                    if i = last then
-                        i <- 0
+                i <- i + 1
 
-                    scanning <- i <> stop
+            i <- 0
+
+            while found < 0 && i < start do
+                if obj.ReferenceEquals ((Platform.itemAt i items).Observer, c) then
+                    found <- i
+
+                i <- i + 1
 
             found
 
