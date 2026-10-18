@@ -1892,10 +1892,13 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
         // which marks the projection stale.
         let mutable version: Signal<int> = Unchecked.defaultof<_>
         let mutable snapshot: obj array = [||]
-        // The items and rows of the last successful pass; empty until a pass succeeds, and after a failed pass. The items
-        // are the region's own copy.
-        let mutable previousItems: obj array = [||]
+        // The keys and rows of the last successful pass; null and empty until a pass succeeds, and after a failed pass.
+        let mutable previousKeys: obj array = null
         let mutable previousRows: Row array = [||]
+        // Authored rows remove their nodes inside the pass, so their window is found from the items and validated before
+        // it. The items of the last successful pass of authored rows, in the region's own copy; empty otherwise.
+        let authored = isNull rows
+        let mutable previousItems: obj array = [||]
         // The rows released since the last layout.
         let retired = ResizeArray<Row>()
 
@@ -1921,18 +1924,26 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
             if site.Live () then
                 let parent = ref Unchecked.defaultof<Node>
                 let keys = ref Unchecked.defaultof<obj array>
-                let priorItems = previousItems
+                let priorKeys = previousKeys
                 let priorRows = previousRows
-                previousItems <- [||]
+                let priorItems = previousItems
+                previousKeys <- null
                 previousRows <- [||]
+                previousItems <- [||]
 
                 if priorRows.Length = 0 then
                     retired.Clear ()
-                // Items before `start` and after `end0` (previous) or `end1` (current) are the same references in both passes.
+                // Keys before `start` and after `end0` (previous) or `end1` (current) are equal in both passes.
                 let start = ref 0
                 let end0 = ref -1
                 let end1 = ref -1
-                let passItems = ref ([||]: obj array)
+
+                // Validates the laid-out rows from `first - 1` to `last0 + 1`, or every row after a failed pass.
+                let validate (parent: Node) (first: int) (last0: int) =
+                    if priorRows.Length = site.LaidOut.Count then
+                        Row.ValidateWindow (regionStart, regionEnd, site.LaidOut, parent, first - 1, last0 + 1)
+                    else
+                        Row.Validate (regionStart, regionEnd, site.LaidOut, parent)
 
                 let recorded, failure =
                     MountLifetime.Capture (
@@ -1941,37 +1952,34 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                         fun () ->
                             let current = items.Read ()
                             snapshot <- current
-                            passItems.Value <- current
                             Api.untrack (fun () -> version.Value <- version.Value + 1)
                             parent.Value <- site.Parent ()
-                            let n0 = priorItems.Length
-                            let n1 = current.Length
 
-                            let mutable first = 0
+                            if authored then
+                                let n0 = priorItems.Length
+                                let n1 = current.Length
+                                let mutable first = 0
 
-                            while first < n0
-                                  && first < n1
-                                  && obj.ReferenceEquals (item priorItems first, item current first) do
-                                first <- first + 1
+                                while first < n0
+                                      && first < n1
+                                      && obj.ReferenceEquals (item priorItems first, item current first) do
+                                    first <- first + 1
 
-                            let mutable last0 = n0 - 1
-                            let mutable last1 = n1 - 1
+                                let mutable last0 = n0 - 1
+                                let mutable last1 = n1 - 1
 
-                            while last0 >= first
-                                  && last1 >= first
-                                  && obj.ReferenceEquals (item priorItems last0, item current last1) do
-                                last0 <- last0 - 1
-                                last1 <- last1 - 1
+                                while last0 >= first
+                                      && last1 >= first
+                                      && obj.ReferenceEquals (item priorItems last0, item current last1) do
+                                    last0 <- last0 - 1
+                                    last1 <- last1 - 1
 
-                            start.Value <- first
-                            end0.Value <- last0
-                            end1.Value <- last1
+                                start.Value <- first
+                                end0.Value <- last0
+                                end1.Value <- last1
+                                validate parent.Value first last0
 
-                            if priorRows.Length = site.LaidOut.Count then
-                                Row.ValidateWindow (regionStart, regionEnd, site.LaidOut, parent.Value, start.Value - 1, end0.Value + 1)
-                            else
-                                Row.Validate (regionStart, regionEnd, site.LaidOut, parent.Value)
-                            // Runs the pass inside the window: its row setup, rollback and retirement errors are reported with this update.
+                            // Runs the pass: its row setup, rollback and retirement errors are reported with this update.
                             // Rows retired by the pass keep their nodes until the flush.
                             site.Deferring <- true
                             let errors = ResizeArray<exn>()
@@ -1984,15 +1992,61 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                             with error ->
                                 errors.Add error
 
-                            try
-                                site.FlushReleased (
-                                    not (isNull keys.Value)
-                                    && keys.Value.Length = 0
-                                    && site.Live ()
-                                    && site.ReleasedAll ()
-                                )
-                            with error ->
-                                errors.Add error
+                            // The laid-out rows around the changed window are validated before the flush removes any node.
+                            let validated =
+                                try
+                                    if authored || not (site.Live ()) then
+                                        ()
+                                    elif isNull keys.Value then
+                                        Row.Validate (regionStart, regionEnd, site.LaidOut, parent.Value)
+                                    else
+                                        let next = keys.Value
+
+                                        let struct (first, last0, last1) =
+                                            Api.untrack (fun () -> projection.ChangedRange priorKeys)
+
+                                        let mutable first = first
+                                        let mutable last0 = last0
+                                        let mutable last1 = last1
+
+                                        // A pass the projection did not trim spans every position; its common ends are found here.
+                                        if
+                                            not (isNull priorKeys)
+                                            && first = 0
+                                            && last0 = priorKeys.Length - 1
+                                        then
+                                            while first <= last0
+                                                  && first <= last1
+                                                  && item priorKeys first = item next first do
+                                                first <- first + 1
+
+                                            while last0 >= first
+                                                  && last1 >= first
+                                                  && item priorKeys last0 = item next last1 do
+                                                last0 <- last0 - 1
+                                                last1 <- last1 - 1
+
+                                        start.Value <- first
+                                        end0.Value <- last0
+                                        end1.Value <- last1
+
+                                        validate parent.Value first last0
+
+                                    true
+                                with error ->
+                                    errors.Add error
+                                    false
+
+                            if validated then
+                                try
+                                    site.FlushReleased (
+                                        not (isNull keys.Value)
+                                        && keys.Value.Length = 0
+                                        && site.Live ()
+                                        && site.ReleasedAll ()
+                                    )
+                                with error ->
+                                    errors.Add error
 
                             if errors.Count = 1 then
                                 raise errors[0]
@@ -2096,8 +2150,11 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                             site.Errors.Fail (error, recorded @ [ error ])
                         | Ok next ->
                             if site.Live () then
-                                previousItems <- Array.copy passItems.Value
+                                previousKeys <- keys.Value
                                 previousRows <- next
+
+                                if authored then
+                                    previousItems <- Array.copy snapshot
 
                             site.Errors.Report recorded
                 )
