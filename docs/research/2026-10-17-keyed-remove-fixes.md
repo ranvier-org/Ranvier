@@ -18,6 +18,8 @@
 | fix6 | `f31aecf` | a changed window of at most 64 rows is spliced into a copy of the previous rows |
 | fix7 | `8d72762` | `Row.Index` is gone: `Row.Layout` maps the previous rows of the changed window to their positions, and no longer writes an index into every row after the window |
 | fix8 | `eb76a07` | a changed window of at most 64 rows is spliced into the laid-out rows |
+| range | `a7e97a1` | cherry-pick of `7753f2f` (#89): `Projection.ChangedRange` returns the window of keys a trimmed pass changed |
+| fix9 | `6d9f9d4` | a template list takes its changed window from `ChangedRange` instead of comparing every item of the previous and current arrays, and keeps no copy of its items; its validation runs after the pass, before the flush |
 
 Raw data in [`framework-performance/investigation/keyed-remove-fixes/`](framework-performance/investigation/keyed-remove-fixes/):
 
@@ -40,10 +42,13 @@ Ranvier's median ms over all samples of three processes `[per-process medians]`,
 | fix5 → fix6 | 0.955 [0.93, 0.98, 0.96] → 0.970 [1.07, 0.94, 0.90] | 0.165 → 0.155 | 0.270 → 0.275 | 1.050 → 1.045 | 0.645 / 0.665 |
 | fix6 → fix7 | 1.070 [1.06, 1.10, 1.05] → 0.825 [0.83, 0.83, 0.81] | 0.145 → 0.155 | 0.270 → 0.270 | 1.015 → 1.035 | 0.660 / 0.655 |
 | fix7 → fix8 | 0.830 [0.83, 0.84, 0.82] → 0.770 [0.78, 0.76, 0.77] | 0.150 → 0.140 | 0.265 → 0.270 | 1.040 → 1.025 | 0.660 / 0.645 |
+| range → fix9 | 0.735 [0.77, 0.73, 0.73] → 0.645 [0.65, 0.65, 0.64] | 0.150 → 0.140 | 0.260 → 0.250 | 0.955 → 0.960 | 0.690 / 0.680 |
 
 append1k and create1k (measured from fix4 and fix6 on) stay within 1.5% at every step: append1k 4.615 → 4.335 ms, create1k 5.965 → 5.880 ms.
 
 - remove10k falls from 2.98 to 0.77 ms against Solid 2's 0.65 (4.7× → 1.19×), remove1k from 0.35 to 0.14 ms (Solid 2 0.115–0.180 across these runs), swap1k from 0.34 to 0.27 ms.
+- fix9 takes remove10k from 0.735 to 0.645 ms, below Solid 2's 0.680 in the same runs; every fix9 process is faster than every `range` process. append1k (4.215 → 4.145 ms) and create1k (5.760 → 5.760 ms) stay within 1.7%. fix9 was measured with the template path alone; the authored-row path, which keeps the item comparison and validates before the pass, was added before the commit and does not run in a template list.
+- An authored row's nested mount removes its nodes inside the pass, so authored lists still compare their items and validate before the pass. A template list's retired rows keep their nodes until the flush, so its validation after the pass sees the same nodes. On a validation failure, a template list's pass has already run its retired rows' cleanups; their nodes stay until the next flush.
 - fix3 and fix5 are the largest steps. fix5's builder had read `Row.Removed` from every kept row, 13% of the pinned profile at `b6a5247`.
 - The harness change also applies to Solid 2's fixture, whose times are unchanged within 0.015 ms.
 - The core fix removed an O(n) scan of the projection's entries per pass, about 0.24 ms of remove10k.
