@@ -473,13 +473,111 @@ let private stateFor (compiled: Compiled) (instance: obj) (extra: int) =
 
     state
 
+/// <summary>Starts the effect that reads every render slot of a part and commits them together.</summary>
+let private startRender (services: MountServices) (state: obj array) =
+    let mutable failed = false
+
+    Api.createEffect (fun () ->
+        let compiled = at state StateCompiled :?> Compiled
+        let instance = at state StateInstance
+        let renderCount = compiled.RenderSlots.Length
+        let previousBase = StateNodes + compiled.NodeCount
+
+        let pendingBase =
+            previousBase
+            + renderCount
+            + compiled.IsolatedSlots.Length
+
+        let mutable failure: exn = null
+
+        for k in 0 .. renderCount - 1 do
+            let _, slot = at compiled.RenderSlots k
+
+            let value =
+                try
+                    slot.Read.Invoke instance
+                with
+                | NotReadyException _ -> unset
+                | error ->
+                    failed <- true
+                    services.ReportFailure error
+
+                    if isNull failure then
+                        failure <- error
+
+                    unset
+
+            store state (pendingBase + k) value
+
+        Api.untrack (fun () ->
+            for k in 0 .. renderCount - 1 do
+                let nodeIndex, slot = at compiled.RenderSlots k
+                commit services state slot nodeIndex (previousBase + k) (at state (pendingBase + k)))
+
+        if not (isNull failure) then
+            failed <- true
+            raise failure
+        elif failed then
+            failed <- false
+            services.ClearFailure ())
+
+    services.RaiseSetupFailure ()
+
+/// <summary>Starts the effect of the isolated slot at index <c>k</c> of a part.</summary>
+let private startIsolated (services: MountServices) (state: obj array) (k: int) =
+    let mutable failed = false
+
+    Api.createEffect (fun () ->
+        let compiled = at state StateCompiled :?> Compiled
+        let nodeIndex, slot = at compiled.IsolatedSlots k
+
+        let previousIndex =
+            StateNodes
+            + compiled.NodeCount
+            + compiled.RenderSlots.Length
+            + k
+
+        let mutable failure: exn = null
+
+        let value =
+            try
+                slot.Read.Invoke (at state StateInstance)
+            with
+            | NotReadyException _ -> unset
+            | error ->
+                failed <- true
+                services.ReportFailure error
+                failure <- error
+                unset
+
+        Api.untrack (fun () -> commit services state slot nodeIndex previousIndex value)
+
+        if not (isNull failure) then
+            failed <- true
+            raise failure
+        elif failed then
+            failed <- false
+            services.ClearFailure ())
+
+    services.RaiseSetupFailure ()
+
+/// <summary>Attaches a direct listener for an event of a part's node.</summary>
+let private listenDirect (services: MountServices) (state: obj array) (node: obj) (eventName: string) (handler: Func<obj, obj, unit>) =
+    let owner = at state StateOwner :?> Owner
+    let graph = at state StateGraph :?> Graph
+    let instance = at state StateInstance
+
+    services.ListenDirect (
+        unbox node,
+        eventName,
+        fun event ->
+            if not owner.IsDisposed then
+                graph.Run (fun () -> Api.runWithOwner owner (fun () -> Api.untrack (fun () -> handler.Invoke (instance, event))))
+    )
+
 /// <summary>Writes a part's static properties, starts its render and isolated effects, and attaches its events.</summary>
-/// <remarks>Effect closures share <c>materialise</c>'s closure context.</remarks>
-let inline private bind (services: MountServices) (compiled: Compiled) (state: obj array) (instance: obj) =
-    let renderCount = compiled.RenderSlots.Length
-    let isolatedCount = compiled.IsolatedSlots.Length
-    let previousBase = StateNodes + compiled.NodeCount
-    let pendingBase = previousBase + renderCount + isolatedCount
+/// <remarks>The effects and listeners retain the state array and the services.</remarks>
+let private bind (services: MountServices) (compiled: Compiled) (state: obj array) =
     let properties = compiled.Properties
 
     for i in 0 .. properties.Length - 1 do
@@ -491,77 +589,11 @@ let inline private bind (services: MountServices) (compiled: Compiled) (state: o
             services.SetupFailed error
             reraise ()
 
-    if renderCount > 0 then
-        let commitAll () =
-            for k in 0 .. renderCount - 1 do
-                let nodeIndex, slot = at compiled.RenderSlots k
-                commit services state slot nodeIndex (previousBase + k) (at state (pendingBase + k))
+    if compiled.RenderSlots.Length > 0 then
+        startRender services state
 
-        let mutable failed = false
-
-        Api.createEffect (fun () ->
-            let mutable failure: exn = null
-
-            for k in 0 .. renderCount - 1 do
-                let _, slot = at compiled.RenderSlots k
-
-                let value =
-                    try
-                        slot.Read.Invoke instance
-                    with
-                    | NotReadyException _ -> unset
-                    | error ->
-                        failed <- true
-                        services.ReportFailure error
-
-                        if isNull failure then
-                            failure <- error
-
-                        unset
-
-                store state (pendingBase + k) value
-
-            Api.untrack commitAll
-
-            if not (isNull failure) then
-                failed <- true
-                raise failure
-            elif failed then
-                failed <- false
-                services.ClearFailure ())
-
-        services.RaiseSetupFailure ()
-
-    for k in 0 .. isolatedCount - 1 do
-        let nodeIndex, slot = at compiled.IsolatedSlots k
-        let previousIndex = previousBase + renderCount + k
-
-        let mutable failed = false
-
-        Api.createEffect (fun () ->
-            let mutable failure: exn = null
-
-            let value =
-                try
-                    slot.Read.Invoke instance
-                with
-                | NotReadyException _ -> unset
-                | error ->
-                    failed <- true
-                    services.ReportFailure error
-                    failure <- error
-                    unset
-
-            Api.untrack (fun () -> commit services state slot nodeIndex previousIndex value)
-
-            if not (isNull failure) then
-                failed <- true
-                raise failure
-            elif failed then
-                failed <- false
-                services.ClearFailure ())
-
-        services.RaiseSetupFailure ()
+    for k in 0 .. compiled.IsolatedSlots.Length - 1 do
+        startIsolated services state k
 
     let mutable attached = -1
 
@@ -578,16 +610,7 @@ let inline private bind (services: MountServices) (compiled: Compiled) (state: o
 
             services.Delegate eventName
         else
-            let owner = at state StateOwner :?> Owner
-            let graph = at state StateGraph :?> Graph
-
-            services.ListenDirect (
-                unbox node,
-                eventName,
-                fun event ->
-                    if not owner.IsDisposed then
-                        graph.Run (fun () -> Api.runWithOwner owner (fun () -> Api.untrack (fun () -> handler.Invoke (instance, event))))
-            )
+            listenDirect services state node eventName handler
 
 /// <summary>The instance of a part: the template's own for 0, an inlined child's from its state array otherwise.</summary>
 let private partInstance (state: obj array) (childBase: int) (part: int) : obj =
@@ -595,6 +618,14 @@ let private partInstance (state: obj array) (childBase: int) (part: int) : obj =
         at state StateInstance
     else
         at (unbox<obj array>(at state (childBase + part - 1))) StateInstance
+
+/// <summary>Runs a template's setup on <c>props</c>, untracked.</summary>
+let private setUp (template: TemplateComponent) (services: MountServices) (props: obj) =
+    Api.untrack (fun () -> template.Setup.Invoke (services.Setup, props))
+
+/// <summary>Runs an inlined child's setup on the props read from <c>owner</c>, the instance of its owning part, untracked.</summary>
+let private setUpChild (services: MountServices) (child: CompiledChild) (owner: obj) =
+    Api.untrack (fun () -> child.Definition.Setup.Invoke (services.Setup, child.Props.Invoke owner))
 
 /// <summary>Materialises one instance: runs setup, clones the skeleton, binds its slots and events and those of its inlined children, appends it and mounts its regions.</summary>
 let rec internal materialise (definition: TemplateDefinition) (props: obj) (services: MountServices) =
@@ -604,12 +635,12 @@ let rec internal materialise (definition: TemplateDefinition) (props: obj) (serv
         definition.Compiled <- box (compile template)
 
     let compiled = definition.Compiled :?> Compiled
-    let instance = Api.untrack (fun () -> template.Setup.Invoke (services.Setup, props))
+    let instance = setUp template services props
     let clone = compiled.Skeleton.cloneNode true
     let children = compiled.Children
     let state = stateFor compiled instance children.Length
     collect clone compiled.Walk state
-    bind services compiled state instance
+    bind services compiled state
 
     let childBase =
         StateNodes
@@ -621,7 +652,7 @@ let rec internal materialise (definition: TemplateDefinition) (props: obj) (serv
         let child = at children k
 
         let childInstance =
-            Api.untrack (fun () -> child.Definition.Setup.Invoke (services.Setup, child.Props.Invoke (partInstance state childBase child.Owner)))
+            setUpChild services child (partInstance state childBase child.Owner)
 
         let tables = child.Tables
         let childState = stateFor tables childInstance 0
@@ -630,7 +661,7 @@ let rec internal materialise (definition: TemplateDefinition) (props: obj) (serv
             store childState (StateNodes + i) (at state (StateNodes + child.Offset + i))
 
         store state (childBase + k) (box childState)
-        bind services tables childState childInstance
+        bind services tables childState
 
     if compiled.RootCount = 1 then
         services.Append clone

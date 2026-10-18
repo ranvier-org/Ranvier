@@ -542,6 +542,28 @@ let private sourceSlots () =
 [<Emit("$0.dispatchEvent(new FocusEvent('focus'))")>]
 let private dispatchFocus (node: HTMLElement) : unit = jsNative
 
+let private twoIsolatedSlots () =
+    use graph = new Graph ()
+    let first = graph.Run (fun () -> Api.createSignal "a")
+    let second = graph.Run (fun () -> Api.createSignal "b")
+
+    let pair =
+        Component.define (fun _ (props: Signal<string> * Signal<string>) -> props) (fun t ->
+            t.div
+                [||]
+                [|
+                    t.span [||] [| t.isolated (t.text (fun (a: Signal<string>, _) -> a.Value)) |]
+                    t.span [||] [| t.isolated (t.text (fun (_, b: Signal<string>) -> b.Value)) |]
+                |])
+
+    let host = host ()
+    let mounted = mount graph host (Component.render pair (first, second))
+    graph.Run (fun () -> first.Value <- "b")
+    equal "bb" host.textContent
+    graph.Run (fun () -> second.Value <- "a")
+    equal "ba" host.textContent
+    mounted.Dispose ()
+
 let private clicks () =
     use graph = new Graph ()
     let source = graph.Run (fun () -> Api.createSignal "a")
@@ -3965,6 +3987,7 @@ let cases =
         "a null text value renders empty", nullText
         "a static template mounts without effects", staticTemplate
         "an isolated slot re-runs only on its own source", isolatedSlots
+        "two isolated slots each compare against their own previous value", twoIsolatedSlots
         "source slots follow their signal and memo", sourceSlots
         "template click handlers receive the instance and stop after disposal", clicks
         "template handlers dispatch after a move", movedClicks
