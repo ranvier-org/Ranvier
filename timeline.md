@@ -15,6 +15,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 101,724 | 140,671 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 101,726 | 141,063 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 101,732 | 141,030 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 101,728 | 140,927 |
 
 ## app-table
 
@@ -31,6 +32,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 9,233,235 | 9,825,499 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 9,233,227 | 9,642,607 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 9,233,705 | 9,775,470 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 9,233,700 | 9,642,269 |
 
 ## async-recover
 
@@ -47,6 +49,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 138,757 | 37,516 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 138,757 | 37,532 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 138,829 | 37,525 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 138,829 | 37,533 |
 
 ## async-resolve
 
@@ -63,6 +66,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 2,795,019 | 1,174,766 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 2,795,019 | 1,175,803 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 2,798,220 | 1,174,873 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 2,798,220 | 1,175,506 |
 
 ## chain
 
@@ -79,6 +83,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 13,042 | 318 | 2,470 | 4,491 | 3,180 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 13,042 | 318 | 2,470 | 4,491 | 3,180 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 13,042 | 318 | 2,470 | 4,491 | 3,180 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 13,042 | 318 | 2,470 | 4,491 | 3,180 |
 
 ## chain-affinity
 
@@ -95,6 +100,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 2,569 | 3,087 | 2,516 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 2,569 | 3,087 | 2,516 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 2,569 | 3,087 | 2,516 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 2,569 | 3,087 | 2,516 |
 
 ## control
 
@@ -111,6 +117,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 74,719 | 845,939 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 74,719 | 845,860 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 74,719 | 846,668 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 74,719 | 846,627 |
 
 ## create
 
@@ -127,6 +134,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 13,461,445 | 2,861,677 | 3,043,230 | 2,185,843 | 4,208,429 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 13,477,436 | 2,861,678 | 3,041,258 | 2,185,613 | 4,216,772 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 13,728,357 | 2,861,678 | 3,041,229 | 2,186,610 | 4,213,405 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 13,461,481 | 2,861,678 | 3,041,229 | 2,186,260 | 4,224,631 |
 
 ## create-on
 
@@ -143,6 +151,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 3,509,854 | 4,630,395 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 3,445,855 | 4,615,793 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 3,429,855 | 4,621,052 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 3,429,855 | 4,626,771 |
 
 ## cutoff
 
@@ -159,6 +168,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 1,181 | 50 | 111 | 65 | 35 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 1,181 | 50 | 111 | 65 | 35 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 1,181 | 50 | 111 | 65 | 35 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 1,181 | 50 | 111 | 65 | 35 |
 
 ## derive-effect
 
@@ -175,6 +185,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 765 | 716 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 765 | 716 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 765 | 716 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 765 | 716 |
 
 ## derive-on
 
@@ -191,6 +202,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 756 | 684 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 740 | 684 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 740 | 684 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 740 | 684 |
 
 ## dispose
 
@@ -207,6 +219,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 2,707,578 | 806,290 | 498,486 | 466,112 | 703,398 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 2,707,581 | 806,290 | 498,486 | 465,769 | 703,182 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 2,707,581 | 806,290 | 498,486 | 466,180 | 703,456 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 2,707,581 | 806,291 | 498,486 | 466,014 | 703,538 |
 
 ## dispose-on
 
@@ -223,6 +236,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 477,486 | 699,312 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 477,486 | 699,855 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 477,486 | 699,340 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 477,486 | 699,320 |
 
 ## editable-edit
 
@@ -239,6 +253,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 181,106 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 181,106 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 181,106 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 181,106 |
 
 ## editable-upstream
 
@@ -255,6 +270,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 232,755 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 232,757 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 232,756 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 232,756 |
 
 ## fail-recompute
 
@@ -271,6 +287,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 64,880 | 1,376 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 64,948 | 1,376 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 64,932 | 1,376 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 64,932 | 1,376 |
 
 ## flight
 
@@ -287,6 +304,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 11,033 | — | — | 11,363 | 10,805 | 22,379 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 11,049 | 6,244 | 6,245 | 11,372 | 10,817 | 22,381 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 11,051 | 6,245 | 6,246 | 11,374 | 10,819 | 22,383 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 11,051 | 6,245 | 6,246 | 11,375 | 10,819 | 22,383 |
 
 ## keyed-insert
 
@@ -303,6 +321,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 1,921,560 | 53,846 | 54,582 | 3,092,565 | 162,828 | 172,579 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 1,921,603 | 53,864 | 54,597 | 3,092,660 | 162,680 | 172,520 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 1,921,590 | 53,936 | 54,674 | 3,092,673 | 163,160 | 172,920 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 1,921,612 | 53,936 | 54,698 | 3,092,648 | 163,142 | 173,032 |
 
 ## keyed-remove
 
@@ -319,6 +338,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 1,920,789 | 43,539 | 45,100 | 3,092,513 | 130,276 | 142,726 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 1,920,550 | 43,566 | 44,995 | 3,092,470 | 130,256 | 142,766 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 1,920,537 | 43,638 | 45,058 | 3,092,529 | 130,695 | 143,307 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 1,920,550 | 43,638 | 45,081 | 3,092,463 | 130,641 | 143,342 |
 
 ## keyed-swap
 
@@ -335,6 +355,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 1,973,152 | 46,081 | 46,558 | 3,215,157 | 77,033 | 82,398 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 1,973,185 | 46,098 | 46,574 | 3,215,219 | 76,971 | 83,291 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) (accepted) | 1,973,171 | 46,167 | 46,649 | 3,215,270 | 79,489 | 84,811 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 1,973,203 | 46,167 | 46,681 | 3,215,232 | 79,407 | 84,869 |
 
 ## mvu-dispatch
 
@@ -351,6 +372,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 58,391 | 772 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 58,391 | 772 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 58,391 | 772 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 58,391 | 772 |
 
 ## project-chain
 
@@ -367,6 +389,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 3,837,396 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 3,837,412 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 3,837,485 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 3,837,421 |
 
 ## project-churn
 
@@ -383,6 +406,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 36,202 | 34,033 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 36,202 | 34,033 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 36,290 | 34,121 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 36,290 | 34,121 |
 
 ## project-edit
 
@@ -399,6 +423,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 50,188 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 50,173 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 50,201 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 50,218 |
 
 ## project-reorder
 
@@ -415,6 +440,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 778,875 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 778,879 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 778,907 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 778,907 |
 
 ## shape-diamond
 
@@ -431,6 +457,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 60,899 | 88,455 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 60,899 | 88,455 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 60,899 | 88,455 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 60,899 | 88,455 |
 
 ## shape-dynamic
 
@@ -447,6 +474,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 82,420 | 98,007 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 82,420 | 98,000 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 82,420 | 98,007 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 82,420 | 98,003 |
 
 ## timed-admit-both
 
@@ -463,6 +491,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 119,933 | 133,572 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 118,909 | 133,573 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 118,909 | 133,573 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 118,909 | 133,569 |
 
 ## timed-admit-debounce
 
@@ -479,6 +508,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 118,838 | 132,165 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 117,814 | 132,166 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 117,814 | 132,167 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 117,814 | 132,165 |
 
 ## timed-admit-first
 
@@ -495,6 +525,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 70,949 | 81,964 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 69,925 | 81,962 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 69,925 | 81,964 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 69,925 | 81,963 |
 
 ## timed-admit-last
 
@@ -511,6 +542,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 119,100 | 132,483 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 118,076 | 132,486 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 118,076 | 132,487 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 118,076 | 132,487 |
 
 ## timed-capture-both
 
@@ -527,6 +559,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 36,044 | 44,958 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 36,044 | 44,954 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 36,044 | 44,959 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 36,044 | 44,957 |
 
 ## timed-capture-debounce
 
@@ -543,6 +576,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 35,916 | 43,583 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 35,916 | 43,583 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 35,916 | 43,583 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 35,916 | 43,583 |
 
 ## timed-capture-first
 
@@ -559,6 +593,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 32,396 | 38,804 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 32,396 | 38,802 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 32,396 | 38,804 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 32,396 | 38,804 |
 
 ## timed-capture-last
 
@@ -575,6 +610,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 35,852 | 43,519 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 35,852 | 43,519 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 35,852 | 43,519 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 35,852 | 43,519 |
 
 ## update
 
@@ -591,6 +627,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 1,090,272 | 38,805 | 83,005 | 263,444 | 207,813 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 1,088,680 | 38,805 | 83,005 | 263,413 | 207,830 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 1,090,272 | 38,805 | 83,005 | 263,459 | 207,781 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 1,088,680 | 38,805 | 83,005 | 263,427 | 207,822 |
 
 ## update-on
 
@@ -607,6 +644,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 95,405 | 222,117 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 93,805 | 222,082 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 93,805 | 222,091 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 93,805 | 222,096 |
 
 ## work-form
 
@@ -623,6 +661,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 174,678 | 168,161 | 288,770 | 287,116 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 174,678 | 168,144 | 288,733 | 287,095 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 174,678 | 168,144 | 288,766 | 287,120 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 174,678 | 168,177 | 288,770 | 287,120 |
 
 ## work-status
 
@@ -639,6 +678,7 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 100,445 | 80,715 | 315,963 | 155,385 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 100,445 | 79,115 | 315,927 | 155,377 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 100,445 | 79,115 | 315,923 | 155,422 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 100,445 | 79,115 | 315,945 | 155,384 |
 
 ## work-value
 
@@ -655,4 +695,5 @@
 | `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | 107,569 | 121,369 | 316,178 | 283,728 |
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 107,570 | 119,769 | 316,156 | 283,730 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 107,569 | 119,771 | 316,193 | 283,676 |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 107,571 | 119,770 | 316,170 | 283,707 |
 
