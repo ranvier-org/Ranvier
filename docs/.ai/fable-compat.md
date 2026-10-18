@@ -33,10 +33,10 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Edges.fs | 5 | 5 | 5 | 5 | 5 | 5 | 0 | 0 |
 | Invalidation.fs | 4 | 4 | 4 | 4 | 4 | 4 | 0 | 0 |
 | Lifetime.fs | 6 | 6 | 6 | 6 | 6 | 6 | 0 | 0 |
-| Retention.fs | 2 | 2 | 2 | 2 | 2 | 2 | 11 | 0 |
+| Retention.fs | 2 | 2 | 2 | 2 | 2 | 2 | 12 | 0 |
 | Tracing.fs | 2 | 2 | 2 | 82 | 77 | 67 | 1 | 0 |
 | TraceModelTests.fs | 0 | 0 | 0 | 12 | 12 | 12 | 2 | 0 |
-| Observers.fs | 24 | 24 | 24 | 24 | 24 | 24 | 0 | 0 |
+| Observers.fs | 71 | 71 | 71 | 71 | 71 | 71 | 0 | 0 |
 | Api.fs | 7 | 7 | 7 | 7 | 7 | 7 | 2 | 0 |
 | FanOut.fs | 8 | 8 | 8 | 8 | 8 | 8 | 0 | 0 |
 | Reentrancy.fs | 12 | 12 | 12 | 12 | 12 | 12 | 0 | 0 |
@@ -71,7 +71,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | QueryDictionary.fs | 2 | 2 | 2 | 2 | 2 | 2 | 0 | 0 |
 | QueryErgonomics.fs | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | QueryNavigationTests.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1004 | 986 | 922 | 1141 | 1118 | 1044 | 91 | 1 |
+| **Total** | 1051 | 1033 | 969 | 1188 | 1165 | 1091 | 92 | 1 |
 
 ## Tests.fs
 
@@ -529,6 +529,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | a disposed memo is not retained by its owner | JavaScript exposes no forced collection. |
 | a disposed root is not retained by its parent | JavaScript exposes no forced collection. |
 | a torn-down subtree is released even while its signal lives on | JavaScript exposes no forced collection. |
+| a wide source with live readers does not pin dead ones | JavaScript exposes no forced collection. |
 | {name}: an undisposed token registration is released once its flight settles | JavaScript exposes no forced collection. |
 | {name}: a body that throws before returning its task releases its registration | JavaScript exposes no forced collection. |
 | {name}: overlapping flights release their registrations once the last one settles | JavaScript exposes no forced collection. |
@@ -666,7 +667,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## Observers.fs
 
-<details><summary>24 passed in every build and delivery that runs them</summary>
+<details><summary>71 passed in every build and delivery that runs them</summary>
 
 - every one of 3 observers is woken
 - a body reading its source twice does not grow the list of 3
@@ -692,6 +693,53 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a memo that reads one source in a loop records one edge
 - a memo that reorders its reads ends up with both edges
 - a source read twice keeps its edge when the later read is trimmed
+- a, b, a after 0 other reads links a once
+- truncation after 0 other reads drops both slots of a repeated source
+- a, b, a after 10 other reads links a once
+- truncation after 10 other reads drops both slots of a repeated source
+- a reader of 3 sources in a changing order keeps one edge to each
+- a reader of 12 sources in a changing order keeps one edge to each
+- removal during notification among 3 skips no survivor
+- an observer added during notification among 3 is not marked
+- the count of 3 is exact after removals in any order
+- an observer re-added after removal among 3 is counted and marked once
+- the observer at 0 of 3 removed by its own notification skips no survivor
+- the observer at 1 of 3 removed by its own notification skips no survivor
+- the observer at 2 of 3 removed by its own notification skips no survivor
+- removing an absent observer from 3 changes nothing
+- removal during notification among 8 skips no survivor
+- an observer added during notification among 8 is not marked
+- the count of 8 is exact after removals in any order
+- an observer re-added after removal among 8 is counted and marked once
+- the observer at 0 of 8 removed by its own notification skips no survivor
+- the observer at 4 of 8 removed by its own notification skips no survivor
+- the observer at 7 of 8 removed by its own notification skips no survivor
+- removing an absent observer from 8 changes nothing
+- removal during notification among 9 skips no survivor
+- an observer added during notification among 9 is not marked
+- the count of 9 is exact after removals in any order
+- an observer re-added after removal among 9 is counted and marked once
+- the observer at 0 of 9 removed by its own notification skips no survivor
+- the observer at 4 of 9 removed by its own notification skips no survivor
+- the observer at 8 of 9 removed by its own notification skips no survivor
+- removing an absent observer from 9 changes nothing
+- removal during notification among 20 skips no survivor
+- an observer added during notification among 20 is not marked
+- the count of 20 is exact after removals in any order
+- an observer re-added after removal among 20 is counted and marked once
+- the observer at 0 of 20 removed by its own notification skips no survivor
+- the observer at 10 of 20 removed by its own notification skips no survivor
+- the observer at 19 of 20 removed by its own notification skips no survivor
+- removing an absent observer from 20 changes nothing
+- removal during notification among 100 skips no survivor
+- an observer added during notification among 100 is not marked
+- the count of 100 is exact after removals in any order
+- an observer re-added after removal among 100 is counted and marked once
+- the observer at 0 of 100 removed by its own notification skips no survivor
+- the observer at 50 of 100 removed by its own notification skips no survivor
+- the observer at 99 of 100 removed by its own notification skips no survivor
+- removing an absent observer from 100 changes nothing
+- a wide list survives repeated relinking through the graph
 
 </details>
 

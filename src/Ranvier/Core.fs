@@ -135,51 +135,45 @@ module internal ObserverSlots =
 /// An array rather than a <c>HashSet</c>, because notification is the hot half and
 /// a set cannot be walked while it is mutated.
 /// <para>
-/// Membership is still a set question, though: an observer re-links on every
-/// run of its body and must not be appended twice. Small fan-outs answer that
-/// with a linear scan, which beats hashing at the sizes that actually occur;
-/// above <c>IndexThreshold</c> a position index is built, so a wide source does not
-/// turn re-linking into a quadratic walk.
+/// Each observer is held at most once. <c>Add</c> ignores the observer at the last
+/// position; every other repeat is the caller's to prevent. <c>SourceList</c> does
+/// that for the readers it serves.
 /// </para>
 /// </remarks>
 type internal ObserverSet() =
-    [<Literal>]
-    let IndexThreshold = 8
-
     let mutable items: ObserverSlot[] = ObserverSlots.none
     let mutable count = 0
-
-    /// <summary>
-    /// Position of each observer, built only once the linear scan stops being
-    /// the cheaper answer. Null below the threshold.
-    /// </summary>
-    let mutable index: Platform.RefIndex<IComputation> = null
 
 #if RANVIER_TRACE
     let mutable traceLog: TraceLog = null
     let mutable traceId = 0
 #endif
 
+    /// <summary>
+    /// The position of <c>c</c>, or -1. The last and the first positions cost one
+    /// comparison each, so teardown newest first and oldest first stay constant
+    /// per removal; any other position is a scan.
+    /// </summary>
     let positionOf (c: IComputation) =
-        if Platform.isNull index then
-            let mutable found = -1
-            let mutable i = 0
+        let last = count - 1
 
-            while found < 0 && i < count do
+        if last < 0 then
+            -1
+        elif obj.ReferenceEquals ((Platform.itemAt last items).Observer, c) then
+            last
+        elif obj.ReferenceEquals ((Platform.itemAt 0 items).Observer, c) then
+            0
+        else
+            let mutable found = -1
+            let mutable i = 1
+
+            while found < 0 && i < last do
                 if obj.ReferenceEquals ((Platform.itemAt i items).Observer, c) then
                     found <- i
 
                 i <- i + 1
 
             found
-        else
-            Platform.refIndexFind index c
-
-    let buildIndex () =
-        index <- Platform.createRefIndex (count * 2)
-
-        for i in 0 .. count - 1 do
-            Platform.refIndexSet index (Platform.itemAt i items).Observer i
 
     /// <summary>
     /// How many observers this source has. Diagnostic: duplication in here is
@@ -190,26 +184,9 @@ type internal ObserverSet() =
 
     member this.Add(c: IComputation) =
         if
-            count = 1
-            && obj.ReferenceEquals ((Platform.itemAt 0 items).Observer, c)
+            count = 0
+            || not (obj.ReferenceEquals ((Platform.itemAt (count - 1) items).Observer, c))
         then
-            ()
-        elif count = 0 && items.Length > 0 then
-            // Re-linking after a detach lands here, which is the single most
-            // travelled path in the library: a recomputation removes its edge
-            // and then immediately puts it back. Reaching the membership scan
-            // to be told an empty list contains nothing doubled the cost of a
-            // relink when it was measured.
-            items[0] <- ObserverSlot c
-            count <- 1
-#if RANVIER_COUNTERS
-            Counters.ObserverInserted ()
-#endif
-            Tracer.ObserverAdd (this, c)
-
-            if not (Platform.isNull index) then
-                Platform.refIndexSet index c 0
-        elif positionOf c < 0 then
             if count = items.Length then
                 // A first observer gets a single slot: most sources keep exactly one.
                 let grown = Array.zeroCreate (if count = 0 then 1 else max 4 (count * 2))
@@ -224,50 +201,29 @@ type internal ObserverSet() =
 #endif
             Tracer.ObserverAdd (this, c)
 
-            if Platform.isNull index then
-                if count > IndexThreshold then
-                    buildIndex ()
-            else
-                Platform.refIndexSet index c (count - 1)
-
     /// <summary>
-    /// Swap-remove: the last observer fills the hole, so removal is constant
-    /// time and order is not preserved. Nothing here depends on order — a
-    /// dirty mark is a set operation — and preserving it would cost a shift on
-    /// the path a conditional body takes every time it drops a branch.
+    /// Swap-remove: the last observer fills the hole, so order is not preserved.
+    /// Nothing here depends on order — a dirty mark is a set operation — and
+    /// preserving it would cost a shift on the path a conditional body takes
+    /// every time it drops a branch. Removing an absent observer does nothing.
     /// </summary>
     member this.Remove(c: IComputation) =
-        let last = count - 1
-
-        let position =
-            if
-                last >= 0
-                && obj.ReferenceEquals ((Platform.itemAt last items).Observer, c)
-            then
-                last
-            else
-                positionOf c
+        let position = positionOf c
 
         if position >= 0 then
 #if RANVIER_COUNTERS
             Counters.ObserverRemoved ()
 #endif
             Tracer.ObserverRemove (this, c)
+            let last = count - 1
 
             if position <> last then
-                let moved = (Platform.itemAt last items).Observer
-                items[position] <- ObserverSlot moved
-
-                if not (Platform.isNull index) then
-                    Platform.refIndexSet index moved position
+                items[position] <- ObserverSlot (Platform.itemAt last items).Observer
 
             // Blanked so a dropped observer is not kept alive by a slot past
             // the end of the list.
             items[last] <- ObserverSlots.vacant ()
             count <- last
-
-            if not (Platform.isNull index) then
-                Platform.refIndexRemove index c
 
     /// <summary>
     /// Marks every current observer dirty. Observers added during the loop
@@ -440,10 +396,19 @@ type internal SourceList() =
     /// </summary>
     let mutable cursor = 0
 
+    /// <summary>
+    /// Every source in the list, for a list longer than <c>ScanLimit</c> that appended
+    /// during the current run. Null otherwise.
+    /// </summary>
+    let mutable held: Platform.RefIndex<ISource> = null
+
 #if RANVIER_TRACE
     let mutable traceLog: TraceLog = null
     let mutable traceId = 0
 #endif
+
+    [<Literal>]
+    let ScanLimit = 8
 
     let sourceAt (i: int) =
         if i = 0 then
@@ -464,10 +429,28 @@ type internal SourceList() =
         i < until
 
     /// <summary>
+    /// Whether <c>source</c> holds any slot. A scan up to <c>ScanLimit</c> slots, and a lookup in
+    /// <c>held</c> above it.
+    /// </summary>
+    let holds (source: ISource) =
+        if count <= ScanLimit then
+            heldBefore count source
+        else
+            if Platform.isNull held then
+                held <- Platform.createRefIndex (count * 2)
+
+                for i in 0 .. count - 1 do
+                    Platform.refIndexSet held (sourceAt i) i
+
+            Platform.refIndexFind held source >= 0
+
+    /// <summary>
     /// Drops the slots from <c>from</c> on. A source that also holds a kept slot
     /// keeps its observer entry.
     /// </summary>
     let trimFrom (self: IComputation) from =
+        held <- null
+
         for i in from .. count - 1 do
             let source = sourceAt i
 
@@ -522,6 +505,10 @@ type internal SourceList() =
                 Tracer.EdgesRemove (this, cursor)
                 trimFrom self cursor
 
+            // A source already in the list keeps the one observer entry it has: A, B, A
+            // links A once.
+            let linked = count > 0 && holds source
+
             if count = 0 then
                 first <- source
             else
@@ -532,13 +519,18 @@ type internal SourceList() =
 
                 rest[count - 1] <- SourceSlot source
 
+            if not (Platform.isNull held) then
+                Platform.refIndexSet held source count
+
             count <- count + 1
             cursor <- count
 #if RANVIER_COUNTERS
             Counters.EdgeAdded ()
 #endif
             Tracer.EdgeAdd (this, source, count - 1)
-            source.AddObserver self
+
+            if not linked then
+                source.AddObserver self
 
     /// <summary>
     /// Closes a run, dropping whatever the body did not read this time. Must
@@ -546,6 +538,8 @@ type internal SourceList() =
     /// edges past that prefix are no longer ones it depends on.
     /// </summary>
     member this.EndRun(self: IComputation) =
+        held <- null
+
         if cursor < count then
             Tracer.EdgesRemove (this, cursor)
             trimFrom self cursor

@@ -4,14 +4,13 @@ open Expecto
 open Ranvier
 
 /// <summary>
-/// A source's observer list is an array with a position index built only once
-/// the fan-out is wide enough to want one. Both halves of that have failure
-/// modes a narrow test never reaches: a stale index entry after a swap-remove
-/// silently stops waking an observer, and a missed dedupe silently appends the
-/// same observer on every run until the array is the size of the run count.
+/// A source's observer list is an array with swap-remove. A wide list has failure
+/// modes a narrow test never reaches: a swap that misplaces an entry silently
+/// stops waking an observer, and a missed dedupe silently appends the same
+/// observer on every run until the array is the size of the run count.
 /// </summary>
 /// <remarks>
-/// So every case here is run at a fan-out on both sides of the threshold.
+/// So every case here is run at fan-outs on both sides of 8.
 /// </remarks>
 let private widths = [ 3; 8; 9; 20 ]
 
@@ -277,6 +276,107 @@ let sourceTests =
                 a.Value <- 2
                 Expect.equal m.Value 102 "a write to a still wakes the memo"
             }
+
+            // 10 leading sources take the list past the scan limit before the repeated read.
+            for lead in [ 0; 10 ] do
+                test $"a, b, a after {lead} other reads links a once while b also observes a" {
+                    let g = new Graph ()
+                    let pads = Array.init lead (fun _ -> Signal (g, 0))
+                    let a = Signal (g, 1)
+                    // b links to a between the memo's two reads of a, so a's newest observer is b.
+                    let b = Make.Memo (g, (fun _ -> a.Value * 10))
+
+                    let m =
+                        Make.Memo (
+                            g,
+                            fun _ ->
+                                for p in pads do
+                                    p.Value |> ignore
+
+                                a.Value + b.Value + a.Value
+                        )
+
+                    Expect.equal m.Value 12 "a, b, a"
+                    Expect.equal m.SourceCount (lead + 3) "a slot per read"
+                    Expect.equal a.ObserverCount 2 "one entry for the memo and one for b"
+
+                    let before = m.Runs
+                    a.Value <- 2
+                    Expect.equal m.Value 24 "a write to a wakes the memo"
+                    Expect.equal m.Runs (before + 1) "once"
+                    Expect.equal a.ObserverCount 2 "and still one entry each after the re-run"
+                }
+
+                test $"truncation after {lead} other reads drops both slots of a repeated source" {
+                    let g = new Graph ()
+                    let pads = Array.init lead (fun _ -> Signal (g, 0))
+                    let useA = Signal (g, true)
+                    let a = Signal (g, 1)
+                    let b = Signal (g, 10)
+                    let c = Signal (g, 100)
+
+                    let m =
+                        Make.Memo (
+                            g,
+                            fun _ ->
+                                for p in pads do
+                                    p.Value |> ignore
+
+                                if useA.Value then a.Value + b.Value + a.Value else c.Value
+                        )
+
+                    Expect.equal m.Value 12 "a, b, a"
+                    useA.Value <- false
+                    Expect.equal m.Value 100 "c"
+                    Expect.equal a.ObserverCount 0 "a lost its only entry"
+                    Expect.equal b.ObserverCount 0 "b too"
+
+                    let before = m.Runs
+                    a.Value <- 5
+                    m.Value |> ignore
+                    Expect.equal m.Runs before "a no longer wakes the memo"
+
+                    useA.Value <- true
+                    Expect.equal m.Value 20 "a, b, a again"
+                    Expect.equal a.ObserverCount 1 "a linked once more"
+                    a.Value <- 6
+                    Expect.equal m.Value 22 "and a wakes the memo again"
+                }
+
+            for width in [ 3; 12 ] do
+                test $"a reader of {width} sources in a changing order keeps one edge to each" {
+                    let g = new Graph ()
+                    let shift = Signal (g, 0)
+                    let sources = Array.init width (fun i -> Signal (g, i))
+
+                    let m =
+                        Make.Memo (
+                            g,
+                            fun _ ->
+                                let k = shift.Value
+                                let mutable total = 0
+
+                                for i in 0 .. width - 1 do
+                                    total <- total + sources[(i + k) % width].Value
+
+                                total
+                        )
+
+                    for k in 0..4 do
+                        shift.Value <- k
+                        m.Value |> ignore
+
+                    Expect.equal m.SourceCount (width + 1) "shift and every source"
+
+                    for s in sources do
+                        Expect.equal s.ObserverCount 1 "one entry per source"
+
+                    for i in 0 .. width - 1 do
+                        let before = m.Runs
+                        sources[i].Value <- sources[i].Value + 1
+                        m.Value |> ignore
+                        Expect.equal m.Runs (before + 1) $"source {i} wakes the memo once"
+                }
         ]
 
 /// <summary>
@@ -405,6 +505,57 @@ let observerSetTests =
 
                     for p in probes do
                         Expect.equal p.Dirty 1 "marked once"
+                }
+
+                for walker in List.distinct [ 0; width / 2; width - 1 ] do
+                    test $"the observer at {walker} of {width} removed by its own notification skips no survivor" {
+                        let set = ObserverSet ()
+                        let probes = probesOn set width
+                        let self = probes[walker]
+
+                        // The walk runs from the last position down, so every probe below the walker is unvisited.
+                        let victims =
+                            List.distinct [ 0; walker - 1 ]
+                            |> List.filter (fun i -> i >= 0 && i < walker)
+
+                        self.OnDirty <-
+                            fun () ->
+                                set.Remove self
+
+                                for i in victims do
+                                    set.Remove probes[i]
+
+                        set.NotifyDirty ()
+
+                        Expect.equal self.Dirty 1 "the walker is marked once"
+
+                        for i in 0 .. width - 1 do
+                            if List.contains i victims then
+                                Expect.equal probes[i].Dirty 0 $"removed probe {i} is not marked"
+                            elif i <> walker then
+                                Expect.isGreaterThan probes[i].Dirty 0 $"surviving probe {i} is marked"
+
+                        Expect.equal set.Count (width - 1 - victims.Length) "the walker and its victims left"
+                    }
+
+                test $"removing an absent observer from {width} changes nothing" {
+                    let set = ObserverSet ()
+                    let probes = probesOn set width
+                    let stranger = Probe 1000
+
+                    set.Remove stranger
+                    set.Remove stranger
+                    set.Remove probes[1]
+                    set.Remove probes[1]
+
+                    Expect.equal set.Count (width - 1) "only the one removal counts"
+
+                    set.NotifyDirty ()
+
+                    Expect.equal stranger.Dirty 0 "the stranger is not marked"
+
+                    for i in 0 .. width - 1 do
+                        Expect.equal probes[i].Dirty (if i = 1 then 0 else 1) "every remaining probe marked once"
                 }
 
             test "a wide list survives repeated relinking through the graph" {
