@@ -756,7 +756,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a handle holding another observer among 100 raises and removes nothing
 - TryAdd among 100 finds the latest add and leaves wide misses to the caller
 - the latest add's record among 100 follows its observer through a swap
-- a new int array is zero-filled
+- positions copied into a larger array read back as written
 - a wide list survives repeated relinking through the graph
 - 3 bindings of one signal disposed in reverse order
 - 3 folds of one projection disposed in reverse order

@@ -169,7 +169,7 @@ module internal ObserverSlots =
     /// <summary>
     /// The zero-length slot list an observer set holds until its first observer.
     /// </summary>
-    let noSlots: int[] = [||]
+    let noSlots: int[] = Platform.positions 0
 #endif
 
 /// <summary>
@@ -237,9 +237,9 @@ type internal ObserverSet() =
         let size = if count = 0 then 1 else max 4 (count * 2)
 #if FABLE_COMPILER
         let grownObservers = Array.zeroCreate size
-        let grownSlots: int[] = Array.zeroCreate size
+        let grownSlots = Platform.positions size
         Array.blit observers 0 grownObservers 0 count
-        Array.blit slots 0 grownSlots 0 count
+        Platform.copyPositions slots grownSlots count
         observers <- grownObservers
         slots <- grownSlots
 #else
@@ -490,7 +490,7 @@ module internal SourceSlots =
     /// <summary>
     /// The zero-length handle list a source list holds until its second source.
     /// </summary>
-    let noHandles: int[] = [||]
+    let noHandles: int[] = Platform.positions 0
 #endif
 
 /// <summary>
@@ -614,9 +614,9 @@ type internal SourceList() =
         let size = max 4 (rest.Length * 2)
 #if FABLE_COMPILER
         let grownSources = Array.zeroCreate size
-        let grownHandles: int[] = Array.zeroCreate size
+        let grownHandles = Platform.positions size
         Array.blit rest 0 grownSources 0 rest.Length
-        Array.blit restHandles 0 grownHandles 0 rest.Length
+        Platform.copyPositions restHandles grownHandles rest.Length
         rest <- grownSources
         restHandles <- grownHandles
 #else

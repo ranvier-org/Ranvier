@@ -689,10 +689,16 @@ let observerSetTests =
                     Expect.equal (set.TryAdd (late, 0)) EdgeHandle.Unlinked "and is still the latest add"
                 }
 
-            test "a new int array is zero-filled" {
-                let slots: int[] = Array.zeroCreate 5
-                Expect.equal slots.Length 5 "five slots"
-                Expect.isTrue (Array.forall (fun s -> s = 0) slots) "every slot reads 0"
+            test "positions copied into a larger array read back as written" {
+                let small = Platform.positions 3
+
+                for i in 0..2 do
+                    small[i] <- i - 1
+
+                let large = Platform.positions 8
+                Platform.copyPositions small large 3
+                Expect.equal large.Length 8 "eight positions"
+                Expect.equal [ for i in 0..2 -> large[i] ] [ -1; 0; 1 ] "the copied positions"
             }
 
 
