@@ -3225,6 +3225,67 @@ let private failedInsertionLeavesStagingEmpty () =
     equal (0, 1, "4,5,", 1) (removed, inserts (), host.textContent, reports.Count)
     mounted.Dispose ()
 
+/// <summary>A row whose setup fails for the item with id 3.</summary>
+let private failingAtThree =
+    Component.define
+        (fun _ (item: unit -> Listed) ->
+            if (item ()).Id = 3 then
+                failwith "row setup"
+
+            item)
+        (fun t -> t.element (HtmlTag "li") [||] [| t.text (fun item -> (item ()).Text) |])
+
+let private failingAtThreeList =
+    Component.define (fun _ (items: Signal<Listed array>) -> items) (fun t ->
+        t.element
+            (HtmlTag "ul")
+            [||]
+            [|
+                t.each (fun (item: Listed) -> item.Id) (fun items -> items.Value) failingAtThree
+            |])
+
+let private failedCreateLeavesRegionEmpty (attached: bool) () =
+    use graph = new Graph ()
+    let items = graph.Run (fun () -> Api.createSignal [||])
+    let host = host ()
+
+    if attached then
+        globalThis.document.body.appendChild host
+        |> ignore
+
+    let mounted, reports =
+        reported graph host (Component.render failingAtThreeList items)
+
+    let ul = host.querySelector "ul" |> unbox<HTMLElement>
+    let markers = ul.childNodes.length
+    graph.Run (fun () -> items.Value <- listedItems 5)
+    let failed = ((host.querySelectorAll "li").length, ul.childNodes.length)
+    graph.Run (fun () -> items.Value <- [| { Id = 4; Text = "4," }; { Id = 5; Text = "5," } |])
+
+    equal
+        ((0., markers), "4,5,", [ [ "row setup" ] ])
+        (failed,
+         host.textContent,
+         reports
+         |> Seq.map (List.map _.Message)
+         |> List.ofSeq)
+
+    mounted.Dispose ()
+    host.remove ()
+
+let private createdRowsKeepOrder () =
+    use graph = new Graph ()
+    let items = graph.Run (fun () -> Api.createSignal [||])
+    let host = host ()
+    let mounted = mount graph host (listedView false items)
+    graph.Run (fun () -> items.Value <- listedItems 3)
+    let created = host.textContent
+    let next = Array.insertAt 1 { Id = 7; Text = "7," } items.Value
+    graph.Run (fun () -> items.Value <- next)
+    graph.Run (fun () -> items.Value <- Array.rev next)
+    equal ("0,1,2,", "2,1,7,0,") (created, host.textContent)
+    mounted.Dispose ()
+
 // After the swap, the rows release in an order other than their laid-out order.
 let private clearAfterSwapRemovesInOneOperation () =
     use graph = new Graph ()
@@ -4164,6 +4225,9 @@ let cases =
         "row cleanups see their row connected on remove, clear and mount disposal", cleanupsSeeConnectedRows
         "a clear whose row cleanup throws reports it and leaves no row nodes", failingClearLeavesNoRows
         "a clear and an insertion after a failed row setup each take one operation", failedInsertionLeavesStagingEmpty
+        "a row setup failure while filling an empty list leaves only the markers", failedCreateLeavesRegionEmpty false
+        "a row setup failure while filling an empty attached list leaves only the markers", failedCreateLeavesRegionEmpty true
+        "rows created into an empty list keep their order through an insertion and a reversal", createdRowsKeepOrder
         "a clear after a swap removes the rows in one operation", clearAfterSwapRemovesInOneOperation
         "a clear deletes a foreign node between the markers and reports nothing", clearDeletesForeignNode false
         "a clear between siblings deletes a foreign node between the markers and reports nothing", clearDeletesForeignNode true
