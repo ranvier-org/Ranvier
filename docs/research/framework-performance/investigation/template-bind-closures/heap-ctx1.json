@@ -1,0 +1,4139 @@
+{
+  "measuredAt": "2026-10-18T14:26:11.903Z",
+  "commit": "7478d33416414dd45189c45140a85b911bc214b3",
+  "dirty": [
+    "M experiments/Ranvier.View.Foundation/TemplateDom.fs",
+    "?? examples/Fable.Ranvier.Playground/benchmarks/frameworks/_lines.tmp.mjs",
+    "?? examples/Fable.Ranvier.Playground/generated-keyed-alloc/",
+    "?? examples/Fable.Ranvier.Playground/generated-keyed-base/",
+    "?? examples/Fable.Ranvier.Playground/generated-keyed-core/",
+    "?? examples/Fable.Ranvier.Playground/generated-keyed-ctx1/",
+    "?? examples/Fable.Ranvier.Playground/generated-keyed-fix1/",
+    "?? examples/Fable.Ranvier.Playground/generated-keyed-fix3/",
+    "?? examples/Fable.Ranvier.Playground/generated-keyed-fix4/",
+    "?? examples/Fable.Ranvier.Playground/generated-keyed-fix5/",
+    "?? examples/Fable.Ranvier.Playground/generated-keyed-fix6/",
+    "?? examples/Fable.Ranvier.Playground/generated-keyed-fix7/",
+    "?? examples/Fable.Ranvier.Playground/generated-keyed-fix8/",
+    "?? examples/Fable.Ranvier.Playground/generated-keyed-harness/",
+    "?? examples/Fable.Ranvier.Playground/generated-keyed-inplace0/",
+    "?? examples/Fable.Ranvier.Playground/generated-keyed-inplace1/",
+    "?? examples/Fable.Ranvier.Playground/generated-keyed-master/",
+    "?? examples/Fable.Ranvier.Playground/generated-keyed-masterprof/",
+    "?? examples/Fable.Ranvier.Playground/generated-keyed-owner1/",
+    "?? examples/Fable.Ranvier.Playground/generated-keyed-probe/",
+    "?? examples/Fable.Ranvier.Playground/generated-keyed-profile/",
+    "?? examples/Fable.Ranvier.Playground/generated-keyed-range0/",
+    "?? examples/Fable.Ranvier.Playground/generated-keyed-range1/",
+    "?? examples/Fable.Ranvier.Playground/generated-keyed-version0/",
+    "?? examples/Fable.Ranvier.Playground/generated-keyed-version1/"
+  ],
+  "node": "v26.7.0",
+  "chromium": "153.0.8010.12",
+  "cpu": "AMD Ryzen 9 9900X 12-Core Processor            ",
+  "cores": 24,
+  "memoryGb": 62,
+  "platform": "win32 10.0.26200",
+  "production": true,
+  "minified": false,
+  "notes": [
+    "Each entry diffs two heap snapshots of one page: an empty mounted list, then the same list after create(rows). Each snapshot follows two forced GCs; two mounts of 1,000 rows and their release run first.",
+    "Objects are matched by snapshot id. `js` lists the V8 objects new in the second snapshot, by node type and constructor name, with self sizes; the kinds sum to jsBytesPerRow.",
+    "codeBytesPerRow (compiled code, shapes, feedback) and nativeBytesPerRow (Blink nodes outside the V8 heap) are excluded from jsBytesPerRow.",
+    "`memo` attributes the new objects held by each field of a new Memo$1, and the arrays, closures and contexts directly inside them, each object once. Shared objects (an empty array, a comparer, the graph) are not new and do not appear.",
+    "One bundle: ranvier is the production keyed list (t.each); solid is Solid 2 <For>."
+  ],
+  "bundles": {
+    "production": [
+      "ranvier",
+      "solid"
+    ]
+  },
+  "counts": [
+    1000,
+    10000
+  ],
+  "processes": 1,
+  "results": [
+    {
+      "bundle": "production",
+      "mode": "ranvier",
+      "rows": 1000,
+      "replicate": 0,
+      "jsBytesPerRow": 783.3,
+      "codeBytesPerRow": 57.7,
+      "nativeBytesPerRow": 8707.7,
+      "removedBytesPerRow": 14.2,
+      "js": [
+        {
+          "kind": "array (object elements)",
+          "perRow": 2.011,
+          "bytesPerRow": 115.8,
+          "count": 2011,
+          "bytes": 115760
+        },
+        {
+          "kind": "object Effect$1",
+          "perRow": 1,
+          "bytesPerRow": 72,
+          "count": 1000,
+          "bytes": 72000
+        },
+        {
+          "kind": "object OwnerLink",
+          "perRow": 2,
+          "bytesPerRow": 72,
+          "count": 2000,
+          "bytes": 72000
+        },
+        {
+          "kind": "object Array",
+          "perRow": 4.008,
+          "bytesPerRow": 64.1,
+          "count": 4008,
+          "bytes": 64128
+        },
+        {
+          "kind": "object Signal$1",
+          "perRow": 2,
+          "bytesPerRow": 64,
+          "count": 2000,
+          "bytes": 64000
+        },
+        {
+          "kind": "object Owner",
+          "perRow": 1,
+          "bytesPerRow": 60,
+          "count": 1000,
+          "bytes": 60000
+        },
+        {
+          "kind": "closure",
+          "perRow": 2.002,
+          "bytesPerRow": 56.1,
+          "count": 2002,
+          "bytes": 56056
+        },
+        {
+          "kind": "object system / Context",
+          "perRow": 2.002,
+          "bytesPerRow": 48,
+          "count": 2002,
+          "bytes": 48040
+        },
+        {
+          "kind": "object OnceRow$3",
+          "perRow": 1,
+          "bytesPerRow": 48,
+          "count": 1000,
+          "bytes": 48000
+        },
+        {
+          "kind": "object ObserverSet",
+          "perRow": 2,
+          "bytesPerRow": 48,
+          "count": 2000,
+          "bytes": 48000
+        },
+        {
+          "kind": "string",
+          "perRow": 16.533,
+          "bytesPerRow": 34.4,
+          "count": 16533,
+          "bytes": 34416
+        },
+        {
+          "kind": "object SourceList",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 1000,
+          "bytes": 28000
+        },
+        {
+          "kind": "object Row$2",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 1000,
+          "bytes": 28000
+        },
+        {
+          "kind": "array ",
+          "perRow": 0.005,
+          "bytesPerRow": 24.8,
+          "count": 5,
+          "bytes": 24828
+        },
+        {
+          "kind": "object KeyedRow",
+          "perRow": 1,
+          "bytesPerRow": 20,
+          "count": 1000,
+          "bytes": 20000
+        },
+        {
+          "kind": "object Set",
+          "perRow": 0.001,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 16
+        },
+        {
+          "kind": "object Map",
+          "perRow": 0.001,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 16
+        },
+        {
+          "kind": "number",
+          "perRow": 13.404,
+          "bytesPerRow": 0,
+          "count": 13404,
+          "bytes": 0
+        }
+      ],
+      "memo": [],
+      "holders": [
+        {
+          "kind": "OnceRow$3.Scope@ -> object Owner",
+          "perRow": 0.949,
+          "bytesPerRow": 56.9,
+          "count": 949,
+          "bytes": 56940
+        },
+        {
+          "kind": "native <a>.$$ranvier > elements -> array (object elements)",
+          "perRow": 0.87,
+          "bytesPerRow": 48.7,
+          "count": 870,
+          "bytes": 48720
+        },
+        {
+          "kind": "Signal$1.observers -> object ObserverSet",
+          "perRow": 2,
+          "bytesPerRow": 48,
+          "count": 2000,
+          "bytes": 48000
+        },
+        {
+          "kind": "Effect$1.link -> object OwnerLink",
+          "perRow": 1,
+          "bytesPerRow": 36,
+          "count": 1000,
+          "bytes": 36000
+        },
+        {
+          "kind": "OnceRow$3.item -> object Signal$1",
+          "perRow": 1,
+          "bytesPerRow": 32,
+          "count": 1000,
+          "bytes": 32000
+        },
+        {
+          "kind": "ObserverSet.items -> object Array",
+          "perRow": 2,
+          "bytesPerRow": 32,
+          "count": 2000,
+          "bytes": 32000
+        },
+        {
+          "kind": "KeyedRow.Label -> object Signal$1",
+          "perRow": 0.956,
+          "bytesPerRow": 30.6,
+          "count": 956,
+          "bytes": 30592
+        },
+        {
+          "kind": "Effect$1.body -> closure",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 1000,
+          "bytes": 28000
+        },
+        {
+          "kind": "Effect$1.sources -> object SourceList",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 1000,
+          "bytes": 28000
+        },
+        {
+          "kind": "Effect$1.body > context -> object system / Context",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 1000,
+          "bytes": 28000
+        },
+        {
+          "kind": "Owner.firstCleanup -> closure",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 1000,
+          "bytes": 28000
+        },
+        {
+          "kind": "OnceRow$3.Value@ -> object Row$2",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 1000,
+          "bytes": 28000
+        },
+        {
+          "kind": "Owner.parentLink -> object OwnerLink",
+          "perRow": 0.732,
+          "bytesPerRow": 26.4,
+          "count": 732,
+          "bytes": 26352
+        },
+        {
+          "kind": "(none) -> array ",
+          "perRow": 0.003,
+          "bytesPerRow": 24.7,
+          "count": 3,
+          "bytes": 24692
+        },
+        {
+          "kind": "ObserverSet.items > elements -> array (object elements)",
+          "perRow": 1,
+          "bytesPerRow": 24,
+          "count": 1000,
+          "bytes": 24000
+        },
+        {
+          "kind": "Array.elements -> array (object elements)",
+          "perRow": 0.007,
+          "bytesPerRow": 20.2,
+          "count": 7,
+          "bytes": 20192
+        },
+        {
+          "kind": "Owner.firstCleanup > context -> object system / Context",
+          "perRow": 1,
+          "bytesPerRow": 20,
+          "count": 1000,
+          "bytes": 20000
+        },
+        {
+          "kind": "SourceList.rest -> object Array",
+          "perRow": 1,
+          "bytesPerRow": 16,
+          "count": 1000,
+          "bytes": 16000
+        },
+        {
+          "kind": "(none) -> array (object elements)",
+          "perRow": 0.004,
+          "bytesPerRow": 15.6,
+          "count": 4,
+          "bytes": 15568
+        },
+        {
+          "kind": "native <a>.$$ranvier -> object Array",
+          "perRow": 0.87,
+          "bytesPerRow": 13.9,
+          "count": 870,
+          "bytes": 13920
+        },
+        {
+          "kind": "Array.9 -> string",
+          "perRow": 0.659,
+          "bytesPerRow": 13.2,
+          "count": 659,
+          "bytes": 13180
+        },
+        {
+          "kind": "Array.8 -> string",
+          "perRow": 0.682,
+          "bytesPerRow": 10.9,
+          "count": 682,
+          "bytes": 10912
+        },
+        {
+          "kind": "OwnerLink.Next@ -> object OwnerLink",
+          "perRow": 0.252,
+          "bytesPerRow": 9.1,
+          "count": 252,
+          "bytes": 9072
+        },
+        {
+          "kind": "system / Context.state > elements -> array (object elements)",
+          "perRow": 0.123,
+          "bytesPerRow": 6.9,
+          "count": 123,
+          "bytes": 6888
+        },
+        {
+          "kind": "Signal$1.value -> string",
+          "perRow": 0.328,
+          "bytesPerRow": 6.6,
+          "count": 328,
+          "bytes": 6560
+        },
+        {
+          "kind": "array (object elements).8 -> string",
+          "perRow": 0.219,
+          "bytesPerRow": 3.5,
+          "count": 219,
+          "bytes": 3504
+        },
+        {
+          "kind": "Array.2 -> object Owner",
+          "perRow": 0.051,
+          "bytesPerRow": 3.1,
+          "count": 51,
+          "bytes": 3060
+        },
+        {
+          "kind": "system / Context.state -> object Array",
+          "perRow": 0.123,
+          "bytesPerRow": 2,
+          "count": 123,
+          "bytes": 1968
+        },
+        {
+          "kind": "SourceList.first -> object Signal$1",
+          "perRow": 0.044,
+          "bytesPerRow": 1.4,
+          "count": 44,
+          "bytes": 1408
+        },
+        {
+          "kind": "Array.1 -> object KeyedRow",
+          "perRow": 0.045,
+          "bytesPerRow": 0.9,
+          "count": 45,
+          "bytes": 900
+        },
+        {
+          "kind": "OwnerLink.Prev@ -> object OwnerLink",
+          "perRow": 0.016,
+          "bytesPerRow": 0.6,
+          "count": 16,
+          "bytes": 576
+        },
+        {
+          "kind": "native system.0 > elements -> array (object elements)",
+          "perRow": 0.007,
+          "bytesPerRow": 0.4,
+          "count": 7,
+          "bytes": 392
+        },
+        {
+          "kind": "array (object elements).9 -> string",
+          "perRow": 0.013,
+          "bytesPerRow": 0.3,
+          "count": 13,
+          "bytes": 260
+        },
+        {
+          "kind": "(none) -> object Array",
+          "perRow": 0.008,
+          "bytesPerRow": 0.1,
+          "count": 8,
+          "bytes": 128
+        },
+        {
+          "kind": "native system.0 -> object Array",
+          "perRow": 0.007,
+          "bytesPerRow": 0.1,
+          "count": 7,
+          "bytes": 112
+        },
+        {
+          "kind": "Map.table -> array ",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 76
+        },
+        {
+          "kind": "array (object elements).1 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).2 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).3 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).4 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).5 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).6 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).7 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).8 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).9 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).10 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).11 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).12 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).13 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).14 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).15 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).16 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).17 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).18 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).19 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).20 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).21 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).22 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).23 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).24 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).25 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).26 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).27 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).28 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).29 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).30 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).31 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).32 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).33 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).34 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).35 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).36 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).37 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).38 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).39 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).40 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).41 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).42 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).43 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "array (object elements).44 -> object Effect$1",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        }
+      ],
+      "native": [
+        {
+          "kind": "native blink::PhysicalBoxFragment",
+          "perRow": 11.006,
+          "bytesPerRow": 1040.5,
+          "count": 11006,
+          "bytes": 1040480
+        },
+        {
+          "kind": "native blink::ConstraintSpace::RareData",
+          "perRow": 7.003,
+          "bytesPerRow": 840.4,
+          "count": 7003,
+          "bytes": 840360
+        },
+        {
+          "kind": "native blink::LayoutTableCell",
+          "perRow": 4,
+          "bytesPerRow": 768,
+          "count": 4000,
+          "bytes": 768000
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<blink::FragmentItem>",
+          "perRow": 4,
+          "bytesPerRow": 592,
+          "count": 4000,
+          "bytes": 592000
+        },
+        {
+          "kind": "native blink::ComputedStyle",
+          "perRow": 8.004,
+          "bytesPerRow": 576.3,
+          "count": 8004,
+          "bytes": 576288
+        },
+        {
+          "kind": "native blink::LayoutResult",
+          "perRow": 7.006,
+          "bytesPerRow": 560.5,
+          "count": 7006,
+          "bytes": 560480
+        },
+        {
+          "kind": "native blink::PhysicalFragmentRareData",
+          "perRow": 6.003,
+          "bytesPerRow": 432.2,
+          "count": 6003,
+          "bytes": 432216
+        },
+        {
+          "kind": "native <td",
+          "perRow": 4,
+          "bytesPerRow": 427.1,
+          "count": 4000,
+          "bytes": 427136
+        },
+        {
+          "kind": "native <a>",
+          "perRow": 2,
+          "bytesPerRow": 352,
+          "count": 2000,
+          "bytes": 352000
+        },
+        {
+          "kind": "native blink::InlineItem",
+          "perRow": 8,
+          "bytesPerRow": 320,
+          "count": 8000,
+          "bytes": 320000
+        },
+        {
+          "kind": "native blink::LayoutInline",
+          "perRow": 3,
+          "bytesPerRow": 264,
+          "count": 3000,
+          "bytes": 264000
+        },
+        {
+          "kind": "native blink::FragmentDataList",
+          "perRow": 10,
+          "bytesPerRow": 240,
+          "count": 10000,
+          "bytes": 240000
+        },
+        {
+          "kind": "native blink::LayoutText",
+          "perRow": 2,
+          "bytesPerRow": 224,
+          "count": 2000,
+          "bytes": 224000
+        },
+        {
+          "kind": "native Text",
+          "perRow": 2,
+          "bytesPerRow": 208,
+          "count": 2000,
+          "bytes": 208000
+        },
+        {
+          "kind": "native blink::PhysicalLineBoxFragment",
+          "perRow": 4,
+          "bytesPerRow": 192,
+          "count": 4000,
+          "bytes": 192000
+        },
+        {
+          "kind": "native blink::InlineNodeData",
+          "perRow": 3,
+          "bytesPerRow": 192,
+          "count": 3000,
+          "bytes": 192000
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<blink::PhysicalFragmentLink>",
+          "perRow": 5.006,
+          "bytesPerRow": 164.1,
+          "count": 5006,
+          "bytes": 164128
+        },
+        {
+          "kind": "native blink::LayoutTableRow",
+          "perRow": 1,
+          "bytesPerRow": 160,
+          "count": 1000,
+          "bytes": 160000
+        },
+        {
+          "kind": "native blink::ShapeResultView",
+          "perRow": 2,
+          "bytesPerRow": 144,
+          "count": 2000,
+          "bytes": 144000
+        },
+        {
+          "kind": "native blink::ShapeResult",
+          "perRow": 2,
+          "bytesPerRow": 128,
+          "count": 2000,
+          "bytes": 128000
+        },
+        {
+          "kind": "native blink::MeasureCache",
+          "perRow": 4,
+          "bytesPerRow": 128,
+          "count": 4000,
+          "bytes": 128000
+        },
+        {
+          "kind": "native <tr>",
+          "perRow": 1,
+          "bytesPerRow": 120,
+          "count": 1000,
+          "bytes": 120000
+        },
+        {
+          "kind": "native blink::ShapeResultRun",
+          "perRow": 2,
+          "bytesPerRow": 112,
+          "count": 2000,
+          "bytes": 112000
+        },
+        {
+          "kind": "native DOMTokenList",
+          "perRow": 2,
+          "bytesPerRow": 112,
+          "count": 2000,
+          "bytes": 112000
+        },
+        {
+          "kind": "native <span",
+          "perRow": 1,
+          "bytesPerRow": 104,
+          "count": 1000,
+          "bytes": 104000
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<blink::HarfBuzzRunGlyphData>",
+          "perRow": 2,
+          "bytesPerRow": 94.3,
+          "count": 2000,
+          "bytes": 94288
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<blink::ShapeResultCharacterData>",
+          "perRow": 2,
+          "bytesPerRow": 79.4,
+          "count": 2000,
+          "bytes": 79440
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<cppgc::internal::BasicMember<blink::InlineItem,",
+          "perRow": 3,
+          "bytesPerRow": 72,
+          "count": 3000,
+          "bytes": 72000
+        },
+        {
+          "kind": "native system",
+          "perRow": 2.126,
+          "bytesPerRow": 46.4,
+          "count": 2126,
+          "bytes": 46384
+        },
+        {
+          "kind": "native blink::HeapHashTableBacking<blink::HashTable<cppgc::internal::BasicMember<const",
+          "perRow": 0.002,
+          "bytesPerRow": 8.3,
+          "count": 2,
+          "bytes": 8272
+        }
+      ],
+      "removed": [
+        {
+          "kind": "code system",
+          "perRow": 0.047,
+          "bytesPerRow": 6.8,
+          "count": 47,
+          "bytes": 6844
+        },
+        {
+          "kind": "native system",
+          "perRow": 0.046,
+          "bytesPerRow": 3.1,
+          "count": 46,
+          "bytes": 3144
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<blink::PendingLayer>",
+          "perRow": 0.001,
+          "bytesPerRow": 0.6,
+          "count": 1,
+          "bytes": 584
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<blink::PaintChunk>",
+          "perRow": 0.001,
+          "bytesPerRow": 0.5,
+          "count": 1,
+          "bytes": 520
+        },
+        {
+          "kind": "native blink::PhysicalBoxFragment",
+          "perRow": 0.006,
+          "bytesPerRow": 0.5,
+          "count": 6,
+          "bytes": 480
+        },
+        {
+          "kind": "native blink::LayoutResult",
+          "perRow": 0.006,
+          "bytesPerRow": 0.5,
+          "count": 6,
+          "bytes": 480
+        },
+        {
+          "kind": "object shape system",
+          "perRow": 0.003,
+          "bytesPerRow": 0.4,
+          "count": 3,
+          "bytes": 396
+        },
+        {
+          "kind": "native blink::ConstraintSpace::RareData",
+          "perRow": 0.003,
+          "bytesPerRow": 0.4,
+          "count": 3,
+          "bytes": 360
+        },
+        {
+          "kind": "native blink::HitTestData",
+          "perRow": 0.003,
+          "bytesPerRow": 0.2,
+          "count": 3,
+          "bytes": 240
+        },
+        {
+          "kind": "native blink::PhysicalFragmentRareData",
+          "perRow": 0.003,
+          "bytesPerRow": 0.2,
+          "count": 3,
+          "bytes": 216
+        },
+        {
+          "kind": "array ",
+          "perRow": 0.003,
+          "bytesPerRow": 0.2,
+          "count": 3,
+          "bytes": 212
+        },
+        {
+          "kind": "native blink::LayoutResult::RareData",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 136
+        },
+        {
+          "kind": "native blink::HeapHashTableBacking<blink::HashTable<unsigned",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 136
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<blink::PhysicalFragmentLink>",
+          "perRow": 0.005,
+          "bytesPerRow": 0.1,
+          "count": 5,
+          "bytes": 120
+        },
+        {
+          "kind": "object Array",
+          "perRow": 0.006,
+          "bytesPerRow": 0.1,
+          "count": 6,
+          "bytes": 96
+        },
+        {
+          "kind": "array (object elements)",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 76
+        },
+        {
+          "kind": "native blink::TableBorders",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "native blink::PaintArtifact",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 64
+        },
+        {
+          "kind": "native blink::SelectionPaintRange",
+          "perRow": 0.001,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 32
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<cppgc::internal::BasicMember<blink::Element,",
+          "perRow": 0.001,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 24
+        }
+      ]
+    },
+    {
+      "bundle": "production",
+      "mode": "solid",
+      "rows": 1000,
+      "replicate": 0,
+      "jsBytesPerRow": 905.4,
+      "codeBytesPerRow": 33.6,
+      "nativeBytesPerRow": 8703.2,
+      "removedBytesPerRow": 15.1,
+      "js": [
+        {
+          "kind": "object Object",
+          "perRow": 6,
+          "bytesPerRow": 460,
+          "count": 6000,
+          "bytes": 460000
+        },
+        {
+          "kind": "closure",
+          "perRow": 10.001,
+          "bytesPerRow": 272,
+          "count": 10001,
+          "bytes": 272024
+        },
+        {
+          "kind": "object system / Context",
+          "perRow": 3,
+          "bytesPerRow": 108,
+          "count": 3000,
+          "bytes": 108000
+        },
+        {
+          "kind": "array (bound arguments)",
+          "perRow": 2.001,
+          "bytesPerRow": 24,
+          "count": 2001,
+          "bytes": 24012
+        },
+        {
+          "kind": "array (object elements)",
+          "perRow": 0.006,
+          "bytesPerRow": 21.2,
+          "count": 6,
+          "bytes": 21212
+        },
+        {
+          "kind": "string",
+          "perRow": 13.822,
+          "bytesPerRow": 20,
+          "count": 13822,
+          "bytes": 20000
+        },
+        {
+          "kind": "object Array",
+          "perRow": 0.007,
+          "bytesPerRow": 0.1,
+          "count": 7,
+          "bytes": 112
+        },
+        {
+          "kind": "number",
+          "perRow": 11.593,
+          "bytesPerRow": 0,
+          "count": 11593,
+          "bytes": 0
+        }
+      ],
+      "memo": [],
+      "holders": [
+        {
+          "kind": "Object.ge -> object Object",
+          "perRow": 1,
+          "bytesPerRow": 144,
+          "count": 1000,
+          "bytes": 144000
+        },
+        {
+          "kind": "Object.me -> object Object",
+          "perRow": 0.976,
+          "bytesPerRow": 140.4,
+          "count": 976,
+          "bytes": 140384
+        },
+        {
+          "kind": "Object.re > context -> object system / Context",
+          "perRow": 1.966,
+          "bytesPerRow": 86.5,
+          "count": 1966,
+          "bytes": 86504
+        },
+        {
+          "kind": "system / Context.accessor -> closure",
+          "perRow": 2,
+          "bytesPerRow": 56,
+          "count": 2000,
+          "bytes": 56000
+        },
+        {
+          "kind": "Object.re -> closure",
+          "perRow": 2,
+          "bytesPerRow": 56,
+          "count": 2000,
+          "bytes": 56000
+        },
+        {
+          "kind": "Object.st -> closure",
+          "perRow": 2,
+          "bytesPerRow": 56,
+          "count": 2000,
+          "bytes": 56000
+        },
+        {
+          "kind": "native <a>._$$click -> closure",
+          "perRow": 1.999,
+          "bytesPerRow": 56,
+          "count": 1999,
+          "bytes": 55972
+        },
+        {
+          "kind": "Object.I -> object Object",
+          "perRow": 0.522,
+          "bytesPerRow": 25.1,
+          "count": 522,
+          "bytes": 25056
+        },
+        {
+          "kind": "closure.bindings -> array (bound arguments)",
+          "perRow": 2.001,
+          "bytesPerRow": 24,
+          "count": 2001,
+          "bytes": 24012
+        },
+        {
+          "kind": "Object.label -> closure",
+          "perRow": 1,
+          "bytesPerRow": 24,
+          "count": 1000,
+          "bytes": 24000
+        },
+        {
+          "kind": "Object.setLabel -> closure",
+          "perRow": 1,
+          "bytesPerRow": 24,
+          "count": 1000,
+          "bytes": 24000
+        },
+        {
+          "kind": "closure.<symbol refresh> -> object Object",
+          "perRow": 0.478,
+          "bytesPerRow": 22.9,
+          "count": 478,
+          "bytes": 22944
+        },
+        {
+          "kind": "Array.elements -> array (object elements)",
+          "perRow": 0.006,
+          "bytesPerRow": 21.2,
+          "count": 6,
+          "bytes": 21212
+        },
+        {
+          "kind": "system / Context.row -> object Object",
+          "perRow": 0.882,
+          "bytesPerRow": 21.2,
+          "count": 882,
+          "bytes": 21168
+        },
+        {
+          "kind": "native <a>._$$click > context -> object system / Context",
+          "perRow": 0.999,
+          "bytesPerRow": 20,
+          "count": 999,
+          "bytes": 19980
+        },
+        {
+          "kind": "Object.pe -> string",
+          "perRow": 0.989,
+          "bytesPerRow": 19.8,
+          "count": 989,
+          "bytes": 19780
+        },
+        {
+          "kind": "Object._ -> object Object",
+          "perRow": 0.506,
+          "bytesPerRow": 18.2,
+          "count": 506,
+          "bytes": 18216
+        },
+        {
+          "kind": "Object.t -> object Object",
+          "perRow": 0.494,
+          "bytesPerRow": 17.8,
+          "count": 494,
+          "bytes": 17784
+        },
+        {
+          "kind": "Object.Ke -> object Object",
+          "perRow": 0.026,
+          "bytesPerRow": 3.7,
+          "count": 26,
+          "bytes": 3744
+        },
+        {
+          "kind": "Object.st > context -> object system / Context",
+          "perRow": 0.034,
+          "bytesPerRow": 1.5,
+          "count": 34,
+          "bytes": 1496
+        },
+        {
+          "kind": "system / Context.current -> string",
+          "perRow": 0.011,
+          "bytesPerRow": 0.2,
+          "count": 11,
+          "bytes": 220
+        },
+        {
+          "kind": "Object.Je -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 128
+        },
+        {
+          "kind": "(none) -> object Array",
+          "perRow": 0.006,
+          "bytesPerRow": 0.1,
+          "count": 6,
+          "bytes": 96
+        },
+        {
+          "kind": "Array.0 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.1 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.2 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.4 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.5 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.6 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.7 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.8 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.9 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.10 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.11 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.12 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.13 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.14 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.15 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.16 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.17 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.18 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.19 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.20 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.21 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.22 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.23 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.24 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.25 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.26 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.27 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.28 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.29 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.30 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.31 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.32 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.33 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.34 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.35 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.36 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.37 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.38 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.39 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.40 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.41 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.42 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.43 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.44 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.45 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.46 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.47 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.48 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.49 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.50 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.51 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.52 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.53 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.54 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.55 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.56 -> object Object",
+          "perRow": 0.002,
+          "bytesPerRow": 0.1,
+          "count": 2,
+          "bytes": 88
+        }
+      ],
+      "native": [
+        {
+          "kind": "native blink::PhysicalBoxFragment",
+          "perRow": 11.006,
+          "bytesPerRow": 1040.5,
+          "count": 11006,
+          "bytes": 1040480
+        },
+        {
+          "kind": "native blink::ConstraintSpace::RareData",
+          "perRow": 7.003,
+          "bytesPerRow": 840.4,
+          "count": 7003,
+          "bytes": 840360
+        },
+        {
+          "kind": "native blink::LayoutTableCell",
+          "perRow": 4,
+          "bytesPerRow": 768,
+          "count": 4000,
+          "bytes": 768000
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<blink::FragmentItem>",
+          "perRow": 4,
+          "bytesPerRow": 592,
+          "count": 4000,
+          "bytes": 592000
+        },
+        {
+          "kind": "native blink::ComputedStyle",
+          "perRow": 8.001,
+          "bytesPerRow": 576.1,
+          "count": 8001,
+          "bytes": 576072
+        },
+        {
+          "kind": "native blink::LayoutResult",
+          "perRow": 7.006,
+          "bytesPerRow": 560.5,
+          "count": 7006,
+          "bytes": 560480
+        },
+        {
+          "kind": "native <td",
+          "perRow": 4,
+          "bytesPerRow": 441.7,
+          "count": 4000,
+          "bytes": 441696
+        },
+        {
+          "kind": "native blink::PhysicalFragmentRareData",
+          "perRow": 6.003,
+          "bytesPerRow": 432.2,
+          "count": 6003,
+          "bytes": 432216
+        },
+        {
+          "kind": "native <a>",
+          "perRow": 2,
+          "bytesPerRow": 352,
+          "count": 2000,
+          "bytes": 352000
+        },
+        {
+          "kind": "native blink::InlineItem",
+          "perRow": 8,
+          "bytesPerRow": 320,
+          "count": 8000,
+          "bytes": 320000
+        },
+        {
+          "kind": "native blink::LayoutInline",
+          "perRow": 3,
+          "bytesPerRow": 264,
+          "count": 3000,
+          "bytes": 264000
+        },
+        {
+          "kind": "native blink::FragmentDataList",
+          "perRow": 10,
+          "bytesPerRow": 240,
+          "count": 10000,
+          "bytes": 240000
+        },
+        {
+          "kind": "native blink::LayoutText",
+          "perRow": 2,
+          "bytesPerRow": 224,
+          "count": 2000,
+          "bytes": 224000
+        },
+        {
+          "kind": "native blink::PhysicalLineBoxFragment",
+          "perRow": 4,
+          "bytesPerRow": 192,
+          "count": 4000,
+          "bytes": 192000
+        },
+        {
+          "kind": "native blink::InlineNodeData",
+          "perRow": 3,
+          "bytesPerRow": 192,
+          "count": 3000,
+          "bytes": 192000
+        },
+        {
+          "kind": "native Text",
+          "perRow": 2,
+          "bytesPerRow": 176,
+          "count": 2000,
+          "bytes": 176000
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<blink::PhysicalFragmentLink>",
+          "perRow": 5.006,
+          "bytesPerRow": 164.1,
+          "count": 5006,
+          "bytes": 164128
+        },
+        {
+          "kind": "native blink::LayoutTableRow",
+          "perRow": 1,
+          "bytesPerRow": 160,
+          "count": 1000,
+          "bytes": 160000
+        },
+        {
+          "kind": "native blink::ShapeResultView",
+          "perRow": 2,
+          "bytesPerRow": 144,
+          "count": 2000,
+          "bytes": 144000
+        },
+        {
+          "kind": "native blink::ShapeResult",
+          "perRow": 2,
+          "bytesPerRow": 128,
+          "count": 2000,
+          "bytes": 128000
+        },
+        {
+          "kind": "native blink::MeasureCache",
+          "perRow": 4,
+          "bytesPerRow": 128,
+          "count": 4000,
+          "bytes": 128000
+        },
+        {
+          "kind": "native <tr>",
+          "perRow": 1,
+          "bytesPerRow": 120,
+          "count": 1000,
+          "bytes": 120000
+        },
+        {
+          "kind": "native blink::ShapeResultRun",
+          "perRow": 2,
+          "bytesPerRow": 112,
+          "count": 2000,
+          "bytes": 112000
+        },
+        {
+          "kind": "native DOMTokenList",
+          "perRow": 2,
+          "bytesPerRow": 112,
+          "count": 2000,
+          "bytes": 112000
+        },
+        {
+          "kind": "native <span",
+          "perRow": 1,
+          "bytesPerRow": 104,
+          "count": 1000,
+          "bytes": 104000
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<blink::HarfBuzzRunGlyphData>",
+          "perRow": 2,
+          "bytesPerRow": 94.3,
+          "count": 2000,
+          "bytes": 94288
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<blink::ShapeResultCharacterData>",
+          "perRow": 2,
+          "bytesPerRow": 79.4,
+          "count": 2000,
+          "bytes": 79440
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<cppgc::internal::BasicMember<blink::InlineItem,",
+          "perRow": 3,
+          "bytesPerRow": 72,
+          "count": 3000,
+          "bytes": 72000
+        },
+        {
+          "kind": "native system",
+          "perRow": 3.058,
+          "bytesPerRow": 63.2,
+          "count": 3058,
+          "bytes": 63184
+        },
+        {
+          "kind": "native blink::HeapHashTableBacking<blink::HashTable<cppgc::internal::BasicMember<const",
+          "perRow": 0.001,
+          "bytesPerRow": 8.2,
+          "count": 1,
+          "bytes": 8200
+        }
+      ],
+      "removed": [
+        {
+          "kind": "native blink::HeapHashTableBacking<blink::HashTable<cppgc::internal::BasicMember<const",
+          "perRow": 0.001,
+          "bytesPerRow": 8.2,
+          "count": 1,
+          "bytes": 8200
+        },
+        {
+          "kind": "native system",
+          "perRow": 0.034,
+          "bytesPerRow": 1.9,
+          "count": 34,
+          "bytes": 1896
+        },
+        {
+          "kind": "object shape system",
+          "perRow": 0.006,
+          "bytesPerRow": 0.9,
+          "count": 6,
+          "bytes": 868
+        },
+        {
+          "kind": "code system",
+          "perRow": 0.031,
+          "bytesPerRow": 0.7,
+          "count": 31,
+          "bytes": 732
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<blink::PendingLayer>",
+          "perRow": 0.001,
+          "bytesPerRow": 0.6,
+          "count": 1,
+          "bytes": 584
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<blink::PaintChunk>",
+          "perRow": 0.001,
+          "bytesPerRow": 0.5,
+          "count": 1,
+          "bytes": 520
+        },
+        {
+          "kind": "native blink::PhysicalBoxFragment",
+          "perRow": 0.006,
+          "bytesPerRow": 0.5,
+          "count": 6,
+          "bytes": 480
+        },
+        {
+          "kind": "native blink::LayoutResult",
+          "perRow": 0.006,
+          "bytesPerRow": 0.5,
+          "count": 6,
+          "bytes": 480
+        },
+        {
+          "kind": "native blink::ConstraintSpace::RareData",
+          "perRow": 0.003,
+          "bytesPerRow": 0.4,
+          "count": 3,
+          "bytes": 360
+        },
+        {
+          "kind": "native blink::HitTestData",
+          "perRow": 0.003,
+          "bytesPerRow": 0.2,
+          "count": 3,
+          "bytes": 240
+        },
+        {
+          "kind": "native blink::PhysicalFragmentRareData",
+          "perRow": 0.003,
+          "bytesPerRow": 0.2,
+          "count": 3,
+          "bytes": 216
+        },
+        {
+          "kind": "native blink::LayoutResult::RareData",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 136
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<blink::PhysicalFragmentLink>",
+          "perRow": 0.005,
+          "bytesPerRow": 0.1,
+          "count": 5,
+          "bytes": 120
+        },
+        {
+          "kind": "object Array",
+          "perRow": 0.007,
+          "bytesPerRow": 0.1,
+          "count": 7,
+          "bytes": 112
+        },
+        {
+          "kind": "native blink::TableBorders",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "native blink::PaintArtifact",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 64
+        },
+        {
+          "kind": "native blink::SelectionPaintRange",
+          "perRow": 0.001,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 32
+        },
+        {
+          "kind": "array (object elements)",
+          "perRow": 0.001,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 16
+        },
+        {
+          "kind": "string",
+          "perRow": 11.912,
+          "bytesPerRow": 0,
+          "count": 11912,
+          "bytes": 0
+        },
+        {
+          "kind": "number",
+          "perRow": 10.683,
+          "bytesPerRow": 0,
+          "count": 10683,
+          "bytes": 0
+        }
+      ]
+    },
+    {
+      "bundle": "production",
+      "mode": "ranvier",
+      "rows": 10000,
+      "replicate": 0,
+      "jsBytesPerRow": 848,
+      "codeBytesPerRow": 6.4,
+      "nativeBytesPerRow": 8737.9,
+      "removedBytesPerRow": 5,
+      "js": [
+        {
+          "kind": "array (object elements)",
+          "perRow": 2.001,
+          "bytesPerRow": 112.1,
+          "count": 20011,
+          "bytes": 1120508
+        },
+        {
+          "kind": "string",
+          "perRow": 6.172,
+          "bytesPerRow": 88.6,
+          "count": 61720,
+          "bytes": 885876
+        },
+        {
+          "kind": "object Effect$1",
+          "perRow": 1,
+          "bytesPerRow": 72,
+          "count": 10000,
+          "bytes": 720000
+        },
+        {
+          "kind": "object OwnerLink",
+          "perRow": 2,
+          "bytesPerRow": 72,
+          "count": 20000,
+          "bytes": 720000
+        },
+        {
+          "kind": "object Array",
+          "perRow": 4.001,
+          "bytesPerRow": 64,
+          "count": 40008,
+          "bytes": 640128
+        },
+        {
+          "kind": "object Signal$1",
+          "perRow": 2,
+          "bytesPerRow": 64,
+          "count": 20000,
+          "bytes": 640000
+        },
+        {
+          "kind": "object Owner",
+          "perRow": 1,
+          "bytesPerRow": 60,
+          "count": 10000,
+          "bytes": 600000
+        },
+        {
+          "kind": "closure",
+          "perRow": 2,
+          "bytesPerRow": 56,
+          "count": 20002,
+          "bytes": 560056
+        },
+        {
+          "kind": "object system / Context",
+          "perRow": 2,
+          "bytesPerRow": 48,
+          "count": 20002,
+          "bytes": 480040
+        },
+        {
+          "kind": "object ObserverSet",
+          "perRow": 2,
+          "bytesPerRow": 48,
+          "count": 20000,
+          "bytes": 480000
+        },
+        {
+          "kind": "object OnceRow$3",
+          "perRow": 1,
+          "bytesPerRow": 48,
+          "count": 10000,
+          "bytes": 480000
+        },
+        {
+          "kind": "array ",
+          "perRow": 0.001,
+          "bytesPerRow": 39.3,
+          "count": 5,
+          "bytes": 393468
+        },
+        {
+          "kind": "object Row$2",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 10000,
+          "bytes": 280000
+        },
+        {
+          "kind": "object SourceList",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 10000,
+          "bytes": 280000
+        },
+        {
+          "kind": "object KeyedRow",
+          "perRow": 1,
+          "bytesPerRow": 20,
+          "count": 10000,
+          "bytes": 200000
+        },
+        {
+          "kind": "object Set",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 16
+        },
+        {
+          "kind": "object Map",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 16
+        },
+        {
+          "kind": "number",
+          "perRow": 4.059,
+          "bytesPerRow": 0,
+          "count": 40590,
+          "bytes": 0
+        }
+      ],
+      "memo": [],
+      "holders": [
+        {
+          "kind": "Signal$1.observers -> object ObserverSet",
+          "perRow": 2,
+          "bytesPerRow": 48,
+          "count": 20000,
+          "bytes": 480000
+        },
+        {
+          "kind": "(none) -> array ",
+          "perRow": 0,
+          "bytesPerRow": 39.3,
+          "count": 3,
+          "bytes": 393332
+        },
+        {
+          "kind": "Signal$1.value -> string",
+          "perRow": 0.726,
+          "bytesPerRow": 37.8,
+          "count": 7260,
+          "bytes": 377520
+        },
+        {
+          "kind": "OwnerLink.child -> object Owner",
+          "perRow": 0.543,
+          "bytesPerRow": 32.6,
+          "count": 5427,
+          "bytes": 325620
+        },
+        {
+          "kind": "OwnerLink.child -> object Effect$1",
+          "perRow": 0.446,
+          "bytesPerRow": 32.1,
+          "count": 4457,
+          "bytes": 320904
+        },
+        {
+          "kind": "OnceRow$3.item -> object Signal$1",
+          "perRow": 1,
+          "bytesPerRow": 32,
+          "count": 10000,
+          "bytes": 320000
+        },
+        {
+          "kind": "ObserverSet.items -> object Array",
+          "perRow": 2,
+          "bytesPerRow": 32,
+          "count": 20000,
+          "bytes": 320000
+        },
+        {
+          "kind": "Effect$1.body > context -> object system / Context",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 10000,
+          "bytes": 280000
+        },
+        {
+          "kind": "Effect$1.body -> closure",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 10000,
+          "bytes": 280000
+        },
+        {
+          "kind": "Effect$1.sources -> object SourceList",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 10000,
+          "bytes": 280000
+        },
+        {
+          "kind": "Owner.firstCleanup -> closure",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 10000,
+          "bytes": 280000
+        },
+        {
+          "kind": "native <a>.$$ranvier > elements -> array (object elements)",
+          "perRow": 0.462,
+          "bytesPerRow": 25.9,
+          "count": 4624,
+          "bytes": 258944
+        },
+        {
+          "kind": "ObserverSet.items > elements -> array (object elements)",
+          "perRow": 1,
+          "bytesPerRow": 24,
+          "count": 10000,
+          "bytes": 240000
+        },
+        {
+          "kind": "KeyedRow.Label -> object Signal$1",
+          "perRow": 0.746,
+          "bytesPerRow": 23.9,
+          "count": 7457,
+          "bytes": 238624
+        },
+        {
+          "kind": "Array.8 -> string",
+          "perRow": 0.597,
+          "bytesPerRow": 23.1,
+          "count": 5971,
+          "bytes": 230864
+        },
+        {
+          "kind": "Array.0 -> object Effect$1",
+          "perRow": 0.319,
+          "bytesPerRow": 23,
+          "count": 3189,
+          "bytes": 229608
+        },
+        {
+          "kind": "Owner.head -> object OwnerLink",
+          "perRow": 0.579,
+          "bytesPerRow": 20.8,
+          "count": 5785,
+          "bytes": 208260
+        },
+        {
+          "kind": "Array.elements -> array (object elements)",
+          "perRow": 0.001,
+          "bytesPerRow": 20,
+          "count": 7,
+          "bytes": 200192
+        },
+        {
+          "kind": "Owner.firstCleanup > context -> object system / Context",
+          "perRow": 1,
+          "bytesPerRow": 20,
+          "count": 10000,
+          "bytes": 200000
+        },
+        {
+          "kind": "system / Context.state > elements -> array (object elements)",
+          "perRow": 0.352,
+          "bytesPerRow": 19.7,
+          "count": 3524,
+          "bytes": 197344
+        },
+        {
+          "kind": "array (object elements).0 -> object Effect$1",
+          "perRow": 0.235,
+          "bytesPerRow": 16.9,
+          "count": 2354,
+          "bytes": 169488
+        },
+        {
+          "kind": "SourceList.rest -> object Array",
+          "perRow": 1,
+          "bytesPerRow": 16,
+          "count": 10000,
+          "bytes": 160000
+        },
+        {
+          "kind": "OwnerLink.Next@ -> object OwnerLink",
+          "perRow": 0.431,
+          "bytesPerRow": 15.5,
+          "count": 4310,
+          "bytes": 155160
+        },
+        {
+          "kind": "Effect$1.link -> object OwnerLink",
+          "perRow": 0.421,
+          "bytesPerRow": 15.2,
+          "count": 4215,
+          "bytes": 151740
+        },
+        {
+          "kind": "Owner.parentLink -> object OwnerLink",
+          "perRow": 0.404,
+          "bytesPerRow": 14.5,
+          "count": 4039,
+          "bytes": 145404
+        },
+        {
+          "kind": "array (object elements).8 -> string",
+          "perRow": 0.393,
+          "bytesPerRow": 13.5,
+          "count": 3930,
+          "bytes": 135012
+        },
+        {
+          "kind": "(none) -> array (object elements)",
+          "perRow": 0,
+          "bytesPerRow": 12,
+          "count": 4,
+          "bytes": 120316
+        },
+        {
+          "kind": "OnceRow$3.Scope@ -> object Owner",
+          "perRow": 0.198,
+          "bytesPerRow": 11.9,
+          "count": 1978,
+          "bytes": 118680
+        },
+        {
+          "kind": "native system.0 > elements -> array (object elements)",
+          "perRow": 0.185,
+          "bytesPerRow": 10.4,
+          "count": 1852,
+          "bytes": 103712
+        },
+        {
+          "kind": "Array.9 -> string",
+          "perRow": 0.166,
+          "bytesPerRow": 8.6,
+          "count": 1661,
+          "bytes": 86372
+        },
+        {
+          "kind": "OnceRow$3.Value@ -> object Row$2",
+          "perRow": 0.299,
+          "bytesPerRow": 8.4,
+          "count": 2987,
+          "bytes": 83636
+        },
+        {
+          "kind": "Array.2 -> object Owner",
+          "perRow": 0.137,
+          "bytesPerRow": 8.2,
+          "count": 1370,
+          "bytes": 82200
+        },
+        {
+          "kind": "SourceList.first -> object Signal$1",
+          "perRow": 0.254,
+          "bytesPerRow": 8.1,
+          "count": 2543,
+          "bytes": 81376
+        },
+        {
+          "kind": "native <a>.$$ranvier -> object Array",
+          "perRow": 0.462,
+          "bytesPerRow": 7.4,
+          "count": 4624,
+          "bytes": 73984
+        },
+        {
+          "kind": "OwnerLink.owner -> object Owner",
+          "perRow": 0.121,
+          "bytesPerRow": 7.3,
+          "count": 1214,
+          "bytes": 72840
+        },
+        {
+          "kind": "Signal$1.value -> object KeyedRow",
+          "perRow": 0.316,
+          "bytesPerRow": 6.3,
+          "count": 3155,
+          "bytes": 63100
+        },
+        {
+          "kind": "system / Context.row -> object Row$2",
+          "perRow": 0.216,
+          "bytesPerRow": 6.1,
+          "count": 2164,
+          "bytes": 60592
+        },
+        {
+          "kind": "OwnerLink.Prev@ -> object OwnerLink",
+          "perRow": 0.165,
+          "bytesPerRow": 5.9,
+          "count": 1651,
+          "bytes": 59436
+        },
+        {
+          "kind": "system / Context.state -> object Array",
+          "perRow": 0.352,
+          "bytesPerRow": 5.6,
+          "count": 3524,
+          "bytes": 56384
+        },
+        {
+          "kind": "array (object elements).9 -> string",
+          "perRow": 0.108,
+          "bytesPerRow": 5.6,
+          "count": 1079,
+          "bytes": 56108
+        },
+        {
+          "kind": "Array.1 -> object KeyedRow",
+          "perRow": 0.27,
+          "bytesPerRow": 5.4,
+          "count": 2695,
+          "bytes": 53900
+        },
+        {
+          "kind": "native system.0 -> object Array",
+          "perRow": 0.185,
+          "bytesPerRow": 3,
+          "count": 1852,
+          "bytes": 29632
+        },
+        {
+          "kind": "array (object elements).2 -> object Owner",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 11,
+          "bytes": 660
+        },
+        {
+          "kind": "array (object elements).1 -> object KeyedRow",
+          "perRow": 0.001,
+          "bytesPerRow": 0,
+          "count": 7,
+          "bytes": 140
+        },
+        {
+          "kind": "(none) -> object Array",
+          "perRow": 0.001,
+          "bytesPerRow": 0,
+          "count": 8,
+          "bytes": 128
+        },
+        {
+          "kind": "Map.table -> array ",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 76
+        },
+        {
+          "kind": "Set.table -> array ",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 60
+        },
+        {
+          "kind": "array .31629 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        },
+        {
+          "kind": "array .31632 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        },
+        {
+          "kind": "array .31635 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        },
+        {
+          "kind": "array .31638 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        },
+        {
+          "kind": "array .31641 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        },
+        {
+          "kind": "array .31644 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        },
+        {
+          "kind": "array .31647 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        },
+        {
+          "kind": "array .31650 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        },
+        {
+          "kind": "array .31653 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        },
+        {
+          "kind": "array .31656 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        },
+        {
+          "kind": "array .31659 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        },
+        {
+          "kind": "array .31662 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        },
+        {
+          "kind": "array .31665 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        },
+        {
+          "kind": "array .31668 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        },
+        {
+          "kind": "array .31671 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        },
+        {
+          "kind": "array .31674 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        },
+        {
+          "kind": "array .31677 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        },
+        {
+          "kind": "array .31680 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        },
+        {
+          "kind": "array .31683 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        },
+        {
+          "kind": "array .31686 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        },
+        {
+          "kind": "array .31689 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        },
+        {
+          "kind": "array .31692 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        },
+        {
+          "kind": "array .31695 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        },
+        {
+          "kind": "array .31698 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        },
+        {
+          "kind": "array .31701 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        },
+        {
+          "kind": "array .31704 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        },
+        {
+          "kind": "array .31707 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        },
+        {
+          "kind": "array .31710 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        },
+        {
+          "kind": "array .31713 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        },
+        {
+          "kind": "array .31716 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        },
+        {
+          "kind": "array .31719 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        },
+        {
+          "kind": "array .31722 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        },
+        {
+          "kind": "array .31725 -> object OnceRow$3",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 48
+        }
+      ],
+      "native": [
+        {
+          "kind": "native blink::PhysicalBoxFragment",
+          "perRow": 11.001,
+          "bytesPerRow": 1040,
+          "count": 110006,
+          "bytes": 10400480
+        },
+        {
+          "kind": "native blink::ConstraintSpace::RareData",
+          "perRow": 7,
+          "bytesPerRow": 840,
+          "count": 70003,
+          "bytes": 8400360
+        },
+        {
+          "kind": "native blink::LayoutTableCell",
+          "perRow": 4,
+          "bytesPerRow": 768,
+          "count": 40000,
+          "bytes": 7680000
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<blink::FragmentItem>",
+          "perRow": 4,
+          "bytesPerRow": 592,
+          "count": 40000,
+          "bytes": 5920000
+        },
+        {
+          "kind": "native blink::ComputedStyle",
+          "perRow": 8,
+          "bytesPerRow": 576,
+          "count": 80001,
+          "bytes": 5760072
+        },
+        {
+          "kind": "native blink::LayoutResult",
+          "perRow": 7.001,
+          "bytesPerRow": 560,
+          "count": 70006,
+          "bytes": 5600480
+        },
+        {
+          "kind": "native <td",
+          "perRow": 4,
+          "bytesPerRow": 435.1,
+          "count": 40000,
+          "bytes": 4351280
+        },
+        {
+          "kind": "native blink::PhysicalFragmentRareData",
+          "perRow": 6,
+          "bytesPerRow": 432,
+          "count": 60003,
+          "bytes": 4320216
+        },
+        {
+          "kind": "native <a>",
+          "perRow": 2,
+          "bytesPerRow": 352,
+          "count": 20000,
+          "bytes": 3520000
+        },
+        {
+          "kind": "native blink::InlineItem",
+          "perRow": 8,
+          "bytesPerRow": 320,
+          "count": 80000,
+          "bytes": 3200000
+        },
+        {
+          "kind": "native blink::LayoutInline",
+          "perRow": 3,
+          "bytesPerRow": 264,
+          "count": 30000,
+          "bytes": 2640000
+        },
+        {
+          "kind": "native blink::FragmentDataList",
+          "perRow": 10,
+          "bytesPerRow": 240,
+          "count": 100000,
+          "bytes": 2400000
+        },
+        {
+          "kind": "native blink::LayoutText",
+          "perRow": 2,
+          "bytesPerRow": 224,
+          "count": 20000,
+          "bytes": 2240000
+        },
+        {
+          "kind": "native Text",
+          "perRow": 2,
+          "bytesPerRow": 208,
+          "count": 20000,
+          "bytes": 2080000
+        },
+        {
+          "kind": "native blink::PhysicalLineBoxFragment",
+          "perRow": 4,
+          "bytesPerRow": 192,
+          "count": 40000,
+          "bytes": 1920000
+        },
+        {
+          "kind": "native blink::InlineNodeData",
+          "perRow": 3,
+          "bytesPerRow": 192,
+          "count": 30000,
+          "bytes": 1920000
+        },
+        {
+          "kind": "native blink::LayoutTableRow",
+          "perRow": 1,
+          "bytesPerRow": 160,
+          "count": 10000,
+          "bytes": 1600000
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<blink::PhysicalFragmentLink>",
+          "perRow": 5.001,
+          "bytesPerRow": 152,
+          "count": 50006,
+          "bytes": 1520120
+        },
+        {
+          "kind": "native blink::ShapeResultView",
+          "perRow": 2,
+          "bytesPerRow": 144,
+          "count": 20000,
+          "bytes": 1440000
+        },
+        {
+          "kind": "native blink::ShapeResult",
+          "perRow": 2,
+          "bytesPerRow": 128,
+          "count": 20000,
+          "bytes": 1280000
+        },
+        {
+          "kind": "native blink::MeasureCache",
+          "perRow": 4,
+          "bytesPerRow": 128,
+          "count": 40000,
+          "bytes": 1280000
+        },
+        {
+          "kind": "native <tr>",
+          "perRow": 1,
+          "bytesPerRow": 120,
+          "count": 10000,
+          "bytes": 1200000
+        },
+        {
+          "kind": "native DOMTokenList",
+          "perRow": 2,
+          "bytesPerRow": 112,
+          "count": 20000,
+          "bytes": 1120000
+        },
+        {
+          "kind": "native blink::ShapeResultRun",
+          "perRow": 2,
+          "bytesPerRow": 112,
+          "count": 20000,
+          "bytes": 1120000
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<blink::HarfBuzzRunGlyphData>",
+          "perRow": 2,
+          "bytesPerRow": 110.2,
+          "count": 20000,
+          "bytes": 1102304
+        },
+        {
+          "kind": "native <span",
+          "perRow": 1,
+          "bytesPerRow": 104,
+          "count": 10000,
+          "bytes": 1040000
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<blink::ShapeResultCharacterData>",
+          "perRow": 2,
+          "bytesPerRow": 87.8,
+          "count": 20000,
+          "bytes": 877712
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<cppgc::internal::BasicMember<blink::InlineItem,",
+          "perRow": 3,
+          "bytesPerRow": 72,
+          "count": 30000,
+          "bytes": 720000
+        },
+        {
+          "kind": "native system",
+          "perRow": 3.666,
+          "bytesPerRow": 71.4,
+          "count": 36656,
+          "bytes": 714462
+        },
+        {
+          "kind": "native blink::HeapHashTableBacking<blink::HashTable<cppgc::internal::BasicMember<const",
+          "perRow": 0,
+          "bytesPerRow": 0.8,
+          "count": 1,
+          "bytes": 8200
+        }
+      ],
+      "removed": [
+        {
+          "kind": "code system",
+          "perRow": 0.015,
+          "bytesPerRow": 3.1,
+          "count": 155,
+          "bytes": 30548
+        },
+        {
+          "kind": "native blink::HeapHashTableBacking<blink::HashTable<cppgc::internal::BasicMember<const",
+          "perRow": 0,
+          "bytesPerRow": 0.8,
+          "count": 1,
+          "bytes": 8200
+        },
+        {
+          "kind": "native system",
+          "perRow": 0.011,
+          "bytesPerRow": 0.7,
+          "count": 105,
+          "bytes": 6920
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<blink::PendingLayer>",
+          "perRow": 0,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 584
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<blink::PaintChunk>",
+          "perRow": 0,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 520
+        },
+        {
+          "kind": "native blink::PhysicalBoxFragment",
+          "perRow": 0.001,
+          "bytesPerRow": 0,
+          "count": 6,
+          "bytes": 480
+        },
+        {
+          "kind": "native blink::LayoutResult",
+          "perRow": 0.001,
+          "bytesPerRow": 0,
+          "count": 6,
+          "bytes": 480
+        },
+        {
+          "kind": "native blink::ConstraintSpace::RareData",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 3,
+          "bytes": 360
+        },
+        {
+          "kind": "object shape system",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 4,
+          "bytes": 324
+        },
+        {
+          "kind": "native blink::HitTestData",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 3,
+          "bytes": 240
+        },
+        {
+          "kind": "native blink::PhysicalFragmentRareData",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 3,
+          "bytes": 216
+        },
+        {
+          "kind": "array ",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 3,
+          "bytes": 212
+        },
+        {
+          "kind": "native blink::LayoutResult::RareData",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 136
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<blink::PhysicalFragmentLink>",
+          "perRow": 0.001,
+          "bytesPerRow": 0,
+          "count": 5,
+          "bytes": 120
+        },
+        {
+          "kind": "object Array",
+          "perRow": 0.001,
+          "bytesPerRow": 0,
+          "count": 6,
+          "bytes": 96
+        },
+        {
+          "kind": "array (object elements)",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 76
+        },
+        {
+          "kind": "native blink::HeapHashTableBacking<blink::HashTable<cppgc::internal::BasicMember<blink::Node,",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "native blink::TableBorders",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "native blink::PaintArtifact",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 64
+        },
+        {
+          "kind": "native blink::SelectionPaintRange",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 32
+        }
+      ]
+    },
+    {
+      "bundle": "production",
+      "mode": "solid",
+      "rows": 10000,
+      "replicate": 0,
+      "jsBytesPerRow": 936,
+      "codeBytesPerRow": 5.4,
+      "nativeBytesPerRow": 8732,
+      "removedBytesPerRow": 2.5,
+      "js": [
+        {
+          "kind": "object Object",
+          "perRow": 6,
+          "bytesPerRow": 460,
+          "count": 60000,
+          "bytes": 4600000
+        },
+        {
+          "kind": "closure",
+          "perRow": 10,
+          "bytesPerRow": 272,
+          "count": 100001,
+          "bytes": 2720024
+        },
+        {
+          "kind": "object system / Context",
+          "perRow": 3,
+          "bytesPerRow": 108,
+          "count": 30000,
+          "bytes": 1080000
+        },
+        {
+          "kind": "string",
+          "perRow": 3.182,
+          "bytesPerRow": 52,
+          "count": 31815,
+          "bytes": 520000
+        },
+        {
+          "kind": "array (bound arguments)",
+          "perRow": 2,
+          "bytesPerRow": 24,
+          "count": 20001,
+          "bytes": 240012
+        },
+        {
+          "kind": "array (object elements)",
+          "perRow": 0.001,
+          "bytesPerRow": 20,
+          "count": 6,
+          "bytes": 200128
+        },
+        {
+          "kind": "object Array",
+          "perRow": 0.001,
+          "bytesPerRow": 0,
+          "count": 7,
+          "bytes": 112
+        },
+        {
+          "kind": "number",
+          "perRow": 2.059,
+          "bytesPerRow": 0,
+          "count": 20586,
+          "bytes": 0
+        }
+      ],
+      "memo": [],
+      "holders": [
+        {
+          "kind": "Object.me -> object Object",
+          "perRow": 1.078,
+          "bytesPerRow": 147.6,
+          "count": 10779,
+          "bytes": 1476016
+        },
+        {
+          "kind": "Object.re > context -> object system / Context",
+          "perRow": 1.993,
+          "bytesPerRow": 87.7,
+          "count": 19929,
+          "bytes": 876876
+        },
+        {
+          "kind": "Object.ge -> object Object",
+          "perRow": 0.527,
+          "bytesPerRow": 75.9,
+          "count": 5268,
+          "bytes": 758592
+        },
+        {
+          "kind": "system / Context.accessor -> closure",
+          "perRow": 2,
+          "bytesPerRow": 56,
+          "count": 20000,
+          "bytes": 560000
+        },
+        {
+          "kind": "Object.re -> closure",
+          "perRow": 2,
+          "bytesPerRow": 56,
+          "count": 20000,
+          "bytes": 560000
+        },
+        {
+          "kind": "Object.st -> closure",
+          "perRow": 2,
+          "bytesPerRow": 56,
+          "count": 20000,
+          "bytes": 560000
+        },
+        {
+          "kind": "Object.o -> object Object",
+          "perRow": 0.364,
+          "bytesPerRow": 52.4,
+          "count": 3642,
+          "bytes": 524448
+        },
+        {
+          "kind": "native <a>._$$click -> closure",
+          "perRow": 1.739,
+          "bytesPerRow": 48.7,
+          "count": 17393,
+          "bytes": 487004
+        },
+        {
+          "kind": "Object.pe -> string",
+          "perRow": 0.935,
+          "bytesPerRow": 48.6,
+          "count": 9351,
+          "bytes": 486252
+        },
+        {
+          "kind": "Object.Je -> object Object",
+          "perRow": 0.422,
+          "bytesPerRow": 28.3,
+          "count": 4220,
+          "bytes": 282880
+        },
+        {
+          "kind": "closure.bindings -> array (bound arguments)",
+          "perRow": 2,
+          "bytesPerRow": 24,
+          "count": 20001,
+          "bytes": 240012
+        },
+        {
+          "kind": "Object.setLabel -> closure",
+          "perRow": 1,
+          "bytesPerRow": 24,
+          "count": 10000,
+          "bytes": 240000
+        },
+        {
+          "kind": "Object.label -> closure",
+          "perRow": 1,
+          "bytesPerRow": 24,
+          "count": 10000,
+          "bytes": 240000
+        },
+        {
+          "kind": "closure.<symbol refresh> -> object Object",
+          "perRow": 0.458,
+          "bytesPerRow": 22,
+          "count": 4584,
+          "bytes": 220032
+        },
+        {
+          "kind": "Object.I -> object Object",
+          "perRow": 0.455,
+          "bytesPerRow": 21.9,
+          "count": 4554,
+          "bytes": 218592
+        },
+        {
+          "kind": "Object.t -> object Object",
+          "perRow": 0.592,
+          "bytesPerRow": 21.3,
+          "count": 5923,
+          "bytes": 213228
+        },
+        {
+          "kind": "Array.elements -> array (object elements)",
+          "perRow": 0.001,
+          "bytesPerRow": 20,
+          "count": 6,
+          "bytes": 200128
+        },
+        {
+          "kind": "Object.Ke -> object Object",
+          "perRow": 0.11,
+          "bytesPerRow": 15.9,
+          "count": 1103,
+          "bytes": 158832
+        },
+        {
+          "kind": "native <a>._$$click > context -> object system / Context",
+          "perRow": 0.764,
+          "bytesPerRow": 15.3,
+          "count": 7638,
+          "bytes": 152760
+        },
+        {
+          "kind": "Object._ -> object Object",
+          "perRow": 0.408,
+          "bytesPerRow": 14.7,
+          "count": 4077,
+          "bytes": 146772
+        },
+        {
+          "kind": "native system.0 -> closure",
+          "perRow": 0.261,
+          "bytesPerRow": 7.3,
+          "count": 2608,
+          "bytes": 73020
+        },
+        {
+          "kind": "array (bound arguments).0 -> object Object",
+          "perRow": 0.077,
+          "bytesPerRow": 3.7,
+          "count": 768,
+          "bytes": 36864
+        },
+        {
+          "kind": "system / Context.current -> string",
+          "perRow": 0.065,
+          "bytesPerRow": 3.4,
+          "count": 649,
+          "bytes": 33748
+        },
+        {
+          "kind": "native system.0 > context -> object system / Context",
+          "perRow": 0.138,
+          "bytesPerRow": 2.8,
+          "count": 1376,
+          "bytes": 27520
+        },
+        {
+          "kind": "system / Context.accessor > context -> object system / Context",
+          "perRow": 0.099,
+          "bytesPerRow": 2,
+          "count": 986,
+          "bytes": 19720
+        },
+        {
+          "kind": "system / Context.row -> object Object",
+          "perRow": 0.027,
+          "bytesPerRow": 0.6,
+          "count": 266,
+          "bytes": 6384
+        },
+        {
+          "kind": "Object._parent -> object Object",
+          "perRow": 0.01,
+          "bytesPerRow": 0.6,
+          "count": 98,
+          "bytes": 6272
+        },
+        {
+          "kind": "native system.0 -> object Object",
+          "perRow": 0.009,
+          "bytesPerRow": 0.5,
+          "count": 94,
+          "bytes": 4512
+        },
+        {
+          "kind": "Object.st > context -> object system / Context",
+          "perRow": 0.007,
+          "bytesPerRow": 0.3,
+          "count": 71,
+          "bytes": 3124
+        },
+        {
+          "kind": "(none) -> object Array",
+          "perRow": 0.001,
+          "bytesPerRow": 0,
+          "count": 6,
+          "bytes": 96
+        },
+        {
+          "kind": "Array.3447 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3448 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3449 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3450 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3451 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3442 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3443 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3444 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3445 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3446 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3535 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3536 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3529 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3530 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3531 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3532 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3533 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3534 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3523 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3524 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3525 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3526 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3527 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3528 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3517 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3518 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3519 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3520 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3521 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3522 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3511 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3512 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3513 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3514 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3515 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3516 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3505 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3506 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3507 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3508 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3509 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3510 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3499 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3500 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3501 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3502 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3503 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3504 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3493 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        },
+        {
+          "kind": "Array.3494 -> object Object",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 2,
+          "bytes": 88
+        }
+      ],
+      "native": [
+        {
+          "kind": "native blink::PhysicalBoxFragment",
+          "perRow": 11.001,
+          "bytesPerRow": 1040,
+          "count": 110006,
+          "bytes": 10400480
+        },
+        {
+          "kind": "native blink::ConstraintSpace::RareData",
+          "perRow": 7,
+          "bytesPerRow": 840,
+          "count": 70003,
+          "bytes": 8400360
+        },
+        {
+          "kind": "native blink::LayoutTableCell",
+          "perRow": 4,
+          "bytesPerRow": 768,
+          "count": 40000,
+          "bytes": 7680000
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<blink::FragmentItem>",
+          "perRow": 4,
+          "bytesPerRow": 592,
+          "count": 40000,
+          "bytes": 5920000
+        },
+        {
+          "kind": "native blink::ComputedStyle",
+          "perRow": 8,
+          "bytesPerRow": 576,
+          "count": 80001,
+          "bytes": 5760072
+        },
+        {
+          "kind": "native blink::LayoutResult",
+          "perRow": 7.001,
+          "bytesPerRow": 560,
+          "count": 70006,
+          "bytes": 5600480
+        },
+        {
+          "kind": "native <td",
+          "perRow": 4,
+          "bytesPerRow": 452.4,
+          "count": 40000,
+          "bytes": 4524160
+        },
+        {
+          "kind": "native blink::PhysicalFragmentRareData",
+          "perRow": 6,
+          "bytesPerRow": 432,
+          "count": 60003,
+          "bytes": 4320216
+        },
+        {
+          "kind": "native <a>",
+          "perRow": 2,
+          "bytesPerRow": 352,
+          "count": 20000,
+          "bytes": 3520000
+        },
+        {
+          "kind": "native blink::InlineItem",
+          "perRow": 8,
+          "bytesPerRow": 320,
+          "count": 80000,
+          "bytes": 3200000
+        },
+        {
+          "kind": "native blink::LayoutInline",
+          "perRow": 3,
+          "bytesPerRow": 264,
+          "count": 30000,
+          "bytes": 2640000
+        },
+        {
+          "kind": "native blink::FragmentDataList",
+          "perRow": 10,
+          "bytesPerRow": 240,
+          "count": 100000,
+          "bytes": 2400000
+        },
+        {
+          "kind": "native blink::LayoutText",
+          "perRow": 2,
+          "bytesPerRow": 224,
+          "count": 20000,
+          "bytes": 2240000
+        },
+        {
+          "kind": "native blink::PhysicalLineBoxFragment",
+          "perRow": 4,
+          "bytesPerRow": 192,
+          "count": 40000,
+          "bytes": 1920000
+        },
+        {
+          "kind": "native blink::InlineNodeData",
+          "perRow": 3,
+          "bytesPerRow": 192,
+          "count": 30000,
+          "bytes": 1920000
+        },
+        {
+          "kind": "native Text",
+          "perRow": 2,
+          "bytesPerRow": 176,
+          "count": 20000,
+          "bytes": 1760000
+        },
+        {
+          "kind": "native blink::LayoutTableRow",
+          "perRow": 1,
+          "bytesPerRow": 160,
+          "count": 10000,
+          "bytes": 1600000
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<blink::PhysicalFragmentLink>",
+          "perRow": 5.001,
+          "bytesPerRow": 152,
+          "count": 50006,
+          "bytes": 1520120
+        },
+        {
+          "kind": "native blink::ShapeResultView",
+          "perRow": 2,
+          "bytesPerRow": 144,
+          "count": 20000,
+          "bytes": 1440000
+        },
+        {
+          "kind": "native blink::ShapeResult",
+          "perRow": 2,
+          "bytesPerRow": 128,
+          "count": 20000,
+          "bytes": 1280000
+        },
+        {
+          "kind": "native blink::MeasureCache",
+          "perRow": 4,
+          "bytesPerRow": 128,
+          "count": 40000,
+          "bytes": 1280000
+        },
+        {
+          "kind": "native <tr>",
+          "perRow": 1,
+          "bytesPerRow": 120,
+          "count": 10000,
+          "bytes": 1200000
+        },
+        {
+          "kind": "native blink::ShapeResultRun",
+          "perRow": 2,
+          "bytesPerRow": 112,
+          "count": 20000,
+          "bytes": 1120000
+        },
+        {
+          "kind": "native DOMTokenList",
+          "perRow": 2,
+          "bytesPerRow": 112,
+          "count": 20000,
+          "bytes": 1120000
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<blink::HarfBuzzRunGlyphData>",
+          "perRow": 2,
+          "bytesPerRow": 110.2,
+          "count": 20000,
+          "bytes": 1102304
+        },
+        {
+          "kind": "native <span",
+          "perRow": 1,
+          "bytesPerRow": 104,
+          "count": 10000,
+          "bytes": 1040000
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<blink::ShapeResultCharacterData>",
+          "perRow": 2,
+          "bytesPerRow": 87.8,
+          "count": 20000,
+          "bytes": 877712
+        },
+        {
+          "kind": "native system",
+          "perRow": 4.006,
+          "bytesPerRow": 80.3,
+          "count": 40057,
+          "bytes": 802578
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<cppgc::internal::BasicMember<blink::InlineItem,",
+          "perRow": 3,
+          "bytesPerRow": 72,
+          "count": 30000,
+          "bytes": 720000
+        },
+        {
+          "kind": "native blink::HeapHashTableBacking<blink::HashTable<cppgc::internal::BasicMember<const",
+          "perRow": 0,
+          "bytesPerRow": 0.8,
+          "count": 1,
+          "bytes": 8200
+        }
+      ],
+      "removed": [
+        {
+          "kind": "code system",
+          "perRow": 0.008,
+          "bytesPerRow": 1,
+          "count": 79,
+          "bytes": 10264
+        },
+        {
+          "kind": "native blink::HeapHashTableBacking<blink::HashTable<cppgc::internal::BasicMember<const",
+          "perRow": 0,
+          "bytesPerRow": 0.8,
+          "count": 1,
+          "bytes": 8200
+        },
+        {
+          "kind": "native system",
+          "perRow": 0.004,
+          "bytesPerRow": 0.2,
+          "count": 37,
+          "bytes": 2188
+        },
+        {
+          "kind": "object shape system",
+          "perRow": 0.001,
+          "bytesPerRow": 0.1,
+          "count": 6,
+          "bytes": 876
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<blink::PendingLayer>",
+          "perRow": 0,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 584
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<blink::PaintChunk>",
+          "perRow": 0,
+          "bytesPerRow": 0.1,
+          "count": 1,
+          "bytes": 520
+        },
+        {
+          "kind": "native blink::LayoutResult",
+          "perRow": 0.001,
+          "bytesPerRow": 0,
+          "count": 6,
+          "bytes": 480
+        },
+        {
+          "kind": "native blink::PhysicalBoxFragment",
+          "perRow": 0.001,
+          "bytesPerRow": 0,
+          "count": 6,
+          "bytes": 480
+        },
+        {
+          "kind": "native blink::ConstraintSpace::RareData",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 3,
+          "bytes": 360
+        },
+        {
+          "kind": "native blink::HitTestData",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 3,
+          "bytes": 240
+        },
+        {
+          "kind": "native blink::PhysicalFragmentRareData",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 3,
+          "bytes": 216
+        },
+        {
+          "kind": "native blink::LayoutResult::RareData",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 136
+        },
+        {
+          "kind": "native blink::HeapVectorBacking<blink::PhysicalFragmentLink>",
+          "perRow": 0.001,
+          "bytesPerRow": 0,
+          "count": 5,
+          "bytes": 120
+        },
+        {
+          "kind": "object Array",
+          "perRow": 0.001,
+          "bytesPerRow": 0,
+          "count": 7,
+          "bytes": 112
+        },
+        {
+          "kind": "native blink::TableBorders",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 72
+        },
+        {
+          "kind": "native blink::PaintArtifact",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 64
+        },
+        {
+          "kind": "native blink::SelectionPaintRange",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 32
+        },
+        {
+          "kind": "array (object elements)",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 16
+        },
+        {
+          "kind": "string",
+          "perRow": 1.191,
+          "bytesPerRow": 0,
+          "count": 11912,
+          "bytes": 0
+        },
+        {
+          "kind": "number",
+          "perRow": 1.068,
+          "bytesPerRow": 0,
+          "count": 10683,
+          "bytes": 0
+        }
+      ]
+    }
+  ]
+}
