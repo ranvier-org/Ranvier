@@ -115,6 +115,8 @@ bypasses the local hook when needed.
 Verify the hook itself with `rtk proxy pwsh -NoProfile -File scripts/test-hooks.ps1`.
 Its commit-level tests run in a disposable repository.
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for commit conventions and the CI checks, including performance.
+
 ## Layout
 
 ```

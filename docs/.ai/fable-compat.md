@@ -26,13 +26,14 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | AmbientGraph.fs | 6 | 6 | 6 | 6 | 6 | 6 | 0 | 0 |
 | Owners.fs | 16 | 16 | 16 | 16 | 16 | 16 | 0 | 0 |
 | Equality.fs | 25 | 24 | 24 | 25 | 24 | 24 | 8 | 0 |
+| ValueReaders.fs | 21 | 21 | 21 | 21 | 21 | 21 | 0 | 0 |
 | Async.fs | 30 | 22 | 7 | 30 | 22 | 7 | 2 | 0 |
 | Boundaries.fs | 27 | 27 | 23 | 27 | 27 | 23 | 1 | 0 |
 | Threading.fs | 3 | 3 | 3 | 3 | 3 | 3 | 26 | 0 |
 | Edges.fs | 5 | 5 | 5 | 5 | 5 | 5 | 0 | 0 |
 | Invalidation.fs | 4 | 4 | 4 | 4 | 4 | 4 | 0 | 0 |
 | Lifetime.fs | 6 | 6 | 6 | 6 | 6 | 6 | 0 | 0 |
-| Retention.fs | 2 | 2 | 2 | 2 | 2 | 2 | 10 | 0 |
+| Retention.fs | 2 | 2 | 2 | 2 | 2 | 2 | 11 | 0 |
 | Tracing.fs | 2 | 2 | 2 | 75 | 71 | 66 | 1 | 0 |
 | TraceModelTests.fs | 0 | 0 | 0 | 12 | 12 | 12 | 2 | 0 |
 | Observers.fs | 24 | 24 | 24 | 24 | 24 | 24 | 0 | 0 |
@@ -47,7 +48,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Batching.fs | 11 | 11 | 11 | 11 | 11 | 11 | 0 | 0 |
 | AsyncEdges.fs | 25 | 22 | 7 | 25 | 22 | 7 | 4 | 0 |
 | Projections.fs | 116 | 116 | 116 | 116 | 116 | 116 | 10 | 0 |
-| TrimmedPass.fs | 51 | 51 | 51 | 51 | 51 | 51 | 0 | 0 |
+| TrimmedPass.fs | 57 | 57 | 57 | 57 | 57 | 57 | 0 | 0 |
 | Lookups.fs | 31 | 31 | 31 | 31 | 31 | 31 | 0 | 0 |
 | MemoScopes.fs | 24 | 24 | 22 | 24 | 24 | 22 | 0 | 0 |
 | MemoPurity.fs | 13 | 13 | 13 | 13 | 13 | 13 | 0 | 0 |
@@ -55,11 +56,12 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | DischargeReentry.fs | 29 | 29 | 28 | 29 | 29 | 28 | 1 | 0 |
 | MapSemantics.fs | 42 | 42 | 41 | 42 | 42 | 41 | 0 | 1 |
 | Lenses.fs | 23 | 20 | 20 | 23 | 20 | 20 | 0 | 0 |
-| Combinators.fs | 126 | 126 | 126 | 126 | 126 | 126 | 1 | 0 |
+| Combinators.fs | 127 | 127 | 127 | 127 | 127 | 127 | 1 | 0 |
 | Timed.fs | 31 | 31 | 31 | 38 | 38 | 38 | 0 | 0 |
-| PreviousValues.fs | 11 | 11 | 11 | 11 | 11 | 11 | 14 | 0 |
+| PreviousValues.fs | 12 | 12 | 12 | 12 | 12 | 12 | 15 | 0 |
 | Texts.fs | 5 | 5 | 5 | 5 | 5 | 5 | 1 | 0 |
 | FailureOrigins.fs | 16 | 16 | 15 | 16 | 16 | 15 | 2 | 0 |
+| NullChecks.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
 | Editables.fs | 17 | 17 | 17 | 17 | 17 | 17 | 1 | 0 |
 | MvuBridge.fs | 7 | 7 | 7 | 7 | 7 | 7 | 1 | 0 |
 | QueryComposition.fs | 2 | 2 | 2 | 2 | 2 | 2 | 0 | 0 |
@@ -69,7 +71,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | QueryDictionary.fs | 2 | 2 | 2 | 2 | 2 | 2 | 0 | 0 |
 | QueryErgonomics.fs | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | QueryNavigationTests.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 943 | 925 | 881 | 1035 | 1013 | 964 | 87 | 1 |
+| **Total** | 975 | 957 | 913 | 1067 | 1045 | 996 | 89 | 1 |
 
 ## Tests.fs
 
@@ -251,6 +253,34 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - an equal write, by type / list
 - an equal write, by type / the same class instance
 - an equal write, by type / an equal class instance
+
+</details>
+
+## ValueReaders.fs
+
+<details><summary>21 passed in every build and delivery that runs them</summary>
+
+- value readers have independent baselines and immutable deltas
+- a value reader merges repeated changes to a key in place
+- value readers preserve reactive cutoffs
+- value readers report first settlement but not pending/error states
+- new value readers retain rows settled before observation
+- value readers do not publish purity-rejected results
+- value readers preserve replacement identity and lifetimes
+- disposing the last value reader stops row observation
+- value readers coalesce batched writes
+- map deltas preserve row factories and cleanup
+- sparse updates traverse a two-map pipeline incrementally
+- value readers respect hidden and recovered predicate rows
+- value readers drain invalidations raised while settling
+- editable collections report direct edits and replacement identity
+- editable collections update two maps without replacing keys
+- editable collections preserve scope and throwing batch semantics
+- editable collections remove structurally equal keys
+- map factories consume batched source replacement deltas
+- map overflow recovery preserves replacement lifetimes
+- map cleanup failure recovery preserves replacement lifetimes
+- a map pass after a failed upstream pass has the latest keys
 
 </details>
 
@@ -455,6 +485,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | {name}: overlapping flights release their registrations once the last one settles | JavaScript exposes no forced collection. |
 | {name}: disposing the memo cancels the flight in progress after an earlier flight settled | JavaScript exposes no forced collection. |
 | {name}: a flight that never settles is released when the memo is disposed | JavaScript exposes no forced collection. |
+| the items and keys {name} from a projection over {source} source are released | JavaScript exposes no forced collection. |
 | a failed read swallowed inside a {name} is released when it ends | JavaScript exposes no forced collection. |
 
 <details><summary>2 passed in every build and delivery that runs them</summary>
@@ -992,8 +1023,12 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## TrimmedPass.fs
 
-<details><summary>51 passed in every build and delivery that runs them</summary>
+<details><summary>57 passed in every build and delivery that runs them</summary>
 
+- random edits call keyOf once per position outside the common prefix and suffix
+- a trimmed pass after a shrink publishes keys of the list's length
+- a keyOf writing into the source array leaves every row on the item the pass read
+- a trimmed pass that outgrows the previous list keeps its prefix and suffix
 - list, lazy seq and array sources give the same keys and rows
 - an array mutated in place and republished is compared against the previous pass's copy
 - an int array source reads by index
@@ -1011,6 +1046,8 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - prepending one item calls keyOf once
 - appending one item calls keyOf once
 - replacing one item with an equal-key copy calls keyOf once and updates that row
+- a new key followed by an equal-key copy at a later changed position publishes the new key
+- an equal-key copy followed by a new key at a later changed position publishes the new key
 - an int array swap calls keyOf twice
 - a swap of the first and last items calls keyOf twice
 - a pass over new items calls keyOf once per item
@@ -1303,7 +1340,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | --- | --- |
 | foldGroup rejects a null subtract | Fable wraps a null function argument in a closure, so it is never null. |
 
-<details><summary>126 passed in every build and delivery that runs them</summary>
+<details><summary>127 passed in every build and delivery that runs them</summary>
 
 - 200 single edits at N=1000 make 200 predicate calls
 - a Keys reader wakes only when membership flips
@@ -1419,6 +1456,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - an edit that leaves the row value equal leaves the reader asleep
 - a value read by add re-folds on change
 - a key removed and re-added counts once, with its new value
+- a change to the second memo read by add re-folds
 - a pending row keeps its last settled value; a never-settled row adds nothing
 - a failed row raises its error until it recovers
 - a removed failed row stops raising
@@ -1491,6 +1529,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | a read of Settled off the graph thread never caches a value older than the one published | reads the prev task's completion synchronously, and under Fable it is a promise. |
 | Queue chains three or more overlapping flights in start order | reads the prev task's completion synchronously, and under Fable it is a promise. |
 | Queue resolves each waiter with its own predecessor | reads the prev task's completion synchronously, and under Fable it is a promise. |
+| Queue resolves each read of Settled with the predecessor's result | reads the prev task's completion synchronously, and under Fable it is a promise. |
 | Queue resolves the waiter when the predecessor faults | reads the prev task's completion synchronously, and under Fable it is a promise. |
 | Queue resolves the waiter when the predecessor is dropped | reads the prev task's completion synchronously, and under Fable it is a promise. |
 | Queue passes a result applied while suspended to the next run | reads the prev task's completion synchronously, and under Fable it is a promise. |
@@ -1498,7 +1537,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Queue loses a read made after awaiting prev | reads the prev task's completion synchronously, and under Fable it is a promise. |
 | Queue resumes a body awaiting prev outside applyResult | reads the prev task's completion synchronously, and under Fable it is a promise. |
 
-<details><summary>11 passed in every build and delivery that runs them</summary>
+<details><summary>12 passed in every build and delivery that runs them</summary>
 
 - the first run receives ValueNone
 - a later run receives the value last published
@@ -1511,6 +1550,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a seeded Suspense fallback receives the seed, then the last value
 - a seeded Errors recover receives the error and the seed, then the last value
 - a seeded Catching boundary passes the seed, then its last value, to both handlers
+- Queue resolves each read of Settled with the predecessor's result
 
 </details>
 
@@ -1559,6 +1599,16 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a fold over a failed row reports the row's origin
 - a lookup over a failed source reports the upstream node
 - a failed read swallowed by a body leaves the next failure its own
+
+</details>
+
+## NullChecks.fs
+
+<details><summary>3 passed in every build and delivery that runs them</summary>
+
+- is true for null
+- is false for a value
+- is true for undefined, as isNull is
 
 </details>
 

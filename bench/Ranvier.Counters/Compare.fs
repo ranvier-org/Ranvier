@@ -17,8 +17,12 @@ type Kind =
     | Removed
     | CounterChanged
     | NoBaseline
+    /// <summary>The full samples separate beyond the limit while the lower modes of the two sides lie within it.</summary>
+    | StateShift
+    /// <summary>A gate regression in a runtime whose control moved between the sides.</summary>
+    | Inconclusive
 
-/// <summary>Both sides' process samples and their comparison, including GC and acceptance flags.</summary>
+/// <summary>Both sides' process samples and their comparison, including GC, compilation and acceptance flags.</summary>
 type Finding =
     {
         Runtime: string
@@ -33,6 +37,8 @@ type Finding =
         Accepted: bool
         BaseGc: bool
         HeadGc: bool
+        BaseCompiled: bool
+        HeadCompiled: bool
     }
 
 /// <summary>An acceptance reason scoped to exact scenario names or <c>all</c>, with its source.</summary>
@@ -63,6 +69,8 @@ type Verdict =
         Findings: Finding[]
         NoBaseline: Label[]
         CounterUnavailable: Label[]
+        /// <summary>Runtimes whose control moved between the sides; their gate regressions are <c>Inconclusive</c>.</summary>
+        ControlMoved: string[]
         Warnings: string[]
     }
 
@@ -93,9 +101,7 @@ let median (xs: float[]) =
     else
         s[n / 2 - 1] / 2. + s[n / 2] / 2.
 
-/// <summary>Classifies strict median movement beyond the relative or absolute limit with complete sample separation.</summary>
-let classify threshold floor (baseValues: float[]) (headValues: float[]) =
-    configuration threshold floor
+let private separation threshold floor (baseValues: float[]) (headValues: float[]) =
     let b, h = median baseValues, median headValues
     let limit = max (threshold * abs b) floor
 
@@ -111,6 +117,36 @@ let classify threshold floor (baseValues: float[]) (headValues: float[]) =
         Improved
     else
         Unchanged
+
+/// <summary>
+/// The lowest cluster of a nonempty finite sample: its sorted values up to the first gap between neighbours wider than
+/// <c>max(threshold·|minimum|, floor)</c>.
+/// </summary>
+let lowerMode threshold floor (xs: float[]) =
+    configuration threshold floor
+    require (not (isNull xs) && xs.Length > 0) "A sample must be nonempty."
+    xs |> Array.iter (finite "sample")
+    let s = Array.sort xs
+    let gap = max (threshold * abs s[0]) floor
+    let mutable n = 1
+
+    while n < s.Length && s[n] - s[n - 1] <= gap do
+        n <- n + 1
+
+    s[.. n - 1]
+
+/// <summary>
+/// Classifies strict median movement beyond <c>max(threshold·|base median|, floor)</c> with complete sample separation.
+/// A movement is <c>Regressed</c> or <c>Improved</c> only when the lower modes of the two sides move the same way by the
+/// same rule; otherwise it is <c>StateShift</c>.
+/// </summary>
+let classify threshold floor (baseValues: float[]) (headValues: float[]) =
+    configuration threshold floor
+
+    match separation threshold floor baseValues headValues with
+    | Unchanged -> Unchanged
+    | kind when separation threshold floor (lowerMode threshold floor baseValues) (lowerMode threshold floor headValues) = kind -> kind
+    | _ -> StateShift
 
 let private trailer = Regex (@"^Perf-Accepted:\s*(.+?)\s+(?:\u2014|--)\s+(.+?)\s*$")
 
@@ -348,7 +384,11 @@ let private isRanvier (engine: string) =
     engine.StartsWith ("Ranvier", StringComparison.Ordinal)
 
 /// <summary>Validates CI coverage and compares all metrics; unaccepted Ranvier gate regressions fail a gating leg.</summary>
-/// <remarks>Unknown acceptance names fail every leg, including advisory legs.</remarks>
+/// <remarks>
+/// Unknown acceptance names fail every leg, including advisory legs. When the gate metric of a runtime's
+/// <c>control</c> scenario is <c>Regressed</c> or <c>Improved</c>, every gate regression of that runtime is
+/// <c>Inconclusive</c> and passes.
+/// </remarks>
 let verdict gate threshold floor failing (accept: Acceptance) (run: AbRun) =
     configuration threshold floor
     validate gate run
@@ -384,10 +424,13 @@ let verdict gate threshold floor failing (accept: Acceptance) (run: AbRun) =
                         |> Option.bind (fun s ->
                             s.Metrics
                             |> Array.tryFind (fun m -> m.Name = metric)
-                            |> Option.map (fun m -> m.Value, s.Gc)))
+                            |> Option.map (fun m -> m.Value, s.Gc, s.Compiled)))
 
                 let bs, hs = samples "base", samples "head"
-                let b, h = Array.map fst bs, Array.map fst hs
+                let value (v, _, _) = v
+                let gc (_, g, _) = g
+                let compiled (_, _, c) = c
+                let b, h = Array.map value bs, Array.map value hs
 
                 let kind =
                     if
@@ -429,13 +472,40 @@ let verdict gate threshold floor failing (accept: Acceptance) (run: AbRun) =
                         Accepted =
                             kind = Regressed
                             && (accept.All || List.contains scenario accept.Names)
-                        BaseGc = bs |> Array.exists snd
-                        HeadGc = hs |> Array.exists snd
+                        BaseGc = bs |> Array.exists gc
+                        HeadGc = hs |> Array.exists gc
+                        BaseCompiled = bs |> Array.exists compiled
+                        HeadCompiled = hs |> Array.exists compiled
                     }
         |]
 
+    let measured = collect false run.Processes
+
+    let controlMoved =
+        measured
+        |> Array.filter (fun f ->
+            f.Scenario = Control.Scenario
+            && f.Metric = gate
+            && (f.Kind = Regressed || f.Kind = Improved))
+        |> Array.map _.Runtime
+        |> Array.distinct
+
     let findings =
-        Array.append (collect false run.Processes) (collect true run.Counters)
+        Array.append
+            (measured
+             |> Array.map (fun f ->
+                 if
+                     f.Kind = Regressed
+                     && f.Scenario <> Control.Scenario
+                     && Array.contains f.Runtime controlMoved
+                 then
+                     { f with
+                         Kind = Inconclusive
+                         Accepted = false
+                     }
+                 else
+                     f))
+            (collect true run.Counters)
 
     let regressions =
         findings
@@ -454,6 +524,7 @@ let verdict gate threshold floor failing (accept: Acceptance) (run: AbRun) =
         Findings = findings
         NoBaseline = run.NoBaseline
         CounterUnavailable = counterUnavailable
+        ControlMoved = controlMoved
         Warnings =
             if failing then
                 [||]
@@ -499,6 +570,13 @@ let markdown (accept: Acceptance) (verdicts: Verdict list) =
     line (
         if verdicts |> List.exists _.Fails then
             "## Performance: regression or invalid acceptance"
+        elif
+            verdicts
+            |> List.exists (fun v ->
+                v.Findings
+                |> Array.exists (fun f -> f.Kind = Inconclusive))
+        then
+            "## Performance: inconclusive"
         else
             "## Performance: no unaccepted regression"
     )
@@ -527,6 +605,9 @@ let markdown (accept: Acceptance) (verdicts: Verdict list) =
         for unavailable in v.CounterUnavailable do
             line ($"- {escape unavailable.Name}: base library counters unavailable ({escape unavailable.Value})")
 
+        for runtime in v.ControlMoved do
+            line ($"- {escape runtime}: the control moved between base and head; its {escape v.Gate} regressions are inconclusive")
+
         let table rows =
             line "| Runtime | Scenario | Engine | Metric | Base | Head | Change | Status |"
             line "|---|---|---|---|---:|---:|---:|---|"
@@ -543,6 +624,8 @@ let markdown (accept: Acceptance) (verdicts: Verdict list) =
         for title, predicate in
             [
                 "Regressions", (fun f -> f.Kind = Regressed)
+                "Inconclusive (control moved)", (fun f -> f.Kind = Inconclusive)
+                "State shifts (lower modes agree)", (fun f -> f.Kind = StateShift)
                 "Improvements", (fun f -> f.Kind = Improved)
                 "Library counter changes",
                 (fun f ->
@@ -566,7 +649,7 @@ let markdown (accept: Acceptance) (verdicts: Verdict list) =
             line "<details>"
             line ($"<summary>{escape v.Leg} / {escape runtime}: all metrics</summary>")
             line ""
-            line "Base → head medians; identical values appear once. GC flags cover any measured process."
+            line "Base → head medians; identical values appear once. GC and JIT flags cover any measured process."
             line ""
 
             let metrics =
@@ -576,13 +659,13 @@ let markdown (accept: Acceptance) (verdicts: Verdict list) =
                 |> Array.sort
 
             line (
-                "| Scenario | Engine | GC base/head | "
+                "| Scenario | Engine | GC base/head | JIT base/head | "
                 + (metrics |> Array.map escape |> String.concat " | ")
                 + " |"
             )
 
             line (
-                "|---|---|---|"
+                "|---|---|---|---|"
                 + (metrics
                    |> Array.map (fun _ -> "---:")
                    |> String.concat "|")
@@ -592,7 +675,7 @@ let markdown (accept: Acceptance) (verdicts: Verdict list) =
             for (scenario, engine), fs in
                 rows
                 |> Array.groupBy (fun f -> f.Scenario, f.Engine) do
-                let gc side =
+                let flag side =
                     if fs |> Array.exists side then "yes" else "no"
 
                 let cells =
@@ -612,7 +695,7 @@ let markdown (accept: Acceptance) (verdicts: Verdict list) =
                         | None -> "—")
 
                 line (
-                    $"| {escape scenario} | {escape engine} | {gc _.BaseGc}/{gc _.HeadGc} | "
+                    $"| {escape scenario} | {escape engine} | {flag _.BaseGc}/{flag _.HeadGc} | {flag _.BaseCompiled}/{flag _.HeadCompiled} | "
                     + String.concat " | " cells
                     + " |"
                 )
@@ -753,6 +836,7 @@ let main args =
                         Fails = v.Fails
                         NoBaseline = v.NoBaseline
                         CounterUnavailable = v.CounterUnavailable
+                        ControlMoved = v.ControlMoved
                         Warnings = v.Warnings
                         Findings =
                             v.Findings
@@ -769,6 +853,8 @@ let main args =
                                     Accepted = f.Accepted
                                     BaseGc = f.BaseGc
                                     HeadGc = f.HeadGc
+                                    BaseCompiled = f.BaseCompiled
+                                    HeadCompiled = f.HeadCompiled
                                 |})
                     |})
         |}

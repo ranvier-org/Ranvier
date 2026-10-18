@@ -87,10 +87,10 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
         if duration < TimeSpan.Zero then
             raise (ArgumentOutOfRangeException (nameof duration))
 
-        if isNull (box clock) then
+        if Platform.isNull (box clock) then
             nullArg "options.Clock"
 
-        if isNull (box read) then
+        if Platform.isNull (box read) then
             nullArg (nameof read)
 #if RANVIER_COUNTERS
         Counters.MemoCreated ()
@@ -107,7 +107,7 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
         finally
             graph.ExitPull ()
 
-    member private _.Enqueue() =
+    member private this.Enqueue() =
         if not queued then
             queued <- true
             graph.Schedule (this :> IScheduled)
@@ -128,7 +128,7 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
 
     member private _.Arm() =
         if not armed && hasCandidate then
-            if isNull (box timer) then
+            if Platform.isNull (box timer) then
                 timer <- clock.CreateTimer callback
 
             armed <- true
@@ -276,15 +276,15 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
         member _.UpdateIfNecessary() = ()
 
     interface IComputation with
-        member _.AddSource source =
+        member this.AddSource source =
             sources.Add (this :> IComputation, source)
 
-        member _.MarkDirty() =
+        member this.MarkDirty() =
             if not disposed then
                 freshness <- Freshness.Dirty
                 this.Enqueue ()
 
-        member _.MarkCheck() =
+        member this.MarkCheck() =
             if not disposed then
                 if freshness = Freshness.Clean then
                     freshness <- Freshness.Check
@@ -292,7 +292,7 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
                 this.Enqueue ()
 
     interface IScheduled with
-        member _.Execute() =
+        member this.Execute() =
             if disposed then
                 queued <- false
             else
@@ -333,7 +333,7 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
             raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
 
     interface IOwned with
-        member _.Release() =
+        member this.Release() =
             link <- null
             this.Dispose ()
 
@@ -349,7 +349,7 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
     member _.ErrorOrigin = Failure.OriginOf failure
 
     /// <summary>Tracks and reads the published value; raises when that state is pending or failed.</summary>
-    member _.Value =
+    member this.Value =
         graph.Track (this :> ISource)
 
         if status.HasFlag Status.Pending then
@@ -361,7 +361,7 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
         value
 
     /// <summary>Tracks and returns the published ready, pending or failed state.</summary>
-    member _.TryValue =
+    member this.TryValue =
         graph.Track (this :> ISource)
 
         if status.HasFlag Status.Pending then Pending
@@ -369,7 +369,7 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
         else Ready value
 
     /// <summary>Detaches dependencies, cancels timing and releases ownership; repeated disposal is harmless.</summary>
-    member _.Dispose() =
+    member this.Dispose() =
         graph.Entered (
             "Disposing a node",
             fun () ->
@@ -377,12 +377,12 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
                     disposed <- true
                     this.Cancel ()
 
-                    if not (isNull (box timer)) then
+                    if not (Platform.isNull (box timer)) then
                         timer.Dispose ()
 
                     sources.Clear (this :> IComputation)
 
-                    if not (isNull link) then
+                    if not (Platform.isNull link) then
                         link.Detach ()
                         link <- null
 
@@ -391,7 +391,7 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
         )
 
     interface IDisposable with
-        member _.Dispose() =
+        member this.Dispose() =
             this.Dispose ()
 
 #if RANVIER_TRACE
