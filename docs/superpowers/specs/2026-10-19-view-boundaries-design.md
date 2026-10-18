@@ -4,7 +4,7 @@ Date: 2026-10-19
 Branch: `poc/fable-ranvier-dom`
 Baseline: `31fc732` (plus the research commits after it)
 Plan: [Task 5](../plans/2026-10-06-fable-ranvier-framework.md#task-5--minimal-bindings-boundaries-and-scheduling), open item 5.
-Status: draft for review. Sections marked **Decision** need the user's choice; each states a recommendation.
+Status: approved 2026-10-19. The user accepted the recommendation of every **Decision**: 1 (a), 2 (a), 3 (keep throwing), 4 (a).
 
 ## Purpose and boundaries
 
@@ -140,7 +140,7 @@ Mutation checks before review: removing the waiting registration, the reveal's c
 - New measurements: mounting 1, 16 and 128 rows under one boundary that reveals after one async source settles, against Solid 2's `Loading` around the same content.
 - Retained heap per row under a boundary is reported, not gated.
 
-## Decisions for review
+## Decisions (approved 2026-10-19)
 
 1. Pending after the first reveal: keep the content and expose `IsPending` (recommended), or hide it again.
 2. Event handler exceptions: caught by the boundary (recommended), or not.
