@@ -413,11 +413,13 @@ let sourceTests =
         ]
 
 /// <summary>
-/// A computation that counts its dirty marks and runs <c>OnDirty</c> on each one.
+/// A computation that counts its dirty marks, runs <c>OnDirty</c> on each one, and holds its edge handle in the set it
+/// is driven against.
 /// </summary>
 type private Probe(id: int) =
     member val Dirty = 0 with get, set
     member val OnDirty: unit -> unit = ignore with get, set
+    member val Handle = EdgeHandle.Unlinked with get, set
 
     interface INode with
         member _.Id = id
@@ -431,13 +433,47 @@ type private Probe(id: int) =
         member _.MarkCheck() = ()
         member _.AddSource _ = ()
 
+        member this.MovedIn(_, handle) =
+            this.Handle <- handle
+
+let private link (set: ObserverSet) (p: Probe) =
+    p.Handle <- set.Add (p, 0)
+
+let private unlink (set: ObserverSet) (p: Probe) =
+    set.RemoveAt (p, p.Handle)
+    p.Handle <- EdgeHandle.Unlinked
+
+/// <summary>
+/// Links the probe unless the set or the probe's handle shows it linked, as <c>SourceList</c> does.
+/// </summary>
+let private relink (set: ObserverSet) (p: Probe) =
+    match set.TryAdd (p, 0) with
+    | EdgeHandle.Unknown ->
+        if p.Handle < 0 then
+            link set p
+    | EdgeHandle.Unlinked -> ()
+    | handle -> p.Handle <- handle
+
 let private probesOn (set: ObserverSet) width =
     let probes = Array.init width Probe
 
     for p in probes do
-        set.Add p
+        link set p
 
     probes
+
+/// <summary>
+/// Whether the handles of the linked probes are exactly the positions <c>0 .. Count - 1</c>.
+/// </summary>
+let private handlesExact (set: ObserverSet) (probes: Probe seq) =
+    let handles =
+        probes
+        |> Seq.map (fun p -> p.Handle)
+        |> Seq.filter (fun h -> h >= 0)
+        |> Seq.sort
+        |> Seq.toList
+
+    handles = List.init set.Count id
 
 /// <summary>
 /// The observer list driven directly, so removal can happen from inside a
@@ -458,10 +494,10 @@ let observerSetTests =
                     // so more than half the list leaves mid-walk.
                     first.OnDirty <-
                         fun () ->
-                            set.Remove first
+                            unlink set first
 
                             for i in 0..2 .. width - 2 do
-                                set.Remove probes[i]
+                                unlink set probes[i]
 
                     set.NotifyDirty ()
 
@@ -473,13 +509,14 @@ let observerSetTests =
 
                     Expect.equal first.Dirty 1 "the remover is marked once"
                     Expect.equal set.Count ((width - 1) / 2) "only the odd probes remain"
+                    Expect.isTrue (handlesExact set probes) "every survivor's handle is its position"
                 }
 
                 test $"an observer added during notification among {width} is not marked" {
                     let set = ObserverSet ()
                     let probes = probesOn set width
                     let late = Probe 1000
-                    probes[width - 1].OnDirty <- fun () -> set.Add late
+                    probes[width - 1].OnDirty <- fun () -> link set late
 
                     set.NotifyDirty ()
 
@@ -498,11 +535,12 @@ let observerSetTests =
 
                     for step in 0 .. width - 1 do
                         let i = order[step]
-                        set.Remove probes[i]
-                        set.Remove probes[i]
+                        unlink set probes[i]
+                        unlink set probes[i]
                         removed[i] <- true
 
                         Expect.equal set.Count (width - step - 1) "one fewer per removal, however often repeated"
+                        Expect.isTrue (handlesExact set probes) "every survivor's handle is its position"
 
                         for q in probes do
                             q.Dirty <- 0
@@ -519,17 +557,17 @@ let observerSetTests =
 
                     for round in 1..3 do
                         for i in 0..2 .. width - 1 do
-                            set.Remove probes[i]
+                            unlink set probes[i]
 
                         for i in 0..2 .. width - 1 do
-                            set.Add probes[i]
-                            set.Add probes[i]
+                            relink set probes[i]
+                            relink set probes[i]
 
                         Expect.equal set.Count width $"every probe once after round {round}"
 
-                    set.Remove probes[width / 2]
-                    set.Add probes[width / 2]
-                    set.Add probes[width / 2]
+                    unlink set probes[width / 2]
+                    relink set probes[width / 2]
+                    relink set probes[width / 2]
 
                     for p in probes do
                         p.Dirty <- 0
@@ -538,6 +576,8 @@ let observerSetTests =
 
                     for p in probes do
                         Expect.equal p.Dirty 1 "marked once"
+
+                    Expect.isTrue (handlesExact set probes) "every handle is its position"
                 }
 
                 for walker in List.distinct [ 0; width / 2; width - 1 ] do
@@ -553,10 +593,10 @@ let observerSetTests =
 
                         self.OnDirty <-
                             fun () ->
-                                set.Remove self
+                                unlink set self
 
                                 for i in victims do
-                                    set.Remove probes[i]
+                                    unlink set probes[i]
 
                         set.NotifyDirty ()
 
@@ -569,6 +609,12 @@ let observerSetTests =
                                 Expect.isGreaterThan probes[i].Dirty 0 $"surviving probe {i} is marked"
 
                         Expect.equal set.Count (width - 1 - victims.Length) "the walker and its victims left"
+
+                        // A stale handle raises here.
+                        for p in probes do
+                            unlink set p
+
+                        Expect.equal set.Count 0 "every survivor unlinked by its handle"
                     }
 
                 test $"removing an absent observer from {width} changes nothing" {
@@ -576,10 +622,10 @@ let observerSetTests =
                     let probes = probesOn set width
                     let stranger = Probe 1000
 
-                    set.Remove stranger
-                    set.Remove stranger
-                    set.Remove probes[1]
-                    set.Remove probes[1]
+                    unlink set stranger
+                    unlink set stranger
+                    unlink set probes[1]
+                    unlink set probes[1]
 
                     Expect.equal set.Count (width - 1) "only the one removal counts"
 
@@ -590,6 +636,65 @@ let observerSetTests =
                     for i in 0 .. width - 1 do
                         Expect.equal probes[i].Dirty (if i = 1 then 0 else 1) "every remaining probe marked once"
                 }
+
+                test $"a handle holding another observer among {width} raises and removes nothing" {
+                    let set = ObserverSet ()
+                    let probes = probesOn set width
+
+                    Expect.throws (fun () -> set.RemoveAt (probes[0], probes[1].Handle)) "another observer's handle"
+                    Expect.throws (fun () -> set.RemoveAt (probes[0], width)) "a handle past the count"
+                    Expect.equal set.Count width "nothing removed"
+
+                    set.NotifyDirty ()
+
+                    for p in probes do
+                        Expect.equal p.Dirty 1 "every probe still marked"
+                }
+
+                test $"TryAdd among {width} finds the latest add and leaves wide misses to the caller" {
+                    let set = ObserverSet ()
+                    let probes = probesOn set width
+                    let latest = probes[width - 1]
+
+                    Expect.equal (set.TryAdd (latest, 0)) EdgeHandle.Unlinked "the latest add is held"
+
+                    Expect.equal
+                        (set.TryAdd (probes[0], 0))
+                        (if width <= EdgeHandle.ScanLimit then
+                             EdgeHandle.Unlinked
+                         else
+                             EdgeHandle.Unknown)
+                        "an older observer is found by a scan of a narrow list only"
+
+                    Expect.equal set.Count width "nothing added"
+
+                    // The record names a handle, not the observer: after the latest observer leaves, it misses.
+                    unlink set latest
+                    let again = set.TryAdd (latest, 0)
+
+                    if width - 1 <= EdgeHandle.ScanLimit then
+                        Expect.isTrue (again >= 0) "a narrow list links the removed observer again"
+                    else
+                        Expect.equal again EdgeHandle.Unknown "a wide list leaves the removed observer to the caller"
+                }
+
+                test $"the latest add's record among {width} follows its observer through a swap" {
+                    let set = ObserverSet ()
+                    let probes = probesOn set width
+                    let late = Probe 1000
+                    link set late
+                    unlink set probes[0]
+
+                    Expect.equal late.Handle 0 "the last observer moved into the hole"
+                    Expect.equal (set.TryAdd (late, 0)) EdgeHandle.Unlinked "and is still the latest add"
+                }
+
+            test "a new int array is zero-filled" {
+                let slots: int[] = Array.zeroCreate 5
+                Expect.equal slots.Length 5 "five slots"
+                Expect.isTrue (Array.forall (fun s -> s = 0) slots) "every slot reads 0"
+            }
+
 
             test "a wide list survives repeated relinking through the graph" {
                 let g = new Graph ()
