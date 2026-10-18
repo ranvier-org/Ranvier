@@ -10,11 +10,11 @@
 
 **Spec:** [framework brief](../specs/2026-10-06-fable-ranvier-framework-brief.md). **Tradeoffs and risk IDs:** [variants and gotchas](../specs/2026-10-06-fable-ranvier-framework-variants-and-risks.md).
 
-Status (2026-10-15): the experimental Foundation renderer has owned ranges, components on owner lifetime with delegated listeners, keyed lists and keyed branches, component templates with dynamic structure (view holes, `matchWith`, `branch`, `each` and inlined children), the generated DOM catalogue (`Generated/Html.fs`, all 112 tags of `HTMLElementTagNameMap`) and the generated template catalogue (`Generated/HtmlTemplate.fs`), and production benchmarks against Solid 2 (2.0.0-rc.14), Ripple and React. The [checkpoint index](../../research/2026-10-11-view-poc-checkpoint.md) links each step. Keyed lists and arms run on core projections, memos and owners ([spec](../specs/2026-10-14-keyed-rows-on-core-design.md), [measurements](../../research/2026-10-14-keyed-rows-on-core.md)). Open: list performance (`swap1k` at 3.04x, within the run-to-run spread of its target, and `remove1k` at 3.29x Solid, against the <=3x targets, measured at `e447e21` on 2026-10-15; `clear1k` meets its <=2x target at 1.92x, part of which is Solid 2's shift; see [Where we stand](#where-we-stand-2026-10-15)), structural boundaries, server HTML and hydration, and sugar; production integration, public API freeze and release budgets follow them. The core indexed-edges work (draft PR #54) is deferred. See the [baseline report](../../research/2026-10-08-fable-ranvier-baseline.md) for fresh results and known whole-solution/Fable-test failures. The user approved explicit typed functions subject to extreme performance and efficient Oxpecker-style or Feliz-style sugar; the [DSL design](../specs/2026-10-08-ranvier-view-dsl-design.md) records the proof requirements. File names below are proposed seams; verify existing symbols before choosing final names. API descriptions are design sketches, not compiler-validated signatures.
+Status (2026-10-18): the experimental Foundation renderer has owned ranges, components on owner lifetime with delegated listeners, keyed lists and keyed branches, component templates with dynamic structure (view holes, `matchWith`, `branch`, `each` and inlined children), the generated DOM catalogue (`Generated/Html.fs`, all 112 tags of `HTMLElementTagNameMap`) and the generated template catalogue (`Generated/HtmlTemplate.fs`), and production benchmarks against Solid 2 (2.0.0-rc.14), Ripple and React. The [checkpoint index](../../research/2026-10-11-view-poc-checkpoint.md) links each step. Keyed lists and arms run on core projections, memos and owners ([spec](../specs/2026-10-14-keyed-rows-on-core-design.md), [measurements](../../research/2026-10-14-keyed-rows-on-core.md)). Open: per-row creation and clear cost (create1k 1.67x, clear1k 1.89x, armsClear1k 1.96x Solid 2 at `f9f6b97` on 2026-10-18; see [Where we stand](#where-we-stand-2026-10-18)), structural boundaries, server HTML and hydration, and sugar; production integration, public API freeze and release budgets follow them. The core indexed-edges work (draft PR #54) is deferred. See the [baseline report](../../research/2026-10-08-fable-ranvier-baseline.md) for fresh results and known whole-solution/Fable-test failures. The user approved explicit typed functions subject to extreme performance and efficient Oxpecker-style or Feliz-style sugar; the [DSL design](../specs/2026-10-08-ranvier-view-dsl-design.md) records the proof requirements. File names below are proposed seams; verify existing symbols before choosing final names. API descriptions are design sketches, not compiler-validated signatures.
 
-## Where we stand (2026-10-15)
+## Where we stand (2026-10-18)
 
-Branch `poc/fable-ranvier-dom` at `e447e21`, pushed as [PR #42](https://github.com/shayanhabibi/Ranvier/pull/42) up to `f0f27c3`, with master at `d264171` merged in. Master carries the core list work as [PR #55](https://github.com/shayanhabibi/Ranvier/pull/55) and the full-visit fallback for untrimmable passes as [PR #56](https://github.com/shayanhabibi/Ranvier/pull/56). Since `85e0f8c`, view keyed regions give the core projection the caller's item objects and a key function ([plan](2026-10-15-list-item-identity.md)). Since `1f1f1df`, each keyed pass validates and looks up only the changed window, `Row.Layout` moves only the rows of an end swap, and an emptied list is cleared in one operation ([plan](2026-10-15-list-region-passes.md)). Gates at `e447e21`: 2208 untraced and 2384 traced core .NET tests; 84 C# tests per target framework; 923 of 941 Fable core tests pass with inline delivery and 1011 of 1033 traced, the others being the known Fable/.NET differences; 364 Node DOM tests; 23 Chromium tests; the portable representation checks, the trace lint and fantomas pass.
+Branch `poc/fable-ranvier-dom` at `d2ec3c0`, pushed as [PR #42](https://github.com/shayanhabibi/Ranvier/pull/42), with master at `2650152` merged in as `f9f6b97`. Master carries `Projection.ChangedRange` and `Projection.KeysVersion`/`ChangedSince` ([#89](https://github.com/shayanhabibi/Ranvier/pull/89)), the window of keys a pass changed; template lists read their changed window from it instead of rescanning their items. Since `db538a0` a torn-down region's rows leave with the enclosing row ([arms clear note](../../research/2026-10-17-arms-clear-and-post-gc.md)); since `f31aecf` a small keyed window is spliced into a copy of the previous rows ([remove fixes](../../research/2026-10-17-keyed-remove-fixes.md)); since `c948406` a long window of unchanged length keeps the rows of unchanged keys in place ([swap note](../../research/2026-10-18-keyed-swap-in-place.md)). Gates at `c948406`: 1166 core .NET tests, 86 C# tests, the Fable core tests (`test-fable`), 378 Node DOM tests, 23 Chromium tests and fantomas pass.
 
 ### Performance
 
@@ -31,28 +31,28 @@ Components, template path:
 
 The authored path retains 383 KiB per 128-row mount, against 345 KiB at `a0de558`.
 
-Keyed lists and arms, production rows against Solid 2 only, measured at `e447e21` ([region passes note](../../research/2026-10-15-list-region-passes.md)), with the `1f1f1df` figure ([item identity note](../../research/2026-10-15-list-item-identity.md)) in brackets:
+Keyed lists and arms, production rows against Solid 2 only, measured at `f9f6b97` ([status run](../../research/framework-performance/investigation/poc-status-2026-10-18/status.json): three processes, 15 shuffled rounds, a forced GC before every sample), with the `e447e21` figure in brackets:
 
 | Operation | × Solid 2 | Target |
 |---|---|---|
-| create1k / create10k | 1.67 / 1.53 (1.63 / 1.49) | ≤ 2 (met) |
-| append1k / replace1k | 1.51 / 1.53 (1.47 / 1.47) | ≤ 2 (met) / — |
-| update10th1k | 0.46 (0.46) | — |
-| swap1k | 3.04 (4.33) | ≤ 3 (not met) |
-| remove1k / remove10k | 3.29 / 4.67 (3.33 / 4.84) | ≤ 3 (not met) / — |
-| clear1k / clear10k | 1.92 / 2.09 (2.16 / 2.44) | ≤ 2 (met) |
-| armsCreate1k / armsSwitch1k | 1.76 / 1.67 (1.71 / 1.67) | — / ≤ 2 (met) |
-| armsPayload1k / armsClear1k | 0.55 / 2.60 (0.53 / 2.34) | — |
-| Retained heap per row | 1,180 / 905 B (snapshot); 1,405 / 1,050 B (`getHeapUsage`) | ≤ 1,300 B |
+| create1k / create10k | 1.67 / 1.53 (1.67 / 1.53) | ≤ 2 (met) |
+| append1k / replace1k | 1.55 / 1.79 (1.51 / 1.53) | ≤ 2 (met) / — |
+| update10th1k | 0.37 (0.46) | — |
+| swap1k | 2.61 (3.04); about 1.40 at `c948406` | ≤ 3 (met) |
+| remove1k / remove10k | 1.55 / 0.89 (3.29 / 4.67) | ≤ 3 (met) / — |
+| clear1k / clear10k | 1.89 / 2.05 (1.92 / 2.09) | ≤ 2 (met / not met) |
+| armsCreate1k / armsSwitch1k | 1.61 / 1.41 (1.76 / 1.67) | — / ≤ 2 (met) |
+| armsPayload1k / armsClear1k | 0.52 / 1.96 (0.55 / 2.60) | — |
+| Retained heap per row, 1k / 10k | 1,370 / 1,230 B against Solid 2's 1,050 B (`getHeapUsage`) | ≤ 1,300 B (not met / met) |
 
-- `swap1k`: production fell from 0.46 to 0.355 ms; Solid 2 ran its fast mode (0.11–0.14 ms) in all five processes, as at `1f1f1df`. Per process the ratio is 2.71–3.46 (3.25–4.67 at `1f1f1df`); the median is within the run-to-run spread of the 3x target.
-- `remove1k`: production is 0.36 ms in both runs; Solid 2 is 0.11 ms. In the steady-state loop remove1k fell from 0.100 to 0.075 ms (2.1–2.5x Solid 2), but after the timing protocol's forced GC it is 0.33 ms.
-- `clear1k`: production fell from 1.18 to 1.115 ms; Solid 2 rose from 0.540 to 0.575 ms, so against the `1f1f1df` Solid 2 median the ratio would be 2.06x, and the loop (1.4–1.5x, Solid 2 unchanged) is the stronger evidence. One `textContent` write replaces the per-row native `remove` calls.
-- In the steady-state loop the ratios are swap1k 2.0–2.2x, remove1k 2.1–2.5x and clear1k 1.4–1.5x, below the targets, which are defined on the timing protocol.
+- `swap1k`: `c948406` halves Ranvier's time (0.490 → 0.245 ms in the swap note's run). Solid 2 ran its slow mode in four of that run's six processes, so the ratio after the change is taken against the status run's Solid 2 median (0.175 ms). After the forced GC Ranvier still pays about 0.26 ms more than in the loop, Solid 2 about 0.07 ms.
+- `remove1k`, `remove10k`: the spliced window and `ChangedSince` replace the full row rebuild ([remove fixes](../../research/2026-10-17-keyed-remove-fixes.md)).
+- `armsClear1k`: `db538a0` leaves an arm's nodes to its row's removal; 2.35 → 1.87 in its own run.
+- Creation and clear are now the largest ratios; both scale with the objects and bytes allocated per row.
 
 The list benchmark has no Ripple adapter.
 
-The core alone, with no DOM ([trimmed pass](../../research/2026-10-14-core-trimmed-pass.md)): since #55 a keyed pass trims the common prefix and suffix and skips `keyOf` for unchanged items. Since the item identity change the view's lists reach that trim: `KeyedProjection.Trim` takes 0.008 ms of remove1k in the loop profile, against 0.122 ms at `85e0f8c`. Since the region passes, validation and lookups cover only the changed window: `Row.Validate` was 27% of remove10k in the loop profile and the window validation is 0.5% ([profile](../../research/2026-10-15-list-region-passes.md#where-the-time-goes-now)).
+The core alone, with no DOM ([trimmed pass](../../research/2026-10-14-core-trimmed-pass.md)): since #55 a keyed pass trims the common prefix and suffix and skips `keyOf` for unchanged items. Since the item identity change the view's lists reach that trim: `KeyedProjection.Trim` takes 0.008 ms of remove1k in the loop profile, against 0.122 ms at `85e0f8c`. Since the region passes, validation and lookups cover only the changed window: `Row.Validate` was 27% of remove10k in the loop profile and the window validation is 0.5% ([profile](../../research/2026-10-15-list-region-passes.md#where-the-time-goes-now)). Since #89, `ChangedSince` gives a template list the changed window directly; `KeyedProjection.Trim` visits only the changed positions of an equal-length pass.
 
 ### Done
 
@@ -64,15 +64,14 @@ The core alone, with no DOM ([trimmed pass](../../research/2026-10-14-core-trimm
 
 ### Open, in proposed order
 
-1. remove1k (3.29x) and swap1k (3.04x) under the timing protocol: after its forced GC remove1k takes 0.33 ms against 0.075 ms in the loop ([region passes note](../../research/2026-10-15-list-region-passes.md#open)). In the loop, `RegionSite.Settle` is 32% of remove and 46% of swap; the row rebuild still copies every row reference (18% of remove10k).
-2. Retained-row item signal writes (the [profile note's](../../research/2026-10-15-list-remove-profile.md#changes-ranked-by-the-saving-the-profiles-show) change 6): `SettleAdditions` is 12–15% of remove and swap in the loop.
-3. armsClear1k rose from 2.34x to 2.60x while clear1k fell; not yet profiled.
-4. Component dispose: 1.33–1.43× Solid 2 at every width.
-5. Investigate the queued commit `Queue` (`Scheduling.fs`) as binding effects under a microtask `IGraphDispatcher` (agreed follow-up).
-6. Structural view boundaries and live setter-failure handling (Task 5).
-7. Owned async cancellation and the playground screen migration (Task 7).
-8. Server HTML: precomputed static segments in `renderHtml`, escaping, request isolation; then hydration (Task 9).
-9. Performance and release acceptance, then sugar (Tasks 8 and 10).
+1. Objects and bytes per row on creation (create1k 1.67x, replace1k 1.79x, append1k 1.55x) and clear (clear1k 1.89x, clear10k 2.05x); retained heap 1,370 B per row at 1k against the 1,300 B target.
+2. armsClear1k (1.96x) and component dispose (1.33–1.43× Solid 2 at every width).
+3. swap1k after a forced GC: about 0.26 ms above the loop, most of it in `RowsOf.Stage` ([post-GC note](../../research/2026-10-17-arms-clear-and-post-gc.md#the-first-operation-after-a-forced-gc)).
+4. Investigate the queued commit `Queue` (`Scheduling.fs`) as binding effects under a microtask `IGraphDispatcher` (agreed follow-up).
+5. Structural view boundaries and live setter-failure handling (Task 5).
+6. Owned async cancellation and the playground screen migration (Task 7).
+7. Server HTML: precomputed static segments in `renderHtml`, escaping, request isolation; then hydration (Task 9).
+8. Performance and release acceptance, then sugar (Tasks 8 and 10).
 
 Indexed edges ([#54](https://github.com/shayanhabibi/Ranvier/pull/54)) stay deferred; the core projection pass is 10–26% of remove and swap in the loop profile.
 
@@ -83,6 +82,7 @@ Recorded by the item identity change:
 
 Recorded by the region passes:
 
+- Inside a window that keeps its length and spans more than 64 positions, rows whose key stays at its position are not validated on that pass either (accepted, `c948406`).
 - Rows outside a pass's changed window are not validated on that pass, so a foreign node inserted among them raises no error on that pass (accepted).
 - An item keeps its key while it is in the list.
 - Removed rows leave the document after the pass's projection and its row cleanups, before layout.

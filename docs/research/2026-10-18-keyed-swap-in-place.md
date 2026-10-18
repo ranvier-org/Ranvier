@@ -39,7 +39,7 @@ When a pass's window keeps its length and spans more than 64 positions (`smallWi
 - A template list validates the laid-out rows from one before to one after each run of changed positions, instead of the whole window. Authored lists still validate their item window before the pass.
 - Kept rows released since the last layout are replaced at any position, as the guard for rows outside the window does.
 
-Recorded: inside such a window, rows whose key stays at its position are not validated on that pass, in the same way as rows outside the window. A foreign node between two of them raises no error on that pass.
+Recorded: inside such a window, rows whose key stays at its position are not validated on that pass, in the same way as rows outside the window. A foreign node between two of them raises no error on that pass. Accepted on 2026-10-18.
 
 ## Results
 
