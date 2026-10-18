@@ -8,7 +8,7 @@ Status: approved 2026-10-19. The user accepted the recommendation of every **Dec
 
 ## Core and view state
 
-Required by `.claude/rules/view-uses-core.md`; added 2026-10-19 with the implementation plan.
+Required by `.claude/rules/view-uses-core.md`; added 2026-10-19 with the implementation plan. The user agreed on 2026-10-19 that the waiting count and failure routing live in the view: core suspense catches pending reads only inside its own body, and a binding reads in its own effect. If core gains owner-scoped suspense, the view moves to it.
 
 **Core primitives used:**
 
