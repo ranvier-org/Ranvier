@@ -27,7 +27,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Owners.fs | 16 | 16 | 16 | 16 | 16 | 16 | 0 | 0 |
 | Equality.fs | 25 | 24 | 24 | 25 | 24 | 24 | 8 | 0 |
 | ValueReaders.fs | 21 | 21 | 21 | 21 | 21 | 21 | 0 | 0 |
-| Async.fs | 49 | 41 | 9 | 49 | 41 | 9 | 4 | 0 |
+| Async.fs | 50 | 42 | 9 | 50 | 42 | 9 | 4 | 0 |
 | Boundaries.fs | 27 | 27 | 23 | 27 | 27 | 23 | 1 | 0 |
 | Threading.fs | 3 | 3 | 3 | 3 | 3 | 3 | 26 | 0 |
 | Edges.fs | 5 | 5 | 5 | 5 | 5 | 5 | 0 | 0 |
@@ -71,7 +71,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | QueryDictionary.fs | 2 | 2 | 2 | 2 | 2 | 2 | 0 | 0 |
 | QueryErgonomics.fs | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | QueryNavigationTests.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 994 | 976 | 915 | 1089 | 1067 | 998 | 91 | 1 |
+| **Total** | 995 | 977 | 915 | 1090 | 1068 | 998 | 91 | 1 |
 
 ## Tests.fs
 
@@ -319,6 +319,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | untraced | DropWhilePending keeps a memo source current across a change discarded at the settle | passed | failed | Async results arrive on a later microtask |
 | untraced | DropWhilePending replaces a failed flight that discarded a change with one run | passed | failed | Async results arrive on a later microtask |
 | untraced | DropWhilePending replaces a failed flight that discarded an unpulled change | passed | failed | Async results arrive on a later microtask |
+| untraced | DropWhilePending settles a failed flight to its error when a memo source resolves unchanged | passed | failed | Async results arrive on a later microtask |
 | untraced | DropWhilePending settles a failed flight with no change during it to its error | passed | failed | Async results arrive on a later microtask |
 | untraced | DropWhilePending settles a failed replacing run to its error | passed | failed | Async results arrive on a later microtask |
 | untraced | DropWhilePending starts the replacing run for an effect that reads the memo | passed | failed | Async results arrive on a later microtask |
@@ -359,6 +360,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | traced | DropWhilePending keeps a memo source current across a change discarded at the settle | passed | failed | Async results arrive on a later microtask |
 | traced | DropWhilePending replaces a failed flight that discarded a change with one run | passed | failed | Async results arrive on a later microtask |
 | traced | DropWhilePending replaces a failed flight that discarded an unpulled change | passed | failed | Async results arrive on a later microtask |
+| traced | DropWhilePending settles a failed flight to its error when a memo source resolves unchanged | passed | failed | Async results arrive on a later microtask |
 | traced | DropWhilePending settles a failed flight with no change during it to its error | passed | failed | Async results arrive on a later microtask |
 | traced | DropWhilePending settles a failed replacing run to its error | passed | failed | Async results arrive on a later microtask |
 | traced | DropWhilePending starts the replacing run for an effect that reads the memo | passed | failed | Async results arrive on a later microtask |

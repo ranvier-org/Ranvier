@@ -1081,6 +1081,36 @@ let tests =
                 Expect.equal a.TryValue (Ready 20) "the replacing flight publishes"
             }
 
+            test "DropWhilePending settles a failed flight to its error when a memo source resolves unchanged" {
+                let g = policyGraph DropWhilePending
+                let s = Signal (g, 1)
+                let parity = Make.Memo (g, (fun _ -> s.Value % 2))
+                let flights = ResizeArray<Flight<int>>()
+
+                let a =
+                    Make.AsyncMemo<int>(
+                        g,
+                        fun _ _ ->
+                            parity.Value |> ignore
+                            let flight = Flight<int>()
+                            flights.Add flight
+                            flight.Task
+                    )
+
+                a.TryValue |> ignore
+                s.Value <- 3
+                flights[0].Fail(exn "boom")
+
+                match a.TryValue with
+                | Failed e -> Expect.equal e.Message "boom" "an unchanged memo source is no discarded change"
+                | other -> failtestf "expected Failed, got %A" other
+
+                Expect.equal a.Runs 1 "no replacing run"
+                s.Value <- 4
+                Expect.equal a.TryValue Pending "the memo source's next change reaches the memo"
+                Expect.equal a.Runs 2 "and runs the body"
+            }
+
             test "DropWhilePending settles a failed flight with no change during it to its error" {
                 let g = policyGraph DropWhilePending
                 let s = Signal (g, 1)
