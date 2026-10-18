@@ -19,6 +19,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 101,727 | 141,020 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 101,728 | 140,987 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 101,963 | 141,037 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 101,860 | 139,716 |
 
 ## app-table
 
@@ -39,6 +40,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 9,233,690 | 9,776,297 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 9,233,708 | 9,639,718 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 9,233,726 | 9,777,758 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 9,233,689 | 9,691,748 |
 
 ## async-recover
 
@@ -59,6 +61,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 138,829 | 37,525 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 138,829 | 37,536 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 138,829 | 37,529 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 138,829 | 37,457 |
 
 ## async-resolve
 
@@ -79,6 +82,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 2,798,219 | 1,175,763 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 2,798,219 | 1,175,912 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 2,797,419 | 1,171,819 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 2,797,419 | 1,076,841 |
 
 ## chain
 
@@ -99,6 +103,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 13,106 | 318 | 2,470 | 4,491 | 3,180 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 13,042 | 318 | 2,470 | 4,491 | 3,180 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 13,042 | 318 | 2,470 | 4,491 | 3,180 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 13,042 | 318 | 2,470 | 4,491 | 3,180 |
 
 ## chain-affinity
 
@@ -119,6 +124,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 2,569 | 3,087 | 2,516 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 2,569 | 3,087 | 2,516 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 2,569 | 3,087 | 2,516 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 2,569 | 3,087 | 2,516 |
 
 ## control
 
@@ -139,6 +145,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 74,719 | 846,629 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 74,719 | 846,604 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 74,719 | 846,544 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 74,719 | 834,846 |
 
 ## create
 
@@ -159,6 +166,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 13,586,881 | 2,861,678 | 3,041,306 | 2,186,464 | 4,210,268 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 13,461,450 | 2,861,678 | 3,041,229 | 2,186,430 | 4,202,693 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 13,461,376 | 2,861,678 | 3,041,229 | 2,185,794 | 4,214,446 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 13,602,860 | 2,861,678 | 3,041,257 | 2,185,680 | 4,214,317 |
 
 ## create-on
 
@@ -179,6 +187,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 3,445,856 | 4,641,377 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 3,445,854 | 4,622,398 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 3,429,877 | 4,634,474 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 3,429,878 | 4,626,474 |
 
 ## cutoff
 
@@ -199,6 +208,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 1,181 | 50 | 111 | 65 | 35 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 1,181 | 50 | 111 | 65 | 35 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 1,181 | 50 | 111 | 65 | 35 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 1,181 | 50 | 111 | 65 | 35 |
 
 ## derive-effect
 
@@ -219,6 +229,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 765 | 716 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 765 | 716 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 765 | 716 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 765 | 716 |
 
 ## derive-on
 
@@ -239,6 +250,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 740 | 684 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 756 | 684 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 740 | 684 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 740 | 684 |
 
 ## dispose
 
@@ -259,6 +271,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 2,706,689 | 806,291 | 498,486 | 466,060 | 702,086 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 2,707,580 | 806,291 | 498,486 | 466,194 | 703,651 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 2,706,181 | 806,290 | 501,497 | 466,276 | 702,782 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 2,707,580 | 806,291 | 501,497 | 466,038 | 702,173 |
 
 ## dispose-on
 
@@ -279,6 +292,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 477,486 | 699,013 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 477,486 | 699,518 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 480,497 | 699,418 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 480,497 | 700,132 |
 
 ## editable-edit
 
@@ -299,6 +313,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 181,106 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 181,106 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 181,106 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 181,106 |
 
 ## editable-upstream
 
@@ -319,6 +334,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 232,756 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 232,756 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 232,755 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 232,756 |
 
 ## fail-recompute
 
@@ -339,6 +355,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 64,932 | 1,376 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 64,932 | 1,376 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 64,852 | 1,376 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 64,852 | 1,376 |
 
 ## flight
 
@@ -359,6 +376,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 11,051 | 6,245 | 6,246 | 11,374 | 10,819 | 22,383 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 11,051 | 6,245 | 6,246 | 11,374 | 10,819 | 22,383 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 11,051 | 6,245 | 6,246 | 11,375 | 10,819 | 22,383 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 11,051 | 6,245 | 6,246 | 11,374 | 10,819 | 22,383 |
 
 ## keyed-insert
 
@@ -379,6 +397,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 1,921,599 | 53,927 | 54,686 | 3,092,666 | 163,127 | 173,069 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 1,921,590 | 53,946 | 54,675 | 3,092,613 | 163,149 | 173,067 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 1,921,588 | 53,976 | 54,699 | 3,092,666 | 163,057 | 173,057 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 1,921,573 | 53,966 | 54,665 | 3,092,872 | 162,911 | 172,991 |
 
 ## keyed-remove
 
@@ -399,6 +418,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 1,920,541 | 43,629 | 45,066 | 3,092,569 | 130,837 | 143,257 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 1,920,532 | 43,647 | 45,058 | 3,092,431 | 130,613 | 143,361 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 1,920,547 | 43,635 | 45,050 | 3,092,537 | 132,187 | 143,308 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 1,920,533 | 43,626 | 45,039 | 3,092,718 | 132,010 | 143,311 |
 
 ## keyed-swap
 
@@ -419,6 +439,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 1,973,189 | 46,167 | 46,667 | 3,215,206 | 79,449 | 85,165 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 1,973,171 | 46,168 | 46,649 | 3,215,194 | 79,487 | 84,995 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 1,973,202 | 46,167 | 46,667 | 3,215,181 | 79,316 | 84,944 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 1,973,184 | 46,167 | 46,649 | 3,215,502 | 79,183 | 85,189 |
 
 ## mvu-dispatch
 
@@ -439,6 +460,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 58,391 | 772 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 58,391 | 772 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 58,391 | 772 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 58,391 | 772 |
 
 ## project-chain
 
@@ -459,6 +481,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 3,837,404 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 3,837,405 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 3,837,438 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 3,837,389 |
 
 ## project-churn
 
@@ -479,6 +502,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 36,290 | 34,121 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 36,290 | 34,121 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 36,290 | 34,121 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 36,290 | 34,121 |
 
 ## project-edit
 
@@ -499,6 +523,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 50,186 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 50,202 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 50,186 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 50,186 |
 
 ## project-reorder
 
@@ -519,6 +544,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 778,907 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 778,924 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 778,895 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 778,895 |
 
 ## shape-diamond
 
@@ -539,6 +565,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 60,899 | 88,455 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 60,899 | 88,455 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 60,899 | 88,455 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 60,899 | 88,455 |
 
 ## shape-dynamic
 
@@ -559,6 +586,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 82,420 | 98,003 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 82,420 | 98,007 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 83,732 | 98,003 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 82,420 | 98,001 |
 
 ## timed-admit-both
 
@@ -579,6 +607,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 118,909 | 133,570 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 118,909 | 133,573 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 118,909 | 133,571 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 118,909 | 133,569 |
 
 ## timed-admit-debounce
 
@@ -599,6 +628,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 117,814 | 132,169 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 117,818 | 132,166 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 117,814 | 132,167 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 117,814 | 132,162 |
 
 ## timed-admit-first
 
@@ -619,6 +649,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 69,925 | 81,964 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 69,925 | 81,964 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 69,925 | 81,964 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 69,925 | 81,964 |
 
 ## timed-admit-last
 
@@ -639,6 +670,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 118,076 | 132,486 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 118,076 | 132,487 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 118,076 | 132,487 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 118,076 | 132,470 |
 
 ## timed-capture-both
 
@@ -659,6 +691,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 36,044 | 44,957 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 36,048 | 44,957 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 36,044 | 44,956 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 36,044 | 44,965 |
 
 ## timed-capture-debounce
 
@@ -679,6 +712,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 35,916 | 43,583 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 35,916 | 43,583 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 35,916 | 43,583 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 35,916 | 43,583 |
 
 ## timed-capture-first
 
@@ -699,6 +733,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 32,396 | 38,804 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 32,396 | 38,804 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 32,396 | 38,804 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 32,396 | 38,804 |
 
 ## timed-capture-last
 
@@ -719,6 +754,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 35,852 | 43,519 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 35,852 | 43,519 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 35,852 | 43,519 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 35,852 | 43,519 |
 
 ## update
 
@@ -739,6 +775,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 1,091,872 | 38,805 | 83,005 | 263,428 | 207,810 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 1,088,672 | 38,805 | 83,005 | 263,483 | 207,800 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 1,088,680 | 38,805 | 83,005 | 263,408 | 207,795 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 1,088,680 | 38,805 | 83,005 | 263,113 | 207,770 |
 
 ## update-on
 
@@ -759,6 +796,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 93,805 | 222,111 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 95,405 | 222,096 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 93,805 | 222,116 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 93,805 | 222,065 |
 
 ## work-form
 
@@ -779,6 +817,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 174,678 | 168,144 | 288,761 | 287,120 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 174,678 | 168,144 | 288,773 | 287,120 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 174,678 | 168,163 | 288,724 | 287,115 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 174,678 | 168,177 | 288,722 | 287,066 |
 
 ## work-status
 
@@ -799,6 +838,7 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 100,445 | 79,115 | 315,962 | 155,370 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 100,445 | 80,715 | 315,935 | 155,346 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 100,445 | 79,115 | 315,942 | 155,383 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 100,445 | 79,115 | 315,910 | 155,356 |
 
 ## work-value
 
@@ -819,4 +859,5 @@
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 107,569 | 119,769 | 316,135 | 283,696 |
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 107,569 | 121,369 | 316,136 | 283,703 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 107,569 | 119,771 | 316,246 | 283,710 |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 107,571 | 119,770 | 316,149 | 283,694 |
 
