@@ -58,7 +58,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Lenses.fs | 23 | 20 | 20 | 23 | 20 | 20 | 0 | 0 |
 | Combinators.fs | 127 | 127 | 127 | 127 | 127 | 127 | 1 | 0 |
 | Timed.fs | 31 | 31 | 31 | 38 | 38 | 38 | 0 | 0 |
-| Streams.fs | 21 | 21 | 17 | 21 | 21 | 17 | 0 | 0 |
+| Streams.fs | 23 | 23 | 19 | 23 | 23 | 19 | 0 | 0 |
 | PreviousValues.fs | 12 | 12 | 12 | 12 | 12 | 12 | 15 | 0 |
 | Texts.fs | 5 | 5 | 5 | 43 | 43 | 43 | 1 | 0 |
 | FailureOrigins.fs | 16 | 16 | 15 | 16 | 16 | 15 | 2 | 0 |
@@ -72,7 +72,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | QueryDictionary.fs | 2 | 2 | 2 | 2 | 2 | 2 | 0 | 0 |
 | QueryErgonomics.fs | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | QueryNavigationTests.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1025 | 1007 | 939 | 1162 | 1139 | 1061 | 91 | 1 |
+| **Total** | 1027 | 1009 | 941 | 1164 | 1141 | 1063 | 91 | 1 |
 
 ## Tests.fs
 
@@ -1589,7 +1589,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | traced | a misbehaving source's items after completion are ignored | passed | failed | Async results arrive on a later microtask |
 | traced | a closed stream's items are not folded | passed | failed | Async results arrive on a later microtask |
 
-<details><summary>17 passed in every build and delivery that runs them</summary>
+<details><summary>19 passed in every build and delivery that runs them</summary>
 
 - a stream starts on its first read, not at creation
 - an item publishes the latest state; a fold accumulates
@@ -1608,6 +1608,8 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a pure memo that creates a stream memo fails
 - a completion from a replaced stream leaves the running stream alone
 - items awaiting a wake are not published once a dependency change has made the stream stale
+- items folded in a batch publish when a Check upstream resolves clean
+- a pending read inside Run fails the node
 
 </details>
 

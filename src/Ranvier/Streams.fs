@@ -119,13 +119,13 @@ type StreamMemo<'S>
     let mutable queued = false
     let mutable wakePosted = 0
 
-    let wake (gen: int) () =
+    let wake () =
 #if FABLE_COMPILER
         wakePosted <- 0
 #else
         Interlocked.Exchange (&wakePosted, 0) |> ignore
 #endif
-        if not disposed && gen = generation then
+        if not disposed then
             this.Enqueue ()
             graph.RequestFlush ()
 
@@ -139,7 +139,7 @@ type StreamMemo<'S>
             graph.Schedule (this :> IScheduled)
 
     /// <summary>Requests one wake while none is outstanding; items folded during <c>Run</c>'s synchronous part need none.</summary>
-    member private _.Request(gen: int) =
+    member private _.Request() =
         if not (launching && graph.IsOnGraphThread) then
 #if FABLE_COMPILER
             let previous = wakePosted
@@ -148,7 +148,7 @@ type StreamMemo<'S>
             let previous = Interlocked.Exchange (&wakePosted, 1)
 #endif
             if previous = 0 then
-                graph.Post (wake gen)
+                graph.Post wake
 
     member private _.Notify() =
         observers.NotifyDirtyExcept graph.CurrentComputation
@@ -247,7 +247,7 @@ type StreamMemo<'S>
                 let struct (started, body) =
                     graph.RunHosted (
                         this :> IComputation,
-                        fun () -> launch (fun () -> this.Request gen) (fun error -> graph.Post (fun () -> this.FoldFailed (gen, error))) source.Token
+                        fun () -> launch this.Request (fun error -> graph.Post (fun () -> this.FoldFailed (gen, error))) source.Token
                     )
 
                 if violated then
@@ -260,7 +260,16 @@ type StreamMemo<'S>
 
                 let work =
                     try
-                        graph.RunUntracked body
+                        try
+                            graph.RunUntracked body
+                        with NotReadyException _ as pending ->
+                            let failure = InvalidOperationException "StreamSource.Run read a pending source."
+#if FABLE_COMPILER
+                            Platform.setInner failure pending
+                            raise failure
+#else
+                            raise (InvalidOperationException (failure.Message, pending))
+#endif
                     finally
                         launching <- false
 
@@ -361,12 +370,27 @@ type StreamMemo<'S>
         member this.Execute() =
             queued <- false
 
-            if
-                not disposed
-                && running
-                && freshness = Freshness.Clean
-            then
-                this.PublishLatest true
+            if not disposed && running then
+                graph.EnterPull ()
+
+                try
+                    if freshness = Freshness.Check then
+                        Tracer.CheckStart (graph, id)
+                        let mutable i = 0
+
+                        while freshness = Freshness.Check && i < sources.Count do
+                            sources.SourceAt(i).UpdateIfNecessary()
+                            i <- i + 1
+
+                        Tracer.CheckResolved (graph, id, (freshness = Freshness.Dirty))
+
+                        if freshness = Freshness.Check then
+                            freshness <- Freshness.Clean
+                finally
+                    graph.ExitPull ()
+
+                if freshness = Freshness.Clean then
+                    this.PublishLatest true
 
     interface IScopeHost with
         member _.Scope =
@@ -384,7 +408,7 @@ type StreamMemo<'S>
     member _.Status = status
     /// <summary>The number of stream starts, including starts that suspended or failed.</summary>
     member _.Runs = runs
-    /// <summary>The last published state, read without tracking, starting the stream or raising.</summary>
+    /// <summary>The last published state, read without tracking; never starts the stream or raises.</summary>
     member _.Peek = value
     /// <summary>The node the current failure originated in while <c>Status</c> has <c>Error</c>, otherwise null.</summary>
     member _.ErrorOrigin: INode = Failure.OriginOf failure

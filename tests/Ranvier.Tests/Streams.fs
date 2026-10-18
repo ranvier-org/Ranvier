@@ -48,6 +48,14 @@ type ManualStream<'T>() =
     member this.Fail(error: exn) =
         this.Latest.Done.SetException error
 
+#if !FABLE_COMPILER
+/// <summary>Runs <c>work</c> on a thread other than the caller's and waits for it.</summary>
+let private offThread (work: unit -> unit) =
+    let thread = Thread (ThreadStart work)
+    thread.Start ()
+    thread.Join ()
+
+#endif
 let private reading (memo: StreamMemo<'S>) =
     memo.TryValue
 
@@ -223,19 +231,22 @@ let tests =
                             gate.Value |> ignore
                             feed.Source))
 
-                let mutable runs = 0
+                let runs = ref 0
 
                 new Effect (
                     graph,
                     fun () ->
                         memo.TryValue |> ignore
-                        runs <- runs + 1
+                        runs.Value <- runs.Value + 1
                 )
                 |> ignore
 
                 Expect.equal feed.Starts 0 "start suspended on the gate"
+                Expect.equal runs.Value 1 "the effect ran once while pending"
                 gate.Settle 1
                 Expect.equal feed.Starts 1 "started once the gate settled"
+                feed.Push 5
+                Expect.equal (reading memo) (Ready 5) "the started stream publishes"
 
             testCase "a misbehaving source's items after completion are ignored"
             <| fun _ ->
@@ -448,4 +459,79 @@ let tests =
                         topic.Value <- 1))
 
                 Expect.isTrue (memo.Status.HasFlag Status.Pending) "the stale stream's item is not published"
+
+            testCase "items folded in a batch publish when a Check upstream resolves clean"
+            <| fun _ ->
+                use graph = new Graph ()
+                let feed = ManualStream<int>()
+                let topic = Signal (graph, 1)
+
+                let positive = graph.Run (fun () -> Api.createMemo (fun _ -> topic.Value > 0))
+
+                let memo =
+                    graph.Run (fun () ->
+                        Api.createStream (fun _ ->
+                            positive.Value |> ignore
+                            feed.Source))
+
+                reading memo |> ignore
+
+                graph.Run (fun () ->
+                    Api.batch (fun () ->
+                        feed.Push 5
+                        topic.Value <- 2))
+
+                Expect.isFalse (memo.Status.HasFlag Status.Pending) "published although the upstream was only checked"
+                Expect.equal memo.Peek 5 "the item"
+
+            testCase "a pending read inside Run fails the node"
+            <| fun _ ->
+                use graph = new Graph ()
+                let gate = AsyncSource<int>(graph)
+
+                let reader =
+                    { new StreamSource<int>() with
+                        member _.Run(_, _) =
+                            gate.Value |> ignore
+                            TaskCompletionSource<unit>().Task :> Task
+                    }
+
+                let memo = graph.Run (fun () -> Api.createStream (fun _ -> reader))
+
+                match reading memo with
+                | Failed (:? InvalidOperationException) -> ()
+                | other -> failtestf "expected InvalidOperationException, got %A" other
+
+#if !FABLE_COMPILER
+            // Off-thread delivery and a manual dispatcher have no synchronous Fable equivalent.
+            testCase "an off-thread item of a restarted stream publishes although a wake of the previous stream is queued"
+            <| fun _ ->
+                use graph =
+                    new Graph (
+                        { GraphOptions.Default with
+                            Dispatcher = Some (ManualDispatcher () :> IGraphDispatcher)
+                        }
+                    )
+
+                let feed = ManualStream<int>()
+                let topic = Signal (graph, 0)
+
+                let memo =
+                    graph.Run (fun () ->
+                        Api.createStream (fun _ ->
+                            topic.Value |> ignore
+                            feed.Source))
+
+                reading memo |> ignore
+
+                graph.Run (fun () ->
+                    topic.Value <- 1
+                    offThread (fun () -> feed.At(0).Sink.Next 1)
+                    reading memo |> ignore
+                    offThread (fun () -> feed.At(1).Sink.Next 2))
+
+                Expect.equal feed.Starts 2 "restarted"
+                graph.Pump () |> ignore
+                Expect.equal (reading memo) (Ready 2) "the second stream's item is published"
+#endif
         ]
