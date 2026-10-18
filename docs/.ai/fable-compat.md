@@ -1075,8 +1075,8 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 <details><summary>59 passed in every build and delivery that runs them</summary>
 
-- ChangedRange bounds every edit, and is the removed position after a trimmed removal
-- ChangedRange spans every position against keys older than the last pass, and is empty against the current keys
+- ChangedSince bounds every edit it answers, and is the removed position after a trimmed removal
+- ChangedSince is empty at the current version and answers nothing for a version older than the last pass
 - random edits call keyOf once per position outside the common prefix and suffix
 - a trimmed pass after a shrink publishes keys of the list's length
 - a keyOf writing into the source array leaves every row on the item the pass read

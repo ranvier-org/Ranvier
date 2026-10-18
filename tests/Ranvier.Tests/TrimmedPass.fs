@@ -429,7 +429,7 @@ let private windowEdit (rng: Lcg) (fresh: unit -> Item) (op: int) (items: Item[]
     Array.truncate 150 next
 
 /// <summary>
-/// Checks the <c>ChangedRange</c> contract: <c>keys</c> and <c>previous</c> agree before <c>start</c> and after the
+/// Checks the <c>ChangedSince</c> contract: <c>keys</c> and <c>previous</c> agree before <c>start</c> and after the
 /// range's two ends.
 /// </summary>
 let private rangeHolds (label: string) (previous: int[]) (keys: int[]) (struct (start, previousEnd, finish)) =
@@ -451,7 +451,7 @@ let tests =
     testList
         "Trimmed pass"
         [
-            test "ChangedRange bounds every edit, and is the removed position after a trimmed removal" {
+            test "ChangedSince bounds every edit it answers, and is the removed position after a trimmed removal" {
                 for seed in 1..3 do
                     use g = new Graph ()
                     use _ = g.Activate ()
@@ -472,6 +472,8 @@ let tests =
                         createProjection (fun (item: Item) -> item.Id) _.Text (fun () -> items.Value :> seq<_>)
 
                     let mutable previous = proj.Keys
+                    let mutable version = proj.KeysVersion
+                    let mutable answered = 0
 
                     for i in 0..399 do
                         let op = rng.Next 13
@@ -479,34 +481,50 @@ let tests =
                         let next = windowEdit rng fresh op before
                         let step = $"seed {seed} op {i} ({op}, {before.Length} -> {next.Length})"
                         items.Value <- next
-                        let range = proj.ChangedRange previous
+                        let range = proj.ChangedSince version
                         let keys = proj.Keys
-                        rangeHolds step previous keys range
+
+                        match range with
+                        | ValueSome range ->
+                            answered <- answered + 1
+                            rangeHolds step previous keys range
+                        | ValueNone -> ()
 
                         if op = 0 && before.Length >= 2 then
                             let removed =
                                 Array.findIndex (fun (item: Item) -> not (Array.contains item next)) before
 
-                            Expect.equal range (struct (removed, removed, removed - 1)) $"{step}: the removed position"
+                            Expect.equal range (ValueSome (struct (removed, removed, removed - 1))) $"{step}: the removed position"
 
                         previous <- keys
+                        version <- proj.KeysVersion
+
+                    Expect.isGreaterThan answered 300 $"seed {seed}: most edits are answered"
             }
 
-            test "ChangedRange spans every position against keys older than the last pass, and is empty against the current keys" {
+            test "ChangedSince is empty at the current version and answers nothing for a version older than the last pass" {
                 use g = new Graph ()
                 use _ = g.Activate ()
                 let items = createSignal [| 1..10 |]
                 let proj = createProjection id id (fun () -> items.Value :> seq<_>)
-                let first = proj.Keys
+                let first = proj.KeysVersion
                 items.Value <- Array.removeAt 4 items.Value
-                let second = proj.Keys
-                Expect.equal (proj.ChangedRange first) (struct (4, 4, 3)) "the window against the previous pass"
+                let second = proj.KeysVersion
+                Expect.equal (proj.ChangedSince first) (ValueSome (struct (4, 4, 3))) "the window against the previous pass"
                 items.Value <- Array.removeAt 6 items.Value
-                let third = proj.Keys
-                Expect.equal (proj.ChangedRange second) (struct (6, 6, 5)) "the window against the previous pass"
-                Expect.equal (proj.ChangedRange first) (struct (0, 9, 7)) "every position against an older pass"
-                Expect.equal (proj.ChangedRange third) (struct (8, 7, 7)) "an empty range against the current keys"
-                Expect.equal (proj.ChangedRange null) (struct (0, -1, 7)) "every position against no keys"
+                let third = proj.KeysVersion
+                Expect.equal (proj.ChangedSince second) (ValueSome (struct (6, 6, 5))) "the window against the previous pass"
+                Expect.equal (proj.ChangedSince first) ValueNone "nothing against an older pass"
+                Expect.equal (proj.ChangedSince third) (ValueSome (struct (8, 7, 7))) "an empty range at the current version"
+                Expect.notEqual second first "a new key array has a new version"
+                items.Value <- Array.copy items.Value
+                Expect.equal proj.KeysVersion third "an unchanged key sequence keeps its version"
+                items.Value <- Array.rev items.Value
+                Expect.equal (proj.ChangedSince second) ValueNone "nothing after a full pass"
+                Expect.equal (proj.ChangedSince third) ValueNone "nothing against the keys a full pass replaced"
+                let fourth = proj.KeysVersion
+                proj.Dispose ()
+                Expect.equal (proj.ChangedSince fourth) ValueNone "nothing after disposal"
             }
 
             test "random edits call keyOf once per position outside the common prefix and suffix" {

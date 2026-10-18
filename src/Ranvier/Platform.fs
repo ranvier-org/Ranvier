@@ -220,44 +220,6 @@ module internal Platform =
     let completedWith (value: 'T) : Task<'T> =
         Task.FromResult value
 
-#if FABLE_COMPILER
-    [<Emit("new WeakRef($0)")>]
-    let private weakRef (value: obj) : obj =
-        nativeOnly
-
-    [<Emit("$0.deref()")>]
-    let private deref (weak: obj) : obj =
-        nativeOnly
-
-    /// <summary>A reference that leaves its target collectable.</summary>
-    type WeakSlot<'T when 'T: not struct>() =
-        let mutable weak: obj = null
-
-        member _.Set(value: 'T) =
-            weak <- if isNull (box value) then null else weakRef (box value)
-
-        /// <summary>Whether <c>value</c> is the live, non-null target.</summary>
-        member _.Holds(value: 'T) =
-            not (isNull weak)
-            && not (isNull (box value))
-            && obj.ReferenceEquals (deref weak, box value)
-#else
-    /// <summary>A reference that leaves its target collectable.</summary>
-    type WeakSlot<'T when 'T: not struct>() =
-        let weak = WeakReference<'T>(Unchecked.defaultof<'T>)
-
-        member _.Set(value: 'T) =
-            weak.SetTarget value
-
-        /// <summary>Whether <c>value</c> is the live, non-null target.</summary>
-        member _.Holds(value: 'T) =
-            match weak.TryGetTarget () with
-            | true, target ->
-                not (isNull (box target))
-                && obj.ReferenceEquals (target, value)
-            | _ -> false
-#endif
-
 #if !FABLE_COMPILER
     /// <summary>The synchronous part of a flight body: live until the body returns.</summary>
     [<AllowNullLiteral>]
