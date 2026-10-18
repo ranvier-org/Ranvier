@@ -69,6 +69,10 @@ the older flight:
 `FinishCurrent` starts no flight while one is in progress. The flight finishes, and every change during it folds
 into one trailing run against the current inputs; the memo stays pending until that run settles.
 
+`Drop` and `DropWhilePending` also start no flight while one is in progress: the change is discarded, and the
+settled flight's value stays current. Under `DropWhilePending`, a flight that fails after discarding a change
+runs once more against the current inputs instead of publishing its error.
+
 Pass the `CancellationToken` to the I/O that the flight performs. Under `CancelPrevious`, cancellation
 is requested for superseded work; the operation must cooperate. This does not guarantee that its I/O or
 external side effects stop. JavaScript also has cancellation mechanisms such as `AbortController`;
@@ -85,10 +89,12 @@ SignalsDotnet and CommunityToolkit.Mvvm.
 
 - an `Async<'T>` adapter for cold, restartable F# async workflows
 - a streaming memo over `IAsyncEnumerable<'T>`, inspired by async-iterable reactive results
-- a drop-while-running policy, which ignores changes while a flight is in progress (R3 `Drop`)
 - a coalescing policy that publishes the finished flight's result before the trailing run (SignalsDotnet
   `ScheduleNext`, R3 `ThrottleFirstLast`); `FinishCurrent` keeps the memo pending until the trailing run settles
-- debounce and throttle, as a flight policy or as a combinator
+
+Debounce and throttle are implemented as [timed values](../guide/timing.md), with eager capture and delayed
+publication. Read a timed value from an async memo to control when requests start, and choose its flight
+policy separately. They are no longer exploratory flight-policy proposals.
 
 Streaming lifetime, restart policies and empty-stream behavior remain design questions. No streaming API
 or contract is shipped. In particular, applying start-order `Queue` semantics to infinite streams would
@@ -104,8 +110,9 @@ completions back to it.
 
 - **Ownership.** A graph belongs to the thread that constructed it. Under `ThreadAffinity = Guarded` (the
   default), a signal write, node creation, batch, flush, disposal or stale read from another thread raises
-  `InvalidOperationException`, and the error message names both threads. `Unchecked` removes the check. Use `Unchecked` for Fable, or when every write is known
-  to arrive on one thread. `Serialised` accepts any thread on the construction context, one at a time; see
+  `InvalidOperationException`, and the error message names both threads. `Unchecked` removes the check when
+  every access is known to obey the host's synchronization rules. Fable needs no affinity override: all three
+  policies run in its single JavaScript context without .NET thread checks. `Serialised` accepts any thread on the construction context, one at a time; see
   [Hopping synchronisation contexts](#hopping-synchronisation-contexts).
 - **Inbox.** Completions from other threads, such as `AsyncSource.Settle` and finished `AsyncMemo` flights,
   go into the graph's inbox. `Graph.Pump ()` applies them in arrival order on the owning thread and then

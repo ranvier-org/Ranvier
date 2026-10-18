@@ -6,6 +6,17 @@ open System.Diagnostics
 open System
 open System.Collections.Generic
 
+/// <summary>The traced build's limits on reruns of a scheduled node within a flush.</summary>
+/// <remarks>The flush raises <c>InvalidOperationException</c> in place of the dequeue past a limit.</remarks>
+module internal RerunGuard =
+    /// <summary>The most times a node's own runs queue it again in a flush.</summary>
+    [<Literal>]
+    let Limit = 1000
+
+    /// <summary>The most times a node is dequeued in a flush.</summary>
+    [<Literal>]
+    let CycleLimit = 100000
+
 /// <summary>A node's live observer set or source list, or a binding's single source edge, read by edge reconciliation.</summary>
 type internal ITracedEdges =
     /// <summary>The owning node id.</summary>
@@ -88,6 +99,23 @@ type internal TraceLog(locked: bool) =
 
     // Flush number and running-stack depth of each open flush, innermost last.
     let flushFrames = ResizeArray<struct (int * int)>()
+
+    // Node id to its dequeues in the open flushes.
+    let mutable flushRuns = Dictionary<int, int>()
+
+    // Node id to the times its own run queued it again in the open flushes.
+    let mutable selfRequeues = Dictionary<int, int>()
+
+    // The node id of the item the open flush dequeued last, or 0.
+    let mutable executing = 0
+
+    // The table emptied; a table above 1,024 entries is replaced, so a large flush leaves no large buckets behind.
+    let reset (table: Dictionary<int, int>) =
+        if table.Count > 1024 then
+            Dictionary<int, int>()
+        else
+            table.Clear ()
+            table
 
     // Observer sets and source lists bound to the log. Fable holds them strongly.
 #if FABLE_COMPILER
@@ -305,6 +333,10 @@ type internal TraceLog(locked: bool) =
     member _.FirstDirty(node: int) =
         sync (fun () -> lookup firstDirty node)
 
+    /// <summary>Forgets <c>node</c>'s first dirty mark, so the next mark becomes the next run's cause.</summary>
+    member _.ClearDirty(node: int) =
+        sync (fun () -> firstDirty.Remove node |> ignore)
+
     /// <summary>Records <c>seq</c> as <c>node</c>'s first dirty mark unless one is pending.</summary>
     member _.NoteDirty(node: int, seq: int) =
         sync (fun () ->
@@ -353,8 +385,89 @@ type internal TraceLog(locked: bool) =
             else
                 let struct (number, depth) = flushFrames[flushFrames.Count - 1]
                 flushFrames.RemoveAt (flushFrames.Count - 1)
+
+                if flushFrames.Count = 0 then
+                    flushRuns <- reset flushRuns
+                    selfRequeues <- reset selfRequeues
+                    executing <- 0
+
                 let open' = [| for i in running.Count - 1 .. -1 .. depth -> running[i] |]
                 struct (number, open'))
+
+    /// <summary>
+    /// Counts a dequeue of node <c>id</c> in the open flush, and marks it the executing node. Returns 0, or, with
+    /// nothing counted, 1 when the node's own runs queued it again <c>RerunGuard.Limit</c> times in the flush and 2
+    /// when it was dequeued <c>RerunGuard.CycleLimit</c> times.
+    /// </summary>
+    member _.Admit(id: int) : int =
+        sync (fun () ->
+            if lookup selfRequeues id >= RerunGuard.Limit then
+                1
+            else
+                let runs = lookup flushRuns id
+
+                if runs >= RerunGuard.CycleLimit then
+                    2
+                else
+                    flushRuns[id] <- runs + 1
+                    executing <- id
+                    0)
+
+    /// <summary>Counts a queueing of node <c>id</c> while it is the executing node of the open flush.</summary>
+    member _.Requeued(id: int) =
+        sync (fun () ->
+            if id <> 0 && id = executing then
+                selfRequeues[id] <- lookup selfRequeues id + 1)
+
+    /// <summary>The node's kind, id, label and creation site.</summary>
+    member _.Describe(id: int) : string =
+        sync (fun () ->
+            let mutable kind = "node"
+            let mutable site: obj = null
+            let mutable label: obj = null
+            let mutable created = -2
+
+            for i in 0 .. events.Count - 1 do
+                let e = events[i]
+
+                if e.Node = id then
+                    if e.Kind = TraceEventKind.NodeNew then
+                        created <- i
+                        site <- e.Payload
+
+                        kind <-
+                            match enum<TraceNodeKind> e.Arg with
+                            | TraceNodeKind.Signal -> "signal"
+                            | TraceNodeKind.AsyncSource -> "async source"
+                            | TraceNodeKind.Memo -> "memo"
+                            | TraceNodeKind.Effect -> "effect"
+                            | TraceNodeKind.AsyncMemo -> "async memo"
+                            | TraceNodeKind.Boundary -> "boundary"
+                            | TraceNodeKind.Projection -> "projection"
+                            | TraceNodeKind.ProjectionBeacon -> "projection beacon"
+                            | TraceNodeKind.RowWatch -> "row watch"
+                            | TraceNodeKind.LookupCell -> "lookup cell"
+                            | TraceNodeKind.Timed -> "timed node"
+                            | TraceNodeKind.Binding -> "binding"
+                            | _ -> "node"
+                    elif
+                        e.Kind = TraceEventKind.Label
+                        && (e.Arg = 1 || i = created + 1)
+                    then
+                        label <- e.Payload
+
+            let named =
+                if Platform.isNull label then
+                    ""
+                else
+                    String.Concat (" \"", string label, "\"")
+
+            let at =
+                match site with
+                | :? string as site when site <> "?" -> String.Concat (" (created at ", site, ")")
+                | _ -> ""
+
+            String.Concat (kind, " ", string id, named, at))
 
     /// <summary>Counts a run-scope discharge in progress, or ends one when <c>entering</c> is false.</summary>
     member _.Discharging(entering: bool) =
@@ -489,7 +602,7 @@ type internal Tracer =
 
     /// <summary>Opens a <c>Trace.named</c> label on this thread.</summary>
     static member PushLabel(label: string) =
-        if isNull Tracer.labels then
+        if Platform.isNull Tracer.labels then
             Tracer.labels <- ResizeArray ()
 
         Tracer.labels.Add label
@@ -504,7 +617,7 @@ type internal Tracer =
         let label = labels[last]
         labels.RemoveAt last
 
-        if not (isNull label || isNull graph) then
+        if not (Platform.isNull label || Platform.isNull graph) then
             (graph :?> ITraced).TraceLog.Append(TraceEventKind.Label, 0, 0, 0, 0, 0, label)
             |> ignore
 
@@ -512,11 +625,11 @@ type internal Tracer =
     static member private Consume(log: TraceLog, id: int) =
         let labels = Tracer.labels
 
-        if not (isNull labels) && labels.Count > 0 then
+        if not (Platform.isNull labels) && labels.Count > 0 then
             let last = labels.Count - 1
             let label = labels[last]
 
-            if not (isNull label) then
+            if not (Platform.isNull label) then
                 labels[last] <- null
 
                 log.Append (TraceEventKind.Label, id, 0, 0, 0, 0, label)
@@ -525,7 +638,12 @@ type internal Tracer =
     /// <summary>Records <c>NodeNew</c> for node <c>id</c> under <c>owner</c>, an owner or null.</summary>
     static member private Node(graph: obj, id: int, kind: TraceNodeKind, owner: obj) =
         let log = (graph :?> ITraced).TraceLog
-        let ownerId = if isNull owner then 0 else (owner :?> ITraced).TraceId
+
+        let ownerId =
+            if Platform.isNull owner then
+                0
+            else
+                (owner :?> ITraced).TraceId
 
         if ownerId <> 0 then
             log.SetOwner (id, ownerId)
@@ -584,7 +702,7 @@ type internal Tracer =
         let traced = sources :?> ITraced
         let log = traced.TraceLog
 
-        if not (isNull log) then
+        if not (Platform.isNull log) then
             log.Append (kind, traced.TraceId, Tracer.IdOf source, slot, 0, 0, null)
             |> ignore
 
@@ -593,7 +711,7 @@ type internal Tracer =
         let traced = observers :?> ITraced
         let log = traced.TraceLog
 
-        if not (isNull log) then
+        if not (Platform.isNull log) then
             log.Append (kind, traced.TraceId, Tracer.IdOf observer, 0, 0, 0, null)
             |> ignore
 
@@ -602,7 +720,7 @@ type internal Tracer =
         let traced = observers :?> ITraced
         let log = traced.TraceLog
 
-        if not (isNull log) then
+        if not (Platform.isNull log) then
             let target = Tracer.IdOf observer
             let seq = log.Append (kind, target, traced.TraceId, arg, 0, log.Cause, null)
 
@@ -685,11 +803,11 @@ type internal Tracer =
 #if RANVIER_TRACE
         let labels = Tracer.labels
 
-        if not (isNull labels) && labels.Count > 0 then
+        if not (Platform.isNull labels) && labels.Count > 0 then
             let last = labels.Count - 1
             let label = labels[last]
 
-            if not (isNull label) then
+            if not (Platform.isNull label) then
                 labels[last] <- null
                 (graph :?> ITraced).TraceLog.Reserve(id, label)
 #else
@@ -870,17 +988,17 @@ type internal Tracer =
         if Platform.hasMember child "TraceLog" then
             let child = child :?> ITraced
 
-            if isNull child.TraceLog then
+            if Platform.isNull child.TraceLog then
                 let parent = parent :?> ITraced
 
-                if not (isNull parent.TraceLog) then
+                if not (Platform.isNull parent.TraceLog) then
                     Tracer.Joined (parent.TraceLog, child, parent.TraceId, 0, (if root then 1 else 0))
 #else
         match child with
-        | :? ITraced as child when isNull child.TraceLog ->
+        | :? ITraced as child when Platform.isNull child.TraceLog ->
             let parent = parent :?> ITraced
 
-            if not (isNull parent.TraceLog) then
+            if not (Platform.isNull parent.TraceLog) then
                 Tracer.Joined (parent.TraceLog, child, parent.TraceId, 0, (if root then 1 else 0))
         | _ -> ()
 #endif
@@ -894,7 +1012,7 @@ type internal Tracer =
 #if RANVIER_TRACE
         let owner = owner :?> ITraced
 
-        if not (isNull owner.TraceLog) then
+        if not (Platform.isNull owner.TraceLog) then
             owner.TraceLog.Append (TraceEventKind.OwnerDispose, owner.TraceId, 0, 0, 0, 0, null)
             |> ignore
 #else
@@ -908,7 +1026,7 @@ type internal Tracer =
         let owner = owner :?> ITraced
         let log = owner.TraceLog
 
-        if not (isNull log) then
+        if not (Platform.isNull log) then
             log.Discharging true
 
             log.Append (TraceEventKind.DischargeStart, owner.TraceId, log.HostOf owner.TraceId, 0, 0, 0, null)
@@ -924,7 +1042,7 @@ type internal Tracer =
         let owner = owner :?> ITraced
         let log = owner.TraceLog
 
-        if not (isNull log) then
+        if not (Platform.isNull log) then
             log.Discharging false
 
             log.Append (TraceEventKind.DischargeEnd, owner.TraceId, log.HostOf owner.TraceId, 0, 0, 0, null)
@@ -952,7 +1070,7 @@ type internal Tracer =
         let traced = sources :?> ITraced
         let log = traced.TraceLog
 
-        if not (isNull log) then
+        if not (Platform.isNull log) then
             let ids = (sources :?> ITracedEdges).Ids
 
             for slot in from .. ids.Length - 1 do
@@ -1008,7 +1126,7 @@ type internal Tracer =
         let traced = observers :?> ITraced
         let log = traced.TraceLog
 
-        if not (isNull log) then
+        if not (Platform.isNull log) then
             let current = log.Current
             let cause = if current = 0 then 0 else log.OpenRun current
 
@@ -1027,7 +1145,7 @@ type internal Tracer =
 #if RANVIER_TRACE
         let log = Tracer.LogOf traced
 
-        if not (isNull log) then
+        if not (Platform.isNull log) then
             log.PopCause ()
 #else
         ()
@@ -1039,7 +1157,7 @@ type internal Tracer =
 #if RANVIER_TRACE
         let log = Tracer.LogOf graph
 
-        if not (isNull log) then
+        if not (Platform.isNull log) then
             log.PushCause 0
 #else
         ()
@@ -1200,18 +1318,41 @@ type internal Tracer =
 #endif
 
     /// <summary>
-    /// Records <c>RunDeferred</c> for node <c>id</c>: a change arrived while flight number <c>flight</c> is in progress
-    /// under <c>FinishCurrent</c>.
+    /// Records a change that reached node <c>id</c> at a read while flight number <c>flight</c> is in progress:
+    /// <c>RunDeferred</c> when <c>deferred</c> is true, under <c>FinishCurrent</c>, else <c>RunDropped</c>.
     /// </summary>
     [<Conditional("RANVIER_TRACE")>]
-    static member RunDeferred(graph: obj, id: int, flight: int) =
+    static member RunDeferred(graph: obj, id: int, flight: int, deferred: bool) =
 #if RANVIER_TRACE
         let log = Tracer.LogOf graph
         let walker = log.Walker
         let puller = if walker <> 0 then walker else log.Current
 
-        log.Append (TraceEventKind.RunDeferred, id, puller, flight, 0, log.FirstDirty id, null)
+        if deferred then
+            log.Append (TraceEventKind.RunDeferred, id, puller, flight, 0, log.FirstDirty id, null)
+            |> ignore
+        else
+            log.Append (TraceEventKind.RunDropped, id, puller, flight, 0, log.FirstDirty id, null)
+            |> ignore
+
+            log.ClearDirty id
+#else
+        ()
+#endif
+
+    /// <summary>
+    /// Records <c>RunDropped</c> for node <c>id</c>: a change that arrived during flight number <c>flight</c> was
+    /// discarded as the flight settled.
+    /// </summary>
+    [<Conditional("RANVIER_TRACE")>]
+    static member RunDropped(graph: obj, id: int, flight: int) =
+#if RANVIER_TRACE
+        let log = Tracer.LogOf graph
+
+        log.Append (TraceEventKind.RunDropped, id, 0, flight, 1, log.FirstDirty id, null)
         |> ignore
+
+        log.ClearDirty id
 #else
         ()
 #endif
@@ -1231,14 +1372,37 @@ type internal Tracer =
         ()
 #endif
 
-    /// <summary>Records <c>FlightDrop</c> for flight number <c>flight</c> of node <c>id</c>, with <c>TraceDropReason</c> <c>reason</c>.</summary>
+    /// <summary>
+    /// Records <c>FlightDrop</c> for flight number <c>flight</c> of node <c>id</c>, with <c>TraceDropReason</c>
+    /// <c>reason</c>. A drop for <c>Trailing</c> or <c>Retried</c> becomes the cause of the run owed.
+    /// </summary>
     [<Conditional("RANVIER_TRACE")>]
     static member FlightDrop(graph: obj, id: int, flight: int, reason: int) =
 #if RANVIER_TRACE
         let log = Tracer.LogOf graph
 
-        log.Append (TraceEventKind.FlightDrop, id, 0, flight, reason, log.FlightOf (id, flight), null)
-        |> ignore
+        let seq =
+            log.Append (TraceEventKind.FlightDrop, id, 0, flight, reason, log.FlightOf (id, flight), null)
+
+        if reason >= int TraceDropReason.Trailing then
+            log.NoteSettle (id, seq)
+#else
+        ()
+#endif
+
+    /// <summary>
+    /// Records <c>FlightDrop</c> for the failure of flight number <c>flight</c> of a pending node: <c>Suspended</c>
+    /// without a run owed, else <c>Trailing</c> under <c>FinishCurrent</c> and <c>Retried</c> under any other policy.
+    /// </summary>
+    [<Conditional("RANVIER_TRACE")>]
+    static member FlightFailureDrop(graph: obj, id: int, flight: int, owed: bool, finishCurrent: bool) =
+#if RANVIER_TRACE
+        let reason =
+            if not owed then TraceDropReason.Suspended
+            elif finishCurrent then TraceDropReason.Trailing
+            else TraceDropReason.Retried
+
+        Tracer.FlightDrop (graph, id, flight, int reason)
 #else
         ()
 #endif
@@ -1254,7 +1418,7 @@ type internal Tracer =
         let traced = observers :?> ITraced
         let log = traced.TraceLog
 
-        if not (isNull log) then
+        if not (Platform.isNull log) then
             let kind =
                 if failed then
                     TraceEventKind.Fail
@@ -1276,6 +1440,8 @@ type internal Tracer =
 
         log.Append (TraceEventKind.Schedule, id, 0, ahead, 0, log.MarkOf id, null)
         |> ignore
+
+        log.Requeued id
 #else
         ()
 #endif
@@ -1309,6 +1475,46 @@ type internal Tracer =
 
         log.Append (TraceEventKind.FlushStart, 0, 0, number, 0, 0, null)
         |> ignore
+#else
+        ()
+#endif
+
+    /// <summary>Counts a dequeue of <c>item</c>, a scheduled node, in <c>graph</c>'s open flush.</summary>
+    /// <exception cref="T:System.InvalidOperationException">
+    /// The node's own runs queued it again <c>RerunGuard.Limit</c> times in the flush, or the node was dequeued
+    /// <c>RerunGuard.CycleLimit</c> times in it.
+    /// </exception>
+    [<Conditional("RANVIER_TRACE")>]
+    static member Dequeue(graph: obj, item: obj) =
+#if RANVIER_TRACE
+        let id = Tracer.IdOf item
+        let log = Tracer.LogOf graph
+        let verdict = if id = 0 then 0 else log.Admit id
+
+        if verdict = 1 then
+            raise (
+                InvalidOperationException (
+                    String.Concat (
+                        "The ",
+                        log.Describe id,
+                        " was queued again by its own run ",
+                        string RerunGuard.Limit,
+                        " times in one flush. Its run writes a signal it depends on; make the write conditional, or move it out of the node."
+                    )
+                )
+            )
+        elif verdict = 2 then
+            raise (
+                InvalidOperationException (
+                    String.Concat (
+                        "The ",
+                        log.Describe id,
+                        " was dequeued ",
+                        string RerunGuard.CycleLimit,
+                        " times in one flush; nodes may be writing each other's dependencies in a cycle."
+                    )
+                )
+            )
 #else
         ()
 #endif

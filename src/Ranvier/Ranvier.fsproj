@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFrameworks>net10.0;net8.0;netstandard2.1</TargetFrameworks>
+        <TargetFrameworks>net10.0;netstandard2.1</TargetFrameworks>
         <LangVersion>latest</LangVersion>
         <!-- The JIT compiles a method with a `tail.` call straight to full
              opts, so it never reaches Tier1 and its PGO-guided inlining. -->
@@ -21,7 +21,7 @@
         <AssemblyVersion>0.0.0.0</AssemblyVersion>
     </PropertyGroup>
 
-    <!-- `RanvierAotClean` compiles the untraced build reflection-free and marks it trimmable and AOT-compatible
+    <!-- `RanvierAotClean` compiles reflection-free and marks the assembly trimmable and AOT-compatible
          (Directory.Build.targets). tests/Ranvier.AotSmoke checks that claim at publish time. -->
     <PropertyGroup>
         <RanvierAotClean>true</RanvierAotClean>

@@ -13,17 +13,49 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-# The steps run the commands `build.fsx test`, `build.fsx test-fable` and `build.fsx --dry-format` run. The build
-# CLI itself exits non-zero when its output is redirected: its timing summary raises "Console width must be greater
-# than zero".
+# These steps run the operations provided by the build CLI directly.
+# Partas.Build 0.8.1 also supports redirected output and automatic GitHub stage summaries.
 
 jobs:
-  dotnet:
-    name: .NET tests
+  # Documentation-only changes (see .github/scripts/changes.cjs) skip the build and test jobs; formatting always runs.
+  changes:
+    name: Changes
+    runs-on: ubuntu-latest
+    outputs:
+      docs: ${{ steps.classify.outputs.docs }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: classify
+        env:
+          EVENT: ${{ github.event_name }}
+          FROM: ${{ github.event.pull_request.base.sha || github.event.before }}
+          TO: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node .github/scripts/changes.cjs "$EVENT" "$FROM" "$TO" >> "$GITHUB_OUTPUT"
+
+  scripts:
+    name: Workflow scripts
+    needs: changes
+    if: needs.changes.outputs.docs != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      # The test projects target net10.0 and net8.0; global.json pins the SDK.
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - run: node --test .github/scripts/*.test.cjs
+
+  dotnet:
+    name: .NET tests
+    needs: changes
+    if: needs.changes.outputs.docs != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # The test projects target net10.0, and global.json pins the SDK. The package check runs a net8.0 consumer of
+      # the netstandard2.1 build, which needs the .NET 8 runtime.
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
@@ -40,17 +72,22 @@ jobs:
         run: ./tests/check-package-compatibility.ps1
 
   # A NativeAOT publish over both assemblies, rooted: any IL2xxx/IL3xxx warning fails the publish, and the binary
-  # exits non-zero when an exception or a ToString text differs from the JIT build's. Untraced build only.
+  # exits non-zero when an exception or a ToString text differs from the expected text, with tracing on and off.
   aot:
-    name: NativeAOT smoke
+    name: NativeAOT smoke (trace=${{ matrix.trace }})
+    needs: changes
+    if: needs.changes.outputs.docs != 'true'
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        trace: [false, true]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
       - name: Publish
-        run: dotnet publish tests/Ranvier.AotSmoke -c Release -r linux-x64 -o artifacts/aot
+        run: dotnet publish tests/Ranvier.AotSmoke -c Release -r linux-x64 -p:RanvierTrace=${{ matrix.trace }} -o artifacts/aot
       - name: Run
         run: ./artifacts/aot/Ranvier.AotSmoke
 
@@ -70,6 +107,8 @@ jobs:
 
   fable:
     name: Fable tests
+    needs: changes
+    if: needs.changes.outputs.docs != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -94,3 +133,19 @@ jobs:
       - name: Check Fable package consumers
         shell: pwsh
         run: ./tests/check-package-compatibility.ps1 -CheckFable
+
+  # The one CI check that branch rules require: it fails when any job failed or was cancelled, and passes when the
+  # build and test jobs were skipped for a documentation-only change.
+  result:
+    name: CI result
+    needs: [changes, scripts, dotnet, aot, format, fable]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Job results: $RESULTS"
+          for r in $RESULTS; do
+            case "$r" in success|skipped) ;; *) exit 1 ;; esac
+          done

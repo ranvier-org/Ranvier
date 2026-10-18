@@ -21,6 +21,10 @@ below runs every body, cleanup and comparer on the owning thread. The exception 
 after its first `await` that suspends: it runs wherever its task resumes, outside the graph's tracking.
 Under `ThreadAffinity.Serialised` the graph has no owning thread; see [Serialised hosts](#serialised-hosts).
 
+These thread and inbox rules describe .NET. Under Fable, one graph runs in one JavaScript context:
+dispatch runs inline, affinity checks are omitted, `IsOnGraphThread` is true, and `PendingWork` and
+`Pump ()` return zero. Promise delivery still uses microtasks. See the [Fable target](../fable/index.md).
+
 ### Which threads may call what
 
 | Operation | Thread | Called from another thread under `Guarded` | Under `Serialised` |
@@ -137,7 +141,7 @@ Recovery happens through re-runs alone.
 | Thrown by | Result |
 | --- | --- |
 | A memo body | The memo fails. |
-| An async body, or its task faulting or being cancelled | The async value fails. Under `CancelPrevious` and `KeepLatest`, a superseded flight's outcome is discarded. Under `FinishCurrent`, a failure that settles while a trailing run is owed is discarded. |
+| An async body, or its task faulting or being cancelled | The async value fails. Under `CancelPrevious` and `KeepLatest`, a superseded flight's outcome is discarded. Under `FinishCurrent`, a failure that settles while a trailing run is owed is discarded. Under `DropWhilePending`, a failure that settles after the flight discarded a change is discarded. |
 | An effect body | Recorded on the effect's `Status` and `Error`. Every effect queued behind it in the flush still runs. |
 | A boundary's `fallback` or `recover` | The boundary fails with that exception. |
 | A cleanup | Recorded, and the remaining cleanups and disposals still run. A `createRoot` scope keeps the error in its own `Errors`; a computation's scope records it in `graph.Root.Errors`. |
@@ -221,7 +225,8 @@ run: an owning memo first read by an effect keeps its nodes when the effect re-r
 | `createEffect`, `createEffectOn` | Current owner | With the owner. Construct `Effect` directly for a handle. |
 | `bindSignal`, `bindMemo` | Current owner | With the owner. The source is the only dependency; `write` runs untracked in the flush and must not create reactive nodes. |
 | `createSuspense`, `createErrorBoundary`, `createBoundary` | Current owner | With the owner, or by `Dispose`. |
-| `createProjection`, `createProjectionWith`, the index forms, and the views built on a projection | Current owner | With the owner, or by `Dispose`. Each key's scope is disposed when the key leaves. |
+| `createProjection`, `createProjectionWith`, `createProjectionWithOptions`, `createProjectionOnce`, the index forms, and the views built on a projection | Current owner | With the owner, or by `Dispose`. Each key's scope is disposed when the key leaves. |
+| `debounce`, `throttleFirst`, `throttleLast`, `throttle`, and their `With` forms | Current owner | With the owner, or by `Dispose`, cancelling timing and detaching dependencies. |
 | `createKeyedCollection` | Current owner | With the owner, or by `Dispose`. Its row nodes are retired when their key leaves. |
 | `NewKeyReader`, `NewValueReader` | Caller-managed reader handle | By `Dispose`; readers also stop following a disposed projection. Value readers release shared row observation when the last reader detaches. |
 | `AsObservableCollection ()` | Current owner | The collection stops following when the owner re-runs or is disposed, or when the projection is disposed. |

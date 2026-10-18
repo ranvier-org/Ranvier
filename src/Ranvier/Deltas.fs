@@ -38,7 +38,7 @@ type internal KeyChanges<'K when 'K: equality>() =
         let slot = slots.Find key
 
         if slot > 0 then
-            let previous = pairs[slot - 1].Value
+            let previous = (Platform.entryAt (slot - 1) pairs).Value
 
             if
                 change = KeyChange.Removed
@@ -47,8 +47,8 @@ type internal KeyChanges<'K when 'K: equality>() =
                 let last = pairs.Count - 1
 
                 if slot - 1 < last then
-                    let moved = pairs[last]
-                    pairs[slot - 1] <- moved
+                    let moved = Platform.entryAt last pairs
+                    Platform.setEntryAt (slot - 1) pairs moved
                     slots.Set (moved.Key, slot)
 
                 pairs.RemoveAt last
@@ -57,12 +57,12 @@ type internal KeyChanges<'K when 'K: equality>() =
                 change = KeyChange.Added
                 && previous = KeyChange.Removed
             then
-                pairs[slot - 1] <- KeyValuePair (key, KeyChange.Replaced)
+                Platform.setEntryAt (slot - 1) pairs (KeyValuePair (key, KeyChange.Replaced))
             elif change = KeyChange.Changed then
                 if previous = KeyChange.Changed then
-                    pairs[slot - 1] <- KeyValuePair (key, change)
+                    Platform.setEntryAt (slot - 1) pairs (KeyValuePair (key, change))
             else
-                pairs[slot - 1] <- KeyValuePair (key, change)
+                Platform.setEntryAt (slot - 1) pairs (KeyValuePair (key, change))
         else
             pairs.Add (KeyValuePair (key, change))
             slots.Set (key, pairs.Count)
@@ -125,7 +125,7 @@ type ProjectionDelta<'K when 'K: equality> internal (changes: KeyChanges<'K>, ke
     /// </summary>
     /// <remarks>Computed by the first read of the property, O(N log N), and cached.</remarks>
     member this.Positional: IReadOnlyList<PositionalChange<'K>> =
-        if isNull positional then
+        if Platform.isNull positional then
             positional <-
                 if this.OrderChanged then
                     Positional.diff previousKeys keys
@@ -224,7 +224,7 @@ and
             idle <- Unchecked.defaultof<ProjectionDelta<'K>>
             delta
         elif obj.ReferenceEquals (current, cursor) then
-            if isNull (box idle) then
+            if Platform.isNull (box idle) then
                 idle <- ProjectionDelta (empty, cursor, cursor, false)
 
             idle
@@ -238,7 +238,7 @@ and
         if not disposed then
             disposed <- true
 
-            if not (isNull link) then
+            if not (Platform.isNull link) then
                 link.Detach ()
                 link <- null
 
@@ -287,7 +287,7 @@ type internal KeyLog<'K when 'K: equality>() =
 
     member _.Record(key: 'K, change: KeyChange) =
         for i in 0 .. readers.Count - 1 do
-            readers[i].Record(key, change)
+            (Platform.entryAt i readers).Record(key, change)
 
     member _.RecordValue(key: 'K) =
         for reader in readers do
@@ -297,4 +297,4 @@ type internal KeyLog<'K when 'K: equality>() =
     /// <summary>Flags every reader for a reset.</summary>
     member _.Reset() =
         for i in 0 .. readers.Count - 1 do
-            readers[i].MarkReset()
+            (Platform.entryAt i readers).MarkReset()

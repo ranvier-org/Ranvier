@@ -35,6 +35,7 @@
         <Compile Include="$(MSBuildThisFileDirectory)Batching.fs" Link="Batching.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)AsyncEdges.fs" Link="AsyncEdges.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)Projections.fs" Link="Projections.fs" />
+        <Compile Include="$(MSBuildThisFileDirectory)TrimmedPass.fs" Link="TrimmedPass.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)Lookups.fs" Link="Lookups.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)MemoScopes.fs" Link="MemoScopes.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)MemoPurity.fs" Link="MemoPurity.fs" />
@@ -46,8 +47,10 @@
         <Compile Include="$(MSBuildThisFileDirectory)TimedTestClock.fs" Link="TimedTestClock.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)Timed.fs" Link="Timed.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)PreviousValues.fs" Link="PreviousValues.fs" />
+        <Compile Include="$(MSBuildThisFileDirectory)../TraceTextCases.fs" Link="TraceTextCases.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)Texts.fs" Link="Texts.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)FailureOrigins.fs" Link="FailureOrigins.fs" />
+        <Compile Include="$(MSBuildThisFileDirectory)NullChecks.fs" Link="NullChecks.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)Editables.fs" Link="Editables.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)MvuBridge.fs" Link="MvuBridge.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)QuerySupport.fs" Link="QuerySupport.fs" />

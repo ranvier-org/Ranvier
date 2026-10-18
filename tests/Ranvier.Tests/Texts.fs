@@ -9,6 +9,10 @@ let tests =
     testList
         "Texts"
         [
+#if RANVIER_TRACE
+            for name, expected, value in TraceTextCases.cases () do
+                test ("trace text: " + name) { Expect.equal (value.ToString ()) expected "the explicit diagnostic text" }
+#endif
             test "ThreadAffinity and FlightPolicy print their case names" {
                 Expect.equal (Guarded.ToString ()) "Guarded" "Guarded"
                 Expect.equal (Unchecked.ToString ()) "Unchecked" "Unchecked"
@@ -17,6 +21,8 @@ let tests =
                 Expect.equal (KeepLatest.ToString ()) "KeepLatest" "KeepLatest"
                 Expect.equal (FlightPolicy.Queue.ToString ()) "Queue" "Queue"
                 Expect.equal (FinishCurrent.ToString ()) "FinishCurrent" "FinishCurrent"
+                Expect.equal (Drop.ToString ()) "Drop" "Drop"
+                Expect.equal (DropWhilePending.ToString ()) "DropWhilePending" "DropWhilePending"
             }
 
             test "a Reading prints its case and payload, quoting a string" {

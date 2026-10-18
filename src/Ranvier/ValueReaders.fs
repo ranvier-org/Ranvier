@@ -42,8 +42,7 @@ type internal ValueRow<'K, 'V>(graph: Graph, entry: RowEntry<'K, 'V>, touched: V
 
 /// <summary>Shared settled-value observation, active only while value readers exist.</summary>
 [<Sealed>]
-type internal ProjectionValues<'K, 'V when 'K: equality>(graph: Graph, find: 'K -> RowEntry<'K, 'V>, readKeys: unit -> 'K[], changed: 'K -> unit) as this
-    =
+type internal ProjectionValues<'K, 'V when 'K: equality>(graph: Graph, find: 'K -> RowEntry<'K, 'V>, readKeys: unit -> 'K[], changed: 'K -> unit) =
     let id = graph.NextId ()
     let observers = ObserverSet ()
     do Tracer.Bind (observers, graph, id)
@@ -70,17 +69,18 @@ type internal ProjectionValues<'K, 'V when 'K: equality>(graph: Graph, find: 'K 
         if not (obj.ReferenceEquals (keys, current)) then
             seen.Clear ()
 
-            for key in current do
+            for i in 0 .. current.Length - 1 do
+                let key = Platform.itemAt i current
                 seen.Add key |> ignore
                 let entry = find key
                 let old = rows.Find key
 
                 if
-                    not (isNull entry)
-                    && (isNull (box old)
+                    not (Platform.isNull entry)
+                    && (Platform.isNull (box old)
                         || not (obj.ReferenceEquals (old.Entry, entry)))
                 then
-                    if not (isNull (box old)) then
+                    if not (Platform.isNull (box old)) then
                         this.Detach old
 
                     let row = ValueRow (graph, entry, touched)
@@ -114,7 +114,7 @@ type internal ProjectionValues<'K, 'V when 'K: equality>(graph: Graph, find: 'K 
 
                 try
                     while processed < queue.Count do
-                        let row = queue[processed]
+                        let row = Platform.entryAt processed queue
                         row.Queued <- false
 
                         try
@@ -154,7 +154,7 @@ type internal ProjectionValues<'K, 'V when 'K: equality>(graph: Graph, find: 'K 
         let row = rows.Find entry.Key
 
         if
-            not (isNull (box row))
+            not (Platform.isNull (box row))
             && obj.ReferenceEquals (row.Entry, entry)
         then
             this.Detach row
@@ -165,7 +165,7 @@ type internal ProjectionValues<'K, 'V when 'K: equality>(graph: Graph, find: 'K 
     member _.TryAccepted(key: 'K) =
         let row = rows.Find key
 
-        if not (isNull (box row)) && row.HasValue then
+        if not (Platform.isNull (box row)) && row.HasValue then
             ValueSome row.Value
         else
             ValueNone
@@ -190,7 +190,7 @@ type internal ProjectionValues<'K, 'V when 'K: equality>(graph: Graph, find: 'K 
         member _.RemoveObserver c =
             observers.Remove c
 
-        member _.UpdateIfNecessary() =
+        member this.UpdateIfNecessary() =
             if not disposed then
                 try
                     graph.RunUntracked (fun () -> this.Refresh (readKeys ()))

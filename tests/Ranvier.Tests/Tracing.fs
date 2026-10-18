@@ -21,6 +21,14 @@ let private traced () =
 
 exception private Boom
 
+type private PayloadText =
+    {
+        Count: int
+    }
+
+    override this.ToString() =
+        "count=" + string this.Count
+
 [<CustomEquality; NoComparison>]
 type private ThrowingEquals =
     | ThrowingEquals of int
@@ -60,6 +68,51 @@ let private here (line: string) =
     System.IO.Path.GetFileName __SOURCE_FILE__
     + ":"
     + line
+
+/// <summary>
+/// The second <c>RunStart</c> of an async memo under <c>Drop</c> and the last dirty <c>Mark</c> of the memo before it.
+/// A change during the first flight is dropped at a read when <c>atRead</c> is true, else at the settle; a change
+/// after the settle starts the second run.
+/// </summary>
+let private runAfterDrop (atRead: bool) =
+    use g =
+        new Graph (
+            { GraphOptions.Default with
+                FlightPolicy = Drop
+            }
+        )
+
+    use _ = g.Activate ()
+    let s = createSignal 1
+    let flights = ResizeArray<TaskCompletionSource<int>>()
+
+    let a =
+        createAsync (fun _ _ ->
+            s.Value |> ignore
+            let flight = TaskCompletionSource<int>()
+            flights.Add flight
+            flight.Task)
+
+    let id = (a :> INode).Id
+    a.TryValue |> ignore
+    s.Value <- 2
+
+    if atRead then
+        a.TryValue |> ignore
+
+    flights[0].SetResult 10
+    s.Value <- 3
+    a.TryValue |> ignore
+
+    let run =
+        ofKind TraceEventKind.RunStart g
+        |> Array.findBack (fun e -> e.Node = id)
+
+    let mark =
+        ofKind TraceEventKind.Mark g
+        |> Array.findBack (fun e -> e.Node = id && e.Arg = 2 && e.Seq < run.Seq)
+
+    run, mark
 #endif
 
 [<Tests>]
@@ -1239,7 +1292,9 @@ let tests =
 #if !FABLE_COMPILER
                 Expect.equal (TraceModel.valueText (box [| 1; 2 |])) "[|1; 2|]" "an array lists its elements"
                 Expect.equal (TraceModel.valueText (box [ "a"; "b" ])) "[\"a\"; \"b\"]" "a list quotes its strings"
-                Expect.equal (TraceModel.valueText (box (Some 1))) "Some 1" "any other value as its %A text"
+                Expect.equal (TraceModel.valueText (box (Some 1))) "Some(1)" "an option uses its ToString text"
+                Expect.equal (TraceModel.valueText (box { Count = 3 })) "count=3" "a record's custom ToString is respected"
+                Expect.equal (TraceModel.valueText null) "null" "a null payload"
 #endif
                 let long = TraceModel.valueText (box [ 1..100 ])
                 Expect.equal long.Length 60 "a long value is truncated"
@@ -1329,6 +1384,212 @@ let tests =
                 | other -> failtestf "expected one dropped flight, got %A" other
             }
 
+            test "Queue drops a failure that settles while the newest run waits on a source as Suspended" {
+                use g =
+                    new Graph (
+                        { GraphOptions.Default with
+                            FlightPolicy = Queue
+                        }
+                    )
+
+                use _ = g.Activate ()
+                let s = createSignal 1
+                let gate = TaskCompletionSource<int>()
+                let source = createAsync (fun _ _ -> gate.Task)
+                let flights = ResizeArray<TaskCompletionSource<int>>()
+
+                let a =
+                    createAsync (fun _ _ ->
+                        if s.Value = 2 then
+                            source.Value |> ignore
+
+                        let flight = TaskCompletionSource<int>()
+                        flights.Add flight
+                        flight.Task)
+
+                a.TryValue |> ignore
+                s.Value <- 2
+                a.TryValue |> ignore
+                flights[0].SetException(exn "stale")
+
+                match (Trace.waitingOn g a).Flights with
+                | [ {
+                        State = TraceFlightState.Dropped (_, reason)
+                    } ] -> Expect.equal reason TraceDropReason.Suspended "dropped while the newest run waits on the source"
+                | other -> failtestf "expected one dropped flight, got %A" other
+            }
+
+            test "FinishCurrent's trailing run is notified with the dropped failure as its cause" {
+                use g =
+                    new Graph (
+                        { GraphOptions.Default with
+                            FlightPolicy = FinishCurrent
+                        }
+                    )
+
+                use _ = g.Activate ()
+                let s = createSignal 1
+                let flights = ResizeArray<TaskCompletionSource<int>>()
+
+                let a =
+                    createAsync (fun _ _ ->
+                        s.Value |> ignore
+                        let flight = TaskCompletionSource<int>()
+                        flights.Add flight
+                        flight.Task)
+
+                let id = (a :> INode).Id
+                a.TryValue |> ignore
+                s.Value <- 2
+                a.TryValue |> ignore
+                createEffect (fun () -> a.TryValue |> ignore)
+                flights[0].SetException(exn "stale")
+
+                let drop =
+                    ofKind TraceEventKind.FlightDrop g
+                    |> Array.find (fun e -> e.Node = id)
+
+                let mark =
+                    ofKind TraceEventKind.Mark g
+                    |> Array.filter (fun e -> e.Other = id && e.Seq > drop.Seq)
+                    |> Array.head
+
+                Expect.equal mark.Cause drop.Seq "the notification names the dropped failure"
+            }
+
+            test "Drop records a run dropped at a read and a change dropped at the settle" {
+                use g =
+                    new Graph (
+                        { GraphOptions.Default with
+                            FlightPolicy = Drop
+                        }
+                    )
+
+                use _ = g.Activate ()
+                let s = createSignal 1
+                let flights = ResizeArray<TaskCompletionSource<int>>()
+
+                let a =
+                    createAsync (fun _ _ ->
+                        s.Value |> ignore
+                        let flight = TaskCompletionSource<int>()
+                        flights.Add flight
+                        flight.Task)
+
+                let id = (a :> INode).Id
+                a.TryValue |> ignore
+                s.Value <- 2
+                a.TryValue |> ignore
+
+                let dropped () =
+                    ofKind TraceEventKind.RunDropped g
+                    |> Array.filter (fun e -> e.Node = id)
+                    |> Array.map (fun e -> e.Arg, e.Flag)
+
+                Expect.equal (dropped ()) [| 1, 0 |] "one run dropped at the read, during flight 1"
+                Expect.isEmpty (ofKind TraceEventKind.RunDeferred g) "no deferred run"
+                s.Value <- 3
+                flights[0].SetResult 10
+                Expect.equal (dropped ()) [| 1, 0; 1, 1 |] "the unpulled change is dropped at the settle"
+
+                let settle =
+                    ofKind TraceEventKind.Settle g
+                    |> Array.find (fun e -> e.Node = id)
+
+                Expect.equal settle.Flag 0 "the settle is not held"
+            }
+
+            test "Drop records one run dropped for a change discarded at a read and settled with no later change" {
+                use g =
+                    new Graph (
+                        { GraphOptions.Default with
+                            FlightPolicy = Drop
+                        }
+                    )
+
+                use _ = g.Activate ()
+                let s = createSignal 1
+                let flights = ResizeArray<TaskCompletionSource<int>>()
+
+                let a =
+                    createAsync (fun _ _ ->
+                        s.Value |> ignore
+                        let flight = TaskCompletionSource<int>()
+                        flights.Add flight
+                        flight.Task)
+
+                let id = (a :> INode).Id
+                a.TryValue |> ignore
+                s.Value <- 2
+                a.TryValue |> ignore
+                flights[0].SetResult 10
+
+                let dropped =
+                    ofKind TraceEventKind.RunDropped g
+                    |> Array.filter (fun e -> e.Node = id)
+                    |> Array.map (fun e -> e.Arg, e.Flag)
+
+                Expect.equal dropped [| 1, 0 |] "the change is dropped once, at the read"
+            }
+
+            test "Drop names the next change as the cause of the run after a change dropped at a read" {
+                let run, mark = runAfterDrop true
+                Expect.equal run.Arg 2 "the change after the settle runs the memo"
+                Expect.equal run.Cause mark.Seq "the run's cause is the change after the settle"
+            }
+
+            test "Drop names the next change as the cause of the run after a change dropped at the settle" {
+                let run, mark = runAfterDrop false
+                Expect.equal run.Arg 2 "the change after the settle runs the memo"
+                Expect.equal run.Cause mark.Seq "the run's cause is the change after the settle"
+            }
+
+            test "DropWhilePending drops a failure that settles after a discarded change as Retried" {
+                use g =
+                    new Graph (
+                        { GraphOptions.Default with
+                            FlightPolicy = DropWhilePending
+                        }
+                    )
+
+                use _ = g.Activate ()
+                let s = createSignal 1
+                let flights = ResizeArray<TaskCompletionSource<int>>()
+
+                let a =
+                    createAsync (fun _ _ ->
+                        s.Value |> ignore
+                        let flight = TaskCompletionSource<int>()
+                        flights.Add flight
+                        flight.Task)
+
+                let id = (a :> INode).Id
+                a.TryValue |> ignore
+                s.Value <- 2
+                a.TryValue |> ignore
+                createEffect (fun () -> a.TryValue |> ignore)
+                flights[0].SetException(exn "stale")
+
+                let drop =
+                    ofKind TraceEventKind.FlightDrop g
+                    |> Array.find (fun e -> e.Node = id)
+
+                Expect.equal (enum<TraceDropReason> drop.Flag) TraceDropReason.Retried "dropped for the replacing run"
+
+                let mark =
+                    ofKind TraceEventKind.Mark g
+                    |> Array.filter (fun e -> e.Other = id && e.Seq > drop.Seq)
+                    |> Array.head
+
+                Expect.equal mark.Cause drop.Seq "the replacing run's notification names the dropped failure"
+
+                let runs =
+                    ofKind TraceEventKind.RunStart g
+                    |> Array.filter (fun e -> e.Node = id)
+
+                Expect.equal (runs |> Array.last).Arg 2 "the effect's read starts the replacing run"
+            }
+
             test "waitingOn reports superseded, settled and failed flights" {
                 use g =
                     new Graph (
@@ -1410,5 +1671,223 @@ let tests =
                 Expect.isFalse (bindings |> Array.exists sources.ContainsKey) "disposal removes the source edges"
                 Expect.isEmpty (Trace.reconcile g) "the removed edges fold to the live lists"
             }
+
+            testList
+                "Rerun guard"
+                [
+                    test "an effect that writes its own dependency on every run raises, naming the effect" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let x = Signal (g, 0)
+                        let mutable runaway = true
+                        let mutable runs = 0
+
+                        let message =
+                            try
+                                Trace.named "bumper" (fun () ->
+                                    createEffect (fun () ->
+                                        runs <- runs + 1
+                                        let v = x.Value
+
+                                        if runaway && runs < 5000 then
+                                            x.Value <- v + 1))
+
+                                None
+                            with :? System.InvalidOperationException as ex ->
+                                Some ex.Message
+
+                        Expect.isTrue message.IsSome "the runaway effect raises"
+                        Expect.equal runs RerunGuard.Limit "the guard raises in place of the run after the limit"
+                        Expect.stringContains message.Value "effect" "the message names the node's kind"
+                        Expect.stringContains message.Value "\"bumper\"" "the message names the effect's label"
+
+                        runaway <- false
+                        let other = Signal (g, 0)
+                        let mutable seen = -1
+                        createEffect (fun () -> seen <- other.Value)
+                        other.Value <- 5
+                        Expect.equal seen 5 "a later write and flush run"
+                        Expect.equal runs (RerunGuard.Limit + 1) "the effect left queued runs once in the next flush"
+                        Expect.equal x.Value RerunGuard.Limit "the queued run reads the last write"
+                    }
+
+                    test "a keyOf that writes its projection's source on every call raises once an effect reads the projection" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let counter = Signal (g, 0)
+                        let items = Signal (g, [| 1; 2 |])
+                        let mutable bumping = true
+
+                        let proj =
+                            Trace.named "rows" (fun () ->
+                                createProjection
+                                    (fun x ->
+                                        if bumping && x = 1 && counter.Value < 5000 then
+                                            counter.Value <- counter.Value + 1
+
+                                        x)
+                                    (fun x -> x * 10)
+                                    (fun () ->
+                                        counter.Value |> ignore
+                                        items.Value :> seq<_>))
+
+                        let mutable reads = 0
+
+                        let message =
+                            try
+                                createEffect (fun () ->
+                                    reads <- reads + 1
+                                    proj.Keys |> ignore)
+
+                                None
+                            with :? System.InvalidOperationException as ex ->
+                                Some ex.Message
+
+                        Expect.isTrue message.IsSome "the runaway projection raises"
+                        Expect.isLessThan counter.Peek 5000 "the guard raises before the cap"
+                        Expect.stringContains message.Value "projection" "the message names the node's kind"
+                        Expect.stringContains message.Value "\"rows\"" "the message names the projection's label"
+
+                        bumping <- false
+                        items.Value <- [| 1; 2; 3 |]
+                        Expect.equal proj.Keys [| 1; 2; 3 |] "a later write runs the pass"
+                        Expect.isGreaterThan reads 1 "the reader runs again"
+                    }
+
+                    test "a guarded self-write of ten steps runs to completion" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let x = Signal (g, 0)
+                        let mutable runs = 0
+
+                        createEffect (fun () ->
+                            runs <- runs + 1
+
+                            if x.Value < 10 then
+                                x.Value <- x.Value + 1)
+
+                        Expect.equal x.Value 10 "the effect stops at ten"
+                        Expect.equal runs 11 "one run per step and a last run that writes nothing"
+                    }
+
+                    test "a flush of many distinct effects runs each once" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let s = Signal (g, 0)
+                        let count = 20 * RerunGuard.Limit
+                        let mutable total = 0
+
+                        batch (fun () ->
+                            for _ in 1..count do
+                                createEffect (fun () ->
+                                    s.Value |> ignore
+                                    total <- total + 1))
+
+                        Expect.equal total count "every effect runs in the batch's flush"
+                        s.Value <- 1
+                        Expect.equal total (2 * count) "every effect runs again in the write's flush"
+                    }
+
+                    test "an effect run once in each of many flushes runs every time" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let s = Signal (g, 0)
+                        let mutable runs = 0
+
+                        createEffect (fun () ->
+                            s.Value |> ignore
+                            runs <- runs + 1)
+
+                        for i in 1 .. 2 * RerunGuard.Limit do
+                            s.Value <- i
+
+                        Expect.equal runs (2 * RerunGuard.Limit + 1) "the limit counts runs within one flush"
+                    }
+
+                    test "a chain of writers that each wake one reader in turn runs to completion" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let count = RerunGuard.Limit + RerunGuard.Limit / 2
+                        let shared = Signal (g, 0)
+                        let links = Array.init (count + 1) (fun _ -> Signal (g, 0))
+                        let mutable readerRuns = 0
+
+                        createEffect (fun () ->
+                            shared.Value |> ignore
+                            readerRuns <- readerRuns + 1)
+
+                        for i in 1..count do
+                            createEffect (fun () ->
+                                let v = links[i - 1].Value
+
+                                if v > 0 then
+                                    shared.Value <- v * 10000 + i
+                                    links[i].Value <- v)
+
+                        links[0].Value <- 1
+                        Expect.equal links[count].Value 1 "the chain reaches its end"
+                        Expect.equal readerRuns (count + 1) "the reader runs once per writer"
+                    }
+
+                    test "a chain of writers behind an unchanged memo runs to completion" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let count = RerunGuard.Limit + RerunGuard.Limit / 2
+                        let shared = Signal (g, 0)
+                        let nonNegative = createMemo (fun _ -> shared.Value >= 0)
+                        let links = Array.init (count + 1) (fun _ -> Signal (g, 0))
+                        let mutable readerRuns = 0
+
+                        createEffect (fun () ->
+                            nonNegative.Value |> ignore
+                            readerRuns <- readerRuns + 1)
+
+                        for i in 1..count do
+                            createEffect (fun () ->
+                                let v = links[i - 1].Value
+
+                                if v > 0 then
+                                    shared.Value <- v * 10000 + i
+                                    links[i].Value <- v)
+
+                        links[0].Value <- 1
+                        Expect.equal links[count].Value 1 "the chain reaches its end"
+                        Expect.equal readerRuns 1 "the reader's checks find the memo unchanged"
+                    }
+
+                    test "two effects writing each other's dependencies raise, naming a cycle" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let x = Signal (g, 0)
+                        let y = Signal (g, 0)
+                        let mutable runs = 0
+                        let cap = 3 * RerunGuard.CycleLimit
+
+                        let message =
+                            try
+                                batch (fun () ->
+                                    createEffect (fun () ->
+                                        runs <- runs + 1
+                                        let v = y.Value
+
+                                        if runs < cap then
+                                            x.Value <- v + 1)
+
+                                    createEffect (fun () ->
+                                        runs <- runs + 1
+                                        let v = x.Value
+
+                                        if runs < cap then
+                                            y.Value <- v + 1))
+
+                                None
+                            with :? System.InvalidOperationException as ex ->
+                                Some ex.Message
+
+                        Expect.isTrue message.IsSome "the cycle raises"
+                        Expect.isLessThan runs cap "the guard raises before the cap"
+                        Expect.stringContains message.Value "cycle" "the message names a cycle"
+                    }
+                ]
 #endif
         ]

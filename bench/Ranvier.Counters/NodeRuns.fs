@@ -27,6 +27,11 @@ type NodeMeasurement =
         /// </summary>
         HeapUsedBytes: float
         /// <summary>
+        /// Growth of the heap spaces holding bytecode and machine code over the region. Positive when V8 compiled
+        /// inside the region; zero from harnesses that predate the field.
+        /// </summary>
+        CodeBytes: float
+        /// <summary>
         /// Garbage collections during the region.
         /// </summary>
         Gen0Collections: int
@@ -71,7 +76,23 @@ type NodePmcRun =
 /// V8 flags for every run. V8 compiles and collects on the main thread, and
 /// the heap after a region is the same in every run.
 /// </summary>
-let flags = [ "--expose-gc"; "--single-threaded" ]
+/// <remarks>
+/// Each semi-space is fixed at 32 MB, so every region starts with the same young-generation capacity on every
+/// machine and in every process.
+/// </remarks>
+let flags =
+    [
+        "--expose-gc"
+        "--single-threaded"
+        "--min-semi-space-size=32"
+        "--max-semi-space-size=32"
+    ]
+
+/// <summary>
+/// Whether V8 compiled inside the region of <c>m</c>.
+/// </summary>
+let compiled (m: NodeMeasurement) =
+    m.CodeBytes > 0.0
 
 /// <summary>
 /// The harness entry point of the build under <c>output</c>, <c>plain</c> or <c>counters</c>.
@@ -96,23 +117,34 @@ let private finish (p: Process) (resultFile: string) =
 
     JsonSerializer.Deserialize<NodeRun>(File.ReadAllText resultFile)
 
+/// <summary>The harness arguments selecting the scenarios whose name starts with <c>only</c>.</summary>
+let private onlyArgs (only: string option) =
+    only
+    |> Option.map (fun prefix -> [ "--only"; prefix ])
+    |> Option.defaultValue []
+
 /// <summary>
 /// Runs the harness <c>script</c> to completion.
 /// </summary>
-let run (node: string) (script: string) (scale: int) (resultFile: string) =
+let run (node: string) (script: string) (scale: int) (only: string option) (resultFile: string) =
     use p =
-        Process.Start (startInfo node script [ "--out"; resultFile; "--scale"; string scale ])
+        Process.Start (
+            startInfo
+                node
+                script
+                ([ "--out"; resultFile; "--scale"; string scale ]
+                 @ onlyArgs only)
+        )
 
     finish p resultFile
 
-/// <summary>
-/// Runs the harness <c>script</c> with <c>--handshake</c>. <c>mark</c> receives each region
-/// boundary, <c>true</c> for a <c>BEGIN</c>, while the harness waits for the reply. Fails
-/// unless every measured region was marked at both ends.
-/// </summary>
-let runHandshake (node: string) (script: string) (scale: int) (resultFile: string) (mark: bool -> int -> unit) =
+let private handshake (node: string) (script: string) (scale: int) (selection: string list) (resultFile: string) (mark: int -> bool -> int -> unit) =
     let info =
-        startInfo node script [ "--out"; resultFile; "--scale"; string scale; "--handshake" ]
+        startInfo
+            node
+            script
+            ([ "--out"; resultFile; "--scale"; string scale; "--handshake" ]
+             @ selection)
 
     info.RedirectStandardInput <- true
     info.RedirectStandardOutput <- true
@@ -122,36 +154,158 @@ let runHandshake (node: string) (script: string) (scale: int) (resultFile: strin
         p.StandardInput.Write '\n'
         p.StandardInput.Flush ()
 
-    let marked = HashSet<struct (bool * int)>()
-    let mutable line = p.StandardOutput.ReadLine ()
+    try
+        let completed = HashSet<int>()
+        let mutable active = None
+        let mutable line = p.StandardOutput.ReadLine ()
 
-    while not (isNull line) do
-        match line.Split ' ' with
-        | [| ("BEGIN" | "END") as marker; region |] ->
-            let isBegin = marker = "BEGIN"
-            mark isBegin (int region)
+        while not (isNull line) do
+            match line.Split ' ' with
+            | [| ("BEGIN" | "END") as marker; text |] ->
+                let region =
+                    match Int32.TryParse text with
+                    | true, region when region >= 0 -> region
+                    | _ -> failwith $"Invalid region: %s{line}."
 
-            marked.Add (struct (isBegin, int region))
-            |> ignore
+                let isBegin = marker = "BEGIN"
 
-            reply ()
-        | _ -> eprintfn "%s" line
+                if isBegin then
+                    if active.IsSome || completed.Contains region then
+                        failwith $"Overlapping or repeated region: %s{line}."
 
-        line <- p.StandardOutput.ReadLine ()
+                    active <- Some region
+                else
+                    if active <> Some region then
+                        failwith $"Unmatched region end: %s{line}."
 
-    let run = finish p resultFile
+                    active <- None
+                    completed.Add region |> ignore
 
-    for case in run.Cases do
-        for m in case.Measurements do
-            if
-                not (
-                    marked.Contains (struct (true, m.Region))
-                    && marked.Contains (struct (false, m.Region))
-                )
-            then
-                failwith $"Region %d{m.Region} of %s{case.Scenario}/%s{case.Engine} was not marked at both ends."
+                mark p.Id isBegin region
+                reply ()
+            | _ when
+                line.StartsWith ("BEGIN", StringComparison.Ordinal)
+                || line.StartsWith ("END", StringComparison.Ordinal)
+                ->
+                failwith $"Invalid region boundary: %s{line}."
+            | _ -> eprintfn "%s" line
 
-    run
+            line <- p.StandardOutput.ReadLine ()
+
+        if active.IsSome then
+            failwith "Node exited with an unfinished region."
+
+        let run = finish p resultFile
+
+        if run.ProcessId <> p.Id then
+            failwith "The Node result process ID does not match the measured process."
+
+        let measured = HashSet<int>()
+
+        for case in run.Cases do
+            for m in case.Measurements do
+                if m.Region < 0 || not (measured.Add m.Region) then
+                    failwith "The Node result contains an invalid or repeated measurement region."
+
+        if not (completed.SetEquals measured) then
+            failwith "The measured regions must exactly match the completed handshake regions."
+
+        run
+    with _ ->
+        try
+            if not p.HasExited then
+                p.Kill true
+        with :? InvalidOperationException when p.HasExited ->
+            ()
+
+        p.WaitForExit ()
+        reraise ()
+
+/// <summary>
+/// Runs the harness <c>script</c> with <c>--handshake</c>. <c>mark</c> receives the Node process ID and each region
+/// boundary, <c>true</c> for a <c>BEGIN</c>, while the harness waits for the reply. Fails
+/// unless every measured region was marked at both ends.
+/// </summary>
+let runHandshake (node: string) (script: string) (scale: int) (only: string option) (resultFile: string) (mark: int -> bool -> int -> unit) =
+    handshake node script scale (onlyArgs only) resultFile mark
+
+/// <summary>
+/// <c>runHandshake</c> over the cases of the scenario named <c>name</c>.
+/// </summary>
+let runScenario (node: string) (script: string) (scale: int) (name: string) (resultFile: string) (mark: int -> bool -> int -> unit) =
+    handshake node script scale [ "--scenario"; name ] resultFile mark
+
+/// <summary>
+/// The scenario names of the harness <c>script</c>, in measurement order. <c>None</c> when the harness predates
+/// <c>--list</c>.
+/// </summary>
+let scenarios (node: string) (script: string) =
+    let info = startInfo node script [ "--list" ]
+    info.RedirectStandardOutput <- true
+    info.RedirectStandardError <- true
+    use p = Process.Start info
+    let error = p.StandardError.ReadToEndAsync ()
+    let output = p.StandardOutput.ReadToEnd ()
+    p.WaitForExit ()
+    error.Wait ()
+
+    let names =
+        output.Split (
+            '\n',
+            StringSplitOptions.RemoveEmptyEntries
+            ||| StringSplitOptions.TrimEntries
+        )
+
+    if p.ExitCode = 0 && names.Length > 0 then
+        Some names
+    else
+        None
+
+/// <summary>
+/// One run per scenario, as <c>(name, run, regions)</c>, merged into a single run: the cases of <c>name</c> from each
+/// run, in order, with regions renumbered from zero and <c>regions</c> keyed by the new numbers. The merged run takes
+/// the first run's process ID.
+/// </summary>
+let merge (parts: (string * NodeRun * IReadOnlyDictionary<int, 'T>)[]) =
+    if parts.Length = 0 then
+        failwith "No scenario runs to merge."
+
+    let regions = Dictionary<int, 'T>()
+
+    let cases =
+        [|
+            for name, run, recorded in parts do
+                let selected =
+                    run.Cases
+                    |> Array.filter (fun c -> c.Scenario = name)
+
+                if selected.Length = 0 then
+                    failwith $"The run for scenario '%s{name}' measured none of its cases."
+
+                for case in selected do
+                    yield
+                        { case with
+                            Measurements =
+                                case.Measurements
+                                |> Array.map (fun m ->
+                                    let region = regions.Count
+
+                                    match recorded.TryGetValue m.Region with
+                                    | true, counts -> regions.Add (region, counts)
+                                    | _ -> failwith $"Scenario '%s{name}' has no recorded region %d{m.Region}."
+
+                                    { m with Region = region })
+                        }
+        |]
+
+    let _, first, _ = parts[0]
+
+    {
+        ProcessId = first.ProcessId
+        CountersCompiled = first.CountersCompiled
+        Cases = cases
+    },
+    regions :> IReadOnlyDictionary<int, 'T>
 
 /// <summary>
 /// The Node.js version <c>node</c> reports.

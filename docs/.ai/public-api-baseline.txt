@@ -1,4 +1,6 @@
 field Ranvier.FlightPolicy+Tags CancelPrevious : Int32
+field Ranvier.FlightPolicy+Tags Drop : Int32
+field Ranvier.FlightPolicy+Tags DropWhilePending : Int32
 field Ranvier.FlightPolicy+Tags FinishCurrent : Int32
 field Ranvier.FlightPolicy+Tags KeepLatest : Int32
 field Ranvier.FlightPolicy+Tags Queue : Int32
@@ -10,6 +12,9 @@ field Ranvier.KeyChange value__ : Int32
 field Ranvier.PositionalChange`1+Tags InsertAt : Int32
 field Ranvier.PositionalChange`1+Tags Move : Int32
 field Ranvier.PositionalChange`1+Tags RemoveAt : Int32
+field Ranvier.ProjectionOptions CreateFirst : Ranvier.ProjectionOptions
+field Ranvier.ProjectionOptions None : Ranvier.ProjectionOptions
+field Ranvier.ProjectionOptions value__ : Int32
 field Ranvier.Reading`1+Tags Failed : Int32
 field Ranvier.Reading`1+Tags Pending : Int32
 field Ranvier.Reading`1+Tags Ready : Int32
@@ -46,7 +51,9 @@ member Ranvier.Api static createMemoWithComparer<1>(System.Collections.Generic.I
 member Ranvier.Api static createOptionMemo<1>(Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,Microsoft.FSharp.Core.FSharpOption`1<!!0>>) : Ranvier.Memo`1<Microsoft.FSharp.Core.FSharpOption`1<!!0>>
 member Ranvier.Api static createOwningMemoWithComparer<1>(System.Collections.Generic.IEqualityComparer`1<!!0>,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.FSharpValueOption`1<!!0>,!!0>) : Ranvier.Memo`1<!!0>
 member Ranvier.Api static createProjection<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!2>,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,System.Collections.Generic.IEnumerable`1<!!0>>) : Ranvier.Projection`2<!!1,!!2>
+member Ranvier.Api static createProjectionOnce<3>(Ranvier.ProjectionOptions,Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,!!0>,!!2>,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,System.Collections.Generic.IEnumerable`1<!!0>>) : Ranvier.Projection`2<!!1,!!2>
 member Ranvier.Api static createProjectionWith<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,!!0>,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,!!2>>,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,System.Collections.Generic.IEnumerable`1<!!0>>) : Ranvier.Projection`2<!!1,!!2>
+member Ranvier.Api static createProjectionWithOptions<3>(Ranvier.ProjectionOptions,Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,!!0>,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,!!2>>,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,System.Collections.Generic.IEnumerable`1<!!0>>) : Ranvier.Projection`2<!!1,!!2>
 member Ranvier.Api static createRoot<1>(Microsoft.FSharp.Core.FSharpFunc`2<Ranvier.Owner,!!0>) : !!0
 member Ranvier.Api static createSelector<1>(Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,!!0>) : Ranvier.Lookup`2<!!0,Boolean>
 member Ranvier.Api static createSignal<1>(!!0) : Ranvier.Signal`1<!!0>
@@ -120,11 +127,15 @@ member Ranvier.FlightPolicy GetHashCode() : Int32
 member Ranvier.FlightPolicy GetHashCode(System.Collections.IEqualityComparer) : Int32
 member Ranvier.FlightPolicy ToString() : String
 member Ranvier.FlightPolicy get_IsCancelPrevious() : Boolean
+member Ranvier.FlightPolicy get_IsDrop() : Boolean
+member Ranvier.FlightPolicy get_IsDropWhilePending() : Boolean
 member Ranvier.FlightPolicy get_IsFinishCurrent() : Boolean
 member Ranvier.FlightPolicy get_IsKeepLatest() : Boolean
 member Ranvier.FlightPolicy get_IsQueue() : Boolean
 member Ranvier.FlightPolicy get_Tag() : Int32
 member Ranvier.FlightPolicy static get_CancelPrevious() : Ranvier.FlightPolicy
+member Ranvier.FlightPolicy static get_Drop() : Ranvier.FlightPolicy
+member Ranvier.FlightPolicy static get_DropWhilePending() : Ranvier.FlightPolicy
 member Ranvier.FlightPolicy static get_FinishCurrent() : Ranvier.FlightPolicy
 member Ranvier.FlightPolicy static get_KeepLatest() : Ranvier.FlightPolicy
 member Ranvier.FlightPolicy static get_Queue() : Ranvier.FlightPolicy
@@ -214,7 +225,9 @@ member Ranvier.NotReadyException get_source() : Ranvier.INode
 member Ranvier.Owner .ctor() : Void
 member Ranvier.Owner Attach(System.IDisposable) : Void
 member Ranvier.Owner Dispose() : Void
+member Ranvier.Owner ErrorsFrom(Int32) : System.Exception[]
 member Ranvier.Owner OnCleanup(System.Action) : Void
+member Ranvier.Owner get_ErrorCount() : Int32
 member Ranvier.Owner get_Errors() : System.Collections.Generic.IEnumerable`1<System.Exception>
 member Ranvier.Owner get_IsDisposed() : Boolean
 member Ranvier.PositionalChange`1 CompareTo(Object) : Int32
@@ -248,6 +261,7 @@ member Ranvier.ProjectionDelta`1 get_Positional() : System.Collections.Generic.I
 member Ranvier.ProjectionDelta`1 get_PreviousKeys() : !0[]
 member Ranvier.ProjectionModule static choose<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,Microsoft.FSharp.Core.FSharpOption`1<!!1>>,Ranvier.Projection`2<!!2,!!0>) : Ranvier.Projection`2<!!2,!!1>
 member Ranvier.ProjectionModule static countBy<2>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,Boolean>,Ranvier.Projection`2<!!1,!!0>) : Ranvier.Memo`1<Int32>
+member Ranvier.ProjectionModule static ensureUniqueKeys<2>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,System.Collections.Generic.IEnumerable`1<!!0>) : Void
 member Ranvier.ProjectionModule static exists<2>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,Boolean>,Ranvier.Projection`2<!!1,!!0>) : Ranvier.Memo`1<Boolean>
 member Ranvier.ProjectionModule static filter<2>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,Boolean>,Ranvier.Projection`2<!!1,!!0>) : Ranvier.Projection`2<!!1,!!0>
 member Ranvier.ProjectionModule static fold<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,Microsoft.FSharp.Core.FSharpFunc`2<!!1,!!0>>,!!0,Ranvier.Projection`2<!!2,!!1>) : Ranvier.Memo`1<!!0>
@@ -265,6 +279,7 @@ member Ranvier.ProjectionModule static take<2>(Microsoft.FSharp.Core.FSharpFunc`
 member Ranvier.ProjectionReader`1 Dispose() : Void
 member Ranvier.ProjectionReader`1 Read() : Ranvier.ProjectionDelta`1<!0>
 member Ranvier.Projection`2 AsObservableCollection() : System.Collections.ObjectModel.ObservableCollection`1<!1>
+member Ranvier.Projection`2 ChangedSince(Int32) : Microsoft.FSharp.Core.FSharpValueOption`1<System.ValueTuple`3<Int32,Int32,Int32>>
 member Ranvier.Projection`2 Dispose() : Void
 member Ranvier.Projection`2 Get(!0) : !1
 member Ranvier.Projection`2 NewKeyReader() : Ranvier.ProjectionReader`1<!0>
@@ -276,6 +291,7 @@ member Ranvier.Projection`2 get_Count() : Int32
 member Ranvier.Projection`2 get_Error() : System.Exception
 member Ranvier.Projection`2 get_ErrorOrigin() : Ranvier.INode
 member Ranvier.Projection`2 get_Keys() : !0[]
+member Ranvier.Projection`2 get_KeysVersion() : Int32
 member Ranvier.Projection`2 get_PendingKeys() : !0[]
 member Ranvier.Projection`2 get_Runs() : Int32
 member Ranvier.Projection`2 get_Snapshot() : System.Collections.Generic.IReadOnlyDictionary`2<!0,!1>
@@ -445,6 +461,7 @@ type Ranvier.PositionalChange`1+Tags : System.Object
 type Ranvier.Previous`1 : System.ValueType
 type Ranvier.ProjectionDelta`1 : System.Object
 type Ranvier.ProjectionModule : System.Object
+type Ranvier.ProjectionOptions : System.Enum
 type Ranvier.ProjectionReader`1 : System.Object
 type Ranvier.ProjectionReader`1 implements Ranvier.IOwned
 type Ranvier.ProjectionReader`1 implements System.IDisposable

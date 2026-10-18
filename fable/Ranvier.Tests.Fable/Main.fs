@@ -28,6 +28,7 @@ let all =
             testList "AmbientGraph.fs" [ Ranvier.Tests.AmbientGraph.tests ]
             testList "Owners.fs" [ Ranvier.Tests.Owners.tests ]
             testList "Equality.fs" [ Ranvier.Tests.Equality.tests ]
+            testList "ValueReaders.fs" [ Ranvier.Tests.ValueReaders.tests ]
             testList "Async.fs" [ Ranvier.Tests.Async.tests ]
             testList "Boundaries.fs" [ Ranvier.Tests.Boundaries.tests ]
             testList "Threading.fs" [ Ranvier.Tests.Threading.tests ]
@@ -60,7 +61,9 @@ let all =
                     Ranvier.Tests.Projections.tests
                     Ranvier.Tests.Projections.summaryTests
                     Ranvier.Tests.Projections.deltaReaderTests
+                    Ranvier.Tests.Projections.rowOptionTests
                 ]
+            testList "TrimmedPass.fs" [ Ranvier.Tests.TrimmedPass.tests ]
             testList "Lookups.fs" [ Ranvier.Tests.Lookups.tests ]
             testList "MemoScopes.fs" [ Ranvier.Tests.MemoScopes.tests ]
             testList "MemoPurity.fs" [ Ranvier.Tests.MemoPurity.tests ]
@@ -94,6 +97,7 @@ let all =
                 ]
             testList "Texts.fs" [ Ranvier.Tests.Texts.tests ]
             testList "FailureOrigins.fs" [ Ranvier.Tests.FailureOrigins.tests ]
+            testList "NullChecks.fs" [ Ranvier.Tests.NullChecks.tests ]
             testList "Editables.fs" [ Ranvier.Tests.Editables.tests ]
             testList "MvuBridge.fs" [ Ranvier.Tests.MvuBridge.tests ]
             testList "QueryComposition.fs" [ Ranvier.Tests.QueryComposition.tests ]

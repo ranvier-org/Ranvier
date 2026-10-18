@@ -24,18 +24,19 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Bindings.fs | 17 | 17 | 17 | 17 | 17 | 17 | 0 | 0 |
 | EffectSplit.fs | 26 | 26 | 21 | 26 | 26 | 21 | 0 | 0 |
 | AmbientGraph.fs | 6 | 6 | 6 | 6 | 6 | 6 | 0 | 0 |
-| Owners.fs | 14 | 14 | 14 | 14 | 14 | 14 | 0 | 0 |
+| Owners.fs | 21 | 21 | 21 | 21 | 21 | 21 | 0 | 0 |
 | Equality.fs | 25 | 24 | 24 | 25 | 24 | 24 | 8 | 0 |
-| Async.fs | 30 | 22 | 7 | 30 | 22 | 7 | 2 | 0 |
+| ValueReaders.fs | 21 | 21 | 21 | 21 | 21 | 21 | 0 | 0 |
+| Async.fs | 52 | 44 | 9 | 52 | 44 | 9 | 4 | 0 |
 | Boundaries.fs | 27 | 27 | 23 | 27 | 27 | 23 | 1 | 0 |
 | Threading.fs | 3 | 3 | 3 | 3 | 3 | 3 | 26 | 0 |
 | Edges.fs | 5 | 5 | 5 | 5 | 5 | 5 | 0 | 0 |
 | Invalidation.fs | 4 | 4 | 4 | 4 | 4 | 4 | 0 | 0 |
 | Lifetime.fs | 6 | 6 | 6 | 6 | 6 | 6 | 0 | 0 |
 | Retention.fs | 2 | 2 | 2 | 2 | 2 | 2 | 11 | 0 |
-| Tracing.fs | 2 | 2 | 2 | 67 | 63 | 58 | 1 | 0 |
+| Tracing.fs | 2 | 2 | 2 | 82 | 77 | 67 | 1 | 0 |
 | TraceModelTests.fs | 0 | 0 | 0 | 12 | 12 | 12 | 2 | 0 |
-| Observers.fs | 45 | 45 | 45 | 45 | 45 | 45 | 0 | 0 |
+| Observers.fs | 24 | 24 | 24 | 24 | 24 | 24 | 0 | 0 |
 | Api.fs | 7 | 7 | 7 | 7 | 7 | 7 | 2 | 0 |
 | FanOut.fs | 8 | 8 | 8 | 8 | 8 | 8 | 0 | 0 |
 | Reentrancy.fs | 12 | 12 | 12 | 12 | 12 | 12 | 0 | 0 |
@@ -46,7 +47,8 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Reads.fs | 14 | 14 | 14 | 14 | 14 | 14 | 0 | 0 |
 | Batching.fs | 11 | 11 | 11 | 11 | 11 | 11 | 0 | 0 |
 | AsyncEdges.fs | 25 | 22 | 7 | 25 | 22 | 7 | 4 | 0 |
-| Projections.fs | 102 | 102 | 102 | 102 | 102 | 102 | 10 | 0 |
+| Projections.fs | 116 | 116 | 116 | 116 | 116 | 116 | 10 | 0 |
+| TrimmedPass.fs | 59 | 59 | 59 | 59 | 59 | 59 | 0 | 0 |
 | Lookups.fs | 31 | 31 | 31 | 31 | 31 | 31 | 0 | 0 |
 | MemoScopes.fs | 24 | 24 | 22 | 24 | 24 | 22 | 0 | 0 |
 | MemoPurity.fs | 13 | 13 | 13 | 13 | 13 | 13 | 0 | 0 |
@@ -54,11 +56,12 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | DischargeReentry.fs | 29 | 29 | 28 | 29 | 29 | 28 | 1 | 0 |
 | MapSemantics.fs | 42 | 42 | 41 | 42 | 42 | 41 | 0 | 1 |
 | Lenses.fs | 23 | 20 | 20 | 23 | 20 | 20 | 0 | 0 |
-| Combinators.fs | 126 | 126 | 126 | 126 | 126 | 126 | 1 | 0 |
+| Combinators.fs | 127 | 127 | 127 | 127 | 127 | 127 | 1 | 0 |
 | Timed.fs | 31 | 31 | 31 | 38 | 38 | 38 | 0 | 0 |
-| PreviousValues.fs | 11 | 11 | 11 | 11 | 11 | 11 | 14 | 0 |
-| Texts.fs | 5 | 5 | 5 | 5 | 5 | 5 | 1 | 0 |
+| PreviousValues.fs | 12 | 12 | 12 | 12 | 12 | 12 | 15 | 0 |
+| Texts.fs | 5 | 5 | 5 | 43 | 43 | 43 | 1 | 0 |
 | FailureOrigins.fs | 16 | 16 | 15 | 16 | 16 | 15 | 2 | 0 |
+| NullChecks.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
 | Editables.fs | 17 | 17 | 17 | 17 | 17 | 17 | 1 | 0 |
 | MvuBridge.fs | 7 | 7 | 7 | 7 | 7 | 7 | 1 | 0 |
 | QueryComposition.fs | 2 | 2 | 2 | 2 | 2 | 2 | 0 | 0 |
@@ -68,7 +71,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | QueryDictionary.fs | 2 | 2 | 2 | 2 | 2 | 2 | 0 | 0 |
 | QueryErgonomics.fs | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | QueryNavigationTests.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 897 | 879 | 835 | 981 | 959 | 910 | 88 | 1 |
+| **Total** | 1004 | 986 | 922 | 1141 | 1118 | 1044 | 91 | 1 |
 
 ## Tests.fs
 
@@ -185,7 +188,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## Owners.fs
 
-<details><summary>14 passed in every build and delivery that runs them</summary>
+<details><summary>21 passed in every build and delivery that runs them</summary>
 
 - disposing a root disposes the effects created inside it
 - a cleanup runs before the next run of the same effect
@@ -194,6 +197,11 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a cleanup registered after an attached disposable runs before it is disposed
 - nested roots are torn down depth-first
 - teardown order is last-created-first
+- cleanups and children interleave in reverse acquisition order
+- a first cleanup registered after two children runs before both
+- each run of an effect discharges the cleanups that run registered
+- a cleanup registered while 1 cleanups are discharged joins the emptied scope
+- a cleanup registered while 2 cleanups are discharged joins the emptied scope
 - a throwing cleanup does not strand the rest of the scope
 - a cleanup registered on a disposed owner runs at once
 - a throwing cleanup registered on a disposed owner is recorded
@@ -201,6 +209,8 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - an effect created outside a root belongs to the graph root
 - a memo and an effect created in an effect body are disposed before the effect's next run
 - an effect body may create nodes conditionally and in a loop of varying length
+- ErrorsFrom returns the errors recorded at or after an index, in order
+- ErrorCount of a scope that recorded nothing is zero
 
 </details>
 
@@ -251,6 +261,34 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 </details>
 
+## ValueReaders.fs
+
+<details><summary>21 passed in every build and delivery that runs them</summary>
+
+- value readers have independent baselines and immutable deltas
+- a value reader merges repeated changes to a key in place
+- value readers preserve reactive cutoffs
+- value readers report first settlement but not pending/error states
+- new value readers retain rows settled before observation
+- value readers do not publish purity-rejected results
+- value readers preserve replacement identity and lifetimes
+- disposing the last value reader stops row observation
+- value readers coalesce batched writes
+- map deltas preserve row factories and cleanup
+- sparse updates traverse a two-map pipeline incrementally
+- value readers respect hidden and recovered predicate rows
+- value readers drain invalidations raised while settling
+- editable collections report direct edits and replacement identity
+- editable collections update two maps without replacing keys
+- editable collections preserve scope and throwing batch semantics
+- editable collections remove structurally equal keys
+- map factories consume batched source replacement deltas
+- map overflow recovery preserves replacement lifetimes
+- map cleanup failure recovery preserves replacement lifetimes
+- a map pass after a failed upstream pass has the latest keys
+
+</details>
+
 ## Async.fs
 
 | Build | Failed | Inline | Promise | Difference |
@@ -273,6 +311,26 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | untraced | FinishCurrent applies a flight with no change during it as KeepLatest does | passed | failed | Async results arrive on a later microtask |
 | untraced | FinishCurrent does not hold a run back behind a body suspended on a pending source | passed | failed | Async results arrive on a later microtask |
 | untraced | FinishCurrent starts the trailing run for an effect that reads the memo | passed | failed | Async results arrive on a later microtask |
+| untraced | Drop discards the changes during a flight and keeps its value | passed | failed | Async results arrive on a later microtask |
+| untraced | Drop discards a change no reader pulled during the flight | passed | failed | Async results arrive on a later microtask |
+| untraced | Drop runs the first change after the flight settles | passed | failed | Async results arrive on a later microtask |
+| untraced | Drop keeps a memo source current across a change discarded at the settle | passed | failed | Async results arrive on a later microtask |
+| untraced | Drop keeps a memo source current across a change discarded at a read | passed | failed | Async results arrive on a later microtask |
+| untraced | Drop starts an async memo source's flight at the settle and runs on its value | passed | failed | Async results arrive on a later microtask |
+| untraced | DropWhilePending starts an async memo source's flight at the settle and runs on its value | passed | failed | Async results arrive on a later microtask |
+| untraced | Drop settles a failed flight that discarded a change to its error | passed | failed | Async results arrive on a later microtask |
+| untraced | Drop does not hold a run back behind a body suspended on a pending source | passed | failed | Async results arrive on a later microtask |
+| untraced | Drop wakes an effect that read the memo while pending | passed | failed | Async results arrive on a later microtask |
+| untraced | DropWhilePending keeps a successful flight's value and discards the changes during it | passed | failed | Async results arrive on a later microtask |
+| untraced | DropWhilePending discards an unpulled change when the flight succeeds | passed | failed | Async results arrive on a later microtask |
+| untraced | DropWhilePending keeps a memo source current across a change discarded at the settle | passed | failed | Async results arrive on a later microtask |
+| untraced | DropWhilePending replaces a failed flight that discarded a change with one run | passed | failed | Async results arrive on a later microtask |
+| untraced | DropWhilePending replaces a failed flight that discarded an unpulled change | passed | failed | Async results arrive on a later microtask |
+| untraced | DropWhilePending settles a failed flight to its error when a memo source resolves unchanged | passed | failed | Async results arrive on a later microtask |
+| untraced | DropWhilePending settles a failed flight with no change during it to its error | passed | failed | Async results arrive on a later microtask |
+| untraced | DropWhilePending settles a failed replacing run to its error | passed | failed | Async results arrive on a later microtask |
+| untraced | DropWhilePending starts the replacing run for an effect that reads the memo | passed | failed | Async results arrive on a later microtask |
+| untraced | DropWhilePending does not hold a run back behind a body suspended on a pending source | passed | failed | Async results arrive on a later microtask |
 | untraced | a failed flight settles as Failed | passed | failed | Async results arrive on a later microtask |
 | untraced | a body suspended on a pending source waits on the node, not a task | passed | failed | Async results arrive on a later microtask |
 | untraced | pending propagates into a memo and an effect | passed | failed | Async results arrive on a later microtask |
@@ -296,6 +354,26 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | traced | FinishCurrent applies a flight with no change during it as KeepLatest does | passed | failed | Async results arrive on a later microtask |
 | traced | FinishCurrent does not hold a run back behind a body suspended on a pending source | passed | failed | Async results arrive on a later microtask |
 | traced | FinishCurrent starts the trailing run for an effect that reads the memo | passed | failed | Async results arrive on a later microtask |
+| traced | Drop discards the changes during a flight and keeps its value | passed | failed | Async results arrive on a later microtask |
+| traced | Drop discards a change no reader pulled during the flight | passed | failed | Async results arrive on a later microtask |
+| traced | Drop runs the first change after the flight settles | passed | failed | Async results arrive on a later microtask |
+| traced | Drop keeps a memo source current across a change discarded at the settle | passed | failed | Async results arrive on a later microtask |
+| traced | Drop keeps a memo source current across a change discarded at a read | passed | failed | Async results arrive on a later microtask |
+| traced | Drop starts an async memo source's flight at the settle and runs on its value | passed | failed | Async results arrive on a later microtask |
+| traced | DropWhilePending starts an async memo source's flight at the settle and runs on its value | passed | failed | Async results arrive on a later microtask |
+| traced | Drop settles a failed flight that discarded a change to its error | passed | failed | Async results arrive on a later microtask |
+| traced | Drop does not hold a run back behind a body suspended on a pending source | passed | failed | Async results arrive on a later microtask |
+| traced | Drop wakes an effect that read the memo while pending | passed | failed | Async results arrive on a later microtask |
+| traced | DropWhilePending keeps a successful flight's value and discards the changes during it | passed | failed | Async results arrive on a later microtask |
+| traced | DropWhilePending discards an unpulled change when the flight succeeds | passed | failed | Async results arrive on a later microtask |
+| traced | DropWhilePending keeps a memo source current across a change discarded at the settle | passed | failed | Async results arrive on a later microtask |
+| traced | DropWhilePending replaces a failed flight that discarded a change with one run | passed | failed | Async results arrive on a later microtask |
+| traced | DropWhilePending replaces a failed flight that discarded an unpulled change | passed | failed | Async results arrive on a later microtask |
+| traced | DropWhilePending settles a failed flight to its error when a memo source resolves unchanged | passed | failed | Async results arrive on a later microtask |
+| traced | DropWhilePending settles a failed flight with no change during it to its error | passed | failed | Async results arrive on a later microtask |
+| traced | DropWhilePending settles a failed replacing run to its error | passed | failed | Async results arrive on a later microtask |
+| traced | DropWhilePending starts the replacing run for an effect that reads the memo | passed | failed | Async results arrive on a later microtask |
+| traced | DropWhilePending does not hold a run back behind a body suspended on a pending source | passed | failed | Async results arrive on a later microtask |
 | traced | a failed flight settles as Failed | passed | failed | Async results arrive on a later microtask |
 | traced | a body suspended on a pending source waits on the node, not a task | passed | failed | Async results arrive on a later microtask |
 | traced | pending propagates into a memo and an effect | passed | failed | Async results arrive on a later microtask |
@@ -306,13 +384,17 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | --- | --- |
 | a cancellableTask body stops a superseded flight at its next bind | IcedTasks' cancellableTask compiles for .NET only. |
 | FinishCurrent hands the finished flight's value to the trailing run as Previous | reads Settled's completion synchronously, and under Fable it is a promise. |
+| Drop hands the settled value to the next run as Previous | reads Settled's completion synchronously, and under Fable it is a promise. |
+| DropWhilePending hands the replacing run the value published before the failed flight | reads Settled's completion synchronously, and under Fable it is a promise. |
 
-<details><summary>7 passed in every build and delivery that runs them</summary>
+<details><summary>9 passed in every build and delivery that runs them</summary>
 
 - a flight starts only when something reads it
 - CancelPrevious cancels the superseded token
 - KeepLatest leaves the superseded flight running
 - FinishCurrent disposed with a run owed runs nothing more
+- Drop disposed during a flight runs nothing more
+- DropWhilePending disposed with a failure owed runs nothing more
 - a body that throws before awaiting settles as Failed
 - disposing cancels the flight in progress
 - a settle after disposal does not publish
@@ -447,12 +529,12 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | a disposed memo is not retained by its owner | JavaScript exposes no forced collection. |
 | a disposed root is not retained by its parent | JavaScript exposes no forced collection. |
 | a torn-down subtree is released even while its signal lives on | JavaScript exposes no forced collection. |
-| a wide source with live readers does not pin dead ones | JavaScript exposes no forced collection. |
 | {name}: an undisposed token registration is released once its flight settles | JavaScript exposes no forced collection. |
 | {name}: a body that throws before returning its task releases its registration | JavaScript exposes no forced collection. |
 | {name}: overlapping flights release their registrations once the last one settles | JavaScript exposes no forced collection. |
 | {name}: disposing the memo cancels the flight in progress after an earlier flight settled | JavaScript exposes no forced collection. |
 | {name}: a flight that never settles is released when the memo is disposed | JavaScript exposes no forced collection. |
+| the items and keys {name} from a projection over {source} source are released | JavaScript exposes no forced collection. |
 | a failed read swallowed inside a {name} is released when it ends | JavaScript exposes no forced collection. |
 
 <details><summary>2 passed in every build and delivery that runs them</summary>
@@ -474,13 +556,19 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | traced | valueText renders a value as one line | failed | failed | Trace records carry less |
 | traced | FinishCurrent records a deferred run and a settle held for the trailing run | passed | failed | Async results arrive on a later microtask |
 | traced | FinishCurrent drops a failure that settles with a run owed as Trailing | passed | failed | Async results arrive on a later microtask |
+| traced | Queue drops a failure that settles while the newest run waits on a source as Suspended | failed | failed | A `Queue` flight applies on a later microtask |
+| traced | FinishCurrent's trailing run is notified with the dropped failure as its cause | passed | failed | Async results arrive on a later microtask |
+| traced | Drop records a run dropped at a read and a change dropped at the settle | passed | failed | Async results arrive on a later microtask |
+| traced | Drop names the next change as the cause of the run after a change dropped at a read | passed | failed | Async results arrive on a later microtask |
+| traced | Drop names the next change as the cause of the run after a change dropped at the settle | passed | failed | Async results arrive on a later microtask |
+| traced | DropWhilePending drops a failure that settles after a discarded change as Retried | passed | failed | Async results arrive on a later microtask |
 | traced | waitingOn reports superseded, settled and failed flights | passed | failed | Async results arrive on a later microtask |
 
 | Excluded | Reason |
 | --- | --- |
 | an Unchecked graph creating nodes from two threads records every NodeNew | JavaScript has one thread. |
 
-<details><summary>58 passed in every build and delivery that runs them</summary>
+<details><summary>67 passed in every build and delivery that runs them</summary>
 
 - the assembly is traced exactly when RANVIER_TRACE is defined
 - named returns the thunk's result
@@ -539,7 +627,16 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - history lists each run with its status, movement, root and flush (traced only)
 - waitingOn names the pending source the last run read (traced only)
 - why through an async source ends at its settle (traced only)
+- Drop records one run dropped for a change discarded at a read and settled with no later change (traced only)
 - a binding is traced as a binding (traced only)
+- Rerun guard / an effect that writes its own dependency on every run raises, naming the effect (traced only)
+- Rerun guard / a keyOf that writes its projection's source on every call raises once an effect reads the projection (traced only)
+- Rerun guard / a guarded self-write of ten steps runs to completion (traced only)
+- Rerun guard / a flush of many distinct effects runs each once (traced only)
+- Rerun guard / an effect run once in each of many flushes runs every time (traced only)
+- Rerun guard / a chain of writers that each wake one reader in turn runs to completion (traced only)
+- Rerun guard / a chain of writers behind an unchanged memo runs to completion (traced only)
+- Rerun guard / two effects writing each other's dependencies raise, naming a cycle (traced only)
 
 </details>
 
@@ -569,7 +666,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## Observers.fs
 
-<details><summary>45 passed in every build and delivery that runs them</summary>
+<details><summary>24 passed in every build and delivery that runs them</summary>
 
 - every one of 3 observers is woken
 - a body reading its source twice does not grow the list of 3
@@ -595,27 +692,6 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a memo that reads one source in a loop records one edge
 - a memo that reorders its reads ends up with both edges
 - a source read twice keeps its edge when the later read is trimmed
-- removal during notification among 3 skips no survivor
-- an observer added during notification among 3 is not marked
-- the count of 3 is exact after removals in any order
-- an observer re-added after removal among 3 is counted and marked once
-- removal during notification among 8 skips no survivor
-- an observer added during notification among 8 is not marked
-- the count of 8 is exact after removals in any order
-- an observer re-added after removal among 8 is counted and marked once
-- removal during notification among 9 skips no survivor
-- an observer added during notification among 9 is not marked
-- the count of 9 is exact after removals in any order
-- an observer re-added after removal among 9 is counted and marked once
-- removal during notification among 20 skips no survivor
-- an observer added during notification among 20 is not marked
-- the count of 20 is exact after removals in any order
-- an observer re-added after removal among 20 is counted and marked once
-- removal during notification among 100 skips no survivor
-- an observer added during notification among 100 is not marked
-- the count of 100 is exact after removals in any order
-- an observer re-added after removal among 100 is counted and marked once
-- a wide list survives repeated relinking through the graph
 
 </details>
 
@@ -880,7 +956,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | a view stops following when the scope that created it re-runs | AsObservableCollection returns an ObservableCollection, which the library omits under Fable. |
 | AsObservableCollection over a pending pass resets once when the pass settles | AsObservableCollection returns an ObservableCollection, which the library omits under Fable. |
 
-<details><summary>102 passed in every build and delivery that runs them</summary>
+<details><summary>116 passed in every build and delivery that runs them</summary>
 
 - the key order follows the source
 - a projection nothing reads is never recomputed
@@ -984,6 +1060,86 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - sortBy keys follow the law while sort keys fail and recover (seed 4242)
 - a filter key whose predicate starts failing reads as Removed, and as Added once it recovers
 - a new sortBy key whose sort key fails reads as no change, and is removed without a change
+- create-first runs an added row's factory before a removed row's cleanup
+- without options a pass retires before it creates
+- a failing create-first factory leaves the previous rows, items and keys
+- a source written by a rolled-back row's cleanup lets the next read retry the failed pass
+- a removed row's cleanup that disposes the projection stops a create-first pass
+- a memo-free row is its factory's result, built once per key
+- a tracked read of a memo-free row wakes when its key leaves
+- a memo-free projection read untracked stays lazy
+- a tracked read of a memo-free row keeps the projection eager
+- a memo-free factory failure is raised by reads of its row
+- memo-free create-first rows keep the previous rows when a factory fails
+- value readers and combinators reject memo-free rows
+- ensureUniqueKeys raises the pass's message for int, string, record and tuple keys
+- ensureUniqueKeys keeps boxed keys of different types apart, as = does
+
+</details>
+
+## TrimmedPass.fs
+
+<details><summary>59 passed in every build and delivery that runs them</summary>
+
+- ChangedSince bounds every edit it answers, and is the removed position after a trimmed removal
+- ChangedSince is empty at the current version and answers nothing for a version older than the last pass
+- random edits call keyOf once per position outside the common prefix and suffix
+- a trimmed pass after a shrink publishes keys of the list's length
+- a keyOf writing into the source array leaves every row on the item the pass read
+- a trimmed pass that outgrows the previous list keeps its prefix and suffix
+- list, lazy seq and array sources give the same keys and rows
+- an array mutated in place and republished is compared against the previous pass's copy
+- an int array source reads by index
+- a lazy source is enumerated to completion before keyOf runs
+- a nested pass failing in its source leaves the projection failed with that failure
+- a nested pass suspending in its source leaves the projection pending
+- a keyOf that writes the source on its first four calls and reads the projection once returns, and later reads converge
+- a create-first factory that raises after a nested pass kept its key leaves that failure on the row
+- a row read while its factory runs raises naming the key
+- a keyOf that writes the source on every call and reads the projection once leaves every read returning
+- an effect's first read of a projection whose keyOf writes the source ends with the latest keys
+- a memo-free row read while its factory runs raises naming the key
+- a swap of two items calls keyOf twice and creates no row
+- removing one item calls keyOf zero times and disposes its row
+- prepending one item calls keyOf once
+- appending one item calls keyOf once
+- replacing one item with an equal-key copy calls keyOf once and updates that row
+- a new key followed by an equal-key copy at a later changed position publishes the new key
+- an equal-key copy followed by a new key at a later changed position publishes the new key
+- an int array swap calls keyOf twice
+- a swap of the first and last items calls keyOf twice
+- a pass over new items calls keyOf once per item
+- a pass over new items hashes its keys as often as a full pass
+- every swap of the same two items hashes its keys as often
+- new items prepended with one new key keep every other row
+- new items with the middle key removed keep every other row
+- new items with the second and second-to-last keys swapped keep every row
+- new items in reverse order keep every row
+- an empty list of new items disposes every row
+- new items of equal length repeating a key fail the pass
+- new items of a new length repeating a key fail the pass
+- a changed key equal to a prefix key fails the pass
+- a changed key equal to a suffix key fails the pass
+- a changed key equal to a key kept at an unchanged middle position fails the pass
+- two changed positions with one key fail the pass
+- a length change whose new middle repeats a prefix key fails the pass
+- an item mutated in place at the same position keeps its key
+- a keyOf that reads a signal for one item keeps updating
+- a keyOf that reads a signal for an item entering later turns trimming off
+- a keyOf that registers a cleanup keeps registering it every pass
+- a caller reversing the Keys array in place does not change the next pass
+- a create-first factory that writes the source and reads a sibling row matches a full pass
+- random edits give a trimmed pass the same results as a full pass
+- a keyOf that writes the source and reads the projection matches a full pass
+- a pass nested in keyOf during a trimmed pass matches a full pass, and the next pass runs in full
+- a pending row stays pending through a swap and ends with its removal
+- a key reader sees the deltas of trimmed passes
+- a create-first failure after a trimmed swap rolls back and the next pass recovers
+- a held duplicate-key failure is followed by trimmed passes
+- combinators over a trimmed upstream follow it
+- a removed row's cleanup that disposes the projection during a trimmed pass leaves it empty
+- a factory that runs a nested pass leaves the keys and rows of the latest source
+- a cleanup that runs a nested pass leaves the keys and rows of the latest source
 
 </details>
 
@@ -1242,7 +1398,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | --- | --- |
 | foldGroup rejects a null subtract | Fable wraps a null function argument in a closure, so it is never null. |
 
-<details><summary>126 passed in every build and delivery that runs them</summary>
+<details><summary>127 passed in every build and delivery that runs them</summary>
 
 - 200 single edits at N=1000 make 200 predicate calls
 - a Keys reader wakes only when membership flips
@@ -1358,6 +1514,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - an edit that leaves the row value equal leaves the reader asleep
 - a value read by add re-folds on change
 - a key removed and re-added counts once, with its new value
+- a change to the second memo read by add re-folds
 - a pending row keeps its last settled value; a never-settled row adds nothing
 - a failed row raises its error until it recovers
 - a removed failed row stops raising
@@ -1430,6 +1587,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | a read of Settled off the graph thread never caches a value older than the one published | reads the prev task's completion synchronously, and under Fable it is a promise. |
 | Queue chains three or more overlapping flights in start order | reads the prev task's completion synchronously, and under Fable it is a promise. |
 | Queue resolves each waiter with its own predecessor | reads the prev task's completion synchronously, and under Fable it is a promise. |
+| Queue resolves each read of Settled with the predecessor's result | reads the prev task's completion synchronously, and under Fable it is a promise. |
 | Queue resolves the waiter when the predecessor faults | reads the prev task's completion synchronously, and under Fable it is a promise. |
 | Queue resolves the waiter when the predecessor is dropped | reads the prev task's completion synchronously, and under Fable it is a promise. |
 | Queue passes a result applied while suspended to the next run | reads the prev task's completion synchronously, and under Fable it is a promise. |
@@ -1437,7 +1595,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Queue loses a read made after awaiting prev | reads the prev task's completion synchronously, and under Fable it is a promise. |
 | Queue resumes a body awaiting prev outside applyResult | reads the prev task's completion synchronously, and under Fable it is a promise. |
 
-<details><summary>11 passed in every build and delivery that runs them</summary>
+<details><summary>12 passed in every build and delivery that runs them</summary>
 
 - the first run receives ValueNone
 - a later run receives the value last published
@@ -1450,6 +1608,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a seeded Suspense fallback receives the seed, then the last value
 - a seeded Errors recover receives the error and the seed, then the last value
 - a seeded Catching boundary passes the seed, then its last value, to both handlers
+- Queue resolves each read of Settled with the predecessor's result
 
 </details>
 
@@ -1459,13 +1618,51 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | --- | --- |
 | NotReadyException's message names the exception | Fable gives an F# exception an empty message. |
 
-<details><summary>5 passed in every build and delivery that runs them</summary>
+<details><summary>43 passed in every build and delivery that runs them</summary>
 
 - ThreadAffinity and FlightPolicy print their case names
 - a Reading prints its case and payload, quoting a string
 - GraphOptions prints its fields one per line
 - a missing key's message holds the key's text
 - a duplicate key's message holds the key's text
+- trace text: user write (traced only)
+- trace text: created (traced only)
+- trace text: pulled (traced only)
+- trace text: checkpoint (traced only)
+- trace text: null checkpoint (traced only)
+- trace text: unrecorded (traced only)
+- trace text: settled root (traced only)
+- trace text: disposed reason (traced only)
+- trace text: queued (traced only)
+- trace text: unobserved (traced only)
+- trace text: checked clean (traced only)
+- trace text: skipped reader (traced only)
+- trace text: not reached (traced only)
+- trace text: in flight (traced only)
+- trace text: settled flight (traced only)
+- trace text: unheld flight (traced only)
+- trace text: failed flight (traced only)
+- trace text: cancelled flight (traced only)
+- trace text: dropped flight (traced only)
+- trace text: fresh node (traced only)
+- trace text: running node (traced only)
+- trace text: ended node (traced only)
+- trace text: disposed node (traced only)
+- trace text: event (traced only)
+- trace text: null event payload (traced only)
+- trace text: origin (traced only)
+- trace text: step (traced only)
+- trace text: null step value (traced only)
+- trace text: why (traced only)
+- trace text: run (traced only)
+- trace text: history (traced only)
+- trace text: flight (traced only)
+- trace text: waiting (traced only)
+- trace text: snapshot node (traced only)
+- trace text: snapshot owner (traced only)
+- trace text: snapshot maps (traced only)
+- trace text: dump (traced only)
+- trace text: timing (traced only)
 
 </details>
 
@@ -1498,6 +1695,16 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a fold over a failed row reports the row's origin
 - a lookup over a failed source reports the upstream node
 - a failed read swallowed by a body leaves the next failure its own
+
+</details>
+
+## NullChecks.fs
+
+<details><summary>3 passed in every build and delivery that runs them</summary>
+
+- is true for null
+- is false for a value
+- is true for undefined, as isNull is
 
 </details>
 

@@ -18,6 +18,20 @@ open System.Collections.Concurrent
 /// file of its own
 /// </para></remarks>
 module internal Platform =
+    /// <summary>
+    /// <c>true</c> for <c>null</c>, and under Fable also for <c>undefined</c>; the same
+    /// result as FSharp.Core's <c>isNull</c>. Under Fable it compiles to an inline
+    /// <c>value == null</c> instead of a call to fable-library's <c>Operators_IsNull</c>.
+    /// </summary>
+#if FABLE_COMPILER
+    [<Emit("$0 == null")>]
+    let isNull (value: 'T when 'T: null) : bool =
+        nativeOnly
+#else
+    let inline isNull (value: 'T when 'T: null) =
+        Operators.isNull value
+#endif
+
 #if FABLE_COMPILER
     /// <summary>
     /// Constant under Fable. With one thread the comparison is always true,
@@ -172,13 +186,10 @@ module internal Platform =
 
     /// <summary>A task that completes when <c>resolve</c> is called. Its awaiters resume on a later microtask.</summary>
     let deferred<'T> () : Deferred<'T> =
-        let resolver = ref Unchecked.defaultof<'T -> unit>
-        let task = promiseOf (fun resolve -> resolver.Value <- resolve)
+        let mutable resolver = Unchecked.defaultof<'T -> unit>
+        let task = promiseOf (fun resolve -> resolver <- resolve)
 
-        {
-            Task = task
-            Resolve = resolver.Value
-        }
+        { Task = task; Resolve = resolver }
 
     /// <summary>The task a <c>Deferred</c> completes.</summary>
     let deferredTask (d: Deferred<'T>) : Task<'T> = d.Task
@@ -252,12 +263,13 @@ module internal Platform =
     /// returns false when the frame is already entered, as on the return from a nested
     /// continuation. Under Fable neither runs.
     /// </remarks>
-    let runFlightBody (enter: obj -> bool) (leave: obj -> unit) (body: unit -> 'T) : 'T =
 #if FABLE_COMPILER
+    let inline runFlightBody (enter: obj -> bool) (leave: obj -> unit) ([<InlineIfLambda>] body: unit -> 'T) : 'T =
         ignore enter
         ignore leave
         body ()
 #else
+    let runFlightBody (enter: obj -> bool) (leave: obj -> unit) (body: unit -> 'T) : 'T =
         let frame = FlightFrame (enter, leave)
         let previous = flightFrame.Value
         flightFrame.Value <- frame
@@ -300,11 +312,12 @@ module internal Platform =
     /// A rethrow of a capture will carry the captured frames followed by the rethrowing reader's frames only,
     /// however many reads preceded it.
     /// </remarks>
-    let captureFailure (held: CapturedFailure) (error: exn) : CapturedFailure =
 #if FABLE_COMPILER
+    let inline captureFailure (held: CapturedFailure) (error: exn) : CapturedFailure =
         ignore held
         error
 #else
+    let captureFailure (held: CapturedFailure) (error: exn) : CapturedFailure =
         if
             not (isNull held)
             && obj.ReferenceEquals (held.SourceException, error)
@@ -324,6 +337,19 @@ module internal Platform =
 #else
         captured.Throw ()
         Unchecked.defaultof<'T>
+#endif
+
+#if FABLE_COMPILER
+    /// <summary>The sequence when it is a JavaScript array or typed array, else null.</summary>
+    [<Fable.Core.Emit("(Array.isArray($0) || (ArrayBuffer.isView($0) && !($0 instanceof DataView))) ? $0 : null")>]
+    let asArray (items: seq<'T>) : 'T[] =
+        Fable.Core.Util.jsNative
+#else
+    /// <summary>The sequence when it is an array, else null.</summary>
+    let asArray (items: seq<'T>) : 'T[] =
+        match items with
+        | :? ('T[]) as array -> array
+        | _ -> null
 #endif
 
     /// <summary>
@@ -455,15 +481,58 @@ module internal Platform =
 #endif
 
     /// <summary>
+    /// <c>slots[index] &lt;- value</c>, without fable-library's bounds check: a generic array write compiles to
+    /// <c>setItem(xs, i, v)</c> under Fable. Same caller obligation as <c>itemAt</c>.
+    /// </summary>
+#if FABLE_COMPILER
+    [<Emit("$1[$0] = $2")>]
+    let setItemAt (index: int) (slots: 'T[]) (value: 'T) : unit = jsNative
+#else
+    let inline setItemAt (index: int) (slots: 'T[]) (value: 'T) =
+        slots[index] <- value
+#endif
+
+    /// <summary>
     /// <c>slots[index]</c> for a <c>ResizeArray</c>, without the bounds check. Same
     /// contract, same reason, same caller obligation as <c>itemAt</c>.
     /// </summary>
 #if FABLE_COMPILER
     [<Emit("$1[$0]")>]
     let entryAt (index: int) (slots: ResizeArray<'T>) : 'T = jsNative
+
+    /// <summary>Replaces an existing slot whose index the caller has already checked against the list's count.</summary>
+    [<Emit("$1[$0] = $2")>]
+    let setEntryAt (index: int) (slots: ResizeArray<'T>) (value: 'T) : unit = jsNative
 #else
     let inline entryAt (index: int) (slots: ResizeArray<'T>) =
         slots[index]
+
+    let inline setEntryAt (index: int) (slots: ResizeArray<'T>) (value: 'T) =
+        slots[index] <- value
+#endif
+
+#if FABLE_COMPILER
+    [<Emit("$0.has($1)")>]
+    let private tableHas (table: Dictionary<'K, 'V>) (key: 'K) : bool = jsNative
+
+    [<Emit("$0.get($1)")>]
+    let private tableGet (table: Dictionary<'K, 'V>) (key: 'K) : 'V = jsNative
+
+    /// <summary>
+    /// The value at <c>key</c>, or <c>Unchecked.defaultof&lt;'V></c> for an absent key. Under Fable it runs the
+    /// <c>has</c> and <c>get</c> calls of fable-library's <c>tryGetValue</c>, without the <c>FSharpRef</c> for the out
+    /// argument.
+    /// </summary>
+    let findOrDefault (table: Dictionary<'K, 'V>) (key: 'K) : 'V =
+        if tableHas table key then
+            tableGet table key
+        else
+            Unchecked.defaultof<'V>
+#else
+    let inline findOrDefault (table: Dictionary<'K, 'V>) (key: 'K) =
+        match table.TryGetValue key with
+        | true, value -> value
+        | _ -> Unchecked.defaultof<'V>
 #endif
 
     /// <summary>
@@ -555,9 +624,7 @@ module internal Platform =
             if primitiveKey key then
                 jsMapFind prims key
             else
-                match objs.TryGetValue key with
-                | true, value -> value
-                | _ -> Unchecked.defaultof<'V>
+                findOrDefault objs key
 
         member _.Set(key: 'K, value: 'V) =
             if primitiveKey key then

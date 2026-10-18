@@ -44,12 +44,12 @@ type internal CollectionProjection<'K, 'V when 'K: equality>(graph: Graph) as th
         if stopped then
             raise (ObjectDisposedException "The keyed collection was disposed.")
 
-    member _.AddOrUpdate(key: 'K, value: 'V) =
+    member this.AddOrUpdate(key: 'K, value: 'V) =
         graph.RunBatch (fun () ->
             this.EnsureLive ()
             let item = items.Find key
 
-            if isNull (box item) then
+            if Platform.isNull (box item) then
                 items.Set (key, Signal<'V>(graph, value))
                 order.Add key
                 changes.Record (key, KeyChange.Added)
@@ -57,11 +57,11 @@ type internal CollectionProjection<'K, 'V when 'K: equality>(graph: Graph) as th
             else
                 item.Value <- value)
 
-    member _.Remove(key: 'K) =
+    member this.Remove(key: 'K) =
         graph.RunBatch (fun () ->
             this.EnsureLive ()
 
-            if isNull (box (items.Find key)) then
+            if Platform.isNull (box (items.Find key)) then
                 false
             else
                 items.Remove key
@@ -75,7 +75,7 @@ type internal CollectionProjection<'K, 'V when 'K: equality>(graph: Graph) as th
                 revision.Value <- revision.Peek + 1
                 true)
 
-    member _.Clear() =
+    member this.Clear() =
         graph.RunBatch (fun () ->
             this.EnsureLive ()
 
@@ -87,25 +87,31 @@ type internal CollectionProjection<'K, 'V when 'K: equality>(graph: Graph) as th
                 order.Clear ()
                 revision.Value <- revision.Peek + 1)
 
-    member _.Edit(body: unit -> unit) =
+    member this.Edit(body: unit -> unit) =
         graph.RunBatch (fun () ->
             this.EnsureLive ()
             body ())
 
-    override _.Enumerate() =
+    override this.Enumerate() =
         revision.Value |> ignore
+        let mine = this.Runs
+        let keys = order.ToArray ()
+        let mutable i = 0
 
-        for key in order do
+        while this.Runs = mine && i < keys.Length do
+            let key = Platform.itemAt i keys
+            i <- i + 1
             let item = items.Find key
             let entry = this.Entries.Find key
 
             if
-                not (isNull entry)
+                not (Platform.isNull entry)
                 && not (obj.ReferenceEquals ((entry :?> ItemRow<Signal<'V>, 'K, 'V>).Item.Peek, item))
             then
                 this.RetireChanged key
 
-            this.Visit (key, item)
+            if this.Runs = mine then
+                this.Visit (key, item)
 
 /// <summary>An editable collection with insertion order and separately observable rows.</summary>
 /// <remarks>Owned by the creating scope. Updates use the graph's value equality policy; keys use structural equality.</remarks>
@@ -130,7 +136,7 @@ type KeyedCollection<'K, 'V when 'K: equality> internal (graph: Graph, keyOf: 'V
     /// <summary>Batches the synchronous edits made by the callback.</summary>
     /// <remarks>Applied edits survive a throwing callback. This operation does not roll back or span asynchronous work.</remarks>
     member this.Edit(edit: Action<KeyedCollection<'K, 'V>>) =
-        if isNull edit then
+        if Platform.isNull edit then
             nullArg "edit"
 
         rows.Edit (fun () -> edit.Invoke this)
