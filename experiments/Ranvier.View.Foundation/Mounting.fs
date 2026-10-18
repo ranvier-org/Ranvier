@@ -1213,26 +1213,48 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
                 releaseNodes row
 
     /// <summary>Whether the held rows are exactly the region's live laid-out rows.</summary>
-    /// <remarks>Guards an invariant: a successful pass that empties the list holds every live laid-out row.</remarks>
+    /// <remarks>
+    /// Guards an invariant: a successful pass that empties the list holds every live laid-out row. Rows held in
+    /// laid-out order compare in one walk; any other order compares through a set.
+    /// </remarks>
     member _.ReleasedAll() =
         let mutable live = 0
-        let rows = rowSet ()
+        let mutable ordered = true
 
         for index in 0 .. laidOut.Count - 1 do
             let row = at laidOut index
 
             if not row.Removed then
+                if
+                    ordered
+                    && (live >= pending.Count
+                        || not (same row (at pending live)))
+                then
+                    ordered <- false
+
                 live <- live + 1
-                rowSetAdd rows row
 
-        let mutable all = live = pending.Count
-        let mutable index = 0
+        if live <> pending.Count then
+            false
+        elif ordered then
+            true
+        else
+            let rows = rowSet ()
 
-        while all && index < pending.Count do
-            all <- rowSetHas rows (at pending index)
-            index <- index + 1
+            for index in 0 .. laidOut.Count - 1 do
+                let row = at laidOut index
 
-        all
+                if not row.Removed then
+                    rowSetAdd rows row
+
+            let mutable all = true
+            let mutable index = 0
+
+            while all && index < pending.Count do
+                all <- rowSetHas rows (at pending index)
+                index <- index + 1
+
+            all
 
     /// <summary>
     /// Releases the held rows. When <c>cleared</c> and the markers share a parent, removes the region's contents in one

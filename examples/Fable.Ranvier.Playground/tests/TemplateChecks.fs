@@ -3171,6 +3171,22 @@ let private failedInsertionLeavesStagingEmpty () =
     equal (0, 1, "4,5,", 1) (removed, inserts (), host.textContent, reports.Count)
     mounted.Dispose ()
 
+// After the swap, the rows release in an order other than their laid-out order.
+let private clearAfterSwapRemovesInOneOperation () =
+    use graph = new Graph ()
+    let original = listedItems 4
+    let items = graph.Run (fun () -> Api.createSignal original)
+    let host = host ()
+    let mounted = mount graph host (listedView false items)
+    let next = Array.copy original
+    next[0] <- original[3]
+    next[3] <- original[0]
+    graph.Run (fun () -> items.Value <- next)
+    let removes = countRemoves ()
+    graph.Run (fun () -> items.Value <- [||])
+    equal (0, "") (removes (), host.textContent)
+    mounted.Dispose ()
+
 let private retiredRowLeavesWhole () =
     use graph = new Graph ()
 
@@ -4094,6 +4110,7 @@ let cases =
         "row cleanups see their row connected on remove, clear and mount disposal", cleanupsSeeConnectedRows
         "a clear whose row cleanup throws reports it and leaves no row nodes", failingClearLeavesNoRows
         "a clear and an insertion after a failed row setup each take one operation", failedInsertionLeavesStagingEmpty
+        "a clear after a swap removes the rows in one operation", clearAfterSwapRemovesInOneOperation
         "a retired row holding a nested list leaves whole in one remove", retiredRowLeavesWhole
         "a nested row cleanup disposing the mount leaves no nodes and reports nothing", disposalLeavesDetachedHeldRows
         "clearing template rows holding nested lists keeps their cleanup order and markers", nestedClearKeepsOrder
