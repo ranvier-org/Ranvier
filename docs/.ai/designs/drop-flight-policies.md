@@ -287,7 +287,13 @@ Fable and AOT: two nullary cases and no new field; outcomes already arrive on a 
    only when freshness is still Dirty after the walk; a Check that resolves unchanged is no discarded change. Two
    tests pin it: "Drop keeps a memo source current across a change discarded at the settle" and "... at a read".
    The walk is in the `Drop` and `DropWhilePending` arms only and costs the other policies nothing. A source memo's
-   body may now run at the settle rather than at a later read.
+   body may now run at the settle rather than at a later read, and an async memo source left Dirty starts its
+   flight at the settle, with no read. Its own settle then notifies the memo and runs it: the source's value moved
+   after the memo settled. Skipping async sources in the walk would strand the memo again (an async memo left Dirty
+   also notifies only on its Clean transition), and a memo source can itself start an upstream flight as it
+   recomputes, so no walk avoids it. Absorbing the source's later settle would need a test on `MarkDirty`, which
+   every policy pays. "Drop starts an async memo source's flight at the settle and runs on its value" and its
+   `DropWhilePending` twin pin it.
 2. **`DropWhilePending` failure test.** A Check alone at a failed settle is resolved by the same walk first, so a
    memo source that recomputes to the same value does not owe a replacing run. `owed` is set when `queued = 2` or
    the walk leaves freshness Dirty.

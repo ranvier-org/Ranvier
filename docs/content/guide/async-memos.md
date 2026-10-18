@@ -215,7 +215,9 @@ save, where the settled value must still match the latest inputs.
 and starts no flight, and nothing is replayed when the flight settles: its value or its error
 becomes the memo's, and the memo is current until a source changes again. The first change after
 the settle starts a flight as usual. The settled value can belong to inputs the graph has since
-left. Use it for a submit that ignores repeated clicks while the request is in flight, as R3's
+left. The settle brings the memo's sources current: a memo source left stale by a discarded change
+recomputes then, and an async memo source starts its flight then, without waiting for a read. That
+source's own settle is a change after the memo's settle and runs the memo. Use it for a submit that ignores repeated clicks while the request is in flight, as R3's
 `AwaitOperation.Drop` and Rx's `exhaustMap` do.
 
 :::

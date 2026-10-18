@@ -27,14 +27,14 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Owners.fs | 16 | 16 | 16 | 16 | 16 | 16 | 0 | 0 |
 | Equality.fs | 25 | 24 | 24 | 25 | 24 | 24 | 8 | 0 |
 | ValueReaders.fs | 21 | 21 | 21 | 21 | 21 | 21 | 0 | 0 |
-| Async.fs | 50 | 42 | 9 | 50 | 42 | 9 | 4 | 0 |
+| Async.fs | 52 | 44 | 9 | 52 | 44 | 9 | 4 | 0 |
 | Boundaries.fs | 27 | 27 | 23 | 27 | 27 | 23 | 1 | 0 |
 | Threading.fs | 3 | 3 | 3 | 3 | 3 | 3 | 26 | 0 |
 | Edges.fs | 5 | 5 | 5 | 5 | 5 | 5 | 0 | 0 |
 | Invalidation.fs | 4 | 4 | 4 | 4 | 4 | 4 | 0 | 0 |
 | Lifetime.fs | 6 | 6 | 6 | 6 | 6 | 6 | 0 | 0 |
 | Retention.fs | 2 | 2 | 2 | 2 | 2 | 2 | 11 | 0 |
-| Tracing.fs | 2 | 2 | 2 | 78 | 74 | 66 | 1 | 0 |
+| Tracing.fs | 2 | 2 | 2 | 81 | 77 | 67 | 1 | 0 |
 | TraceModelTests.fs | 0 | 0 | 0 | 12 | 12 | 12 | 2 | 0 |
 | Observers.fs | 24 | 24 | 24 | 24 | 24 | 24 | 0 | 0 |
 | Api.fs | 7 | 7 | 7 | 7 | 7 | 7 | 2 | 0 |
@@ -71,7 +71,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | QueryDictionary.fs | 2 | 2 | 2 | 2 | 2 | 2 | 0 | 0 |
 | QueryErgonomics.fs | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | QueryNavigationTests.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 995 | 977 | 915 | 1090 | 1068 | 998 | 91 | 1 |
+| **Total** | 997 | 979 | 915 | 1095 | 1073 | 999 | 91 | 1 |
 
 ## Tests.fs
 
@@ -311,6 +311,8 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | untraced | Drop runs the first change after the flight settles | passed | failed | Async results arrive on a later microtask |
 | untraced | Drop keeps a memo source current across a change discarded at the settle | passed | failed | Async results arrive on a later microtask |
 | untraced | Drop keeps a memo source current across a change discarded at a read | passed | failed | Async results arrive on a later microtask |
+| untraced | Drop starts an async memo source's flight at the settle and runs on its value | passed | failed | Async results arrive on a later microtask |
+| untraced | DropWhilePending starts an async memo source's flight at the settle and runs on its value | passed | failed | Async results arrive on a later microtask |
 | untraced | Drop settles a failed flight that discarded a change to its error | passed | failed | Async results arrive on a later microtask |
 | untraced | Drop does not hold a run back behind a body suspended on a pending source | passed | failed | Async results arrive on a later microtask |
 | untraced | Drop wakes an effect that read the memo while pending | passed | failed | Async results arrive on a later microtask |
@@ -352,6 +354,8 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | traced | Drop runs the first change after the flight settles | passed | failed | Async results arrive on a later microtask |
 | traced | Drop keeps a memo source current across a change discarded at the settle | passed | failed | Async results arrive on a later microtask |
 | traced | Drop keeps a memo source current across a change discarded at a read | passed | failed | Async results arrive on a later microtask |
+| traced | Drop starts an async memo source's flight at the settle and runs on its value | passed | failed | Async results arrive on a later microtask |
+| traced | DropWhilePending starts an async memo source's flight at the settle and runs on its value | passed | failed | Async results arrive on a later microtask |
 | traced | Drop settles a failed flight that discarded a change to its error | passed | failed | Async results arrive on a later microtask |
 | traced | Drop does not hold a run back behind a body suspended on a pending source | passed | failed | Async results arrive on a later microtask |
 | traced | Drop wakes an effect that read the memo while pending | passed | failed | Async results arrive on a later microtask |
@@ -549,6 +553,8 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | traced | FinishCurrent drops a failure that settles with a run owed as Trailing | passed | failed | Async results arrive on a later microtask |
 | traced | FinishCurrent's trailing run is notified with the dropped failure as its cause | passed | failed | Async results arrive on a later microtask |
 | traced | Drop records a run dropped at a read and a change dropped at the settle | passed | failed | Async results arrive on a later microtask |
+| traced | Drop names the next change as the cause of the run after a change dropped at a read | passed | failed | Async results arrive on a later microtask |
+| traced | Drop names the next change as the cause of the run after a change dropped at the settle | passed | failed | Async results arrive on a later microtask |
 | traced | DropWhilePending drops a failure that settles after a discarded change as Retried | passed | failed | Async results arrive on a later microtask |
 | traced | waitingOn reports superseded, settled and failed flights | passed | failed | Async results arrive on a later microtask |
 
@@ -556,7 +562,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | --- | --- |
 | an Unchecked graph creating nodes from two threads records every NodeNew | JavaScript has one thread. |
 
-<details><summary>66 passed in every build and delivery that runs them</summary>
+<details><summary>67 passed in every build and delivery that runs them</summary>
 
 - the assembly is traced exactly when RANVIER_TRACE is defined
 - named returns the thunk's result
@@ -615,6 +621,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - history lists each run with its status, movement, root and flush (traced only)
 - waitingOn names the pending source the last run read (traced only)
 - why through an async source ends at its settle (traced only)
+- Drop records one run dropped for a change discarded at a read and settled with no later change (traced only)
 - a binding is traced as a binding (traced only)
 - Rerun guard / an effect that writes its own dependency on every run raises, naming the effect (traced only)
 - Rerun guard / a keyOf that writes its projection's source on every call raises once an effect reads the projection (traced only)

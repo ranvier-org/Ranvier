@@ -89,6 +89,56 @@ let private finishCurrentMemo (g: Graph) (s: Signal<int>) =
 
     a, flights, inputs
 
+/// <summary>
+/// Under <c>policy</c>, discards a change that reaches an async memo through an async memo source during the memo's
+/// flight, then settles the flight and the source's next flight, asserting each step.
+/// </summary>
+let private discardThroughAsyncSource (policy: FlightPolicy) =
+    let g = policyGraph policy
+    let s = Signal (g, 1)
+    let upstream = ResizeArray<Flight<int>>()
+    let flights = ResizeArray<Flight<int>>()
+    let inputs = ResizeArray<int>()
+
+    let b =
+        Make.AsyncMemo<int>(
+            g,
+            fun _ _ ->
+                s.Value |> ignore
+                let flight = Flight<int>()
+                upstream.Add flight
+                flight.Task
+        )
+
+    let a =
+        Make.AsyncMemo<int>(
+            g,
+            fun _ _ ->
+                inputs.Add b.Value
+                let flight = Flight<int>()
+                flights.Add flight
+                flight.Task
+        )
+
+    use _reader = new Effect (g, (fun () -> a.TryValue |> ignore))
+    upstream[0].Settle 1
+    Expect.equal a.Runs 2 "the source's value starts the memo's flight"
+
+    s.Value <- 2
+    Expect.equal a.TryValue Pending "the change during the flight is discarded"
+    Expect.equal b.Runs 1 "the discarded change starts no source flight"
+
+    flights[0].Settle 10
+    Expect.equal a.TryValue (Ready 10) "the flight's value is the memo's value"
+    Expect.equal b.Runs 2 "the settle brings the source current, starting its flight"
+    Expect.equal a.Runs 2 "the memo does not run at the settle"
+
+    upstream[1].Settle 2
+    Expect.equal a.Runs 3 "the source's settle is a change after the memo's settle and runs the memo"
+    Expect.sequenceEqual inputs [ 1; 2 ] "against the source's new value"
+    flights[1].Settle 20
+    Expect.equal a.TryValue (Ready 20) "the new flight publishes"
+
 /// <summary>What a search view shows: nothing known yet, or a loaded list that may be empty.</summary>
 type private Results =
     | NotYetKnown
@@ -879,6 +929,12 @@ let tests =
                 s.Value <- 3
                 Expect.equal a.TryValue Pending "a change after the settle reaches the memo through its memo source"
                 Expect.sequenceEqual inputs [ 2; 6 ] "against the current inputs"
+            }
+
+            test "Drop starts an async memo source's flight at the settle and runs on its value" { discardThroughAsyncSource Drop }
+
+            test "DropWhilePending starts an async memo source's flight at the settle and runs on its value" {
+                discardThroughAsyncSource DropWhilePending
             }
 
             test "Drop settles a failed flight that discarded a change to its error" {

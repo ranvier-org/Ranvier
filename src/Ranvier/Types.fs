@@ -100,7 +100,9 @@ type FlightPolicy =
     /// </summary>
     /// <remarks>
     /// A discarded change leaves the memo current: the settled value stays the memo's value until a source changes
-    /// again, though the inputs it was computed from have since moved.
+    /// again, though the inputs it was computed from have since moved. The settle brings the memo's sources current, so
+    /// a memo source stale from a discarded change recomputes and an async memo source starts its flight. That source's
+    /// own settle is a change after the memo's settle, and runs the memo.
     /// </remarks>
     | Drop
     /// <summary>
