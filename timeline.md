@@ -11,6 +11,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 102,022 | 695,263 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 101,893 | 691,623 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 101,894 | 755,171 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 101,724 | 140,584 |
 
 ## app-table
 
@@ -23,6 +24,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 9,255,733 | 11,916,154 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 9,259,218 | 11,292,665 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 9,264,959 | 10,844,545 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 9,233,272 | 9,776,957 |
 
 ## async-recover
 
@@ -35,6 +37,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 138,738 | 314 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 138,805 | 382 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 138,829 | -7,037 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 138,757 | 37,543 |
 
 ## async-resolve
 
@@ -47,6 +50,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 2,795,421 | 2,789,817 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 2,796,619 | 2,788,702 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 2,798,220 | 3,239,160 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 2,795,019 | 1,170,731 |
 
 ## chain
 
@@ -59,6 +63,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 13,042 | 318 | 2,470 | 4,671 | 3,911 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 13,042 | 318 | 2,470 | 4,671 | 3,911 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 13,042 | 318 | 2,470 | 4,671 | 3,464 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 13,042 | 318 | 2,470 | 4,491 | 3,180 |
 
 ## chain-affinity
 
@@ -71,6 +76,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 2,569 | 3,087 | 2,516 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 2,569 | 3,087 | 2,516 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 2,569 | 3,087 | 2,516 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 2,569 | 3,087 | 2,516 |
 
 ## control
 
@@ -83,6 +89,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | — | — |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | — | — |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 74,719 | 734,920 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 74,719 | 846,628 |
 
 ## create
 
@@ -95,6 +102,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 13,461,358 | 2,865,678 | 3,043,256 | 7,808,774 | 6,313,417 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 13,461,358 | 2,881,677 | 3,043,272 | 7,801,309 | 8,370,484 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 13,461,365 | 2,865,677 | 3,043,240 | 7,788,481 | 3,847,642 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 13,586,828 | 2,877,676 | 3,043,258 | 2,186,132 | 4,208,779 |
 
 ## create-on
 
@@ -107,6 +115,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 3,440,854 | 6,653,995 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 3,440,854 | 6,817,932 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 3,424,855 | 8,787,748 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 3,429,854 | 4,619,737 |
 
 ## cutoff
 
@@ -119,6 +128,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 1,181 | 50 | 111 | 51 | 35 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 1,181 | 50 | 111 | 51 | 35 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 1,181 | 50 | 111 | 51 | 35 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 1,181 | 50 | 111 | 65 | 35 |
 
 ## derive-effect
 
@@ -131,6 +141,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 765 | -1,632 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 765 | -807 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 765 | -2,002 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 765 | 716 |
 
 ## derive-on
 
@@ -143,6 +154,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 756 | -1,380 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 756 | -798 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 740 | -1,541 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 740 | 684 |
 
 ## dispose
 
@@ -155,6 +167,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 2,706,102 | 806,292 | 498,486 | 471,252 | 1,026,446 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 2,707,584 | 806,293 | 498,486 | 471,082 | 1,037,758 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 2,707,581 | 806,288 | 498,486 | 471,238 | 787,101 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 2,706,184 | 806,288 | 498,486 | 465,871 | 703,008 |
 
 ## dispose-on
 
@@ -167,6 +180,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 477,486 | 1,087,005 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 477,486 | 1,100,499 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 477,486 | 883,282 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 477,486 | 699,680 |
 
 ## editable-edit
 
@@ -179,6 +193,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 181,106 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 181,106 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 181,106 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 181,106 |
 
 ## editable-upstream
 
@@ -191,6 +206,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 232,756 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 232,755 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 232,755 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 232,755 |
 
 ## fail-recompute
 
@@ -203,6 +219,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 64,940 | 1,376 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 64,940 | 1,376 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 65,108 | 1,376 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 64,880 | 1,376 |
 
 ## flight
 
@@ -215,6 +232,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 11,039 | 11,365 | 10,807 | 22,381 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 11,035 | 11,366 | 10,807 | 22,381 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 11,035 | 11,365 | 10,807 | 22,381 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 11,033 | 11,363 | 10,805 | 22,379 |
 
 ## keyed-insert
 
@@ -227,6 +245,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 1,944,609 | 72,667 | 73,324 | 4,547,218 | 246,069 | 214,072 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 1,921,657 | 54,104 | 54,752 | 4,543,583 | 209,597 | 194,141 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 1,921,671 | 54,104 | 54,767 | 4,296,964 | 209,171 | 192,218 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 1,921,560 | 53,846 | 54,581 | 3,092,666 | 162,633 | 172,627 |
 
 ## keyed-remove
 
@@ -239,6 +258,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 1,943,547 | 65,120 | 66,456 | 4,146,197 | 272,464 | 182,669 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 1,920,611 | 43,808 | 45,128 | 4,333,715 | 165,760 | 123,085 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 1,920,614 | 43,793 | 45,145 | 3,746,188 | 164,238 | 114,438 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 1,920,500 | 43,539 | 44,963 | 3,092,572 | 130,252 | 142,773 |
 
 ## keyed-swap
 
@@ -251,6 +271,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 1,996,301 | 71,111 | 71,526 | 4,491,295 | 229,835 | 179,487 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 1,973,263 | 46,335 | 46,760 | 4,469,743 | 98,302 | 82,515 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 1,973,283 | 46,335 | 46,776 | 4,233,627 | 98,015 | 81,077 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 1,973,152 | 46,080 | 46,557 | 3,215,194 | 76,966 | 83,156 |
 
 ## mvu-dispatch
 
@@ -263,6 +284,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 58,391 | 772 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 58,391 | 772 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 58,391 | 772 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 58,391 | 772 |
 
 ## project-chain
 
@@ -275,6 +297,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 3,865,882 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 3,847,882 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 3,847,866 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 3,837,487 |
 
 ## project-churn
 
@@ -287,6 +310,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 61,102 | 59,022 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 36,375 | 34,218 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 36,375 | 34,204 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 36,202 | 34,033 |
 
 ## project-edit
 
@@ -299,6 +323,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 68,378 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 50,364 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 50,364 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 50,173 |
 
 ## project-reorder
 
@@ -311,6 +336,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 802,069 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 779,022 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 779,020 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 778,875 |
 
 ## shape-diamond
 
@@ -323,6 +349,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 60,899 | 116,579 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 60,899 | 117,208 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 60,899 | 106,625 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 60,899 | 88,455 |
 
 ## shape-dynamic
 
@@ -335,6 +362,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 82,420 | -24,744 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 82,420 | -19,948 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 82,420 | -130,233 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 82,420 | 97,997 |
 
 ## timed-admit-both
 
@@ -347,6 +375,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 130,748 | 166,851 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 131,772 | 166,599 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 130,748 | 150,665 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 118,909 | 133,573 |
 
 ## timed-admit-debounce
 
@@ -359,6 +388,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 129,654 | 162,874 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 130,678 | 162,874 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 129,654 | 146,428 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 117,814 | 132,166 |
 
 ## timed-admit-first
 
@@ -371,6 +401,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 76,517 | 101,552 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 77,541 | 101,552 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 76,517 | 93,948 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 69,925 | 81,964 |
 
 ## timed-admit-last
 
@@ -383,6 +414,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 129,916 | 162,141 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 130,940 | 162,139 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 129,916 | 146,061 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 118,076 | 132,485 |
 
 ## timed-capture-both
 
@@ -395,6 +427,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 42,700 | 52,067 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 42,700 | 52,065 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 42,700 | 50,543 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 36,044 | 44,956 |
 
 ## timed-capture-debounce
 
@@ -407,6 +440,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 42,572 | 54,165 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 42,572 | 54,165 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 42,572 | 49,892 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 35,916 | 43,583 |
 
 ## timed-capture-first
 
@@ -419,6 +453,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 37,772 | 47,381 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 37,772 | 47,381 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 37,772 | 45,452 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 32,396 | 38,804 |
 
 ## timed-capture-last
 
@@ -431,6 +466,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 42,508 | 51,303 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 42,508 | 51,303 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 42,508 | 49,779 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 35,852 | 43,519 |
 
 ## update
 
@@ -443,6 +479,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 1,088,680 | 38,805 | 83,005 | 471,711 | 377,241 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 1,088,680 | 38,805 | 83,005 | 473,466 | 382,448 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 1,088,680 | 38,805 | 83,005 | 472,939 | 362,204 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 1,088,680 | 38,805 | 83,005 | 263,397 | 207,816 |
 
 ## update-on
 
@@ -455,6 +492,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 95,405 | 402,258 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 95,405 | 407,658 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 93,805 | 379,712 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 93,805 | 222,107 |
 
 ## work-form
 
@@ -467,6 +505,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 174,678 | 168,144 | 340,961 | 309,519 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 174,678 | 168,144 | 269,046 | 306,828 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 174,678 | 168,144 | 405,151 | 291,380 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 174,678 | 168,144 | 288,773 | 287,120 |
 
 ## work-status
 
@@ -479,6 +518,7 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 100,445 | 80,715 | 712,424 | 976,952 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 100,445 | 80,715 | 861,993 | 654,738 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 100,445 | 79,115 | 616,750 | 919,678 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 100,445 | 79,115 | 315,937 | 155,377 |
 
 ## work-value
 
@@ -491,4 +531,5 @@
 | `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | 107,570 | 121,369 | 766,614 | 766,837 |
 | `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | 107,571 | 121,370 | 756,707 | 742,054 |
 | `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | 107,569 | 119,771 | 629,511 | 691,109 |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | 107,571 | 119,770 | 316,167 | 283,706 |
 
