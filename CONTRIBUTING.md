@@ -1,5 +1,27 @@
 # Contributing to Ranvier
 
+## Branches
+
+| Branch | Receives | Merge method |
+|--------|----------|--------------|
+| `develop` | pull requests from feature branches | squash, so each change lands as one conventional commit |
+| `master` | pull requests from `develop` | merge commit, so `develop` stays an ancestor of the merged tree |
+
+Branch a change from `develop` and open its pull request against `develop`. A pull request into
+`master` from any other branch fails the **Branch policy** check, unless the repository owner opened
+it. Both branches reject direct pushes, force pushes and deletion; pull requests merge only when the
+required checks pass. Repository administrators bypass these rules, and push directly only changes
+that are not source code, such as documentation.
+
+GitHub Actions runs on a pull request from a fork only after a maintainer approves the run.
+
+The rules are defined in [`.github/rulesets`](.github/rulesets) and applied with the GitHub CLI:
+
+```shell
+gh api -X POST repos/shayanhabibi/Ranvier/rulesets --input .github/rulesets/develop.json
+gh api -X PUT repos/shayanhabibi/Ranvier/rulesets/<id> --input .github/rulesets/develop.json   # update
+```
+
 ## Before opening a pull request
 
 Every repository task runs through the build CLI (see [Build CLI](README.md#build-cli)):
@@ -15,7 +37,12 @@ CI rejects unformatted F#. `dotnet fsi build.fsx -- format --dry-format` checks 
 ## Commit messages
 
 Commits follow [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): summary`,
-for example `perf(core): trim Fable output while preserving .NET code`.
+for example `perf(core): trim Fable output while preserving .NET code`. The type is one of `build`,
+`bench`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style` or `test`; the
+optional scope is lower case; `!` before the colon marks a breaking change. The **Conventional
+commits** check applies this to the pull-request title, which becomes the squash commit's subject,
+and to every commit in the pull request except merge commits. Pull requests opened by bots are
+exempt.
 
 CI reads two trailers. Write them in the footer (the last paragraph of the message); `Perf-Ignore`
 counts only there, and `Perf-Accepted` on any line of the message:
@@ -36,7 +63,22 @@ squash commit message.
 | CI | NativeAOT smoke | the AOT publish or the smoke executable fails |
 | CI | Formatting | `fantomas --check` reports an unformatted `.fs` file |
 | CI | Fable | the Fable suites fail under Node.js, or the Fable package compatibility check fails |
+| CI | Workflow scripts | a `node --test` suite under `.github/scripts` fails |
+| CI | **CI result** | any CI job above failed or was cancelled |
 | Perf | verdict | a scenario's instruction count regresses on arm64 and the regression is not accepted |
+| Perf | **Perf result** | measuring or the verdict failed or was cancelled |
+| Contribution | **Conventional commits** | the title or a commit is not a conventional commit header |
+| Contribution | **Branch policy** | the pull request targets `master` from a branch other than `develop` |
+
+The branch rules require the four checks in bold. The Contribution checks run the scripts of the
+target branch, not those of the pull request.
+
+### Documentation-only changes
+
+A change is documentation only when every changed path is under `docs/`, `brand/` or `.claude/`,
+is a Markdown file, a `LICENSE` file, or `.github/FUNDING.yml`
+([`changes.cjs`](.github/scripts/changes.cjs)). CI then runs only Formatting, and Perf measures
+nothing; the required checks pass. Pushes to `master` are always measured.
 
 ## Performance checks
 
@@ -73,7 +115,15 @@ When a regression is intended, accept it with either:
   ` — ` or ` -- ` and the reason. A name matching no scenario fails the check.
 
 Adding or removing the label reuses the previous measurement of the same head and base, so the
-verdict updates without measuring again. An accepted regression stays in the report and in the
+verdict updates without measuring again.
+
+### Reusing measurements
+
+A run measures nothing when a completed Perf run of this repository, among the 100 newest, has
+measured a base and head with the same trees. The figures are restated for the new commits, with a
+`reused` label naming the source run. When a feature branch starts at the tip of `develop` and is the
+only change released, the pull request from `develop` into `master` and the push to `master` that
+merges it both reuse the feature pull request's measurement. Any other commit on either side of the comparison means a new measurement. An accepted regression stays in the report and in the
 history, with its reason.
 
 ### Performance history
