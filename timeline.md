@@ -16,6 +16,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 101,726 | 141,063 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 101,732 | 141,030 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 101,728 | 140,927 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 101,727 | 141,020 |
 
 ## app-table
 
@@ -33,6 +34,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 9,233,227 | 9,642,607 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 9,233,705 | 9,775,470 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 9,233,700 | 9,642,269 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 9,233,690 | 9,776,297 |
 
 ## async-recover
 
@@ -50,6 +52,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 138,757 | 37,532 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 138,829 | 37,525 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 138,829 | 37,533 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 138,829 | 37,525 |
 
 ## async-resolve
 
@@ -67,6 +70,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 2,795,019 | 1,175,803 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 2,798,220 | 1,174,873 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 2,798,220 | 1,175,506 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 2,798,219 | 1,175,763 |
 
 ## chain
 
@@ -84,6 +88,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 13,042 | 318 | 2,470 | 4,491 | 3,180 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 13,042 | 318 | 2,470 | 4,491 | 3,180 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 13,042 | 318 | 2,470 | 4,491 | 3,180 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 13,106 | 318 | 2,470 | 4,491 | 3,180 |
 
 ## chain-affinity
 
@@ -101,6 +106,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 2,569 | 3,087 | 2,516 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 2,569 | 3,087 | 2,516 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 2,569 | 3,087 | 2,516 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 2,569 | 3,087 | 2,516 |
 
 ## control
 
@@ -118,6 +124,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 74,719 | 845,860 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 74,719 | 846,668 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 74,719 | 846,627 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 74,719 | 846,629 |
 
 ## create
 
@@ -135,6 +142,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 13,477,436 | 2,861,678 | 3,041,258 | 2,185,613 | 4,216,772 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 13,728,357 | 2,861,678 | 3,041,229 | 2,186,610 | 4,213,405 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 13,461,481 | 2,861,678 | 3,041,229 | 2,186,260 | 4,224,631 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 13,586,881 | 2,861,678 | 3,041,306 | 2,186,464 | 4,210,268 |
 
 ## create-on
 
@@ -152,6 +160,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 3,445,855 | 4,615,793 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 3,429,855 | 4,621,052 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 3,429,855 | 4,626,771 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 3,445,856 | 4,641,377 |
 
 ## cutoff
 
@@ -169,6 +178,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 1,181 | 50 | 111 | 65 | 35 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 1,181 | 50 | 111 | 65 | 35 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 1,181 | 50 | 111 | 65 | 35 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 1,181 | 50 | 111 | 65 | 35 |
 
 ## derive-effect
 
@@ -186,6 +196,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 765 | 716 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 765 | 716 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 765 | 716 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 765 | 716 |
 
 ## derive-on
 
@@ -203,6 +214,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 740 | 684 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 740 | 684 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 740 | 684 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 740 | 684 |
 
 ## dispose
 
@@ -220,6 +232,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 2,707,581 | 806,290 | 498,486 | 465,769 | 703,182 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 2,707,581 | 806,290 | 498,486 | 466,180 | 703,456 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 2,707,581 | 806,291 | 498,486 | 466,014 | 703,538 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 2,706,689 | 806,291 | 498,486 | 466,060 | 702,086 |
 
 ## dispose-on
 
@@ -237,6 +250,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 477,486 | 699,855 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 477,486 | 699,340 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 477,486 | 699,320 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 477,486 | 699,013 |
 
 ## editable-edit
 
@@ -254,6 +268,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 181,106 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 181,106 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 181,106 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 181,106 |
 
 ## editable-upstream
 
@@ -271,6 +286,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 232,757 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 232,756 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 232,756 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 232,756 |
 
 ## fail-recompute
 
@@ -288,6 +304,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 64,948 | 1,376 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 64,932 | 1,376 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 64,932 | 1,376 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 64,932 | 1,376 |
 
 ## flight
 
@@ -305,6 +322,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 11,049 | 6,244 | 6,245 | 11,372 | 10,817 | 22,381 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 11,051 | 6,245 | 6,246 | 11,374 | 10,819 | 22,383 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 11,051 | 6,245 | 6,246 | 11,375 | 10,819 | 22,383 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 11,051 | 6,245 | 6,246 | 11,374 | 10,819 | 22,383 |
 
 ## keyed-insert
 
@@ -322,6 +340,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 1,921,603 | 53,864 | 54,597 | 3,092,660 | 162,680 | 172,520 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 1,921,590 | 53,936 | 54,674 | 3,092,673 | 163,160 | 172,920 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 1,921,612 | 53,936 | 54,698 | 3,092,648 | 163,142 | 173,032 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 1,921,599 | 53,927 | 54,686 | 3,092,666 | 163,127 | 173,069 |
 
 ## keyed-remove
 
@@ -339,6 +358,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 1,920,550 | 43,566 | 44,995 | 3,092,470 | 130,256 | 142,766 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 1,920,537 | 43,638 | 45,058 | 3,092,529 | 130,695 | 143,307 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 1,920,550 | 43,638 | 45,081 | 3,092,463 | 130,641 | 143,342 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 1,920,541 | 43,629 | 45,066 | 3,092,569 | 130,837 | 143,257 |
 
 ## keyed-swap
 
@@ -356,6 +376,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 1,973,185 | 46,098 | 46,574 | 3,215,219 | 76,971 | 83,291 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) (accepted) | 1,973,171 | 46,167 | 46,649 | 3,215,270 | 79,489 | 84,811 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 1,973,203 | 46,167 | 46,681 | 3,215,232 | 79,407 | 84,869 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 1,973,189 | 46,167 | 46,667 | 3,215,206 | 79,449 | 85,165 |
 
 ## mvu-dispatch
 
@@ -373,6 +394,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 58,391 | 772 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 58,391 | 772 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 58,391 | 772 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 58,391 | 772 |
 
 ## project-chain
 
@@ -390,6 +412,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 3,837,412 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 3,837,485 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 3,837,421 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 3,837,404 |
 
 ## project-churn
 
@@ -407,6 +430,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 36,202 | 34,033 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 36,290 | 34,121 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 36,290 | 34,121 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 36,290 | 34,121 |
 
 ## project-edit
 
@@ -424,6 +448,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 50,173 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 50,201 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 50,218 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 50,186 |
 
 ## project-reorder
 
@@ -441,6 +466,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 778,879 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 778,907 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 778,907 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 778,907 |
 
 ## shape-diamond
 
@@ -458,6 +484,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 60,899 | 88,455 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 60,899 | 88,455 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 60,899 | 88,455 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 60,899 | 88,455 |
 
 ## shape-dynamic
 
@@ -475,6 +502,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 82,420 | 98,000 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 82,420 | 98,007 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 82,420 | 98,003 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 82,420 | 98,003 |
 
 ## timed-admit-both
 
@@ -492,6 +520,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 118,909 | 133,573 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 118,909 | 133,573 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 118,909 | 133,569 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 118,909 | 133,570 |
 
 ## timed-admit-debounce
 
@@ -509,6 +538,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 117,814 | 132,166 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 117,814 | 132,167 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 117,814 | 132,165 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 117,814 | 132,169 |
 
 ## timed-admit-first
 
@@ -526,6 +556,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 69,925 | 81,962 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 69,925 | 81,964 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 69,925 | 81,963 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 69,925 | 81,964 |
 
 ## timed-admit-last
 
@@ -543,6 +574,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 118,076 | 132,486 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 118,076 | 132,487 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 118,076 | 132,487 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 118,076 | 132,486 |
 
 ## timed-capture-both
 
@@ -560,6 +592,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 36,044 | 44,954 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 36,044 | 44,959 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 36,044 | 44,957 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 36,044 | 44,957 |
 
 ## timed-capture-debounce
 
@@ -577,6 +610,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 35,916 | 43,583 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 35,916 | 43,583 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 35,916 | 43,583 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 35,916 | 43,583 |
 
 ## timed-capture-first
 
@@ -594,6 +628,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 32,396 | 38,802 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 32,396 | 38,804 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 32,396 | 38,804 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 32,396 | 38,804 |
 
 ## timed-capture-last
 
@@ -611,6 +646,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 35,852 | 43,519 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 35,852 | 43,519 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 35,852 | 43,519 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 35,852 | 43,519 |
 
 ## update
 
@@ -628,6 +664,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 1,088,680 | 38,805 | 83,005 | 263,413 | 207,830 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 1,090,272 | 38,805 | 83,005 | 263,459 | 207,781 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 1,088,680 | 38,805 | 83,005 | 263,427 | 207,822 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 1,091,872 | 38,805 | 83,005 | 263,428 | 207,810 |
 
 ## update-on
 
@@ -645,6 +682,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 93,805 | 222,082 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 93,805 | 222,091 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 93,805 | 222,096 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 93,805 | 222,111 |
 
 ## work-form
 
@@ -662,6 +700,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 174,678 | 168,144 | 288,733 | 287,095 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 174,678 | 168,144 | 288,766 | 287,120 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 174,678 | 168,177 | 288,770 | 287,120 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 174,678 | 168,144 | 288,761 | 287,120 |
 
 ## work-status
 
@@ -679,6 +718,7 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 100,445 | 79,115 | 315,927 | 155,377 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 100,445 | 79,115 | 315,923 | 155,422 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 100,445 | 79,115 | 315,945 | 155,384 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 100,445 | 79,115 | 315,962 | 155,370 |
 
 ## work-value
 
@@ -696,4 +736,5 @@
 | `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | 107,570 | 119,769 | 316,156 | 283,730 |
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 107,569 | 119,771 | 316,193 | 283,676 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 107,571 | 119,770 | 316,170 | 283,707 |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 107,569 | 119,769 | 316,135 | 283,696 |
 
