@@ -144,20 +144,28 @@ type ScopeBenchmarks() =
 
 /// <summary>
 /// Removal from one wide observer list: <c>Nodes</c> effects on one source, torn
-/// down with their root or one at a time in creation order. Root disposal
-/// removes the newest observer first; creation order removes the oldest first.
+/// down with their root, one at a time in creation order, or one at a time in a
+/// scattered order. Root disposal removes the newest observer first; creation order
+/// removes the oldest first.
 /// </summary>
 /// <remarks>
-/// Divide by <c>Nodes</c> for the cost per node. Above 8 observers the list keeps
-/// a position index, so 64 and 1024 include its maintenance.
+/// Divide by <c>Nodes</c> for the cost per node. <c>DisposeScattered</c> disposes in one
+/// fixed shuffled order, the same for every iteration.
 /// </remarks>
 [<MemoryDiagnoser; BenchmarkCategory("Lifetime", "ObserverRemoval")>]
 type ObserverRemovalBenchmarks() =
     let graph = new Graph ()
     let source = Signal (graph, 1)
+    let mutable order: int[] = Array.empty
 
     [<Params(8, 64, 1024)>]
     member val Nodes = 8 with get, set
+
+    [<GlobalSetup>]
+    member this.Setup() =
+        let random = System.Random 42
+        order <- Array.init this.Nodes id
+        random.Shuffle order
 
     [<Benchmark>]
     member this.DisposeRoot() =
@@ -178,6 +186,47 @@ type ObserverRemovalBenchmarks() =
 
         for effect in effects do
             effect.Dispose ()
+
+    [<Benchmark>]
+    member this.DisposeScattered() =
+        let effects =
+            Array.init this.Nodes (fun _ -> new Effect (graph, (fun () -> source.Value |> ignore)))
+
+        for i in order do
+            effects[i].Dispose()
+
+/// <summary>
+/// One effect reading <c>Sources</c> signals, each run in an order rotated by one from the
+/// last, so every read after the first misses its slot.
+/// </summary>
+[<MemoryDiagnoser; BenchmarkCategory("Lifetime", "ObserverRemoval")>]
+type OutOfOrderReadBenchmarks() =
+    let graph = new Graph ()
+    let shift = Signal (graph, 0)
+    let mutable sources: Signal<int>[] = Array.empty
+    let mutable sink = 0
+
+    [<Params(8, 64, 1024)>]
+    member val Sources = 8 with get, set
+
+    [<GlobalSetup>]
+    member this.Setup() =
+        sources <- Array.init this.Sources (fun i -> Signal (graph, i))
+        let width = this.Sources
+
+        new Effect (
+            graph,
+            fun () ->
+                let k = shift.Value
+
+                for i in 0 .. width - 1 do
+                    sink <- sink + sources[(i + k) % width].Value
+        )
+        |> ignore
+
+    [<Benchmark>]
+    member _.RotateReads() =
+        shift.Value <- shift.Value + 1
 
 /// <summary>
 /// Dynamic dependencies on a wide source: <c>Nodes</c> effects read <c>wide</c> only
