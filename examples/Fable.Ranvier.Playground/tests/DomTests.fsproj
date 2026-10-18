@@ -51,6 +51,7 @@
     <Compile Include="DelegationChecks.fs" />
     <Compile Include="TemplateChecks.fs" />
     <Compile Include="TemplateCatalogueChecks.fs" />
+    <Compile Include="OwnedAsyncChecks.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/ComponentBench.fs" Link="ComponentBench.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Fixtures.fs" Link="Fixtures.fs" />
     <Compile Include="RepresentationBench.fs" />
