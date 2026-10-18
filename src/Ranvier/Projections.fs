@@ -140,13 +140,13 @@ type internal OnceRow<'T, 'K, 'V>(key: 'K, item: Signal<'T>) =
 [<Sealed>]
 #endif
 /// <summary>
-/// The window of <c>Keys</c> that can differ from <c>Previous</c>: the key arrays before <c>Start</c> agree, and so do
-/// the keys after <c>End</c> and after <c>PreviousEnd</c>.
+/// The window of the key array at version <c>To</c> that can differ from the key array at version <c>From</c>: the
+/// arrays agree before <c>Start</c>, and after <c>End</c> and <c>PreviousEnd</c>.
 /// </summary>
 [<AllowNullLiteral>]
-type internal KeyRange<'K>() =
-    member val Keys = Platform.WeakSlot<'K[]>()
-    member val Previous = Platform.WeakSlot<'K[]>()
+type internal KeyRange() =
+    member val From = -1 with get, set
+    member val To = -1 with get, set
     member val Start = 0 with get, set
     member val PreviousEnd = -1 with get, set
     member val End = -1 with get, set
@@ -459,6 +459,9 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     /// <summary>The staged key array, or null when the pass kept the published keys.</summary>
     let mutable stagedKeys: 'K[] = null
 
+    /// <summary>The number of writes of the keys cell.</summary>
+    let mutable keysVersion = 0
+
     let mutable trackedReads = 0
     let mutable scopeRequests = 0
 
@@ -469,6 +472,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
         if keysStaged then
             if not (Platform.isNull stagedKeys) then
                 Tracer.Moved (graph, id, null)
+                keysVersion <- keysVersion + 1
                 keys.WriteExcept (stagedKeys, puller)
                 Tracer.Notified graph
         else
@@ -484,6 +488,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
             if not same then
                 Tracer.Moved (graph, id, null)
+                keysVersion <- keysVersion + 1
                 keys.WriteExcept (passKeys.ToArray (), puller)
                 Tracer.Notified graph
 
@@ -521,8 +526,10 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     /// <summary>Whether a pass creates its added rows before it retires its removed ones.</summary>
     member val internal CreateFirst = false with get, set
 
+    member internal _.PublishedVersion = keysVersion
+
     /// <summary>The changed window of the last keyed pass that recorded one, or null.</summary>
-    member val internal Range: KeyRange<'K> = null with get, set
+    member val internal Range: KeyRange = null with get, set
 
     /// <summary>The value of a memo-free row, or null while the projection's rows have memos.</summary>
     member val internal OnceValue: Func<RowEntry<'K, 'V>, 'V> = null with get, set
@@ -1019,6 +1026,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             this.Pass.ClearStaged ()
 
             if not (obj.ReferenceEquals (keys.Peek, delta.Keys)) then
+                keysVersion <- keysVersion + 1
                 keys.WriteExcept (delta.Keys, puller)
 
             this.ObservePass ()
@@ -1321,32 +1329,37 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     /// </summary>
     member this.Count: int = this.Keys.Length
 
+    /// <summary>The version of <c>Keys</c>: every new key array has a new version.</summary>
+    /// <remarks>A tracked read of the keys, as <c>Keys</c>.</remarks>
+    member this.KeysVersion: int =
+        this.Keys |> ignore
+        keysVersion
+
     /// <summary>
-    /// The positions of <c>Keys</c> that can differ from <c>previous</c>, an earlier result of <c>Keys</c>, as
-    /// <c>(start, previousEnd, end)</c>. The keys before <c>start</c> equal the keys of <c>previous</c> at the same
-    /// positions, and the keys after <c>end</c> equal the keys of <c>previous</c> after <c>previousEnd</c>, in order. A
-    /// null <c>previous</c> stands for an empty array.
+    /// The positions of <c>Keys</c> that can differ from the keys at <c>version</c>, an earlier <c>KeysVersion</c>, as
+    /// <c>(start, previousEnd, end)</c>, or <c>ValueNone</c>. The keys before <c>start</c> equal the keys at
+    /// <c>version</c> at the same positions, and the keys after <c>end</c> equal the keys at <c>version</c> after
+    /// <c>previousEnd</c>, in order.
     /// </summary>
     /// <remarks>
-    /// A tracked read of the keys, as <c>Keys</c>, and O(1) after it. When <c>previous</c> is the current key array, the
-    /// range is empty: <c>start</c> is its length. After a keyed pass that changed one window of positions, against the
-    /// key array of the pass before it, the range is that window. Otherwise it spans every position.
+    /// A tracked read of the keys, as <c>Keys</c>, and O(1) after it. At the current version the range is empty:
+    /// <c>start</c> is the key count. After a keyed pass that changed one window of positions, the window is available
+    /// against the version before the pass. Any other version gives <c>ValueNone</c>.
     /// </remarks>
-    member this.ChangedRange(previous: 'K[]) : struct (int * int * int) =
+    member this.ChangedSince(version: int) : struct (int * int * int) voption =
         let current = this.Keys
-        let count = if Platform.isNull previous then 0 else previous.Length
         let range = this.Range
 
-        if obj.ReferenceEquals (current, previous) then
-            struct (count, count - 1, count - 1)
+        if version = keysVersion then
+            ValueSome (struct (current.Length, current.Length - 1, current.Length - 1))
         elif
             not (Platform.isNull range)
-            && range.Keys.Holds current
-            && range.Previous.Holds previous
+            && range.To = keysVersion
+            && range.From = version
         then
-            struct (range.Start, range.PreviousEnd, range.End)
+            ValueSome (struct (range.Start, range.PreviousEnd, range.End))
         else
-            struct (0, count - 1, current.Length - 1)
+            ValueNone
 
     /// <summary>
     /// The value of the row at <c>key</c>, as a tracked read of that row, or of the
@@ -1777,7 +1790,9 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
                 graph.Retire passScope
 
             if keys.Peek.Length > 0 then
-                graph.RunBatch (fun () -> keys.Value <- Array.empty)
+                graph.RunBatch (fun () ->
+                    keysVersion <- keysVersion + 1
+                    keys.Value <- Array.empty)
 
     /// <summary>
     /// A new reader of the projection's membership and order, owned by the calling scope. Its first <c>Read</c> reports a
@@ -2146,6 +2161,9 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
     /// <summary>The published key array <c>lastKeys</c> was copied from.</summary>
     let mutable lastPublished: 'K[] = null
 
+    /// <summary>The version of <c>lastPublished</c>.</summary>
+    let mutable lastVersion = -1
+
     /// <summary>A reusable buffer for a source that is not an array, or null while a pass holds it.</summary>
     let mutable spare: 'T[] = Array.empty
 
@@ -2465,11 +2483,11 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
                     && obj.ReferenceEquals (published, trimmedKeys)
                 then
                     if Platform.isNull this.Range then
-                        this.Range <- KeyRange<'K>()
+                        this.Range <- KeyRange ()
 
                     let range = this.Range
-                    range.Keys.Set published
-                    range.Previous.Set lastPublished
+                    range.From <- lastVersion
+                    range.To <- this.PublishedVersion
                     range.Start <- trimmedStart
                     range.PreviousEnd <- trimmedEnd0
                     range.End <- trimmedEnd1
@@ -2490,6 +2508,7 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
 
                 keyCount <- count
                 lastPublished <- published
+                lastVersion <- this.PublishedVersion
 
             trimValid <- true
         else
