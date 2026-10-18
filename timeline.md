@@ -20,6 +20,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 101,728 | 140,987 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 101,963 | 141,037 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 101,860 | 139,716 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 101,598 | 140,609 |
 
 ## app-table
 
@@ -41,6 +42,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 9,233,708 | 9,639,718 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 9,233,726 | 9,777,758 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 9,233,689 | 9,691,748 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 9,229,983 | 9,629,653 |
 
 ## async-recover
 
@@ -62,6 +64,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 138,829 | 37,536 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 138,829 | 37,529 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 138,829 | 37,457 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 138,826 | 37,112 |
 
 ## async-resolve
 
@@ -83,6 +86,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 2,798,219 | 1,175,912 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 2,797,419 | 1,171,819 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 2,797,419 | 1,076,841 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 2,796,739 | 1,066,675 |
 
 ## chain
 
@@ -104,6 +108,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 13,042 | 318 | 2,470 | 4,491 | 3,180 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 13,042 | 318 | 2,470 | 4,491 | 3,180 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 13,042 | 318 | 2,470 | 4,491 | 3,180 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 13,042 | 318 | 2,470 | 4,491 | 3,180 |
 
 ## chain-affinity
 
@@ -125,6 +130,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 2,569 | 3,087 | 2,516 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 2,569 | 3,087 | 2,516 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 2,569 | 3,087 | 2,516 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 2,569 | 3,087 | 2,516 |
 
 ## control
 
@@ -146,6 +152,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 74,719 | 846,604 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 74,719 | 846,544 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 74,719 | 834,846 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 74,720 | 834,925 |
 
 ## create
 
@@ -167,6 +174,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 13,461,450 | 2,861,678 | 3,041,229 | 2,186,430 | 4,202,693 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 13,461,376 | 2,861,678 | 3,041,229 | 2,185,794 | 4,214,446 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 13,602,860 | 2,861,678 | 3,041,257 | 2,185,680 | 4,214,317 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 13,461,452 | 2,893,677 | 3,035,209 | 2,131,279 | 4,184,451 |
 
 ## create-on
 
@@ -188,6 +196,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 3,445,854 | 4,622,398 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 3,429,877 | 4,634,474 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 3,429,878 | 4,626,474 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 3,439,904 | 4,348,490 |
 
 ## cutoff
 
@@ -209,6 +218,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 1,181 | 50 | 111 | 65 | 35 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 1,181 | 50 | 111 | 65 | 35 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 1,181 | 50 | 111 | 65 | 35 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 1,181 | 50 | 111 | 65 | 35 |
 
 ## derive-effect
 
@@ -230,6 +240,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 765 | 716 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 765 | 716 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 765 | 716 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 765 | 716 |
 
 ## derive-on
 
@@ -251,6 +262,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 756 | 684 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 740 | 684 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 740 | 684 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 740 | 684 |
 
 ## dispose
 
@@ -272,6 +284,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 2,707,580 | 806,291 | 498,486 | 466,194 | 703,651 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 2,706,181 | 806,290 | 501,497 | 466,276 | 702,782 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 2,707,580 | 806,291 | 501,497 | 466,038 | 702,173 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 2,707,579 | 806,291 | 501,497 | 466,263 | 704,526 |
 
 ## dispose-on
 
@@ -293,6 +306,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 477,486 | 699,518 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 480,497 | 699,418 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 480,497 | 700,132 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 480,497 | 698,094 |
 
 ## editable-edit
 
@@ -314,6 +328,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 181,106 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 181,106 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 181,106 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 181,106 |
 
 ## editable-upstream
 
@@ -335,6 +350,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 232,756 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 232,755 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 232,756 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 232,755 |
 
 ## fail-recompute
 
@@ -356,6 +372,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 64,932 | 1,376 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 64,852 | 1,376 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 64,852 | 1,376 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 64,924 | 1,376 |
 
 ## flight
 
@@ -377,6 +394,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 11,051 | 6,245 | 6,246 | 11,374 | 10,819 | 22,383 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 11,051 | 6,245 | 6,246 | 11,375 | 10,819 | 22,383 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 11,051 | 6,245 | 6,246 | 11,374 | 10,819 | 22,383 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 11,051 | 6,245 | 6,246 | 11,375 | 10,819 | 22,383 |
 
 ## keyed-insert
 
@@ -398,6 +416,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 1,921,590 | 53,946 | 54,675 | 3,092,613 | 163,149 | 173,067 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 1,921,588 | 53,976 | 54,699 | 3,092,666 | 163,057 | 173,057 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 1,921,573 | 53,966 | 54,665 | 3,092,872 | 162,911 | 172,991 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 1,921,568 | 53,934 | 54,623 | 3,092,994 | 163,085 | 172,557 |
 
 ## keyed-remove
 
@@ -419,6 +438,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 1,920,532 | 43,647 | 45,058 | 3,092,431 | 130,613 | 143,361 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 1,920,547 | 43,635 | 45,050 | 3,092,537 | 132,187 | 143,308 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 1,920,533 | 43,626 | 45,039 | 3,092,718 | 132,010 | 143,311 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 1,920,519 | 43,626 | 45,007 | 3,092,959 | 134,022 | 143,253 |
 
 ## keyed-swap
 
@@ -440,6 +460,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 1,973,171 | 46,168 | 46,649 | 3,215,194 | 79,487 | 84,995 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 1,973,202 | 46,167 | 46,667 | 3,215,181 | 79,316 | 84,944 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 1,973,184 | 46,167 | 46,649 | 3,215,502 | 79,183 | 85,189 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 1,973,171 | 46,168 | 46,649 | 3,215,847 | 79,219 | 84,875 |
 
 ## mvu-dispatch
 
@@ -461,6 +482,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 58,391 | 772 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 58,391 | 772 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 58,391 | 772 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 58,391 | 772 |
 
 ## project-chain
 
@@ -482,6 +504,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 3,837,405 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 3,837,438 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 3,837,389 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 3,837,400 |
 
 ## project-churn
 
@@ -503,6 +526,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 36,290 | 34,121 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 36,290 | 34,121 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 36,290 | 34,121 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 36,252 | 34,083 |
 
 ## project-edit
 
@@ -524,6 +548,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 50,202 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 50,186 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 50,186 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 50,185 |
 
 ## project-reorder
 
@@ -545,6 +570,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 778,924 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 778,895 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 778,895 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 778,907 |
 
 ## shape-diamond
 
@@ -566,6 +592,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 60,899 | 88,455 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 60,899 | 88,455 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 60,899 | 88,455 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 60,899 | 88,455 |
 
 ## shape-dynamic
 
@@ -587,6 +614,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 82,420 | 98,007 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 83,732 | 98,003 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 82,420 | 98,001 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 82,420 | 98,000 |
 
 ## timed-admit-both
 
@@ -608,6 +636,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 118,909 | 133,573 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 118,909 | 133,571 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 118,909 | 133,569 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 118,909 | 133,650 |
 
 ## timed-admit-debounce
 
@@ -629,6 +658,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 117,818 | 132,166 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 117,814 | 132,167 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 117,814 | 132,162 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 117,814 | 132,158 |
 
 ## timed-admit-first
 
@@ -650,6 +680,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 69,925 | 81,964 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 69,925 | 81,964 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 69,925 | 81,964 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 69,925 | 81,964 |
 
 ## timed-admit-last
 
@@ -671,6 +702,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 118,076 | 132,487 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 118,076 | 132,487 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 118,076 | 132,470 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 118,076 | 132,470 |
 
 ## timed-capture-both
 
@@ -692,6 +724,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 36,048 | 44,957 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 36,044 | 44,956 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 36,044 | 44,965 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 36,044 | 44,981 |
 
 ## timed-capture-debounce
 
@@ -713,6 +746,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 35,916 | 43,583 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 35,916 | 43,583 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 35,916 | 43,583 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 35,916 | 43,583 |
 
 ## timed-capture-first
 
@@ -734,6 +768,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 32,396 | 38,804 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 32,396 | 38,804 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 32,396 | 38,804 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 32,396 | 38,804 |
 
 ## timed-capture-last
 
@@ -755,6 +790,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 35,852 | 43,519 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 35,852 | 43,519 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 35,852 | 43,519 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 35,852 | 43,519 |
 
 ## update
 
@@ -776,6 +812,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 1,088,672 | 38,805 | 83,005 | 263,483 | 207,800 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 1,088,680 | 38,805 | 83,005 | 263,408 | 207,795 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 1,088,680 | 38,805 | 83,005 | 263,113 | 207,770 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 1,090,280 | 38,805 | 83,005 | 262,840 | 207,848 |
 
 ## update-on
 
@@ -797,6 +834,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 95,405 | 222,096 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 93,805 | 222,116 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 93,805 | 222,065 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 93,805 | 222,097 |
 
 ## work-form
 
@@ -818,6 +856,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 174,678 | 168,144 | 288,773 | 287,120 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 174,678 | 168,163 | 288,724 | 287,115 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 174,678 | 168,177 | 288,722 | 287,066 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 174,678 | 172,144 | 288,766 | 287,118 |
 
 ## work-status
 
@@ -839,6 +878,7 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 100,445 | 80,715 | 315,935 | 155,346 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 100,445 | 79,115 | 315,942 | 155,383 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 100,445 | 79,115 | 315,910 | 155,356 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 100,445 | 79,116 | 315,892 | 155,398 |
 
 ## work-value
 
@@ -860,4 +900,5 @@
 | `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 107,569 | 121,369 | 316,136 | 283,703 |
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 107,569 | 119,771 | 316,246 | 283,710 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 107,571 | 119,770 | 316,149 | 283,694 |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 107,569 | 119,770 | 316,130 | 283,716 |
 
