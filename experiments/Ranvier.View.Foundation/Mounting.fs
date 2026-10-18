@@ -1903,6 +1903,43 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
         let mutable previousItems: obj array = [||]
         // The rows released since the last layout.
         let retired = ResizeArray<Row>()
+        // The positions of an in-place window whose key differs from the last pass, in order.
+        let moved = ResizeArray<int>()
+
+        // When the window from `first` keeps its length and spans more than `smallWindow` positions, collects into `moved`
+        // the positions whose key differs between `prior` and `next` and returns true.
+        let collectMoved (prior: obj array) (next: obj array) (first: int) (last0: int) (last1: int) =
+            moved.Clear ()
+
+            if
+                not (isNull prior)
+                && last0 = last1
+                && prior.Length = next.Length
+                && last1 - first + 1 > smallWindow
+            then
+                for index in first..last1 do
+                    if item prior index <> item next index then
+                        moved.Add index
+
+                true
+            else
+                false
+
+        // Validates the laid-out rows from one before to one after each run of moved positions.
+        let validateMoved (parent: Node) =
+            let mutable k = 0
+
+            while k < moved.Count do
+                let first = at moved k
+                let mutable last = first
+
+                while k + 1 < moved.Count
+                      && at moved (k + 1) <= last + 2 do
+                    k <- k + 1
+                    last <- at moved k
+
+                Row.ValidateWindow (regionStart, regionEnd, site.LaidOut, parent, first - 1, last + 1)
+                k <- k + 1
 
         let buildRow (current: unit -> obj) : Row =
             let mutable row: Row = null
@@ -1941,6 +1978,8 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                 let start = ref 0
                 let end0 = ref -1
                 let end1 = ref -1
+                // The window keeps the rows of its unchanged keys in place, and `moved` holds its changed positions.
+                let inPlace = ref false
 
                 // Validates the laid-out rows from `first - 1` to `last0 + 1`, or every row after a failed pass.
                 let validate (parent: Node) (first: int) (last0: int) =
@@ -2040,8 +2079,15 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                                         start.Value <- first
                                         end0.Value <- last0
                                         end1.Value <- last1
+                                        inPlace.Value <- collectMoved priorKeys next first last0 last1
 
-                                        validate parent.Value first last0
+                                        if
+                                            inPlace.Value
+                                            && priorRows.Length = site.LaidOut.Count
+                                        then
+                                            validateMoved parent.Value
+                                        else
+                                            validate parent.Value first last0
 
                                     true
                                 with error ->
@@ -2085,8 +2131,23 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                                     let removed = end0 - start + 1
                                     let inserted = end1 - start + 1
 
+                                    let inPlace =
+                                        priorRows.Length = count
+                                        && if authored then
+                                               collectMoved priorKeys keys start end0 end1
+                                           else
+                                               inPlace.Value
+
                                     let next: Row array =
-                                        if
+                                        if inPlace then
+                                            let next = copyRows priorRows
+
+                                            for k in 0 .. moved.Count - 1 do
+                                                let index = at moved k
+                                                setItem next index (lookup index)
+
+                                            next
+                                        elif
                                             inserted <= smallWindow
                                             && priorRows.Length - removed + inserted = count
                                         then
@@ -2110,13 +2171,22 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                                     // `Row.Layout` can skip.
                                     let mutable leading = min start count
                                     let mutable trailing = max 0 (count - 1 - end1)
-                                    let checkedRows = if leading + trailing > 0 then retired.Count else 0
+
+                                    let checkedRows =
+                                        if inPlace || leading + trailing > 0 then
+                                            retired.Count
+                                        else
+                                            0
 
                                     if checkedRows > 0 then
                                         let window = rowSet ()
 
-                                        for index in start..end0 do
-                                            rowSetAdd window (item priorRows index)
+                                        if inPlace then
+                                            for k in 0 .. moved.Count - 1 do
+                                                rowSetAdd window (item priorRows (at moved k))
+                                        else
+                                            for index in start..end0 do
+                                                rowSetAdd window (item priorRows index)
 
                                         for index in 0 .. checkedRows - 1 do
                                             let row = at retired index
@@ -2124,7 +2194,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                                             if not (rowSetHas window row) then
                                                 for position in 0 .. count - 1 do
                                                     if
-                                                        (position < start || position > end1)
+                                                        (inPlace || position < start || position > end1)
                                                         && same (item next position) row
                                                     then
                                                         setItem next position (lookup position)

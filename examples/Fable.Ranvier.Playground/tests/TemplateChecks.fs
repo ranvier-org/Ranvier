@@ -1904,6 +1904,38 @@ let private eachWindowedRemove () =
 
 let private keyedWindowedRemove () =
     windowedRemove true
+
+let private windowedSwap (keyed: bool) =
+    use graph = new Graph ()
+    let items = graph.Run (fun () -> Api.createSignal (listedItems 1000))
+    let host = host ()
+    let mounted = mount graph host (listedView keyed items)
+    let before = rowNodes host
+    let next = Array.copy items.Value
+    next[1] <- items.Value[998]
+    next[998] <- items.Value[1]
+    Mounting.ListCounters.validatedRows.Value <- 0
+    Mounting.ListCounters.lookups.Value <- 0
+    graph.Run (fun () -> items.Value <- next)
+
+    let validated, lookups =
+        Mounting.ListCounters.validatedRows.Value, Mounting.ListCounters.lookups.Value
+
+    let expectedNodes = Array.copy before
+    expectedNodes[1] <- before[998]
+    expectedNodes[998] <- before[1]
+    equal true (sameNodes expectedNodes (rowNodes host))
+
+    if (not keyed && validated > 6) || lookups > 2 then
+        failwithf "Swapping two of 1,000 rows validated %d rows and looked up %d" validated lookups
+
+    mounted.Dispose ()
+
+let private eachWindowedSwap () =
+    windowedSwap false
+
+let private keyedWindowedSwap () =
+    windowedSwap true
 #endif
 
 let private inPlaceView (keyed: bool) (tick: Signal<int>) (read: unit -> Listed array) =
@@ -2057,6 +2089,83 @@ let private eachForeignBeforeEnd () =
 
 let private keyedForeignBeforeEnd () =
     foreignNearWindow true 10 9 "Keyed-list boundaries were externally reordered"
+
+// Swaps rows 1 and 98 of 100 with a foreign row inserted before row `position`.
+let private foreignNearSwap (keyed: bool) (position: int) =
+    use graph = new Graph ()
+    let original = listedItems 100
+    let items = graph.Run (fun () -> Api.createSignal original)
+    let host = host ()
+    let mounted, reports = reported graph host (listedView keyed items)
+    let before = rowNodes host
+    let anchor = before[position] :?> Node
+    let foreign = globalThis.document.createElement "li"
+
+    anchor.parentNode.Value.insertBefore (foreign, anchor)
+    |> ignore
+
+    let expectedNodes = Array.insertAt position (box foreign) before
+
+    let message =
+        if keyed then
+            "Range boundaries or owned roots were externally mutated"
+        else
+            rowsMutated
+
+    let next = Array.copy original
+    next[1] <- original[98]
+    next[98] <- original[1]
+    graph.Run (fun () -> items.Value <- next)
+    equal ([ message ], true) (reports[0] |> List.map _.Message, sameNodes expectedNodes (rowNodes host))
+    mounted.Dispose ()
+
+let private eachForeignBeforeSwapped () =
+    foreignNearSwap false 98
+
+let private eachForeignBeforeSwappedNeighbour () =
+    foreignNearSwap false 97
+
+let private eachForeignAfterSwapped () =
+    foreignNearSwap false 99
+
+let private eachForeignAfterFirstSwapped () =
+    foreignNearSwap false 2
+
+let private keyedForeignBeforeSwapped () =
+    foreignNearSwap true 98
+
+// Over 100 rows, swaps rows 1 and 98 and replaces row 50 with a new item.
+let private scatteredWindow (keyed: bool) =
+    use graph = new Graph ()
+    let original = listedItems 100
+    let items = graph.Run (fun () -> Api.createSignal original)
+    let host = host ()
+    let mounted = mount graph host (listedView keyed items)
+    let before = rowNodes host
+    let next = Array.copy original
+    next[1] <- original[98]
+    next[98] <- original[1]
+    next[50] <- { Id = 500; Text = "500," }
+    graph.Run (fun () -> items.Value <- next)
+    let after = rowNodes host
+    let expected = next |> Array.map _.Text |> String.concat ""
+
+    let kept =
+        [ 0..99 ]
+        |> List.filter (fun index -> index <> 1 && index <> 50 && index <> 98)
+        |> List.forall (fun index -> obj.ReferenceEquals (before[index], after[index]))
+
+    equal
+        (expected, true, true, false)
+        (host.textContent, kept, sameNodes [| before[98]; before[1] |] [| after[1]; after[98] |], obj.ReferenceEquals (before[50], after[50]))
+
+    mounted.Dispose ()
+
+let private eachScatteredWindow () =
+    scatteredWindow false
+
+let private keyedScatteredWindow () =
+    scatteredWindow true
 
 let private eachMatchesReferenceOrder () =
     use graph = new Graph ()
@@ -3910,6 +4019,8 @@ let cases =
 #if RANVIER_VIEW_COUNTERS
         "removing one of 200 each rows validates at most 4 rows and looks up at most 1", eachWindowedRemove
         "removing one of 200 Keyed.array rows validates at most 4 rows and looks up at most 1", keyedWindowedRemove
+        "swapping two of 1,000 each rows validates at most 6 rows and looks up at most 2", eachWindowedSwap
+        "swapping two of 1,000 Keyed.array rows looks up at most 2", keyedWindowedSwap
 #endif
         "each over an array mutated in place matches a fresh array", eachInPlaceMutation
         "Keyed.array over an array mutated in place matches a fresh array", keyedInPlaceMutation
@@ -3923,6 +4034,13 @@ let cases =
         "a foreign row after Keyed.array's changed window is reported on that pass and the next", keyedForeignAfterWindow
         "a foreign row before each's end marker is reported when the last row is removed and on the next pass", eachForeignBeforeEnd
         "a foreign row before Keyed.array's end marker is reported when the last row is removed and on the next pass", keyedForeignBeforeEnd
+        "a foreign row before a row each swaps across 98 positions is reported", eachForeignBeforeSwapped
+        "a foreign row before the row preceding a row each swaps across 98 positions is reported", eachForeignBeforeSwappedNeighbour
+        "a foreign row after a row each swaps across 98 positions is reported", eachForeignAfterSwapped
+        "a foreign row after the first row each swaps across 98 positions is reported", eachForeignAfterFirstSwapped
+        "a foreign row before a row Keyed.array swaps across 98 positions is reported", keyedForeignBeforeSwapped
+        "each over a 98-position window with a swap and a replacement keeps the unchanged rows' nodes", eachScatteredWindow
+        "Keyed.array over a 98-position window with a swap and a replacement keeps the unchanged rows' nodes", keyedScatteredWindow
         "list updates match a reference order and keep node identities", eachMatchesReferenceOrder
         "each over stable items matches a reference order through mixed edits and keeps node identities", eachStableItemsMatchReferenceOrder
         "Keyed.array over stable items matches a reference order through mixed edits and keeps node identities", keyedStableItemsMatchReferenceOrder
