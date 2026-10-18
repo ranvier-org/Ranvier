@@ -64,7 +64,7 @@ The core alone, with no DOM ([trimmed pass](../../research/2026-10-14-core-trimm
 
 ### Open, in proposed order
 
-1. Objects and bytes per row on creation (create1k 1.67x, replace1k 1.79x, append1k 1.55x) and clear (clear1k 1.89x, clear10k 2.05x); retained heap 1,370 B per row at 1k against the 1,300 B target. [#93](https://github.com/shayanhabibi/Ranvier/pull/93) stores an owner's first cleanup in fields: 1,179 B per row, replace1k 1.31x, append1k 1.12x, clear10k 1.66x with it applied ([note](../../research/2026-10-18-owner-first-cleanup.md)).
+1. Objects and bytes per row on creation (create1k 1.67x, replace1k 1.79x, append1k 1.55x) and clear (clear1k 1.89x, clear10k 2.05x); retained heap 1,370 B per row at 1k against the 1,300 B target. [#93](https://github.com/shayanhabibi/Ranvier/pull/93), merged 2026-10-18 and merged into this branch, stores an owner's first cleanup in fields: 1,179 B per row, replace1k 1.31x, append1k 1.12x, clear10k 1.66x ([note](../../research/2026-10-18-owner-first-cleanup.md)).
 2. armsClear1k (1.96x) and component dispose (1.33–1.43× Solid 2 at every width).
 3. swap1k after a forced GC: about 0.26 ms above the loop, most of it in `RowsOf.Stage` ([post-GC note](../../research/2026-10-17-arms-clear-and-post-gc.md#the-first-operation-after-a-forced-gc)).
 4. Investigate the queued commit `Queue` (`Scheduling.fs`) as binding effects under a microtask `IGraphDispatcher` (agreed follow-up).
