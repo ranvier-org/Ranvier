@@ -139,6 +139,18 @@ type internal OnceRow<'T, 'K, 'V>(key: 'K, item: Signal<'T>) =
 #else
 [<Sealed>]
 #endif
+/// <summary>
+/// The window of <c>Keys</c> that can differ from <c>Previous</c>: the key arrays before <c>Start</c> agree, and so do
+/// the keys after <c>End</c> and after <c>PreviousEnd</c>.
+/// </summary>
+[<AllowNullLiteral>]
+type internal KeyRange<'K>() =
+    member val Keys = Platform.WeakSlot<'K[]>()
+    member val Previous = Platform.WeakSlot<'K[]>()
+    member val Start = 0 with get, set
+    member val PreviousEnd = -1 with get, set
+    member val End = -1 with get, set
+
 type internal RowSnapshot<'K, 'V when 'K: equality>(capacity: int) =
     let pairs = ResizeArray<KeyValuePair<'K, 'V>>(capacity)
 
@@ -508,6 +520,9 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
     /// <summary>Whether a pass creates its added rows before it retires its removed ones.</summary>
     member val internal CreateFirst = false with get, set
+
+    /// <summary>The changed window of the last keyed pass that recorded one, or null.</summary>
+    member val internal Range: KeyRange<'K> = null with get, set
 
     /// <summary>The value of a memo-free row, or null while the projection's rows have memos.</summary>
     member val internal OnceValue: Func<RowEntry<'K, 'V>, 'V> = null with get, set
@@ -1305,6 +1320,33 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     /// How many keys are live. Tracked, through the keys cell.
     /// </summary>
     member this.Count: int = this.Keys.Length
+
+    /// <summary>
+    /// The positions of <c>Keys</c> that can differ from <c>previous</c>, an earlier result of <c>Keys</c>, as
+    /// <c>(start, previousEnd, end)</c>. The keys before <c>start</c> equal the keys of <c>previous</c> at the same
+    /// positions, and the keys after <c>end</c> equal the keys of <c>previous</c> after <c>previousEnd</c>, in order. A
+    /// null <c>previous</c> stands for an empty array.
+    /// </summary>
+    /// <remarks>
+    /// A tracked read of the keys, as <c>Keys</c>, and O(1) after it. When <c>previous</c> is the current key array, the
+    /// range is empty: <c>start</c> is its length. After a keyed pass that changed one window of positions, against the
+    /// key array of the pass before it, the range is that window. Otherwise it spans every position.
+    /// </remarks>
+    member this.ChangedRange(previous: 'K[]) : struct (int * int * int) =
+        let current = this.Keys
+        let count = if Platform.isNull previous then 0 else previous.Length
+        let range = this.Range
+
+        if obj.ReferenceEquals (current, previous) then
+            struct (count, count - 1, count - 1)
+        elif
+            not (Platform.isNull range)
+            && range.Keys.Holds current
+            && range.Previous.Holds previous
+        then
+            struct (range.Start, range.PreviousEnd, range.End)
+        else
+            struct (0, count - 1, current.Length - 1)
 
     /// <summary>
     /// The value of the row at <c>key</c>, as a tracked read of that row, or of the
@@ -2128,6 +2170,11 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
     /// </summary>
     let mutable trimmedFrom = 0
 
+    /// <summary>The changed window of the last trimmed pass: its first position, and its last previous and current positions.</summary>
+    let mutable trimmedStart = 0
+    let mutable trimmedEnd0 = -1
+    let mutable trimmedEnd1 = -1
+
     /// <summary>The keys at the changed positions of the last installed pass, while a trimmed pass runs.</summary>
     let previousChanged = Platform.KeySet<'K>()
 
@@ -2372,6 +2419,9 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
                     this.StageKeys nextKeys
                     trimmedKeys <- nextKeys
                     trimmedFrom <- if aligned then -1 else start
+                    trimmedStart <- start
+                    trimmedEnd0 <- end0
+                    trimmedEnd1 <- end1
             finally
                 for k in 0 .. previousKeys.Count - 1 do
                     previousChanged.Remove (Platform.entryAt k previousKeys)
@@ -2414,6 +2464,16 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
                     not (Platform.isNull trimmedKeys)
                     && obj.ReferenceEquals (published, trimmedKeys)
                 then
+                    if Platform.isNull this.Range then
+                        this.Range <- KeyRange<'K>()
+
+                    let range = this.Range
+                    range.Keys.Set published
+                    range.Previous.Set lastPublished
+                    range.Start <- trimmedStart
+                    range.PreviousEnd <- trimmedEnd0
+                    range.End <- trimmedEnd1
+
                     if trimmedFrom < 0 then
                         for k in 0 .. changedAt.Count - 1 do
                             let i = Platform.entryAt k changedAt

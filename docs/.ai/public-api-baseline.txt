@@ -271,6 +271,7 @@ member Ranvier.ProjectionModule static take<2>(Microsoft.FSharp.Core.FSharpFunc`
 member Ranvier.ProjectionReader`1 Dispose() : Void
 member Ranvier.ProjectionReader`1 Read() : Ranvier.ProjectionDelta`1<!0>
 member Ranvier.Projection`2 AsObservableCollection() : System.Collections.ObjectModel.ObservableCollection`1<!1>
+member Ranvier.Projection`2 ChangedRange(!0[]) : System.ValueTuple`3<Int32,Int32,Int32>
 member Ranvier.Projection`2 Dispose() : Void
 member Ranvier.Projection`2 Get(!0) : !1
 member Ranvier.Projection`2 NewKeyReader() : Ranvier.ProjectionReader`1<!0>
