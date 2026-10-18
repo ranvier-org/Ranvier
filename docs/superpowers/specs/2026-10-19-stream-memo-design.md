@@ -14,10 +14,10 @@ The first implementation includes:
 
 - `createStream` and `createStreamFold`, and their C# facade factories;
 - one restart policy: a change to a dependency read by `start` cancels the running stream and starts a new one from `seed`;
-- converters from `IAsyncEnumerable<'T>` (.NET), `IObservable<'T>` (.NET and Fable) and JavaScript `AsyncIterable` (Fable);
+- converters from `IAsyncEnumerable<'T>` (.NET), `ChannelReader<'T>` (net10.0), `IObservable<'T>` (.NET and Fable) and JavaScript `AsyncIterable` (Fable);
 - the counter scenarios `stream-burst` and `stream-restart`.
 
-It excludes every-item delivery, back-pressure from the graph to the producer, a `ChannelReader<'T>` converter (`ReadAllAsync` already gives an `IAsyncEnumerable<'T>` on .NET 8 and later, and netstandard2.1 would need a new package reference), `EventTarget` and `System.IO.Pipelines` converters, and any change to `AsyncSource` or `AsyncMemo` semantics. No `GraphOptions` member is added, and the graph's `FlightPolicy` does not apply to streams.
+It excludes every-item delivery, back-pressure from the graph to the producer, `EventTarget` and `System.IO.Pipelines` converters, and any change to `AsyncSource` or `AsyncMemo` semantics. No `GraphOptions` member is added, and the graph's `FlightPolicy` does not apply to streams.
 
 ## Public interface
 
@@ -65,14 +65,17 @@ Converters in `[<RequireQualifiedAccess>] module StreamSource` (`Collections.fs`
 |---|---|---|
 | `StreamSource.create : (StreamSink<'T> -> CancellationToken -> Task) -> StreamSource<'T>` | both | A source from a function |
 | `StreamSource.ofAsyncEnumerable : IAsyncEnumerable<'T> -> StreamSource<'T>` | .NET | `GetAsyncEnumerator token`, a `MoveNextAsync` loop calling `Next`, then `DisposeAsync`, also on failure and cancellation |
+| `StreamSource.ofChannel : ChannelReader<'T> -> StreamSource<'T>` | net10.0 | `WaitToReadAsync token`, then a `TryRead` loop that delivers every item already buffered before waiting again; the stream completes when the channel completes and fails with the writer's `Complete` exception |
 | `StreamSource.ofObservable : IObservable<'T> -> StreamSource<'T>` | both | Subscribes; `OnNext` calls `Next`, `OnCompleted` completes the task, `OnError` faults it; cancellation disposes the subscription |
 | `StreamSource.ofAsyncIterable : JS.AsyncIterable<'T> -> StreamSource<'T>` | Fable | `for await` over the iterator; cancellation calls the iterator's `return ()` |
 
-`ofAsyncEnumerable` covers `IChatClient.GetStreamingResponseAsync`, `ChannelReader.ReadAllAsync`, `taskSeq` and `AsyncSeq` on .NET.
+`ofAsyncEnumerable` covers `IChatClient.GetStreamingResponseAsync`, `taskSeq` and `AsyncSeq` on .NET.
+
+`ofChannel` drains a burst in one continuation: the items already in the channel are delivered by `TryRead` without an `await` between them, so they reach the graph in one drain. `System.Threading.Channels` ships in the shared framework from .NET Core 3.0 but is a separate package for netstandard2.1, and this design adds no package reference. `ofChannel` and its C# counterpart are compiled under `#if NET8_0_OR_GREATER && !FABLE_COMPILER` (excluded from netstandard2.1 and Fable), as `TimedClock.ofTimeProvider` is. A netstandard2.1 consumer can pass `reader.ReadAllAsync ()` to `ofAsyncEnumerable` when it references the package itself.
 
 ### C#
 
-`Ranvier.CSharp`'s `Reactive` gains `Stream<T>(Func<CancellationToken, StreamSource<T>>)` and `StreamFold<TState, T>(TState seed, Func<TState, T, TState> fold, Func<CancellationToken, StreamSource<T>> start)`. A static `StreamSources` class exposes `Create`, `FromAsyncEnumerable` and `FromObservable`.
+`Ranvier.CSharp`'s `Reactive` gains `Stream<T>(Func<CancellationToken, StreamSource<T>>)` and `StreamFold<TState, T>(TState seed, Func<TState, T, TState> fold, Func<CancellationToken, StreamSource<T>> start)`. A static `StreamSources` class exposes `Create`, `FromAsyncEnumerable`, `FromChannel` (net10.0) and `FromObservable`.
 
 Before writing signatures, record the public API with `fcs_public_api`. Every new name is an explicit addition to the public API baseline; no existing signature changes.
 
@@ -145,7 +148,7 @@ Threading tests in `tests/Ranvier.Tests/Threading.fs`:
 - an item delivered during the wake's execution posts exactly one further wake, and its state is published;
 - concurrent `Next` callers under the lock leave the fold consistent with sequential delivery (a stress test with a commutative fold).
 
-Converter tests for each converter: completion, failure, cancellation mid-stream, and disposal of the underlying enumerator, subscription or iterator.
+Converter tests for each converter: completion, failure, cancellation mid-stream, and disposal of the underlying enumerator, subscription or iterator. For `ofChannel`: a burst written before the reader resumes reaches the graph in one inbox item, and the netstandard2.1 build compiles without the converter.
 
 Mutation checks before review: removing the closed-sink check, the `wakePosted` guard, the reset to `seed`, and the generation check on completion must each fail a test.
 
@@ -169,7 +172,7 @@ The new scenarios do not change existing scenarios' counts; the CI gate holds fo
 - `docs/content/guide/streams.md`: the factories, the converters, the semantics table, and how to choose between a stream memo, an async memo and an async source.
 - `docs/content/concepts/async-graph.md`: replace the streaming item under *Not implemented* and the open-questions paragraph with a link to the guide and the restart contract.
 - `docs/content/concepts/roadmap.md`: move streaming `IAsyncEnumerable<'T>` adapters to *Implemented in current source*.
-- `docs/.ai/fable-compat.md`: `ofAsyncEnumerable` is .NET only; `ofAsyncIterable` is Fable only.
+- `docs/.ai/fable-compat.md`: `ofAsyncEnumerable` is .NET only; `ofChannel` is net10.0 only; `ofAsyncIterable` is Fable only.
 
 ### Signal maps
 
