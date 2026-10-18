@@ -17,6 +17,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 101,732 | 141,030 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 101,728 | 140,927 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 101,727 | 141,020 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 101,728 | 140,987 |
 
 ## app-table
 
@@ -35,6 +36,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 9,233,705 | 9,775,470 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 9,233,700 | 9,642,269 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 9,233,690 | 9,776,297 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 9,233,708 | 9,639,718 |
 
 ## async-recover
 
@@ -53,6 +55,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 138,829 | 37,525 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 138,829 | 37,533 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 138,829 | 37,525 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 138,829 | 37,536 |
 
 ## async-resolve
 
@@ -71,6 +74,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 2,798,220 | 1,174,873 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 2,798,220 | 1,175,506 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 2,798,219 | 1,175,763 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 2,798,219 | 1,175,912 |
 
 ## chain
 
@@ -89,6 +93,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 13,042 | 318 | 2,470 | 4,491 | 3,180 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 13,042 | 318 | 2,470 | 4,491 | 3,180 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 13,106 | 318 | 2,470 | 4,491 | 3,180 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 13,042 | 318 | 2,470 | 4,491 | 3,180 |
 
 ## chain-affinity
 
@@ -107,6 +112,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 2,569 | 3,087 | 2,516 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 2,569 | 3,087 | 2,516 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 2,569 | 3,087 | 2,516 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 2,569 | 3,087 | 2,516 |
 
 ## control
 
@@ -125,6 +131,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 74,719 | 846,668 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 74,719 | 846,627 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 74,719 | 846,629 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 74,719 | 846,604 |
 
 ## create
 
@@ -143,6 +150,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 13,728,357 | 2,861,678 | 3,041,229 | 2,186,610 | 4,213,405 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 13,461,481 | 2,861,678 | 3,041,229 | 2,186,260 | 4,224,631 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 13,586,881 | 2,861,678 | 3,041,306 | 2,186,464 | 4,210,268 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 13,461,450 | 2,861,678 | 3,041,229 | 2,186,430 | 4,202,693 |
 
 ## create-on
 
@@ -161,6 +169,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 3,429,855 | 4,621,052 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 3,429,855 | 4,626,771 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 3,445,856 | 4,641,377 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 3,445,854 | 4,622,398 |
 
 ## cutoff
 
@@ -179,6 +188,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 1,181 | 50 | 111 | 65 | 35 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 1,181 | 50 | 111 | 65 | 35 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 1,181 | 50 | 111 | 65 | 35 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 1,181 | 50 | 111 | 65 | 35 |
 
 ## derive-effect
 
@@ -197,6 +207,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 765 | 716 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 765 | 716 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 765 | 716 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 765 | 716 |
 
 ## derive-on
 
@@ -215,6 +226,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 740 | 684 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 740 | 684 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 740 | 684 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 756 | 684 |
 
 ## dispose
 
@@ -233,6 +245,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 2,707,581 | 806,290 | 498,486 | 466,180 | 703,456 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 2,707,581 | 806,291 | 498,486 | 466,014 | 703,538 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 2,706,689 | 806,291 | 498,486 | 466,060 | 702,086 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 2,707,580 | 806,291 | 498,486 | 466,194 | 703,651 |
 
 ## dispose-on
 
@@ -251,6 +264,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 477,486 | 699,340 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 477,486 | 699,320 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 477,486 | 699,013 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 477,486 | 699,518 |
 
 ## editable-edit
 
@@ -269,6 +283,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 181,106 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 181,106 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 181,106 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 181,106 |
 
 ## editable-upstream
 
@@ -287,6 +302,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 232,756 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 232,756 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 232,756 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 232,756 |
 
 ## fail-recompute
 
@@ -305,6 +321,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 64,932 | 1,376 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 64,932 | 1,376 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 64,932 | 1,376 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 64,932 | 1,376 |
 
 ## flight
 
@@ -323,6 +340,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 11,051 | 6,245 | 6,246 | 11,374 | 10,819 | 22,383 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 11,051 | 6,245 | 6,246 | 11,375 | 10,819 | 22,383 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 11,051 | 6,245 | 6,246 | 11,374 | 10,819 | 22,383 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 11,051 | 6,245 | 6,246 | 11,374 | 10,819 | 22,383 |
 
 ## keyed-insert
 
@@ -341,6 +359,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 1,921,590 | 53,936 | 54,674 | 3,092,673 | 163,160 | 172,920 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 1,921,612 | 53,936 | 54,698 | 3,092,648 | 163,142 | 173,032 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 1,921,599 | 53,927 | 54,686 | 3,092,666 | 163,127 | 173,069 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 1,921,590 | 53,946 | 54,675 | 3,092,613 | 163,149 | 173,067 |
 
 ## keyed-remove
 
@@ -359,6 +378,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 1,920,537 | 43,638 | 45,058 | 3,092,529 | 130,695 | 143,307 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 1,920,550 | 43,638 | 45,081 | 3,092,463 | 130,641 | 143,342 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 1,920,541 | 43,629 | 45,066 | 3,092,569 | 130,837 | 143,257 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 1,920,532 | 43,647 | 45,058 | 3,092,431 | 130,613 | 143,361 |
 
 ## keyed-swap
 
@@ -377,6 +397,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) (accepted) | 1,973,171 | 46,167 | 46,649 | 3,215,270 | 79,489 | 84,811 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 1,973,203 | 46,167 | 46,681 | 3,215,232 | 79,407 | 84,869 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 1,973,189 | 46,167 | 46,667 | 3,215,206 | 79,449 | 85,165 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 1,973,171 | 46,168 | 46,649 | 3,215,194 | 79,487 | 84,995 |
 
 ## mvu-dispatch
 
@@ -395,6 +416,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 58,391 | 772 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 58,391 | 772 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 58,391 | 772 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 58,391 | 772 |
 
 ## project-chain
 
@@ -413,6 +435,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 3,837,485 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 3,837,421 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 3,837,404 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 3,837,405 |
 
 ## project-churn
 
@@ -431,6 +454,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 36,290 | 34,121 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 36,290 | 34,121 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 36,290 | 34,121 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 36,290 | 34,121 |
 
 ## project-edit
 
@@ -449,6 +473,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 50,201 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 50,218 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 50,186 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 50,202 |
 
 ## project-reorder
 
@@ -467,6 +492,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 778,907 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 778,907 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 778,907 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 778,924 |
 
 ## shape-diamond
 
@@ -485,6 +511,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 60,899 | 88,455 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 60,899 | 88,455 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 60,899 | 88,455 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 60,899 | 88,455 |
 
 ## shape-dynamic
 
@@ -503,6 +530,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 82,420 | 98,007 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 82,420 | 98,003 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 82,420 | 98,003 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 82,420 | 98,007 |
 
 ## timed-admit-both
 
@@ -521,6 +549,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 118,909 | 133,573 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 118,909 | 133,569 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 118,909 | 133,570 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 118,909 | 133,573 |
 
 ## timed-admit-debounce
 
@@ -539,6 +568,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 117,814 | 132,167 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 117,814 | 132,165 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 117,814 | 132,169 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 117,818 | 132,166 |
 
 ## timed-admit-first
 
@@ -557,6 +587,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 69,925 | 81,964 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 69,925 | 81,963 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 69,925 | 81,964 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 69,925 | 81,964 |
 
 ## timed-admit-last
 
@@ -575,6 +606,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 118,076 | 132,487 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 118,076 | 132,487 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 118,076 | 132,486 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 118,076 | 132,487 |
 
 ## timed-capture-both
 
@@ -593,6 +625,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 36,044 | 44,959 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 36,044 | 44,957 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 36,044 | 44,957 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 36,048 | 44,957 |
 
 ## timed-capture-debounce
 
@@ -611,6 +644,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 35,916 | 43,583 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 35,916 | 43,583 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 35,916 | 43,583 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 35,916 | 43,583 |
 
 ## timed-capture-first
 
@@ -629,6 +663,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 32,396 | 38,804 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 32,396 | 38,804 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 32,396 | 38,804 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 32,396 | 38,804 |
 
 ## timed-capture-last
 
@@ -647,6 +682,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 35,852 | 43,519 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 35,852 | 43,519 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 35,852 | 43,519 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 35,852 | 43,519 |
 
 ## update
 
@@ -665,6 +701,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 1,090,272 | 38,805 | 83,005 | 263,459 | 207,781 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 1,088,680 | 38,805 | 83,005 | 263,427 | 207,822 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 1,091,872 | 38,805 | 83,005 | 263,428 | 207,810 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 1,088,672 | 38,805 | 83,005 | 263,483 | 207,800 |
 
 ## update-on
 
@@ -683,6 +720,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 93,805 | 222,091 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 93,805 | 222,096 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 93,805 | 222,111 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 95,405 | 222,096 |
 
 ## work-form
 
@@ -701,6 +739,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 174,678 | 168,144 | 288,766 | 287,120 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 174,678 | 168,177 | 288,770 | 287,120 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 174,678 | 168,144 | 288,761 | 287,120 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 174,678 | 168,144 | 288,773 | 287,120 |
 
 ## work-status
 
@@ -719,6 +758,7 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 100,445 | 79,115 | 315,923 | 155,422 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 100,445 | 79,115 | 315,945 | 155,384 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 100,445 | 79,115 | 315,962 | 155,370 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 100,445 | 80,715 | 315,935 | 155,346 |
 
 ## work-value
 
@@ -737,4 +777,5 @@
 | `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | 107,569 | 119,771 | 316,193 | 283,676 |
 | `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | 107,571 | 119,770 | 316,170 | 283,707 |
 | `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | 107,569 | 119,769 | 316,135 | 283,696 |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | 107,569 | 121,369 | 316,136 | 283,703 |
 
