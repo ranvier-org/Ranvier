@@ -94,6 +94,25 @@ type FlightPolicy =
     /// settles with no change owed applies as under <c>KeepLatest</c>.
     /// </remarks>
     | FinishCurrent
+    /// <summary>
+    /// Discards every change that arrives while a flight is in progress. The flight's outcome is applied as under
+    /// <c>KeepLatest</c>, and the first change after it settles starts a flight.
+    /// </summary>
+    /// <remarks>
+    /// A discarded change leaves the memo current: the settled value stays the memo's value until a source changes
+    /// again, though the inputs it was computed from have since moved.
+    /// </remarks>
+    | Drop
+    /// <summary>
+    /// Discards the changes that arrive while a flight is pending. A Ready outcome is applied as under <c>Drop</c>. A
+    /// Failed outcome of a flight that discarded a change is replaced by one more run against the current inputs.
+    /// </summary>
+    /// <remarks>
+    /// The memo stays Pending through the replacing run, which starts at the memo's next read and receives as its
+    /// <c>Previous</c> the value published before the failed flight. Otherwise a Failed outcome is applied as under
+    /// <c>KeepLatest</c>.
+    /// </remarks>
+    | DropWhilePending
 
     // AoT compat
     /// <summary>The case name.</summary>
@@ -103,6 +122,8 @@ type FlightPolicy =
         | KeepLatest -> "KeepLatest"
         | Queue -> "Queue"
         | FinishCurrent -> "FinishCurrent"
+        | Drop -> "Drop"
+        | DropWhilePending -> "DropWhilePending"
 
 /// <summary>
 /// Supplies the cutoff comparer for a node's value type.
