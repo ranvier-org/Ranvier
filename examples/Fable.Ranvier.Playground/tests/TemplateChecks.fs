@@ -3000,6 +3000,60 @@ let private clearsBetweenSiblings () =
     b.Dispose ()
     equal (0., "<p>outside</p>") (host.childNodes.length, other.innerHTML)
 
+// Empties a list of 10 with a foreign node inserted before row 4, in a list alone in its parent or between siblings.
+let private clearDeletesForeignNode (between: bool) () =
+    use graph = new Graph ()
+    let items = graph.Run (fun () -> Api.createSignal (listedItems 10))
+    let host = host ()
+
+    let view =
+        if between then
+            Component.render bordered items
+        else
+            Component.render listed items
+
+    let mounted, reports = reported graph host view
+    let row = (rowNodes host)[4] :?> Node
+    let foreign = globalThis.document.createElement "li"
+    foreign.textContent <- "foreign"
+
+    row.parentNode.Value.insertBefore (foreign, row)
+    |> ignore
+
+    let outside = if between then "beforeafter" else ""
+    graph.Run (fun () -> items.Value <- [||])
+
+    let afterClear =
+        reports.Count, (host.querySelectorAll "li").length, host.textContent
+
+    graph.Run (fun () -> items.Value <- listedItems 2)
+
+    equal ((0, 0., outside), (if between then "before0,1,after" else "0,1,")) (afterClear, host.textContent)
+
+    mounted.Dispose ()
+
+let private clearReportsMovedMarker () =
+    use graph = new Graph ()
+    let items = graph.Run (fun () -> Api.createSignal (listedItems 3))
+    let host = host ()
+    let mounted, reports = reported graph host (Component.render listed items)
+    let list = host.querySelector "ul" |> unbox<HTMLElement>
+    let elsewhere = globalThis.document.createElement "div"
+
+    elsewhere.appendChild list.lastChild.Value
+    |> ignore
+
+    graph.Run (fun () -> items.Value <- [||])
+
+    equal
+        [ "Keyed-list boundaries were externally mutated" ]
+        (reports
+         |> Seq.collect id
+         |> Seq.map _.Message
+         |> List.ofSeq)
+
+    mounted.Dispose ()
+
 let private loggedGroupRow =
     Component.define
         (fun setup (item: unit -> Grouped) ->
@@ -4111,6 +4165,9 @@ let cases =
         "a clear whose row cleanup throws reports it and leaves no row nodes", failingClearLeavesNoRows
         "a clear and an insertion after a failed row setup each take one operation", failedInsertionLeavesStagingEmpty
         "a clear after a swap removes the rows in one operation", clearAfterSwapRemovesInOneOperation
+        "a clear deletes a foreign node between the markers and reports nothing", clearDeletesForeignNode false
+        "a clear between siblings deletes a foreign node between the markers and reports nothing", clearDeletesForeignNode true
+        "a clear after the end marker moves to another parent reports the boundaries", clearReportsMovedMarker
         "a retired row holding a nested list leaves whole in one remove", retiredRowLeavesWhole
         "a nested row cleanup disposing the mount leaves no nodes and reports nothing", disposalLeavesDetachedHeldRows
         "clearing template rows holding nested lists keeps their cleanup order and markers", nestedClearKeepsOrder

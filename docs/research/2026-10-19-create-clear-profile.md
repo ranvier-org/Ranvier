@@ -1,4 +1,4 @@
-# Keyed create and clear: where the time goes, and an ordered `ReleasedAll` — 2026-10-19
+# Keyed create and clear: where the time goes, an ordered `ReleasedAll` and a clearing pass that owns its markers' contents — 2026-10-19
 
 ## Environment and commits
 
@@ -68,10 +68,27 @@ Ranvier's median ms `[per-process medians]` and the median ratio to Solid 2, thr
 
 Tests: 380 Node DOM tests. New: a clear after a swap removes the rows in one operation. Both mutants are killed: the set comparison returning false (the new test) and the ordered comparison returning false (four clear tests).
 
+## A clearing pass owns every node between its markers
+
+A pass that empties a template `each` region, with every live laid-out row held for release, skips the validation of the laid-out rows and removes every node between the markers in one operation, foreign nodes included, without a report. A marker moved to another parent is still reported: `RegionSite.Parent` raises "Keyed-list boundaries were externally mutated" at the start of every pass. `Keyed.array` regions keep their row-by-row release.
+
+Before: `6e6c365` (the ordered `ReleasedAll`), bundle `generated-keyed-clr0`; after: `6e6c365` with the change, bundle `generated-keyed-clr1`. Raw data in [`framework-performance/investigation/clear-markers/`](framework-performance/investigation/clear-markers/), `clr0-1..3.json` and `clr1-1..3.json`, same protocol as above:
+
+| Operation | Before | After |
+|---|---|---|
+| clear1k | 1.600 [1.58, 1.67, 1.60] 1.54× | 1.615 [1.47, 1.62, 1.62] 1.84× |
+| clear10k | 9.350 [9.48, 9.04, 9.35] 1.50× | 8.425 [8.63, 8.33, 8.43] 1.30× |
+| remove1k | 0.270 [0.26, 0.27, 0.28] 1.02× | 0.265 [0.28, 0.27, 0.25] 1.06× |
+| armsClear1k | 3.345 [3.35, 3.40, 3.34] 1.90× | 3.555 [3.56, 2.94, 3.78] 1.76× |
+
+- clear10k is 0.93 ms faster, with disjoint per-process ranges; the profile predicts 0.57 ms for the validation.
+- clear1k's Ranvier ranges overlap; its ratio follows Solid 2's medians (1.04 → 0.81 ms).
+
+Tests: 383 Node DOM tests. New: a clear deletes a foreign node between the markers and reports nothing, in a list alone in its parent and between siblings; a clear after the end marker moves to another parent reports the boundaries. Restoring the row validation fails both foreign-node tests.
+
 ## Remaining work
 
 - The staging fragment's second insertion on create (0.32 ms of 3.72).
-- The validation before an emptying pass's clear (0.57 ms of 7.12 at 10,000 rows).
 - `Projection.RetireRemoved`'s lookup of each removed key (0.26 ms at 10,000 rows), a core change.
 
 ## Reproduction

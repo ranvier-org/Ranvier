@@ -2057,10 +2057,18 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                             with error ->
                                 errors.Add error
 
-                            // The laid-out rows around the changed window are validated before the flush removes any node.
+                            // A pass that empties the list removes every node between the markers in one operation.
+                            let cleared =
+                                not authored
+                                && not (isNull keys.Value)
+                                && keys.Value.Length = 0
+                                && site.Live ()
+                                && site.ReleasedAll ()
+
+                            // Before the flush removes any node, a pass that keeps rows validates the laid-out rows around the changed window.
                             let validated =
                                 try
-                                    if authored || not (site.Live ()) then
+                                    if authored || cleared || not (site.Live ()) then
                                         ()
                                     elif isNull keys.Value then
                                         Row.Validate (regionStart, regionEnd, site.LaidOut, parent.Value)
@@ -2118,12 +2126,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
 
                             if validated then
                                 try
-                                    site.FlushReleased (
-                                        not (isNull keys.Value)
-                                        && keys.Value.Length = 0
-                                        && site.Live ()
-                                        && site.ReleasedAll ()
-                                    )
+                                    site.FlushReleased (cleared && site.Live ())
                                 with error ->
                                     errors.Add error
 
