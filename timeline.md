@@ -21,6 +21,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 101,963 | 141,037 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 101,860 | 139,716 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 101,598 | 140,609 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 101,662 | 140,620 |
 
 ## app-table
 
@@ -43,6 +44,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 9,233,726 | 9,777,758 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 9,233,689 | 9,691,748 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 9,229,983 | 9,629,653 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 9,228,152 | 9,630,607 |
 
 ## async-recover
 
@@ -65,6 +67,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 138,829 | 37,529 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 138,829 | 37,457 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 138,826 | 37,112 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 138,826 | 37,104 |
 
 ## async-resolve
 
@@ -87,6 +90,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 2,797,419 | 1,171,819 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 2,797,419 | 1,076,841 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 2,796,739 | 1,066,675 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 2,796,740 | 1,066,673 |
 
 ## chain
 
@@ -109,6 +113,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 13,042 | 318 | 2,470 | 4,491 | 3,180 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 13,042 | 318 | 2,470 | 4,491 | 3,180 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 13,042 | 318 | 2,470 | 4,491 | 3,180 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 13,042 | 318 | 2,470 | 4,491 | 3,180 |
 
 ## chain-affinity
 
@@ -131,6 +136,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 2,569 | 3,087 | 2,516 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 2,569 | 3,087 | 2,516 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 2,569 | 3,087 | 2,516 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 2,569 | 3,087 | 2,516 |
 
 ## control
 
@@ -153,6 +159,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 74,719 | 846,544 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 74,719 | 834,846 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 74,720 | 834,925 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 74,720 | 834,910 |
 
 ## create
 
@@ -175,6 +182,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 13,461,376 | 2,861,678 | 3,041,229 | 2,185,794 | 4,214,446 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 13,602,860 | 2,861,678 | 3,041,257 | 2,185,680 | 4,214,317 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 13,461,452 | 2,893,677 | 3,035,209 | 2,131,279 | 4,184,451 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 13,461,435 | 2,861,678 | 3,035,210 | 2,132,010 | 4,179,898 |
 
 ## create-on
 
@@ -197,6 +205,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 3,429,877 | 4,634,474 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 3,429,878 | 4,626,474 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 3,439,904 | 4,348,490 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 3,423,905 | 4,354,534 |
 
 ## cutoff
 
@@ -219,6 +228,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 1,181 | 50 | 111 | 65 | 35 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 1,181 | 50 | 111 | 65 | 35 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 1,181 | 50 | 111 | 65 | 35 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 1,181 | 50 | 111 | 65 | 35 |
 
 ## derive-effect
 
@@ -241,6 +251,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 765 | 716 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 765 | 716 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 765 | 716 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 765 | 716 |
 
 ## derive-on
 
@@ -263,6 +274,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 740 | 684 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 740 | 684 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 740 | 684 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 740 | 684 |
 
 ## dispose
 
@@ -285,6 +297,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 2,706,181 | 806,290 | 501,497 | 466,276 | 702,782 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 2,707,580 | 806,291 | 501,497 | 466,038 | 702,173 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 2,707,579 | 806,291 | 501,497 | 466,263 | 704,526 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 2,706,184 | 806,290 | 501,497 | 466,110 | 704,570 |
 
 ## dispose-on
 
@@ -307,6 +320,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 480,497 | 699,418 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 480,497 | 700,132 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 480,497 | 698,094 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 480,497 | 698,438 |
 
 ## editable-edit
 
@@ -329,6 +343,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 181,106 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 181,106 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 181,106 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 181,106 |
 
 ## editable-upstream
 
@@ -351,6 +366,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 232,755 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 232,756 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 232,755 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 232,755 |
 
 ## fail-recompute
 
@@ -373,6 +389,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 64,852 | 1,376 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 64,852 | 1,376 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 64,924 | 1,376 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 64,924 | 1,376 |
 
 ## flight
 
@@ -395,6 +412,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 11,051 | 6,245 | 6,246 | 11,375 | 10,819 | 22,383 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 11,051 | 6,245 | 6,246 | 11,374 | 10,819 | 22,383 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 11,051 | 6,245 | 6,246 | 11,375 | 10,819 | 22,383 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 11,051 | 6,245 | 6,246 | 11,374 | 10,819 | 22,383 |
 
 ## keyed-insert
 
@@ -417,6 +435,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 1,921,588 | 53,976 | 54,699 | 3,092,666 | 163,057 | 173,057 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 1,921,573 | 53,966 | 54,665 | 3,092,872 | 162,911 | 172,991 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 1,921,568 | 53,934 | 54,623 | 3,092,994 | 163,085 | 172,557 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 1,921,766 | 53,941 | 54,668 | 3,092,947 | 163,151 | 172,662 |
 
 ## keyed-remove
 
@@ -439,6 +458,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 1,920,547 | 43,635 | 45,050 | 3,092,537 | 132,187 | 143,308 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 1,920,533 | 43,626 | 45,039 | 3,092,718 | 132,010 | 143,311 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 1,920,519 | 43,626 | 45,007 | 3,092,959 | 134,022 | 143,253 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 1,920,716 | 43,632 | 45,046 | 3,092,992 | 134,114 | 143,433 |
 
 ## keyed-swap
 
@@ -461,6 +481,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 1,973,202 | 46,167 | 46,667 | 3,215,181 | 79,316 | 84,944 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 1,973,184 | 46,167 | 46,649 | 3,215,502 | 79,183 | 85,189 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 1,973,171 | 46,168 | 46,649 | 3,215,847 | 79,219 | 84,875 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 1,973,379 | 46,183 | 46,699 | 3,215,874 | 79,374 | 84,887 |
 
 ## mvu-dispatch
 
@@ -483,6 +504,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 58,391 | 772 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 58,391 | 772 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 58,391 | 772 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 58,391 | 772 |
 
 ## project-chain
 
@@ -505,6 +527,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 3,837,438 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 3,837,389 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 3,837,400 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 3,837,432 |
 
 ## project-churn
 
@@ -527,6 +550,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 36,290 | 34,121 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 36,290 | 34,121 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 36,252 | 34,083 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 36,252 | 34,083 |
 
 ## project-edit
 
@@ -549,6 +573,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 50,186 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 50,186 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 50,185 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 50,185 |
 
 ## project-reorder
 
@@ -571,6 +596,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 778,895 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 778,895 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 778,907 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 778,907 |
 
 ## shape-diamond
 
@@ -593,6 +619,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 60,899 | 88,455 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 60,899 | 88,455 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 60,899 | 88,455 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 60,899 | 88,455 |
 
 ## shape-dynamic
 
@@ -615,6 +642,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 83,732 | 98,003 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 82,420 | 98,001 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 82,420 | 98,000 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 82,420 | 98,000 |
 
 ## timed-admit-both
 
@@ -637,6 +665,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 118,909 | 133,571 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 118,909 | 133,569 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 118,909 | 133,650 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 118,909 | 133,655 |
 
 ## timed-admit-debounce
 
@@ -659,6 +688,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 117,814 | 132,167 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 117,814 | 132,162 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 117,814 | 132,158 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 117,818 | 132,160 |
 
 ## timed-admit-first
 
@@ -681,6 +711,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 69,925 | 81,964 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 69,925 | 81,964 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 69,925 | 81,964 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 69,925 | 81,964 |
 
 ## timed-admit-last
 
@@ -703,6 +734,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 118,076 | 132,487 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 118,076 | 132,470 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 118,076 | 132,470 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 118,076 | 132,480 |
 
 ## timed-capture-both
 
@@ -725,6 +757,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 36,044 | 44,956 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 36,044 | 44,965 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 36,044 | 44,981 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 36,044 | 44,978 |
 
 ## timed-capture-debounce
 
@@ -747,6 +780,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 35,916 | 43,583 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 35,916 | 43,583 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 35,916 | 43,583 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 35,916 | 43,583 |
 
 ## timed-capture-first
 
@@ -769,6 +803,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 32,396 | 38,804 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 32,396 | 38,804 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 32,396 | 38,804 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 32,396 | 38,804 |
 
 ## timed-capture-last
 
@@ -791,6 +826,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 35,852 | 43,519 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 35,852 | 43,519 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 35,852 | 43,519 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 35,852 | 43,519 |
 
 ## update
 
@@ -813,6 +849,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 1,088,680 | 38,805 | 83,005 | 263,408 | 207,795 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 1,088,680 | 38,805 | 83,005 | 263,113 | 207,770 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 1,090,280 | 38,805 | 83,005 | 262,840 | 207,848 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 1,088,673 | 38,805 | 83,005 | 262,809 | 207,798 |
 
 ## update-on
 
@@ -835,6 +872,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 93,805 | 222,116 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 93,805 | 222,065 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 93,805 | 222,097 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 93,805 | 222,064 |
 
 ## work-form
 
@@ -857,6 +895,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 174,678 | 168,163 | 288,724 | 287,115 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 174,678 | 168,177 | 288,722 | 287,066 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 174,678 | 172,144 | 288,766 | 287,118 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 174,678 | 168,161 | 288,750 | 287,109 |
 
 ## work-status
 
@@ -879,6 +918,7 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 100,445 | 79,115 | 315,942 | 155,383 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 100,445 | 79,115 | 315,910 | 155,356 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 100,445 | 79,116 | 315,892 | 155,398 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 100,445 | 79,116 | 315,849 | 155,384 |
 
 ## work-value
 
@@ -901,4 +941,5 @@
 | `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | 107,569 | 119,771 | 316,246 | 283,710 |
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 107,571 | 119,770 | 316,149 | 283,694 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 107,569 | 119,770 | 316,130 | 283,716 |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 107,569 | 119,769 | 316,141 | 283,721 |
 
