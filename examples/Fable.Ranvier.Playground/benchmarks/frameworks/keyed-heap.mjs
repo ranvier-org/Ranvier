@@ -1,7 +1,7 @@
 // PROTOTYPE (research/keyed-row-cost): retained heap per constructor of a mounted keyed list, from CDP heap snapshots.
 // MEASUREMENT (measure/poc-rerun-2026-10-15): one unminified bundle running production rows and Solid 2. For each mode and row count: mount an
 // empty list, snapshot, create the rows, snapshot, and diff the objects whose snapshot ids are new. The objects held by each
-// field of a new row memo are reported separately.
+// field of a new row memo are reported separately, and `holders` attributes each new object to the new object that holds it.
 // Expects generated-tests from keyed-rows.mjs --build.
 // Usage: node benchmarks/frameworks/keyed-heap.mjs [--counts=1000,10000] [--processes=2] [--label=heap-memo-free] [--no-bundle]
 import { chromium } from "@playwright/test";
@@ -132,6 +132,25 @@ function memoParts({ nodes, edges }, fresh) {
   return parts;
 }
 
+
+// Holder of each new object: the fresh object retaining it, as "holderKind.edge -> kind"; for Array element stores, the holder of their Array.
+function holders({ nodes, edges }, fresh) {
+  const by = new Int32Array(nodes.count).fill(-1), byEdge = new Array(nodes.count);
+  for (let i = 0; i < nodes.count; i++) { if (!fresh[i]) continue;
+    for (let e = nodes.firstEdge[i]; e < nodes.firstEdge[i + 1]; e++) { const to = edges.to[e];
+      if (!fresh[to] || by[to] >= 0 || edges.type[e] === "weak" || edges.type[e] === "shortcut" || edges.name[e] === "__proto__" || edges.name[e] === "map") continue;
+      by[to] = i; byEdge[to] = edges.name[e]; } }
+  const label = i => { const k = kindOf(nodes, i); return k.startsWith("object ") ? k.slice(7) : k; };
+  const out = new Map();
+  for (let i = 0; i < nodes.count; i++) { if (!fresh[i]) continue; const k = kindOf(nodes, i);
+    if (k.startsWith("native ") || k === "number" || isCode(k)) continue;
+    let h = by[i], name = h < 0 ? "(none)" : label(h) + "." + byEdge[i];
+    if (h >= 0 && (k === "array (object elements)") && by[h] >= 0) name = label(by[h]) + "." + byEdge[h] + " > " + byEdge[i];
+    if (h >= 0 && k === "object system / Context" && by[h] >= 0) name = label(by[h]) + "." + byEdge[h] + " > " + byEdge[i];
+    const key = name + " -> " + k, entry = out.get(key) || { count: 0, bytes: 0 };
+    entry.count++; entry.bytes += nodes.size[i]; out.set(key, entry); }
+  return out;
+}
 const table = (map, rows) => [...map].map(([kind, { count, bytes }]) => ({ kind, perRow: +(count / rows).toFixed(3), bytesPerRow: +(bytes / rows).toFixed(1), count, bytes }))
   .sort((a, b) => b.bytes - a.bytes);
 
@@ -180,7 +199,7 @@ try {
           nativeBytesPerRow: sum(all.filter(row => row.kind.startsWith("native "))),
           removedBytesPerRow: sum(table(removed, rows)),
           js,
-          memo: table(memoParts(after, fresh), rows),
+          memo: table(memoParts(after, fresh), rows), holders: table(holders(after, fresh), rows).slice(0, 80),
           native: all.filter(row => row.kind.startsWith("native ")).slice(0, 30),
           removed: table(removed, rows).slice(0, 20)
         });
