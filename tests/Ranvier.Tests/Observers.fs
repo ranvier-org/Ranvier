@@ -343,6 +343,39 @@ let sourceTests =
                     Expect.equal m.Value 22 "and a wakes the memo again"
                 }
 
+                test $"a, b, a after {lead} other reads of a source with 10 other readers links a once" {
+                    let g = new Graph ()
+                    let pads = Array.init lead (fun _ -> Signal (g, 0))
+                    let a = Signal (g, 1)
+
+                    for _ in 1..10 do
+                        new Effect (g, (fun () -> a.Value |> ignore))
+                        |> ignore
+
+                    // b links to a between the memo's two reads of a, and a has more observers than a scan covers:
+                    // the memo's own slots answer the repeated read.
+                    let b = Make.Memo (g, (fun _ -> a.Value * 10))
+
+                    let m =
+                        Make.Memo (
+                            g,
+                            fun _ ->
+                                for p in pads do
+                                    p.Value |> ignore
+
+                                a.Value + b.Value + a.Value
+                        )
+
+                    Expect.equal m.Value 12 "a, b, a"
+                    Expect.equal a.ObserverCount 12 "one entry each for the memo, b and the effects"
+
+                    let before = m.Runs
+                    a.Value <- 2
+                    Expect.equal m.Value 24 "a write to a wakes the memo"
+                    Expect.equal m.Runs (before + 1) "once"
+                    Expect.equal a.ObserverCount 12 "and still one entry each after the re-run"
+                }
+
             for width in [ 3; 12 ] do
                 test $"a reader of {width} sources in a changing order keeps one edge to each" {
                     let g = new Graph ()
@@ -584,5 +617,194 @@ let observerSetTests =
                 Array.fill runs 0 40 0
                 wide.Value <- 1
                 Expect.sequenceEqual runs (Array.create 40 1) "every effect ran once on the write"
+            }
+        ]
+
+/// <summary>
+/// Disposal orders for readers created at positions <c>0 .. width - 1</c>: the newest first, and the oldest first.
+/// </summary>
+let private disposalOrders width =
+    [ "reverse", [ width - 1 .. -1 .. 0 ]; "creation", [ 0 .. width - 1 ] ]
+
+/// <summary>
+/// The readers that hold an edge in a field rather than in a <c>SourceList</c>, each sharing its source with other
+/// readers and disposed in both orders. A stale handle raises on removal or stops a survivor updating.
+/// </summary>
+[<Tests>]
+let directEdgeTests =
+    testList
+        "Direct edges"
+        [
+            for width in [ 3; 12 ] do
+                for name, order in disposalOrders width do
+                    test $"{width} bindings of one signal disposed in {name} order" {
+                        let g = new Graph ()
+                        let s = Signal (g, 0)
+                        let writes = Array.zeroCreate width
+                        let mutable effectRuns = 0
+
+                        let bind i =
+                            Binding<obj, int>.OfSignal(g, s, null, (fun _ _ -> writes[i] <- writes[i] + 1))
+
+                        let early = Array.init (width / 2) bind
+
+                        // An ordinary reader between the bindings, so swaps also move a source list's handle.
+                        new Effect (
+                            g,
+                            fun () ->
+                                s.Value |> ignore
+                                effectRuns <- effectRuns + 1
+                        )
+                        |> ignore
+
+                        let bindings =
+                            Array.append early (Array.init (width - width / 2) (fun i -> bind (width / 2 + i)))
+
+                        let live = Array.create width true
+
+                        for step, i in List.indexed order do
+                            bindings[i].Dispose()
+                            live[i] <- false
+                            Expect.equal s.ObserverCount (width - step) "one edge fewer per disposal"
+
+                            Array.fill writes 0 width 0
+                            let before = effectRuns
+                            s.Value <- s.Value + 1
+
+                            for j in 0 .. width - 1 do
+                                Expect.equal writes[j] (if live[j] then 1 else 0) $"binding {j} writes only while live"
+
+                            Expect.equal effectRuns (before + 1) "the effect still runs"
+                    }
+
+                    test $"{width} folds of one projection disposed in {name} order" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let source = createSignal [ 1, 1; 2, 2; 3, 3 ]
+                        let weight = createSignal 1
+                        let view = createProjection fst snd (fun () -> source.Value)
+                        let mutable seen = 0
+                        createEffect (fun () -> seen <- view.Get 1)
+
+                        let folds =
+                            Array.init width (fun _ ->
+                                createRoot (fun owner ->
+                                    let total =
+                                        view
+                                        |> Projection.foldGroup (fun s n -> s + n * weight.Value) (fun s n -> s - n * weight.Value) 0
+
+                                    total.Value |> ignore
+                                    owner, total))
+
+                        let live = Array.create width true
+
+                        let expectTotals label =
+                            let expected = (source.Value |> List.sumBy snd) * weight.Value
+
+                            for j in 0 .. width - 1 do
+                                if live[j] then
+                                    Expect.equal (snd folds[j]).Value expected $"{label}: fold {j}"
+
+                        for step, i in List.indexed order do
+                            (fst folds[i]).Dispose()
+                            live[i] <- false
+                            Expect.equal weight.ObserverCount (width - step - 1) "one edge to weight fewer per disposal"
+
+                            weight.Value <- weight.Value + 1
+                            expectTotals "a weight change"
+                            source.Value <- source.Value |> List.map (fun (k, n) -> k, n + k)
+                            expectTotals "a row change"
+                            Expect.equal seen (snd source.Value[0]) "the effect reading the row still runs"
+                    }
+
+                    test $"pending rows settled and {width} folds disposed in {name} order" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let keys = [ 0..3 ]
+                        let flights = [| for _ in keys -> createAsyncSource<int>() |]
+                        let view = createProjection id (fun k -> flights[k].Value) (fun () -> keys)
+                        let mutable pending = false
+                        createEffect (fun () -> pending <- view.AnyPending)
+
+                        let folds =
+                            Array.init width (fun _ ->
+                                createRoot (fun owner ->
+                                    let total = view |> Projection.foldGroup (+) (-) 0
+                                    total.Value |> ignore
+                                    owner, total))
+
+                        use values = view.NewValueReader ()
+                        values.Read () |> ignore
+                        Expect.isTrue pending "every row is pending"
+
+                        let settled = Array.create flights.Length 0
+                        let live = Array.create width true
+
+                        let expectTotals label =
+                            for j in 0 .. width - 1 do
+                                if live[j] then
+                                    Expect.equal (snd folds[j]).Value (Array.sum settled) $"{label}: fold {j}"
+
+                        // Each settle removes the row's edge to the summary watch while folds and the value reader
+                        // still observe the row.
+                        let settleOrder = if name = "reverse" then List.rev keys else keys
+
+                        for step, k in List.indexed settleOrder do
+                            settled[k] <- 10 * (k + 1)
+                            flights[k].Settle settled[k]
+                            Expect.equal pending (step < keys.Length - 1) "pending until the last row settles"
+                            expectTotals "a settle"
+
+                        values.Read () |> ignore
+
+                        for i in order do
+                            (fst folds[i]).Dispose()
+                            live[i] <- false
+                            settled[1] <- settled[1] + 1
+                            flights[1].Settle settled[1]
+                            expectTotals "a row change"
+
+                            let changed =
+                                (values.Read ()).Changes
+                                |> Seq.map (fun change -> change.Key)
+                                |> List.ofSeq
+
+                            Expect.equal changed [ 1 ] "the value reader sees the row change"
+                    }
+
+            test "a pending row's edge to the summary watch survives a swap" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let gate = createSignal false
+                let flight = createAsyncSource<int>()
+
+                let view =
+                    createProjection id (fun k -> if gate.Value then flight.Value else k) (fun () -> [ 1 ])
+
+                let mutable pending = false
+                createEffect (fun () -> pending <- view.AnyPending)
+
+                let folds =
+                    Array.init 3 (fun _ ->
+                        createRoot (fun owner ->
+                            let total = view |> Projection.foldGroup (+) (-) 0
+                            total.Value |> ignore
+                            owner, total))
+
+                // The row turns pending after the folds observe it, so the watch's edge is the row's last.
+                gate.Value <- true
+
+                for _, total in folds do
+                    total.Value |> ignore
+
+                Expect.isTrue pending "the row is pending"
+
+                // Moves the watch's edge into the disposed fold's position.
+                (fst folds[0]).Dispose()
+                flight.Settle 5
+                Expect.isFalse pending "the settle reaches the summary"
+
+                for j in 1..2 do
+                    Expect.equal (snd folds[j]).Value 5 $"fold {j}"
             }
         ]

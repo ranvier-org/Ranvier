@@ -44,6 +44,7 @@ let all =
                     Ranvier.Tests.Observers.tests
                     Ranvier.Tests.Observers.sourceTests
                     Ranvier.Tests.Observers.observerSetTests
+                    Ranvier.Tests.Observers.directEdgeTests
                 ]
             testList "Api.fs" [ Ranvier.Tests.Api.tests ]
             testList "FanOut.fs" [ Ranvier.Tests.FanOut.tests ]
