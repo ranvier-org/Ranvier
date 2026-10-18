@@ -8,7 +8,7 @@ permissions:
   contents: read
   pull-requests: read
 
-# Both checks run the target branch's scripts, not the pull request's.
+# The check runs the target branch's scripts, not the pull request's.
 concurrency:
   group: contrib-${{ github.event.pull_request.number }}
   cancel-in-progress: true
@@ -30,18 +30,3 @@ jobs:
             if (!fs.existsSync('./.github/scripts/contrib.cjs')) return core.warning('The target branch has no contribution checks yet.');
             await require('./.github/scripts/contrib.cjs').check({github, context, core});
 
-  branch:
-    name: Branch policy
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.pull_request.base.sha }}
-          persist-credentials: false
-          sparse-checkout: .github/scripts
-      - uses: actions/github-script@v8
-        with:
-          script: |
-            const fs = require('node:fs');
-            if (!fs.existsSync('./.github/scripts/contrib.cjs')) return core.warning('The target branch has no contribution checks yet.');
-            require('./.github/scripts/contrib.cjs').policy({context, core});

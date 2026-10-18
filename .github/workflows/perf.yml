@@ -2,7 +2,7 @@ name: Perf
 
 on:
   pull_request:
-    branches: [master, develop]
+    branches: [master]
     types: [opened, synchronize, reopened, labeled, unlabeled]
   push:
     branches: [master]
@@ -36,7 +36,7 @@ jobs:
         run: |
           [[ "$HEAD" =~ ^[0-9a-f]{40}$ ]]
           if [ "$EVENT" = pull_request ]; then
-            [[ "$TARGET" =~ ^(master|develop)$ ]]
+            [ "$TARGET" = master ]
             base=$(git merge-base "origin/$TARGET" "$HEAD")
           else
             base=$(git rev-parse "$HEAD^1")
@@ -60,8 +60,8 @@ jobs:
           BASE: ${{ steps.refs.outputs.base }}
           HEAD: ${{ steps.refs.outputs.head }}
         run: node .github/scripts/changes.cjs pull_request "$BASE" "$HEAD" >> "$GITHUB_OUTPUT"
-      # A completed run that measured the same base and head trees, such as the develop pull request of a commit now
-      # on master, supplies the measurement.
+      # A completed run that measured the same base and head trees, such as the pull request of a commit now on
+      # master, supplies the measurement.
       - id: previous
         if: steps.ignore.outputs.ignored != 'true' && steps.changes.outputs.docs != 'true'
         uses: actions/github-script@v8

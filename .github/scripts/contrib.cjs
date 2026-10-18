@@ -22,14 +22,6 @@ function commitProblems({ title, commits }) {
   return problems;
 }
 
-// The problem with a pull request's source branch, or null. master accepts develop from this repository, and
-// any branch from the repository owner.
-function branchProblem({ base, head, headRepo, repo, association }) {
-  if (base !== 'master' || association === 'OWNER') return null;
-  if (head === 'develop' && headRepo === repo) return null;
-  return `Pull requests into master come from develop; open this one against develop (head is ${headRepo}:${head})`;
-}
-
 async function check({ github, context, core }) {
   const pr = context.payload.pull_request;
   if (pr.user.type === 'Bot') {
@@ -45,13 +37,4 @@ async function check({ github, context, core }) {
   if (problems.length) core.setFailed(`${problems.length} message(s) are not conventional commits. See CONTRIBUTING.md#commit-messages.`);
 }
 
-function policy({ context, core }) {
-  const pr = context.payload.pull_request;
-  const problem = branchProblem({
-    base: pr.base.ref, head: pr.head.ref, headRepo: pr.head.repo?.full_name, repo: `${context.repo.owner}/${context.repo.repo}`,
-    association: pr.author_association,
-  });
-  if (problem) core.setFailed(problem);
-}
-
-module.exports = { types, headerProblem, commitProblems, branchProblem, check, policy };
+module.exports = { types, headerProblem, commitProblems, check };

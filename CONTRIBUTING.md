@@ -2,24 +2,19 @@
 
 ## Branches
 
-| Branch | Receives | Merge method |
-|--------|----------|--------------|
-| `develop` | pull requests from feature branches | squash, so each change lands as one conventional commit |
-| `master` | pull requests from `develop` | merge commit, so `develop` stays an ancestor of the merged tree |
-
-Branch a change from `develop` and open its pull request against `develop`. A pull request into
-`master` from any other branch fails the **Branch policy** check, unless the repository owner opened
-it. Both branches reject direct pushes, force pushes and deletion; pull requests merge only when the
-required checks pass. Repository administrators bypass these rules, and push directly only changes
-that are not source code, such as documentation.
+Branch a change from `master` and open its pull request against `master`. Pull requests are
+squash-merged, so each change lands as one conventional commit. `master` rejects direct pushes,
+force pushes and deletion; pull requests merge only when the required checks pass. Repository
+administrators bypass these rules, and push directly only changes that are not source code, such as
+documentation.
 
 GitHub Actions runs on a pull request from a fork only after a maintainer approves the run.
 
 The rules are defined in [`.github/rulesets`](.github/rulesets) and applied with the GitHub CLI:
 
 ```shell
-gh api -X POST repos/shayanhabibi/Ranvier/rulesets --input .github/rulesets/develop.json
-gh api -X PUT repos/shayanhabibi/Ranvier/rulesets/<id> --input .github/rulesets/develop.json   # update
+gh api -X POST repos/shayanhabibi/Ranvier/rulesets --input .github/rulesets/master.json
+gh api -X PUT repos/shayanhabibi/Ranvier/rulesets/<id> --input .github/rulesets/master.json   # update
 ```
 
 ## Before opening a pull request
@@ -68,9 +63,8 @@ squash commit message.
 | Perf | verdict | a scenario's instruction count regresses on arm64 and the regression is not accepted |
 | Perf | **Perf result** | measuring or the verdict failed or was cancelled |
 | Contribution | **Conventional commits** | the title or a commit is not a conventional commit header |
-| Contribution | **Branch policy** | the pull request targets `master` from a branch other than `develop` |
 
-The branch rules require the four checks in bold. The Contribution checks run the scripts of the
+The branch rules require the three checks in bold. The Contribution check runs the scripts of the
 target branch, not those of the pull request.
 
 ### Documentation-only changes
@@ -121,9 +115,9 @@ verdict updates without measuring again.
 
 A run measures nothing when a completed Perf run of this repository, among the 100 newest, has
 measured a base and head with the same trees. The figures are restated for the new commits, with a
-`reused` label naming the source run. When a feature branch starts at the tip of `develop` and is the
-only change released, the pull request from `develop` into `master` and the push to `master` that
-merges it both reuse the feature pull request's measurement. Any other commit on either side of the comparison means a new measurement. An accepted regression stays in the report and in the
+`reused` label naming the source run. When a pull request starts at the tip of `master`, the push to
+`master` that squash-merges it reuses the pull request's measurement. A pull request behind `master`
+is measured again on the push. An accepted regression stays in the report and in the
 history, with its reason.
 
 ### Performance history
