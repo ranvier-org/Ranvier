@@ -89,7 +89,7 @@ Tests: 383 Node DOM tests. New: a clear deletes a foreign node between the marke
 ## Remaining work
 
 - The staging fragment's second insertion on create (0.32 ms of 3.72).
-- `Projection.RetireRemoved`'s lookup of each removed key (0.26 ms at 10,000 rows): [#96](https://github.com/shayanhabibi/Ranvier/pull/96) retires the entries found by the diff's walk. Timed on `c7a8d93` with and without its `Projections.fs` (bundles `generated-keyed-ret0`, `generated-keyed-ret1`; [`investigation/retire-entries/`](framework-performance/investigation/retire-entries/)): clear10k 8.485 [8.53, 8.49, 8.23] → 8.445 [8.45, 8.51, 8.42] ms, every operation's ranges overlapping.
+- `Projection.RetireRemoved`'s lookup of each removed key (0.26 ms at 10,000 rows): [#96](https://github.com/shayanhabibi/Ranvier/pull/96) retired the entries found by the diff's walk. Timed on `c7a8d93` with and without its `Projections.fs` (bundles `generated-keyed-ret0`, `generated-keyed-ret1`; [`investigation/retire-entries/`](framework-performance/investigation/retire-entries/)): clear10k 8.485 [8.53, 8.49, 8.23] → 8.445 [8.45, 8.51, 8.42] ms, every operation's ranges overlapping. #96 was closed unmerged: its CI counters failed the gate, with Node keyed-insert (memo-free rows) at +2.08% instructions and keyed-remove unchanged on .NET and +0.9% on Node.
 
 ## Reproduction
 
