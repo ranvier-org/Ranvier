@@ -117,7 +117,14 @@ User code runs only in `start` (tracked, pure scope), `Run` (untracked) and `fol
 
 ### Trace
 
-Trace builds record the node's creation, each stream start with its generation, each publication and the stream's end (completed, failed, cancelled). The trace event numbers and the `TraceModel` shapes follow `Timed`'s additions.
+Trace builds record the node's creation, each stream start with its generation, each publication and the stream's end (completed, failed, cancelled). The trace event numbers and the `TraceModel` shapes follow `Timed`'s additions:
+
+- `TraceNodeKind.Stream` for the node;
+- `TraceEventKind.StreamStarted`, with the generation in `Arg`;
+- `TraceEventKind.StreamPublished`, with the published status in `Arg` and the state as the payload;
+- `TraceEventKind.StreamEnded`, with the reason (completed, failed, cancelled by a restart, cancelled by disposal) in `Arg`.
+
+Items folded between publications are not traced one by one: a burst would flood the log, and the publication carries the state they produced. `StreamPublished` records the number of items folded since the previous publication in `Other`.
 
 ## Testing
 
@@ -164,9 +171,44 @@ The new scenarios do not change existing scenarios' counts; the CI gate holds fo
 - `docs/content/concepts/roadmap.md`: move streaming `IAsyncEnumerable<'T>` adapters to *Implemented in current source*.
 - `docs/.ai/fable-compat.md`: `ofAsyncEnumerable` is .NET only; `ofAsyncIterable` is Fable only.
 
+### Signal maps
+
+The streams guide draws its examples as [signal maps](../../content/guide/signal-maps.md), as the timing guide does. The map tooling under `docs/maps/` gains:
+
+- **A node mark.** A stream memo draws as a dashed rounded rectangle: dashed like the other async nodes, rounded like a derived node. While a stream is open, the outline is doubled. A flight's spinning ring is not used, because a stream can stay open indefinitely and a ring that never stops tells the reader nothing.
+- **Event rendering** in `docs/maps/model/MapModel.fs`, one case per trace event:
+
+  | Event | Map | Log line |
+  |---|---|---|
+  | `StreamStarted` | the double outline appears | `start news (stream 2)` |
+  | `StreamPublished`, ready | a surge to the observers, as `Moved` | `publish news = … (3 items)` |
+  | `StreamPublished`, failed | the failed outline | `fail news: …` |
+  | `StreamEnded`, completed | the double outline goes | `end news (completed)` |
+  | `StreamEnded`, cancelled by a restart | a fading ring, as a dropped flight | `drop news (restarted)` |
+  | `StreamEnded`, cancelled by disposal | the double outline goes | `end news (disposed)` |
+
+  The hover card adds the generation and whether the stream is open.
+- **A manual source.** `Feed<'T>()` in `docs/maps/model/Helpers.fs`, beside `Desk<'T>` and `MapClock`, is a `StreamSource<'T>` that controls drive:
+  - `feed.Push item` delivers one item;
+  - `feed.Burst items` delivers several items inside one `batch`, so the map shows one publication for them;
+  - `feed.Complete ()` and `feed.Fail message` end the open stream;
+  - each start opens a new stream, and a restart cancels the previous one, which the map draws as a drop.
+- **Naming.** `MapFence`'s `create…` pattern already names `let news = createStream …` and `createStreamFold` bindings; an authoring test pins both.
+- **Maps in `streams.md`:**
+  1. the latest item, with **Push** and **Complete**;
+  2. a fold of token deltas into a message, with **Burst** showing one publication for three items;
+  3. a restart, as a `replay` timeline: a dependency write drops the open stream and starts a new one from `seed`;
+  4. failure and empty completion, side by side for `createStream` and `createStreamFold`.
+- **`signal-maps.md`:** the new mark in the node table, the double outline in the state table, and `Feed` beside `Desk` and `MapClock` under *Writing a map*.
+
+Map tests in `docs/maps/tests/`: `ModelTests` for each event's rendering and log line, `AuthoringTests` for naming and `Feed`, and `ControlTests` for a replay of the restart map. The map validation in `docs/maps/validation/Generate.fsx` builds every `streams.md` fence.
+
 ## Decisions for review
 
-1. **Push sink rather than a pull abstraction.** One node serves pull and push sources; the cost is that converters own their loops. If a pull-only internal shape later proves faster, `StreamSource<'T>` can gain an internal fast path without a public change.
+1. **Sources push items into the node; the node never pulls.** Stream libraries come in two shapes. A pull source (`IAsyncEnumerable`, `AsyncIterable`) waits until its consumer asks for the next item. A push source (`IObservable`, events) calls its consumer whenever it has an item. `StreamSource<'T>` is the push shape: the node hands `Run` a sink, and the source calls `sink.Next` per item. A pull source becomes a push source with a loop (`while await MoveNextAsync () do sink.Next Current`), which `ofAsyncEnumerable` and `ofAsyncIterable` contain. A push source cannot become a pull source without a buffer between it and the consumer, which needs a size and a policy for when it fills.
+   - **What it buys:** one node implementation and one set of contract tests for every source family; no buffer, so no overflow policy.
+   - **What it costs:** the node cannot slow a source down. A pull loop calls `MoveNextAsync` again as soon as `Next` returns, without waiting for the graph to apply the item. Items fold into the state as fast as the source produces them, and the graph sees the latest state. That is the point of the fold: memory stays at one state, not a queue of items.
+   - **If wrong:** a later every-item mode with back-pressure (the exploration's option 5) needs the node to await the graph between items. That fits inside a pull converter's loop and leaves `StreamSource<'T>` unchanged.
 2. **On-graph-thread delivery publishes per item.** This keeps the core rule that a graph-thread write settles before the next line. A Fable or UI-thread burst from a synchronous observable costs one pass per item unless wrapped in `batch`.
 3. **One restart policy.** `FlightPolicy` does not apply. `Queue` would block later streams behind an infinite one; `KeepLatest` and `FinishCurrent` have no meaning for a stream that never finishes.
 4. **Restart resets to `seed` and goes `Pending`.** The previous state is not shown as `Ready` while the new stream warms up; a boundary's fallback receives the last value, as for an async memo.
