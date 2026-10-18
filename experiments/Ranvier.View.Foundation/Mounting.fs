@@ -1892,8 +1892,10 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
         // which marks the projection stale.
         let mutable version: Signal<int> = Unchecked.defaultof<_>
         let mutable snapshot: obj array = [||]
-        // The keys and rows of the last successful pass; null and empty until a pass succeeds, and after a failed pass.
+        // The keys, their version and the rows of the last successful pass; null, -1 and empty until a pass succeeds, and
+        // after a failed pass.
         let mutable previousKeys: obj array = null
+        let mutable previousVersion = -1
         let mutable previousRows: Row array = [||]
         // Authored rows remove their nodes inside the pass, so their window is found from the items and validated before
         // it. The items of the last successful pass of authored rows, in the region's own copy; empty otherwise.
@@ -1925,9 +1927,11 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                 let parent = ref Unchecked.defaultof<Node>
                 let keys = ref Unchecked.defaultof<obj array>
                 let priorKeys = previousKeys
+                let priorVersion = previousVersion
                 let priorRows = previousRows
                 let priorItems = previousItems
                 previousKeys <- null
+                previousVersion <- -1
                 previousRows <- [||]
                 previousItems <- [||]
 
@@ -2001,20 +2005,27 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                                         Row.Validate (regionStart, regionEnd, site.LaidOut, parent.Value)
                                     else
                                         let next = keys.Value
+                                        let mutable first = 0
 
-                                        let struct (first, last0, last1) =
-                                            Api.untrack (fun () -> projection.ChangedRange priorKeys)
+                                        let mutable last0 =
+                                            (if isNull priorKeys then 0 else priorKeys.Length)
+                                            - 1
 
-                                        let mutable first = first
-                                        let mutable last0 = last0
-                                        let mutable last1 = last1
+                                        let mutable last1 = next.Length - 1
 
-                                        // A pass the projection did not trim spans every position; its common ends are found here.
-                                        if
-                                            not (isNull priorKeys)
-                                            && first = 0
-                                            && last0 = priorKeys.Length - 1
-                                        then
+                                        let window =
+                                            if isNull priorKeys then
+                                                ValueNone
+                                            else
+                                                Api.untrack (fun () -> projection.ChangedSince priorVersion)
+
+                                        match window with
+                                        | ValueSome (struct (windowStart, windowEnd0, windowEnd1)) ->
+                                            first <- windowStart
+                                            last0 <- windowEnd0
+                                            last1 <- windowEnd1
+                                        // Without the projection's window, the common ends of the two key arrays are found here.
+                                        | ValueNone ->
                                             while first <= last0
                                                   && first <= last1
                                                   && item priorKeys first = item next first do
@@ -2151,6 +2162,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                         | Ok next ->
                             if site.Live () then
                                 previousKeys <- keys.Value
+                                previousVersion <- Api.untrack (fun () -> projection.KeysVersion)
                                 previousRows <- next
 
                                 if authored then
