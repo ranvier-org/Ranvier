@@ -89,6 +89,7 @@ let all =
                     Ranvier.Tests.Timed.edgeTests
                     Ranvier.Tests.Timed.traceTests
                 ]
+            testList "Streams.fs" [ Ranvier.Tests.Streams.tests ]
             testList "Texts.fs" [ Ranvier.Tests.Texts.tests ]
             testList "FailureOrigins.fs" [ Ranvier.Tests.FailureOrigins.tests ]
             testList "NullChecks.fs" [ Ranvier.Tests.NullChecks.tests ]

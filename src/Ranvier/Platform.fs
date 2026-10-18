@@ -144,6 +144,30 @@ module internal Platform =
 #endif
 
     /// <summary>
+    /// Calls <c>settle</c> with the outcome of <c>work</c>: inline on the completing thread on .NET, on a microtask
+    /// under Fable. Observes <c>work</c> at once, so a rejection is handled.
+    /// </summary>
+    let whenDone (work: Task) (settle: FlightOutcome<unit> -> unit) : unit =
+#if FABLE_COMPILER
+        thenBoth (unbox<Task<unit>> work) (fun _ -> settle (FlightOutcome.Completed ())) (fun reason -> settle (rejected reason))
+        |> ignore
+#else
+        work.ContinueWith (
+            Action<Task>(fun t ->
+                settle (
+                    if t.IsCanceled then
+                        FlightOutcome.Canceled (cancellation t)
+                    elif t.IsFaulted then
+                        FlightOutcome.Faulted (t.Exception.GetBaseException ())
+                    else
+                        FlightOutcome.Completed ()
+                )),
+            TaskContinuationOptions.ExecuteSynchronously
+        )
+        |> ignore
+#endif
+
+    /// <summary>
     /// The outcome of <c>flight</c>, as a task that always completes successfully.
     /// Observes the flight at once, so a rejection is handled even when the
     /// outcome is read later.

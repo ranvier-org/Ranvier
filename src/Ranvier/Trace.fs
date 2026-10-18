@@ -1200,6 +1200,18 @@ type internal Tracer =
 #endif
 
     [<Conditional("RANVIER_TRACE")>]
+    static member StreamNew(graph: obj, id: int, owner: obj) = ()
+
+    [<Conditional("RANVIER_TRACE")>]
+    static member StreamStarted(graph: obj, id: int, generation: int) = ()
+
+    [<Conditional("RANVIER_TRACE")>]
+    static member StreamPublished(graph: obj, id: int, status: int, count: int, payload: obj) = ()
+
+    [<Conditional("RANVIER_TRACE")>]
+    static member StreamEnded(graph: obj, id: int, reason: int) = ()
+
+    [<Conditional("RANVIER_TRACE")>]
     static member TimedEvent(graph: obj, id: int, kind: int, arg: int, flag: int, payload: obj) =
 #if RANVIER_TRACE
         let log = Tracer.LogOf graph
