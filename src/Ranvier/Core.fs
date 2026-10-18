@@ -150,9 +150,14 @@ type internal ObserverSet() =
 #endif
 
     /// <summary>
-    /// The position of <c>c</c>, or -1. The last and the first positions cost one
-    /// comparison each, so teardown newest first and oldest first stay constant
-    /// per removal; any other position is a scan.
+    /// Where the next scan starts: the position after the latest removal below the last position.
+    /// Removal oldest first will find each observer at the first position scanned.
+    /// </summary>
+    let mutable hint = 0
+
+    /// <summary>
+    /// The position of <c>c</c>, or -1. The last position costs one comparison, and the scan
+    /// starts at <c>hint</c> and wraps.
     /// </summary>
     let positionOf (c: IComputation) =
         let last = count - 1
@@ -161,17 +166,23 @@ type internal ObserverSet() =
             -1
         elif obj.ReferenceEquals ((Platform.itemAt last items).Observer, c) then
             last
-        elif obj.ReferenceEquals ((Platform.itemAt 0 items).Observer, c) then
-            0
         else
+            let mutable i = if hint < last then hint else 0
+            let stop = i
             let mutable found = -1
-            let mutable i = 1
+            let mutable scanning = last > 0
 
-            while found < 0 && i < last do
+            while scanning do
                 if obj.ReferenceEquals ((Platform.itemAt i items).Observer, c) then
                     found <- i
+                    scanning <- false
+                else
+                    i <- i + 1
 
-                i <- i + 1
+                    if i = last then
+                        i <- 0
+
+                    scanning <- i <> stop
 
             found
 
@@ -219,6 +230,7 @@ type internal ObserverSet() =
 
             if position <> last then
                 items[position] <- ObserverSlot (Platform.itemAt last items).Observer
+                hint <- position + 1
 
             // Blanked so a dropped observer is not kept alive by a slot past
             // the end of the list.
