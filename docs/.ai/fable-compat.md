@@ -693,9 +693,9 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a memo that reads one source in a loop records one edge
 - a memo that reorders its reads ends up with both edges
 - a source read twice keeps its edge when the later read is trimmed
-- a, b, a after 0 other reads links a once
+- a, b, a after 0 other reads links a once while b also observes a
 - truncation after 0 other reads drops both slots of a repeated source
-- a, b, a after 10 other reads links a once
+- a, b, a after 10 other reads links a once while b also observes a
 - truncation after 10 other reads drops both slots of a repeated source
 - a reader of 3 sources in a changing order keeps one edge to each
 - a reader of 12 sources in a changing order keeps one edge to each
