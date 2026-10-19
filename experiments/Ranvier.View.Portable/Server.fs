@@ -25,12 +25,26 @@ module Options =
             GraphOptions = GraphOptions.Default
         }
 
+/// <summary>The failure of a render whose read outside every boundary is pending; <c>Pending</c> is the core's <c>NotReadyException</c>.</summary>
+exception ServerPendingException of Pending: exn with
+    override _.Message = "A read outside every boundary is pending"
+
+/// <summary>A <c>ServerPendingException</c> whose <c>Message</c> is the override's text on .NET and under Fable.</summary>
+let private serverPending (pending: exn) : exn =
+    let error = ServerPendingException pending
+#if FABLE_COMPILER
+    // Fable reads Message from the JavaScript error's message property.
+    Fable.Core.JsInterop.(?<-) error "message" "A read outside every boundary is pending"
+#endif
+    error
+
 /// <summary>
 /// The owners of a request: each nested instance runs under its own child of <c>lifetime</c>, and its <c>Setup</c>
-/// registers cleanups on that child until the instance is written.
+/// registers cleanups on that child until the instance is written. A failure to dispose an abandoned attempt goes to
+/// <c>report</c>.
 /// </summary>
 [<Sealed>]
-type internal RequestScope(lifetime: MountLifetime, identity: IdentityScope) =
+type internal RequestScope(lifetime: MountLifetime, identity: IdentityScope, report: exn -> unit) =
     inherit ServerScope()
 
     override _.Nest body =
@@ -51,7 +65,7 @@ type internal RequestScope(lifetime: MountLifetime, identity: IdentityScope) =
                     }
 
                 try
-                    body (RequestScope (child, identity)) setup
+                    body (RequestScope (child, identity, report)) setup
                 finally
                     completed.Value <- true
         )
@@ -65,18 +79,22 @@ type internal RequestScope(lifetime: MountLifetime, identity: IdentityScope) =
                 ignore,
                 fun child ->
                     attempt.Value <- child
-                    body (RequestScope (child, identity))
+                    body (RequestScope (child, identity, report))
             )
             |> ignore
         with _ ->
             if not (isNull attempt.Value) then
-                attempt.Value.Dispose ()
+                try
+                    attempt.Value.Dispose ()
+                with disposal ->
+                    report disposal
 
             reraise ()
 
 /// <summary>
 /// Renders <c>definition</c> into <c>sink</c> inside <c>graph</c> under a new request root, and disposes the root before
-/// returning or raising. Document entries go to <c>heads</c>; a null <c>heads</c> applies the policy to them.
+/// returning or raising; a <c>NotReadyException</c> raised by the render is raised as <c>ServerPendingException</c>.
+/// Document entries go to <c>heads</c>; a null <c>heads</c> applies the policy to them.
 /// </summary>
 let internal renderOn
     (graph: Graph)
@@ -103,11 +121,22 @@ let internal renderOn
                             let writer = ServerWriter backend
                             backend.Writer <- writer
                             sink.Append "<!--[r-->"
-                            writer.Write (RequestScope (root, backend.Identity), definition, box props, null, InstanceStep.Root, 0, 0)
+
+                            writer.Write (
+                                RequestScope (root, backend.Identity, cleanupErrors.Add),
+                                definition,
+                                box props,
+                                null,
+                                InstanceStep.Root,
+                                0,
+                                0
+                            )
+
                             sink.Append "<!--]-->"
                             None
-                        with error ->
-                            Some error
+                        with
+                        | NotReadyException _ as pending -> Some (serverPending pending)
+                        | error -> Some error
                     finally
                         try
                             root.Dispose ()
@@ -135,7 +164,10 @@ let internal renderOn
     | Some error, errors -> raise (aggregate "Server render failed" (error :: errors))
     | None, errors -> raise (aggregate "Server render cleanup failed" errors)
 
-/// <summary>Renders a template component as one hydratable root; raises when a read outside every boundary is pending or fails.</summary>
+/// <summary>
+/// Renders a template component as one hydratable root; raises <c>ServerPendingException</c> when a read outside every
+/// boundary is pending, and the read's failure when it fails.
+/// </summary>
 /// <remarks>
 /// <para>
 /// The output is <c>&lt;!--[r--&gt;</c>, the instance, <c>&lt;!--]--&gt;</c>. The render runs untracked in a new graph

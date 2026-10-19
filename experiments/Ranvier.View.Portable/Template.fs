@@ -1166,7 +1166,7 @@ type internal ServerWriter(backend: HtmlBackend) =
         Projection.ensureUniqueKeys region.Key.Invoke items
 
         match region.Row with
-        | BoundaryRow -> under scope (fun () -> backend.Boundary (unbox<BoundaryViews>(KeyedItems.value items[0])))
+        | BoundaryRow -> this.Boundary (scope, unbox<BoundaryViews>(KeyedItems.value items[0]), parent, regionIndex)
         | ViewRow ->
             backend.Append "<!--[-->"
 
@@ -1192,6 +1192,57 @@ type internal ServerWriter(backend: HtmlBackend) =
                 this.Write (scope, definition, props.Invoke (fun () -> item), parent, InstanceStep.Row, regionIndex, row)
 
             backend.Append "<!--]-->"
+
+    /// <summary>
+    /// Writes a boundary whose views sit under <c>parent</c> in region <c>regionIndex</c>: the content at row 0 in an
+    /// attempt of <c>scope</c>, between <c>&lt;!--[c--&gt;</c> and <c>&lt;!--]--&gt;</c>. When the attempt raises, its
+    /// HTML and head entries are dropped and row 1 under <c>scope</c> takes the pending view after <c>&lt;!--[p--&gt;</c>
+    /// for a <c>NotReadyException</c>, or else the error view after <c>&lt;!--[e--&gt;</c>.
+    /// </summary>
+    member private this.Boundary(scope: ServerScope, views: BoundaryViews, parent: InstancePath, regionIndex: int) =
+        let sink = backend.Sink
+        let heads = backend.Heads
+        let mark = sink.Mark ()
+        let entries = if isNull heads then 0 else heads.Count
+
+        // Each view is a head container of its own, as a client boundary's content and shown view are.
+        let view (scope: ServerScope) (render: Backend -> unit) (row: int) =
+            match heads with
+            | null -> this.View (scope, render, parent, regionIndex, row)
+            | heads ->
+                heads.Open ()
+
+                try
+                    this.View (scope, render, parent, regionIndex, row)
+                finally
+                    heads.Close ()
+
+        backend.Append "<!--[c-->"
+
+        let failure =
+            try
+                scope.Attempt (fun attempt -> view attempt (views.Content { IsPending = fun () -> false }) 0)
+                None
+            with error ->
+                Some error
+
+        match failure with
+        | None -> ()
+        | Some error ->
+            sink.Truncate mark
+
+            if not (isNull heads) then
+                heads.Truncate entries
+
+            match error with
+            | NotReadyException _ ->
+                backend.Append "<!--[p-->"
+                view scope views.Pending 1
+            | error ->
+                backend.Append "<!--[e-->"
+                view scope (views.Failed { Error = error; Retry = ignore }) 1
+
+        backend.Append "<!--]-->"
 
 /// <summary>The head entry of <c>head</c> for <c>instance</c>.</summary>
 let internal headEntry (head: HeadTemplate) (instance: obj) : HeadEntry =

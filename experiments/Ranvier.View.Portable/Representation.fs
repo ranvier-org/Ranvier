@@ -985,13 +985,17 @@ and [<Sealed>] HtmlBackend(policy: BrowserPolicy, sink: HtmlSink) =
         childNodes <- childNodes + 1
         definition.RenderHtml (this, props)
 
-    /// <summary>Writes the content; when it raises, the content's output is dropped and the pending or error view is written instead.</summary>
+    /// <summary>
+    /// Writes the content; when it raises, the content's output and head entries are dropped and the pending or error
+    /// view is written instead.
+    /// </summary>
     override this.Boundary(views) =
         childNodes <- childNodes + 1
         append "<!--[-->"
         let mark = sink.Mark ()
 
         let heads = this.Heads
+        let entries = if isNull heads then 0 else heads.Count
 
         if not (isNull heads) then
             heads.Open ()
@@ -1013,6 +1017,7 @@ and [<Sealed>] HtmlBackend(policy: BrowserPolicy, sink: HtmlSink) =
             sink.Truncate mark
 
             if not (isNull heads) then
+                heads.Truncate entries
                 heads.Open ()
 
             try

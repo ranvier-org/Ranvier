@@ -83,6 +83,27 @@ let private clientNestedIdentity () =
 let private clientHolesIdentity () =
     sameIds idHoles () holesIds
 
+/// <summary>
+/// Mounts <c>idBoundary</c> with its content ready or pending and checks the client's id log in setup order and its
+/// DOM ids against the server's.
+/// </summary>
+let private clientBoundaryIdentity () =
+    let check ready (expected: string list) (visible: string list) =
+        idContentReady <- ready
+        let served = servedIds idBoundary ()
+        use graph = new Graph ()
+        let target = host ()
+        identityLog.Clear ()
+        let mounted = mount graph target (Component.render idBoundary ())
+        let issued = List.ofSeq identityLog
+        let shown = domIds target
+        mounted.Dispose ()
+        idContentReady <- true
+        equal (expected, visible, visible) (issued, shown, served)
+
+    check true boundaryContentIds boundaryContentIds
+    check false boundaryPendingIds [ "r-0-0"; "r-0.r0.1-0" ]
+
 let private clientCreateIdInLaterSetup () =
     use graph = new Graph ()
 
@@ -103,6 +124,7 @@ let cases: (string * (unit -> unit)) array =
             clientNestedIdentity
             "each client view row counts its authored steps from 0 and the enclosing row resumes its count, as the server does", clientHolesIdentity
             "a Setup kept from one client setup raises when called during another instance's setup", clientCreateIdInLaterSetup
+            "a client boundary's content takes row 0 and its pending view row 1, as the server's [c and [p boundaries do", clientBoundaryIdentity
         |]
 
 /// <summary>The text and value of the first element matching <c>selector</c> after the browser parses <c>html</c>.</summary>

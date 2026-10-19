@@ -1125,11 +1125,11 @@ let private templateServer () =
             let render () =
                 Html.render Omit (Program.run (Component.render guardedServer ()))
 
-            equal "<div><!--[--><span>loading</span><!--]--></div>" (render ())
+            equal "<div><!--[p--><span>loading</span><!--]--></div>" (render ())
             serverSource.Settle "<A>"
-            equal "<div><!--[--><span>&lt;A&gt;</span><!--]--></div>" (render ())
+            equal "<div><!--[c--><span>&lt;A&gt;</span><!--]--></div>" (render ())
             serverSource.Fail (Exception "<bad>")
-            equal "<div><!--[--><span>&lt;bad&gt;</span><!--]--></div>" (render ())))
+            equal "<div><!--[e--><span>&lt;bad&gt;</span><!--]--></div>" (render ())))
 
 /// <summary>A handler outside every boundary throws out of its dispatch.</summary>
 let private handlerOutsideBoundary (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued (eventName: string) =

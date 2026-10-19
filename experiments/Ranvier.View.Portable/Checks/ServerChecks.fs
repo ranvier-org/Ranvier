@@ -78,11 +78,11 @@ let private armPins () =
 let private boundaryPins () =
     use graph = new Graph ()
     boundarySource <- graph.Run (fun () -> Api.createAsyncSource<string>())
-    equal "<div><!--[--><span>loading</span><!--]--></div>" (renderOmit guarded ())
+    equal "<div><!--[p--><span>loading</span><!--]--></div>" (renderOmit guarded ())
     graph.Run (fun () -> boundarySource.Settle "<A>")
-    equal "<div><!--[--><span>&lt;A&gt;</span><!--]--></div>" (renderOmit guarded ())
+    equal "<div><!--[c--><span>&lt;A&gt;</span><!--]--></div>" (renderOmit guarded ())
     graph.Run (fun () -> boundarySource.Fail (Exception "<bad>"))
-    equal "<div><!--[--><span>&lt;bad&gt;</span><!--]--></div>" (renderOmit guarded ())
+    equal "<div><!--[e--><span>&lt;bad&gt;</span><!--]--></div>" (renderOmit guarded ())
 
 let private edgePins () =
     equal "<span></span>" (renderOmit emptyText "")
@@ -1046,6 +1046,185 @@ let private textareaValues () =
         ]
         [ render "</textarea>&"; render ""; render null ]
 
+type private ContentOutcome =
+    | ContentPends
+    | ContentFails
+    | ContentReads
+
+let private attemptLog = ResizeArray<string>()
+let mutable private contentOutcome = ContentPends
+
+let private attemptPending =
+    Component.define (fun _ () -> attemptLog.Add "pending setup") (fun t -> t.span [||] [| t.text "loading" |])
+
+let private attemptFailed =
+    Component.define
+        (fun _ (failure: BoundaryFailure) ->
+            attemptLog.Add "error setup"
+            failure.Retry ()
+            failure)
+        (fun t -> t.span [||] [| t.text (fun failure -> failure.Error.Message) |])
+
+let private attemptContent =
+    Component.define
+        (fun setup (_: BoundaryStatus) ->
+            attemptLog.Add "content setup"
+            setup.OnCleanup (fun () -> attemptLog.Add "content cleanup")
+            let source = Api.createAsyncSource<string>()
+
+            match contentOutcome with
+            | ContentReads -> source.Settle "ready"
+            | ContentFails -> source.Fail (Exception "<failed>")
+            | ContentPends -> ()
+
+            source)
+        (fun t -> t.span [||] [| t.text (fun (source: AsyncSource<string>) -> source.Value) |])
+
+let private attempted =
+    Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.boundary attemptPending attemptFailed attemptContent |])
+
+let private boundaryAttempts () =
+    let render outcome =
+        contentOutcome <- outcome
+        attemptLog.Clear ()
+        let html = Server.render Server.Options.defaults attempted ()
+        html, List.ofSeq attemptLog
+
+    equal
+        ("<!--[r--><div><!--[p--><span>loading</span><!--]--></div><!--]-->", [ "content setup"; "content cleanup"; "pending setup" ])
+        (render ContentPends)
+
+    equal
+        ("<!--[r--><div><!--[e--><span>&lt;failed&gt;</span><!--]--></div><!--]-->", [ "content setup"; "content cleanup"; "error setup" ])
+        (render ContentFails)
+
+    equal ("<!--[r--><div><!--[c--><span>ready</span><!--]--></div><!--]-->", [ "content setup"; "content cleanup" ]) (render ContentReads)
+
+let private failingPending =
+    Component.define (fun _ () -> failwith "pending failed") (fun t -> t.span [||] [||])
+
+let private innerContent =
+    Component.define (fun _ (_: BoundaryStatus) -> Api.createAsyncSource<string>()) (fun t ->
+        t.span [||] [| t.text (fun (source: AsyncSource<string>) -> source.Value) |])
+
+let private outerContent =
+    Component.define (fun _ (_: BoundaryStatus) -> ()) (fun t -> t.boundary failingPending attemptFailed innerContent)
+
+let private nestedBoundaries =
+    Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.boundary attemptPending attemptFailed outerContent |])
+
+let private pendingViewFailure () =
+    equal "<!--[r--><div><!--[e--><span>pending failed</span><!--]--></div><!--]-->" (Server.render Server.Options.defaults nestedBoundaries ())
+
+let private unguarded =
+    Component.define
+        (fun setup () ->
+            setup.OnCleanup (fun () -> attemptLog.Add "unguarded cleanup")
+            Api.createAsyncSource<string>())
+        (fun t -> t.span [||] [| t.text (fun (source: AsyncSource<string>) -> source.Value) |])
+
+let private pendingOutsideBoundaries () =
+    attemptLog.Clear ()
+
+    match
+        failure (fun () ->
+            Server.render Server.Options.defaults unguarded ()
+            |> ignore)
+    with
+    | Server.ServerPendingException pending ->
+        let isNotReady =
+            match pending with
+            | NotReadyException _ -> true
+            | _ -> false
+
+        equal (true, [ "unguarded cleanup" ]) (isNotReady, List.ofSeq attemptLog)
+    | other -> failwithf "Expected ServerPendingException; got %O" other
+
+let private pendingMessage () =
+    equal
+        "A read outside every boundary is pending"
+        (failure (fun () ->
+            Server.render Server.Options.defaults unguarded ()
+            |> ignore))
+            .Message
+
+let private boundaryIdentity () =
+    let render ready =
+        idContentReady <- ready
+        identityLog.Clear ()
+        let html = Server.render Server.Options.defaults idBoundary ()
+        html, List.ofSeq identityLog
+
+    let ready = render true
+    let pending = render false
+    idContentReady <- true
+
+    equal ("""<!--[r--><div id="r-0-0"><!--[c--><b id="r-0.r0.0-0">ready</b><!--]--></div><!--]-->""", boundaryContentIds) ready
+
+    equal ("""<!--[r--><div id="r-0-0"><!--[p--><i id="r-0.r0.1-0"></i><!--]--></div><!--]-->""", boundaryPendingIds) pending
+
+let private failingCleanupContent =
+    Component.define
+        (fun setup (_: BoundaryStatus) ->
+            setup.OnCleanup (fun () -> failwith "content cleanup failed")
+            Api.createAsyncSource<string>())
+        (fun t -> t.span [||] [| t.text (fun (source: AsyncSource<string>) -> source.Value) |])
+
+let private cleanupGuarded =
+    Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.boundary attemptPending attemptFailed failingCleanupContent |])
+
+let private abandonedCleanupFailure () =
+    let error =
+        failure (fun () ->
+            Server.render Server.Options.defaults cleanupGuarded ()
+            |> ignore)
+
+    // .NET appends the inner messages to an aggregate's message.
+    equal true (error.Message.StartsWith "Server render cleanup failed: content cleanup failed")
+
+let private headPending =
+    Component.define (fun _ () -> ()) (fun t -> t.fragment [| preload t "/pending.css"; t.span [||] [| t.text "loading" |] |])
+
+let private headContent =
+    Component.define (fun _ (_: BoundaryStatus) -> Api.createAsyncSource<string>()) (fun t ->
+        t.fragment
+            [|
+                t.Document.title "Content"
+                preload t "/content.css"
+                t.span [||] [| t.text (fun (source: AsyncSource<string>) -> source.Value) |]
+            |])
+
+let private headGuarded =
+    Component.define (fun _ () -> ()) (fun t ->
+        t.div
+            [||]
+            [|
+                t.Document.title "Page"
+                t.boundary headPending attemptFailed headContent
+                preload t "/after.css"
+            |])
+
+let private abandonedHeads () =
+    let pageHead =
+        """<title data-ranvier-head="title">Page</title>"""
+        + """<link data-ranvier-head="" rel="preload" href="/after.css">"""
+        + """<link data-ranvier-head="" rel="preload" href="/pending.css">"""
+
+    let holeHead (body: Program.View) =
+        (Server.renderPage Server.Options.defaults holed { Caption = "C"; Body = body }).Head
+
+    let authored =
+        Program.ops.Boundary (Program.text "wait", (fun _ -> Program.text "failed"), fun status -> Component.render headContent status)
+
+    equal
+        ({
+            Server.Page.Body = "<!--[r--><div><!--[p--><span>loading</span><!--]--></div><!--]-->"
+            Server.Page.Head = pageHead
+         },
+         pageHead,
+         "")
+        (Server.renderPage Server.Options.defaults headGuarded (), holeHead (Component.renderWith Program.ops headGuarded ()), holeHead authored)
+
 let cases: (string * (unit -> unit)) array =
     [|
         "CreateId numbers inlined children in pre-order and puts an inlined child's rows under its path", nestedIdentity
@@ -1061,6 +1240,14 @@ let cases: (string * (unit -> unit)) array =
         "renderPage escapes titles and attribute values and marks every element", pageEscapes
         "render keeps the document entry policy and renderPage collects whatever the policy", headPolicy
         "renderPage collects the entries of a compiled and an expanded template in a view hole", holedHeads
+        "a boundary's abandoned content attempt runs its cleanups before the pending or error view is written", boundaryAttempts
+        "boundary markers record content, pending and error views; a failure inside the pending view goes to the enclosing boundary",
+        pendingViewFailure
+        "a pending read outside every boundary raises ServerPendingException after disposal", pendingOutsideBoundaries
+        "ServerPendingException says a read outside every boundary is pending", pendingMessage
+        "a boundary's content takes row 0 and its pending view row 1 of the boundary's region", boundaryIdentity
+        "a cleanup failure of an abandoned content attempt fails the render after the pending view is written", abandonedCleanupFailure
+        "an abandoned boundary attempt's entries are not written and an overridden key's earlier entry returns", abandonedHeads
 #if FABLE_COMPILER
         "two concurrent server requests collect only their own entries", sequentialHeads
 #endif
