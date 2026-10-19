@@ -1487,6 +1487,17 @@ module Projection =
 
         foldOwned upstream.Graph (fun () -> map projection upstream) add subtract zero result
 
+    /// <summary><c>s - n</c>, raising ArithmeticException when the difference is infinite or NaN.</summary>
+    [<NoDynamicInvocation>]
+    let inline private subtractFinite (s: ^N) (n: ^N) : ^N =
+        let d = s - n
+
+        // A throwing subtract re-folds from the cached values. d - d is non-zero exactly when d is infinite or NaN.
+        if d - d <> LanguagePrimitives.GenericZero then
+            raise (System.ArithmeticException ())
+
+        d
+
     /// <summary>A memo of the sum of <c>projection</c> over the values of <c>upstream</c>, kept current per row change.</summary>
     /// <remarks>
     /// <c>projection</c> re-runs for a key when its upstream row changes, in a view the memo owns.
@@ -1502,19 +1513,7 @@ module Projection =
     [<NoDynamicInvocation>]
     let inline sumBy (projection: 'V -> ^N) (upstream: Projection<'K, 'V>) : Memo< ^N > =
         upstream
-        |> foldGroupBy
-            projection
-            (fun s n -> s + n)
-            (fun s n ->
-                let d = s - n
-
-                // A throwing subtract re-folds from the cached values. d - d is non-zero exactly when d is infinite or NaN.
-                if d - d <> LanguagePrimitives.GenericZero then
-                    raise (System.ArithmeticException ())
-
-                d)
-            LanguagePrimitives.GenericZero
-            id
+        |> foldGroupBy projection (fun s n -> s + n) subtractFinite LanguagePrimitives.GenericZero id
 
     /// <summary>A memo of how many values of <c>upstream</c> satisfy <c>predicate</c>, kept current per row change.</summary>
     /// <remarks>
@@ -1689,3 +1688,64 @@ module Projection =
             false
             (Option.map snd
              >> orRaise "Projection.pick: the chooser returns None for every value.")
+
+    /// <summary>The mean of a <c>struct (sum, count)</c> state, or <c>None</c> at count zero.</summary>
+    [<NoDynamicInvocation>]
+    let inline private mean (struct (sum: ^N, count: int)) : ^N option =
+        if count = 0 then
+            None
+        else
+            Some (LanguagePrimitives.DivideByInt sum count)
+
+    /// <summary>
+    /// A memo of <c>result</c> applied to the running <c>struct (sum, count)</c> of <c>projection</c> over the values of
+    /// <c>upstream</c>.
+    /// </summary>
+    [<NoDynamicInvocation>]
+    let inline private meanBy (projection: 'V -> ^N) (result: struct (^N * int) -> 'R) (upstream: Projection<'K, 'V>) : Memo<'R> =
+        upstream
+        |> foldGroupBy
+            projection
+            (fun (struct (sum, count)) n -> struct (sum + n, count + 1))
+            (fun (struct (sum, count)) n -> struct (subtractFinite sum n, count - 1))
+            (struct (LanguagePrimitives.GenericZero, 0))
+            result
+
+    /// <summary>
+    /// A memo of the mean of <c>projection</c> over the settled values of <c>upstream</c>, or <c>None</c> while no value has
+    /// settled.
+    /// </summary>
+    /// <remarks>
+    /// Kept current per row change in O(1), as <c>sumBy</c>; while the sum is infinite or NaN, each row change re-adds
+    /// every cached value in O(N). Pending and failed rows follow <c>foldGroup</c>. A pass producing a mean equal to the
+    /// last one returns the last result instance, leaving readers unwoken. Supports <c>float</c>, <c>float32</c>,
+    /// <c>decimal</c> and any type with <c>+</c>, <c>-</c>, <c>Zero</c> and <c>DivideByInt</c>.
+    /// </remarks>
+    /// <example>
+    /// <code lang="fsharp">
+    /// let rows = createProjection (fun t -> t.Id) id (fun () -> todos.Value)
+    /// let meanHours = rows |> Projection.tryAverageBy (fun t -> t.Hours)
+    /// </code>
+    /// </example>
+    [<NoDynamicInvocation>]
+    let inline tryAverageBy (projection: 'V -> ^N) (upstream: Projection<'K, 'V>) : Memo<^N option> =
+        let last: ^N option ref = ref None
+
+        meanBy
+            projection
+            (fun state ->
+                match mean state, last.Value with
+                | Some current, Some previous when Graph.Current.Options.Equality.Comparer< ^N>().Equals(current, previous) -> last.Value
+                | current, _ ->
+                    last.Value <- current
+                    current)
+            upstream
+
+    /// <summary><c>tryAverageBy</c>, raising <c>KeyNotFoundException</c> while no value has settled.</summary>
+    /// <remarks>Fails and recovers as <c>head</c> does.</remarks>
+    [<NoDynamicInvocation>]
+    let inline averageBy (projection: 'V -> ^N) (upstream: Projection<'K, 'V>) : Memo< ^N > =
+        let raiseEmpty =
+            orRaise "Projection.averageBy: the projection has no settled values."
+
+        meanBy projection (fun state -> raiseEmpty (mean state)) upstream

@@ -3111,3 +3111,161 @@ let findTests =
                 Expect.equal (readersOf up 1) 0 "disposing the memo disposed the filter"
             }
         ]
+
+let private additions = ref 0
+
+/// <summary>A number whose additions are counted in <c>additions</c>.</summary>
+type Meter =
+    {
+        Amount: float
+    }
+
+    static member (+)(a: Meter, b: Meter) =
+        additions.Value <- additions.Value + 1
+        { Amount = a.Amount + b.Amount }
+
+    static member (-)(a: Meter, b: Meter) =
+        { Amount = a.Amount - b.Amount }
+
+    static member Zero = { Amount = 0.0 }
+
+    static member DivideByInt(a: Meter, n: int) =
+        { Amount = a.Amount / float n }
+
+[<Tests>]
+let averageTests =
+    testList
+        "Projection.tryAverageBy and averageBy"
+        [
+            test "tryAverageBy averages float32 and decimal" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let up = rows (createSignal (items [ 1, 1; 2, 2 ]))
+
+                Expect.equal (Projection.tryAverageBy float32 up).Value (Some 1.5f) "float32"
+                Expect.equal (Projection.tryAverageBy decimal up).Value (Some 1.5m) "decimal"
+            }
+
+            test "tryAverageBy follows edits, removals and additions" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 2; 2, 4 ])
+                let mean = rows source |> Projection.tryAverageBy float
+                let seen = ResizeArray<float option>()
+
+                createEffect (fun () -> seen.Add mean.Value)
+                source.Value <- setN 1 6 source.Value
+                source.Value <- []
+                source.Value <- items [ 3, 9 ]
+
+                Expect.sequenceEqual seen [ Some 3.0; Some 5.0; None; Some 9.0 ] "one result per write"
+            }
+
+            test "an equal mean after a key change wakes no reader" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 2; 2, 4 ])
+                let mean = rows source |> Projection.tryAverageBy float
+                let runs = ref 0
+
+                createEffect (fun () ->
+                    runs.Value <- runs.Value + 1
+                    mean.Value |> ignore)
+
+                source.Value <- items [ 1, 2; 2, 4; 3, 3 ]
+
+                Expect.equal mean.Value (Some 3.0) "the mean"
+                Expect.equal runs.Value 1 "the mean is unchanged"
+            }
+
+            test "an edit at N=1000 makes one addition" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ for i in 1..1000 -> i, i ])
+                additions.Value <- 0
+
+                let mean =
+                    rows source
+                    |> Projection.tryAverageBy (fun n -> { Amount = float n })
+
+                let runs = ref 0
+
+                createEffect (fun () ->
+                    runs.Value <- runs.Value + 1
+                    mean.Value |> ignore)
+
+                Expect.equal additions.Value 1000 "one addition per key on the first read"
+                additions.Value <- 0
+
+                for i in 1..100 do
+                    source.Value <- setN i (i + 1) source.Value
+
+                Expect.equal additions.Value 100 "one addition per edit"
+                Expect.equal runs.Value 101 "one reader run per edit"
+                Expect.equal (mean.Value |> Option.map _.Amount) (Some (500600.0 / 1000.0)) "the mean"
+            }
+
+            test "tryAverageBy over floats recovers from infinity and NaN" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal [ 1, infinity; 2, 1.0 ]
+
+                let mean =
+                    createProjection fst snd (fun () -> source.Value)
+                    |> Projection.tryAverageBy id
+
+                Expect.equal mean.Value (Some infinity) "an infinite row"
+                source.Value <- [ 1, 3.0; 2, 1.0 ]
+                Expect.equal mean.Value (Some 2.0) "the infinite row edited"
+                source.Value <- [ 1, nan; 2, 1.0 ]
+                Expect.isTrue (mean.Value |> Option.exists Double.IsNaN) "a NaN row"
+                source.Value <- [ 2, 1.0 ]
+                Expect.equal mean.Value (Some 1.0) "the NaN row removed"
+            }
+
+            test "a pending row keeps its last settled value; a never-settled row adds nothing" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let flights = dict [ for n in [ 10; 11; 20 ] -> n, createAsyncSource<int>() ]
+                flights[10].Settle 4
+                let source = createSignal (items [ 1, 10; 2, 20 ])
+
+                let mean =
+                    createProjection (fun x -> x.Id) (fun x -> flights[x.N].Value) (fun () -> source.Value)
+                    |> Projection.tryAverageBy float
+
+                Expect.equal mean.Value (Some 4.0) "the never-settled row is not counted"
+                source.Value <- setN 1 11 source.Value
+                Expect.equal mean.Value (Some 4.0) "key 1 keeps its last settled value"
+                flights[20].Settle 8
+                Expect.equal mean.Value (Some 6.0) "key 2 settles"
+                flights[11].Settle 2
+                Expect.equal mean.Value (Some 5.0) "key 1 settles"
+            }
+
+            test "averageBy raises KeyNotFoundException while empty and recovers" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [])
+                let mean = rows source |> Projection.averageBy float
+
+                expectEmpty mean "Projection.averageBy: the projection has no settled values."
+                source.Value <- items [ 1, 2; 2, 4 ]
+                Expect.equal mean.Value 3.0 "recovered"
+                source.Value <- []
+                expectEmpty mean "Projection.averageBy: the projection has no settled values."
+            }
+
+            test "disposing the tryAverageBy memo releases the upstream rows" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let up = rows (createSignal (items [ 1, 1; 2, 2 ]))
+                up.Get 1 |> ignore
+                let mean = up |> Projection.tryAverageBy float
+
+                mean.Value |> ignore
+                Expect.isGreaterThan (readersOf up 1) 0 "the mean reads row 1"
+                mean.Dispose ()
+                Expect.equal (readersOf up 1) 0 "disposing the memo disposed its view and fold"
+            }
+        ]

@@ -263,6 +263,8 @@ member Ranvier.ProjectionDelta`1 get_Keys() : !0[]
 member Ranvier.ProjectionDelta`1 get_OrderChanged() : Boolean
 member Ranvier.ProjectionDelta`1 get_Positional() : System.Collections.Generic.IReadOnlyList`1<Ranvier.PositionalChange`1<!0>>
 member Ranvier.ProjectionDelta`1 get_PreviousKeys() : !0[]
+member Ranvier.ProjectionModule static averageBy$W<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!1,Microsoft.FSharp.Core.FSharpFunc`2<Int32,!!1>>,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,!!1>,Microsoft.FSharp.Core.FSharpFunc`2<!!1,Microsoft.FSharp.Core.FSharpFunc`2<!!1,!!1>>,Microsoft.FSharp.Core.FSharpFunc`2<!!1,Microsoft.FSharp.Core.FSharpFunc`2<!!1,!!1>>,Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,Ranvier.Projection`2<!!2,!!0>) : Ranvier.Memo`1<!!1>
+member Ranvier.ProjectionModule static averageBy<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,Ranvier.Projection`2<!!2,!!0>) : Ranvier.Memo`1<!!1>
 member Ranvier.ProjectionModule static choose<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,Microsoft.FSharp.Core.FSharpOption`1<!!1>>,Ranvier.Projection`2<!!2,!!0>) : Ranvier.Projection`2<!!2,!!1>
 member Ranvier.ProjectionModule static countBy<2>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,Boolean>,Ranvier.Projection`2<!!1,!!0>) : Ranvier.Memo`1<Int32>
 member Ranvier.ProjectionModule static ensureUniqueKeys<2>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,System.Collections.Generic.IEnumerable`1<!!0>) : Void
@@ -290,6 +292,8 @@ member Ranvier.ProjectionModule static sub<2>(Microsoft.FSharp.Core.FSharpFunc`2
 member Ranvier.ProjectionModule static sumBy$W<3>(Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,!!1>,Microsoft.FSharp.Core.FSharpFunc`2<!!1,Microsoft.FSharp.Core.FSharpFunc`2<!!1,!!1>>,Microsoft.FSharp.Core.FSharpFunc`2<!!1,Microsoft.FSharp.Core.FSharpFunc`2<!!1,!!1>>,Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,Ranvier.Projection`2<!!2,!!0>) : Ranvier.Memo`1<!!1>
 member Ranvier.ProjectionModule static sumBy<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,Ranvier.Projection`2<!!2,!!0>) : Ranvier.Memo`1<!!1>
 member Ranvier.ProjectionModule static take<2>(Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,Int32>,Ranvier.Projection`2<!!0,!!1>) : Ranvier.Projection`2<!!0,!!1>
+member Ranvier.ProjectionModule static tryAverageBy$W<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!1,Microsoft.FSharp.Core.FSharpFunc`2<Int32,!!1>>,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,!!1>,Microsoft.FSharp.Core.FSharpFunc`2<!!1,Microsoft.FSharp.Core.FSharpFunc`2<!!1,!!1>>,Microsoft.FSharp.Core.FSharpFunc`2<!!1,Microsoft.FSharp.Core.FSharpFunc`2<!!1,!!1>>,Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,Ranvier.Projection`2<!!2,!!0>) : Ranvier.Memo`1<Microsoft.FSharp.Core.FSharpOption`1<!!1>>
+member Ranvier.ProjectionModule static tryAverageBy<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,Ranvier.Projection`2<!!2,!!0>) : Ranvier.Memo`1<Microsoft.FSharp.Core.FSharpOption`1<!!1>>
 member Ranvier.ProjectionModule static tryFind<2>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,Boolean>,Ranvier.Projection`2<!!1,!!0>) : Ranvier.Memo`1<Microsoft.FSharp.Core.FSharpOption`1<!!0>>
 member Ranvier.ProjectionModule static tryFindKey<2>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,Boolean>,Ranvier.Projection`2<!!1,!!0>) : Ranvier.Memo`1<Microsoft.FSharp.Core.FSharpOption`1<!!1>>
 member Ranvier.ProjectionModule static tryHead<2>(Ranvier.Projection`2<!!0,!!1>) : Ranvier.Memo`1<Microsoft.FSharp.Core.FSharpOption`1<System.Tuple`2<!!0,!!1>>>

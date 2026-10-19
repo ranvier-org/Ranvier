@@ -245,6 +245,8 @@ let tests =
                         "findKey (fun _ -> true)"
                         "tryPick Some"
                         "pick Some"
+                        "tryAverageBy float"
+                        "averageBy float"
                     ] do
                     let _, _, bindings =
                         scenario ($"let total =\n    rows\n    |> Projection.{aggregate} // aggregate\ncontrols []")

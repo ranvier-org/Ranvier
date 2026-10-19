@@ -57,7 +57,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | DischargeReentry.fs | 29 | 29 | 29 | 29 | 29 | 29 | 1 | 0 |
 | MapSemantics.fs | 42 | 42 | 42 | 42 | 42 | 42 | 0 | 1 |
 | Lenses.fs | 23 | 20 | 20 | 23 | 20 | 20 | 0 | 0 |
-| Combinators.fs | 182 | 182 | 182 | 182 | 182 | 182 | 1 | 0 |
+| Combinators.fs | 190 | 190 | 190 | 190 | 190 | 190 | 1 | 0 |
 | Timed.fs | 31 | 31 | 31 | 38 | 38 | 38 | 0 | 0 |
 | Streams.fs | 26 | 26 | 26 | 26 | 26 | 26 | 1 | 0 |
 | PreviousValues.fs | 12 | 12 | 12 | 12 | 12 | 12 | 15 | 0 |
@@ -81,7 +81,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 9 | 9 | 9 | 9 | 9 | 9 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1469 | 1448 | 1445 | 1609 | 1583 | 1580 | 100 | 1 |
+| **Total** | 1477 | 1456 | 1453 | 1617 | 1591 | 1588 | 100 | 1 |
 
 ## Tests.fs
 
@@ -1427,7 +1427,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | --- | --- |
 | foldGroup rejects a null subtract | Fable wraps a null function argument in a closure, so it is never null. |
 
-<details><summary>182 passed in every build and delivery that runs them</summary>
+<details><summary>190 passed in every build and delivery that runs them</summary>
 
 - 200 single edits at N=1000 make 200 predicate calls
 - a Keys reader wakes only when membership flips
@@ -1611,6 +1611,14 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - find, findKey and pick raise KeyNotFoundException while nothing matches and recover
 - disposing the calling scope stops the search
 - disposing the tryFind memo releases the upstream rows
+- tryAverageBy averages float32 and decimal
+- tryAverageBy follows edits, removals and additions
+- an equal mean after a key change wakes no reader
+- an edit at N=1000 makes one addition
+- tryAverageBy over floats recovers from infinity and NaN
+- a pending row keeps its last settled value; a never-settled row adds nothing
+- averageBy raises KeyNotFoundException while empty and recovers
+- disposing the tryAverageBy memo releases the upstream rows
 
 </details>
 

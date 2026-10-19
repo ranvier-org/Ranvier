@@ -59,6 +59,7 @@ let rows = createProjection _.Id id (fun () -> tasks.Value)
 | `Projection.length`, `Projection.isEmpty` | the key count; whether it is zero | no work: a row edit wakes neither |
 | `Projection.tryHead`, `tryLast`, `tryItem index` (`head`, `last`, `item` raise) | the key at a position with its value | O(1); an edit off the position wakes no reader |
 | `Projection.tryFind`, `tryFindKey`, `tryPick` (`find`, `findKey`, `pick` raise) | the first match in upstream order | one predicate call; a membership flip costs an O(N) filter pass |
+| `Projection.tryAverageBy projection` (`averageBy` raises) | the mean of `projection` over the settled values | as `foldGroup` |
 
 :::
 
@@ -272,6 +273,27 @@ firstPass.Value // Some 2
 
 Pinned by the `Projection.tryFind, tryFindKey and tryPick` tests, including `200 single edits at N=1000 make 200
 predicate calls` and `a pending predicate on the head makes the search pending; elsewhere it keeps membership`
+([Combinators.fs](https://github.com/shayanhabibi/Ranvier/blob/master/tests/Ranvier.Tests/Combinators.fs)).
+:::
+*)
+
+(**
+## Averages
+
+`Projection.tryAverageBy` keeps a running sum and count, so a row edit costs O(1), and reads `None` while no value has
+settled. `Projection.averageBy` raises `KeyNotFoundException` instead. Both follow `sumBy` for infinity and NaN, and
+accept `float`, `float32` and `decimal`; `int` does not compile, as with `List.averageBy`.
+*)
+
+let meanScore = scoreRows |> Projection.tryAverageBy float
+
+meanScore.Value // Some 58.33333333
+
+(**
+:::details Tests covering this behaviour
+
+Pinned by the `Projection.tryAverageBy and averageBy` tests, including `an edit at N=1000 makes one addition` and
+`tryAverageBy over floats recovers from infinity and NaN`
 ([Combinators.fs](https://github.com/shayanhabibi/Ranvier/blob/master/tests/Ranvier.Tests/Combinators.fs)).
 :::
 *)
