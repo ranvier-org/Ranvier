@@ -855,6 +855,27 @@ let sortByTests =
                             Expect.isGreaterThan comparisons.Value 0 "a changed sort key re-sorts"
                             Expect.equal view.Keys[0] 2 "key 2 sorts first"
                         }
+
+                        test "removing a non-extreme row costs no comparison; removing the extreme re-folds once" {
+                            use g = new Graph ()
+                            use _ = g.Activate ()
+                            let source = createSignal (items [ for i in 1..1000 -> i, i ])
+                            let least = rows source |> Projection.tryMinBy Counted
+
+                            createEffect (fun () -> least.Value |> ignore)
+                            comparisons.Value <- 0
+                            source.Value <- source.Value |> List.filter (fun x -> x.Id <> 500)
+                            Expect.equal comparisons.Value 0 "a non-extreme removal subtracts in O(1)"
+                            Expect.equal least.Value (Some 1) "key 1 holds"
+
+                            source.Value <- source.Value |> List.filter (fun x -> x.Id <> 1)
+                            Expect.equal comparisons.Value 997 "one re-fold over the 998 cached values"
+                            Expect.equal least.Value (Some 2) "key 2 holds"
+
+                            comparisons.Value <- 0
+                            source.Value <- setN 10 5000 source.Value
+                            Expect.isLessThan comparisons.Value 10 "an edit of a non-holder costs O(1) comparisons"
+                        }
                     ]
             )
 
@@ -1923,12 +1944,21 @@ let chainPendingTests =
                 }
         ]
 
-/// <summary>A reading of <c>memo</c> as text: the value, the exception message, or <c>pending</c>.</summary>
-let private describe (memo: Memo<'T>) =
+/// <summary>A reading of <c>memo</c> as text: <c>show</c> of the value, the exception message, or <c>pending</c>.</summary>
+let private describeWith (show: 'T -> string) (memo: Memo<'T>) =
     match memo.TryValue with
-    | Ready v -> string v
+    | Ready v -> show v
     | Failed ex -> ex.Message
     | Pending -> "pending"
+
+/// <summary>A reading of <c>memo</c> as text: the value, the exception message, or <c>pending</c>.</summary>
+let private describe (memo: Memo<'T>) =
+    describeWith string memo
+
+/// <summary>A reading of an option memo as text: the value, <c>none</c>, the exception message, or <c>pending</c>.</summary>
+let private describeOption (memo: Memo<'T option>) =
+    memo
+    |> describeWith (Option.map string >> Option.defaultValue "none")
 
 [<Tests>]
 let foldTests =
@@ -3302,6 +3332,209 @@ let averageTests =
                 mean.Value |> ignore
                 Expect.isGreaterThan (readersOf up 1) 0 "the mean reads row 1"
                 mean.Dispose ()
+                Expect.equal (readersOf up 1) 0 "disposing the memo disposed its view and fold"
+            }
+        ]
+
+[<Tests>]
+let extremeTests =
+    testList
+        "Projection.tryMinBy and tryMaxBy"
+        [
+            test "tryMinBy and tryMaxBy follow edits and removals" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 5; 2, 3; 3, 8 ])
+                let up = rows source
+                let least = Projection.tryMinBy id up
+                let most = Projection.tryMaxBy id up
+
+                Expect.equal (least.Value, most.Value) (Some 3, Some 8) "initial"
+                source.Value <- setN 3 1 source.Value
+                Expect.equal (least.Value, most.Value) (Some 1, Some 5) "key 3 drops to 1"
+                source.Value <- source.Value |> List.filter (fun x -> x.Id <> 3)
+                Expect.equal (least.Value, most.Value) (Some 3, Some 5) "key 3 removed"
+                source.Value <- []
+                Expect.equal (least.Value, most.Value) (None, None) "empty"
+            }
+
+            test "among equal ranks the current result stays until its holder leaves" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 21; 2, 22 ])
+
+                let least =
+                    rows source
+                    |> Projection.tryMinBy (fun n -> n / 10)
+
+                let runs = ref 0
+
+                createEffect (fun () ->
+                    runs.Value <- runs.Value + 1
+                    least.Value |> ignore)
+
+                Expect.equal least.Value (Some 21) "key 1 holds the tie"
+                source.Value <- setN 2 23 source.Value
+                Expect.equal (least.Value, runs.Value) (Some 21, 1) "an edit of the other tie wakes no reader"
+                source.Value <- List.rev source.Value
+                Expect.equal (least.Value, runs.Value) (Some 21, 1) "a reorder keeps the holder and wakes no reader"
+                source.Value <- source.Value |> List.filter (fun x -> x.Id <> 1)
+                Expect.equal least.Value (Some 23) "the next holder"
+            }
+
+            test "NaN orders last: tryMaxBy holds NaN, tryMinBy skips it" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal [ 1, nan; 2, 1.0 ]
+                let up = createProjection fst snd (fun () -> source.Value)
+                let least = Projection.tryMinBy id up
+                let most = Projection.tryMaxBy id up
+
+                Expect.equal least.Value (Some 1.0) "the least non-NaN value"
+                Expect.isTrue (most.Value |> Option.exists Double.IsNaN) "NaN is the greatest rank"
+                source.Value <- [ 1, nan ]
+                Expect.isTrue (least.Value |> Option.exists Double.IsNaN) "every rank is NaN"
+            }
+
+            test "a failed rank raises until it recovers" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let bad = createSignal false
+
+                let up =
+                    createProjection id (fun k -> if k = 2 && bad.Value then invalidOp "boom 2" else k) (fun () -> [ 1; 2; 3 ])
+
+                let most = up |> Projection.tryMaxBy id
+                let seen = ResizeArray<string>()
+
+                createEffect (fun () -> seen.Add (describeOption most))
+                bad.Value <- true
+                bad.Value <- false
+
+                Expect.sequenceEqual seen [ "3"; "boom 2"; "3" ] "value, failure, value"
+            }
+
+            test "a pending rank keeps its last settled rank" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let flights = dict [ for n in [ 10; 11 ] -> n, createAsyncSource<int>() ]
+                flights[10].Settle 10
+                let source = createSignal (items [ 1, 10; 2, 5 ])
+
+                let most =
+                    createProjection (fun x -> x.Id) (fun x -> if x.N > 9 then flights[x.N].Value else x.N) (fun () -> source.Value)
+                    |> Projection.tryMaxBy id
+
+                Expect.equal most.Value (Some 10) "key 1"
+                source.Value <- setN 1 11 source.Value
+                Expect.equal most.Value (Some 10) "key 1 keeps its last settled rank"
+                flights[11].Settle 11
+                Expect.equal most.Value (Some 11) "key 1 settles"
+            }
+
+            test "a batch of edits reads the combined result" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ for i in 1..4 -> i, i ])
+                let least = rows source |> Projection.tryMinBy id
+                let seen = ResizeArray<int option>()
+
+                createEffect (fun () -> seen.Add least.Value)
+
+                batch (fun () ->
+                    source.Value <- setN 1 10 source.Value
+                    source.Value <- source.Value |> List.filter (fun x -> x.Id <> 2)
+                    source.Value <- source.Value @ items [ 5, 0 ])
+
+                Expect.sequenceEqual seen [ Some 1; Some 0 ] "one run for the batch"
+            }
+
+            test "a key removed and re-added while unread follows its new rank" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1; 2, 2 ])
+                let least = rows source |> Projection.tryMinBy id
+
+                Expect.equal least.Value (Some 1) "precondition"
+                source.Value <- source.Value |> List.filter (fun x -> x.Id <> 1)
+                source.Value <- source.Value @ items [ 1, 9 ]
+                Expect.equal least.Value (Some 2) "key 1 re-added with rank 9"
+            }
+
+            test "minBy and maxBy raise KeyNotFoundException while empty and recover" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [])
+                let up = rows source
+                let least = Projection.minBy id up
+                let most = Projection.maxBy id up
+
+                expectEmpty least "Projection.minBy: the projection has no settled values."
+                expectEmpty most "Projection.maxBy: the projection has no settled values."
+                source.Value <- items [ 1, 4; 2, 7 ]
+                Expect.equal (least.Value, most.Value) (4, 7) "recovered"
+            }
+
+            test "minBy stays asleep while it stays empty" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let flight = createAsyncSource<int>()
+                let source = createSignal [ 1 ]
+                let up = createProjection id (fun _ -> flight.Value) (fun () -> source.Value)
+                let least = Projection.minBy id up
+                let runs = ref 0
+
+                createEffect (fun () ->
+                    runs.Value <- runs.Value + 1
+
+                    try
+                        least.Value |> ignore
+                    with _ ->
+                        ())
+
+                source.Value <- [ 1; 2 ]
+                Expect.equal runs.Value 1 "a Keys write that leaves the result empty wakes no reader"
+                expectEmpty least "Projection.minBy: the projection has no settled values."
+                flight.Settle 5
+                Expect.equal least.Value 5 "settled"
+            }
+
+            test "disposing the calling scope stops the rank calls" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1; 2, 2 ])
+                let up = rows source
+                let calls = ref 0
+                let scope = ref Unchecked.defaultof<Owner>
+
+                let least =
+                    createRoot (fun owner ->
+                        scope.Value <- owner
+
+                        up
+                        |> Projection.tryMinBy (fun n ->
+                            calls.Value <- calls.Value + 1
+                            n))
+
+                Expect.equal least.Value (Some 1) "precondition"
+                scope.Value.Dispose ()
+                calls.Value <- 0
+                source.Value <- setN 1 0 source.Value
+                least.Value |> ignore
+
+                Expect.equal calls.Value 0 "no rank runs after disposal"
+            }
+
+            test "disposing the tryMinBy memo releases the upstream rows" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let up = rows (createSignal (items [ 1, 1; 2, 2 ]))
+                up.Get 1 |> ignore
+                let least = up |> Projection.tryMinBy id
+
+                least.Value |> ignore
+                Expect.isGreaterThan (readersOf up 1) 0 "the rank view reads row 1"
+                least.Dispose ()
                 Expect.equal (readersOf up 1) 0 "disposing the memo disposed its view and fold"
             }
         ]

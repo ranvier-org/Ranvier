@@ -43,7 +43,7 @@ let rows = createProjection _.Id id (fun () -> tasks.Value)
 - For totals and counts, use `sumBy` and `countBy`.
 - For any/all checks, use `exists` and `forall`.
 - For a fold with an inverse, use `foldGroup` to update changed contributions.
-- For a maximum or an order-dependent result, use `fold` to recompute from cached values.
+- For a minimum or maximum, use `tryMinBy` and `tryMaxBy`; for another order-dependent result, use `fold` to recompute from cached values.
 
 :::details Aggregate functions and row-edit costs
 
@@ -60,6 +60,7 @@ let rows = createProjection _.Id id (fun () -> tasks.Value)
 | `Projection.tryHead`, `tryLast`, `tryItem index` (`head`, `last`, `item` raise) | the key at a position with its value | O(1); an edit off the position wakes no reader |
 | `Projection.tryFind`, `tryFindKey`, `tryPick` (`find`, `findKey`, `pick` raise) | the first match in upstream order | one predicate call; a membership flip costs an O(N) filter pass |
 | `Projection.tryAverageBy projection` (`averageBy` raises) | the mean of `projection` over the settled values | as `foldGroup` |
+| `Projection.tryMinBy`, `tryMaxBy projection` (`minBy`, `maxBy` raise) | a value with the least or greatest rank | O(1); O(N) when the holder leaves or changes |
 
 :::
 
@@ -169,7 +170,8 @@ an infinite or NaN row restores a finite sum.
 
 ## Folds with no inverse
 
-Use `Projection.fold` for a maximum or another result whose old contribution cannot be subtracted.
+Use `Projection.fold` for an order-dependent result whose old contribution cannot be subtracted. For a minimum or
+maximum, use `Projection.tryMinBy` and `tryMaxBy`.
 It folds cached values in `Keys` order after any key or value change. This costs O(N) folder calls,
 but reads only the changed rows again.
 *)
@@ -294,6 +296,30 @@ meanScore.Value // Some 58.33333333
 
 Pinned by the `Projection.tryAverageBy and averageBy` tests, including `an edit at N=1000 makes one addition` and
 `tryAverageBy over floats recovers from infinity and NaN`
+([Combinators.fs](https://github.com/shayanhabibi/Ranvier/blob/master/tests/Ranvier.Tests/Combinators.fs)).
+:::
+*)
+
+(**
+## Least and greatest
+
+`Projection.tryMinBy` and `tryMaxBy` return a value with the least or greatest rank, under the `sortBy` order: a NaN
+rank is the greatest. Among equal ranks the current result stays. Adding a row, and removing or editing any row but
+the holder, costs O(1); removing or editing the holder re-folds the cached ranks in O(N). `minBy` and `maxBy` raise
+`KeyNotFoundException` while no value has settled.
+*)
+
+let lowest = scoreRows |> Projection.tryMinBy id
+let highest = scoreRows |> Projection.tryMaxBy id
+
+(lowest.Value, highest.Value) // (Some 40, Some 75)
+
+(**
+:::details Tests covering this behaviour
+
+Pinned by the `Projection.tryMinBy and tryMaxBy` tests, including `removing a non-extreme row costs no comparison;
+removing the extreme re-folds once`, `among equal ranks the current result stays until its holder leaves` and `NaN
+orders last: tryMaxBy holds NaN, tryMinBy skips it`
 ([Combinators.fs](https://github.com/shayanhabibi/Ranvier/blob/master/tests/Ranvier.Tests/Combinators.fs)).
 :::
 *)

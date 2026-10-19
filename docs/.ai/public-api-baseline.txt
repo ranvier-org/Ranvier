@@ -284,6 +284,8 @@ member Ranvier.ProjectionModule static last<2>(Ranvier.Projection`2<!!0,!!1>) : 
 member Ranvier.ProjectionModule static length<2>(Ranvier.Projection`2<!!0,!!1>) : Ranvier.Memo`1<Int32>
 member Ranvier.ProjectionModule static map<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,Ranvier.Projection`2<!!2,!!0>) : Ranvier.Projection`2<!!2,!!1>
 member Ranvier.ProjectionModule static mapWith<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,!!1>,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,!!2>>>,Ranvier.Projection`2<!!0,!!1>) : Ranvier.Projection`2<!!0,!!2>
+member Ranvier.ProjectionModule static maxBy<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,Ranvier.Projection`2<!!2,!!0>) : Ranvier.Memo`1<!!0>
+member Ranvier.ProjectionModule static minBy<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,Ranvier.Projection`2<!!2,!!0>) : Ranvier.Memo`1<!!0>
 member Ranvier.ProjectionModule static pick<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,Microsoft.FSharp.Core.FSharpOption`1<!!1>>,Ranvier.Projection`2<!!2,!!0>) : Ranvier.Memo`1<!!1>
 member Ranvier.ProjectionModule static skip<2>(Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,Int32>,Ranvier.Projection`2<!!0,!!1>) : Ranvier.Projection`2<!!0,!!1>
 member Ranvier.ProjectionModule static sortBy<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,Ranvier.Projection`2<!!2,!!0>) : Ranvier.Projection`2<!!2,!!0>
@@ -299,6 +301,8 @@ member Ranvier.ProjectionModule static tryFindKey<2>(Microsoft.FSharp.Core.FShar
 member Ranvier.ProjectionModule static tryHead<2>(Ranvier.Projection`2<!!0,!!1>) : Ranvier.Memo`1<Microsoft.FSharp.Core.FSharpOption`1<System.Tuple`2<!!0,!!1>>>
 member Ranvier.ProjectionModule static tryItem<2>(Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,Int32>,Ranvier.Projection`2<!!0,!!1>) : Ranvier.Memo`1<Microsoft.FSharp.Core.FSharpOption`1<System.Tuple`2<!!0,!!1>>>
 member Ranvier.ProjectionModule static tryLast<2>(Ranvier.Projection`2<!!0,!!1>) : Ranvier.Memo`1<Microsoft.FSharp.Core.FSharpOption`1<System.Tuple`2<!!0,!!1>>>
+member Ranvier.ProjectionModule static tryMaxBy<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,Ranvier.Projection`2<!!2,!!0>) : Ranvier.Memo`1<Microsoft.FSharp.Core.FSharpOption`1<!!0>>
+member Ranvier.ProjectionModule static tryMinBy<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,Ranvier.Projection`2<!!2,!!0>) : Ranvier.Memo`1<Microsoft.FSharp.Core.FSharpOption`1<!!0>>
 member Ranvier.ProjectionModule static tryPick<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,Microsoft.FSharp.Core.FSharpOption`1<!!1>>,Ranvier.Projection`2<!!2,!!0>) : Ranvier.Memo`1<Microsoft.FSharp.Core.FSharpOption`1<!!1>>
 member Ranvier.ProjectionReader`1 Dispose() : Void
 member Ranvier.ProjectionReader`1 Read() : Ranvier.ProjectionDelta`1<!0>

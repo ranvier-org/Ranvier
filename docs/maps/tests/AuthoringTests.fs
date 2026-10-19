@@ -247,6 +247,10 @@ let tests =
                         "pick Some"
                         "tryAverageBy float"
                         "averageBy float"
+                        "tryMinBy id"
+                        "minBy id"
+                        "tryMaxBy id"
+                        "maxBy id"
                     ] do
                     let _, _, bindings =
                         scenario ($"let total =\n    rows\n    |> Projection.{aggregate} // aggregate\ncontrols []")

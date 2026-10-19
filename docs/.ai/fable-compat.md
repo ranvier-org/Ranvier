@@ -57,7 +57,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | DischargeReentry.fs | 29 | 29 | 29 | 29 | 29 | 29 | 1 | 0 |
 | MapSemantics.fs | 42 | 42 | 42 | 42 | 42 | 42 | 0 | 1 |
 | Lenses.fs | 23 | 20 | 20 | 23 | 20 | 20 | 0 | 0 |
-| Combinators.fs | 190 | 190 | 190 | 190 | 190 | 190 | 2 | 0 |
+| Combinators.fs | 202 | 202 | 202 | 202 | 202 | 202 | 2 | 0 |
 | Timed.fs | 31 | 31 | 31 | 38 | 38 | 38 | 0 | 0 |
 | Streams.fs | 26 | 26 | 26 | 26 | 26 | 26 | 1 | 0 |
 | PreviousValues.fs | 12 | 12 | 12 | 12 | 12 | 12 | 15 | 0 |
@@ -81,7 +81,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 9 | 9 | 9 | 9 | 9 | 9 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1477 | 1456 | 1453 | 1617 | 1591 | 1588 | 101 | 1 |
+| **Total** | 1489 | 1468 | 1465 | 1629 | 1603 | 1600 | 101 | 1 |
 
 ## Tests.fs
 
@@ -1428,7 +1428,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | foldGroup rejects a null subtract | Fable wraps a null function argument in a closure, so it is never null. |
 | a read through a memo of another graph publishes the current mean under a custom policy | the policy is an object expression over a generic interface member. |
 
-<details><summary>190 passed in every build and delivery that runs them</summary>
+<details><summary>202 passed in every build and delivery that runs them</summary>
 
 - 200 single edits at N=1000 make 200 predicate calls
 - a Keys reader wakes only when membership flips
@@ -1477,6 +1477,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - disposing a sortByDescending view detaches it from the upstream
 - tests reading the shared comparison counter / a pass whose sort keys and upstream order are unchanged does not re-sort
 - tests reading the shared comparison counter / a sortByDescending pass whose sort keys and upstream order are unchanged does not re-sort
+- tests reading the shared comparison counter / removing a non-extreme row costs no comparison; removing the extreme re-folds once
 - take, skip and sub select positions and clamp counts as List.truncate and a clamped skip do
 - the window follows signals read by offset and count, and a reader runs once per change
 - a key that stays in a shifted window keeps its row
@@ -1620,6 +1621,17 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a pending row keeps its last settled value; a never-settled row adds nothing
 - averageBy raises KeyNotFoundException while empty and recovers
 - disposing the tryAverageBy memo releases the upstream rows
+- tryMinBy and tryMaxBy follow edits and removals
+- among equal ranks the current result stays until its holder leaves
+- NaN orders last: tryMaxBy holds NaN, tryMinBy skips it
+- a failed rank raises until it recovers
+- a pending rank keeps its last settled rank
+- a batch of edits reads the combined result
+- a key removed and re-added while unread follows its new rank
+- minBy and maxBy raise KeyNotFoundException while empty and recover
+- minBy stays asleep while it stays empty
+- disposing the calling scope stops the rank calls
+- disposing the tryMinBy memo releases the upstream rows
 
 </details>
 

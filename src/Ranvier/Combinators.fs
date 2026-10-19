@@ -995,6 +995,16 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
         member this.Dispose() =
             this.Dispose ()
 
+/// <summary>The number of folded values and the key, rank and value of the holder of the extreme rank.</summary>
+[<Struct>]
+type internal Extreme<'K, 'S, 'V> =
+    {
+        Folded: int
+        HolderKey: 'K
+        HolderRank: 'S
+        HolderValue: 'V
+    }
+
 /// <summary>Views over a <c>Projection</c> that re-run the user function only for keys whose upstream row changed.</summary>
 /// <remarks>
 /// A view is a <c>Projection</c> owned by the scope that creates it. A membership or order change costs O(N) per view, and O(window) for <c>take</c>, <c>skip</c> and <c>sub</c>.
@@ -1169,6 +1179,16 @@ module Projection =
         view.PendingExtra <- fun () -> view.HeldOut
         view :> Projection<'K, 'U>
 
+    /// <summary>The keys of <c>upstream</c>, in upstream order, each with the value of <c>mapping</c> at the key.</summary>
+    let private mapByKey (mapping: 'K -> 'U) (upstream: Projection<'K, 'V>) : Projection<'K, 'U> =
+        let view =
+            new MapView<'K, 'V, 'U> (upstream.Graph, upstream, mapping, Unchecked.defaultof<_>)
+
+        if not (Platform.isNull (box upstream.PendingExtra)) then
+            view.PendingExtra <- fun () -> view.HeldOut
+
+        view :> Projection<'K, 'U>
+
     /// <summary>The keys of <c>upstream</c>, in upstream order, each with <c>mapping</c> of its value.</summary>
     /// <remarks>
     /// <c>mapping</c> re-runs for a key when its upstream row changes. A throwing <c>mapping</c> keeps the key, and <c>Get</c>
@@ -1177,14 +1197,7 @@ module Projection =
     /// </remarks>
     let map (mapping: 'V -> 'U) (upstream: Projection<'K, 'V>) : Projection<'K, 'U> =
         upstream.RequireRowMemos "Projection.map"
-
-        let view =
-            new MapView<'K, 'V, 'U> (upstream.Graph, upstream, (fun key -> mapping (upstream.Get key)), Unchecked.defaultof<_>)
-
-        if not (Platform.isNull (box upstream.PendingExtra)) then
-            view.PendingExtra <- fun () -> view.HeldOut
-
-        view :> Projection<'K, 'U>
+        mapByKey (fun key -> mapping (upstream.Get key)) upstream
 
     /// <summary>
     /// The keys of <c>upstream</c>, in upstream order, each row the reader <c>mapping</c> returns for the key and a
@@ -1747,3 +1760,120 @@ module Projection =
             orRaise "Projection.averageBy: the projection has no settled values."
 
         meanBy projection (fun state -> raiseEmpty (mean state)) upstream
+
+    /// <summary>
+    /// A memo of <c>finish</c> applied to the value holding the best rank of <c>projection</c>. <c>better rank best</c> is
+    /// true when <c>rank</c> replaces the holder of <c>best</c>.
+    /// </summary>
+    /// <remarks>
+    /// An equal rank keeps the holder. Removing the holder re-folds the cached ranks in <c>Keys</c> order. A holder value
+    /// equal to the last one returns the last result instance, leaving readers unwoken.
+    /// </remarks>
+    let private extremeBy
+        (operation: string)
+        (better: 'S -> 'S -> bool)
+        (projection: 'V -> 'S)
+        (finish: 'V option -> 'R)
+        (upstream: Projection<'K, 'V>)
+        : Memo<'R> =
+        upstream.RequireRowMemos operation
+        let equalKeys = System.Collections.Generic.EqualityComparer<'K>.Default
+        let equalValues = upstream.Graph.Options.Equality.Comparer<'V>()
+        let hasLast = ref false
+        let lastValue = ref Unchecked.defaultof<'V>
+        let lastResult = ref Unchecked.defaultof<'R>
+
+        let add (state: Extreme<'K, 'S, 'V>) (struct (key: 'K, rank: 'S, value: 'V)) =
+            if state.Folded = 0 || better rank state.HolderRank then
+                {
+                    Folded = state.Folded + 1
+                    HolderKey = key
+                    HolderRank = rank
+                    HolderValue = value
+                }
+            else
+                { state with Folded = state.Folded + 1 }
+
+        let subtract (state: Extreme<'K, 'S, 'V>) (struct (key: 'K, _: 'S, _: 'V)) =
+            // A throwing subtract re-folds from the cached values.
+            if equalKeys.Equals (key, state.HolderKey) then
+                raise (System.InvalidOperationException ())
+
+            { state with Folded = state.Folded - 1 }
+
+        let zero =
+            {
+                Folded = 0
+                HolderKey = Unchecked.defaultof<'K>
+                HolderRank = Unchecked.defaultof<'S>
+                HolderValue = Unchecked.defaultof<'V>
+            }
+
+        let ranked () =
+            upstream
+            |> mapByKey (fun key ->
+                let value = upstream.Get key
+                struct (key, projection value, value))
+
+        let result (state: Extreme<'K, 'S, 'V>) =
+            if state.Folded = 0 then
+                finish None
+            elif
+                hasLast.Value
+                && equalValues.Equals (state.HolderValue, lastValue.Value)
+            then
+                lastResult.Value
+            else
+                let current = finish (Some state.HolderValue)
+                hasLast.Value <- true
+                lastValue.Value <- state.HolderValue
+                lastResult.Value <- current
+                current
+
+        foldOwned upstream.Graph ranked add subtract zero result
+
+    /// <summary>
+    /// A memo of a value of <c>upstream</c> with the least <c>projection</c> under the <c>sortBy</c> order, or <c>None</c>
+    /// while no value has settled.
+    /// </summary>
+    /// <remarks>
+    /// A NaN rank orders after every other rank. Among equal ranks the current result stays; when its holder leaves, the
+    /// result is the first holder in <c>Keys</c> order. Adding a row, and removing or editing any row but the holder, cost
+    /// O(1); removing or editing the holder re-folds the cached ranks in O(N). Pending and failed ranks follow <c>foldGroup</c>.
+    /// </remarks>
+    /// <example>
+    /// <code lang="fsharp">
+    /// let rows = createProjection (fun t -> t.Id) id (fun () -> todos.Value)
+    /// let next = rows |> Projection.tryMinBy (fun t -> t.Due)
+    /// </code>
+    /// </example>
+    let tryMinBy (projection: 'V -> 'S) (upstream: Projection<'K, 'V>) : Memo<'V option> =
+        extremeBy "Projection.tryMinBy" (fun rank best -> Ranks.ascending rank best < 0) projection id upstream
+
+    /// <summary>
+    /// A memo of a value of <c>upstream</c> with the greatest <c>projection</c> under the <c>sortBy</c> order, or
+    /// <c>None</c> while no value has settled.
+    /// </summary>
+    /// <remarks>A NaN rank is the greatest. Ties, costs, pending and failure follow <c>tryMinBy</c>.</remarks>
+    let tryMaxBy (projection: 'V -> 'S) (upstream: Projection<'K, 'V>) : Memo<'V option> =
+        extremeBy "Projection.tryMaxBy" (fun rank best -> Ranks.ascending rank best > 0) projection id upstream
+
+    /// <summary><c>tryMinBy</c>, raising <c>KeyNotFoundException</c> while no value has settled.</summary>
+    /// <remarks>Fails and recovers as <c>head</c> does.</remarks>
+    let minBy (projection: 'V -> 'S) (upstream: Projection<'K, 'V>) : Memo<'V> =
+        extremeBy
+            "Projection.minBy"
+            (fun rank best -> Ranks.ascending rank best < 0)
+            projection
+            (orRaise "Projection.minBy: the projection has no settled values.")
+            upstream
+
+    /// <summary><c>tryMaxBy</c>, raising <c>KeyNotFoundException</c> while no value has settled.</summary>
+    /// <remarks>Fails and recovers as <c>head</c> does.</remarks>
+    let maxBy (projection: 'V -> 'S) (upstream: Projection<'K, 'V>) : Memo<'V> =
+        extremeBy
+            "Projection.maxBy"
+            (fun rank best -> Ranks.ascending rank best > 0)
+            projection
+            (orRaise "Projection.maxBy: the projection has no settled values.")
+            upstream
