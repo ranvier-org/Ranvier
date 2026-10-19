@@ -68,9 +68,9 @@ module Codecs =
                 | Some text when allDigits (unsigned text) ->
                     let digits = (unsigned text).Length
 
-                    let cap, scoped =
+                    let cap, raises =
                         match box helpers with
-                        | :? Helpers.DecodeScope as scope -> scope.MaxBigIntDigits, true
+                        | :? Helpers.DecodeScope as scope -> scope.MaxBigIntDigits, not scope.LimitIsError
                         | _ -> WireLimits.Default.MaxBigIntDigits, false
 
                     if digits <= cap then
@@ -87,7 +87,7 @@ module Codecs =
                             + string cap
                             + "."
 
-                        if scoped then
+                        if raises then
                             raise (Helpers.LimitExceeded message)
                         else
                             Error ("", BadPrimitiveExtra ("a bigint", value, message))
@@ -119,7 +119,9 @@ module Codecs =
 
     /// <summary>
     /// A BigInteger as a string of digits. Decoding reads a string or a number written as <c>-?digits</c>, exactly,
-    /// with at most <c>WireLimits.MaxBigIntDigits</c> digits; a <c>WireCodec</c> gives more as <c>WireError.Limit</c>.
+    /// with at most <c>WireLimits.MaxBigIntDigits</c> digits; a <c>WireCodec</c> gives more as <c>WireError.Limit</c>
+    /// naming the value's path. Outside a <c>WireCodec</c> the cap is <c>WireLimits.Default</c>'s, and more is a
+    /// decoder error.
     /// </summary>
     let bigint: Codec<BigInteger> =
         Codec.create (fun (value: BigInteger) -> Encode.string (string value)) bigintDecoder

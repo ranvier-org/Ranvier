@@ -24,8 +24,30 @@ let private rejects (codec: Codec<'T>) (text: string) =
              |> isShape)
             text
 
+let private rejectsWith (codec: Codec<'T>) (text: string) (fragment: string) =
+    testCase ("rejects " + text)
+    <| fun () ->
+        let error =
+            (WireCodec.ofCodec codec).Decode text
+            |> expectError text
+
+        Expect.isTrue (isShape error) text
+        Expect.stringContains error.Message fragment text
+
 let private sevens (count: int) =
     String.replicate count "7"
+
+/// <summary>The value plain Thoth.Json decodes from the text, outside a <c>WireCodec</c>.</summary>
+let private thothDecode (codec: Codec<'T>) (text: string) : Result<'T, string> =
+#if FABLE_COMPILER
+    Ranvier.Wire.Thoth.Json.JavaScript.Decode.fromString codec text
+#else
+    Ranvier.Wire.Thoth.Json.System.Text.Json.Decode.fromString codec text
+#endif
+
+let private digitsText = "a bigint written as digits"
+let private decimalText = "a decimal written as digits with an optional fraction"
+let private decimalRange = "outside the decimal range"
 
 #if FABLE_COMPILER
 /// <summary>The text decoded as on an engine whose <c>JSON.parse</c> gives a reviver no source text.</summary>
@@ -48,6 +70,28 @@ let tests =
                     decodes Codec.int "-0" 0
                     rejects Codec.int "1e400"
                     decodes Codec.int "\"42\"" 42
+                    rejects Codec.int "1e-400"
+                    rejects Codec.int "10000000000000001e-16"
+                    rejects Codec.uint32 "4294967294999999999e-9"
+                    decodes Codec.int "5E+2" 500
+                    decodes Codec.uint32 "4294967295" 4294967295u
+                    testCase "an int alternative to a bigint gives way to it for a 400-digit number"
+                    <| fun () ->
+                        let either =
+                            Codec.create
+                                (fun (value: BigInteger) -> Encode.string (string value))
+                                (Decode.oneOf
+                                    [
+                                        Decode.int
+                                        |> Decode.map (fun (value: int) -> BigInteger.Parse (string value))
+                                        Codecs.bigint.Decoder
+                                    ])
+
+                        Expect.equal
+                            ((WireCodec.ofCodec either).Decode(sevens 400)
+                             |> expectOk "400 digits")
+                            (BigInteger.Parse (sevens 400))
+                            "400 digits"
                 ]
             testList
                 "int64"
@@ -88,14 +132,21 @@ let tests =
                 [
                     decodes Codecs.bigint "9007199254740993" (BigInteger.Parse "9007199254740993")
                     decodes Codecs.bigint "-123456789012345678901234567890" (BigInteger.Parse "-123456789012345678901234567890")
-                    rejects Codecs.bigint "1.5"
-                    rejects Codecs.bigint "1e3"
+                    rejectsWith Codecs.bigint "1.5" digitsText
+                    rejectsWith Codecs.bigint "1e3" digitsText
                     decodes Codecs.bigint "\"-123456789012345678901234567890\"" (BigInteger.Parse "-123456789012345678901234567890")
                     decodes Codecs.bigint "\"5\"" (BigInteger.Parse "5")
-                    rejects Codecs.bigint "\" 5\""
-                    rejects Codecs.bigint "\"+5\""
-                    rejects Codecs.bigint "\"\""
-                    rejects Codecs.bigint "true"
+                    rejectsWith Codecs.bigint "\" 5\"" digitsText
+                    rejectsWith Codecs.bigint "\"+5\"" digitsText
+                    rejectsWith Codecs.bigint "\"\"" digitsText
+                    rejectsWith Codecs.bigint "true" digitsText
+                    testCase "outside a WireCodec, a bigint over the default limit is a decoder error"
+                    <| fun () ->
+                        match thothDecode Codecs.bigint (quote + sevens 4301 + quote) with
+                        | Ok _ -> failtest "the text decoded"
+                        | Error message -> Expect.stringContains message "The bigint has 4301 digits, more than 4300." "message"
+
+                        Expect.equal (thothDecode Codecs.bigint (quote + sevens 4300 + quote)) (Ok (BigInteger.Parse (sevens 4300))) "at the limit"
                     testCase "a bigint encodes as a string of digits"
                     <| fun () ->
                         let value = BigInteger.Parse "-123456789012345678901234567890"
@@ -139,16 +190,14 @@ let tests =
                              |> expectError "string"
                              |> isLimit)
                             "string"
-                    testCase "a bigint over the limit inside a list is a limit error"
+                    testCase "a bigint over the limit inside a list is a limit error naming its path"
                     <| fun () ->
                         let wire = WireCodec.ofCodec (Codec.list (Codec.tuple2 Codec.int Codecs.bigint))
                         let text = "[[1,\"5\"],[2," + sevens 4301 + "]]"
-
-                        Expect.isTrue
-                            (wire.Decode text
-                             |> expectError "nested"
-                             |> isLimit)
-                            "nested"
+                        let error = wire.Decode text |> expectError "nested"
+                        Expect.isTrue (isLimit error) "nested"
+                        Expect.stringContains error.Message "Error at: `$.[1].[1]`" "path"
+                        Expect.stringContains error.Message "The bigint has 4301 digits, more than 4300." "reason"
                     testCase "a custom limit counts every digit, leading zeros included, and no sign"
                     <| fun () ->
                         let wire =
@@ -188,18 +237,18 @@ let tests =
                 "Codecs.decimal"
                 [
                     decodes Codecs.decimal "79228162514264337593543950335" 79228162514264337593543950335M
-                    rejects Codecs.decimal "1e30"
-                    rejects Codecs.decimal "1e5"
+                    rejectsWith Codecs.decimal "1e30" decimalText
+                    rejectsWith Codecs.decimal "1e5" decimalText
                     decodes Codecs.decimal "\"1.10\"" 1.10M
                     decodes Codecs.decimal "\"-0.5\"" -0.5M
                     decodes Codecs.decimal "\"0.0000000000000000000000000001\"" 0.0000000000000000000000000001M
-                    rejects Codecs.decimal "\"0.00000000000000000000000000001\""
-                    rejects Codecs.decimal "\"79228162514264337593543950336\""
-                    rejects Codecs.decimal "\"1e5\""
-                    rejects Codecs.decimal "\"1,000.5\""
-                    rejects Codecs.decimal "\".5\""
-                    rejects Codecs.decimal "\"5.\""
-                    rejects Codecs.decimal "\"-\""
+                    rejectsWith Codecs.decimal "\"0.00000000000000000000000000001\"" decimalRange
+                    rejectsWith Codecs.decimal "\"79228162514264337593543950336\"" decimalRange
+                    rejectsWith Codecs.decimal "\"1e5\"" decimalText
+                    rejectsWith Codecs.decimal "\"1,000.5\"" decimalText
+                    rejectsWith Codecs.decimal "\".5\"" decimalText
+                    rejectsWith Codecs.decimal "\"5.\"" decimalText
+                    rejectsWith Codecs.decimal "\"-\"" decimalText
                     testCase "a decimal keeps its scale"
                     <| fun () -> Expect.equal ((WireCodec.ofCodec Codecs.decimal).Encode 1.10M) "\"1.10\"" "wire text"
                 ]
@@ -263,6 +312,31 @@ let tests =
                 expectUnavailable "bigint past 2^53" (withoutSourceText Codecs.bigint "9007199254740993")
                 expectUnavailable "decimal with a fraction" (withoutSourceText Codecs.decimal "1.5")
                 expectUnavailable "decimal 0.1" (withoutSourceText Codecs.decimal "0.1")
+            testCase "without source text, a number reads as the safe integer its value is, whatever its text"
+            <| fun () ->
+                Expect.equal
+                    (withoutSourceText Codecs.bigint "1e3"
+                     |> expectOk "bigint 1e3")
+                    (BigInteger.Parse "1000")
+                    "bigint 1e3"
+
+                Expect.equal
+                    (withoutSourceText Codecs.bigint "1.0"
+                     |> expectOk "bigint 1.0")
+                    (BigInteger.Parse "1")
+                    "bigint 1.0"
+
+                Expect.equal
+                    (withoutSourceText Codecs.decimal "1e5"
+                     |> expectOk "decimal 1e5")
+                    100000M
+                    "decimal 1e5"
+
+                Expect.equal
+                    (withoutSourceText Codec.int "1e-400"
+                     |> expectOk "int 1e-400")
+                    0
+                    "int 1e-400"
             testCase "without source text, numbers written as strings decode exactly"
             <| fun () ->
                 Expect.equal

@@ -11,17 +11,37 @@ open System.Text.Encodings.Web
 open System.Text.Json
 #endif
 
+let private describe (helpers: IDecoderHelpers<'J>) (error: DecoderError<'J>) : string =
+    Decode.errorToString helpers (Decode.Helpers.prependPath "$" error)
+
 /// <summary>
 /// Runs the decoder: a decoder failure or a raised exception is <c>WireError.Shape</c>, and a raised
-/// <c>LimitExceeded</c> is <c>WireError.Limit</c>.
+/// <c>LimitExceeded</c> is <c>WireError.Limit</c>, whose message carries the value's path as found by a second run
+/// under <c>locating</c>.
 /// </summary>
-let private decodeWith (helpers: IDecoderHelpers<'J>) (decoder: Decoder<'T>) (json: 'J) : Result<'T, WireError> =
+let private decodeWith
+    (helpers: IDecoderHelpers<'J>)
+    (locating: unit -> IDecoderHelpers<'J>)
+    (decoder: Decoder<'T>)
+    (json: 'J)
+    : Result<'T, WireError> =
     try
         match decoder.Decode (helpers, json) with
         | Ok value -> Ok value
-        | Error error -> Error (WireError.Shape (Decode.errorToString helpers (Decode.Helpers.prependPath "$" error)))
+        | Error error -> Error (WireError.Shape (describe helpers error))
     with
-    | :? Helpers.LimitExceeded as ex -> Error (WireError.Limit ex.Message)
+    | :? Helpers.LimitExceeded as ex ->
+        let located =
+            try
+                let helpers = locating ()
+
+                match decoder.Decode (helpers, json) with
+                | Error error -> describe helpers error
+                | Ok _ -> ex.Message
+            with _ ->
+                ex.Message
+
+        Error (WireError.Limit located)
     | ex -> Error (WireError.Shape ex.Message)
 
 #if FABLE_COMPILER
@@ -48,6 +68,9 @@ let encode (value: IEncodable) : string =
 /// <summary>
 /// The decoded text, once it passes the pre-scan and parses. With <c>sourceText</c>, numbers keep their source text
 /// through Thoth's number-literal reviver; without it, a number's text is known only for a safe integer.
+/// Without <c>sourceText</c>, a number reads as the safe integer its double value is, whatever its text: <c>1e3</c>
+/// and <c>1.0</c> read as 1000 and 1, also for <c>Codecs.bigint</c> and <c>Codecs.decimal</c>, and <c>1e-400</c> reads
+/// as 0.
 /// </summary>
 let decodeWithSourceText (sourceText: bool) (limits: WireLimits) (decoder: Decoder<'T>) (text: string) : Result<'T, WireError> =
     match Prescan.check limits text with
@@ -67,10 +90,13 @@ let decodeWithSourceText (sourceText: bool) (limits: WireLimits) (decoder: Decod
         | Ok json ->
             let numberText = if sourceText then exactNumberText else safeIntegerText
 
-            let helpers =
-                Helpers.decoding numberText limits.MaxBigIntDigits Ranvier.Wire.Thoth.Json.JavaScript.Decode.helpers
+            let inner = Ranvier.Wire.Thoth.Json.JavaScript.Decode.helpers
+            let helpers = Helpers.decoding numberText limits.MaxBigIntDigits inner
 
-            decodeWith helpers decoder json
+            let locating () =
+                Helpers.locating numberText limits.MaxBigIntDigits inner
+
+            decodeWith helpers locating decoder json
 
 /// <summary>The decoded text, once it passes the pre-scan and parses.</summary>
 let decode (limits: WireLimits) (decoder: Decoder<'T>) (text: string) : Result<'T, WireError> =
@@ -105,10 +131,13 @@ let decode (limits: WireLimits) (decoder: Decoder<'T>) (text: string) : Result<'
             use document =
                 JsonDocument.Parse (text, JsonDocumentOptions (MaxDepth = limits.MaxDepth))
 
-            let helpers =
-                Helpers.decoding Helpers.netNumberText limits.MaxBigIntDigits Ranvier.Wire.Thoth.Json.System.Text.Json.Decode.helpers
+            let inner = Ranvier.Wire.Thoth.Json.System.Text.Json.Decode.helpers
+            let helpers = Helpers.decoding Helpers.netNumberText limits.MaxBigIntDigits inner
 
-            decodeWith helpers decoder document.RootElement
+            let locating () =
+                Helpers.locating Helpers.netNumberText limits.MaxBigIntDigits inner
+
+            decodeWith helpers locating decoder document.RootElement
         with ex ->
             Error (WireError.Syntax ex.Message)
 #endif

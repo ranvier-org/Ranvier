@@ -3,6 +3,7 @@ module internal Ranvier.Wire.Helpers
 open System
 open Ranvier.Wire.Thoth.Json.Core
 #if !FABLE_COMPILER
+open System.Globalization
 open System.Text.Json
 #endif
 
@@ -91,15 +92,32 @@ let encoding (inner: IEncoderHelpers<'J>) : IEncoderHelpers<'J> =
     }
 
 /// <summary>The caps of a <c>WireCodec</c> decode, for the decoders that enforce them.</summary>
-type DecodeScope(maxBigIntDigits: int) =
+type DecodeScope(maxBigIntDigits: int, limitIsError: bool) =
     member _.MaxBigIntDigits = maxBigIntDigits
+
+    /// <summary>
+    /// Whether a decoder gives a value over a cap as a decoder error, which carries its path; otherwise it raises
+    /// <c>LimitExceeded</c>.
+    /// </summary>
+    member _.LimitIsError = limitIsError
 
 /// <summary>Raised by a decoder for a value over a <c>DecodeScope</c> cap; <c>WireCodec</c> gives it as <c>WireError.Limit</c>.</summary>
 type LimitExceeded(message: string) =
     inherit Exception(message)
 
-type private ScopedHelpers<'J>(inner: IDecoderHelpers<'J>, numberText: 'J -> string option, maxBigIntDigits: int) =
-    inherit DecodeScope(maxBigIntDigits)
+/// <summary>Whether a JSON number's text has neither a <c>.</c> nor a negative exponent.</summary>
+let private isIntegralText (text: string) =
+    text.IndexOf '.' < 0
+    && not (text.Contains "e-")
+    && not (text.Contains "E-")
+
+let private isFiniteWhole (number: float) =
+    not (Double.IsInfinity number)
+    && not (Double.IsNaN number)
+    && Math.Floor number = number
+
+type private ScopedHelpers<'J>(inner: IDecoderHelpers<'J>, numberText: 'J -> string option, maxBigIntDigits: int, limitIsError: bool) =
+    inherit DecodeScope(maxBigIntDigits, limitIsError)
 
     interface IDecoderHelpers<'J> with
         member _.isString value =
@@ -126,13 +144,15 @@ type private ScopedHelpers<'J>(inner: IDecoderHelpers<'J>, numberText: 'J -> str
         member _.isIntegralValue value =
             inner.isNumber value
             && (match numberText value with
-                | Some text ->
-                    let number = inner.asFloat value
-
-                    text.IndexOf '.' < 0
-                    && not (Double.IsInfinity number)
-                    && Math.Floor number = number
-                | None -> false)
+                | Some text when isIntegralText text ->
+#if FABLE_COMPILER
+                    isFiniteWhole (inner.asFloat value)
+#else
+                    match Double.TryParse (text, NumberStyles.Float, CultureInfo.InvariantCulture) with
+                    | true, number -> isFiniteWhole number
+                    | _ -> false
+#endif
+                | _ -> false)
 
         member _.asString value =
             inner.asString value
@@ -171,12 +191,17 @@ type private ScopedHelpers<'J>(inner: IDecoderHelpers<'J>, numberText: 'J -> str
                 )
 
 /// <summary>
-/// The helpers of <c>inner</c> for one decode under <c>maxBigIntDigits</c>. A number's text is <c>numberText</c>'s
-/// (<c>None</c> when unknown, which makes <c>numberToString</c> raise), and a number is integral exactly when its text
-/// is known and has no <c>.</c> and its value is a finite whole number.
+/// The helpers of <c>inner</c> for one decode under <c>maxBigIntDigits</c>, raising <c>LimitExceeded</c> for a value
+/// over it. A number's text is <c>numberText</c>'s (<c>None</c> when unknown, which makes <c>numberToString</c> raise),
+/// and a number is integral exactly when its text is known, has neither a <c>.</c> nor a negative exponent, and
+/// denotes a finite whole number; the check itself never raises.
 /// </summary>
 let decoding (numberText: 'J -> string option) (maxBigIntDigits: int) (inner: IDecoderHelpers<'J>) : IDecoderHelpers<'J> =
-    ScopedHelpers (inner, numberText, maxBigIntDigits)
+    ScopedHelpers (inner, numberText, maxBigIntDigits, false)
+
+/// <summary>The helpers of <c>decoding</c>, giving a value over <c>maxBigIntDigits</c> as a decoder error with its path.</summary>
+let locating (numberText: 'J -> string option) (maxBigIntDigits: int) (inner: IDecoderHelpers<'J>) : IDecoderHelpers<'J> =
+    ScopedHelpers (inner, numberText, maxBigIntDigits, true)
 
 #if !FABLE_COMPILER
 /// <summary>A number's text, read verbatim from the document.</summary>
