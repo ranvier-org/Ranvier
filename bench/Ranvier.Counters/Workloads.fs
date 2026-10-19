@@ -5,6 +5,7 @@
 module CounterBench.Workloads
 
 open System
+open System.Threading
 open System.Threading.Tasks
 open Ranvier
 
@@ -466,6 +467,60 @@ let streamRestart (n: int) =
 
                 if last.Value <> next.Value then
                     failwith $"stream-restart ended at %d{last.Value}, expected %d{next.Value}"
+        Teardown = teardown owner graph
+    }
+
+/// <summary>
+/// The baseline for <c>streamRestart</c>: a dependency write restarts an async memo's open flight under
+/// <c>CancelPrevious</c>, read by an effect. The flights stay open.
+/// </summary>
+let flightRestart (n: int) =
+    let graph = newGraph ()
+
+    if graph.Options.FlightPolicy <> CancelPrevious then
+        failwith "flight-restart expects the default CancelPrevious policy"
+
+    let trigger = Signal (graph, 0)
+    let flights = ref 0
+    let previous = ref CancellationToken.None
+    let latest = ref CancellationToken.None
+    let pending = ref false
+
+    let owner =
+        graph.CreateRoot (fun owner ->
+            use _ = graph.Activate ()
+
+            let memo =
+                Api.createAsync (fun _ token ->
+                    trigger.Value |> ignore
+                    flights.Value <- flights.Value + 1
+                    previous.Value <- latest.Value
+                    latest.Value <- token
+                    TaskCompletionSource<int>().Task)
+
+            createEffect (fun () ->
+                pending.Value <-
+                    match memo.TryValue with
+                    | Pending -> true
+                    | _ -> false)
+
+            owner)
+
+    let started = ref 0
+
+    {
+        Run =
+            fun () ->
+                for _ in 1..n do
+                    started.Value <- started.Value + 1
+                    trigger.Value <- started.Value
+
+                if
+                    flights.Value <> started.Value + 1
+                    || not previous.Value.IsCancellationRequested
+                    || not pending.Value
+                then
+                    failwith $"flight-restart started %d{flights.Value} flights, expected %d{started.Value + 1}"
         Teardown = teardown owner graph
     }
 

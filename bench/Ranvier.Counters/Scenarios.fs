@@ -1051,9 +1051,12 @@ let all (scale: int) : Case list =
         yield!
             scenario
                 "stream-restart"
-                "write a stream's dependency, restarting it, then deliver one item"
+                "write a dependency of a stream, restarting it, then deliver one item; or of an async memo, restarting its flight"
                 (500 * scale)
-                [ "Ranvier", workload Workloads.streamRestart ]
+                [
+                    "Ranvier (stream)", workload Workloads.streamRestart
+                    "Ranvier (async memo, CancelPrevious)", workload Workloads.flightRestart
+                ]
         yield!
             scenario
                 "chain-affinity"
