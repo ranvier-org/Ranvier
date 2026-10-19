@@ -55,6 +55,13 @@ let private offThread (work: unit -> unit) =
     thread.Start ()
     thread.Join ()
 
+let private manualGraph () =
+    new Graph (
+        { GraphOptions.Default with
+            Dispatcher = Some (ManualDispatcher () :> IGraphDispatcher)
+        }
+    )
+
 #endif
 let private reading (memo: StreamMemo<'S>) =
     memo.TryValue
@@ -564,5 +571,141 @@ let tests =
 
                 graph.Pump () |> ignore
                 Expect.equal (reading memo) Pending "no item from the second stream yet"
+
+            testCase "1,000 off-thread items before a pump give one wake and one effect run"
+            <| fun _ ->
+                use graph = manualGraph ()
+                let feed = ManualStream<int>()
+                let memo = graph.Run (fun () -> Api.createStreamFold 0 (+) (fun _ -> feed.Source))
+                let seen = ResizeArray<int>()
+
+                new Effect (
+                    graph,
+                    fun () ->
+                        match memo.TryValue with
+                        | Ready v -> seen.Add v
+                        | _ -> ()
+                )
+                |> ignore
+
+                graph.Pump () |> ignore
+                seen.Clear ()
+
+                offThread (fun () ->
+                    for i in 1..1000 do
+                        feed.Push i)
+
+                Expect.equal graph.PendingWork 1 "one wake queued"
+                graph.Pump () |> ignore
+                Expect.sequenceEqual seen [ 500500 ] "one run with the final state"
+
+            testCase "an item delivered while the wake runs posts exactly one further wake"
+            <| fun _ ->
+                use graph = manualGraph ()
+                let feed = ManualStream<int>()
+                let memo = graph.Run (fun () -> Api.createStreamFold 0 (+) (fun _ -> feed.Source))
+                let seen = ResizeArray<int>()
+                let mutable injected = false
+
+                new Effect (
+                    graph,
+                    fun () ->
+                        match memo.TryValue with
+                        | Ready v ->
+                            seen.Add v
+
+                            if not injected then
+                                injected <- true
+                                offThread (fun () -> feed.Push 10)
+                        | _ -> ()
+                )
+                |> ignore
+
+                graph.Pump () |> ignore
+                offThread (fun () -> feed.Push 1)
+                graph.Pump () |> ignore
+                Expect.equal graph.PendingWork 1 "the item during the wake posted one wake"
+                graph.Pump () |> ignore
+                Expect.sequenceEqual seen [ 1; 11 ] "the later item's state is published"
+
+            testCase "an off-thread item delivered during a wake that runs inline posts a further wake"
+            <| fun _ ->
+                use graph = manualGraph ()
+                let feed = ManualStream<int>()
+                let memo = graph.Run (fun () -> Api.createStreamFold 0 (+) (fun _ -> feed.Source))
+                let seen = ResizeArray<int>()
+                let mutable injected = false
+
+                new Effect (
+                    graph,
+                    fun () ->
+                        match memo.TryValue with
+                        | Ready v ->
+                            seen.Add v
+
+                            if not injected then
+                                injected <- true
+                                offThread (fun () -> feed.Push 10)
+                        | _ -> ()
+                )
+                |> ignore
+
+                graph.Pump () |> ignore
+                feed.Push 1
+                Expect.equal graph.PendingWork 1 "the item during the inline wake posted one wake"
+                graph.Pump () |> ignore
+                Expect.sequenceEqual seen [ 1; 11 ] "the later item's state is published"
+
+            testCase "completion after off-thread items publishes the final state first"
+            <| fun _ ->
+                use graph = manualGraph ()
+                let feed = ManualStream<int>()
+                let memo = graph.Run (fun () -> Api.createStream (fun _ -> feed.Source))
+                reading memo |> ignore
+
+                offThread (fun () ->
+                    feed.Push 1
+                    feed.Push 2
+                    feed.Complete ())
+
+                graph.Pump () |> ignore
+                Expect.equal (reading memo) (Ready 2) "completion did not overtake the items"
+
+            testCase "concurrent Next callers leave a commutative fold equal to sequential delivery"
+            <| fun _ ->
+                use graph = manualGraph ()
+                let feed = ManualStream<int>()
+                let memo = graph.Run (fun () -> Api.createStreamFold 0 (+) (fun _ -> feed.Source))
+                reading memo |> ignore
+                let sink = feed.Latest.Sink
+
+                let workers =
+                    [|
+                        for w in 0..3 ->
+                            Thread (
+                                (fun () ->
+                                    for i in 1..10000 do
+                                        sink.Next (w * 10000 + i)),
+                                IsBackground = true
+                            )
+                    |]
+
+                for t in workers do
+                    t.Start ()
+
+                for t in workers do
+                    t.Join ()
+
+                graph.Pump () |> ignore
+
+                let expected =
+                    Seq.sum (
+                        seq {
+                            for w in 0..3 do
+                                for i in 1..10000 -> w * 10000 + i
+                        }
+                    )
+
+                Expect.equal (reading memo) (Ready expected) "every item folded once"
 #endif
         ]
