@@ -31,11 +31,11 @@ Dropping either `contentContainer.Discard ()` call alone changes no hook's behav
 
 ## Measurements
 
-Results: [`framework-performance/investigation/view-integrations/`](framework-performance/investigation/view-integrations/). Baselines at the commit of the batch-contract tests, which changed no runtime code (`keyed-before.json` and `template-before.json` record `c9d0a48` with that commit's changes uncommitted); after-measurements at the commit of the document entries (`c58e99f`), first as committed, with a placement container per pass, then with lazy containers applied uncommitted (committed as `c1d2033`). The runners record the commit and, for keyed rows, the uncommitted paths.
+Results: [`framework-performance/investigation/view-integrations/`](framework-performance/investigation/view-integrations/). Baselines at the commit of the batch-contract tests, which changed no runtime code (`keyed-before.json` and `template-before.json` record `c9d0a48` with that commit's changes uncommitted: the measured tree is `d5fa26b`, which is `c9d0a48` plus those changes, apart from `Html.coverage.json`, a generator data file that was also modified then, is not compiled, and was left out of the commit); after-measurements at the commit of the document entries (`c58e99f`), first as committed, with a placement container per pass, then with lazy containers applied uncommitted (committed as `c1d2033`). The runners record the commit and, for keyed rows, the uncommitted paths.
 
 ### Templates without placed, content or head parts
 
-Ranges are the minimum and maximum of the three per-process medians (`byProcessMs` for keyed rows, `byProcessUs` for the template comparison), in the unit of the row's benchmark. Ranvier modes only: `ranvier` for keyed rows; `ranvier` and `ranvier-template` for the template comparison.
+Ranges are the minimum and maximum of the three per-process medians (`byProcessMs` for keyed rows, `byProcessUs` for the template comparison), in the unit of the row's benchmark. Width-1 template rows show two decimals; every overlap judgment compares the unrounded values. Ranvier modes only: `ranvier` for keyed rows; `ranvier` and `ranvier-template` for the template comparison.
 
 | Benchmark | Operation | Before (per-process range) | After, containers per pass | Overlap | After, lazy containers | Overlap |
 |---|---|---|---|---|---|---|
@@ -53,12 +53,12 @@ Ranges are the minimum and maximum of the three per-process medians (`byProcessM
 | keyed-rows (ms) | armsSwitch1k | 4.130–4.230 | 4.675–4.770 | no, slower | 4.115–4.230 | yes |
 | keyed-rows (ms) | armsPayload1k | 0.685–0.700 | 0.675–0.710 | yes | 0.665–0.730 | yes |
 | keyed-rows (ms) | armsClear1k | 1.420–1.545 | 1.460–1.515 | yes | 1.410–1.680 | yes |
-| template comparison (µs) | `ranvier` width 1 mount | 8.2–8.5 | 8.3–8.5 | yes | 8.2–8.8 | yes |
-| template comparison (µs) | `ranvier-template` width 1 mount | 5.4–5.9 | 5.6–5.9 | yes | 5.5–6.1 | yes |
-| template comparison (µs) | `ranvier` width 1 update | 1.0–1.0 | 1.0–1.0 | yes | 1.0–1.1 | yes |
-| template comparison (µs) | `ranvier-template` width 1 update | 1.0–1.1 | 1.0–1.0 | yes | 1.0–1.1 | yes |
-| template comparison (µs) | `ranvier` width 1 dispose | 1.4–2.2 | 1.3–1.4 | no, faster | 1.5–2.0 | yes |
-| template comparison (µs) | `ranvier-template` width 1 dispose | 1.4–2.1 | 1.2–1.3 | no, faster | 1.3–1.4 | no, faster |
+| template comparison (µs) | `ranvier` width 1 mount | 8.22–8.48 | 8.26–8.50 | yes | 8.22–8.79 | yes |
+| template comparison (µs) | `ranvier-template` width 1 mount | 5.37–5.90 | 5.59–5.90 | yes | 5.53–6.11 | yes |
+| template comparison (µs) | `ranvier` width 1 update | 1.00–1.03 | 0.98–1.03 | yes | 1.02–1.12 | yes |
+| template comparison (µs) | `ranvier-template` width 1 update | 1.00–1.06 | 0.97–1.00 | yes | 1.00–1.08 | yes |
+| template comparison (µs) | `ranvier` width 1 dispose | 1.45–2.25 | 1.35–1.43 | no, faster | 1.50–2.01 | yes |
+| template comparison (µs) | `ranvier-template` width 1 dispose | 1.41–2.05 | 1.25–1.33 | no, faster | 1.33–1.39 | no, faster |
 | template comparison (µs) | `ranvier` width 16 mount | 63.6–71.0 | 64.8–65.4 | yes | 65.3–70.5 | yes |
 | template comparison (µs) | `ranvier-template` width 16 mount | 43.2–43.8 | 41.8–43.0 | no, faster | 41.1–45.8 | yes |
 | template comparison (µs) | `ranvier` width 16 update | 13.3–13.7 | 13.3–13.3 | yes | 13.3–14.1 | yes |
@@ -74,7 +74,7 @@ Ranges are the minimum and maximum of the three per-process medians (`byProcessM
 
 With a container per pass, `append1k` and `armsSwitch1k` ranges lie above their baselines. Containers are now lazy: a list or arm region keeps one `PlacementPass`, which allocates the pass's container at the first request (a hook, a head entry or a nested region of a row built by the pass, or an authored row) and places only a container it allocated. The lazy measurement brings both operations back within their baselines; `remove1k` then lies one timer step (5 µs) above its baseline range.
 
-Same-session runs ([`keyed-same-session.json`](framework-performance/investigation/view-integrations/keyed-same-session.json)) show disjoint ranges of this size between repeated runs of one build. Session `ab` alternates a build of `d5fa26b` (`ctl`) with the lazy build (`new`); session `ab2` alternates containers per pass (`pp`) with the lazy build (`lazy`). `d5fa26b` itself measures `remove1k` at 0.140–0.165 ms and `armsSwitch1k` at 4.000–4.870 ms. Runs of one build are disjoint in 19 of their 112 operation pairs. Lazy runs against `d5fa26b` or containers-per-pass runs are disjoint in 41 operation pairs: 32 with the lazy run faster and 9 with it slower, those 9 separated by at most 0.115 ms (`clear10k`, 2 % of its median). Containers per pass and lazy containers measure alike within that spread.
+Same-session runs ([`keyed-same-session.json`](framework-performance/investigation/view-integrations/keyed-same-session.json)) show disjoint ranges of this size between repeated runs of one build. Session `ab` alternates a build of `d5fa26b` (`ctl`) with the lazy build (`new`); session `ab2` alternates containers per pass (`pp`) with the lazy build (`lazy`). `d5fa26b` itself measures `remove1k` at 0.140–0.165 ms and `armsSwitch1k` at 4.000–4.870 ms. Runs of one build are disjoint in 19 of their 112 operation pairs (8 run pairs of one build × 14 operations). Lazy runs against `d5fa26b` or containers-per-pass runs are disjoint in 41 of their 224 operation pairs (16 run pairs × 14 operations): 32 with the lazy run faster and 9 with it slower, those 9 separated by at most 0.115 ms (`clear10k`, 2 % of its median). Containers per pass and lazy containers measure alike within that spread.
 
 | Operation | ab ctl1 | ab new1 | ab ctl2 | ab new2 | ab2 pp1 | ab2 lazy1 | ab2 pp2 | ab2 lazy2 |
 |---|---|---|---|---|---|---|---|---|
@@ -102,6 +102,8 @@ Same-session runs ([`keyed-same-session.json`](framework-performance/investigati
 
 Medians from `summaries` with the per-process range in parentheses; hook costs from `hookCost` (hooked minus plain) with the range of the per-process differences. Lazy containers; `verified` holds 36 entries (12 per process). Reported, not gated.
 
+`placement-hooks.json` records `baseCommit` `c58e99f` and no list of uncommitted paths. It measured the lazy-container build: the run (`measuredAt` 13:15:44Z) was the `--build` run that followed restoring the lazy `Mounting.fs` and `Placement.fs` (after 13:11Z), whose content is that of `c1d2033`, with the benchmark files of this section uncommitted. A placement run with containers per pass (12:57Z) is not committed; its hook costs were 7.0, 17.5 and 61.9 µs at widths 1, 16 and 128.
+
 | Width | Ranvier hooked (µs) | Ranvier plain (µs) | Ranvier hook cost (µs) | Solid 2 hooked (µs) | Solid 2 plain (µs) | Solid 2 hook cost (µs) |
 |---|---|---|---|---|---|---|
 | 1 | 12.3 (12.0–13.4) | 5.9 (5.9–6.1) | 6.4 (6.1–7.3) | 4.7 (4.5–5.7) | 2.5 (2.4–2.5) | 2.2 (2.0–3.2) |
@@ -109,3 +111,11 @@ Medians from `summaries` with the per-process range in parentheses; hook costs f
 | 128 | 186.9 (179.4–233.8) | 120.6 (114.4–123.1) | 66.3 (56.2–119.4) | 103.1 (100.6–107.5) | 55.6 (53.8–58.8) | 47.5 (45.6–49.4) |
 
 The 128-row Ranvier hooked range includes one process at 233.8 µs; the other two measure 179.4 and 180.0 µs.
+
+Fairness caveats:
+
+- The adapter's settle check calls `querySelectorAll("[data-placed]")` on every hooked list for both frameworks, once when every hook has run at mount and once per extra microtask turn otherwise; it is part of the hooked time.
+- Ranvier's hook returns `ignore` as its cleanup, which registers one owner cleanup per row; Solid 2's `onSettled` callback returns none.
+- `sample` waits at most 20 microtask turns per list and does not check the count afterwards; only `verify` asserts that every hooked row is marked.
+- No GC is forced between samples, so a collection can land inside one; this is a plausible cause of the 233.8 µs process.
+- Each Ranvier list creates and disposes its own `Graph`, in both the hooked and the plain scenario, so the cost cancels in the hook cost but is part of each absolute time.

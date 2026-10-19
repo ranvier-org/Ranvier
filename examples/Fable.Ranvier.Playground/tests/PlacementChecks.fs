@@ -1136,6 +1136,26 @@ let private focusAndMeasure () =
     target.remove ()
     equal (true, true) (focused, width.Value > 0.)
 
+/// <summary>A pass's container is placed by its <c>Place</c>; a later request raises, and the next <c>Begin</c> allocates a new container.</summary>
+let private passRequestAfterPlace () =
+    let pass = PlacementPass null
+    let first = pass.Container
+    pass.Place ()
+
+    let message =
+        try
+            pass.Container |> ignore
+            "no error"
+        with error ->
+            error.Message
+
+    pass.Begin ()
+    let next = pass.Container
+
+    equal
+        ("A pass placement container was requested after its Place", true, false, false)
+        (message, first.IsPlaced, obj.ReferenceEquals (first, next), next.IsPlaced)
+
 let cases: (string * (unit -> unit)) array =
     strictCases
     <| Array.concat
@@ -1235,6 +1255,9 @@ let cases: (string * (unit -> unit)) array =
             templated "NodeRef.Current is None while hidden by a boundary" templateHiddenNodeRef
             [|
                 "template: a mounted hook raises under Reject and writes nothing under Omit", templateServerHook
+            |]
+            [|
+                "a pass container requested after its Place raises, and the next Begin allocates a new one", passRequestAfterPlace
             |]
         ]
 

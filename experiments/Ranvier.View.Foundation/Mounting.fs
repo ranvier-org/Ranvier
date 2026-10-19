@@ -1094,8 +1094,8 @@ and private RowBuilder(state: MountState) =
     let mutable staging: DocumentFragment = Unchecked.defaultof<_>
     let mutable settingUp = false
     let mutable setupFailure: exn option = None
-    // The pass of the row being built.
-    let mutable container: PlacementPass = null
+    // The passes of the region whose row is being built; null outside Build.
+    let mutable placement: PlacementPass = null
 
     let setup: Setup =
         {
@@ -1109,7 +1109,7 @@ and private RowBuilder(state: MountState) =
         staging
 
     member this.Build(materialise: Func<(unit -> obj), TemplateDom.MountServices, unit>, current: unit -> obj, target: PlacementPass) : Row =
-        container <- target
+        placement <- target
         roots.Clear ()
         setupFailure <- None
         settingUp <- true
@@ -1124,7 +1124,7 @@ and private RowBuilder(state: MountState) =
                 reraise ()
         finally
             settingUp <- false
-            container <- null
+            placement <- null
 
         if roots.Count = 0 then
             let marker = comment "ranvier:row"
@@ -1165,13 +1165,13 @@ and private RowBuilder(state: MountState) =
 
         member _.Scope = state.Scope
 
-        member _.Placement = container.Container
+        member _.Placement = placement.Container
 
         member _.Head(entry) =
-            state.HeadIn (container.Container, entry)
+            state.HeadIn (placement.Container, entry)
 
         member _.Region(start, finish, _, kind, items, render, rows) =
-            state.NestedRegion (start, finish, kind, items, render, rows, container.Container)
+            state.NestedRegion (start, finish, kind, items, render, rows, placement.Container)
 
 /// <summary>
 /// The markers and laid-out rows of one region, with the region's owner, row builder and failure state.
@@ -2383,8 +2383,8 @@ and internal MountState
         let retired = ResizeArray<Row>()
         // The positions of an in-place window whose key differs from the last pass, in order.
         let moved = ResizeArray<int>()
-        // The container of the rows created by the current pass; a new one per pass that requests one.
-        let pass = PlacementPass parentContainer
+        // The passes whose containers hold the hooks of the rows each pass creates.
+        let passPlacement = PlacementPass parentContainer
 
         // When the window from `first` keeps its length and spans more than `smallWindow` positions, collects into `moved`
         // the positions whose key differs between `prior` and `next` and returns true.
@@ -2433,15 +2433,15 @@ and internal MountState
 
             row <-
                 if isNull rows then
-                    this.MountRow (current, render, boundary, pass.Container)
+                    this.MountRow (current, render, boundary, passPlacement.Container)
                 else
-                    site.Builder.Build (rows, current, pass)
+                    site.Builder.Build (rows, current, passPlacement)
 
             row
 
         let reconcile () =
             if site.Live () then
-                pass.Begin ()
+                passPlacement.Begin ()
                 let parent = ref Unchecked.defaultof<Node>
                 let keys = ref Unchecked.defaultof<obj array>
                 let priorKeys = previousKeys
@@ -2722,7 +2722,7 @@ and internal MountState
                                 if authored then
                                     previousItems <- Array.copy snapshot
 
-                                pass.Place ()
+                                passPlacement.Place ()
 
                             site.Errors.Report recorded
                 )
@@ -2759,8 +2759,8 @@ and internal MountState
         let mutable armOwner: Owner = Unchecked.defaultof<_>
         let mutable armItem: Signal<obj> = Unchecked.defaultof<_>
         let mutable armKey: obj = null
-        // The container of the mounted arm; a new one per arm that requests one.
-        let armContainer = PlacementPass parentContainer
+        // The arm mounts, each a pass whose container holds the hooks of the arm.
+        let armPlacement = PlacementPass parentContainer
 
         let disposeArm () =
             if not (isNull (box armOwner)) then
@@ -2775,7 +2775,7 @@ and internal MountState
             if not (isNull selected) then
                 let key, value = unbox<obj * obj> selected
                 let item = Api.createSignal value
-                armContainer.Begin ()
+                armPlacement.Begin ()
                 let mutable created: Owner = Unchecked.defaultof<_>
                 let mutable row: Row = null
 
@@ -2793,9 +2793,9 @@ and internal MountState
 
                             row <-
                                 if isNull rows then
-                                    this.MountRow (current, render, boundary, armContainer.Container)
+                                    this.MountRow (current, render, boundary, armPlacement.Container)
                                 else
-                                    site.Builder.Build (rows, current, armContainer)))
+                                    site.Builder.Build (rows, current, armPlacement)))
 
                     // An arm whose setup disposed the region leaves with the region's owner.
                     if site.Live () then
@@ -2808,7 +2808,7 @@ and internal MountState
                         armOwner <- created
                         armItem <- item
                         armKey <- key
-                        armContainer.Place ()
+                        armPlacement.Place ()
                 with _ ->
                     if not (isNull (box created)) then
                         created.Dispose ()

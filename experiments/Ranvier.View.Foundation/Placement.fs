@@ -93,26 +93,36 @@ type internal Placement(parent: Placement) =
         held <- null
 
 /// <summary>
-/// The container of a region's current pass under <c>parent</c>, allocated by the first request of the pass. Every
-/// request within one pass returns the same container.
+/// The passes of a list or arm region under <c>parent</c>. A pass runs from <c>Begin</c> to <c>Place</c>; its placement
+/// container is allocated by the pass's first request and shared by every later request of the pass.
 /// </summary>
 [<Sealed; AllowNullLiteral>]
 type internal PlacementPass(parent: Placement) =
     let mutable current: Placement = null
+    let mutable placed = false
 
     /// <summary>Starts a pass: the next request allocates a new container.</summary>
     member _.Begin() =
         current <- null
+        placed <- false
 
-    /// <summary>The container of the current pass.</summary>
+    /// <summary>
+    /// The container of the current pass. A request after the pass's <c>Place</c> and before the next <c>Begin</c> raises
+    /// "A pass placement container was requested after its Place".
+    /// </summary>
     member _.Container: Placement =
+        if placed then
+            raise (InvalidOperationException "A pass placement container was requested after its Place")
+
         if isNull current then
             current <- Placement parent
 
         current
 
-    /// <summary>Places the container of the current pass, when the pass requested one.</summary>
+    /// <summary>Ends the pass and places its container, when the pass requested one.</summary>
     member _.Place() =
+        placed <- true
+
         if not (isNull current) then
             current.Place ()
 
