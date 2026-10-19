@@ -233,8 +233,8 @@ readers only when emptiness changes`
 ## Position
 
 `Projection.tryHead`, `tryLast` and `tryItem` read the key at a position with its value, and `None` when the position
-is outside `Keys`. They depend exclusively on `Keys` and the one row they read, so an edit elsewhere wakes no reader;
-over a sorted view, `tryHead` is the top row. A pending row at the position makes the memo pending, and a failed one
+is outside `Keys`. They depend exclusively on `Keys` and the row at the position; over a sorted view, `tryHead` is
+the top row. A pending row at the position makes the memo pending, and a failed one
 raises.
 
 `Projection.head`, `last` and `item` raise `KeyNotFoundException` instead of returning `None`. The memo fails while
@@ -305,8 +305,9 @@ Pinned by the `Projection.tryAverageBy and averageBy` tests, including `an edit 
 ## Least and greatest
 
 `Projection.tryMinBy` and `tryMaxBy` return a value with the least or greatest rank, under the `sortBy` order: a NaN
-rank is the greatest. Among equal ranks the current result stays. Adding a row, and removing or editing any row but
-the holder, costs O(1); removing or editing the holder re-folds the cached ranks in O(N). `minBy` and `maxBy` raise
+rank is the greatest. Among equal ranks the current result stays, including when its holder's row is edited to an
+equal rank; when the holder is removed, the result is the first holder in `Keys` order. A row change costs O(1) unless
+it removes or edits the holder's row, which re-folds the cached ranks in O(N). `minBy` and `maxBy` raise
 `KeyNotFoundException` while no value has settled.
 *)
 
@@ -319,7 +320,7 @@ let highest = scoreRows |> Projection.tryMaxBy id
 :::details Tests covering this behaviour
 
 Pinned by the `Projection.tryMinBy and tryMaxBy` tests, including `removing a non-extreme row costs no comparison;
-removing the extreme re-folds once`, `among equal ranks the current result stays until its holder leaves` and `NaN
+removing the extreme re-folds once`, `among equal ranks the current result stays until its holder's row is removed or edited` and `NaN
 orders last: tryMaxBy holds NaN, tryMinBy skips it`
 ([Combinators.fs](https://github.com/shayanhabibi/Ranvier/blob/master/tests/Ranvier.Tests/Combinators.fs)).
 :::

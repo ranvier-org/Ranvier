@@ -3361,7 +3361,7 @@ let extremeTests =
                 Expect.equal (least.Value, most.Value) (None, None) "empty"
             }
 
-            test "among equal ranks the current result stays until its holder leaves" {
+            test "among equal ranks the current result stays until its holder's row is removed or edited" {
                 use g = new Graph ()
                 use _ = g.Activate ()
                 let source = createSignal (items [ 1, 21; 2, 22 ])
@@ -3381,6 +3381,8 @@ let extremeTests =
                 Expect.equal (least.Value, runs.Value) (Some 21, 1) "an edit of the other tie wakes no reader"
                 source.Value <- List.rev source.Value
                 Expect.equal (least.Value, runs.Value) (Some 21, 1) "a reorder keeps the holder and wakes no reader"
+                source.Value <- setN 1 24 source.Value
+                Expect.equal least.Value (Some 24) "an edit of the holder to an equal rank keeps the holder"
                 source.Value <- source.Value |> List.filter (fun x -> x.Id <> 1)
                 Expect.equal least.Value (Some 23) "the next holder"
             }
@@ -3939,6 +3941,50 @@ let groupingAggregateTests =
                 once runs source "edit a value" (setN 2 8)
                 once runs source "remove a key" (List.filter (fun x -> x.Id <> 4))
                 once runs source "add a key" (fun xs -> xs @ items [ 7, 7 ])
+            }
+
+            test "emptying a group and creating one each run the reader once" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1; 2, 2; 3, 3 ])
+
+                let totals =
+                    rows source
+                    |> Projection.groupBy parity
+                    |> Grouping.aggregate (Projection.sumBy id)
+
+                let runs = keysAndRows totals
+
+                once runs source "empty a group" (List.filter (fun x -> x.Id <> 2))
+                Expect.equal (Array.toList totals.Keys) [ 1 ] "only the odd group"
+                once runs source "create a group" (fun xs -> xs @ items [ 4, 4 ])
+                Expect.equal (Array.toList totals.Keys) [ 1; 0 ] "the even group returns"
+            }
+
+            test "a pending or failed group memo makes its row pending or failed" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1; 2, 2; 3, 3 ])
+
+                let found =
+                    rows source
+                    |> Projection.groupBy parity
+                    |> Grouping.aggregate (Projection.find (fun n -> n > 2))
+
+                Expect.equal (found.Get 1) 3 "the odd group has a match"
+
+                Expect.throwsT<Collections.Generic.KeyNotFoundException> (fun () -> found.Get 0 |> ignore) "the even group has none"
+
+                let flight = createAsyncSource<int>()
+
+                let pending =
+                    rows source
+                    |> Projection.groupBy parity
+                    |> Grouping.aggregate (fun inner -> createMemo (fun _ -> inner.Keys.Length + flight.Value))
+
+                Expect.throwsT<NotReadyException> (fun () -> pending.Get 1 |> ignore) "the memo is pending"
+                flight.Settle 10
+                Expect.equal (pending.Get 1) 12 "the memo settled"
             }
 
             test "a reorder that keeps group order and totals wakes no reader" {

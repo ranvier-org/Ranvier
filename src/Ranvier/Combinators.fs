@@ -1092,7 +1092,10 @@ module Projection =
         new KeyedProjection<'K, 'K, 'X> (graph, id, (fun key -> f (upstream.Get key)), Unchecked.defaultof<_>, fun () -> upstream.Keys)
         :> Projection<'K, 'X>
 
-    /// <summary>A function returning the value inside Some, and raising one KeyNotFoundException instance with message for every None.</summary>
+    /// <summary>
+    /// A function returning the value inside <c>Some</c>, and raising one <c>KeyNotFoundException</c> instance with
+    /// <c>message</c> for every <c>None</c>.
+    /// </summary>
     let inline private orRaise (message: string) : 'T option -> 'T =
         let empty = ref (null: exn)
 
@@ -1105,7 +1108,10 @@ module Projection =
 
                 raise empty.Value
 
-    /// <summary>The key at position <c>position count</c> of <c>upstream</c>, where <c>count</c> is the key count, with its value; <c>None</c> for a position outside <c>Keys</c>.</summary>
+    /// <summary>
+    /// The key at position <c>position count</c> of <c>upstream</c>, where <c>count</c> is the key count, with its value;
+    /// <c>None</c> for a position outside <c>Keys</c>.
+    /// </summary>
     /// <remarks>Tracked reads of <c>Keys</c>, of what <c>position</c> reads, and of the row at the position.</remarks>
     let private entryAt (upstream: Projection<'K, 'V>) (position: int -> int) : ('K * 'V) option =
         let keys = upstream.Keys
@@ -1118,7 +1124,9 @@ module Projection =
             Some (key, upstream.Get key)
 
     /// <summary>A memo of <c>finish</c> applied to <c>entryAt upstream position</c>.</summary>
-    /// <remarks>A pass producing an entry equal to the last one returns the last result instance, leaving readers unwoken.</remarks>
+    /// <remarks>
+    /// Readers re-run only when the entry changes: an equal entry returns the last result instance.
+    /// </remarks>
     let private positional (upstream: Projection<'K, 'V>) (position: int -> int) (finish: ('K * 'V) option -> 'R) : Memo<'R> =
         let equalKeys = System.Collections.Generic.EqualityComparer<'K>.Default
         let equalValues = upstream.Graph.Options.Equality.Comparer<'V>()
@@ -1139,7 +1147,10 @@ module Projection =
                 lastEntry.Value <- entry
                 lastResult.Value <- result
                 result
-            | None, _ -> finish entry
+            | None, _ ->
+                lastEntry.Value <- None
+                lastResult.Value <- Unchecked.defaultof<_>
+                finish entry
 
         Memo<'R>.Create(upstream.Graph, compute, ScopeMode.Pure)
 
@@ -1623,8 +1634,8 @@ module Projection =
     /// the view.
     /// </summary>
     /// <remarks>
-    /// A pass whose compared part equals the last one's returns the last result instance, leaving readers unwoken. The
-    /// compared part is the key when <c>byKey</c> is true, and the value otherwise.
+    /// Readers re-run only when the compared part changes: the key when <c>byKey</c> is true, and the value otherwise. An
+    /// equal part returns the last result instance.
     /// </remarks>
     let private firstOf (graph: Graph) (build: unit -> Projection<'K, 'U>) (byKey: bool) (finish: ('K * 'U) option -> 'R) : Memo<'R> =
         let owner = ownedScope graph
@@ -1650,7 +1661,10 @@ module Projection =
                 lastEntry.Value <- entry
                 lastResult.Value <- result
                 result
-            | None, _ -> finish entry
+            | None, _ ->
+                lastEntry.Value <- None
+                lastResult.Value <- Unchecked.defaultof<_>
+                finish entry
 
         let memo = Memo<'R>.Create(graph, compute, ScopeMode.Pure)
         memo.Adopt owner
@@ -1677,7 +1691,9 @@ module Projection =
         upstream.RequireRowMemos "Projection.tryFindKey"
         firstOf upstream.Graph (fun () -> filter predicate upstream) true (Option.map fst)
 
-    /// <summary>A memo of the first <c>Some</c> that <c>chooser</c> returns over the values of <c>upstream</c>, in upstream order.</summary>
+    /// <summary>
+    /// A memo of the first <c>Some</c> returned by <c>chooser</c> over the values of <c>upstream</c>, in upstream order.
+    /// </summary>
     /// <remarks>The memo owns a <c>choose</c> view; costs, pending and failure follow <c>tryFind</c>.</remarks>
     let tryPick (chooser: 'V -> 'U option) (upstream: Projection<'K, 'V>) : Memo<'U option> =
         upstream.RequireRowMemos "Projection.tryPick"
@@ -1783,8 +1799,9 @@ module Projection =
     /// true when <c>rank</c> replaces the holder of <c>best</c>.
     /// </summary>
     /// <remarks>
-    /// An equal rank keeps the holder. Removing the holder re-folds the cached ranks in <c>Keys</c> order. A holder value
-    /// equal to the last one returns the last result instance, leaving readers unwoken.
+    /// An equal rank keeps the holder. Removing or editing the holder re-folds the cached ranks in <c>Keys</c> order, and
+    /// the re-fold favours the last published holder over an equal rank. Readers re-run only when the holder value
+    /// changes.
     /// </remarks>
     let private extremeBy
         (operation: string)
@@ -1797,11 +1814,18 @@ module Projection =
         let equalKeys = System.Collections.Generic.EqualityComparer<'K>.Default
         let equalValues = upstream.Graph.Options.Equality.Comparer<'V>()
         let hasLast = ref false
+        let lastKey = ref Unchecked.defaultof<'K>
         let lastValue = ref Unchecked.defaultof<'V>
         let lastResult = ref Unchecked.defaultof<'R>
 
         let add (state: Extreme<'K, 'S, 'V>) (struct (key: 'K, rank: 'S, value: 'V)) =
-            if state.Folded = 0 || better rank state.HolderRank then
+            if
+                state.Folded = 0
+                || better rank state.HolderRank
+                || (hasLast.Value
+                    && equalKeys.Equals (key, lastKey.Value)
+                    && not (better state.HolderRank rank))
+            then
                 {
                     Folded = state.Folded + 1
                     HolderKey = key
@@ -1834,15 +1858,21 @@ module Projection =
 
         let result (state: Extreme<'K, 'S, 'V>) =
             if state.Folded = 0 then
+                hasLast.Value <- false
+                lastKey.Value <- Unchecked.defaultof<_>
+                lastValue.Value <- Unchecked.defaultof<_>
+                lastResult.Value <- Unchecked.defaultof<_>
                 finish None
             elif
                 hasLast.Value
                 && equalValues.Equals (state.HolderValue, lastValue.Value)
             then
+                lastKey.Value <- state.HolderKey
                 lastResult.Value
             else
                 let current = finish (Some state.HolderValue)
                 hasLast.Value <- true
+                lastKey.Value <- state.HolderKey
                 lastValue.Value <- state.HolderValue
                 lastResult.Value <- current
                 current
@@ -1854,9 +1884,10 @@ module Projection =
     /// while no value has settled.
     /// </summary>
     /// <remarks>
-    /// A NaN rank orders after every other rank. Among equal ranks the current result stays; when its holder leaves, the
-    /// result is the first holder in <c>Keys</c> order. Adding a row, and removing or editing any row but the holder, cost
-    /// O(1); removing or editing the holder re-folds the cached ranks in O(N). Pending and failed ranks follow <c>foldGroup</c>.
+    /// A NaN rank orders after every other rank. Among equal ranks the current result stays, including when its holder's
+    /// row is edited to an equal rank; when the holder is removed, the result is the first holder in <c>Keys</c> order. A
+    /// row change costs O(1) unless it removes or edits the holder's row, which re-folds the cached ranks in O(N).
+    /// Pending and failed ranks follow <c>foldGroup</c>.
     /// </remarks>
     /// <example>
     /// <code lang="fsharp">
@@ -1934,9 +1965,9 @@ module Projection =
     /// value.
     /// </summary>
     /// <remarks>
-    /// The next key with a value enters when its holder leaves or changes value; a membership change costs O(N). A pending
-    /// value keeps the key's last settled value, and a never-settled key is in <c>PendingKeys</c>. A throwing
-    /// <c>projection</c> excludes the key, and <c>Get</c> and <c>TryGet</c> of the key raise its exception.
+    /// When a holder leaves or changes value, the next key with the same projection enters; a membership change costs
+    /// O(N). A pending value keeps the key's last settled value, and a never-settled key is in <c>PendingKeys</c>. A
+    /// throwing <c>projection</c> excludes the key, and <c>Get</c> and <c>TryGet</c> of the key raise its exception.
     /// </remarks>
     /// <example>
     /// <code lang="fsharp">
@@ -1966,7 +1997,7 @@ module Grouping =
     /// <remarks>
     /// <c>perGroup</c> runs once per group row, in a scope that owns the nodes it creates and is disposed with the row: an
     /// emptied group disposes its memo, and a returning group gets a new one. A pending or failed memo makes its row
-    /// pending or failed. Keys in <c>UngroupedKeys</c> are excluded from every memo.
+    /// pending or failed. Each memo covers only the keys of its group.
     /// </remarks>
     /// <example>
     /// <code lang="fsharp">

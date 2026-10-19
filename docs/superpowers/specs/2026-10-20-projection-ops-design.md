@@ -287,7 +287,8 @@ val maxBy : projection: ('V -> 'S) -> upstream: Projection<'K, 'V> -> Memo<'V> w
 
 A value with the least (greatest) rank under the `sortBy` order: NaN orders after every other rank, so `tryMaxBy` is
 NaN-holding when any rank is NaN and `tryMinBy` reaches a NaN only when every rank is NaN. Among equal ranks the
-current result stays; when its holder leaves, the result is the first holder in `Keys` order.
+current result stays, including when its holder's row is edited to an equal rank; when the holder is removed, the
+result is the first holder in `Keys` order.
 
 - Rows: an owned key-aware map view `struct (key, projection value, value)`.
 - Fold state: `Extreme = { Count; Key; Rank; Value }` (internal struct record).

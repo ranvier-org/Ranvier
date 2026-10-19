@@ -16,8 +16,8 @@ let active = graph.Activate ()
 
 The examples run inside an [active graph](graph.fsx).
 
-Derive a live view from a projection with `filter`, `choose`, `map`, `mapWith`, `sortBy`, `sortByDescending`, `partition`, `distinctBy` or `groupBy`, and aggregate each group of a `groupBy` with `Grouping.aggregate`.
-Each view keeps rows by key and re-runs its function only for changed upstream rows.
+Derive a live view from a projection with `filter`, `choose`, `map`, `mapWith`, `sortBy`, `sortByDescending`, `partition`, `distinctBy` or `groupBy`, and aggregate each group of a `groupBy` with
+`Grouping.aggregate`. Each view keeps rows by key and re-runs its function only for changed upstream rows.
 
 As with a source projection, `Keys` tracks membership and order; `Get key` tracks a row value.
 
@@ -139,8 +139,10 @@ describe its pass, not its rows.
 
 Pinned by `a throwing predicate excludes the key, and Get and TryGet raise its error`, `a pending predicate keeps
 membership; a never-settled key is only in PendingKeys`, `an effect reading Keys and Get runs exactly once per write`,
-`sorts ascending, and equal sort keys keep upstream order`, `sortByDescending sorts largest first, and equal sort keys keep upstream order`, `sortByDescending orders NaN last, across updates`, `ties keep upstream order at 40 keys, across reorder and
-removal`, `NaN sort keys sort after every other key, across updates`, `None sorts before Some, across updates`, `a pass whose sort keys and upstream order are unchanged does not re-sort` and
+`sorts ascending, and equal sort keys keep upstream order`, `sortByDescending sorts largest first, and equal sort
+keys keep upstream order`, `sortByDescending orders NaN last, across updates`, `ties keep upstream order at 40 keys,
+across reorder and removal`, `NaN sort keys sort after every other key, across updates`, `None sorts before Some,
+across updates`, `a pass whose sort keys and upstream order are unchanged does not re-sort` and
 `a pending sort key keeps its last settled sort key; a never-settled key is only in PendingKeys`, `a pending chooser
 keeps membership; a never-settled key is only in PendingKeys`, `a throwing chooser excludes the key, and Get and TryGet
 raise its error`, and the
@@ -256,8 +258,8 @@ Pinned by the `Projection.distinctBy` tests, including `a key reader sees a hand
 
 ### Aggregate each group
 
-`Grouping.aggregate` turns a grouping into a projection holding the value of one memo per group, such as a total. The memo is created
-once per group, in the group's scope, so an emptied group disposes it and a returning group gets a new one.
+`Grouping.aggregate` turns a grouping into a projection whose row for each group is the value of that group's memo,
+such as a total. The memo is created once per group, in the group's scope, so an emptied group disposes it and a returning group gets a new one.
 
 
 *)

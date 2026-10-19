@@ -57,7 +57,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | DischargeReentry.fs | 29 | 29 | 29 | 29 | 29 | 29 | 1 | 0 |
 | MapSemantics.fs | 42 | 42 | 42 | 42 | 42 | 42 | 0 | 1 |
 | Lenses.fs | 23 | 20 | 20 | 23 | 20 | 20 | 0 | 0 |
-| Combinators.fs | 224 | 224 | 224 | 224 | 224 | 224 | 2 | 0 |
+| Combinators.fs | 226 | 226 | 226 | 226 | 226 | 226 | 2 | 0 |
 | Timed.fs | 31 | 31 | 31 | 38 | 38 | 38 | 0 | 0 |
 | Streams.fs | 26 | 26 | 26 | 26 | 26 | 26 | 1 | 0 |
 | PreviousValues.fs | 12 | 12 | 12 | 12 | 12 | 12 | 15 | 0 |
@@ -81,7 +81,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 9 | 9 | 9 | 9 | 9 | 9 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1513 | 1492 | 1489 | 1653 | 1627 | 1624 | 103 | 1 |
+| **Total** | 1515 | 1494 | 1491 | 1655 | 1629 | 1626 | 103 | 1 |
 
 ## Tests.fs
 
@@ -1432,7 +1432,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | foldGroup rejects a null subtract | Fable wraps a null function argument in a closure, so it is never null. |
 | a read through a memo of another graph publishes the current mean under a custom policy | the policy is an object expression over a generic interface member. |
 
-<details><summary>224 passed in every build and delivery that runs them</summary>
+<details><summary>226 passed in every build and delivery that runs them</summary>
 
 - 200 single edits at N=1000 make 200 predicate calls
 - a Keys reader wakes only when membership flips
@@ -1627,7 +1627,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - averageBy raises KeyNotFoundException while empty and recovers
 - disposing the tryAverageBy memo releases the upstream rows
 - tryMinBy and tryMaxBy follow edits and removals
-- among equal ranks the current result stays until its holder leaves
+- among equal ranks the current result stays until its holder's row is removed or edited
 - NaN orders last: tryMaxBy holds NaN, tryMinBy skips it
 - a failed rank raises until it recovers
 - a pending rank keeps its last settled rank
@@ -1655,6 +1655,8 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - an edit within a group runs only that group's aggregate
 - an emptied group's aggregate is disposed, and a returning group gets a new one
 - an effect reading every group's total runs once per write
+- emptying a group and creating one each run the reader once
+- a pending or failed group memo makes its row pending or failed
 - a reorder that keeps group order and totals wakes no reader
 - a never-settled group key contributes to no total
 - disposing the result disposes every aggregate; disposing the grouping empties the result
