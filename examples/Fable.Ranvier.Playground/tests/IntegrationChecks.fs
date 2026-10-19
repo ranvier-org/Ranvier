@@ -478,6 +478,25 @@ let private serverWidget () =
          rejected
          |> Option.map (fun message -> message.StartsWith "Browser capability requires explicit Omit policy"))
 
+    let lent =
+        Component.define (fun _ () -> ()) (fun t -> t.span [| t.Hooks.lend (fun _ (_: HTMLSpanElement) -> ignore) |] [||])
+
+    let lentRejected =
+        try
+            Html.render Reject (Program.run (Component.render lent ()))
+            |> ignore
+
+            None
+        with error ->
+            Some error.Message
+
+    equal
+        [
+            Some "Browser capability requires explicit Omit policy: <div> widget"
+            Some "Browser capability requires explicit Omit policy: <span> lent hook"
+        ]
+        [ rejected; lentRejected ]
+
 /// <summary>Authored widget elements rendered on the server under Omit: with a text child, an empty list child, or two widget hooks.</summary>
 let private serverWidgetChildren (ops: Operations<'view>) (run: 'view -> Backend -> unit) =
     let widget () =

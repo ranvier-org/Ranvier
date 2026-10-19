@@ -894,6 +894,51 @@ let private placedRejection () =
         ]
         messages
 
+let private meter =
+    Component.define (fun _ (value: float) -> value) (fun t -> t.meter [| t.Props.Meter.value (fun (value: float) -> value) |] [||])
+
+let private numberForm () =
+    let values =
+        [
+            2.0
+            0.5
+            2.5e-5
+            1e-7
+            1e21
+            1.2345678901234568e20
+            -0.0
+            nan
+            infinity
+            -infinity
+            123.456
+            1e-6
+        ]
+
+    let expected =
+        [
+            "2"
+            "0.5"
+            "0.000025"
+            "1e-7"
+            "1e+21"
+            "123456789012345680000"
+            "0"
+            "NaN"
+            "Infinity"
+            "-Infinity"
+            "123.456"
+            "0.000001"
+        ]
+
+    equal
+        [
+            for text in expected ->
+                "<!--[r--><meter value=\""
+                + text
+                + "\"></meter><!--]-->"
+        ]
+        [ for value in values -> Server.render Server.Options.defaults meter value ]
+
 let private holeTitle =
     Component.define (fun _ () -> ()) (fun t -> t.Document.title "Hole")
 
@@ -951,6 +996,7 @@ let cases: (string * (unit -> unit)) array =
         "serialised properties write their attributes; browser-only properties raise under Reject and write nothing under Omit", serialisedProperties
         "listeners and browser hooks are never invoked on the server", browserPartsUninvoked
         "a property and a static attribute writing the same attribute fail at plan compile", duplicateAttributeSource
+        "number properties serialise in ECMAScript number form on .NET and Fable", numberForm
         "a textarea's value property writes its escaped child text, and a textarea with children and that property fails at plan compile",
         textareaChildText
         "a placed hook and an authored browser hook under Reject name the element and the part", placedRejection
