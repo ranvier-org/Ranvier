@@ -20,7 +20,7 @@ type StreamSink<'T> internal (inlet: StreamInlet<'T>) =
             }
         )
 
-    /// <summary>Folds <c>item</c> into the stream's state. Callable from any thread; calls must not overlap.</summary>
+    /// <summary>Folds <c>item</c> into the stream's state. Callable from any thread. Calls from other threads may overlap each other; a call on the graph thread must not overlap any other call.</summary>
     member _.Next(item: 'T) =
         inlet.Deliver item
 

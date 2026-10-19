@@ -203,7 +203,8 @@ Here `Messages` is the application's method returning an `IAsyncEnumerable<strin
 
 ## Threads
 
-A source may deliver items from any thread, as long as calls to `sink.Next` do not overlap.
+A source may deliver items from any thread. Calls to `sink.Next` from other threads may overlap each
+other; a call on the graph thread must not overlap any other call.
 
 - Items delivered on the graph thread before `Run` returns its task are folded and published with
   the start. They schedule no wake.
@@ -213,7 +214,8 @@ A source may deliver items from any thread, as long as calls to `sink.Next` do n
   [Threading and dispatch](threading.md).
 - Items delivered on the graph thread publish each, or once per `batch`.
 
-`fold` runs on the delivering thread, under a lock, and must be pure. It receives the state and the
+`fold` runs on the delivering thread, under a lock when that thread is not the graph thread, and
+must be pure. It receives the state and the
 item and returns the next state.
 
 ## The contract

@@ -107,7 +107,7 @@ Before writing signatures, record the public API with `fcs_public_api`. Every ne
 
 ### State handoff
 
-Each started stream gets a fresh `StreamSink<'T>` holding the accumulator, a closed flag and the generation it belongs to. On .NET, `Next` folds under the sink's lock and reads the closed flag under it; the graph thread takes the same lock to snapshot the accumulator. Under Fable the lock is absent. A sink closed by a restart or disposal ignores further items, so a superseded stream can never publish.
+Each started stream gets a fresh `StreamSink<'T>` holding the accumulator, a closed flag and the generation it belongs to. On .NET, `Next` off the graph thread folds under the sink's lock and reads the closed flag under it; the graph thread takes the same lock to snapshot the accumulator. On the graph thread, `Next` folds without the lock, so it must not overlap any other `Next` call. Under Fable the lock is absent. A sink closed by a restart or disposal ignores further items, so a superseded stream can never publish.
 
 ### Scheduling
 
@@ -116,7 +116,7 @@ Each started stream gets a fresh `StreamSink<'T>` holding the accumulator, a clo
 - **On the graph thread (.NET and Fable).** `Next` follows the graph's write rule: a write on the graph thread settles before the next line runs. Outside a batch each item publishes; inside `batch`, a burst publishes once when the batch ends. The exploration proposed a microtask per burst under Fable; this design drops it, because `AsyncIterable` delivers each item on its own microtask and a microtask wake would publish per item there as well.
 - **Completion and failure.** `Run`'s task outcome is applied through `Graph.Post` on the graph thread after any outstanding wake, so a completion never overtakes the final items' publication.
 
-User code runs only in `start` (tracked, pure scope), `Run` (untracked) and `fold` (on the delivering thread, under the sink's lock on .NET). `fold` must be pure and must not read or write graph nodes.
+User code runs only in `start` (tracked, pure scope), `Run` (untracked) and `fold` (on the delivering thread, under the sink's lock on .NET when that thread is not the graph thread). `fold` must be pure and must not read or write graph nodes.
 
 ### Trace
 
