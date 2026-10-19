@@ -43,74 +43,80 @@ A boundary mounted inside a flush mounts, sets up, cleans up and removes its pen
 
 Results: [`framework-performance/investigation/view-boundaries/`](framework-performance/investigation/view-boundaries/).
 
-Before: `keyed-before.json` and `template-before.json`, recorded at `28f8291` (the code before any boundary work; `a120cec` adds only a test and these baselines). After: `keyed-after.json`, `template-after.json`, `boundary-reveal.json` and `dispatch-after.json`, recorded at `40ab5ba`. Each value is the median over three browser processes with the per-process medians' minimum to maximum in brackets. Before and after were not measured in one session, so a uniform shift across every row reflects the machine, not the code.
-
 ### Operations without a boundary
 
-No operation in any table is slower after with a disjoint range. Ranges overlap where the last column says yes; every other row is faster after.
+Before is a120cec (the code of 28f8291 plus a test and baseline files) and after is de6b960, each built in its own worktree with the same flags and the same `page.mjs` (the after bundle omits the `boundary-page.mjs` import, so the bundles differ by product code only). The runs were interleaved in one session: before, after, before, after, each a full run of three browser processes, giving six per-process medians per side. Each cell is the median of the six with their minimum to maximum in brackets. Files: `keyed-before-same.json`, `keyed-after-same.json`, `template-before-same.json`, `template-after-same.json`, `dispatch-before.json`, `dispatch-after.json`. The earlier files `keyed-before.json` and `template-before.json` were recorded in a different session; compared with an after run from this session, every row looked faster after, which indicates machine state, so they are kept only as the earlier session's record.
+
+Every Ranvier operation has an overlapping before and after range. After over before ratios of the medians run from 0.917 to 1.091 with a median of 1.000.
+
+What six-process ranges detect: a row's range width is a median of 9% of its median (90th percentile 25%, maximum 44% for the noisiest rows, such as 16-wide template mount). A uniform difference of a few percent, for example the 1.5 to 4.4% of the dispatch rows, lies inside those ranges and is not resolved; a difference larger than a row's range width would be. Absence of a disjoint range therefore supports "no regression above roughly 10 to 25% per row", not "identical".
+
+Rows that exercise the render effect's flag check: operations that create bindings or re-run their render effects, namely keyed `create1k`, `create10k`, `replace1k`, `update10th1k`, `append1k`, `armsCreate1k`, `armsSwitch1k`, `armsPayload1k`, and template `mount` and `update` at every width. Rows that run no render effect and serve as controls: keyed `swap1k`, `remove1k`, `remove10k`, `clear1k`, `clear10k`, `armsClear1k` and template `dispose`.
 
 #### Keyed rows, Ranvier (ms per operation)
 
-| Operation | Before (ms, per-process range) | After (ms, per-process range) | Ranges overlap |
-|---|---|---|---|
-| create1k | 6.195 (5.875-6.900) | 5.380 (5.370-5.400) | no, faster after |
-| create10k | 53.020 (51.020-54.680) | 48.215 (47.645-48.565) | no, faster after |
-| replace1k | 5.770 (5.175-7.685) | 4.580 (4.505-4.605) | no, faster after |
-| update10th1k | 0.080 (0.060-0.110) | 0.055 (0.055-0.055) | no, faster after |
-| swap1k | 0.170 (0.145-0.225) | 0.130 (0.130-0.135) | no, faster after |
-| remove1k | 0.205 (0.160-0.215) | 0.135 (0.130-0.140) | no, faster after |
-| remove10k | 0.670 (0.660-0.675) | 0.585 (0.575-0.600) | no, faster after |
-| clear1k | 1.015 (0.935-1.095) | 0.850 (0.840-0.860) | no, faster after |
-| clear10k | 7.035 (6.560-8.435) | 5.845 (5.815-5.925) | no, faster after |
-| append1k | 3.760 (3.525-3.950) | 3.365 (3.330-3.410) | no, faster after |
-| armsCreate1k | 11.645 (11.485-12.150) | 9.740 (9.680-9.870) | no, faster after |
-| armsSwitch1k | 5.215 (4.730-5.600) | 3.980 (3.895-4.040) | no, faster after |
-| armsPayload1k | 0.990 (0.860-1.115) | 0.675 (0.670-0.685) | no, faster after |
-| armsClear1k | 2.515 (2.400-2.790) | 1.415 (1.395-1.470) | no, faster after |
+| Operation | Before (ms, per-process range) | After (ms, per-process range) | After / before | Ranges overlap |
+|---|---|---|---|---|
+| create1k | 5.400 (5.265-5.560) | 5.375 (5.320-5.880) | 0.995 | yes |
+| create10k | 48.050 (47.425-48.390) | 48.530 (48.035-48.940) | 1.010 | yes |
+| replace1k | 4.675 (4.520-4.740) | 4.685 (4.540-4.735) | 1.002 | yes |
+| update10th1k | 0.055 (0.055-0.060) | 0.060 (0.050-0.065) | 1.091 | yes |
+| swap1k | 0.135 (0.125-0.140) | 0.135 (0.125-0.140) | 1.000 | yes |
+| remove1k | 0.135 (0.130-0.140) | 0.140 (0.135-0.145) | 1.037 | yes |
+| remove10k | 0.605 (0.585-0.630) | 0.595 (0.575-0.615) | 0.983 | yes |
+| clear1k | 0.850 (0.835-0.925) | 0.850 (0.830-0.905) | 1.000 | yes |
+| clear10k | 6.005 (5.950-6.070) | 5.885 (5.805-5.980) | 0.980 | yes |
+| append1k | 3.405 (3.310-3.415) | 3.405 (3.350-3.445) | 1.000 | yes |
+| armsCreate1k | 9.700 (9.270-10.260) | 9.910 (9.625-11.115) | 1.022 | yes |
+| armsSwitch1k | 4.055 (3.885-4.095) | 4.120 (3.960-4.850) | 1.016 | yes |
+| armsPayload1k | 0.685 (0.655-0.725) | 0.685 (0.675-0.715) | 1.000 | yes |
+| armsClear1k | 1.405 (1.360-1.435) | 1.480 (1.350-1.490) | 1.053 | yes |
 
 #### Template comparison, Ranvier modes (µs per operation)
 
-| Mode | Width | Phase | Before (µs, per-process range) | After (µs, per-process range) | Ranges overlap |
-|---|---|---|---|---|---|
-| ranvier | 1 | mount | 9.41 (9.02-10.51) | 8.22 (8.20-8.24) | no, faster after |
-| ranvier-template | 1 | mount | 5.90 (5.59-6.19) | 5.57 (5.35-5.86) | yes |
-| ranvier | 1 | update | 1.12 (1.10-1.20) | 1.02 (1.01-1.04) | no, faster after |
-| ranvier-template | 1 | update | 1.13 (1.11-1.14) | 1.02 (0.97-1.03) | no, faster after |
-| ranvier | 1 | dispose | 2.36 (1.97-2.95) | 1.39 (1.33-1.48) | no, faster after |
-| ranvier-template | 1 | dispose | 1.82 (1.48-2.38) | 1.25 (1.23-1.33) | no, faster after |
-| ranvier | 16 | mount | 77.27 (66.80-90.59) | 62.70 (58.55-65.59) | no, faster after |
-| ranvier-template | 16 | mount | 46.68 (45.98-48.16) | 42.19 (40.90-43.79) | no, faster after |
-| ranvier | 16 | update | 14.45 (14.31-15.01) | 13.34 (13.29-13.44) | no, faster after |
-| ranvier-template | 16 | update | 15.28 (15.19-15.46) | 13.94 (13.91-14.12) | no, faster after |
-| ranvier | 16 | dispose | 13.87 (10.51-15.04) | 8.75 (8.16-10.04) | no, faster after |
-| ranvier-template | 16 | dispose | 6.80 (4.53-8.95) | 4.26 (4.02-5.31) | yes |
-| ranvier | 128 | mount | 524.06 (467.66-527.97) | 532.66 (510.31-541.09) | yes |
-| ranvier-template | 128 | mount | 332.19 (323.28-364.22) | 305.31 (299.06-320.31) | no, faster after |
-| ranvier | 128 | update | 115.02 (112.10-116.72) | 105.67 (103.10-107.95) | no, faster after |
-| ranvier-template | 128 | update | 121.65 (119.53-121.97) | 110.70 (108.55-111.18) | no, faster after |
-| ranvier | 128 | dispose | 90.62 (83.13-93.59) | 63.12 (60.47-66.25) | no, faster after |
-| ranvier-template | 128 | dispose | 33.13 (31.72-34.22) | 24.22 (23.91-26.41) | no, faster after |
+| Mode | Width | Phase | Before (µs, per-process range) | After (µs, per-process range) | After / before | Ranges overlap |
+|---|---|---|---|---|---|---|
+| ranvier | 1 | mount | 8.26 (8.01-8.93) | 8.28 (7.91-9.02) | 1.002 | yes |
+| ranvier-template | 1 | mount | 5.49 (5.29-5.68) | 5.61 (5.31-6.04) | 1.021 | yes |
+| ranvier | 1 | update | 1.02 (1.00-1.29) | 1.01 (0.99-1.02) | 0.990 | yes |
+| ranvier-template | 1 | update | 1.01 (0.99-1.24) | 0.99 (0.98-1.01) | 0.975 | yes |
+| ranvier | 1 | dispose | 1.46 (1.35-1.68) | 1.45 (1.33-1.93) | 0.987 | yes |
+| ranvier-template | 1 | dispose | 1.27 (1.23-1.45) | 1.27 (1.23-1.39) | 1.000 | yes |
+| ranvier | 16 | mount | 62.27 (59.22-86.45) | 65.16 (63.32-68.63) | 1.046 | yes |
+| ranvier-template | 16 | mount | 42.62 (41.56-42.81) | 42.27 (40.98-43.55) | 0.992 | yes |
+| ranvier | 16 | update | 13.38 (13.19-13.42) | 13.38 (13.32-13.51) | 1.000 | yes |
+| ranvier-template | 16 | update | 13.99 (13.83-14.03) | 13.93 (13.82-13.97) | 0.995 | yes |
+| ranvier | 16 | dispose | 9.26 (7.93-10.78) | 9.49 (8.67-10.08) | 1.025 | yes |
+| ranvier-template | 16 | dispose | 4.45 (4.18-4.84) | 4.14 (3.71-5.04) | 0.930 | yes |
+| ranvier | 128 | mount | 521.72 (454.06-554.84) | 518.28 (462.19-540.78) | 0.993 | yes |
+| ranvier-template | 128 | mount | 316.25 (302.50-325.94) | 326.88 (300.16-333.91) | 1.034 | yes |
+| ranvier | 128 | update | 105.30 (102.70-107.35) | 104.58 (103.33-108.05) | 0.993 | yes |
+| ranvier-template | 128 | update | 110.25 (106.45-112.52) | 110.02 (108.75-112.08) | 0.998 | yes |
+| ranvier | 128 | dispose | 63.59 (59.53-75.78) | 65.94 (62.03-77.81) | 1.037 | yes |
+| ranvier-template | 128 | dispose | 26.41 (22.50-28.28) | 24.22 (23.28-25.78) | 0.917 | yes |
 
-#### Cost of the boundary code outside a boundary
+#### Cost of the handler dispatch wrapper
 
-Two additions run for code with no boundary: the `try`/`with` around each event-handler dispatch, and the render effect's check of the boundary flag. Keyed rows and the template comparison dispatch no events. The keyed-row and template mount and update operations exercise the flag check: every binding's render effect runs it on each write. The dispatch measurement exercises the `try`/`with`: it mounts 100 rows without a boundary and clicks each row 50 times, in 15 rounds over 3 processes (`dispatch-clicks.mjs`). Before was run on `a120cec` in a separate worktree, after on `40ab5ba`.
+The `try`/`with` around each event-handler dispatch runs on every click. Keyed rows and the template comparison dispatch no events, so `dispatch-clicks.mjs` mounts 100 rows without a boundary, clicks each row 50 times per sample, in 15 rounds per process; before and after runs were interleaved as above. One sample spans 5000 clicks; the page is not cross-origin isolated, so `performance.now()` resolves to about 0.1 ms, which quantises a per-click value by about 0.02 µs.
 
-| Mounted rows | Operation | Before (µs per click, per-process range) | After (µs per click, per-process range) | Ranges overlap |
+| Mounted rows | Before (µs per click, per-process range) | After (µs per click, per-process range) | After / before | Ranges overlap |
 |---|---|---|---|---|
-| 100 authored buttons | click | 1.360 (1.340-1.380) | 1.380 (1.360-1.400) | yes |
-| 100 template list rows | click | 1.480 (1.440-1.560) | 1.520 (1.460-1.560) | yes |
+| 100 authored buttons | 1.360 (1.320-1.400) | 1.420 (1.360-1.440) | 1.044 | yes |
+| 100 template list rows | 1.540 (1.440-1.560) | 1.560 (1.460-1.600) | 1.013 | yes |
+
+The wrapper's cost is at most a few percent of a click and lies within the measured spread.
 
 ### Boundary reveal
 
-Rows read one async value under a boundary (Solid 2: `Loading`). Scenario `reveal` mounts the boundary at the root and settles the source afterwards. Scenario `switch` mounts the boundary from a branch switch over an already settled source, so the boundary mounts inside a flush, mounts its pending view, removes it and reveals within that flush; Solid 2's counterpart is a `Show` switch over an already resolved promise. Medians are milliseconds per boundary converted to µs.
+Rows read one async value under a boundary (Solid 2: `Loading`). Scenario `reveal` mounts the boundary at the root and settles the source afterwards. Scenario `switch` mounts the boundary from a branch switch over an already settled source, so the boundary mounts inside a flush. In both frameworks the switch scenario inserts the pending view, then removes it and inserts the rows: `verify` observes the insertion, asserts that the pending view is absent after the reveal and that the host is empty after disposal. The difference lies in timing: Ranvier reveals within the flush that mounts the boundary, while Solid 2 reads the resolved promise through an async memo created where the branch is created and reveals in a later microtask turn, which the adapter awaits. The switch ratio contains that turn. Medians are per boundary, in µs.
 
 | Scenario | Width | Ranvier median (µs, range) | Solid 2 median (µs, range) | Ranvier / Solid 2 | Ranvier retained bytes per row | Solid 2 retained bytes per row |
 |---|---|---|---|---|---|---|
-| reveal | 1 | 11.2 (10.1-12.1) | 10.5 (10.5-10.6) | 1.07 | 9561 | 949 |
-| reveal | 16 | 41.4 (40.9-42.0) | 27.2 (26.7-28.0) | 1.52 | 1611 | 553 |
-| reveal | 128 | 221.2 (215.6-234.4) | 130.6 (128.1-132.5) | 1.69 | 954 | 567 |
-| switch | 1 | 15.8 (15.2-16.4) | 11.1 (10.3-11.2) | 1.42 | 15234 | 2531 |
-| switch | 16 | 30.9 (30.0-31.4) | 24.2 (24.1-24.4) | 1.28 | 1777 | 527 |
-| switch | 128 | 140.0 (137.5-144.4) | 125.0 (123.1-126.9) | 1.12 | 803 | 552 |
+| reveal | 1 | 11.8 (11.4-12.0) | 10.8 (10.2-11.4) | 1.09 | 10744 | 1120 |
+| reveal | 16 | 42.0 (41.1-43.1) | 28.1 (26.9-28.6) | 1.49 | 1630 | 682 |
+| reveal | 128 | 209.4 (207.5-213.7) | 131.3 (127.5-136.2) | 1.60 | 957 | 567 |
+| switch | 1 | 15.9 (15.9-16.4) | 12.1 (12.0-12.3) | 1.32 | 14077 | 3139 |
+| switch | 16 | 30.6 (30.0-31.6) | 25.9 (25.3-26.1) | 1.18 | 1758 | 758 |
+| switch | 128 | 141.9 (140.0-146.9) | 124.4 (123.7-128.7) | 1.14 | 808 | 584 |
 
-Retained bytes per row at width 1 are dominated by the boundary's fixed cost, which the single row carries. Ranvier's revealed boundary retains roughly 1.4 to 1.7 times Solid 2's bytes per row at width 128 and more at narrower widths. Mounting a boundary inside a flush costs Ranvier 4.6 µs more than at the root at width 1 and is cheaper at widths 16 and 128 (the source is settled, so no second pass runs), and the ratio to Solid 2 there is 1.12 at width 128.
+The 1-wide `reveal` row is parity: the ranges touch at 11.4 µs. Retained bytes per row at width 1 are dominated by the boundary's fixed cost, which the single row carries. At width 128 Ranvier's revealed boundary retains 1.4 to 1.7 times Solid 2's bytes per row, and more at narrower widths. Mounting the boundary inside a flush costs Ranvier about 4 µs more at width 1 than mounting it at the root, and about 11 µs less at width 16 and 68 µs less at width 128; this comparison was not decomposed.

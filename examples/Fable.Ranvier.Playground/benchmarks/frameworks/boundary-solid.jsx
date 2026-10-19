@@ -20,18 +20,20 @@ export async function mountReveal(host, width) {
   return dispose;
 }
 
-// A Loading boundary mounted by a Show switch over an already resolved value; the boundary mounts inside a flush.
+// Reads an already resolved value where the branch is created, as the Ranvier fixture creates its read. Solid 2 reads a
+// promise through an async memo, so the fallback mounts and the rows reveal in a later microtask turn.
+function Rows(props) {
+  const value = createMemo(() => props.promise);
+  return <Loading fallback={<span>loading</span>}>
+    {Array.from({ length: props.width }, (_, i) => <div class="row">{value() + i}</div>)}
+  </Loading>;
+}
+
+// A Loading boundary mounted by a Show switch over an already resolved promise; the boundary mounts inside a flush.
 export async function mountSwitchReveal(host, width) {
   const promise = Promise.resolve("ready");
   const [arm, setArm] = createSignal(false);
-  const dispose = render(() => {
-    const value = createMemo(() => promise);
-    return <Show when={arm()}>
-      <Loading fallback={<span>loading</span>}>
-        {Array.from({ length: width }, (_, i) => <div class="row">{value() + i}</div>)}
-      </Loading>
-    </Show>;
-  }, host);
+  const dispose = render(() => <Show when={arm()}><Rows promise={promise} width={width} /></Show>, host);
   flush();
   setArm(true);
   flush();

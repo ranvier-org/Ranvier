@@ -94,6 +94,7 @@ try {
       "Each sample mounts `count` boundaries of `width` rows on fresh hosts; a boundary reveals after its one async source settles, and the adapter awaits one promise per mount.",
       "Scenario `reveal` mounts the boundary at the root and settles the source afterwards. Scenario `switch` mounts the boundary from a branch switch over an already settled source, so the boundary mounts inside a flush.",
       "Solid 2 resolves a promise read by an async memo under <Loading>; Ranvier settles an async source synchronously.",
+      "Entries of `dirty` that name _lines.tmp.mjs are an untracked scratch file unrelated to the code under test.",
       "retainedBytesPerRow is the GC-stabilised retained JavaScript heap of 32 revealed boundaries divided by their rows; it is reported, not gated."
     ],
     verified, samples, summaries, heaps

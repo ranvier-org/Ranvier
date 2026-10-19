@@ -23,16 +23,29 @@ window.boundaryReveal = {
     for (const host of hosts) host.remove();
     return ms;
   },
+  // Mounts one boundary and checks its rows, that the pending view was inserted before the reveal and is gone after it,
+  // and that disposal empties the host.
   async verify(mode, width, scenario = "reveal") {
     const mount = scenarios[scenario][mode];
     const host = freshHost();
+    const records = [];
+    const observer = new MutationObserver(batch => records.push(...batch));
+    observer.observe(host, { childList: true, subtree: true });
     const dispose = await mount(host, width);
+    records.push(...observer.takeRecords());
+    observer.disconnect();
+    const pendingMounted = records.some(record => Array.from(record.addedNodes).some(node => node.textContent === "loading"));
     const rows = Array.from(host.querySelectorAll(".row"), row => row.textContent);
+    const fallbackAbsent = !host.textContent.includes("loading");
     dispose();
+    const emptied = host.childNodes.length === 0;
     host.remove();
     const expected = Array.from({ length: width }, (_, i) => `ready${i}`);
     if (JSON.stringify(rows) !== JSON.stringify(expected)) throw Error(`${scenario}/${mode}/${width}: ${JSON.stringify(rows)}`);
-    return { scenario, mode, width, rows: rows.length };
+    if (!fallbackAbsent) throw Error(`${scenario}/${mode}/${width}: the pending view remains after the reveal`);
+    if (!emptied) throw Error(`${scenario}/${mode}/${width}: the host is not empty after disposal`);
+    if (mode === "ranvier" && !pendingMounted) throw Error(`${scenario}/${mode}/${width}: the pending view was never inserted`);
+    return { scenario, mode, width, rows: rows.length, pendingMounted };
   },
   async retain(mode, width, count, scenario = "reveal") {
     const mount = scenarios[scenario][mode];

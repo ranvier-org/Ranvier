@@ -1,19 +1,16 @@
 {
-  "measuredAt": "2026-10-19T07:01:15.182Z",
-  "baseCommit": "40ab5ba36ba88acd09ccaceb98c814a7df8c963c",
+  "measuredAt": "2026-10-19T07:22:53.496Z",
+  "baseCommit": "de6b960316283da167f8531cc9dcff8a3a73d5e2",
   "dirty": [
-    "M examples/Fable.Ranvier.Playground/benchmarks/frameworks/page.mjs",
-    " M examples/Fable.Ranvier.Playground/benchmarks/frameworks/vite.config.mjs",
-    " M examples/Fable.Ranvier.Playground/tests/DomTests.fsproj",
-    "?? examples/Fable.Ranvier.Playground/benchmarks/frameworks/_lines.tmp.mjs",
-    "?? examples/Fable.Ranvier.Playground/benchmarks/frameworks/boundary-page.mjs",
-    "?? examples/Fable.Ranvier.Playground/benchmarks/frameworks/boundary-reveal.mjs",
-    "?? examples/Fable.Ranvier.Playground/benchmarks/frameworks/boundary-solid.jsx",
-    "?? examples/Fable.Ranvier.Playground/benchmarks/frameworks/dispatch-clicks.mjs",
-    "?? examples/Fable.Ranvier.Playground/benchmarks/frameworks/dispatch-page.mjs",
-    "?? examples/Fable.Ranvier.Playground/benchmarks/frameworks/dispatch.html",
-    "?? examples/Fable.Ranvier.Playground/tests/BoundaryPerf.fs",
-    "?? examples/Fable.Ranvier.Playground/tests/DispatchPerf.fs"
+    "M examples/Fable.Ranvier.Playground/benchmarks/frameworks/boundary-page.mjs",
+    " M examples/Fable.Ranvier.Playground/benchmarks/frameworks/boundary-reveal.mjs",
+    " M examples/Fable.Ranvier.Playground/benchmarks/frameworks/boundary-solid.jsx",
+    " M examples/Fable.Ranvier.Playground/benchmarks/frameworks/dispatch-clicks.mjs",
+    "?? docs/research/framework-performance/investigation/view-boundaries/keyed-after-same.json",
+    "?? docs/research/framework-performance/investigation/view-boundaries/keyed-before-same.json",
+    "?? docs/research/framework-performance/investigation/view-boundaries/template-after-same.json",
+    "?? docs/research/framework-performance/investigation/view-boundaries/template-before-same.json",
+    "?? examples/Fable.Ranvier.Playground/benchmarks/frameworks/_lines.tmp.mjs"
   ],
   "node": "v26.7.0",
   "cpu": "AMD Ryzen 9 9900X 12-Core Processor            ",
@@ -23,6 +20,7 @@
     "Each sample mounts `count` boundaries of `width` rows on fresh hosts; a boundary reveals after its one async source settles, and the adapter awaits one promise per mount.",
     "Scenario `reveal` mounts the boundary at the root and settles the source afterwards. Scenario `switch` mounts the boundary from a branch switch over an already settled source, so the boundary mounts inside a flush.",
     "Solid 2 resolves a promise read by an async memo under <Loading>; Ranvier settles an async source synchronously.",
+    "Entries of `dirty` that name _lines.tmp.mjs are an untracked scratch file unrelated to the code under test.",
     "retainedBytesPerRow is the GC-stabilised retained JavaScript heap of 32 revealed boundaries divided by their rows; it is reported, not gated."
   ],
   "verified": [
@@ -30,217 +28,253 @@
       "scenario": "reveal",
       "mode": "ranvier",
       "width": 1,
-      "rows": 1
+      "rows": 1,
+      "pendingMounted": true
     },
     {
       "scenario": "reveal",
       "mode": "solid",
       "width": 1,
-      "rows": 1
+      "rows": 1,
+      "pendingMounted": true
     },
     {
       "scenario": "reveal",
       "mode": "ranvier",
       "width": 16,
-      "rows": 16
+      "rows": 16,
+      "pendingMounted": true
     },
     {
       "scenario": "reveal",
       "mode": "solid",
       "width": 16,
-      "rows": 16
+      "rows": 16,
+      "pendingMounted": true
     },
     {
       "scenario": "reveal",
       "mode": "ranvier",
       "width": 128,
-      "rows": 128
+      "rows": 128,
+      "pendingMounted": true
     },
     {
       "scenario": "reveal",
       "mode": "solid",
       "width": 128,
-      "rows": 128
+      "rows": 128,
+      "pendingMounted": true
     },
     {
       "scenario": "switch",
       "mode": "ranvier",
       "width": 1,
-      "rows": 1
+      "rows": 1,
+      "pendingMounted": true
     },
     {
       "scenario": "switch",
       "mode": "solid",
       "width": 1,
-      "rows": 1
+      "rows": 1,
+      "pendingMounted": true
     },
     {
       "scenario": "switch",
       "mode": "ranvier",
       "width": 16,
-      "rows": 16
+      "rows": 16,
+      "pendingMounted": true
     },
     {
       "scenario": "switch",
       "mode": "solid",
       "width": 16,
-      "rows": 16
+      "rows": 16,
+      "pendingMounted": true
     },
     {
       "scenario": "switch",
       "mode": "ranvier",
       "width": 128,
-      "rows": 128
+      "rows": 128,
+      "pendingMounted": true
     },
     {
       "scenario": "switch",
       "mode": "solid",
       "width": 128,
-      "rows": 128
+      "rows": 128,
+      "pendingMounted": true
     },
     {
       "scenario": "reveal",
       "mode": "ranvier",
       "width": 1,
-      "rows": 1
+      "rows": 1,
+      "pendingMounted": true
     },
     {
       "scenario": "reveal",
       "mode": "solid",
       "width": 1,
-      "rows": 1
+      "rows": 1,
+      "pendingMounted": true
     },
     {
       "scenario": "reveal",
       "mode": "ranvier",
       "width": 16,
-      "rows": 16
+      "rows": 16,
+      "pendingMounted": true
     },
     {
       "scenario": "reveal",
       "mode": "solid",
       "width": 16,
-      "rows": 16
+      "rows": 16,
+      "pendingMounted": true
     },
     {
       "scenario": "reveal",
       "mode": "ranvier",
       "width": 128,
-      "rows": 128
+      "rows": 128,
+      "pendingMounted": true
     },
     {
       "scenario": "reveal",
       "mode": "solid",
       "width": 128,
-      "rows": 128
+      "rows": 128,
+      "pendingMounted": true
     },
     {
       "scenario": "switch",
       "mode": "ranvier",
       "width": 1,
-      "rows": 1
+      "rows": 1,
+      "pendingMounted": true
     },
     {
       "scenario": "switch",
       "mode": "solid",
       "width": 1,
-      "rows": 1
+      "rows": 1,
+      "pendingMounted": true
     },
     {
       "scenario": "switch",
       "mode": "ranvier",
       "width": 16,
-      "rows": 16
+      "rows": 16,
+      "pendingMounted": true
     },
     {
       "scenario": "switch",
       "mode": "solid",
       "width": 16,
-      "rows": 16
+      "rows": 16,
+      "pendingMounted": true
     },
     {
       "scenario": "switch",
       "mode": "ranvier",
       "width": 128,
-      "rows": 128
+      "rows": 128,
+      "pendingMounted": true
     },
     {
       "scenario": "switch",
       "mode": "solid",
       "width": 128,
-      "rows": 128
+      "rows": 128,
+      "pendingMounted": true
     },
     {
       "scenario": "reveal",
       "mode": "ranvier",
       "width": 1,
-      "rows": 1
+      "rows": 1,
+      "pendingMounted": true
     },
     {
       "scenario": "reveal",
       "mode": "solid",
       "width": 1,
-      "rows": 1
+      "rows": 1,
+      "pendingMounted": true
     },
     {
       "scenario": "reveal",
       "mode": "ranvier",
       "width": 16,
-      "rows": 16
+      "rows": 16,
+      "pendingMounted": true
     },
     {
       "scenario": "reveal",
       "mode": "solid",
       "width": 16,
-      "rows": 16
+      "rows": 16,
+      "pendingMounted": true
     },
     {
       "scenario": "reveal",
       "mode": "ranvier",
       "width": 128,
-      "rows": 128
+      "rows": 128,
+      "pendingMounted": true
     },
     {
       "scenario": "reveal",
       "mode": "solid",
       "width": 128,
-      "rows": 128
+      "rows": 128,
+      "pendingMounted": true
     },
     {
       "scenario": "switch",
       "mode": "ranvier",
       "width": 1,
-      "rows": 1
+      "rows": 1,
+      "pendingMounted": true
     },
     {
       "scenario": "switch",
       "mode": "solid",
       "width": 1,
-      "rows": 1
+      "rows": 1,
+      "pendingMounted": true
     },
     {
       "scenario": "switch",
       "mode": "ranvier",
       "width": 16,
-      "rows": 16
+      "rows": 16,
+      "pendingMounted": true
     },
     {
       "scenario": "switch",
       "mode": "solid",
       "width": 16,
-      "rows": 16
+      "rows": 16,
+      "pendingMounted": true
     },
     {
       "scenario": "switch",
       "mode": "ranvier",
       "width": 128,
-      "rows": 128
+      "rows": 128,
+      "pendingMounted": true
     },
     {
       "scenario": "switch",
       "mode": "solid",
       "width": 128,
-      "rows": 128
+      "rows": 128,
+      "pendingMounted": true
     }
   ],
   "samples": [
@@ -251,7 +285,7 @@
       "replicate": 0,
       "round": 0,
       "count": 64,
-      "ms": 0.019687499850988388
+      "ms": 0.024765624664723873
     },
     {
       "scenario": "reveal",
@@ -260,7 +294,7 @@
       "replicate": 0,
       "round": 0,
       "count": 64,
-      "ms": 0.01867187488824129
+      "ms": 0.018125000409781933
     },
     {
       "scenario": "reveal",
@@ -269,7 +303,7 @@
       "replicate": 0,
       "round": 1,
       "count": 64,
-      "ms": 0.018906249664723873
+      "ms": 0.017343750223517418
     },
     {
       "scenario": "reveal",
@@ -278,7 +312,7 @@
       "replicate": 0,
       "round": 1,
       "count": 64,
-      "ms": 0.015078125521540642
+      "ms": 0.015078124590218067
     },
     {
       "scenario": "reveal",
@@ -287,7 +321,7 @@
       "replicate": 0,
       "round": 2,
       "count": 64,
-      "ms": 0.012578125111758709
+      "ms": 0.013593750074505806
     },
     {
       "scenario": "reveal",
@@ -296,7 +330,7 @@
       "replicate": 0,
       "round": 2,
       "count": 64,
-      "ms": 0.02273437473922968
+      "ms": 0.024843750521540642
     },
     {
       "scenario": "reveal",
@@ -305,7 +339,7 @@
       "replicate": 0,
       "round": 3,
       "count": 64,
-      "ms": 0.012812499888241291
+      "ms": 0.013203125447034836
     },
     {
       "scenario": "reveal",
@@ -314,7 +348,7 @@
       "replicate": 0,
       "round": 3,
       "count": 64,
-      "ms": 0.013749999925494194
+      "ms": 0.01406249962747097
     },
     {
       "scenario": "reveal",
@@ -323,7 +357,7 @@
       "replicate": 0,
       "round": 4,
       "count": 64,
-      "ms": 0.011562500149011612
+      "ms": 0.012031249701976776
     },
     {
       "scenario": "reveal",
@@ -332,7 +366,7 @@
       "replicate": 0,
       "round": 4,
       "count": 64,
-      "ms": 0.015625
+      "ms": 0.016171875409781933
     },
     {
       "scenario": "reveal",
@@ -341,7 +375,7 @@
       "replicate": 0,
       "round": 5,
       "count": 64,
-      "ms": 0.02039062511175871
+      "ms": 0.02851562574505806
     },
     {
       "scenario": "reveal",
@@ -350,7 +384,7 @@
       "replicate": 0,
       "round": 5,
       "count": 64,
-      "ms": 0.010468750260770321
+      "ms": 0.013124999590218067
     },
     {
       "scenario": "reveal",
@@ -358,35 +392,35 @@
       "width": 1,
       "replicate": 0,
       "round": 6,
-      "count": 64,
-      "ms": 0.009218749590218067
-    },
-    {
-      "scenario": "reveal",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 0,
-      "round": 6,
-      "count": 64,
-      "ms": 0.009218749590218067
-    },
-    {
-      "scenario": "reveal",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 0,
-      "round": 7,
       "count": 64,
       "ms": 0.009921874850988388
     },
     {
       "scenario": "reveal",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 6,
+      "count": 64,
+      "ms": 0.01015624962747097
+    },
+    {
+      "scenario": "reveal",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 7,
+      "count": 64,
+      "ms": 0.010234374552965164
+    },
+    {
+      "scenario": "reveal",
       "mode": "solid",
       "width": 1,
       "replicate": 0,
       "round": 7,
       "count": 64,
-      "ms": 0.01843750011175871
+      "ms": 0.020468750037252903
     },
     {
       "scenario": "reveal",
@@ -394,44 +428,44 @@
       "width": 1,
       "replicate": 0,
       "round": 8,
-      "count": 64,
-      "ms": 0.011562500149011612
-    },
-    {
-      "scenario": "reveal",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 0,
-      "round": 8,
-      "count": 64,
-      "ms": 0.011484375223517418
-    },
-    {
-      "scenario": "reveal",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 0,
-      "round": 9,
-      "count": 64,
-      "ms": 0.009218750521540642
-    },
-    {
-      "scenario": "reveal",
-      "mode": "solid",
-      "width": 1,
-      "replicate": 0,
-      "round": 9,
       "count": 64,
       "ms": 0.009296875447034836
     },
     {
       "scenario": "reveal",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 8,
+      "count": 64,
+      "ms": 0.011640625074505806
+    },
+    {
+      "scenario": "reveal",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 9,
+      "count": 64,
+      "ms": 0.009453125298023224
+    },
+    {
+      "scenario": "reveal",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 9,
+      "count": 64,
+      "ms": 0.009843749925494194
+    },
+    {
+      "scenario": "reveal",
       "mode": "solid",
       "width": 1,
       "replicate": 0,
       "round": 10,
       "count": 64,
-      "ms": 0.009687500074505806
+      "ms": 0.010156250558793545
     },
     {
       "scenario": "reveal",
@@ -439,6 +473,33 @@
       "width": 1,
       "replicate": 0,
       "round": 10,
+      "count": 64,
+      "ms": 0.010468749329447746
+    },
+    {
+      "scenario": "reveal",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 11,
+      "count": 64,
+      "ms": 0.010546875186264515
+    },
+    {
+      "scenario": "reveal",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 11,
+      "count": 64,
+      "ms": 0.010000000707805157
+    },
+    {
+      "scenario": "reveal",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 12,
       "count": 64,
       "ms": 0.010078124701976776
     },
@@ -447,36 +508,9 @@
       "mode": "ranvier",
       "width": 1,
       "replicate": 0,
-      "round": 11,
-      "count": 64,
-      "ms": 0.010390625335276127
-    },
-    {
-      "scenario": "reveal",
-      "mode": "solid",
-      "width": 1,
-      "replicate": 0,
-      "round": 11,
-      "count": 64,
-      "ms": 0.009609375149011612
-    },
-    {
-      "scenario": "reveal",
-      "mode": "solid",
-      "width": 1,
-      "replicate": 0,
       "round": 12,
       "count": 64,
-      "ms": 0.009687500074505806
-    },
-    {
-      "scenario": "reveal",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 0,
-      "round": 12,
-      "count": 64,
-      "ms": 0.009765625
+      "ms": 0.010156250558793545
     },
     {
       "scenario": "reveal",
@@ -485,7 +519,7 @@
       "replicate": 0,
       "round": 13,
       "count": 64,
-      "ms": 0.02375000063329935
+      "ms": 0.026718749664723873
     },
     {
       "scenario": "reveal",
@@ -494,7 +528,7 @@
       "replicate": 0,
       "round": 13,
       "count": 64,
-      "ms": 0.009609374217689037
+      "ms": 0.010546875186264515
     },
     {
       "scenario": "reveal",
@@ -503,7 +537,7 @@
       "replicate": 0,
       "round": 14,
       "count": 64,
-      "ms": 0.008750000037252903
+      "ms": 0.009218749590218067
     },
     {
       "scenario": "reveal",
@@ -512,7 +546,7 @@
       "replicate": 0,
       "round": 14,
       "count": 64,
-      "ms": 0.009140625596046448
+      "ms": 0.01015624962747097
     },
     {
       "scenario": "reveal",
@@ -521,7 +555,7 @@
       "replicate": 0,
       "round": 0,
       "count": 32,
-      "ms": 0.027968749403953552
+      "ms": 0.027187500149011612
     },
     {
       "scenario": "reveal",
@@ -530,7 +564,7 @@
       "replicate": 0,
       "round": 0,
       "count": 32,
-      "ms": 0.04046875052154064
+      "ms": 0.050312500447034836
     },
     {
       "scenario": "reveal",
@@ -539,7 +573,7 @@
       "replicate": 0,
       "round": 1,
       "count": 32,
-      "ms": 0.04296875
+      "ms": 0.046562500298023224
     },
     {
       "scenario": "reveal",
@@ -548,7 +582,7 @@
       "replicate": 0,
       "round": 1,
       "count": 32,
-      "ms": 0.027656251564621925
+      "ms": 0.028437500819563866
     },
     {
       "scenario": "reveal",
@@ -557,7 +591,7 @@
       "replicate": 0,
       "round": 2,
       "count": 32,
-      "ms": 0.05874999985098839
+      "ms": 0.0643750000745058
     },
     {
       "scenario": "reveal",
@@ -566,7 +600,7 @@
       "replicate": 0,
       "round": 2,
       "count": 32,
-      "ms": 0.040312500670552254
+      "ms": 0.03984375111758709
     },
     {
       "scenario": "reveal",
@@ -575,7 +609,7 @@
       "replicate": 0,
       "round": 3,
       "count": 32,
-      "ms": 0.05156249925494194
+      "ms": 0.0462499987334013
     },
     {
       "scenario": "reveal",
@@ -584,7 +618,7 @@
       "replicate": 0,
       "round": 3,
       "count": 32,
-      "ms": 0.03453125059604645
+      "ms": 0.027812501415610313
     },
     {
       "scenario": "reveal",
@@ -593,7 +627,7 @@
       "replicate": 0,
       "round": 4,
       "count": 32,
-      "ms": 0.024687498807907104
+      "ms": 0.030156251043081284
     },
     {
       "scenario": "reveal",
@@ -611,7 +645,7 @@
       "replicate": 0,
       "round": 5,
       "count": 32,
-      "ms": 0.04046875052154064
+      "ms": 0.04062500037252903
     },
     {
       "scenario": "reveal",
@@ -620,7 +654,7 @@
       "replicate": 0,
       "round": 5,
       "count": 32,
-      "ms": 0.028593750670552254
+      "ms": 0.03593750111758709
     },
     {
       "scenario": "reveal",
@@ -629,7 +663,7 @@
       "replicate": 0,
       "round": 6,
       "count": 32,
-      "ms": 0.026249999180436134
+      "ms": 0.02890625037252903
     },
     {
       "scenario": "reveal",
@@ -638,7 +672,7 @@
       "replicate": 0,
       "round": 6,
       "count": 32,
-      "ms": 0.04062499850988388
+      "ms": 0.04296875
     },
     {
       "scenario": "reveal",
@@ -647,7 +681,7 @@
       "replicate": 0,
       "round": 7,
       "count": 32,
-      "ms": 0.04078125022351742
+      "ms": 0.04249999858438969
     },
     {
       "scenario": "reveal",
@@ -656,7 +690,7 @@
       "replicate": 0,
       "round": 7,
       "count": 32,
-      "ms": 0.026718750596046448
+      "ms": 0.030000001192092896
     },
     {
       "scenario": "reveal",
@@ -665,7 +699,7 @@
       "replicate": 0,
       "round": 8,
       "count": 32,
-      "ms": 0.026875000447034836
+      "ms": 0.027499999850988388
     },
     {
       "scenario": "reveal",
@@ -674,7 +708,7 @@
       "replicate": 0,
       "round": 8,
       "count": 32,
-      "ms": 0.04281250014901161
+      "ms": 0.04765624925494194
     },
     {
       "scenario": "reveal",
@@ -683,7 +717,7 @@
       "replicate": 0,
       "round": 9,
       "count": 32,
-      "ms": 0.04906249977648258
+      "ms": 0.0957812499254942
     },
     {
       "scenario": "reveal",
@@ -692,7 +726,7 @@
       "replicate": 0,
       "round": 9,
       "count": 32,
-      "ms": 0.06890624947845936
+      "ms": 0.029374999925494194
     },
     {
       "scenario": "reveal",
@@ -701,7 +735,7 @@
       "replicate": 0,
       "round": 10,
       "count": 32,
-      "ms": 0.026093751192092896
+      "ms": 0.031093750149011612
     },
     {
       "scenario": "reveal",
@@ -710,7 +744,7 @@
       "replicate": 0,
       "round": 10,
       "count": 32,
-      "ms": 0.04281250014901161
+      "ms": 0.044218750670552254
     },
     {
       "scenario": "reveal",
@@ -719,7 +753,7 @@
       "replicate": 0,
       "round": 11,
       "count": 32,
-      "ms": 0.04140624962747097
+      "ms": 0.046406250447034836
     },
     {
       "scenario": "reveal",
@@ -728,7 +762,7 @@
       "replicate": 0,
       "round": 11,
       "count": 32,
-      "ms": 0.026093751192092896
+      "ms": 0.027812499552965164
     },
     {
       "scenario": "reveal",
@@ -737,7 +771,7 @@
       "replicate": 0,
       "round": 12,
       "count": 32,
-      "ms": 0.025468749925494194
+      "ms": 0.025937499478459358
     },
     {
       "scenario": "reveal",
@@ -746,7 +780,7 @@
       "replicate": 0,
       "round": 12,
       "count": 32,
-      "ms": 0.0390625
+      "ms": 0.040312500670552254
     },
     {
       "scenario": "reveal",
@@ -755,7 +789,7 @@
       "replicate": 0,
       "round": 13,
       "count": 32,
-      "ms": 0.03921874985098839
+      "ms": 0.0396875012665987
     },
     {
       "scenario": "reveal",
@@ -764,7 +798,7 @@
       "replicate": 0,
       "round": 13,
       "count": 32,
-      "ms": 0.026406249031424522
+      "ms": 0.027656249701976776
     },
     {
       "scenario": "reveal",
@@ -773,7 +807,7 @@
       "replicate": 0,
       "round": 14,
       "count": 32,
-      "ms": 0.026093749329447746
+      "ms": 0.02734375
     },
     {
       "scenario": "reveal",
@@ -782,7 +816,7 @@
       "replicate": 0,
       "round": 14,
       "count": 32,
-      "ms": 0.054218750447034836
+      "ms": 0.041875001043081284
     },
     {
       "scenario": "reveal",
@@ -791,7 +825,7 @@
       "replicate": 0,
       "round": 0,
       "count": 8,
-      "ms": 0.13250000029802322
+      "ms": 0.26124999672174454
     },
     {
       "scenario": "reveal",
@@ -800,7 +834,7 @@
       "replicate": 0,
       "round": 0,
       "count": 8,
-      "ms": 0.2800000011920929
+      "ms": 0.4481250047683716
     },
     {
       "scenario": "reveal",
@@ -809,7 +843,7 @@
       "replicate": 0,
       "round": 1,
       "count": 8,
-      "ms": 0.25
+      "ms": 0.43812499940395355
     },
     {
       "scenario": "reveal",
@@ -818,7 +852,7 @@
       "replicate": 0,
       "round": 1,
       "count": 8,
-      "ms": 0.13125000149011612
+      "ms": 0.2956250011920929
     },
     {
       "scenario": "reveal",
@@ -827,7 +861,7 @@
       "replicate": 0,
       "round": 2,
       "count": 8,
-      "ms": 0.12687499821186066
+      "ms": 0.24249999970197678
     },
     {
       "scenario": "reveal",
@@ -836,7 +870,7 @@
       "replicate": 0,
       "round": 2,
       "count": 8,
-      "ms": 0.4125000014901161
+      "ms": 0.49437499791383743
     },
     {
       "scenario": "reveal",
@@ -845,7 +879,7 @@
       "replicate": 0,
       "round": 3,
       "count": 8,
-      "ms": 0.23875000327825546
+      "ms": 0.4750000014901161
     },
     {
       "scenario": "reveal",
@@ -854,7 +888,7 @@
       "replicate": 0,
       "round": 3,
       "count": 8,
-      "ms": 0.1431250050663948
+      "ms": 0.7175000011920929
     },
     {
       "scenario": "reveal",
@@ -862,6 +896,78 @@
       "width": 128,
       "replicate": 0,
       "round": 4,
+      "count": 8,
+      "ms": 0.12312499433755875
+    },
+    {
+      "scenario": "reveal",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 4,
+      "count": 8,
+      "ms": 0.20499999821186066
+    },
+    {
+      "scenario": "reveal",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 5,
+      "count": 8,
+      "ms": 0.19312499463558197
+    },
+    {
+      "scenario": "reveal",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 5,
+      "count": 8,
+      "ms": 0.11937500536441803
+    },
+    {
+      "scenario": "reveal",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 6,
+      "count": 8,
+      "ms": 0.12437500059604645
+    },
+    {
+      "scenario": "reveal",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 6,
+      "count": 8,
+      "ms": 0.1887499988079071
+    },
+    {
+      "scenario": "reveal",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 7,
+      "count": 8,
+      "ms": 0.18437499552965164
+    },
+    {
+      "scenario": "reveal",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 7,
+      "count": 8,
+      "ms": 0.1537500023841858
+    },
+    {
+      "scenario": "reveal",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 8,
       "count": 8,
       "ms": 0.11687500029802322
     },
@@ -870,81 +976,9 @@
       "mode": "ranvier",
       "width": 128,
       "replicate": 0,
-      "round": 4,
-      "count": 8,
-      "ms": 0.2149999961256981
-    },
-    {
-      "scenario": "reveal",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 0,
-      "round": 5,
-      "count": 8,
-      "ms": 0.21187499910593033
-    },
-    {
-      "scenario": "reveal",
-      "mode": "solid",
-      "width": 128,
-      "replicate": 0,
-      "round": 5,
-      "count": 8,
-      "ms": 0.12124999612569809
-    },
-    {
-      "scenario": "reveal",
-      "mode": "solid",
-      "width": 128,
-      "replicate": 0,
-      "round": 6,
-      "count": 8,
-      "ms": 0.13874999433755875
-    },
-    {
-      "scenario": "reveal",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 0,
-      "round": 6,
-      "count": 8,
-      "ms": 0.2199999988079071
-    },
-    {
-      "scenario": "reveal",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 0,
-      "round": 7,
-      "count": 8,
-      "ms": 0.23624999821186066
-    },
-    {
-      "scenario": "reveal",
-      "mode": "solid",
-      "width": 128,
-      "replicate": 0,
-      "round": 7,
-      "count": 8,
-      "ms": 0.1262499988079071
-    },
-    {
-      "scenario": "reveal",
-      "mode": "solid",
-      "width": 128,
-      "replicate": 0,
       "round": 8,
       "count": 8,
-      "ms": 0.12937500327825546
-    },
-    {
-      "scenario": "reveal",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 0,
-      "round": 8,
-      "count": 8,
-      "ms": 0.2212499976158142
+      "ms": 0.19437500089406967
     },
     {
       "scenario": "reveal",
@@ -953,7 +987,7 @@
       "replicate": 0,
       "round": 9,
       "count": 8,
-      "ms": 0.2199999988079071
+      "ms": 0.20812500268220901
     },
     {
       "scenario": "reveal",
@@ -962,7 +996,7 @@
       "replicate": 0,
       "round": 9,
       "count": 8,
-      "ms": 0.14687499403953552
+      "ms": 0.11937500536441803
     },
     {
       "scenario": "reveal",
@@ -971,7 +1005,7 @@
       "replicate": 0,
       "round": 10,
       "count": 8,
-      "ms": 0.14000000059604645
+      "ms": 0.11999999731779099
     },
     {
       "scenario": "reveal",
@@ -980,7 +1014,7 @@
       "replicate": 0,
       "round": 10,
       "count": 8,
-      "ms": 0.2487500011920929
+      "ms": 0.19062500447034836
     },
     {
       "scenario": "reveal",
@@ -989,7 +1023,7 @@
       "replicate": 0,
       "round": 11,
       "count": 8,
-      "ms": 0.234375
+      "ms": 0.20625000447034836
     },
     {
       "scenario": "reveal",
@@ -998,7 +1032,7 @@
       "replicate": 0,
       "round": 11,
       "count": 8,
-      "ms": 0.12812499701976776
+      "ms": 0.1237500011920929
     },
     {
       "scenario": "reveal",
@@ -1007,7 +1041,7 @@
       "replicate": 0,
       "round": 12,
       "count": 8,
-      "ms": 0.15187500417232513
+      "ms": 0.1275000050663948
     },
     {
       "scenario": "reveal",
@@ -1016,7 +1050,7 @@
       "replicate": 0,
       "round": 12,
       "count": 8,
-      "ms": 0.5787499994039536
+      "ms": 0.20749999582767487
     },
     {
       "scenario": "reveal",
@@ -1025,7 +1059,7 @@
       "replicate": 0,
       "round": 13,
       "count": 8,
-      "ms": 0.2162500023841858
+      "ms": 0.24937500059604645
     },
     {
       "scenario": "reveal",
@@ -1034,7 +1068,7 @@
       "replicate": 0,
       "round": 13,
       "count": 8,
-      "ms": 0.21562500298023224
+      "ms": 0.13125000149011612
     },
     {
       "scenario": "reveal",
@@ -1043,7 +1077,7 @@
       "replicate": 0,
       "round": 14,
       "count": 8,
-      "ms": 0.1381250023841858
+      "ms": 0.13187500089406967
     },
     {
       "scenario": "reveal",
@@ -1052,7 +1086,7 @@
       "replicate": 0,
       "round": 14,
       "count": 8,
-      "ms": 0.22937499731779099
+      "ms": 0.2175000011920929
     },
     {
       "scenario": "switch",
@@ -1060,6 +1094,42 @@
       "width": 1,
       "replicate": 0,
       "round": 0,
+      "count": 64,
+      "ms": 0.012500000186264515
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 0,
+      "count": 64,
+      "ms": 0.019687500782310963
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 1,
+      "count": 64,
+      "ms": 0.01726562436670065
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 1,
+      "count": 64,
+      "ms": 0.014140624552965164
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 2,
       "count": 64,
       "ms": 0.012890624813735485
     },
@@ -1068,45 +1138,9 @@
       "mode": "ranvier",
       "width": 1,
       "replicate": 0,
-      "round": 0,
-      "count": 64,
-      "ms": 0.018749999813735485
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 0,
-      "round": 1,
-      "count": 64,
-      "ms": 0.015781249850988388
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 1,
-      "replicate": 0,
-      "round": 1,
-      "count": 64,
-      "ms": 0.012109375558793545
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 1,
-      "replicate": 0,
       "round": 2,
       "count": 64,
-      "ms": 0.011250000447034836
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 0,
-      "round": 2,
-      "count": 64,
-      "ms": 0.01671874988824129
+      "ms": 0.016250000335276127
     },
     {
       "scenario": "switch",
@@ -1115,7 +1149,7 @@
       "replicate": 0,
       "round": 3,
       "count": 64,
-      "ms": 0.01601562462747097
+      "ms": 0.018124999478459358
     },
     {
       "scenario": "switch",
@@ -1123,69 +1157,6 @@
       "width": 1,
       "replicate": 0,
       "round": 3,
-      "count": 64,
-      "ms": 0.011874999850988388
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 1,
-      "replicate": 0,
-      "round": 4,
-      "count": 64,
-      "ms": 0.010312499478459358
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 0,
-      "round": 4,
-      "count": 64,
-      "ms": 0.015390625223517418
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 0,
-      "round": 5,
-      "count": 64,
-      "ms": 0.015156250447034836
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 1,
-      "replicate": 0,
-      "round": 5,
-      "count": 64,
-      "ms": 0.01015624962747097
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 1,
-      "replicate": 0,
-      "round": 6,
-      "count": 64,
-      "ms": 0.01015624962747097
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 0,
-      "round": 6,
-      "count": 64,
-      "ms": 0.014453125186264515
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 0,
-      "round": 7,
       "count": 64,
       "ms": 0.014140625484287739
     },
@@ -1194,9 +1165,72 @@
       "mode": "solid",
       "width": 1,
       "replicate": 0,
+      "round": 4,
+      "count": 64,
+      "ms": 0.012109375558793545
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 4,
+      "count": 64,
+      "ms": 0.015859374776482582
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 5,
+      "count": 64,
+      "ms": 0.020468750037252903
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 5,
+      "count": 64,
+      "ms": 0.012343750335276127
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 6,
+      "count": 64,
+      "ms": 0.01210937462747097
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 6,
+      "count": 64,
+      "ms": 0.015390624292194843
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
       "round": 7,
       "count": 64,
-      "ms": 0.010312500409781933
+      "ms": 0.016093749552965164
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 7,
+      "count": 64,
+      "ms": 0.011640625074505806
     },
     {
       "scenario": "switch",
@@ -1205,7 +1239,7 @@
       "replicate": 0,
       "round": 8,
       "count": 64,
-      "ms": 0.01015624962747097
+      "ms": 0.012031249701976776
     },
     {
       "scenario": "switch",
@@ -1214,7 +1248,7 @@
       "replicate": 0,
       "round": 8,
       "count": 64,
-      "ms": 0.014843749813735485
+      "ms": 0.015078124590218067
     },
     {
       "scenario": "switch",
@@ -1223,7 +1257,7 @@
       "replicate": 0,
       "round": 9,
       "count": 64,
-      "ms": 0.014687499962747097
+      "ms": 0.016562500037252903
     },
     {
       "scenario": "switch",
@@ -1232,7 +1266,7 @@
       "replicate": 0,
       "round": 9,
       "count": 64,
-      "ms": 0.010078124701976776
+      "ms": 0.07007812522351742
     },
     {
       "scenario": "switch",
@@ -1250,6 +1284,42 @@
       "replicate": 0,
       "round": 10,
       "count": 64,
+      "ms": 0.027109374292194843
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 11,
+      "count": 64,
+      "ms": 0.014765624888241291
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 11,
+      "count": 64,
+      "ms": 0.020078124478459358
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 12,
+      "count": 64,
+      "ms": 0.01132812537252903
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 12,
+      "count": 64,
       "ms": 0.015390624292194843
     },
     {
@@ -1257,45 +1327,9 @@
       "mode": "ranvier",
       "width": 1,
       "replicate": 0,
-      "round": 11,
-      "count": 64,
-      "ms": 0.014687499962747097
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 1,
-      "replicate": 0,
-      "round": 11,
-      "count": 64,
-      "ms": 0.010312499478459358
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 1,
-      "replicate": 0,
-      "round": 12,
-      "count": 64,
-      "ms": 0.010625000111758709
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 0,
-      "round": 12,
-      "count": 64,
-      "ms": 0.014453125186264515
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 0,
       "round": 13,
       "count": 64,
-      "ms": 0.014140625484287739
+      "ms": 0.014921875670552254
     },
     {
       "scenario": "switch",
@@ -1304,7 +1338,7 @@
       "replicate": 0,
       "round": 13,
       "count": 64,
-      "ms": 0.010312500409781933
+      "ms": 0.011484375223517418
     },
     {
       "scenario": "switch",
@@ -1313,7 +1347,7 @@
       "replicate": 0,
       "round": 14,
       "count": 64,
-      "ms": 0.009921874850988388
+      "ms": 0.011093749664723873
     },
     {
       "scenario": "switch",
@@ -1322,7 +1356,7 @@
       "replicate": 0,
       "round": 14,
       "count": 64,
-      "ms": 0.057421875186264515
+      "ms": 0.01523437537252903
     },
     {
       "scenario": "switch",
@@ -1331,7 +1365,7 @@
       "replicate": 0,
       "round": 0,
       "count": 32,
-      "ms": 0.023906249552965164
+      "ms": 0.024687500670552254
     },
     {
       "scenario": "switch",
@@ -1340,7 +1374,7 @@
       "replicate": 0,
       "round": 0,
       "count": 32,
-      "ms": 0.03125
+      "ms": 0.029531249776482582
     },
     {
       "scenario": "switch",
@@ -1348,222 +1382,6 @@
       "width": 16,
       "replicate": 0,
       "round": 1,
-      "count": 32,
-      "ms": 0.031093750149011612
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 0,
-      "round": 1,
-      "count": 32,
-      "ms": 0.024062499403953552
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 0,
-      "round": 2,
-      "count": 32,
-      "ms": 0.022812500596046448
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 0,
-      "round": 2,
-      "count": 32,
-      "ms": 0.030937500298023224
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 0,
-      "round": 3,
-      "count": 32,
-      "ms": 0.03140624985098839
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 0,
-      "round": 3,
-      "count": 32,
-      "ms": 0.03437500074505806
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 0,
-      "round": 4,
-      "count": 32,
-      "ms": 0.024375000968575478
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 0,
-      "round": 4,
-      "count": 32,
-      "ms": 0.03031250089406967
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 0,
-      "round": 5,
-      "count": 32,
-      "ms": 0.03187499940395355
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 0,
-      "round": 5,
-      "count": 32,
-      "ms": 0.024843750521540642
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 0,
-      "round": 6,
-      "count": 32,
-      "ms": 0.023906249552965164
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 0,
-      "round": 6,
-      "count": 32,
-      "ms": 0.034062499180436134
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 0,
-      "round": 7,
-      "count": 32,
-      "ms": 0.03140624985098839
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 0,
-      "round": 7,
-      "count": 32,
-      "ms": 0.023593749850988388
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 0,
-      "round": 8,
-      "count": 32,
-      "ms": 0.030156251043081284
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 0,
-      "round": 8,
-      "count": 32,
-      "ms": 0.03046875074505806
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 0,
-      "round": 9,
-      "count": 32,
-      "ms": 0.032343750819563866
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 0,
-      "round": 9,
-      "count": 32,
-      "ms": 0.023906249552965164
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 0,
-      "round": 10,
-      "count": 32,
-      "ms": 0.02421874925494194
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 0,
-      "round": 10,
-      "count": 32,
-      "ms": 0.032343748956918716
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 0,
-      "round": 11,
-      "count": 32,
-      "ms": 0.0357812512665987
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 0,
-      "round": 11,
-      "count": 32,
-      "ms": 0.02640625089406967
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 0,
-      "round": 12,
-      "count": 32,
-      "ms": 0.023593751713633537
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 0,
-      "round": 12,
-      "count": 32,
-      "ms": 0.03140624985098839
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 0,
-      "round": 13,
       "count": 32,
       "ms": 0.02968749962747097
     },
@@ -1572,9 +1390,225 @@
       "mode": "solid",
       "width": 16,
       "replicate": 0,
+      "round": 1,
+      "count": 32,
+      "ms": 0.025156250223517418
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 2,
+      "count": 32,
+      "ms": 0.02500000037252903
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 2,
+      "count": 32,
+      "ms": 0.02968749962747097
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 3,
+      "count": 32,
+      "ms": 0.029531249776482582
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 3,
+      "count": 32,
+      "ms": 0.025312500074505806
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 4,
+      "count": 32,
+      "ms": 0.02578124962747097
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 4,
+      "count": 32,
+      "ms": 0.02890625037252903
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 5,
+      "count": 32,
+      "ms": 0.037812501192092896
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 5,
+      "count": 32,
+      "ms": 0.14749999903142452
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 6,
+      "count": 32,
+      "ms": 0.026875000447034836
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 6,
+      "count": 32,
+      "ms": 0.03343749977648258
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 7,
+      "count": 32,
+      "ms": 0.029999999329447746
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 7,
+      "count": 32,
+      "ms": 0.026093749329447746
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 8,
+      "count": 32,
+      "ms": 0.025624999776482582
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 8,
+      "count": 32,
+      "ms": 0.031562499701976776
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 9,
+      "count": 32,
+      "ms": 0.030625000596046448
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 9,
+      "count": 32,
+      "ms": 0.026249999180436134
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 10,
+      "count": 32,
+      "ms": 0.025937499478459358
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 10,
+      "count": 32,
+      "ms": 0.053437499329447746
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 11,
+      "count": 32,
+      "ms": 0.044843750074505806
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 11,
+      "count": 32,
+      "ms": 0.04156249947845936
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 12,
+      "count": 32,
+      "ms": 0.03953125141561031
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 12,
+      "count": 32,
+      "ms": 0.045781249180436134
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
       "round": 13,
       "count": 32,
-      "ms": 0.024687500670552254
+      "ms": 0.04546874947845936
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 13,
+      "count": 32,
+      "ms": 0.04140624962747097
     },
     {
       "scenario": "switch",
@@ -1583,7 +1617,7 @@
       "replicate": 0,
       "round": 14,
       "count": 32,
-      "ms": 0.02265625074505806
+      "ms": 0.026874998584389687
     },
     {
       "scenario": "switch",
@@ -1592,7 +1626,7 @@
       "replicate": 0,
       "round": 14,
       "count": 32,
-      "ms": 0.030937500298023224
+      "ms": 0.03265625052154064
     },
     {
       "scenario": "switch",
@@ -1600,51 +1634,6 @@
       "width": 128,
       "replicate": 0,
       "round": 0,
-      "count": 8,
-      "ms": 0.12125000357627869
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 0,
-      "round": 0,
-      "count": 8,
-      "ms": 0.1381249949336052
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 0,
-      "round": 1,
-      "count": 8,
-      "ms": 0.125
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 128,
-      "replicate": 0,
-      "round": 1,
-      "count": 8,
-      "ms": 0.12125000357627869
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 128,
-      "replicate": 0,
-      "round": 2,
-      "count": 8,
-      "ms": 0.11562500149011612
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 0,
-      "round": 2,
       "count": 8,
       "ms": 0.1287499964237213
     },
@@ -1653,9 +1642,54 @@
       "mode": "ranvier",
       "width": 128,
       "replicate": 0,
+      "round": 0,
+      "count": 8,
+      "ms": 0.14125000685453415
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 1,
+      "count": 8,
+      "ms": 0.5993750020861626
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 1,
+      "count": 8,
+      "ms": 0.15312499552965164
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 2,
+      "count": 8,
+      "ms": 0.13125000149011612
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 2,
+      "count": 8,
+      "ms": 0.15187499672174454
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
       "round": 3,
       "count": 8,
-      "ms": 0.12687499821186066
+      "ms": 0.1599999964237213
     },
     {
       "scenario": "switch",
@@ -1663,195 +1697,123 @@
       "width": 128,
       "replicate": 0,
       "round": 3,
-      "count": 8,
-      "ms": 0.11749999970197678
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 128,
-      "replicate": 0,
-      "round": 4,
-      "count": 8,
-      "ms": 0.14812500029802322
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 0,
-      "round": 4,
-      "count": 8,
-      "ms": 0.12312500178813934
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 0,
-      "round": 5,
-      "count": 8,
-      "ms": 0.16499999910593033
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 128,
-      "replicate": 0,
-      "round": 5,
-      "count": 8,
-      "ms": 0.1368749961256981
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 128,
-      "replicate": 0,
-      "round": 6,
-      "count": 8,
-      "ms": 0.13062499463558197
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 0,
-      "round": 6,
-      "count": 8,
-      "ms": 0.14812500029802322
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 0,
-      "round": 7,
-      "count": 8,
-      "ms": 0.12312500178813934
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 128,
-      "replicate": 0,
-      "round": 7,
-      "count": 8,
-      "ms": 0.12062499672174454
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 128,
-      "replicate": 0,
-      "round": 8,
-      "count": 8,
-      "ms": 0.12125000357627869
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 0,
-      "round": 8,
-      "count": 8,
-      "ms": 0.14499999582767487
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 0,
-      "round": 9,
-      "count": 8,
-      "ms": 0.1393750011920929
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 128,
-      "replicate": 0,
-      "round": 9,
-      "count": 8,
-      "ms": 0.13437499850988388
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 128,
-      "replicate": 0,
-      "round": 10,
-      "count": 8,
-      "ms": 0.12812500447034836
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 0,
-      "round": 10,
       "count": 8,
       "ms": 0.13499999791383743
     },
     {
       "scenario": "switch",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 4,
+      "count": 8,
+      "ms": 0.12937499582767487
+    },
+    {
+      "scenario": "switch",
       "mode": "ranvier",
       "width": 128,
       "replicate": 0,
-      "round": 11,
+      "round": 4,
       "count": 8,
-      "ms": 0.13749999552965164
+      "ms": 0.14750000089406967
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 5,
+      "count": 8,
+      "ms": 0.14249999821186066
     },
     {
       "scenario": "switch",
       "mode": "solid",
       "width": 128,
       "replicate": 0,
-      "round": 11,
+      "round": 5,
       "count": 8,
-      "ms": 0.18249999731779099
+      "ms": 0.1287500038743019
     },
     {
       "scenario": "switch",
       "mode": "solid",
       "width": 128,
       "replicate": 0,
-      "round": 12,
+      "round": 6,
       "count": 8,
-      "ms": 0.12687499821186066
+      "ms": 0.12437500059604645
     },
     {
       "scenario": "switch",
       "mode": "ranvier",
       "width": 128,
       "replicate": 0,
-      "round": 12,
-      "count": 8,
-      "ms": 0.13562499731779099
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 0,
-      "round": 13,
+      "round": 6,
       "count": 8,
       "ms": 0.140625
     },
     {
       "scenario": "switch",
-      "mode": "solid",
+      "mode": "ranvier",
       "width": 128,
       "replicate": 0,
-      "round": 13,
+      "round": 7,
       "count": 8,
-      "ms": 0.369999997317791
+      "ms": 0.1418749988079071
     },
     {
       "scenario": "switch",
       "mode": "solid",
       "width": 128,
       "replicate": 0,
-      "round": 14,
+      "round": 7,
+      "count": 8,
+      "ms": 0.14937499910593033
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 8,
+      "count": 8,
+      "ms": 0.12312499433755875
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 8,
+      "count": 8,
+      "ms": 0.1550000011920929
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 9,
+      "count": 8,
+      "ms": 0.14499999582767487
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 9,
+      "count": 8,
+      "ms": 0.12562499940395355
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 10,
       "count": 8,
       "ms": 0.12187500298023224
     },
@@ -1860,9 +1822,81 @@
       "mode": "ranvier",
       "width": 128,
       "replicate": 0,
+      "round": 10,
+      "count": 8,
+      "ms": 0.1431250050663948
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 11,
+      "count": 8,
+      "ms": 0.14749999344348907
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 11,
+      "count": 8,
+      "ms": 0.12437500059604645
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 12,
+      "count": 8,
+      "ms": 0.1237499937415123
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 12,
+      "count": 8,
+      "ms": 0.1418749988079071
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 13,
+      "count": 8,
+      "ms": 0.14687500149011612
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 13,
+      "count": 8,
+      "ms": 0.1237499937415123
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
       "round": 14,
       "count": 8,
-      "ms": 0.14999999850988388
+      "ms": 0.15312499552965164
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 14,
+      "count": 8,
+      "ms": 0.5724999979138374
     },
     {
       "scenario": "reveal",
@@ -1871,7 +1905,7 @@
       "replicate": 1,
       "round": 0,
       "count": 64,
-      "ms": 0.02632812410593033
+      "ms": 0.03429687488824129
     },
     {
       "scenario": "reveal",
@@ -1880,7 +1914,7 @@
       "replicate": 1,
       "round": 0,
       "count": 64,
-      "ms": 0.017109375447034836
+      "ms": 0.023359375074505806
     },
     {
       "scenario": "reveal",
@@ -1889,7 +1923,7 @@
       "replicate": 1,
       "round": 1,
       "count": 64,
-      "ms": 0.022968750447034836
+      "ms": 0.012421875260770321
     },
     {
       "scenario": "reveal",
@@ -1898,7 +1932,7 @@
       "replicate": 1,
       "round": 1,
       "count": 64,
-      "ms": 0.012968749739229679
+      "ms": 0.012656250037252903
     },
     {
       "scenario": "reveal",
@@ -1907,7 +1941,7 @@
       "replicate": 1,
       "round": 2,
       "count": 64,
-      "ms": 0.013984374701976776
+      "ms": 0.013437499292194843
     },
     {
       "scenario": "reveal",
@@ -1916,7 +1950,7 @@
       "replicate": 1,
       "round": 2,
       "count": 64,
-      "ms": 0.020312500186264515
+      "ms": 0.021640624850988388
     },
     {
       "scenario": "reveal",
@@ -1925,7 +1959,7 @@
       "replicate": 1,
       "round": 3,
       "count": 64,
-      "ms": 0.013046874664723873
+      "ms": 0.013515625149011612
     },
     {
       "scenario": "reveal",
@@ -1934,7 +1968,7 @@
       "replicate": 1,
       "round": 3,
       "count": 64,
-      "ms": 0.014296875335276127
+      "ms": 0.015312500298023224
     },
     {
       "scenario": "reveal",
@@ -1943,7 +1977,7 @@
       "replicate": 1,
       "round": 4,
       "count": 64,
-      "ms": 0.012890624813735485
+      "ms": 0.013281249441206455
     },
     {
       "scenario": "reveal",
@@ -1952,7 +1986,7 @@
       "replicate": 1,
       "round": 4,
       "count": 64,
-      "ms": 0.018906249664723873
+      "ms": 0.015937499701976776
     },
     {
       "scenario": "reveal",
@@ -1961,7 +1995,7 @@
       "replicate": 1,
       "round": 5,
       "count": 64,
-      "ms": 0.02023437526077032
+      "ms": 0.022421875037252903
     },
     {
       "scenario": "reveal",
@@ -1970,7 +2004,7 @@
       "replicate": 1,
       "round": 5,
       "count": 64,
-      "ms": 0.01007812563329935
+      "ms": 0.011484375223517418
     },
     {
       "scenario": "reveal",
@@ -1979,7 +2013,7 @@
       "replicate": 1,
       "round": 6,
       "count": 64,
-      "ms": 0.009765625
+      "ms": 0.011953124776482582
     },
     {
       "scenario": "reveal",
@@ -1988,7 +2022,7 @@
       "replicate": 1,
       "round": 6,
       "count": 64,
-      "ms": 0.00945312436670065
+      "ms": 0.010703125037252903
     },
     {
       "scenario": "reveal",
@@ -1997,7 +2031,7 @@
       "replicate": 1,
       "round": 7,
       "count": 64,
-      "ms": 0.00937500037252903
+      "ms": 0.010781249962747097
     },
     {
       "scenario": "reveal",
@@ -2006,7 +2040,7 @@
       "replicate": 1,
       "round": 7,
       "count": 64,
-      "ms": 0.019375000149011612
+      "ms": 0.02257812488824129
     },
     {
       "scenario": "reveal",
@@ -2015,7 +2049,7 @@
       "replicate": 1,
       "round": 8,
       "count": 64,
-      "ms": 0.009140624664723873
+      "ms": 0.009843749925494194
     },
     {
       "scenario": "reveal",
@@ -2024,7 +2058,7 @@
       "replicate": 1,
       "round": 8,
       "count": 64,
-      "ms": 0.010312499478459358
+      "ms": 0.011406250298023224
     },
     {
       "scenario": "reveal",
@@ -2033,7 +2067,7 @@
       "replicate": 1,
       "round": 9,
       "count": 64,
-      "ms": 0.009140624664723873
+      "ms": 0.009218749590218067
     },
     {
       "scenario": "reveal",
@@ -2042,7 +2076,7 @@
       "replicate": 1,
       "round": 9,
       "count": 64,
-      "ms": 0.009296874515712261
+      "ms": 0.009609375149011612
     },
     {
       "scenario": "reveal",
@@ -2051,7 +2085,7 @@
       "replicate": 1,
       "round": 10,
       "count": 64,
-      "ms": 0.009687500074505806
+      "ms": 0.010156250558793545
     },
     {
       "scenario": "reveal",
@@ -2059,24 +2093,60 @@
       "width": 1,
       "replicate": 1,
       "round": 10,
-      "count": 64,
-      "ms": 0.010312499478459358
-    },
-    {
-      "scenario": "reveal",
-      "mode": "solid",
-      "width": 1,
-      "replicate": 1,
-      "round": 11,
       "count": 64,
       "ms": 0.010468750260770321
     },
     {
       "scenario": "reveal",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 11,
+      "count": 64,
+      "ms": 0.009609375149011612
+    },
+    {
+      "scenario": "reveal",
       "mode": "ranvier",
       "width": 1,
       "replicate": 1,
       "round": 11,
+      "count": 64,
+      "ms": 0.010312500409781933
+    },
+    {
+      "scenario": "reveal",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 12,
+      "count": 64,
+      "ms": 0.011796874925494194
+    },
+    {
+      "scenario": "reveal",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 12,
+      "count": 64,
+      "ms": 0.009921875782310963
+    },
+    {
+      "scenario": "reveal",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 13,
+      "count": 64,
+      "ms": 0.02437499910593033
+    },
+    {
+      "scenario": "reveal",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 13,
       "count": 64,
       "ms": 0.009999999776482582
     },
@@ -2085,63 +2155,27 @@
       "mode": "ranvier",
       "width": 1,
       "replicate": 1,
-      "round": 12,
+      "round": 14,
       "count": 64,
-      "ms": 0.011171874590218067
+      "ms": 0.012812499888241291
     },
     {
       "scenario": "reveal",
       "mode": "solid",
       "width": 1,
       "replicate": 1,
-      "round": 12,
-      "count": 64,
-      "ms": 0.009765625
-    },
-    {
-      "scenario": "reveal",
-      "mode": "solid",
-      "width": 1,
-      "replicate": 1,
-      "round": 13,
-      "count": 64,
-      "ms": 0.023515624925494194
-    },
-    {
-      "scenario": "reveal",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 1,
-      "round": 13,
+      "round": 14,
       "count": 64,
       "ms": 0.009843749925494194
     },
     {
       "scenario": "reveal",
       "mode": "ranvier",
-      "width": 1,
-      "replicate": 1,
-      "round": 14,
-      "count": 64,
-      "ms": 0.009531250223517418
-    },
-    {
-      "scenario": "reveal",
-      "mode": "solid",
-      "width": 1,
-      "replicate": 1,
-      "round": 14,
-      "count": 64,
-      "ms": 0.009999999776482582
-    },
-    {
-      "scenario": "reveal",
-      "mode": "ranvier",
       "width": 16,
       "replicate": 1,
       "round": 0,
       "count": 32,
-      "ms": 0.04296875
+      "ms": 0.041874999180436134
     },
     {
       "scenario": "reveal",
@@ -2150,7 +2184,7 @@
       "replicate": 1,
       "round": 0,
       "count": 32,
-      "ms": 0.033906251192092896
+      "ms": 0.03500000014901161
     },
     {
       "scenario": "reveal",
@@ -2159,7 +2193,7 @@
       "replicate": 1,
       "round": 1,
       "count": 32,
-      "ms": 0.028593748807907104
+      "ms": 0.031718749552965164
     },
     {
       "scenario": "reveal",
@@ -2168,7 +2202,7 @@
       "replicate": 1,
       "round": 1,
       "count": 32,
-      "ms": 0.04062500037252903
+      "ms": 0.041093749925494194
     },
     {
       "scenario": "reveal",
@@ -2177,7 +2211,7 @@
       "replicate": 1,
       "round": 2,
       "count": 32,
-      "ms": 0.06703124940395355
+      "ms": 0.07546875067055225
     },
     {
       "scenario": "reveal",
@@ -2186,7 +2220,7 @@
       "replicate": 1,
       "round": 2,
       "count": 32,
-      "ms": 0.027812501415610313
+      "ms": 0.04078125022351742
     },
     {
       "scenario": "reveal",
@@ -2195,7 +2229,7 @@
       "replicate": 1,
       "round": 3,
       "count": 32,
-      "ms": 0.02500000037252903
+      "ms": 0.036249998956918716
     },
     {
       "scenario": "reveal",
@@ -2204,7 +2238,7 @@
       "replicate": 1,
       "round": 3,
       "count": 32,
-      "ms": 0.044218748807907104
+      "ms": 0.050468748435378075
     },
     {
       "scenario": "reveal",
@@ -2213,7 +2247,7 @@
       "replicate": 1,
       "round": 4,
       "count": 32,
-      "ms": 0.043437499552965164
+      "ms": 0.04046875052154064
     },
     {
       "scenario": "reveal",
@@ -2221,62 +2255,62 @@
       "width": 16,
       "replicate": 1,
       "round": 4,
-      "count": 32,
-      "ms": 0.026406249031424522
-    },
-    {
-      "scenario": "reveal",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 1,
-      "round": 5,
-      "count": 32,
-      "ms": 0.024687500670552254
-    },
-    {
-      "scenario": "reveal",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 1,
-      "round": 5,
-      "count": 32,
-      "ms": 0.040937500074505806
-    },
-    {
-      "scenario": "reveal",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 1,
-      "round": 6,
-      "count": 32,
-      "ms": 0.044843750074505806
-    },
-    {
-      "scenario": "reveal",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 1,
-      "round": 6,
-      "count": 32,
-      "ms": 0.026875000447034836
-    },
-    {
-      "scenario": "reveal",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 1,
-      "round": 7,
       "count": 32,
       "ms": 0.02812499925494194
     },
     {
       "scenario": "reveal",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 5,
+      "count": 32,
+      "ms": 0.025156250223517418
+    },
+    {
+      "scenario": "reveal",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 5,
+      "count": 32,
+      "ms": 0.04156249947845936
+    },
+    {
+      "scenario": "reveal",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 6,
+      "count": 32,
+      "ms": 0.04312499985098839
+    },
+    {
+      "scenario": "reveal",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 6,
+      "count": 32,
+      "ms": 0.028593748807907104
+    },
+    {
+      "scenario": "reveal",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 7,
+      "count": 32,
+      "ms": 0.02828124910593033
+    },
+    {
+      "scenario": "reveal",
       "mode": "ranvier",
       "width": 16,
       "replicate": 1,
       "round": 7,
       "count": 32,
-      "ms": 0.041718749329447746
+      "ms": 0.04218749888241291
     },
     {
       "scenario": "reveal",
@@ -2285,7 +2319,7 @@
       "replicate": 1,
       "round": 8,
       "count": 32,
-      "ms": 0.040312500670552254
+      "ms": 0.04312499985098839
     },
     {
       "scenario": "reveal",
@@ -2294,7 +2328,7 @@
       "replicate": 1,
       "round": 8,
       "count": 32,
-      "ms": 0.026093751192092896
+      "ms": 0.028437498956918716
     },
     {
       "scenario": "reveal",
@@ -2303,7 +2337,7 @@
       "replicate": 1,
       "round": 9,
       "count": 32,
-      "ms": 0.029999999329447746
+      "ms": 0.027187500149011612
     },
     {
       "scenario": "reveal",
@@ -2312,7 +2346,7 @@
       "replicate": 1,
       "round": 9,
       "count": 32,
-      "ms": 0.09015624970197678
+      "ms": 0.10406250134110451
     },
     {
       "scenario": "reveal",
@@ -2321,7 +2355,7 @@
       "replicate": 1,
       "round": 10,
       "count": 32,
-      "ms": 0.03749999962747097
+      "ms": 0.043281249701976776
     },
     {
       "scenario": "reveal",
@@ -2330,7 +2364,7 @@
       "replicate": 1,
       "round": 10,
       "count": 32,
-      "ms": 0.027031250298023224
+      "ms": 0.029531249776482582
     },
     {
       "scenario": "reveal",
@@ -2339,7 +2373,7 @@
       "replicate": 1,
       "round": 11,
       "count": 32,
-      "ms": 0.026718750596046448
+      "ms": 0.033906251192092896
     },
     {
       "scenario": "reveal",
@@ -2348,7 +2382,7 @@
       "replicate": 1,
       "round": 11,
       "count": 32,
-      "ms": 0.03828124888241291
+      "ms": 0.048124998807907104
     },
     {
       "scenario": "reveal",
@@ -2357,7 +2391,7 @@
       "replicate": 1,
       "round": 12,
       "count": 32,
-      "ms": 0.047187499701976776
+      "ms": 0.04312499985098839
     },
     {
       "scenario": "reveal",
@@ -2366,7 +2400,7 @@
       "replicate": 1,
       "round": 12,
       "count": 32,
-      "ms": 0.027499999850988388
+      "ms": 0.028437500819563866
     },
     {
       "scenario": "reveal",
@@ -2374,44 +2408,44 @@
       "width": 16,
       "replicate": 1,
       "round": 13,
+      "count": 32,
+      "ms": 0.028750000521540642
+    },
+    {
+      "scenario": "reveal",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 13,
+      "count": 32,
+      "ms": 0.04218750074505806
+    },
+    {
+      "scenario": "reveal",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 14,
+      "count": 32,
+      "ms": 0.04078125022351742
+    },
+    {
+      "scenario": "reveal",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 14,
       "count": 32,
       "ms": 0.026249999180436134
     },
     {
       "scenario": "reveal",
       "mode": "ranvier",
-      "width": 16,
-      "replicate": 1,
-      "round": 13,
-      "count": 32,
-      "ms": 0.040156248956918716
-    },
-    {
-      "scenario": "reveal",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 1,
-      "round": 14,
-      "count": 32,
-      "ms": 0.04203124903142452
-    },
-    {
-      "scenario": "reveal",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 1,
-      "round": 14,
-      "count": 32,
-      "ms": 0.026093751192092896
-    },
-    {
-      "scenario": "reveal",
-      "mode": "ranvier",
       "width": 128,
       "replicate": 1,
       "round": 0,
       "count": 8,
-      "ms": 0.46437500417232513
+      "ms": 0.4493750035762787
     },
     {
       "scenario": "reveal",
@@ -2420,7 +2454,7 @@
       "replicate": 1,
       "round": 0,
       "count": 8,
-      "ms": 0.2368749976158142
+      "ms": 0.2331250011920929
     },
     {
       "scenario": "reveal",
@@ -2429,7 +2463,7 @@
       "replicate": 1,
       "round": 1,
       "count": 8,
-      "ms": 0.22437500208616257
+      "ms": 0.22500000149011612
     },
     {
       "scenario": "reveal",
@@ -2438,7 +2472,7 @@
       "replicate": 1,
       "round": 1,
       "count": 8,
-      "ms": 0.44437500089406967
+      "ms": 0.43812499940395355
     },
     {
       "scenario": "reveal",
@@ -2447,7 +2481,7 @@
       "replicate": 1,
       "round": 2,
       "count": 8,
-      "ms": 0.41312500089406967
+      "ms": 0.4231249988079071
     },
     {
       "scenario": "reveal",
@@ -2456,7 +2490,7 @@
       "replicate": 1,
       "round": 2,
       "count": 8,
-      "ms": 0.265625
+      "ms": 0.31437500566244125
     },
     {
       "scenario": "reveal",
@@ -2465,7 +2499,7 @@
       "replicate": 1,
       "round": 3,
       "count": 8,
-      "ms": 0.29125000536441803
+      "ms": 0.32374999672174454
     },
     {
       "scenario": "reveal",
@@ -2474,7 +2508,7 @@
       "replicate": 1,
       "round": 3,
       "count": 8,
-      "ms": 0.4312499985098839
+      "ms": 0.46000000089406967
     },
     {
       "scenario": "reveal",
@@ -2483,7 +2517,7 @@
       "replicate": 1,
       "round": 4,
       "count": 8,
-      "ms": 0.37062500417232513
+      "ms": 0.39499999582767487
     },
     {
       "scenario": "reveal",
@@ -2492,7 +2526,7 @@
       "replicate": 1,
       "round": 4,
       "count": 8,
-      "ms": 0.23124999552965164
+      "ms": 0.24437499791383743
     },
     {
       "scenario": "reveal",
@@ -2501,7 +2535,7 @@
       "replicate": 1,
       "round": 5,
       "count": 8,
-      "ms": 0.22375000268220901
+      "ms": 0.8049999997019768
     },
     {
       "scenario": "reveal",
@@ -2510,7 +2544,7 @@
       "replicate": 1,
       "round": 5,
       "count": 8,
-      "ms": 0.8400000035762787
+      "ms": 0.2043749988079071
     },
     {
       "scenario": "reveal",
@@ -2519,7 +2553,7 @@
       "replicate": 1,
       "round": 6,
       "count": 8,
-      "ms": 0.19750000536441803
+      "ms": 0.19625000655651093
     },
     {
       "scenario": "reveal",
@@ -2528,7 +2562,7 @@
       "replicate": 1,
       "round": 6,
       "count": 8,
-      "ms": 0.13062499463558197
+      "ms": 0.12437499314546585
     },
     {
       "scenario": "reveal",
@@ -2537,7 +2571,7 @@
       "replicate": 1,
       "round": 7,
       "count": 8,
-      "ms": 0.12812499701976776
+      "ms": 0.11999999731779099
     },
     {
       "scenario": "reveal",
@@ -2546,7 +2580,7 @@
       "replicate": 1,
       "round": 7,
       "count": 8,
-      "ms": 0.1875
+      "ms": 0.18812499940395355
     },
     {
       "scenario": "reveal",
@@ -2555,7 +2589,7 @@
       "replicate": 1,
       "round": 8,
       "count": 8,
-      "ms": 0.19312500208616257
+      "ms": 0.19187500327825546
     },
     {
       "scenario": "reveal",
@@ -2563,96 +2597,60 @@
       "width": 128,
       "replicate": 1,
       "round": 8,
+      "count": 8,
+      "ms": 0.12187499552965164
+    },
+    {
+      "scenario": "reveal",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 9,
+      "count": 8,
+      "ms": 0.14375000447034836
+    },
+    {
+      "scenario": "reveal",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 9,
+      "count": 8,
+      "ms": 0.19437500089406967
+    },
+    {
+      "scenario": "reveal",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 10,
+      "count": 8,
+      "ms": 0.19062499701976776
+    },
+    {
+      "scenario": "reveal",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 10,
+      "count": 8,
+      "ms": 0.11874999850988388
+    },
+    {
+      "scenario": "reveal",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 11,
       "count": 8,
       "ms": 0.11749999970197678
     },
     {
       "scenario": "reveal",
-      "mode": "solid",
-      "width": 128,
-      "replicate": 1,
-      "round": 9,
-      "count": 8,
-      "ms": 0.12187500298023224
-    },
-    {
-      "scenario": "reveal",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 1,
-      "round": 9,
-      "count": 8,
-      "ms": 0.19687499850988388
-    },
-    {
-      "scenario": "reveal",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 1,
-      "round": 10,
-      "count": 8,
-      "ms": 0.25874999910593033
-    },
-    {
-      "scenario": "reveal",
-      "mode": "solid",
-      "width": 128,
-      "replicate": 1,
-      "round": 10,
-      "count": 8,
-      "ms": 0.1287500038743019
-    },
-    {
-      "scenario": "reveal",
-      "mode": "solid",
-      "width": 128,
-      "replicate": 1,
-      "round": 11,
-      "count": 8,
-      "ms": 0.11687500029802322
-    },
-    {
-      "scenario": "reveal",
       "mode": "ranvier",
       "width": 128,
       "replicate": 1,
       "round": 11,
-      "count": 8,
-      "ms": 0.20000000298023224
-    },
-    {
-      "scenario": "reveal",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 1,
-      "round": 12,
-      "count": 8,
-      "ms": 0.2175000011920929
-    },
-    {
-      "scenario": "reveal",
-      "mode": "solid",
-      "width": 128,
-      "replicate": 1,
-      "round": 12,
-      "count": 8,
-      "ms": 0.12812499701976776
-    },
-    {
-      "scenario": "reveal",
-      "mode": "solid",
-      "width": 128,
-      "replicate": 1,
-      "round": 13,
-      "count": 8,
-      "ms": 0.12312499433755875
-    },
-    {
-      "scenario": "reveal",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 1,
-      "round": 13,
       "count": 8,
       "ms": 0.20875000208616257
     },
@@ -2661,9 +2659,45 @@
       "mode": "ranvier",
       "width": 128,
       "replicate": 1,
+      "round": 12,
+      "count": 8,
+      "ms": 0.21374999731779099
+    },
+    {
+      "scenario": "reveal",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 12,
+      "count": 8,
+      "ms": 0.13125000149011612
+    },
+    {
+      "scenario": "reveal",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 13,
+      "count": 8,
+      "ms": 0.12562499940395355
+    },
+    {
+      "scenario": "reveal",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 13,
+      "count": 8,
+      "ms": 0.2162500023841858
+    },
+    {
+      "scenario": "reveal",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
       "round": 14,
       "count": 8,
-      "ms": 0.21062500029802322
+      "ms": 0.24249999970197678
     },
     {
       "scenario": "reveal",
@@ -2672,7 +2706,7 @@
       "replicate": 1,
       "round": 14,
       "count": 8,
-      "ms": 0.12999999523162842
+      "ms": 0.13624999672174454
     },
     {
       "scenario": "switch",
@@ -2681,7 +2715,7 @@
       "replicate": 1,
       "round": 0,
       "count": 64,
-      "ms": 0.02031249925494194
+      "ms": 0.019843749701976776
     },
     {
       "scenario": "switch",
@@ -2689,249 +2723,6 @@
       "width": 1,
       "replicate": 1,
       "round": 0,
-      "count": 64,
-      "ms": 0.01335937436670065
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 1,
-      "replicate": 1,
-      "round": 1,
-      "count": 64,
-      "ms": 0.012187499552965164
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 1,
-      "round": 1,
-      "count": 64,
-      "ms": 0.016328124329447746
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 1,
-      "round": 2,
-      "count": 64,
-      "ms": 0.015156250447034836
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 1,
-      "replicate": 1,
-      "round": 2,
-      "count": 64,
-      "ms": 0.012421875260770321
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 1,
-      "replicate": 1,
-      "round": 3,
-      "count": 64,
-      "ms": 0.011874999850988388
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 1,
-      "round": 3,
-      "count": 64,
-      "ms": 0.017109375447034836
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 1,
-      "round": 4,
-      "count": 64,
-      "ms": 0.015859374776482582
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 1,
-      "replicate": 1,
-      "round": 4,
-      "count": 64,
-      "ms": 0.011093750596046448
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 1,
-      "replicate": 1,
-      "round": 5,
-      "count": 64,
-      "ms": 0.010390625335276127
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 1,
-      "round": 5,
-      "count": 64,
-      "ms": 0.016171874478459358
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 1,
-      "round": 6,
-      "count": 64,
-      "ms": 0.014921874739229679
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 1,
-      "replicate": 1,
-      "round": 6,
-      "count": 64,
-      "ms": 0.011093749664723873
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 1,
-      "replicate": 1,
-      "round": 7,
-      "count": 64,
-      "ms": 0.010625000111758709
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 1,
-      "round": 7,
-      "count": 64,
-      "ms": 0.015468750149011612
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 1,
-      "round": 8,
-      "count": 64,
-      "ms": 0.016406250186264515
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 1,
-      "replicate": 1,
-      "round": 8,
-      "count": 64,
-      "ms": 0.011250000447034836
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 1,
-      "replicate": 1,
-      "round": 9,
-      "count": 64,
-      "ms": 0.011093749664723873
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 1,
-      "round": 9,
-      "count": 64,
-      "ms": 0.015312500298023224
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 1,
-      "round": 10,
-      "count": 64,
-      "ms": 0.06695312447845936
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 1,
-      "replicate": 1,
-      "round": 10,
-      "count": 64,
-      "ms": 0.012968749739229679
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 1,
-      "replicate": 1,
-      "round": 11,
-      "count": 64,
-      "ms": 0.012812500819563866
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 1,
-      "round": 11,
-      "count": 64,
-      "ms": 0.015312500298023224
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 1,
-      "round": 12,
-      "count": 64,
-      "ms": 0.014218750409781933
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 1,
-      "replicate": 1,
-      "round": 12,
-      "count": 64,
-      "ms": 0.010781249962747097
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 1,
-      "replicate": 1,
-      "round": 13,
-      "count": 64,
-      "ms": 0.010859374888241291
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 1,
-      "round": 13,
-      "count": 64,
-      "ms": 0.019140624441206455
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 1,
-      "round": 14,
       "count": 64,
       "ms": 0.016171875409781933
     },
@@ -2940,9 +2731,252 @@
       "mode": "solid",
       "width": 1,
       "replicate": 1,
+      "round": 1,
+      "count": 64,
+      "ms": 0.012343750335276127
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 1,
+      "count": 64,
+      "ms": 0.015703124925494194
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 2,
+      "count": 64,
+      "ms": 0.015859374776482582
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 2,
+      "count": 64,
+      "ms": 0.012578125111758709
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 3,
+      "count": 64,
+      "ms": 0.012812499888241291
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 3,
+      "count": 64,
+      "ms": 0.017500000074505806
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 4,
+      "count": 64,
+      "ms": 0.015625
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 4,
+      "count": 64,
+      "ms": 0.012031249701976776
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 5,
+      "count": 64,
+      "ms": 0.011484375223517418
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 5,
+      "count": 64,
+      "ms": 0.016406250186264515
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 6,
+      "count": 64,
+      "ms": 0.015546875074505806
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 6,
+      "count": 64,
+      "ms": 0.012265625409781933
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 7,
+      "count": 64,
+      "ms": 0.011484374292194843
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 7,
+      "count": 64,
+      "ms": 0.019375000149011612
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 8,
+      "count": 64,
+      "ms": 0.015468750149011612
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 8,
+      "count": 64,
+      "ms": 0.01249999925494194
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 9,
+      "count": 64,
+      "ms": 0.011796874925494194
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 9,
+      "count": 64,
+      "ms": 0.015546875074505806
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 10,
+      "count": 64,
+      "ms": 0.07585937529802322
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 10,
+      "count": 64,
+      "ms": 0.013906249776482582
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 11,
+      "count": 64,
+      "ms": 0.01171875
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 11,
+      "count": 64,
+      "ms": 0.01593750063329935
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 12,
+      "count": 64,
+      "ms": 0.015546875074505806
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 12,
+      "count": 64,
+      "ms": 0.017265625298023224
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 13,
+      "count": 64,
+      "ms": 0.011093749664723873
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 13,
+      "count": 64,
+      "ms": 0.016406250186264515
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
       "round": 14,
       "count": 64,
-      "ms": 0.01093750074505806
+      "ms": 0.014999999664723873
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 14,
+      "count": 64,
+      "ms": 0.011328124441206455
     },
     {
       "scenario": "switch",
@@ -2951,7 +2985,7 @@
       "replicate": 1,
       "round": 0,
       "count": 32,
-      "ms": 0.028593750670552254
+      "ms": 0.029062500223517418
     },
     {
       "scenario": "switch",
@@ -2960,7 +2994,7 @@
       "replicate": 1,
       "round": 0,
       "count": 32,
-      "ms": 0.0234375
+      "ms": 0.029218750074505806
     },
     {
       "scenario": "switch",
@@ -2969,7 +3003,7 @@
       "replicate": 1,
       "round": 1,
       "count": 32,
-      "ms": 0.024062499403953552
+      "ms": 0.031093750149011612
     },
     {
       "scenario": "switch",
@@ -2978,7 +3012,7 @@
       "replicate": 1,
       "round": 1,
       "count": 32,
-      "ms": 0.03187499940395355
+      "ms": 0.03125
     },
     {
       "scenario": "switch",
@@ -2987,7 +3021,7 @@
       "replicate": 1,
       "round": 2,
       "count": 32,
-      "ms": 0.033906249329447746
+      "ms": 0.030781250447034836
     },
     {
       "scenario": "switch",
@@ -2996,7 +3030,7 @@
       "replicate": 1,
       "round": 2,
       "count": 32,
-      "ms": 0.02640625089406967
+      "ms": 0.02437499910593033
     },
     {
       "scenario": "switch",
@@ -3005,7 +3039,7 @@
       "replicate": 1,
       "round": 3,
       "count": 32,
-      "ms": 0.024843748658895493
+      "ms": 0.024531248956918716
     },
     {
       "scenario": "switch",
@@ -3014,7 +3048,7 @@
       "replicate": 1,
       "round": 3,
       "count": 32,
-      "ms": 0.029999999329447746
+      "ms": 0.03593749925494194
     },
     {
       "scenario": "switch",
@@ -3023,7 +3057,7 @@
       "replicate": 1,
       "round": 4,
       "count": 32,
-      "ms": 0.03359374962747097
+      "ms": 0.033281249925494194
     },
     {
       "scenario": "switch",
@@ -3032,7 +3066,7 @@
       "replicate": 1,
       "round": 4,
       "count": 32,
-      "ms": 0.025624999776482582
+      "ms": 0.025937501341104507
     },
     {
       "scenario": "switch",
@@ -3041,7 +3075,7 @@
       "replicate": 1,
       "round": 5,
       "count": 32,
-      "ms": 0.02640625089406967
+      "ms": 0.027031250298023224
     },
     {
       "scenario": "switch",
@@ -3050,7 +3084,7 @@
       "replicate": 1,
       "round": 5,
       "count": 32,
-      "ms": 0.031718749552965164
+      "ms": 0.03218750096857548
     },
     {
       "scenario": "switch",
@@ -3059,7 +3093,7 @@
       "replicate": 1,
       "round": 6,
       "count": 32,
-      "ms": 0.0318750012665987
+      "ms": 0.15796875022351742
     },
     {
       "scenario": "switch",
@@ -3067,6 +3101,42 @@
       "width": 16,
       "replicate": 1,
       "round": 6,
+      "count": 32,
+      "ms": 0.030937500298023224
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 7,
+      "count": 32,
+      "ms": 0.026250001043081284
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 7,
+      "count": 32,
+      "ms": 0.030781248584389687
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 8,
+      "count": 32,
+      "ms": 0.029531249776482582
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 8,
       "count": 32,
       "ms": 0.02578124962747097
     },
@@ -3075,117 +3145,81 @@
       "mode": "solid",
       "width": 16,
       "replicate": 1,
-      "round": 7,
-      "count": 32,
-      "ms": 0.12328124977648258
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 1,
-      "round": 7,
-      "count": 32,
-      "ms": 0.037187499925494194
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 1,
-      "round": 8,
-      "count": 32,
-      "ms": 0.028593750670552254
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 1,
-      "round": 8,
-      "count": 32,
-      "ms": 0.025312500074505806
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 1,
       "round": 9,
-      "count": 32,
-      "ms": 0.023281250149011612
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 1,
-      "round": 9,
-      "count": 32,
-      "ms": 0.03187499940395355
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 1,
-      "round": 10,
-      "count": 32,
-      "ms": 0.029374999925494194
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 1,
-      "round": 10,
-      "count": 32,
-      "ms": 0.02421874925494194
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 1,
-      "round": 11,
-      "count": 32,
-      "ms": 0.0234375
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 1,
-      "round": 11,
-      "count": 32,
-      "ms": 0.029374999925494194
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 1,
-      "round": 12,
-      "count": 32,
-      "ms": 0.029062500223517418
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 1,
-      "round": 12,
       "count": 32,
       "ms": 0.024375000968575478
     },
     {
       "scenario": "switch",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 9,
+      "count": 32,
+      "ms": 0.029374999925494194
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 10,
+      "count": 32,
+      "ms": 0.03031250089406967
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 10,
+      "count": 32,
+      "ms": 0.026406249031424522
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 11,
+      "count": 32,
+      "ms": 0.024375000968575478
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 11,
+      "count": 32,
+      "ms": 0.029999999329447746
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 12,
+      "count": 32,
+      "ms": 0.028750000521540642
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 12,
+      "count": 32,
+      "ms": 0.024843750521540642
+    },
+    {
+      "scenario": "switch",
       "mode": "solid",
       "width": 16,
       "replicate": 1,
       "round": 13,
       "count": 32,
-      "ms": 0.0234375
+      "ms": 0.03343749977648258
     },
     {
       "scenario": "switch",
@@ -3194,7 +3228,7 @@
       "replicate": 1,
       "round": 13,
       "count": 32,
-      "ms": 0.030937500298023224
+      "ms": 0.034843748435378075
     },
     {
       "scenario": "switch",
@@ -3203,7 +3237,7 @@
       "replicate": 1,
       "round": 14,
       "count": 32,
-      "ms": 0.029062500223517418
+      "ms": 0.029374999925494194
     },
     {
       "scenario": "switch",
@@ -3212,7 +3246,7 @@
       "replicate": 1,
       "round": 14,
       "count": 32,
-      "ms": 0.02437499910593033
+      "ms": 0.025312500074505806
     },
     {
       "scenario": "switch",
@@ -3221,7 +3255,7 @@
       "replicate": 1,
       "round": 0,
       "count": 8,
-      "ms": 0.13562499731779099
+      "ms": 0.1393750011920929
     },
     {
       "scenario": "switch",
@@ -3230,7 +3264,7 @@
       "replicate": 1,
       "round": 0,
       "count": 8,
-      "ms": 0.125
+      "ms": 0.13187500089406967
     },
     {
       "scenario": "switch",
@@ -3239,7 +3273,7 @@
       "replicate": 1,
       "round": 1,
       "count": 8,
-      "ms": 0.12687499821186066
+      "ms": 0.1287499964237213
     },
     {
       "scenario": "switch",
@@ -3248,7 +3282,7 @@
       "replicate": 1,
       "round": 1,
       "count": 8,
-      "ms": 0.1368750035762787
+      "ms": 0.5793749988079071
     },
     {
       "scenario": "switch",
@@ -3257,7 +3291,7 @@
       "replicate": 1,
       "round": 2,
       "count": 8,
-      "ms": 0.13624999672174454
+      "ms": 0.15812499821186066
     },
     {
       "scenario": "switch",
@@ -3265,26 +3299,26 @@
       "width": 128,
       "replicate": 1,
       "round": 2,
+      "count": 8,
+      "ms": 0.1418749988079071
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 3,
       "count": 8,
       "ms": 0.13000000268220901
     },
     {
       "scenario": "switch",
-      "mode": "solid",
-      "width": 128,
-      "replicate": 1,
-      "round": 3,
-      "count": 8,
-      "ms": 0.5225000008940697
-    },
-    {
-      "scenario": "switch",
       "mode": "ranvier",
       "width": 128,
       "replicate": 1,
       "round": 3,
       "count": 8,
-      "ms": 0.16250000149011612
+      "ms": 0.15687499940395355
     },
     {
       "scenario": "switch",
@@ -3293,7 +3327,7 @@
       "replicate": 1,
       "round": 4,
       "count": 8,
-      "ms": 0.13562500476837158
+      "ms": 0.13750000298023224
     },
     {
       "scenario": "switch",
@@ -3302,7 +3336,7 @@
       "replicate": 1,
       "round": 4,
       "count": 8,
-      "ms": 0.125
+      "ms": 0.12187500298023224
     },
     {
       "scenario": "switch",
@@ -3311,7 +3345,7 @@
       "replicate": 1,
       "round": 5,
       "count": 8,
-      "ms": 0.1224999949336052
+      "ms": 0.13374999910593033
     },
     {
       "scenario": "switch",
@@ -3320,7 +3354,7 @@
       "replicate": 1,
       "round": 5,
       "count": 8,
-      "ms": 0.13749999552965164
+      "ms": 0.1393750011920929
     },
     {
       "scenario": "switch",
@@ -3329,7 +3363,7 @@
       "replicate": 1,
       "round": 6,
       "count": 8,
-      "ms": 0.1393750011920929
+      "ms": 0.13875000178813934
     },
     {
       "scenario": "switch",
@@ -3337,78 +3371,6 @@
       "width": 128,
       "replicate": 1,
       "round": 6,
-      "count": 8,
-      "ms": 0.12124999612569809
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 128,
-      "replicate": 1,
-      "round": 7,
-      "count": 8,
-      "ms": 0.11937499791383743
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 1,
-      "round": 7,
-      "count": 8,
-      "ms": 0.1393750011920929
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 1,
-      "round": 8,
-      "count": 8,
-      "ms": 0.15562500059604645
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 128,
-      "replicate": 1,
-      "round": 8,
-      "count": 8,
-      "ms": 0.12687499821186066
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 128,
-      "replicate": 1,
-      "round": 9,
-      "count": 8,
-      "ms": 0.12437500059604645
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 1,
-      "round": 9,
-      "count": 8,
-      "ms": 0.14000000059604645
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 1,
-      "round": 10,
-      "count": 8,
-      "ms": 0.1393750011920929
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 128,
-      "replicate": 1,
-      "round": 10,
       "count": 8,
       "ms": 0.12250000238418579
     },
@@ -3417,36 +3379,108 @@
       "mode": "solid",
       "width": 128,
       "replicate": 1,
-      "round": 11,
+      "round": 7,
       "count": 8,
-      "ms": 0.12812499701976776
+      "ms": 0.12187499552965164
     },
     {
       "scenario": "switch",
       "mode": "ranvier",
       "width": 128,
       "replicate": 1,
-      "round": 11,
+      "round": 7,
       "count": 8,
-      "ms": 0.14250000566244125
+      "ms": 0.1381249949336052
     },
     {
       "scenario": "switch",
       "mode": "ranvier",
       "width": 128,
       "replicate": 1,
-      "round": 12,
+      "round": 8,
+      "count": 8,
+      "ms": 0.14625000208616257
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 8,
+      "count": 8,
+      "ms": 0.13374999910593033
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 9,
+      "count": 8,
+      "ms": 0.12187500298023224
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 9,
       "count": 8,
       "ms": 0.140625
     },
     {
       "scenario": "switch",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 10,
+      "count": 8,
+      "ms": 0.14000000059604645
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 10,
+      "count": 8,
+      "ms": 0.12312500178813934
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 11,
+      "count": 8,
+      "ms": 0.1262499988079071
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 11,
+      "count": 8,
+      "ms": 0.15312500298023224
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 12,
+      "count": 8,
+      "ms": 0.1393750011920929
+    },
+    {
+      "scenario": "switch",
       "mode": "solid",
       "width": 128,
       "replicate": 1,
       "round": 12,
       "count": 8,
-      "ms": 0.12125000357627869
+      "ms": 0.12937499582767487
     },
     {
       "scenario": "switch",
@@ -3455,7 +3489,7 @@
       "replicate": 1,
       "round": 13,
       "count": 8,
-      "ms": 0.12687499821186066
+      "ms": 0.1237500011920929
     },
     {
       "scenario": "switch",
@@ -3464,7 +3498,7 @@
       "replicate": 1,
       "round": 13,
       "count": 8,
-      "ms": 0.15187500417232513
+      "ms": 0.1431250050663948
     },
     {
       "scenario": "switch",
@@ -3473,7 +3507,7 @@
       "replicate": 1,
       "round": 14,
       "count": 8,
-      "ms": 0.14124999940395355
+      "ms": 0.13562499731779099
     },
     {
       "scenario": "switch",
@@ -3482,7 +3516,7 @@
       "replicate": 1,
       "round": 14,
       "count": 8,
-      "ms": 0.1275000050663948
+      "ms": 0.12187499552965164
     },
     {
       "scenario": "reveal",
@@ -3491,7 +3525,7 @@
       "replicate": 2,
       "round": 0,
       "count": 64,
-      "ms": 0.025937500409781933
+      "ms": 0.01835937425494194
     },
     {
       "scenario": "reveal",
@@ -3500,7 +3534,7 @@
       "replicate": 2,
       "round": 0,
       "count": 64,
-      "ms": 0.019765625707805157
+      "ms": 0.018906249664723873
     },
     {
       "scenario": "reveal",
@@ -3509,7 +3543,7 @@
       "replicate": 2,
       "round": 1,
       "count": 64,
-      "ms": 0.017031249590218067
+      "ms": 0.014687499962747097
     },
     {
       "scenario": "reveal",
@@ -3518,7 +3552,7 @@
       "replicate": 2,
       "round": 1,
       "count": 64,
-      "ms": 0.013046874664723873
+      "ms": 0.015859374776482582
     },
     {
       "scenario": "reveal",
@@ -3527,7 +3561,7 @@
       "replicate": 2,
       "round": 2,
       "count": 64,
-      "ms": 0.013046874664723873
+      "ms": 0.012812499888241291
     },
     {
       "scenario": "reveal",
@@ -3536,7 +3570,7 @@
       "replicate": 2,
       "round": 2,
       "count": 64,
-      "ms": 0.013906250707805157
+      "ms": 0.022578125819563866
     },
     {
       "scenario": "reveal",
@@ -3545,7 +3579,7 @@
       "replicate": 2,
       "round": 3,
       "count": 64,
-      "ms": 0.014296875335276127
+      "ms": 0.014453125186264515
     },
     {
       "scenario": "reveal",
@@ -3554,7 +3588,7 @@
       "replicate": 2,
       "round": 3,
       "count": 64,
-      "ms": 0.015625
+      "ms": 0.014218750409781933
     },
     {
       "scenario": "reveal",
@@ -3563,7 +3597,7 @@
       "replicate": 2,
       "round": 4,
       "count": 64,
-      "ms": 0.01171875
+      "ms": 0.012187500484287739
     },
     {
       "scenario": "reveal",
@@ -3572,7 +3606,7 @@
       "replicate": 2,
       "round": 4,
       "count": 64,
-      "ms": 0.015781249850988388
+      "ms": 0.015156250447034836
     },
     {
       "scenario": "reveal",
@@ -3581,7 +3615,7 @@
       "replicate": 2,
       "round": 5,
       "count": 64,
-      "ms": 0.021796874701976776
+      "ms": 0.021640624850988388
     },
     {
       "scenario": "reveal",
@@ -3590,7 +3624,7 @@
       "replicate": 2,
       "round": 5,
       "count": 64,
-      "ms": 0.010625000111758709
+      "ms": 0.010234375484287739
     },
     {
       "scenario": "reveal",
@@ -3599,7 +3633,7 @@
       "replicate": 2,
       "round": 6,
       "count": 64,
-      "ms": 0.012187499552965164
+      "ms": 0.009765625
     },
     {
       "scenario": "reveal",
@@ -3626,7 +3660,7 @@
       "replicate": 2,
       "round": 7,
       "count": 64,
-      "ms": 0.023203125223517418
+      "ms": 0.020156250335276127
     },
     {
       "scenario": "reveal",
@@ -3635,7 +3669,7 @@
       "replicate": 2,
       "round": 8,
       "count": 64,
-      "ms": 0.010390624403953552
+      "ms": 0.009296875447034836
     },
     {
       "scenario": "reveal",
@@ -3644,7 +3678,7 @@
       "replicate": 2,
       "round": 8,
       "count": 64,
-      "ms": 0.01210937462747097
+      "ms": 0.01132812537252903
     },
     {
       "scenario": "reveal",
@@ -3653,7 +3687,7 @@
       "replicate": 2,
       "round": 9,
       "count": 64,
-      "ms": 0.009843749925494194
+      "ms": 0.009218749590218067
     },
     {
       "scenario": "reveal",
@@ -3662,7 +3696,7 @@
       "replicate": 2,
       "round": 9,
       "count": 64,
-      "ms": 0.009999999776482582
+      "ms": 0.009374999441206455
     },
     {
       "scenario": "reveal",
@@ -3671,7 +3705,7 @@
       "replicate": 2,
       "round": 10,
       "count": 64,
-      "ms": 0.010078124701976776
+      "ms": 0.014999999664723873
     },
     {
       "scenario": "reveal",
@@ -3680,7 +3714,7 @@
       "replicate": 2,
       "round": 10,
       "count": 64,
-      "ms": 0.010781249962747097
+      "ms": 0.011406250298023224
     },
     {
       "scenario": "reveal",
@@ -3698,7 +3732,7 @@
       "replicate": 2,
       "round": 11,
       "count": 64,
-      "ms": 0.010468749329447746
+      "ms": 0.009999999776482582
     },
     {
       "scenario": "reveal",
@@ -3725,7 +3759,7 @@
       "replicate": 2,
       "round": 13,
       "count": 64,
-      "ms": 0.02578124962747097
+      "ms": 0.022656249813735485
     },
     {
       "scenario": "reveal",
@@ -3734,7 +3768,7 @@
       "replicate": 2,
       "round": 13,
       "count": 64,
-      "ms": 0.010234374552965164
+      "ms": 0.009609375149011612
     },
     {
       "scenario": "reveal",
@@ -3743,7 +3777,7 @@
       "replicate": 2,
       "round": 14,
       "count": 64,
-      "ms": 0.009999999776482582
+      "ms": 0.009062499739229679
     },
     {
       "scenario": "reveal",
@@ -3752,7 +3786,7 @@
       "replicate": 2,
       "round": 14,
       "count": 64,
-      "ms": 0.010468750260770321
+      "ms": 0.009296874515712261
     },
     {
       "scenario": "reveal",
@@ -3761,7 +3795,7 @@
       "replicate": 2,
       "round": 0,
       "count": 32,
-      "ms": 0.027812499552965164
+      "ms": 0.02578125149011612
     },
     {
       "scenario": "reveal",
@@ -3770,7 +3804,7 @@
       "replicate": 2,
       "round": 0,
       "count": 32,
-      "ms": 0.040937500074505806
+      "ms": 0.04203124903142452
     },
     {
       "scenario": "reveal",
@@ -3779,7 +3813,7 @@
       "replicate": 2,
       "round": 1,
       "count": 32,
-      "ms": 0.046875
+      "ms": 0.04046875052154064
     },
     {
       "scenario": "reveal",
@@ -3787,170 +3821,170 @@
       "width": 16,
       "replicate": 2,
       "round": 1,
+      "count": 32,
+      "ms": 0.026874998584389687
+    },
+    {
+      "scenario": "reveal",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 2,
+      "count": 32,
+      "ms": 0.05921874940395355
+    },
+    {
+      "scenario": "reveal",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 2,
+      "count": 32,
+      "ms": 0.04140625149011612
+    },
+    {
+      "scenario": "reveal",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 3,
+      "count": 32,
+      "ms": 0.047968750819563866
+    },
+    {
+      "scenario": "reveal",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 3,
+      "count": 32,
+      "ms": 0.044218748807907104
+    },
+    {
+      "scenario": "reveal",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 4,
+      "count": 32,
+      "ms": 0.024843748658895493
+    },
+    {
+      "scenario": "reveal",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 4,
+      "count": 32,
+      "ms": 0.041718749329447746
+    },
+    {
+      "scenario": "reveal",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 5,
+      "count": 32,
+      "ms": 0.04046874865889549
+    },
+    {
+      "scenario": "reveal",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 5,
+      "count": 32,
+      "ms": 0.027499999850988388
+    },
+    {
+      "scenario": "reveal",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 6,
+      "count": 32,
+      "ms": 0.026875000447034836
+    },
+    {
+      "scenario": "reveal",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 6,
+      "count": 32,
+      "ms": 0.041093749925494194
+    },
+    {
+      "scenario": "reveal",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 7,
+      "count": 32,
+      "ms": 0.04124999977648258
+    },
+    {
+      "scenario": "reveal",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 7,
+      "count": 32,
+      "ms": 0.027187498286366463
+    },
+    {
+      "scenario": "reveal",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 8,
+      "count": 32,
+      "ms": 0.026875000447034836
+    },
+    {
+      "scenario": "reveal",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 8,
+      "count": 32,
+      "ms": 0.043437499552965164
+    },
+    {
+      "scenario": "reveal",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 9,
+      "count": 32,
+      "ms": 0.04046875052154064
+    },
+    {
+      "scenario": "reveal",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 9,
+      "count": 32,
+      "ms": 0.08031249977648258
+    },
+    {
+      "scenario": "reveal",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 10,
       "count": 32,
       "ms": 0.027968749403953552
     },
     {
       "scenario": "reveal",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 2,
-      "round": 2,
-      "count": 32,
-      "ms": 0.061406249180436134
-    },
-    {
-      "scenario": "reveal",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 2,
-      "round": 2,
-      "count": 32,
-      "ms": 0.0390625
-    },
-    {
-      "scenario": "reveal",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 2,
-      "round": 3,
-      "count": 32,
-      "ms": 0.047187499701976776
-    },
-    {
-      "scenario": "reveal",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 2,
-      "round": 3,
-      "count": 32,
-      "ms": 0.036406248807907104
-    },
-    {
-      "scenario": "reveal",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 2,
-      "round": 4,
-      "count": 32,
-      "ms": 0.024843750521540642
-    },
-    {
-      "scenario": "reveal",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 2,
-      "round": 4,
-      "count": 32,
-      "ms": 0.040156250819563866
-    },
-    {
-      "scenario": "reveal",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 2,
-      "round": 5,
-      "count": 32,
-      "ms": 0.04062500037252903
-    },
-    {
-      "scenario": "reveal",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 2,
-      "round": 5,
-      "count": 32,
-      "ms": 0.027031250298023224
-    },
-    {
-      "scenario": "reveal",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 2,
-      "round": 6,
-      "count": 32,
-      "ms": 0.026249999180436134
-    },
-    {
-      "scenario": "reveal",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 2,
-      "round": 6,
-      "count": 32,
-      "ms": 0.04062499850988388
-    },
-    {
-      "scenario": "reveal",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 2,
-      "round": 7,
-      "count": 32,
-      "ms": 0.045624999329447746
-    },
-    {
-      "scenario": "reveal",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 2,
-      "round": 7,
-      "count": 32,
-      "ms": 0.02812499925494194
-    },
-    {
-      "scenario": "reveal",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 2,
-      "round": 8,
-      "count": 32,
-      "ms": 0.027812499552965164
-    },
-    {
-      "scenario": "reveal",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 2,
-      "round": 8,
-      "count": 32,
-      "ms": 0.044062500819563866
-    },
-    {
-      "scenario": "reveal",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 2,
-      "round": 9,
-      "count": 32,
-      "ms": 0.04062499850988388
-    },
-    {
-      "scenario": "reveal",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 2,
-      "round": 9,
-      "count": 32,
-      "ms": 0.07531250081956387
-    },
-    {
-      "scenario": "reveal",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 2,
-      "round": 10,
-      "count": 32,
-      "ms": 0.028281250968575478
-    },
-    {
-      "scenario": "reveal",
       "mode": "ranvier",
       "width": 16,
       "replicate": 2,
       "round": 10,
       "count": 32,
-      "ms": 0.045624999329447746
+      "ms": 0.045625001192092896
     },
     {
       "scenario": "reveal",
@@ -3959,7 +3993,7 @@
       "replicate": 2,
       "round": 11,
       "count": 32,
-      "ms": 0.040937500074505806
+      "ms": 0.03812500089406967
     },
     {
       "scenario": "reveal",
@@ -3968,7 +4002,7 @@
       "replicate": 2,
       "round": 11,
       "count": 32,
-      "ms": 0.02656250074505806
+      "ms": 0.026406249031424522
     },
     {
       "scenario": "reveal",
@@ -3977,7 +4011,7 @@
       "replicate": 2,
       "round": 12,
       "count": 32,
-      "ms": 0.0279687512665987
+      "ms": 0.02562500163912773
     },
     {
       "scenario": "reveal",
@@ -3986,7 +4020,7 @@
       "replicate": 2,
       "round": 12,
       "count": 32,
-      "ms": 0.047343749552965164
+      "ms": 0.039374999701976776
     },
     {
       "scenario": "reveal",
@@ -3995,7 +4029,7 @@
       "replicate": 2,
       "round": 13,
       "count": 32,
-      "ms": 0.04140624962747097
+      "ms": 0.03921874985098839
     },
     {
       "scenario": "reveal",
@@ -4004,7 +4038,7 @@
       "replicate": 2,
       "round": 13,
       "count": 32,
-      "ms": 0.03046875074505806
+      "ms": 0.026875000447034836
     },
     {
       "scenario": "reveal",
@@ -4013,7 +4047,7 @@
       "replicate": 2,
       "round": 14,
       "count": 32,
-      "ms": 0.027187500149011612
+      "ms": 0.026250001043081284
     },
     {
       "scenario": "reveal",
@@ -4022,7 +4056,7 @@
       "replicate": 2,
       "round": 14,
       "count": 32,
-      "ms": 0.040312498807907104
+      "ms": 0.03890625014901161
     },
     {
       "scenario": "reveal",
@@ -4031,7 +4065,7 @@
       "replicate": 2,
       "round": 0,
       "count": 8,
-      "ms": 0.2562500014901161
+      "ms": 0.26249999552965164
     },
     {
       "scenario": "reveal",
@@ -4040,7 +4074,7 @@
       "replicate": 2,
       "round": 0,
       "count": 8,
-      "ms": 0.4724999964237213
+      "ms": 0.4362500011920929
     },
     {
       "scenario": "reveal",
@@ -4049,7 +4083,7 @@
       "replicate": 2,
       "round": 1,
       "count": 8,
-      "ms": 0.4231249988079071
+      "ms": 0.44999999552965164
     },
     {
       "scenario": "reveal",
@@ -4058,7 +4092,7 @@
       "replicate": 2,
       "round": 1,
       "count": 8,
-      "ms": 0.24562500417232513
+      "ms": 0.2537500038743019
     },
     {
       "scenario": "reveal",
@@ -4067,7 +4101,7 @@
       "replicate": 2,
       "round": 2,
       "count": 8,
-      "ms": 0.23999999463558197
+      "ms": 0.2575000002980232
     },
     {
       "scenario": "reveal",
@@ -4076,7 +4110,7 @@
       "replicate": 2,
       "round": 2,
       "count": 8,
-      "ms": 0.4375
+      "ms": 0.4468749985098839
     },
     {
       "scenario": "reveal",
@@ -4085,7 +4119,7 @@
       "replicate": 2,
       "round": 3,
       "count": 8,
-      "ms": 0.5237499997019768
+      "ms": 0.46437500417232513
     },
     {
       "scenario": "reveal",
@@ -4094,7 +4128,7 @@
       "replicate": 2,
       "round": 3,
       "count": 8,
-      "ms": 0.2643749937415123
+      "ms": 0.3087500035762787
     },
     {
       "scenario": "reveal",
@@ -4103,7 +4137,7 @@
       "replicate": 2,
       "round": 4,
       "count": 8,
-      "ms": 0.22375000268220901
+      "ms": 0.23375000059604645
     },
     {
       "scenario": "reveal",
@@ -4112,7 +4146,7 @@
       "replicate": 2,
       "round": 4,
       "count": 8,
-      "ms": 0.37437500059604645
+      "ms": 0.8425000011920929
     },
     {
       "scenario": "reveal",
@@ -4121,7 +4155,7 @@
       "replicate": 2,
       "round": 5,
       "count": 8,
-      "ms": 0.7625000029802322
+      "ms": 0.19500000029802322
     },
     {
       "scenario": "reveal",
@@ -4130,7 +4164,7 @@
       "replicate": 2,
       "round": 5,
       "count": 8,
-      "ms": 0.13374999910593033
+      "ms": 0.13750000298023224
     },
     {
       "scenario": "reveal",
@@ -4139,7 +4173,7 @@
       "replicate": 2,
       "round": 6,
       "count": 8,
-      "ms": 0.11375000327825546
+      "ms": 0.1262499988079071
     },
     {
       "scenario": "reveal",
@@ -4148,7 +4182,7 @@
       "replicate": 2,
       "round": 6,
       "count": 8,
-      "ms": 0.19562499970197678
+      "ms": 0.1900000050663948
     },
     {
       "scenario": "reveal",
@@ -4157,7 +4191,7 @@
       "replicate": 2,
       "round": 7,
       "count": 8,
-      "ms": 0.18812499940395355
+      "ms": 0.2199999988079071
     },
     {
       "scenario": "reveal",
@@ -4166,7 +4200,7 @@
       "replicate": 2,
       "round": 7,
       "count": 8,
-      "ms": 0.11812499910593033
+      "ms": 0.12312499433755875
     },
     {
       "scenario": "reveal",
@@ -4175,7 +4209,7 @@
       "replicate": 2,
       "round": 8,
       "count": 8,
-      "ms": 0.11812499910593033
+      "ms": 0.11750000715255737
     },
     {
       "scenario": "reveal",
@@ -4184,7 +4218,7 @@
       "replicate": 2,
       "round": 8,
       "count": 8,
-      "ms": 0.18812499940395355
+      "ms": 0.18562499433755875
     },
     {
       "scenario": "reveal",
@@ -4193,7 +4227,7 @@
       "replicate": 2,
       "round": 9,
       "count": 8,
-      "ms": 0.1862500011920929
+      "ms": 0.1850000023841858
     },
     {
       "scenario": "reveal",
@@ -4202,7 +4236,7 @@
       "replicate": 2,
       "round": 9,
       "count": 8,
-      "ms": 0.11749999970197678
+      "ms": 0.12312499433755875
     },
     {
       "scenario": "reveal",
@@ -4211,7 +4245,7 @@
       "replicate": 2,
       "round": 10,
       "count": 8,
-      "ms": 0.11499999463558197
+      "ms": 0.12312500178813934
     },
     {
       "scenario": "reveal",
@@ -4220,7 +4254,7 @@
       "replicate": 2,
       "round": 10,
       "count": 8,
-      "ms": 0.20749999582767487
+      "ms": 0.19312500208616257
     },
     {
       "scenario": "reveal",
@@ -4229,7 +4263,7 @@
       "replicate": 2,
       "round": 11,
       "count": 8,
-      "ms": 0.19437500089406967
+      "ms": 0.19999999552965164
     },
     {
       "scenario": "reveal",
@@ -4238,7 +4272,7 @@
       "replicate": 2,
       "round": 11,
       "count": 8,
-      "ms": 0.13374999910593033
+      "ms": 0.1274999976158142
     },
     {
       "scenario": "reveal",
@@ -4247,7 +4281,7 @@
       "replicate": 2,
       "round": 12,
       "count": 8,
-      "ms": 0.12812500447034836
+      "ms": 0.13312499970197678
     },
     {
       "scenario": "reveal",
@@ -4256,7 +4290,7 @@
       "replicate": 2,
       "round": 12,
       "count": 8,
-      "ms": 0.21687500178813934
+      "ms": 0.2381249964237213
     },
     {
       "scenario": "reveal",
@@ -4265,7 +4299,7 @@
       "replicate": 2,
       "round": 13,
       "count": 8,
-      "ms": 0.21562500298023224
+      "ms": 0.20937500149011612
     },
     {
       "scenario": "reveal",
@@ -4274,7 +4308,7 @@
       "replicate": 2,
       "round": 13,
       "count": 8,
-      "ms": 0.12812499701976776
+      "ms": 0.1381250023841858
     },
     {
       "scenario": "reveal",
@@ -4283,7 +4317,7 @@
       "replicate": 2,
       "round": 14,
       "count": 8,
-      "ms": 0.12250000238418579
+      "ms": 0.125
     },
     {
       "scenario": "reveal",
@@ -4292,7 +4326,7 @@
       "replicate": 2,
       "round": 14,
       "count": 8,
-      "ms": 0.21374999731779099
+      "ms": 0.21062500029802322
     },
     {
       "scenario": "switch",
@@ -4301,7 +4335,7 @@
       "replicate": 2,
       "round": 0,
       "count": 64,
-      "ms": 0.011640624143183231
+      "ms": 0.013203125447034836
     },
     {
       "scenario": "switch",
@@ -4310,7 +4344,7 @@
       "replicate": 2,
       "round": 0,
       "count": 64,
-      "ms": 0.019062500447034836
+      "ms": 0.019687499850988388
     },
     {
       "scenario": "switch",
@@ -4319,7 +4353,7 @@
       "replicate": 2,
       "round": 1,
       "count": 64,
-      "ms": 0.01749999914318323
+      "ms": 0.01765625085681677
     },
     {
       "scenario": "switch",
@@ -4328,7 +4362,7 @@
       "replicate": 2,
       "round": 1,
       "count": 64,
-      "ms": 0.01171875
+      "ms": 0.012343750335276127
     },
     {
       "scenario": "switch",
@@ -4337,7 +4371,7 @@
       "replicate": 2,
       "round": 2,
       "count": 64,
-      "ms": 0.015312500298023224
+      "ms": 0.012421875260770321
     },
     {
       "scenario": "switch",
@@ -4346,7 +4380,7 @@
       "replicate": 2,
       "round": 2,
       "count": 64,
-      "ms": 0.01640624925494194
+      "ms": 0.016953124664723873
     },
     {
       "scenario": "switch",
@@ -4354,6 +4388,78 @@
       "width": 1,
       "replicate": 2,
       "round": 3,
+      "count": 64,
+      "ms": 0.017656249925494194
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 3,
+      "count": 64,
+      "ms": 0.013359375298023224
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 4,
+      "count": 64,
+      "ms": 0.012109375558793545
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 4,
+      "count": 64,
+      "ms": 0.023984374478459358
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 5,
+      "count": 64,
+      "ms": 0.015937499701976776
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 5,
+      "count": 64,
+      "ms": 0.012031249701976776
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 6,
+      "count": 64,
+      "ms": 0.011796874925494194
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 6,
+      "count": 64,
+      "ms": 0.016406250186264515
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 7,
       "count": 64,
       "ms": 0.015703124925494194
     },
@@ -4362,70 +4468,34 @@
       "mode": "solid",
       "width": 1,
       "replicate": 2,
-      "round": 3,
-      "count": 64,
-      "ms": 0.011874999850988388
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 1,
-      "replicate": 2,
-      "round": 4,
-      "count": 64,
-      "ms": 0.011249999515712261
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 2,
-      "round": 4,
-      "count": 64,
-      "ms": 0.015781249850988388
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 2,
-      "round": 5,
-      "count": 64,
-      "ms": 0.016953125596046448
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 1,
-      "replicate": 2,
-      "round": 5,
-      "count": 64,
-      "ms": 0.010859374888241291
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 1,
-      "replicate": 2,
-      "round": 6,
-      "count": 64,
-      "ms": 0.011171874590218067
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 2,
-      "round": 6,
-      "count": 64,
-      "ms": 0.015625
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 2,
       "round": 7,
+      "count": 64,
+      "ms": 0.011484375223517418
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 8,
+      "count": 64,
+      "ms": 0.01132812537252903
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 8,
+      "count": 64,
+      "ms": 0.015546875074505806
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 9,
       "count": 64,
       "ms": 0.016406250186264515
     },
@@ -4434,45 +4504,9 @@
       "mode": "solid",
       "width": 1,
       "replicate": 2,
-      "round": 7,
-      "count": 64,
-      "ms": 0.010859374888241291
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 1,
-      "replicate": 2,
-      "round": 8,
-      "count": 64,
-      "ms": 0.010703125037252903
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 2,
-      "round": 8,
-      "count": 64,
-      "ms": 0.015234374441206455
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 1,
-      "replicate": 2,
       "round": 9,
       "count": 64,
-      "ms": 0.017812499776482582
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 1,
-      "replicate": 2,
-      "round": 9,
-      "count": 64,
-      "ms": 0.014765624888241291
+      "ms": 0.012812499888241291
     },
     {
       "scenario": "switch",
@@ -4481,7 +4515,7 @@
       "replicate": 2,
       "round": 10,
       "count": 64,
-      "ms": 0.01093750074505806
+      "ms": 0.06882812548428774
     },
     {
       "scenario": "switch",
@@ -4490,7 +4524,7 @@
       "replicate": 2,
       "round": 10,
       "count": 64,
-      "ms": 0.015703124925494194
+      "ms": 0.017343750223517418
     },
     {
       "scenario": "switch",
@@ -4499,7 +4533,7 @@
       "replicate": 2,
       "round": 11,
       "count": 64,
-      "ms": 0.014921874739229679
+      "ms": 0.014375000260770321
     },
     {
       "scenario": "switch",
@@ -4517,7 +4551,7 @@
       "replicate": 2,
       "round": 12,
       "count": 64,
-      "ms": 0.060156249441206455
+      "ms": 0.011093749664723873
     },
     {
       "scenario": "switch",
@@ -4526,7 +4560,7 @@
       "replicate": 2,
       "round": 12,
       "count": 64,
-      "ms": 0.017500000074505806
+      "ms": 0.015234374441206455
     },
     {
       "scenario": "switch",
@@ -4535,7 +4569,7 @@
       "replicate": 2,
       "round": 13,
       "count": 64,
-      "ms": 0.014921874739229679
+      "ms": 0.015625
     },
     {
       "scenario": "switch",
@@ -4544,7 +4578,7 @@
       "replicate": 2,
       "round": 13,
       "count": 64,
-      "ms": 0.011093749664723873
+      "ms": 0.011015625670552254
     },
     {
       "scenario": "switch",
@@ -4562,7 +4596,7 @@
       "replicate": 2,
       "round": 14,
       "count": 64,
-      "ms": 0.016640624962747097
+      "ms": 0.015781249850988388
     },
     {
       "scenario": "switch",
@@ -4570,114 +4604,6 @@
       "width": 16,
       "replicate": 2,
       "round": 0,
-      "count": 32,
-      "ms": 0.02437499910593033
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 2,
-      "round": 0,
-      "count": 32,
-      "ms": 0.030156249180436134
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 2,
-      "round": 1,
-      "count": 32,
-      "ms": 0.028437498956918716
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 2,
-      "round": 1,
-      "count": 32,
-      "ms": 0.02421875111758709
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 2,
-      "round": 2,
-      "count": 32,
-      "ms": 0.0234375
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 2,
-      "round": 2,
-      "count": 32,
-      "ms": 0.029218750074505806
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 2,
-      "round": 3,
-      "count": 32,
-      "ms": 0.030156251043081284
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 2,
-      "round": 3,
-      "count": 32,
-      "ms": 0.03140625171363354
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 2,
-      "round": 4,
-      "count": 32,
-      "ms": 0.0234375
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 2,
-      "round": 4,
-      "count": 32,
-      "ms": 0.029374999925494194
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 16,
-      "replicate": 2,
-      "round": 5,
-      "count": 32,
-      "ms": 0.028750000521540642
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 2,
-      "round": 5,
-      "count": 32,
-      "ms": 0.023906249552965164
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 16,
-      "replicate": 2,
-      "round": 6,
       "count": 32,
       "ms": 0.024531250819563866
     },
@@ -4686,12 +4612,120 @@
       "mode": "ranvier",
       "width": 16,
       "replicate": 2,
-      "round": 6,
+      "round": 0,
+      "count": 32,
+      "ms": 0.030625000596046448
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 1,
+      "count": 32,
+      "ms": 0.029531249776482582
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 1,
+      "count": 32,
+      "ms": 0.025312500074505806
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 2,
+      "count": 32,
+      "ms": 0.024531248956918716
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 2,
+      "count": 32,
+      "ms": 0.028750000521540642
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 3,
+      "count": 32,
+      "ms": 0.029843749478459358
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 3,
+      "count": 32,
+      "ms": 0.025312500074505806
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 4,
+      "count": 32,
+      "ms": 0.025937499478459358
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 4,
+      "count": 32,
+      "ms": 0.03125
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 5,
       "count": 32,
       "ms": 0.03140624985098839
     },
     {
       "scenario": "switch",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 5,
+      "count": 32,
+      "ms": 0.031093750149011612
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 6,
+      "count": 32,
+      "ms": 0.1373437512665987
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 6,
+      "count": 32,
+      "ms": 0.03265625052154064
+    },
+    {
+      "scenario": "switch",
       "mode": "ranvier",
       "width": 16,
       "replicate": 2,
@@ -4706,7 +4740,7 @@
       "replicate": 2,
       "round": 7,
       "count": 32,
-      "ms": 0.023906249552965164
+      "ms": 0.025312500074505806
     },
     {
       "scenario": "switch",
@@ -4715,7 +4749,7 @@
       "replicate": 2,
       "round": 8,
       "count": 32,
-      "ms": 0.0234375
+      "ms": 0.025624999776482582
     },
     {
       "scenario": "switch",
@@ -4724,7 +4758,7 @@
       "replicate": 2,
       "round": 8,
       "count": 32,
-      "ms": 0.030000001192092896
+      "ms": 0.029843749478459358
     },
     {
       "scenario": "switch",
@@ -4733,7 +4767,7 @@
       "replicate": 2,
       "round": 9,
       "count": 32,
-      "ms": 0.12109375
+      "ms": 0.029999999329447746
     },
     {
       "scenario": "switch",
@@ -4742,7 +4776,7 @@
       "replicate": 2,
       "round": 9,
       "count": 32,
-      "ms": 0.030937500298023224
+      "ms": 0.026093751192092896
     },
     {
       "scenario": "switch",
@@ -4751,7 +4785,7 @@
       "replicate": 2,
       "round": 10,
       "count": 32,
-      "ms": 0.023906251415610313
+      "ms": 0.024687500670552254
     },
     {
       "scenario": "switch",
@@ -4760,7 +4794,7 @@
       "replicate": 2,
       "round": 10,
       "count": 32,
-      "ms": 0.031562499701976776
+      "ms": 0.030781250447034836
     },
     {
       "scenario": "switch",
@@ -4769,7 +4803,7 @@
       "replicate": 2,
       "round": 11,
       "count": 32,
-      "ms": 0.028750000521540642
+      "ms": 0.035624999552965164
     },
     {
       "scenario": "switch",
@@ -4778,7 +4812,7 @@
       "replicate": 2,
       "round": 11,
       "count": 32,
-      "ms": 0.024843750521540642
+      "ms": 0.026875000447034836
     },
     {
       "scenario": "switch",
@@ -4787,7 +4821,7 @@
       "replicate": 2,
       "round": 12,
       "count": 32,
-      "ms": 0.024531250819563866
+      "ms": 0.024843748658895493
     },
     {
       "scenario": "switch",
@@ -4796,7 +4830,7 @@
       "replicate": 2,
       "round": 12,
       "count": 32,
-      "ms": 0.033281249925494194
+      "ms": 0.030781250447034836
     },
     {
       "scenario": "switch",
@@ -4805,7 +4839,7 @@
       "replicate": 2,
       "round": 13,
       "count": 32,
-      "ms": 0.028750000521540642
+      "ms": 0.02968749962747097
     },
     {
       "scenario": "switch",
@@ -4814,7 +4848,7 @@
       "replicate": 2,
       "round": 13,
       "count": 32,
-      "ms": 0.025937501341104507
+      "ms": 0.026406249031424522
     },
     {
       "scenario": "switch",
@@ -4823,7 +4857,7 @@
       "replicate": 2,
       "round": 14,
       "count": 32,
-      "ms": 0.0234375
+      "ms": 0.024531248956918716
     },
     {
       "scenario": "switch",
@@ -4832,7 +4866,7 @@
       "replicate": 2,
       "round": 14,
       "count": 32,
-      "ms": 0.030156251043081284
+      "ms": 0.029999999329447746
     },
     {
       "scenario": "switch",
@@ -4850,7 +4884,7 @@
       "replicate": 2,
       "round": 0,
       "count": 8,
-      "ms": 0.1368749961256981
+      "ms": 0.13749999552965164
     },
     {
       "scenario": "switch",
@@ -4859,7 +4893,7 @@
       "replicate": 2,
       "round": 1,
       "count": 8,
-      "ms": 0.1431250050663948
+      "ms": 0.14124999940395355
     },
     {
       "scenario": "switch",
@@ -4868,7 +4902,7 @@
       "replicate": 2,
       "round": 1,
       "count": 8,
-      "ms": 0.125
+      "ms": 0.5350000038743019
     },
     {
       "scenario": "switch",
@@ -4876,35 +4910,35 @@
       "width": 128,
       "replicate": 2,
       "round": 2,
-      "count": 8,
-      "ms": 0.12312499433755875
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 2,
-      "round": 2,
-      "count": 8,
-      "ms": 0.13750000298023224
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 2,
-      "round": 3,
-      "count": 8,
-      "ms": 0.14812500029802322
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 128,
-      "replicate": 2,
-      "round": 3,
       "count": 8,
       "ms": 0.12687499821186066
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 2,
+      "count": 8,
+      "ms": 0.14750000089406967
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 3,
+      "count": 8,
+      "ms": 0.15312500298023224
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 3,
+      "count": 8,
+      "ms": 0.1287499964237213
     },
     {
       "scenario": "switch",
@@ -4912,6 +4946,42 @@
       "width": 128,
       "replicate": 2,
       "round": 4,
+      "count": 8,
+      "ms": 0.14124999940395355
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 4,
+      "count": 8,
+      "ms": 0.140625
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 5,
+      "count": 8,
+      "ms": 0.13374999910593033
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 5,
+      "count": 8,
+      "ms": 0.12312500178813934
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 6,
       "count": 8,
       "ms": 0.1237500011920929
     },
@@ -4920,45 +4990,9 @@
       "mode": "ranvier",
       "width": 128,
       "replicate": 2,
-      "round": 4,
-      "count": 8,
-      "ms": 0.16625000536441803
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 2,
-      "round": 5,
-      "count": 8,
-      "ms": 0.5024999976158142
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 128,
-      "replicate": 2,
-      "round": 5,
-      "count": 8,
-      "ms": 0.1431249976158142
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 128,
-      "replicate": 2,
       "round": 6,
       "count": 8,
-      "ms": 0.13125000149011612
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 2,
-      "round": 6,
-      "count": 8,
-      "ms": 0.14500000327825546
+      "ms": 0.13875000178813934
     },
     {
       "scenario": "switch",
@@ -4966,114 +5000,6 @@
       "width": 128,
       "replicate": 2,
       "round": 7,
-      "count": 8,
-      "ms": 0.14499999582767487
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 128,
-      "replicate": 2,
-      "round": 7,
-      "count": 8,
-      "ms": 0.12125000357627869
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 128,
-      "replicate": 2,
-      "round": 8,
-      "count": 8,
-      "ms": 0.12124999612569809
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 2,
-      "round": 8,
-      "count": 8,
-      "ms": 0.1550000011920929
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 2,
-      "round": 9,
-      "count": 8,
-      "ms": 0.1443750038743019
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 128,
-      "replicate": 2,
-      "round": 9,
-      "count": 8,
-      "ms": 0.1599999964237213
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 128,
-      "replicate": 2,
-      "round": 10,
-      "count": 8,
-      "ms": 0.11875000596046448
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 2,
-      "round": 10,
-      "count": 8,
-      "ms": 0.15062499791383743
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 2,
-      "round": 11,
-      "count": 8,
-      "ms": 0.1431249976158142
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 128,
-      "replicate": 2,
-      "round": 11,
-      "count": 8,
-      "ms": 0.11937499791383743
-    },
-    {
-      "scenario": "switch",
-      "mode": "solid",
-      "width": 128,
-      "replicate": 2,
-      "round": 12,
-      "count": 8,
-      "ms": 0.11749999970197678
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 2,
-      "round": 12,
-      "count": 8,
-      "ms": 0.1393750011920929
-    },
-    {
-      "scenario": "switch",
-      "mode": "ranvier",
-      "width": 128,
-      "replicate": 2,
-      "round": 13,
       "count": 8,
       "ms": 0.140625
     },
@@ -5082,9 +5008,117 @@
       "mode": "solid",
       "width": 128,
       "replicate": 2,
+      "round": 7,
+      "count": 8,
+      "ms": 0.12187500298023224
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 8,
+      "count": 8,
+      "ms": 0.12000000476837158
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 8,
+      "count": 8,
+      "ms": 0.1381249949336052
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 9,
+      "count": 8,
+      "ms": 0.13624999672174454
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 9,
+      "count": 8,
+      "ms": 0.1237500011920929
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 10,
+      "count": 8,
+      "ms": 0.12062500417232513
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 10,
+      "count": 8,
+      "ms": 0.16499999910593033
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 11,
+      "count": 8,
+      "ms": 0.14249999821186066
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 11,
+      "count": 8,
+      "ms": 0.1237499937415123
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 12,
+      "count": 8,
+      "ms": 0.12125000357627869
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 12,
+      "count": 8,
+      "ms": 0.13562500476837158
+    },
+    {
+      "scenario": "switch",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
       "round": 13,
       "count": 8,
-      "ms": 0.11812499910593033
+      "ms": 0.13875000178813934
+    },
+    {
+      "scenario": "switch",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 13,
+      "count": 8,
+      "ms": 0.12187499552965164
     },
     {
       "scenario": "switch",
@@ -5093,7 +5127,7 @@
       "replicate": 2,
       "round": 14,
       "count": 8,
-      "ms": 0.11937500536441803
+      "ms": 0.12062499672174454
     },
     {
       "scenario": "switch",
@@ -5102,7 +5136,7 @@
       "replicate": 2,
       "round": 14,
       "count": 8,
-      "ms": 0.1381249949336052
+      "ms": 0.5462500005960464
     }
   ],
   "summaries": [
@@ -5110,132 +5144,132 @@
       "scenario": "reveal",
       "width": 1,
       "mode": "ranvier",
-      "medianUs": 11.171874590218067,
+      "medianUs": 11.796874925494194,
       "byProcessUs": [
-        11.484375223517418,
-        10.07812563329935,
-        12.10937462747097
+        11.640625074505806,
+        11.953124776482582,
+        11.406250298023224
       ]
     },
     {
       "scenario": "reveal",
       "width": 1,
       "mode": "solid",
-      "medianUs": 10.468750260770321,
+      "medianUs": 10.781249962747097,
       "byProcessUs": [
-        10.468750260770321,
-        10.468750260770321,
-        10.625000111758709
+        10.546875186264515,
+        11.406250298023224,
+        10.234375484287739
       ]
     },
     {
       "scenario": "reveal",
       "width": 16,
       "mode": "ranvier",
-      "medianUs": 41.40624962747097,
+      "medianUs": 42.03124903142452,
       "byProcessUs": [
-        41.24999977648258,
-        42.03124903142452,
-        40.937500074505806
+        42.96875,
+        43.12499985098839,
+        41.093749925494194
       ]
     },
     {
       "scenario": "reveal",
       "width": 16,
       "mode": "solid",
-      "medianUs": 27.187500149011612,
+      "medianUs": 28.12499925494194,
       "byProcessUs": [
-        26.718750596046448,
-        26.875000447034836,
-        27.968749403953552
+        28.437500819563866,
+        28.593748807907104,
+        26.875000447034836
       ]
     },
     {
       "scenario": "reveal",
       "width": 128,
       "mode": "ranvier",
-      "medianUs": 221.2499976158142,
+      "medianUs": 209.37500149011612,
       "byProcessUs": [
-        234.375,
-        217.5000011920929,
-        215.62500298023224
+        207.49999582767487,
+        213.74999731779099,
+        210.62500029802322
       ]
     },
     {
       "scenario": "reveal",
       "width": 128,
       "mode": "solid",
-      "medianUs": 130.62499463558197,
+      "medianUs": 131.25000149011612,
       "byProcessUs": [
-        132.50000029802322,
-        129.99999523162842,
-        128.12500447034836
+        127.5000050663948,
+        136.24999672174454,
+        133.12499970197678
       ]
     },
     {
       "scenario": "switch",
       "width": 1,
       "mode": "ranvier",
-      "medianUs": 15.781249850988388,
+      "medianUs": 15.93750063329935,
       "byProcessUs": [
-        15.156250447034836,
-        16.171874478459358,
-        16.40624925494194
+        16.093749552965164,
+        15.859374776482582,
+        16.406250186264515
       ]
     },
     {
       "scenario": "switch",
       "width": 1,
       "mode": "solid",
-      "medianUs": 11.093749664723873,
+      "medianUs": 12.109375558793545,
       "byProcessUs": [
-        10.312500409781933,
-        11.093750596046448,
-        11.249999515712261
+        12.109375558793545,
+        12.265625409781933,
+        12.031249701976776
       ]
     },
     {
       "scenario": "switch",
       "width": 16,
       "mode": "ranvier",
-      "medianUs": 30.937500298023224,
+      "medianUs": 30.625000596046448,
       "byProcessUs": [
-        31.406249850988388,
-        30.937500298023224,
-        30.000001192092896
+        31.562499701976776,
+        30.781248584389687,
+        29.999999329447746
       ]
     },
     {
       "scenario": "switch",
       "width": 16,
       "mode": "solid",
-      "medianUs": 24.21875111758709,
+      "medianUs": 25.937499478459358,
       "byProcessUs": [
-        24.062499403953552,
-        24.375000968575478,
-        24.21875111758709
+        26.093749329447746,
+        25.937501341104507,
+        25.312500074505806
       ]
     },
     {
       "scenario": "switch",
       "width": 128,
       "mode": "ranvier",
-      "medianUs": 140.00000059604645,
+      "medianUs": 141.8749988079071,
       "byProcessUs": [
-        137.49999552965164,
-        139.3750011920929,
-        144.3750038743019
+        146.87500149011612,
+        140.00000059604645,
+        140.625
       ]
     },
     {
       "scenario": "switch",
       "width": 128,
       "mode": "solid",
-      "medianUs": 125,
+      "medianUs": 124.37500059604645,
       "byProcessUs": [
-        126.87499821186066,
-        125,
-        123.12499433755875
+        128.7499964237213,
+        126.2499988079071,
+        123.7499937415123
       ]
     }
   ],
@@ -5246,7 +5280,7 @@
       "width": 1,
       "replicate": 0,
       "count": 32,
-      "retainedBytesPerRow": 8464.75
+      "retainedBytesPerRow": 14529.875
     },
     {
       "scenario": "reveal",
@@ -5254,7 +5288,7 @@
       "width": 1,
       "replicate": 0,
       "count": 32,
-      "retainedBytesPerRow": 949.125
+      "retainedBytesPerRow": 1772.625
     },
     {
       "scenario": "reveal",
@@ -5262,7 +5296,7 @@
       "width": 16,
       "replicate": 0,
       "count": 32,
-      "retainedBytesPerRow": 1453.890625
+      "retainedBytesPerRow": 1627.0625
     },
     {
       "scenario": "reveal",
@@ -5270,7 +5304,7 @@
       "width": 16,
       "replicate": 0,
       "count": 32,
-      "retainedBytesPerRow": 625.2109375
+      "retainedBytesPerRow": 546.28125
     },
     {
       "scenario": "reveal",
@@ -5278,7 +5312,7 @@
       "width": 128,
       "replicate": 0,
       "count": 32,
-      "retainedBytesPerRow": 952.8017578125
+      "retainedBytesPerRow": 956.5625
     },
     {
       "scenario": "reveal",
@@ -5286,7 +5320,7 @@
       "width": 128,
       "replicate": 0,
       "count": 32,
-      "retainedBytesPerRow": 570.318359375
+      "retainedBytesPerRow": 567.880859375
     },
     {
       "scenario": "switch",
@@ -5294,7 +5328,7 @@
       "width": 1,
       "replicate": 0,
       "count": 32,
-      "retainedBytesPerRow": 14146.5
+      "retainedBytesPerRow": 14077
     },
     {
       "scenario": "switch",
@@ -5302,7 +5336,7 @@
       "width": 1,
       "replicate": 0,
       "count": 32,
-      "retainedBytesPerRow": 5294.875
+      "retainedBytesPerRow": 6236.875
     },
     {
       "scenario": "switch",
@@ -5310,7 +5344,7 @@
       "width": 16,
       "replicate": 0,
       "count": 32,
-      "retainedBytesPerRow": 1784.453125
+      "retainedBytesPerRow": 1874.1015625
     },
     {
       "scenario": "switch",
@@ -5318,7 +5352,7 @@
       "width": 16,
       "replicate": 0,
       "count": 32,
-      "retainedBytesPerRow": 526.984375
+      "retainedBytesPerRow": 586.515625
     },
     {
       "scenario": "switch",
@@ -5326,7 +5360,7 @@
       "width": 128,
       "replicate": 0,
       "count": 32,
-      "retainedBytesPerRow": 801.3779296875
+      "retainedBytesPerRow": 817.01171875
     },
     {
       "scenario": "switch",
@@ -5334,7 +5368,7 @@
       "width": 128,
       "replicate": 0,
       "count": 32,
-      "retainedBytesPerRow": 550.05078125
+      "retainedBytesPerRow": 553.3720703125
     },
     {
       "scenario": "reveal",
@@ -5342,7 +5376,7 @@
       "width": 1,
       "replicate": 1,
       "count": 32,
-      "retainedBytesPerRow": 9560.75
+      "retainedBytesPerRow": 10743.625
     },
     {
       "scenario": "reveal",
@@ -5350,7 +5384,7 @@
       "width": 1,
       "replicate": 1,
       "count": 32,
-      "retainedBytesPerRow": 1933.375
+      "retainedBytesPerRow": 16.5
     },
     {
       "scenario": "reveal",
@@ -5358,7 +5392,7 @@
       "width": 16,
       "replicate": 1,
       "count": 32,
-      "retainedBytesPerRow": 1799.875
+      "retainedBytesPerRow": 1651.0078125
     },
     {
       "scenario": "reveal",
@@ -5366,7 +5400,7 @@
       "width": 16,
       "replicate": 1,
       "count": 32,
-      "retainedBytesPerRow": 552.890625
+      "retainedBytesPerRow": 811.7421875
     },
     {
       "scenario": "reveal",
@@ -5374,7 +5408,7 @@
       "width": 128,
       "replicate": 1,
       "count": 32,
-      "retainedBytesPerRow": 959.0654296875
+      "retainedBytesPerRow": 955.232421875
     },
     {
       "scenario": "reveal",
@@ -5382,7 +5416,7 @@
       "width": 128,
       "replicate": 1,
       "count": 32,
-      "retainedBytesPerRow": 567.0908203125
+      "retainedBytesPerRow": 567.08203125
     },
     {
       "scenario": "switch",
@@ -5390,7 +5424,7 @@
       "width": 1,
       "replicate": 1,
       "count": 32,
-      "retainedBytesPerRow": 16826.25
+      "retainedBytesPerRow": 13441
     },
     {
       "scenario": "switch",
@@ -5398,7 +5432,7 @@
       "width": 1,
       "replicate": 1,
       "count": 32,
-      "retainedBytesPerRow": 1339.375
+      "retainedBytesPerRow": 3139.375
     },
     {
       "scenario": "switch",
@@ -5406,7 +5440,7 @@
       "width": 16,
       "replicate": 1,
       "count": 32,
-      "retainedBytesPerRow": 1629.2578125
+      "retainedBytesPerRow": 1757.515625
     },
     {
       "scenario": "switch",
@@ -5414,7 +5448,7 @@
       "width": 16,
       "replicate": 1,
       "count": 32,
-      "retainedBytesPerRow": 523.09375
+      "retainedBytesPerRow": 898.125
     },
     {
       "scenario": "switch",
@@ -5422,7 +5456,7 @@
       "width": 128,
       "replicate": 1,
       "count": 32,
-      "retainedBytesPerRow": 803.3544921875
+      "retainedBytesPerRow": 803.7080078125
     },
     {
       "scenario": "switch",
@@ -5430,7 +5464,7 @@
       "width": 128,
       "replicate": 1,
       "count": 32,
-      "retainedBytesPerRow": 551.7763671875
+      "retainedBytesPerRow": 583.9462890625
     },
     {
       "scenario": "reveal",
@@ -5438,7 +5472,7 @@
       "width": 1,
       "replicate": 2,
       "count": 32,
-      "retainedBytesPerRow": 10248.625
+      "retainedBytesPerRow": 8878.125
     },
     {
       "scenario": "reveal",
@@ -5446,7 +5480,7 @@
       "width": 1,
       "replicate": 2,
       "count": 32,
-      "retainedBytesPerRow": 432.75
+      "retainedBytesPerRow": 1119.625
     },
     {
       "scenario": "reveal",
@@ -5454,7 +5488,7 @@
       "width": 16,
       "replicate": 2,
       "count": 32,
-      "retainedBytesPerRow": 1611.328125
+      "retainedBytesPerRow": 1629.9375
     },
     {
       "scenario": "reveal",
@@ -5462,7 +5496,7 @@
       "width": 16,
       "replicate": 2,
       "count": 32,
-      "retainedBytesPerRow": 357.375
+      "retainedBytesPerRow": 681.609375
     },
     {
       "scenario": "reveal",
@@ -5470,7 +5504,7 @@
       "width": 128,
       "replicate": 2,
       "count": 32,
-      "retainedBytesPerRow": 954.3203125
+      "retainedBytesPerRow": 958.703125
     },
     {
       "scenario": "reveal",
@@ -5478,7 +5512,7 @@
       "width": 128,
       "replicate": 2,
       "count": 32,
-      "retainedBytesPerRow": 535.49609375
+      "retainedBytesPerRow": 535.3466796875
     },
     {
       "scenario": "switch",
@@ -5486,7 +5520,7 @@
       "width": 1,
       "replicate": 2,
       "count": 32,
-      "retainedBytesPerRow": 15233.875
+      "retainedBytesPerRow": 15432
     },
     {
       "scenario": "switch",
@@ -5494,7 +5528,7 @@
       "width": 1,
       "replicate": 2,
       "count": 32,
-      "retainedBytesPerRow": 2530.875
+      "retainedBytesPerRow": 863.125
     },
     {
       "scenario": "switch",
@@ -5502,7 +5536,7 @@
       "width": 16,
       "replicate": 2,
       "count": 32,
-      "retainedBytesPerRow": 1777.28125
+      "retainedBytesPerRow": 1658.3046875
     },
     {
       "scenario": "switch",
@@ -5510,7 +5544,7 @@
       "width": 16,
       "replicate": 2,
       "count": 32,
-      "retainedBytesPerRow": 654.953125
+      "retainedBytesPerRow": 758.359375
     },
     {
       "scenario": "switch",
@@ -5518,7 +5552,7 @@
       "width": 128,
       "replicate": 2,
       "count": 32,
-      "retainedBytesPerRow": 803.15234375
+      "retainedBytesPerRow": 807.671875
     },
     {
       "scenario": "switch",
@@ -5526,7 +5560,7 @@
       "width": 128,
       "replicate": 2,
       "count": 32,
-      "retainedBytesPerRow": 583.76171875
+      "retainedBytesPerRow": 583.830078125
     }
   ]
 }

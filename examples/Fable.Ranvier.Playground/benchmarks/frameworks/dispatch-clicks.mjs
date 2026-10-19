@@ -58,11 +58,15 @@ try {
   });
   const result = {
     measuredAt: new Date().toISOString(),
-    commit: execFileSync("git", ["rev-parse", "HEAD"], { cwd, encoding: "utf8" }).trim(),
+    baseCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd, encoding: "utf8" }).trim(),
     dirty: execFileSync("git", ["status", "--porcelain"], { cwd, encoding: "utf8" }).trim().split("\n").filter(line => line && !line.includes("generated-")),
     node: process.version, cpu: os.cpus()[0].model, platform: `${os.platform()} ${os.release()}`,
     unit: "microseconds per click", count, clicksPerRow, processes, rounds, warmups,
-    notes: ["Each sample mounts `count` rows without a boundary and calls click() on each row `clicksPerRow` times; every click reaches one handler through the delegated listener."],
+    notes: [
+      "Each sample mounts `count` rows without a boundary and calls click() on each row `clicksPerRow` times; every click reaches one handler through the delegated listener.",
+      "The page is not cross-origin isolated, so performance.now() resolves to about 0.1 ms; one sample spans count * clicksPerRow = 5000 clicks (about 7 ms), which bounds the quantisation of a per-click value to about 0.02 microseconds.",
+      "Entries of `dirty` that name _lines.tmp.mjs are an untracked scratch file unrelated to the code under test."
+    ],
     summaries, samples
   };
   await mkdir(output, { recursive: true });
