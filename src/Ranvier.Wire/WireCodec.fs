@@ -11,10 +11,10 @@ module WireCodec =
     /// <c>ArgumentException</c> when a limit is outside its range.
     /// </summary>
     let ofCodecWith (limits: WireLimits) (codec: Codec<'T>) : WireCodec<'T> =
-        if limits.MaxDepth < 1 || limits.MaxDepth > 1024 then
+        if limits.MaxDepth < 1 || limits.MaxDepth > 1000 then
             invalidArg
                 "limits"
-                ("MaxDepth must be between 1 and 1024; it is "
+                ("MaxDepth must be between 1 and 1000; it is "
                  + string limits.MaxDepth
                  + ".")
 

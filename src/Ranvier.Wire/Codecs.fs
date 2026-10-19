@@ -313,7 +313,7 @@ module Codecs =
             allDigits (body.Substring (0, point))
             && allDigits (body.Substring (point + 1))
 
-    /// <summary>Whether a decimal text has at most 28 fraction digits and a mantissa no greater than Decimal.MaxValue's.</summary>
+    /// <summary>Whether a decimal text has at most 28 fraction digits and a mantissa of at most Decimal.MaxValue's.</summary>
     let private fitsDecimal (text: string) =
         let body = unsigned text
         let point = body.IndexOf '.'

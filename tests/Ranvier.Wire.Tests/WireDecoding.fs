@@ -292,12 +292,12 @@ let tests =
                 (within 1 100).Decode "[[1]]"
                 |> expectLimit "MaxDepth 1, two levels" (deeperThan 1)
 
-                (within 1024 100000).Decode(nested 1024)
-                |> expectOk "MaxDepth 1024, 1024 levels"
+                (within 1000 100000).Decode(nested 1000)
+                |> expectOk "MaxDepth 1000, 1000 levels"
                 |> ignore
 
-                (within 1024 100000).Decode(nested 1025)
-                |> expectLimit "MaxDepth 1024, 1025 levels" (deeperThan 1024)
+                (within 1000 100000).Decode(nested 1001)
+                |> expectLimit "MaxDepth 1000, 1001 levels" (deeperThan 1000)
 
                 (within 64 1).Decode "[1]"
                 |> expectOk "MaxItems 1, one item"
@@ -309,7 +309,7 @@ let tests =
             testCase "limits outside their range are rejected"
             <| fun () ->
                 raisesNaming "MaxDepth" (fun () -> within 0 100)
-                raisesNaming "MaxDepth" (fun () -> within 1025 100)
+                raisesNaming "MaxDepth" (fun () -> within 1001 100)
                 raisesNaming "MaxItems" (fun () -> within 64 0)
 
             testCase "an object of 100,000 members decodes through Codec.dict in under three seconds"

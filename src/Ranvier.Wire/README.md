@@ -28,8 +28,10 @@ let back = wire.Decode text // Ok ..., or Error (WireError.Syntax | Limit | Shap
 `Limit` for text over the codec's `WireLimits` (depth 64 and 100,000 array elements plus object members, checked before
 parsing, and 4,300 digits for a `Codecs.bigint` value, by default), and `Shape` for JSON that does not fit the type,
 including an exception raised inside a decoder. A `Shape` message quotes a number value in full and at most 256
-characters of any other value's JSON text, followed by `…`. `Encode` raises `ArgumentException` (under Fable, an `Error`)
-for a value holding a lone surrogate.
+characters of any other value's JSON text, followed by `…`. `WireLimits.MaxDepth` is between 1 and 1000.
+
+`Encode` raises `ArgumentException` for a value holding a lone surrogate; under Fable a JS `Error` is thrown. On .NET,
+`Encode` also raises for a value nested deeper than 1000 levels, System.Text.Json's writer limit.
 
 ## Wire contract
 
@@ -39,7 +41,7 @@ validation: a date far in the past or a negative quantity decodes when the type 
 | Type | Wire form | Codec |
 |---|---|---|
 | `string`, `char` | Unicode scalar values only: a lone surrogate raises on encode and is a `Syntax` error on decode, raw or escaped, in a value or an object key | `Codec.string`, `Codec.char` |
-| `DateTimeOffset` | `"yyyy-MM-ddTHH:mm:ss.fff±HH:mm"`, the clock time in its own offset; millisecond precision, truncated on encode, always written with upper-case `T`. Decoding also reads `Z`, `-00:00`, 1–7 fraction digits, lower-case `t` and `z`, and trailing spaces, tabs, carriage returns and line feeds; it rejects every other form and any instant outside 0001-01-01T00:00:00Z to 9999-12-31T23:59:59.999Z | `Codecs.dateTimeOffset` |
+| `DateTimeOffset` | `"yyyy-MM-ddTHH:mm:ss.fff±HH:mm"`, the clock time in its own offset; millisecond precision, truncated on encode, always written with upper-case `T`. Decoding also reads `Z`, `-00:00`, 1–7 fraction digits (keeping the first three), lower-case `t` and `z`, and trailing spaces, tabs, carriage returns and line feeds; it rejects every other form and any instant outside 0001-01-01T00:00:00Z to 9999-12-31T23:59:59.999Z | `Codecs.dateTimeOffset` |
 | `bigint` | a string of digits; decoding also reads a number written `-?digits`, exactly, with at most `WireLimits.MaxBigIntDigits` digits (4,300 by default, 1–100,000) | `Codecs.bigint` |
 | `decimal` | a string keeping the scale (`"1.10"`); decoding reads `-?digits(.digits)?` held exactly, as a string or a number | `Codecs.decimal` |
 | `int64`, `uint64` | a string of digits; decoding reads an integer string, or a number with the target's integer parse (see the differences below) | `Codec.int64`, `Codec.uint64` |

@@ -11,7 +11,8 @@ compiled into Ranvier.Wire.
 ## Patches
 
 Applied in name order by `refresh.ps1`. CI runs `refresh.ps1 -Check`, which fails when a file here differs from the commit plus these patches, byte for byte
-(CRLF read as LF, a byte order mark included), or when a package directory holds another file.
+(CRLF read as LF, a byte order mark included), when a package directory holds another file, or when the SHA-256 table
+below differs from the patch files. The script fetches only the pinned commit.
 
 | Patch | Change | Drop when |
 |---|---|---|

@@ -74,14 +74,14 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | QueryErgonomics.fs | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | QueryNavigationTests.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
 | VendoredThoth.fs | 6 | 6 | 6 | 6 | 6 | 6 | 0 | 0 |
-| WireDecoding.fs | 22 | 22 | 22 | 22 | 22 | 22 | 0 | 0 |
+| WireDecoding.fs | 24 | 24 | 24 | 24 | 24 | 24 | 1 | 0 |
 | NumericDecoding.fs | 66 | 66 | 66 | 66 | 66 | 66 | 1 | 0 |
 | DateTimeOffsetCodec.fs | 54 | 54 | 54 | 54 | 54 | 54 | 1 | 0 |
 | NumberText.fs | 36 | 36 | 36 | 36 | 36 | 36 | 2 | 0 |
-| Conformance.fs | 88 | 88 | 88 | 88 | 88 | 88 | 0 | 0 |
+| Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 9 | 9 | 9 | 9 | 9 | 9 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1393 | 1372 | 1369 | 1533 | 1507 | 1504 | 97 | 1 |
+| **Total** | 1411 | 1390 | 1387 | 1551 | 1525 | 1522 | 98 | 1 |
 
 ## Tests.fs
 
@@ -1917,7 +1917,11 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## WireDecoding.fs
 
-<details><summary>22 passed in every build and delivery that runs them</summary>
+| Excluded | Reason |
+| --- | --- |
+| a shape error on a large value allocates less than 16 MB | GC.GetAllocatedBytesForCurrentThread has no Fable counterpart. |
+
+<details><summary>24 passed in every build and delivery that runs them</summary>
 
 - a record encodes to its text and decodes back
 - text that is not JSON is a syntax error
@@ -1941,6 +1945,8 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a surrogate pair decodes, raw or escaped
 - limits at the edges of their range are accepted
 - limits outside their range are rejected
+- an object of 100,000 members decodes through Codec.dict in under three seconds
+- a shape error echoes at most 256 characters of a large value
 
 </details>
 
@@ -2136,7 +2142,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## Conformance.fs
 
-<details><summary>88 passed in every build and delivery that runs them</summary>
+<details><summary>104 passed in every build and delivery that runs them</summary>
 
 - a record
 - a record without its optional field
@@ -2226,6 +2232,22 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a uint16 string -0
 - a uint32 string -0
 - a uint64 string -0
+- a map with keys in JavaScript's own-property order
+- key-value pairs in JavaScript's own-property order
+- a map with a repeated key keeps its last value
+- key-value pairs with a repeated key keep one pair
+- a record beside keys named after Object.prototype members
+- a record whose absent optional field is named constructor
+- a record whose optional field named constructor is present
+- an upper-case Guid
+- a Guid without hyphens
+- a Guid in braces
+- a Guid in parentheses
+- a Guid with surrounding whitespace
+- a Guid in brackets
+- a Guid in doubled braces
+- a Guid with an unmatched brace
+- a Guid led by a byte order mark
 
 </details>
 

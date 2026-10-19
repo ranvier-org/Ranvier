@@ -17,10 +17,16 @@ type WireError =
         | Limit message
         | Shape message -> message
 
-/// <summary>The largest wire text a codec decodes.</summary>
+/// <summary>
+/// The bounds on a decoded wire text: its nesting depth and item count, checked before parsing, and the digits of each
+/// <c>Codecs.bigint</c> value.
+/// </summary>
 type WireLimits =
     {
-        /// <summary>The deepest nesting of arrays and objects, between 1 and 1024; checked before parsing.</summary>
+        /// <summary>
+        /// The deepest nesting of arrays and objects, between 1 and 1000 (System.Text.Json's writer limit); checked before
+        /// parsing.
+        /// </summary>
         MaxDepth: int
         /// <summary>The total number of array elements and object members, at least 1; checked before parsing.</summary>
         MaxItems: int
@@ -40,7 +46,8 @@ type WireLimits =
 type WireCodec<'T> =
     /// <summary>
     /// The wire text of the value; a null string is written as JSON <c>null</c>. Raises <c>ArgumentException</c>,
-    /// naming the index, when a string, char or object key in the value holds a lone surrogate.
+    /// naming the index, when a string, char or object key in the value holds a lone surrogate; under Fable a JS
+    /// <c>Error</c> is thrown. On .NET, also raises for a value nested deeper than 1000 levels.
     /// </summary>
     abstract Encode: value: 'T -> string
     /// <summary>
