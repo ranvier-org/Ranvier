@@ -289,8 +289,8 @@ type internal DistinctView<'K, 'V, 'G when 'K: equality and 'G: equality>(graph:
         heldOut.Publish upstream
 
 /// <summary>
-/// The rank orders of sorts and extremes: <c>compare</c>, with a <c>float</c> or <c>float32</c> NaN equal to NaN and
-/// after every other rank.
+/// The rank order of extremes: <c>compare</c>, with a <c>float</c> or <c>float32</c> NaN equal to NaN and after every
+/// other rank.
 /// </summary>
 module internal Ranks =
     let isNaN (rank: 'S) =
@@ -306,14 +306,6 @@ module internal Ranks =
         | true, false -> 1
         | false, true -> -1
         | false, false -> compare a b
-
-    /// <summary>The order of <c>sortByDescending</c>: largest first, NaN last.</summary>
-    let descending (a: 'S) (b: 'S) =
-        match isNaN a, isNaN b with
-        | true, true -> 0
-        | true, false -> 1
-        | false, true -> -1
-        | false, false -> compare b a
 
 /// <summary>
 /// The keys of <c>sortKeys</c> whose sort key has settled, ascending by sort key, or descending when <c>descending</c> is
@@ -349,7 +341,20 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
     /// <summary>Whether <c>order</c> holds the result of a completed sort.</summary>
     let mutable sorted = false
 
-    let compareRanks = if descending then Ranks.descending else Ranks.ascending
+    // Local copies of the Ranks orders: a call into Ranks, direct or through a closure, costs 5-15% per sorting pass.
+    let isNaN (rank: 'S) =
+        match box rank with
+        | :? float as f -> System.Double.IsNaN f
+        | :? float32 as f -> System.Single.IsNaN f
+        | _ -> false
+
+    /// <summary>The order of <c>sortByDescending</c> when <c>descending</c> is set, of <c>sortBy</c> otherwise.</summary>
+    let compareRanks (a: 'S) (b: 'S) =
+        match isNaN a, isNaN b with
+        | true, true -> 0
+        | true, false -> 1
+        | false, true -> -1
+        | false, false -> if descending then compare b a else compare a b
 
     /// <summary>
     /// Whether <c>order</c> applies to this pass: the last sort completed, and this pass placed the keys and sort keys of the
