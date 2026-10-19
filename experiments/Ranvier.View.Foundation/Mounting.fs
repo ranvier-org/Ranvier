@@ -1397,7 +1397,6 @@ and [<Sealed>] private ViewBoundary
         if
             not revealed
             && not settingUp
-            && waiting = 0
             && not (isNull content)
             && site.Live ()
         then
@@ -1612,7 +1611,10 @@ and internal MountState
         let mutable state = 0
 
         if scope.Tracks then
-            Api.onCleanup (fun () -> state <- BindingState.released scope state)
+            Api.onCleanup (fun () ->
+                let previous = state
+                state <- BindingState.released previous
+                BindingState.ready scope previous)
 
         match scheduling with
         | Synchronous ->
@@ -1653,7 +1655,9 @@ and internal MountState
                     Api.untrack commit
 
                 if state <> 0 then
-                    state <- BindingState.released scope state)
+                    let previous = state
+                    state <- BindingState.released previous
+                    BindingState.ready scope previous)
         | Queued queue ->
             let live () =
                 not root.IsDisposed
@@ -1683,7 +1687,9 @@ and internal MountState
                 if scope.Tracks then
                     fun () ->
                         if state <> 0 then
-                            state <- BindingState.released scope state
+                            let previous = state
+                            state <- BindingState.released previous
+                            BindingState.ready scope previous
                 else
                     Unchecked.defaultof<_>
 

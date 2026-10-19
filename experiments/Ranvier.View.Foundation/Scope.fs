@@ -25,8 +25,8 @@ module internal BindingState =
 
     /// <summary>
     /// The state word after a read raised <c>error</c>. A pending read sets <c>Waiting</c> and registers the binding
-    /// with a tracking scope, once until <c>released</c>; any other error sets <c>ReadFailed</c>. Store the word, then
-    /// call <c>report</c>.
+    /// with a tracking scope, once until <c>ready</c> releases it; any other error sets <c>ReadFailed</c>. Store the
+    /// word, then call <c>report</c>.
     /// </summary>
     let rejected (scope: ViewScope) (state: int) (error: exn) : int =
         match error with
@@ -52,13 +52,14 @@ module internal BindingState =
         else
             state
 
+    /// <summary>The state word with <c>Waiting</c> cleared. Store it, then call <c>ready</c> with the word before.</summary>
+    let released (state: int) : int =
+        state &&& ~~~Waiting
+
     /// <summary>
-    /// The state word with <c>Waiting</c> cleared; a waiting binding is released from its scope. Call after the value
+    /// Releases a binding whose word before <c>released</c> was <c>Waiting</c> from its scope. Call after the value
     /// read is committed, and when the binding's owner is disposed.
     /// </summary>
-    let released (scope: ViewScope) (state: int) : int =
-        if state &&& Waiting <> 0 then
+    let ready (scope: ViewScope) (previous: int) =
+        if previous &&& Waiting <> 0 then
             scope.Ready ()
-            state &&& ~~~Waiting
-        else
-            state
