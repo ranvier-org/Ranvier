@@ -1363,6 +1363,8 @@ and [<Sealed>] private ViewBoundary
     ) =
     // The content's nested mount; null until its setup returns.
     let mutable content: Row = null
+    // The container of the content's hooks, placed at the reveal; null after a teardown.
+    let mutable contentContainer: Placement = null
     // The view between the markers while the content is hidden; null otherwise.
     let mutable shown: Row = null
     let mutable waiting = 0
@@ -1415,11 +1417,13 @@ and [<Sealed>] private ViewBoundary
 
     member private _.Show(render: Backend -> unit) =
         let mutable row: Row = null
+        let viewContainer = Placement parent
 
         try
-            row <- Api.runWithOwner site.Owner (fun () -> mountView noItem (fun _ backend -> render backend) outer parent)
+            row <- Api.runWithOwner site.Owner (fun () -> mountView noItem (fun _ backend -> render backend) outer viewContainer)
             place row
             shown <- row
+            viewContainer.Place ()
         with error ->
             if not (isNull row) then
                 row.Mount.Dispose ()
@@ -1435,6 +1439,7 @@ and [<Sealed>] private ViewBoundary
         try
             retire ()
             place content
+            contentContainer.Place ()
         with error ->
             this.TearDown [ error ]
 
@@ -1461,6 +1466,11 @@ and [<Sealed>] private ViewBoundary
 
         content <- null
         shown <- null
+
+        if not (isNull contentContainer) then
+            contentContainer.Discard ()
+            contentContainer <- null
+
         site.LaidOut.Clear ()
         waiting <- 0
         revealed <- false
@@ -1509,13 +1519,14 @@ and [<Sealed>] private ViewBoundary
         settingUp <- true
         waiting <- 0
         held.Clear ()
+        contentContainer <- Placement parent
         let mutable failure = None
 
         try
             try
                 content <-
                     Api.runWithOwner site.Owner (fun () ->
-                        mountView noItem (fun _ backend -> views.Content status backend) (this :> ViewScope) parent)
+                        mountView noItem (fun _ backend -> views.Content status backend) (this :> ViewScope) contentContainer)
             with error ->
                 failure <- Some error
         finally

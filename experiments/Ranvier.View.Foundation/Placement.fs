@@ -4,6 +4,13 @@ open Ranvier
 open Fable.Core.TS.Dom
 open Ranvier.View.Foundation.Representation
 
+#if RANVIER_VIEW_COUNTERS
+/// <summary>Counts of placement work, defined only in the DOM test build.</summary>
+module internal PlacementCounters =
+    /// <summary>Hooks currently held by unplaced containers, across every container.</summary>
+    let held = ref 0
+#endif
+
 /// <summary>
 /// The hooks of instances whose nodes are not yet placed in their mount's host. A container is placed once its own
 /// <c>Place</c> has run and its parent is placed; hooks added before then are held, and every hook runs in the order
@@ -50,6 +57,9 @@ type internal Placement(parent: Placement) =
                 held <- ResizeArray ()
 
             held.Add ((owner, hook))
+#if RANVIER_VIEW_COUNTERS
+            PlacementCounters.held.Value <- PlacementCounters.held.Value + 1
+#endif
         elif this.IsPlaced then
             if not owner.IsDisposed then
                 Api.runWithOwner owner (fun () -> Api.createEffect (fun () -> Api.untrack hook))
@@ -64,6 +74,9 @@ type internal Placement(parent: Placement) =
             if not (isNull held) then
                 let hooks = held
                 held <- null
+#if RANVIER_VIEW_COUNTERS
+                PlacementCounters.held.Value <- PlacementCounters.held.Value - hooks.Count
+#endif
 
                 for owner, hook in hooks do
                     this.Add (owner, hook)
@@ -71,6 +84,10 @@ type internal Placement(parent: Placement) =
     /// <summary>Drops the held hooks and every later one.</summary>
     member _.Discard() =
         discarded <- true
+#if RANVIER_VIEW_COUNTERS
+        if not (isNull held) then
+            PlacementCounters.held.Value <- PlacementCounters.held.Value - held.Count
+#endif
         held <- null
 
 /// <summary>Element hooks registered with a placement container.</summary>

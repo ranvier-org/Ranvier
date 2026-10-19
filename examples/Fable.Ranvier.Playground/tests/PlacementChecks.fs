@@ -1,5 +1,6 @@
 module PlacementChecks
 
+open System
 open Ranvier
 open Fable.Core.TS.Dom
 open Ranvier.View.Foundation
@@ -308,6 +309,231 @@ let private serverHook (ops: Operations<'view>) (run: 'view -> Backend -> unit) 
             Some error.Message
 
     equal ("<div>x</div>", Some "Browser capability requires explicit Omit policy") (Html.render Omit (run view), rejected)
+
+let private hiddenReveal (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createAsyncSource<string>())
+    let log = ResizeArray<string>()
+    let target = host ()
+
+    let view =
+        ops.Boundary (
+            ops.Text "loading",
+            (fun failure -> ops.Text failure.Error.Message),
+            fun _ ->
+                span
+                    ops
+                    [|
+                        Typed.mounted (fun (node: HTMLSpanElement) ->
+                            log.Add (sprintf "hook %b" (target.contains node))
+                            fun () -> log.Add "cleanup")
+                    |]
+                    [| Typed.reactiveText ops (fun () -> source.Value) |]
+        )
+
+    let mounted = mountView ops run queued graph strict target view
+    equal ([], "loading") (List.ofSeq log, target.textContent)
+    graph.Run (fun () -> source.Settle "ready")
+    mounted.Flush ()
+    equal ([ "hook true" ], "ready") (List.ofSeq log, target.textContent)
+    mounted.Dispose ()
+    equal [ "hook true"; "cleanup" ] (List.ofSeq log)
+
+/// <summary>A content torn down by a failure before its reveal, then retried and revealed.</summary>
+let private tornDownAndRetried (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+
+    let flight =
+        graph.Run (fun () -> Api.createSignal (Api.createAsyncSource<string>()))
+
+    let log = ResizeArray<string>()
+    let reports = ResizeArray<exn list>()
+    let retry = ref ignore
+    let generation = ref 0
+    let target = host ()
+
+    let content (_: BoundaryStatus) =
+        ops.Component (fun _ ->
+            generation.Value <- generation.Value + 1
+            let current = generation.Value
+
+            span
+                ops
+                [|
+                    Typed.mounted (fun (node: HTMLSpanElement) ->
+                        log.Add (sprintf "hook %d %b" current (target.contains node))
+                        fun () -> log.Add (sprintf "cleanup %d" current))
+                |]
+                [| Typed.reactiveText ops (fun () -> flight.Value.Value) |])
+
+    let failed (failure: BoundaryFailure) =
+        ops.Component (fun _ ->
+            retry.Value <- failure.Retry
+            ops.Text ("failed " + failure.Error.Message))
+
+    let mounted =
+        mountView ops run queued graph reports.Add target (ops.Boundary (ops.Text "loading", failed, content))
+
+    graph.Run (fun () -> flight.Value.Fail (Exception "first"))
+    mounted.Flush ()
+    equal ([], "failed first", [ [ "first" ] ]) (List.ofSeq log, target.textContent, messages reports)
+    graph.Run (fun () -> flight.Value <- Api.createAsyncSource<string>())
+    retry.Value ()
+    equal ([], "loading") (List.ofSeq log, target.textContent)
+    graph.Run (fun () -> flight.Value.Settle "ready")
+    mounted.Flush ()
+    equal ([ "hook 2 true" ], "ready") (List.ofSeq log, target.textContent)
+    mounted.Dispose ()
+    equal [ "hook 2 true"; "cleanup 2" ] (List.ofSeq log)
+
+let private viewHooks (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createAsyncSource<string>())
+    let broken = graph.Run (fun () -> Api.createSignal false)
+    let log = ResizeArray<string>()
+    let reports = ResizeArray<exn list>()
+    let target = host ()
+
+    let logged (name: string) =
+        Typed.mounted (fun (node: HTMLSpanElement) ->
+            log.Add (sprintf "%s %b" name (target.contains node))
+            fun () -> log.Add (name + " cleanup"))
+
+    let view =
+        ops.Boundary (
+            span ops [| logged "pending" |] [| ops.Text "loading" |],
+            (fun failure -> span ops [| logged "error" |] [| ops.Text failure.Error.Message |]),
+            fun _ -> Typed.reactiveText ops (fun () -> if broken.Value then failwith "broken" else source.Value)
+        )
+
+    let mounted = mountView ops run queued graph reports.Add target view
+    equal [ "pending true" ] (List.ofSeq log)
+    graph.Run (fun () -> source.Settle "ready")
+    mounted.Flush ()
+    equal [ "pending true"; "pending cleanup" ] (List.ofSeq log)
+    graph.Run (fun () -> broken.Value <- true)
+    mounted.Flush ()
+
+    equal ([ "pending true"; "pending cleanup"; "error true" ], [ [ "broken" ] ]) (List.ofSeq log, messages reports)
+
+    mounted.Dispose ()
+    equal "error cleanup" log[log.Count - 1]
+
+let private laterFailureUnderBoundary (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+    let rows = graph.Run (fun () -> Api.createSignal [ 1 ])
+    let reports = ResizeArray<exn list>()
+    let target = host ()
+
+    let view =
+        ops.Boundary (
+            ops.Text "loading",
+            (fun failure -> ops.Text ("failed: " + failure.Error.Message)),
+            fun _ ->
+                Keyed.list ops id (fun () -> rows.Value) (fun current ->
+                    let item = current ()
+
+                    span
+                        ops
+                        [|
+                            Typed.mounted (fun (_: HTMLSpanElement) -> if item = 2 then failwith "row 2" else ignore)
+                        |]
+                        [| ops.Text (string item) |])
+        )
+
+    let mounted = mountView ops run queued graph reports.Add target view
+    graph.Run (fun () -> rows.Value <- [ 1; 2 ])
+    mounted.Flush ()
+    equal ("failed: row 2", [ [ "row 2" ] ]) (target.textContent, messages reports)
+    mounted.Dispose ()
+
+let private hiddenNodeRef (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+    let field: NodeRef<HTMLInputElement> = NodeRef.create ()
+    let source = graph.Run (fun () -> Api.createAsyncSource<string>())
+    let target = host ()
+
+    let view =
+        ops.Boundary (
+            ops.Text "loading",
+            (fun failure -> ops.Text failure.Error.Message),
+            fun _ ->
+                ops.Fragment
+                    [|
+                        Typed.input ops [| Typed.ref field |]
+                        Typed.reactiveText ops (fun () -> source.Value)
+                    |]
+        )
+
+    let mounted = mountView ops run queued graph strict target view
+    let hidden = field.Current.IsSome
+    graph.Run (fun () -> source.Settle "ready")
+    mounted.Flush ()
+    let shown = field.Current.IsSome
+    mounted.Dispose ()
+    equal (false, true, false) (hidden, shown, field.Current.IsSome)
+
+/// <summary>A boundary in a list row added after the mount; its content's hook runs at the boundary's reveal.</summary>
+let private boundaryInLaterRow (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+    let rows = graph.Run (fun () -> Api.createSignal [ 1 ])
+    let source = graph.Run (fun () -> Api.createAsyncSource<string>())
+    let log = ResizeArray<string>()
+    let target = host ()
+
+    let view =
+        Keyed.list ops id (fun () -> rows.Value) (fun current ->
+            if current () = 1 then
+                ops.Text "first"
+            else
+                ops.Boundary (
+                    ops.Text "loading",
+                    (fun failure -> ops.Text failure.Error.Message),
+                    fun _ ->
+                        span
+                            ops
+                            [|
+                                Typed.mounted (fun (node: HTMLSpanElement) ->
+                                    log.Add (sprintf "content %b" (target.contains node))
+                                    ignore)
+                            |]
+                            [| Typed.reactiveText ops (fun () -> source.Value) |]
+                ))
+
+    let mounted = mountView ops run queued graph strict target view
+    graph.Run (fun () -> rows.Value <- [ 1; 2 ])
+    mounted.Flush ()
+    equal ([], "firstloading") (List.ofSeq log, target.textContent)
+    graph.Run (fun () -> source.Settle "ready")
+    mounted.Flush ()
+    equal ([ "content true" ], "firstready") (List.ofSeq log, target.textContent)
+    mounted.Dispose ()
+
+#if RANVIER_VIEW_COUNTERS
+/// <summary>A boundary content with a mounted hook, torn down by a failure before its reveal.</summary>
+let private heldAfterTeardown (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createAsyncSource<string>())
+    let reports = ResizeArray<exn list>()
+    let target = host ()
+    let before = PlacementCounters.held.Value
+
+    let view =
+        ops.Boundary (
+            ops.Text "loading",
+            (fun failure -> ops.Text ("failed " + failure.Error.Message)),
+            fun _ -> span ops [| Typed.mounted (fun (_: HTMLSpanElement) -> ignore) |] [| Typed.reactiveText ops (fun () -> source.Value) |]
+        )
+
+    let mounted = mountView ops run queued graph reports.Add target view
+    let hidden = PlacementCounters.held.Value - before
+    graph.Run (fun () -> source.Fail (Exception "first"))
+    mounted.Flush ()
+    let tornDown = PlacementCounters.held.Value - before
+    let text = target.textContent
+    mounted.Dispose ()
+    equal (1, 0, "failed first", [ [ "first" ] ]) (hidden, tornDown, text, messages reports)
+#endif
 
 type Probe =
     {
@@ -685,6 +911,137 @@ let private templateServerHook () =
 
     equal ("<div>x</div>", Some "Browser capability requires explicit Omit policy") (render Omit, rejected)
 
+let mutable private hiddenSource: Signal<AsyncSource<string>> =
+    Unchecked.defaultof<_>
+
+let private hiddenLog = ResizeArray<string>()
+let mutable private hiddenHost: HTMLElement = Unchecked.defaultof<_>
+
+let private hiddenContent =
+    Component.define (fun _ (_: BoundaryStatus) -> ()) (fun t ->
+        t.span
+            [|
+                t.Hooks.mounted (fun _ (node: HTMLSpanElement) ->
+                    hiddenLog.Add (sprintf "hook %b" (hiddenHost.contains node))
+                    fun () -> hiddenLog.Add "cleanup")
+            |]
+            [| t.text (fun () -> hiddenSource.Value.Value) |])
+
+let private hiddenPending =
+    Component.define (fun _ () -> ()) (fun t ->
+        t.span
+            [|
+                t.Hooks.mounted (fun _ (_: HTMLSpanElement) ->
+                    hiddenLog.Add "pending"
+                    fun () -> hiddenLog.Add "pending cleanup")
+            |]
+            [| t.text "loading" |])
+
+let private hiddenFailed =
+    Component.define (fun _ (failure: BoundaryFailure) -> failure) (fun t ->
+        t.button
+            [|
+                t.Hooks.mounted (fun _ (_: HTMLButtonElement) ->
+                    hiddenLog.Add "error"
+                    fun () -> hiddenLog.Add "error cleanup")
+                t.Events.onClick (fun failure _ -> failure.Retry ())
+            |]
+            [| t.text (fun failure -> "failed " + failure.Error.Message) |])
+
+let private hiddenGuarded =
+    Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.boundary hiddenPending hiddenFailed hiddenContent |])
+
+/// <summary>A template content torn down before its reveal, retried from its error view's button, then revealed.</summary>
+let private templateHiddenLifecycle queued () =
+    use graph = new Graph ()
+    hiddenLog.Clear ()
+    hiddenSource <- graph.Run (fun () -> Api.createSignal (Api.createAsyncSource<string>()))
+    hiddenHost <- host ()
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        mountTemplate queued graph reports.Add hiddenHost (Component.render hiddenGuarded ())
+
+    equal [ "pending" ] (List.ofSeq hiddenLog)
+    graph.Run (fun () -> hiddenSource.Value.Fail (Exception "first"))
+    mounted.Flush ()
+    equal ([ "pending"; "pending cleanup"; "error" ], "failed first") (List.ofSeq hiddenLog, hiddenHost.textContent)
+    graph.Run (fun () -> hiddenSource.Value <- Api.createAsyncSource<string>())
+
+    (hiddenHost.querySelector "button"
+     |> unbox<HTMLButtonElement>)
+        .click()
+
+    graph.Run (fun () -> hiddenSource.Value.Settle "ready")
+    mounted.Flush ()
+
+    equal
+        ([
+            "pending"
+            "pending cleanup"
+            "error"
+            "error cleanup"
+            "pending"
+            "pending cleanup"
+            "hook true"
+         ],
+         "ready",
+         [ [ "first" ] ])
+        (List.ofSeq hiddenLog, hiddenHost.textContent, messages reports)
+
+    mounted.Dispose ()
+    equal "cleanup" hiddenLog[hiddenLog.Count - 1]
+
+let mutable private hiddenField: Field = Unchecked.defaultof<_>
+
+let private hiddenInput =
+    Component.define (fun _ (_: BoundaryStatus) -> ()) (fun t ->
+        t.span
+            [||]
+            [|
+                t.input
+                    [|
+                        t.Hooks.ref (fun _ -> hiddenField.Field)
+                        t.Hooks.mounted (fun _ (_: HTMLInputElement) ->
+                            hiddenField.Seen.Add hiddenField.Field.Current.IsSome
+                            ignore)
+                    |]
+                t.text (fun () -> hiddenSource.Value.Value)
+            |])
+
+let private hiddenInputGuarded =
+    Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.boundary hiddenPending hiddenFailed hiddenInput |])
+
+/// <summary>A template input with a ref and a mounted hook, in a boundary content pending at the mount and revealed later.</summary>
+let private templateHiddenNodeRef queued () =
+    use graph = new Graph ()
+    hiddenLog.Clear ()
+    hiddenSource <- graph.Run (fun () -> Api.createSignal (Api.createAsyncSource<string>()))
+
+    hiddenField <-
+        {
+            Field = NodeRef.create ()
+            Seen = ResizeArray ()
+        }
+
+    let target = host ()
+
+    let mounted =
+        mountTemplate queued graph strict target (Component.render hiddenInputGuarded ())
+
+    let hidden = hiddenField.Field.Current.IsSome
+    graph.Run (fun () -> hiddenSource.Value.Settle "ready")
+    mounted.Flush ()
+
+    let shown =
+        match hiddenField.Field.Current with
+        | Some node -> obj.ReferenceEquals (node, target.querySelector "input")
+        | None -> false
+
+    mounted.Dispose ()
+
+    equal (false, [ true ], true, false) (hidden, List.ofSeq hiddenField.Seen, shown, hiddenField.Field.Current.IsSome)
+
 /// <summary>The template variant of a check, under synchronous and queued commits.</summary>
 let private templated (name: string) (check: bool -> unit -> unit) =
     [|
@@ -763,6 +1120,30 @@ let cases: (string * (unit -> unit)) array =
                 "a mounted hook that writes a signal read by a binding updates the binding and runs once"
                 (hookWritesBinding Tree.ops Tree.run)
                 (hookWritesBinding Program.ops Program.run)
+            both "hooks under a hidden boundary content run at reveal" (hiddenReveal Tree.ops Tree.run) (hiddenReveal Program.ops Program.run)
+            both
+                "content torn down before reveal runs no hook and no hook cleanup, and a retried content runs its hooks at its reveal"
+                (tornDownAndRetried Tree.ops Tree.run)
+                (tornDownAndRetried Program.ops Program.run)
+            both
+                "pending and error view hooks run while shown and clean up when retired"
+                (viewHooks Tree.ops Tree.run)
+                (viewHooks Program.ops Program.run)
+            both
+                "a later hook failure under a boundary shows the error view"
+                (laterFailureUnderBoundary Tree.ops Tree.run)
+                (laterFailureUnderBoundary Program.ops Program.run)
+            both "NodeRef.Current is None while hidden by a boundary" (hiddenNodeRef Tree.ops Tree.run) (hiddenNodeRef Program.ops Program.run)
+            both
+                "a boundary in a row added later runs its content hooks at its own reveal"
+                (boundaryInLaterRow Tree.ops Tree.run)
+                (boundaryInLaterRow Program.ops Program.run)
+#if RANVIER_VIEW_COUNTERS
+            both
+                "a content torn down before its reveal leaves the held-hook count at its prior value"
+                (heldAfterTeardown Tree.ops Tree.run)
+                (heldAfterTeardown Program.ops Program.run)
+#endif
             [|
                 "tree: a mounted hook raises under Reject and writes nothing under Omit", (fun () -> serverHook Tree.ops Tree.run)
                 "program: a mounted hook raises under Reject and writes nothing under Omit", (fun () -> serverHook Program.ops Program.run)
@@ -779,6 +1160,10 @@ let cases: (string * (unit -> unit)) array =
             templated "NodeRef.Current is None during setup, Some while placed and None after disposal" templateNodeRef
             templated "moving a mount or reordering rows does not re-run hooks" templateMovesKeepHooks
             templated "a NodeRef read from a handler after a keyed reorder holds its row's element" templateRefAcrossReorder
+            templated
+                "hooks under hidden content run at reveal, content torn down before reveal runs none, and view hooks run while shown"
+                templateHiddenLifecycle
+            templated "NodeRef.Current is None while hidden by a boundary" templateHiddenNodeRef
             [|
                 "template: a mounted hook raises under Reject and writes nothing under Omit", templateServerHook
             |]
