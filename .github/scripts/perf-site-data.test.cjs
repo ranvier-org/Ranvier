@@ -39,6 +39,36 @@ test('builds an ordered index containing head measurements for every recorded co
   assert.equal(index.commits[0].Medians[0].Value, 2470);
 }));
 
+test('keeps package versions, head-process ranges and nonzero library counters', () => fixture((root, runs) => {
+  const sha = 'c'.repeat(40);
+  const process = (side, value) => ({
+    Side: side, Runtime: 'dotnet', Scenarios: [{ Scenario: 'chain', Engine: 'Ranvier', Metrics: [{ Name: 'instructions', Value: value }] }],
+  });
+  const counter = (side, value) => ({
+    Side: side, Runtime: 'dotnet',
+    Scenarios: [{ Scenario: 'chain', Engine: 'Ranvier', Metrics: [{ Name: 'lib:MemoRecomputes', Value: value }, { Name: 'lib:Flushes', Value: 0 }] }],
+  });
+  fs.writeFileSync(path.join(runs, `${sha}.json`), JSON.stringify({
+    ...record(sha, '2026-10-16T10:00:00Z'),
+    Packages: [{ Name: 'Ranvier', Version: '0.1.0-preview.5' }],
+    Runs: [{
+      Leg: 'arm64-counters',
+      Processes: [process('head', 2460), process('head', 2470), process('head', 2490), process('base', 2400)],
+      Counters: [counter('head', 4), counter('base', 5)],
+    }],
+  }));
+  const output = path.join(root, 'index.json');
+
+  buildIndex(runs, output);
+
+  const [commit] = JSON.parse(fs.readFileSync(output, 'utf8')).commits;
+  assert.deepEqual(commit.Packages, [{ Name: 'Ranvier', Version: '0.1.0-preview.5' }]);
+  assert.deepEqual(commit.Medians, [
+    { Leg: 'arm64-counters', Runtime: 'dotnet', Scenario: 'chain', Engine: 'Ranvier', Metric: 'instructions', Value: 2470, Min: 2460, Max: 2490 },
+  ]);
+  assert.deepEqual(commit.Counters, [{ Runtime: 'dotnet', Scenario: 'chain', Engine: 'Ranvier', Name: 'MemoRecomputes', Value: 4 }]);
+}));
+
 test('fails when the history contains no records', () => fixture((_root, runs) => {
   assert.throws(() => buildIndex(runs, path.join(runs, 'index.json')), /No performance records found/);
 }));

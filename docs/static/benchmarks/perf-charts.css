@@ -60,6 +60,8 @@
 .rv-perf-spark header > span { font-size: .6875rem; }
 .rv-perf-spark header strong { color: var(--perf-ink); font-weight: 650; }
 .rv-perf-crosshair { stroke: var(--perf-muted); stroke-width: 1.5; }
+.rv-perf-spread { opacity: .18; }
+.rv-perf-counter-change { fill: var(--perf-muted); }
 .rv-perf-commit { cursor: pointer; }
 .rv-perf-commit:hover { fill: var(--perf-ink); text-decoration: underline; }
 .rv-perf-commit:focus-visible { fill: var(--perf-ink); text-decoration: underline; outline: 2px solid var(--perf-ink); outline-offset: 3px; }

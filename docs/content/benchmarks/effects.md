@@ -7,11 +7,11 @@ order: 4
 
 ## CI instruction counts
 The chart compares retired instructions per operation across engines for the latest CI measurement.
-Choose a runtime or recorded commit, filter scenarios by name, and toggle libraries in the legend.
+Choose a runtime, metric or recorded commit, filter scenarios by name, and toggle libraries in the legend.
 
 The trend panels follow each scenario across every recorded commit, one panel per Ranvier variant.
 By default each line shows its change since its first record; libraries other than Ranvier are pinned
-versions, so their lines mark the run-to-run noise floor. A change since the first record of 5 % or more is set in bold.
+versions, so their lines mark the run-to-run noise floor. A change since the first record of 5 % or more is set in bold. The Metric control switches between instructions, cycles, allocated bytes, branch misses and CPU time on x64. The shaded band spans the lowest and highest of the five processes behind each median, and a ▲ under the axis marks a commit at which the Ranvier variant’s library counters changed; the readout lists those counters.
 
 <div class="rv-perf" data-perf-compare data-perf-group="work-,mvu-dispatch,editable-"><p role="status">Loading recorded measurements…</p></div>
 <div class="rv-perf" data-perf-trends data-perf-group="work-,mvu-dispatch,editable-"><p role="status">Loading recorded measurements…</p></div>
