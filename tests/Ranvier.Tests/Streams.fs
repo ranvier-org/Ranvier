@@ -66,6 +66,17 @@ let private manualGraph () =
 let private reading (memo: StreamMemo<'S>) =
     memo.TryValue
 
+/// <summary>Completes once the stream memo has observed the start's task settle: at once on .NET, a microtask later under Fable.</summary>
+let private settled (start: StreamStart<'T>) : Async<unit> =
+#if FABLE_COMPILER
+    async {
+        let! _ = Async.Catch (Async.AwaitTask start.Done.Task)
+        return ()
+    }
+#else
+    async.Return ()
+#endif
+
 [<Tests>]
 let tests =
     testList
@@ -149,8 +160,8 @@ let tests =
                 feed.Complete ()
                 Expect.equal (reading memo) (Ready 5) "ready with the last item"
 
-            testCase "empty completion gives seed for a fold and InvalidOperationException for createStream"
-            <| fun _ ->
+            testCaseAsync "empty completion gives seed for a fold and InvalidOperationException for createStream"
+            <| async {
                 use graph = new Graph ()
                 let feed = ManualStream<int>()
                 let latest = graph.Run (fun () -> Api.createStream (fun _ -> feed.Source))
@@ -159,15 +170,18 @@ let tests =
                 reading folded |> ignore
                 feed.At(0).Done.SetResult()
                 feed.At(1).Done.SetResult()
+                do! settled (feed.At 0)
+                do! settled (feed.At 1)
 
                 match reading latest with
                 | Failed (:? InvalidOperationException) -> ()
                 | other -> failtestf "expected InvalidOperationException, got %A" other
 
                 Expect.equal (reading folded) (Ready 7) "seed"
+            }
 
-            testCase "a stream failure publishes Failed with the stream memo as origin"
-            <| fun _ ->
+            testCaseAsync "a stream failure publishes Failed with the stream memo as origin"
+            <| async {
                 use graph = new Graph ()
                 let feed = ManualStream<int>()
                 let memo = graph.Run (fun () -> Api.createStream (fun _ -> feed.Source))
@@ -175,12 +189,14 @@ let tests =
                 feed.Push 1
                 let boom = Exception "boom"
                 feed.Fail boom
+                do! settled feed.Latest
 
                 match reading memo with
                 | Failed error -> Expect.equal error.Message "boom" "the stream's exception"
                 | other -> failtestf "expected Failed, got %A" other
 
                 Expect.isTrue (obj.ReferenceEquals (memo.ErrorOrigin, memo)) "origin"
+            }
 
             testCase "a dependency change cancels the stream and restarts it from seed"
             <| fun _ ->
@@ -255,16 +271,18 @@ let tests =
                 feed.Push 5
                 Expect.equal (reading memo) (Ready 5) "the started stream publishes"
 
-            testCase "a misbehaving source's items after completion are ignored"
-            <| fun _ ->
+            testCaseAsync "a misbehaving source's items after completion are ignored"
+            <| async {
                 use graph = new Graph ()
                 let feed = ManualStream<int>()
                 let memo = graph.Run (fun () -> Api.createStream (fun _ -> feed.Source))
                 reading memo |> ignore
                 feed.Push 1
                 feed.Complete ()
+                do! settled feed.Latest
                 feed.Push 2
                 Expect.equal (reading memo) (Ready 1) "nothing republished after completion"
+            }
 
             testCase "Run throwing synchronously, and Run returning null, both publish Failed"
             <| fun _ ->
@@ -397,8 +415,8 @@ let tests =
 
                 Expect.throwsT<InvalidOperationException> (fun () -> graph.Run (fun () -> bad.Value) |> ignore) "owned node in a pure body"
 
-            testCase "a closed stream's items are not folded"
-            <| fun _ ->
+            testCaseAsync "a closed stream's items are not folded"
+            <| async {
                 use graph = new Graph ()
                 let feed = ManualStream<int>()
                 let topic = Signal (graph, 0)
@@ -418,12 +436,14 @@ let tests =
                 reading memo |> ignore
                 feed.Push 1
                 feed.Complete ()
+                do! settled feed.Latest
                 feed.Push 2
                 Expect.equal folds.Value 1 "nothing folded after completion"
                 topic.Value <- 1
                 reading memo |> ignore
                 feed.At(0).Sink.Next 3
                 Expect.equal folds.Value 1 "nothing folded by a restarted stream's old sink"
+            }
 
             testCase "a completion from a replaced stream leaves the running stream alone"
             <| fun _ ->
