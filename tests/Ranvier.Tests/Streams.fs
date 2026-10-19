@@ -710,7 +710,7 @@ let tests =
                 Expect.equal graph.PendingWork 0 "nothing left queued"
                 Expect.sequenceEqual seen [ 1; 11 ] "the later item's state is published"
 
-            testCase "an off-thread item delivered during a wake that runs inline posts a further wake"
+            testCase "an off-thread item delivered while a graph-thread item publishes posts one wake"
             <| fun _ ->
                 use graph = manualGraph ()
                 let feed = ManualStream<int>()
@@ -734,7 +734,7 @@ let tests =
 
                 graph.Pump () |> ignore
                 feed.Push 1
-                Expect.equal graph.PendingWork 1 "the item during the inline wake posted one wake"
+                Expect.equal graph.PendingWork 1 "the off-thread item posted one wake"
                 graph.Pump () |> ignore
                 Expect.sequenceEqual seen [ 1; 11 ] "the later item's state is published"
 
