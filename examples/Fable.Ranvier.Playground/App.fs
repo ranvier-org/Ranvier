@@ -6,6 +6,8 @@ open Fable.Core.TS.Dom
 open Fable.Ranvier
 open global.Ranvier
 open Ranvier.View.Foundation.Representation
+open Ranvier.View.Foundation
+open Ranvier.View.Foundation.Template
 
 module FoundationMounting = Ranvier.View.Foundation.Mounting
 module FoundationProgram = Ranvier.View.Foundation.Representation.Program
@@ -25,14 +27,119 @@ let private css value =
 let private testId value =
     Dom.attribute "data-testid" value
 
-let private setInputValue (element: HTMLElement) value =
-    let input = unbox<HTMLInputElement> element
+/// <summary>The demo's state, kept on the app's graph so a remount keeps it.</summary>
+type DemoState =
+    {
+        Count: Signal<int>
+        Name: Signal<string>
+    }
 
-    if input.value <> value then
-        input.value <- value
+type DemoInstance =
+    { State: DemoState; Doubled: Memo<int> }
 
-let private setDisabled (element: HTMLElement) value =
-    (unbox<HTMLButtonElement> element).disabled <- value
+let private demoView =
+    Component.define
+        (fun _ (state: DemoState) ->
+            {
+                State = state
+                Doubled = Api.createMemo (fun _ -> state.Count.Value * 2)
+            })
+        (fun t ->
+            t.section
+                [|
+                    t.Attrs.className "demo-grid"
+                    t.Attrs.data ("testid", "demo-root")
+                    t.Attrs.data ("parity", (fun (demo: DemoInstance) -> Some (if demo.State.Count.Value % 2 = 0 then "even" else "odd")))
+                |]
+                [|
+                    t.article
+                        [| t.Attrs.className "panel counter-panel" |]
+                        [|
+                            t.div
+                                [| t.Attrs.className "panel-heading" |]
+                                [|
+                                    t.span [| t.Attrs.className "eyebrow" |] [| t.text "01 / Counter" |]
+                                    t.span [| t.Attrs.className "tag" |] [| t.text "signal → text" |]
+                                |]
+                            t.output
+                                [|
+                                    t.Attrs.className "count"
+                                    t.Attrs.data ("testid", "count")
+                                    t.Attrs.aria ("live", "polite")
+                                |]
+                                [| t.text (fun (demo: DemoInstance) -> string demo.State.Count.Value) |]
+                            t.div
+                                [| t.Attrs.className "derived" |]
+                                [|
+                                    t.span [||] [| t.text "Doubled" |]
+                                    t.output
+                                        [| t.Attrs.data ("testid", "doubled") |]
+                                        [| t.text (fun (demo: DemoInstance) -> string demo.Doubled.Value) |]
+                                |]
+                            t.div
+                                [| t.Attrs.className "actions" |]
+                                [|
+                                    t.button
+                                        [|
+                                            t.Attrs.className "primary"
+                                            t.Attrs.data ("testid", "increment")
+                                            t.Attrs.attribute ("type", "button")
+                                            t.Events.onClick (fun (demo: DemoInstance) _ -> demo.State.Count.Value <- demo.State.Count.Value + 1)
+                                        |]
+                                        [| t.text "Increment +1" |]
+                                    t.button
+                                        [|
+                                            t.Attrs.className "secondary"
+                                            t.Attrs.data ("testid", "reset")
+                                            t.Attrs.attribute ("type", "button")
+                                            t.Props.Button.disabled (fun (demo: DemoInstance) -> demo.State.Count.Value = 0)
+                                            t.Events.onClick (fun (demo: DemoInstance) _ -> demo.State.Count.Value <- 0)
+                                        |]
+                                        [| t.text "Reset" |]
+                                    t.button
+                                        [|
+                                            t.Attrs.className "secondary"
+                                            t.Attrs.data ("testid", "burst")
+                                            t.Attrs.attribute ("type", "button")
+                                            t.Events.onClick (fun (demo: DemoInstance) _ ->
+                                                Api.batch (fun () ->
+                                                    for _ in 1..100 do
+                                                        demo.State.Count.Value <- demo.State.Count.Value + 1))
+                                        |]
+                                        [| t.text "Burst +100" |]
+                                |]
+                            t.p [| t.Attrs.className "note" |] [| t.text "The output changes. The DOM nodes stay." |]
+                        |]
+                    t.article
+                        [| t.Attrs.className "panel name-panel" |]
+                        [|
+                            t.div
+                                [| t.Attrs.className "panel-heading" |]
+                                [|
+                                    t.span [| t.Attrs.className "eyebrow" |] [| t.text "02 / Input" |]
+                                    t.span [| t.Attrs.className "tag" |] [| t.text "event → signal" |]
+                                |]
+                            t.label [| t.Attrs.attribute ("for", "name-field") |] [| t.text "Your name" |]
+                            t.input
+                                [|
+                                    t.Attrs.id "name-field"
+                                    t.Attrs.attribute ("type", "text")
+                                    t.Attrs.attribute ("autocomplete", "off")
+                                    t.Attrs.data ("testid", "name")
+                                    t.Props.Input.value (fun (demo: DemoInstance) -> demo.State.Name.Value)
+                                    t.Events.onInput (fun (demo: DemoInstance) event ->
+                                        demo.State.Name.Value <- (unbox<HTMLInputElement> event.currentTarget.Value).value)
+                                |]
+                            t.p
+                                [|
+                                    t.Attrs.className "greeting"
+                                    t.Attrs.data ("testid", "greeting")
+                                    t.Attrs.aria ("live", "polite")
+                                |]
+                                [| t.text (fun (demo: DemoInstance) -> $"Hello, {demo.State.Name.Value}") |]
+                            t.p [| t.Attrs.className "note" |] [| t.text "Type anywhere in the field. Focus and selection are preserved." |]
+                        |]
+                |])
 
 let start () : unit -> unit =
     let graph = new Graph ()
@@ -48,116 +155,19 @@ let start () : unit -> unit =
 
         let demoHost = Dom.createElement "div"
         let foundationHost = Dom.createElement "section"
-        let mutable demo: DomMount option = None
+        let mutable demo: FoundationMounting.Mounted option = None
 
         let mountDemo () =
-            let options =
-                { DomOptions.Default with
-                    Scheduling = (if queued.Value then Microtask else Synchronous)
-                }
+            let mode =
+                if queued.Value then
+                    FoundationMicrotask.mode FoundationScheduling.CollectAndContinue
+                else
+                    FoundationScheduling.SynchronousCommits
 
             demo <-
                 Some (
-                    Mount.mountWith options graph demoHost (fun () ->
-                        let doubled = createMemo (fun _ -> count.Value * 2)
-
-                        node
-                            "section"
-                            [
-                                css "demo-grid"
-                                testId "demo-root"
-                                Dom.bindAttribute "data-parity" (fun () -> Some (if count.Value % 2 = 0 then "even" else "odd"))
-                            ]
-                            [
-                                node
-                                    "article"
-                                    [ css "panel counter-panel" ]
-                                    [
-                                        node
-                                            "div"
-                                            [ css "panel-heading" ]
-                                            [
-                                                node "span" [ css "eyebrow" ] [ Dom.text "01 / Counter" ]
-                                                node "span" [ css "tag" ] [ Dom.text "signal → text" ]
-                                            ]
-                                        node
-                                            "output"
-                                            [ css "count"; testId "count"; Dom.attribute "aria-live" "polite" ]
-                                            [ Dom.reactiveText (fun () -> string count.Value) ]
-                                        node
-                                            "div"
-                                            [ css "derived" ]
-                                            [
-                                                node "span" [] [ Dom.text "Doubled" ]
-                                                node "output" [ testId "doubled" ] [ Dom.reactiveText (fun () -> string doubled.Value) ]
-                                            ]
-                                        node
-                                            "div"
-                                            [ css "actions" ]
-                                            [
-                                                node
-                                                    "button"
-                                                    [
-                                                        css "primary"
-                                                        testId "increment"
-                                                        Dom.attribute "type" "button"
-                                                        Dom.on "click" (fun _ -> count.Value <- count.Value + 1)
-                                                    ]
-                                                    [ Dom.text "Increment +1" ]
-                                                node
-                                                    "button"
-                                                    [
-                                                        css "secondary"
-                                                        testId "reset"
-                                                        Dom.attribute "type" "button"
-                                                        Dom.bindProperty (fun () -> count.Value = 0) setDisabled
-                                                        Dom.on "click" (fun _ -> count.Value <- 0)
-                                                    ]
-                                                    [ Dom.text "Reset" ]
-                                                node
-                                                    "button"
-                                                    [
-                                                        css "secondary"
-                                                        testId "burst"
-                                                        Dom.attribute "type" "button"
-                                                        Dom.on "click" (fun _ ->
-                                                            for _ in 1..100 do
-                                                                count.Value <- count.Value + 1)
-                                                    ]
-                                                    [ Dom.text "Burst +100" ]
-                                            ]
-                                        node "p" [ css "note" ] [ Dom.text "The output changes. The DOM nodes stay." ]
-                                    ]
-                                node
-                                    "article"
-                                    [ css "panel name-panel" ]
-                                    [
-                                        node
-                                            "div"
-                                            [ css "panel-heading" ]
-                                            [
-                                                node "span" [ css "eyebrow" ] [ Dom.text "02 / Input" ]
-                                                node "span" [ css "tag" ] [ Dom.text "event → signal" ]
-                                            ]
-                                        node "label" [ Dom.attribute "for" "name-field" ] [ Dom.text "Your name" ]
-                                        node
-                                            "input"
-                                            [
-                                                Dom.attribute "id" "name-field"
-                                                Dom.attribute "type" "text"
-                                                Dom.attribute "autocomplete" "off"
-                                                testId "name"
-                                                Dom.bindProperty (fun () -> name.Value) setInputValue
-                                                Dom.on "input" (fun event -> name.Value <- (unbox<HTMLInputElement> event.currentTarget.Value).value)
-                                            ]
-                                            []
-                                        node
-                                            "p"
-                                            [ css "greeting"; testId "greeting"; Dom.attribute "aria-live" "polite" ]
-                                            [ Dom.reactiveText (fun () -> $"Hello, {name.Value}") ]
-                                        node "p" [ css "note" ] [ Dom.text "Type anywhere in the field. Focus and selection are preserved." ]
-                                    ]
-                            ])
+                    FoundationMounting.mountWith mode graph None ignore demoHost None (fun context ->
+                        FoundationProgram.run (Component.render demoView { Count = count; Name = name }) context.Backend)
                 )
 
         let toggle () =
