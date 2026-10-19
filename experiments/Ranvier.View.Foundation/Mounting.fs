@@ -243,6 +243,11 @@ module internal ListCounters =
 
     /// <summary>Longest-run computations made by keyed-list layout.</summary>
     let increasingRuns = ref 0
+
+/// <summary>Counts of boundary work, defined only in the DOM test build.</summary>
+module internal BoundaryCounters =
+    /// <summary>Writes of a boundary's wake signal.</summary>
+    let wakes = ref 0
 #endif
 
 [<Emit("new Set()")>]
@@ -1535,6 +1540,9 @@ and [<Sealed>] private ViewBoundary
                 graph.Run (fun () -> reportAll errors)
             else
                 received <- received @ errors
+#if RANVIER_VIEW_COUNTERS
+                BoundaryCounters.wakes.Value <- BoundaryCounters.wakes.Value + 1
+#endif
                 graph.Run (fun () -> Api.untrack (fun () -> wake.Value <- wake.Value + 1))
 
     interface ViewScope with
@@ -1560,7 +1568,10 @@ and [<Sealed>] private ViewBoundary
                 if waiting = 0 then
                     if revealed then
                         pending.Value <- false
-                    else
+                    elif not settingUp then
+#if RANVIER_VIEW_COUNTERS
+                        BoundaryCounters.wakes.Value <- BoundaryCounters.wakes.Value + 1
+#endif
                         Api.untrack (fun () -> wake.Value <- wake.Value + 1)
 
         member this.Fail(errors) =

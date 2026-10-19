@@ -362,6 +362,42 @@ let private rowsAddedAfterReveal (ops: Operations<'view>) (run: 'view -> Backend
     equal ("123", [ false; true; false ]) (host.textContent, List.ofSeq seen)
     mounted.Dispose ()
 
+#if RANVIER_VIEW_COUNTERS
+/// <summary>
+/// A boundary over three ready bindings and one pending binding writes no wake while its content sets up, and one wake
+/// when the pending read settles.
+/// </summary>
+let private setupWakes (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createAsyncSource<string>())
+    let host = host ()
+
+    let view =
+        ops.Boundary (
+            ops.Text "loading",
+            (fun failure -> ops.Text failure.Error.Message),
+            fun _ ->
+                ops.Fragment
+                    [|
+                        Typed.reactiveText ops (fun () -> "a")
+                        Typed.reactiveText ops (fun () -> "b")
+                        Typed.reactiveText ops (fun () -> "c")
+                        Typed.reactiveText ops (fun () -> source.Value)
+                    |]
+        )
+
+    Mounting.BoundaryCounters.wakes.Value <- 0
+
+    let mounted =
+        mountWith (modeOf queued) graph None strict host None (fun context -> run view context.Backend)
+
+    equal ("loading", 0) (host.textContent, Mounting.BoundaryCounters.wakes.Value)
+    graph.Run (fun () -> source.Settle "d")
+    mounted.Flush ()
+    equal ("abcd", 1) (host.textContent, Mounting.BoundaryCounters.wakes.Value)
+    mounted.Dispose ()
+#endif
+
 let private messages (reports: ResizeArray<exn list>) =
     [ for errors in reports -> errors |> List.map _.Message ]
 
@@ -1313,6 +1349,12 @@ let cases: (string * (unit -> unit)) array =
         fun () -> armReplacedWhilePending Tree.ops Tree.run true
         "program synchronous: replacing a pending arm with another pending arm keeps the boundary hidden",
         fun () -> armReplacedWhilePending Program.ops Program.run false
+        "program queued: replacing a pending arm with another pending arm keeps the boundary hidden",
+        fun () -> armReplacedWhilePending Program.ops Program.run true
+#if RANVIER_VIEW_COUNTERS
+        "tree synchronous: a boundary writes no wake while its content sets up", fun () -> setupWakes Tree.ops Tree.run false
+        "program queued: a boundary writes no wake while its content sets up", fun () -> setupWakes Program.ops Program.run true
+#endif
         "tree synchronous: replacing the one pending row with another pending row keeps the boundary hidden",
         fun () -> rowReplacedWhilePending Tree.ops Tree.run false
         "program queued: replacing the one pending row with another pending row keeps the boundary hidden",
