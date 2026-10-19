@@ -23,6 +23,13 @@ type UnsafeHtml private (markup: string) =
 
         UnsafeHtml markup
 
+/// <summary>The markup of a raw-HTML slot value; a null value raises "An UnsafeHtml reader returned null".</summary>
+let internal markupOf (value: obj) : string =
+    if isNull value then
+        raise (ArgumentException ("An UnsafeHtml reader returned null", "read"))
+
+    (unbox<UnsafeHtml> value).Markup
+
 /// <summary>Where a dynamic slot writes on its node.</summary>
 [<NoEquality; NoComparison>]
 type SlotTarget =
@@ -142,7 +149,7 @@ let primitiveSame = Func<obj, obj, bool>(fun left right -> strictEquals left rig
 
 /// <summary>Compares raw-HTML slot values by their markup.</summary>
 let private contentSame =
-    Func<obj, obj, bool>(fun left right -> (unbox<UnsafeHtml> left).Markup = (unbox<UnsafeHtml> right).Markup)
+    Func<obj, obj, bool>(fun left right -> markupOf left = markupOf right)
 
 let private innerHtml =
     Func<obj, obj, unit>(fun node markup -> (unbox<HTMLElement> node).innerHTML <- unbox<string> markup)
@@ -403,7 +410,7 @@ let private writeMarkup (append: string -> unit) (mode: MarkupMode) (state: Writ
 
             if not (isVoid tag) then
                 match mode, contentSlot slots with
-                | Server _, Some content -> append (unbox<UnsafeHtml>(content.Read.Invoke state.Instance)).Markup
+                | Server _, Some content -> append (markupOf (content.Read.Invoke state.Instance))
                 | _ -> writeChildren children path |> ignore
 
                 append ("</" + name tag + ">")
@@ -493,8 +500,7 @@ let rec private expandNode (ops: Operations<'view>) (instance: obj) (node: Templ
                     | AttributeTarget key -> ReactiveAttribute (key, fun () -> unbox<string option>(slot.Read.Invoke instance))
                     | PropertyTarget write -> fun (backend: Backend) -> backend.ReactiveProperty ((fun () -> slot.Read.Invoke instance), write)
                     | ContentTarget ->
-                        fun (backend: Backend) ->
-                            backend.ReactiveProperty ((fun () -> box (unbox<UnsafeHtml>(slot.Read.Invoke instance)).Markup), innerHtml)
+                        fun (backend: Backend) -> backend.ReactiveProperty ((fun () -> box (markupOf (slot.Read.Invoke instance))), innerHtml)
                     | TextTarget -> invalidOp "A text slot is a child node"
                 for eventName, handler in events -> listenModifier eventName (fun event -> handler.Invoke (instance, event))
                 for kind, hook in placed -> fun (backend: Backend) -> backend.Placed (kind, (fun node -> hook.Invoke (instance, node)))
@@ -788,17 +794,31 @@ let private metaKeys = [| "name"; "property"; "http-equiv"; "charset" |]
 
 let private linkKeys = [| "rel" |]
 
-/// <summary>The static attributes and attribute slots of a head entry's parts; the attributes in <c>keys</c> are static.</summary>
+/// <summary>The attribute holding a head element's registry key.</summary>
+let private headMark = "data-ranvier-head"
+
+let private rejectMark (name: string) =
+    if String.Equals (name, headMark, StringComparison.OrdinalIgnoreCase) then
+        raise (ArgumentException ("A document entry cannot set data-ranvier-head; the registry writes it", "parts"))
+
+/// <summary>
+/// The static attributes and attribute slots of a head entry's parts; the attributes in <c>keys</c> are static, and a
+/// <c>data-ranvier-head</c> attribute raises.
+/// </summary>
 let private headParts (keys: string array) (parts: Part<'native, 'inst> array) =
     let attributes = ResizeArray<string * string>()
     let slots = ResizeArray<string * Func<obj, obj>>()
 
     for part in parts do
         match part with
-        | StaticAttribute (name, value) -> attributes.Add ((name, value))
+        | StaticAttribute (name, value) ->
+            rejectMark name
+            attributes.Add ((name, value))
         | DynamicPart slot ->
             match slot.Target with
             | AttributeTarget name ->
+                rejectMark name
+
                 if Array.contains name keys then
                     raise (ArgumentException ("A document entry's key attribute must be static", "parts"))
 
@@ -826,13 +846,17 @@ let private headView kind key (attributes, slots) title : TemplateView<'inst> =
             }
     )
 
+/// <summary>
+/// The registry key of a link: <c>link:canonical</c> for a static canonical <c>rel</c>, <c>link:key:</c> followed by
+/// the explicit key otherwise, and null for an unkeyed link. An explicit key and a canonical link have distinct keys.
+/// </summary>
 let private linkKey (attributes: (string * string) array) (explicit: string) =
     if staticValue "rel" attributes = Some "canonical" then
         "link:canonical"
     elif isNull explicit then
         null
     else
-        "link:" + explicit
+        "link:key:" + explicit
 
 /// <summary>Entries for the document's head: shown once the instance is placed, withdrawn when it is disposed.</summary>
 /// <remarks>Per key, the most recently shown live entry is in the head; unkeyed links are each in the head while live.</remarks>

@@ -15,8 +15,9 @@ module internal PlacementCounters =
 
 /// <summary>
 /// The hooks of instances whose nodes are not yet placed in their mount's host. A container is placed once its own
-/// <c>Place</c> has run and its parent is placed; hooks added before then are held, and every hook runs in the order
-/// added.
+/// <c>Place</c> has run and its parent is placed; hooks added before then are held. The held hooks run in the order
+/// added, followed by the hooks that child containers released into the container while it was unplaced, in the order
+/// released: an instance's hooks run before its regions' rows.
 /// </summary>
 /// <remarks>
 /// A hook runs as an untracked core effect created under its instance's owner: a batch or an enclosing computation body
@@ -26,9 +27,16 @@ module internal PlacementCounters =
 type internal Placement(parent: Placement) =
     let mutable laidOut = false
     let mutable discarded = false
-    // Null until the first hook is held.
+    // The container's own hooks; null until the first is held.
     let mutable held: ResizeArray<Owner * (unit -> unit)> = null
+    // The hooks released by child containers, run after `held`; null until the first is held.
+    let mutable forwarded: ResizeArray<Owner * (unit -> unit)> = null
     let mutable failure: exn = null
+
+#if RANVIER_VIEW_COUNTERS
+    let count (hooks: ResizeArray<Owner * (unit -> unit)>) =
+        if isNull hooks then 0 else hooks.Count
+#endif
 
     /// <summary>True while a root mount's first placement runs inside <c>mountWith</c>.</summary>
     member val Placing = false with get, set
@@ -50,15 +58,22 @@ type internal Placement(parent: Placement) =
             failure <- null
             raise error
 
-    /// <summary>Runs <c>hook</c> under <c>owner</c> once the container is placed: at once when it is placed, otherwise after its <c>Place</c>.</summary>
-    member this.Add(owner: Owner, hook: unit -> unit) =
+    // Runs the hook when the container is placed, holds it while the container is not laid out (after the own hooks when
+    // `released` is set), and otherwise releases it to the parent.
+    member private this.Enqueue(owner: Owner, hook: unit -> unit, released: bool) =
         if discarded then
             ()
         elif not laidOut then
-            if isNull held then
-                held <- ResizeArray ()
+            if released then
+                if isNull forwarded then
+                    forwarded <- ResizeArray ()
 
-            held.Add ((owner, hook))
+                forwarded.Add ((owner, hook))
+            else
+                if isNull held then
+                    held <- ResizeArray ()
+
+                held.Add ((owner, hook))
 #if RANVIER_VIEW_COUNTERS
             PlacementCounters.held.Value <- PlacementCounters.held.Value + 1
 #endif
@@ -66,31 +81,49 @@ type internal Placement(parent: Placement) =
             if not owner.IsDisposed then
                 Api.runWithOwner owner (fun () -> Api.createEffect (fun () -> Api.untrack hook))
         else
-            parent.Add (owner, hook)
+            parent.Enqueue (owner, hook, true)
 
-    /// <summary>Marks the container's nodes laid out, then starts each held hook, or passes it to the parent while the parent is unplaced.</summary>
+    /// <summary>Runs <c>hook</c> under <c>owner</c> once the container is placed: at once when it is placed, otherwise after its <c>Place</c>.</summary>
+    member this.Add(owner: Owner, hook: unit -> unit) =
+        this.Enqueue (owner, hook, false)
+
+    /// <summary>
+    /// Marks the container's nodes laid out, then starts its own held hooks followed by the hooks released into it. While
+    /// the parent is unplaced, the hooks are released to the parent instead, which runs them after its own.
+    /// </summary>
     member this.Place() =
         if not laidOut && not discarded then
             laidOut <- true
-
-            if not (isNull held) then
-                let hooks = held
-                held <- null
+            let own = held
+            let rows = forwarded
+            held <- null
+            forwarded <- null
 #if RANVIER_VIEW_COUNTERS
-                PlacementCounters.held.Value <- PlacementCounters.held.Value - hooks.Count
+            PlacementCounters.held.Value <-
+                PlacementCounters.held.Value
+                - count own
+                - count rows
 #endif
 
-                for owner, hook in hooks do
-                    this.Add (owner, hook)
+            if not (isNull own) then
+                for owner, hook in own do
+                    this.Enqueue (owner, hook, false)
+
+            if not (isNull rows) then
+                for owner, hook in rows do
+                    this.Enqueue (owner, hook, false)
 
     /// <summary>Drops the held hooks and every later one.</summary>
     member _.Discard() =
         discarded <- true
 #if RANVIER_VIEW_COUNTERS
-        if not (isNull held) then
-            PlacementCounters.held.Value <- PlacementCounters.held.Value - held.Count
+        PlacementCounters.held.Value <-
+            PlacementCounters.held.Value
+            - count held
+            - count forwarded
 #endif
         held <- null
+        forwarded <- null
 
 /// <summary>
 /// The passes of a list or arm region under <c>parent</c>. A pass runs from <c>Begin</c> to <c>Place</c>; its placement
@@ -137,10 +170,10 @@ module internal PlacedHook =
 
     /// <summary>
     /// Adds <c>hook</c> for <c>node</c> to <c>container</c>; its returned cleanup runs when <c>owner</c> is disposed. A
-    /// failure during the root's first placement, outside every boundary, unwinds <c>mountWith</c>; every other failure
-    /// goes to <c>scope</c>. After the cleanup of a lent or widget hook on an element that is not a row or mount root,
-    /// a parent different from the one the hook ran under raises "An integration moved its element", also when the cleanup
-    /// fails.
+    /// failure during the root's first placement, outside every boundary, unwinds <c>mountWith</c> after the placement's
+    /// remaining hooks run; every other failure goes to <c>scope</c>. After the cleanup of a lent or widget hook on an
+    /// element that is not a row or mount root, a parent different from the one the hook ran under raises "An integration
+    /// moved its element", also when the cleanup fails.
     /// </summary>
     let register (container: Placement) (scope: ViewScope) (owner: Owner) (kind: PlacedKind) (node: Node) (hook: unit -> (unit -> unit)) =
         let checksParent = kind <> PlacedKind.Mounted && not (atRoot node)

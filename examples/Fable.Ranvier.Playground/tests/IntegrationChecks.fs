@@ -474,6 +474,21 @@ let private serverWidget () =
 
     equal ("<div class=\"chart\"></div>", Some "Browser capability requires explicit Omit policy") (render Omit, rejected)
 
+/// <summary>Authored widget elements rendered on the server under Omit: with a text child, an empty list child, or two widget hooks.</summary>
+let private serverWidgetChildren (ops: Operations<'view>) (run: 'view -> Backend -> unit) =
+    let widget () =
+        Typed.widget (fun (_: HTMLDivElement) -> ignore)
+
+    let rejects (view: 'view) =
+        raisesArgument (fun () -> Html.render Omit (run view) |> ignore)
+
+    equal
+        (true, true, true, "<div></div>")
+        (rejects (Typed.div ops [| widget () |] [| ops.Text "child" |]),
+         rejects (Typed.div ops [| widget () |] [| Keyed.list ops id (fun () -> List.empty<int>) (fun _ -> ops.Text "row") |]),
+         rejects (Typed.div ops [| widget (); widget () |] [||]),
+         Html.render Omit (run (Typed.div ops [| widget () |] [||])))
+
 /// <summary>A widget on a mount of another graph, the shape of the playground's Foundation panel.</summary>
 let private widgetOnOtherGraph () =
     use graph = new Graph ()
@@ -652,6 +667,9 @@ let cases: (string * (unit -> unit)) array =
             both "a widget attach failure shows the error view" (widgetAttachFailure Tree.ops Tree.run) (widgetAttachFailure Program.ops Program.run)
             [|
                 "a widget element renders empty on the server; Reject raises and Omit writes the element", serverWidget
+                "tree: a widget element with children or a second content part raises under Omit", (fun () -> serverWidgetChildren Tree.ops Tree.run)
+                "program: a widget element with children or a second content part raises under Omit",
+                (fun () -> serverWidgetChildren Program.ops Program.run)
                 "a widget hosting a mount on another graph disposes it with the outer mount", widgetOnOtherGraph
                 "a strict report raised after a case returns fails the next case", lateStrictReport
             |]

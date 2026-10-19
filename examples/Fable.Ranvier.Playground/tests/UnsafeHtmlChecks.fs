@@ -146,6 +146,41 @@ let private serverHtml () =
 
     equal (expected, expected) (render Reject, render Omit)
 
+let private nullMessage = "An UnsafeHtml reader returned null"
+
+let private namesNull (error: exn) =
+    error :? ArgumentException
+    && error.Message.StartsWith nullMessage
+
+/// <summary>A raw-HTML reader returning null, mounted and rendered on the server.</summary>
+let private nullReader queued () =
+    use graph = new Graph ()
+    let reports = ResizeArray<exn list>()
+
+    let none () =
+        Unchecked.defaultof<UnsafeHtml>
+
+    let raised =
+        try
+            let mounted =
+                mountTemplate queued graph reports.Add (host ()) (Component.render article none)
+
+            mounted.Dispose ()
+            []
+        with error ->
+            [ error ]
+
+    let server =
+        try
+            Html.render Omit (Program.run (Component.render article none))
+            |> ignore
+
+            false
+        with error ->
+            namesNull error
+
+    equal ([ true ], true) ([ for error in raised @ List.concat reports -> namesNull error ], server)
+
 /// <summary>Mounts trusted markup in a div appended to the document body; returns the div and the disposal.</summary>
 let unsafeMarkup (markup: string) : HTMLElement * (unit -> unit) =
     let graph = new Graph ()
@@ -173,5 +208,6 @@ let cases: (string * (unit -> unit)) array =
                     "server HTML writes raw content verbatim under Reject and Omit, and text slots beside it stay escaped", serverHtml
                 |]
                 templated "a pending raw-HTML reader keeps its boundary pending; a failing one shows the error view" pendingReader
+                templated "a raw-HTML reader returning null fails naming the null value, on the client and the server" nullReader
             ]
     )

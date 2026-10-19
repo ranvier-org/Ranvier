@@ -18,7 +18,7 @@ test("script elements in raw HTML do not run; an onerror attribute does", async 
   expect(errors).toEqual([]);
 });
 
-test("raw HTML parses table rows in context in Chromium", async ({ page }) => {
+test("raw HTML in a div drops a tr outside a table section in Chromium", async ({ page }) => {
   await page.goto("/tests/range.html");
   await page.waitForFunction(() => window.unsafeMarkup);
   const rows = await page.evaluate(() => {

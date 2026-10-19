@@ -87,10 +87,17 @@ type NodeRef<'native> internal () =
     member internal _.Set(value: 'native option) =
         current <- value
 
-    /// <summary>Sets the reference to <c>node</c> and returns the cleanup that resets it to <c>None</c>.</summary>
+    /// <summary>
+    /// Sets the reference to <c>node</c> and returns the cleanup that resets it to <c>None</c> while it still holds
+    /// <c>node</c>; a reference shared by several elements keeps the element placed latest.
+    /// </summary>
     member internal this.Place(node: obj) : unit -> unit =
         this.Set (Some (unbox node))
-        fun () -> this.Set None
+
+        fun () ->
+            match current with
+            | Some held when obj.ReferenceEquals (box held, node) -> this.Set None
+            | _ -> ()
 
 module NodeRef =
     let create () : NodeRef<'native> =
@@ -521,6 +528,10 @@ module Html =
     let render policy build =
         let mutable sink = System.Text.StringBuilder ()
         let mutable leadingLineFeed = false
+        // Whether the element receiving modifiers has a widget hook.
+        let mutable widget = false
+        // Advances on each child node a DOM mount would create: text, binding, element, region or template.
+        let mutable childNodes = 0
 
         let mutable attributeTarget: System.Collections.Generic.Dictionary<string, string> =
             Unchecked.defaultof<_>
@@ -584,12 +595,15 @@ module Html =
         let backend =
             { new Backend() with
                 member _.Text value =
+                    childNodes <- childNodes + 1
                     append (escape false value)
 
                 member _.Bind(_, read) =
+                    childNodes <- childNodes + 1
                     append (escape false (read ()))
 
                 member this.Keyed(items, render) =
+                    childNodes <- childNodes + 1
                     let values = Array.copy (items.Read ())
                     Ranvier.Projection.ensureUniqueKeys items.Key.Invoke values
 
@@ -619,8 +633,14 @@ module Html =
                 member _.Browser _ =
                     browserCapability ()
 
-                member _.Placed(_, _) =
+                member _.Placed(kind, _) =
                     browserCapability ()
+
+                    if kind = PlacedKind.Widget then
+                        if widget then
+                            raise (System.ArgumentException ("An element takes at most one content part", "modifiers"))
+
+                        widget <- true
 
                 member _.Head _ =
                     if policy = Reject then
@@ -650,11 +670,15 @@ module Html =
                     then
                         raise (System.InvalidOperationException "Raw-text elements require an explicit HTML serialization policy")
 
+                    childNodes <- childNodes + 1
                     append ("<" + name tag)
                     let attributes = System.Collections.Generic.Dictionary<string, string>()
                     let keys = ResizeArray<string>()
-
+                    let outerWidget = widget
+                    widget <- false
                     applyModifiers this tag attributes keys modifiers
+                    let isWidget = widget
+                    widget <- outerWidget
 
                     for key in keys do
                         match attributes.TryGetValue key with
@@ -669,7 +693,12 @@ module Html =
                             || name tag = "textarea"
                             || name tag = "listing"
 
+                        let before = childNodes
                         children ()
+
+                        if isWidget && childNodes <> before then
+                            raise (System.ArgumentException ("A widget element has no children", "children"))
+
                         append ("</" + name tag + ">")
 
                 member _.Component setup =
@@ -707,9 +736,11 @@ module Html =
                     | None, _ -> raise (System.AggregateException errors)
 
                 member this.Template(definition, props) =
+                    childNodes <- childNodes + 1
                     this.Component (fun context -> definition.RenderHtml (this, context, props, (policy = Reject), append))
 
                 member this.Boundary(views) =
+                    childNodes <- childNodes + 1
                     append "<!--[-->"
                     let outer = sink
                     let buffer = System.Text.StringBuilder ()

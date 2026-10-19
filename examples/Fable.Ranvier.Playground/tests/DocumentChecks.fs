@@ -146,6 +146,36 @@ let private linkKeys queued () =
     mounted.Dispose ()
     equal ((2, 1, "/2"), (0, 0)) (live, (headCount "link[rel=stylesheet]", headCount "link[rel=canonical]"))
 
+let private canonicalAndExplicit =
+    Component.define (fun _ () -> ()) (fun t ->
+        t.fragment
+            [|
+                t.Document.link
+                    [|
+                        t.Attrs.attribute ("rel", "canonical")
+                        t.Attrs.attribute ("href", "/page")
+                    |]
+                t.Document.link (
+                    "canonical",
+                    [|
+                        t.Attrs.attribute ("rel", "alternate")
+                        t.Attrs.attribute ("href", "/alternate")
+                    |]
+                )
+            |])
+
+let private explicitKeyDistinct queued () =
+    use graph = new Graph ()
+
+    let mounted =
+        mountTemplate queued graph strict (host ()) (Component.render canonicalAndExplicit ())
+
+    let live =
+        headAttribute "link[rel=canonical]" "href", headAttribute "link[rel=alternate]" "href"
+
+    mounted.Dispose ()
+    equal (("/page", "/alternate"), (0, 0)) (live, (headCount "link[rel=canonical]", headCount "link[rel=alternate]"))
+
 let mutable private titleSource: Signal<AsyncSource<string>> =
     Unchecked.defaultof<_>
 
@@ -411,7 +441,7 @@ let private definitionChecks () =
         raisesArgument (fun () -> Component.define (fun _ () -> ()) build |> ignore)
 
     equal
-        [ true; true; true; true; true; true; true; false ]
+        [ true; true; true; true; true; true; true; true; true; false ]
         [
             defines (fun t -> t.Document.meta [| t.Attrs.attribute ("name", "x"); t.Events.onClick (fun _ _ -> ()) |])
             defines (fun t ->
@@ -430,6 +460,18 @@ let private definitionChecks () =
             defines (fun t -> t.Document.meta [| t.Attrs.attribute ("content", "x") |])
             defines (fun t -> t.Document.link ("theme", [| t.Attrs.attribute ("rel", (fun () -> Some "stylesheet")) |]))
             defines (fun t -> t.Document.link [| t.Attrs.attribute ("rel", (fun () -> Some "canonical")) |])
+            defines (fun t ->
+                t.Document.meta
+                    [|
+                        t.Attrs.attribute ("name", "x")
+                        t.Attrs.attribute ("data-ranvier-head", "meta:name=y")
+                    |])
+            defines (fun t ->
+                t.Document.link
+                    [|
+                        t.Attrs.attribute ("rel", "stylesheet")
+                        t.Attrs.attribute ("data-ranvier-head", (fun () -> Some "x"))
+                    |])
             defines (fun t ->
                 t.Document.link
                     [|
@@ -463,6 +505,7 @@ let cases: (string * (unit -> unit)) array =
                 templated "a title entry sets document.title once placed and restores the previous title when disposed" titleRestored
                 templated "the most recent entry for a key is shown and the previous one returns when it withdraws" latestShown
                 templated "unkeyed links are each present while live; a canonical link is keyed" linkKeys
+                templated "a link with the explicit key canonical and a canonical link are both shown" explicitKeyDistinct
                 templated "a reactive title updates document.title and its pending read waits under a boundary" reactiveTitle
                 templated "entries under hidden content activate at reveal and withdraw on teardown" hiddenEntries
                 templated "a client mount adopts marked head elements without hydrate" adoptsMarked
@@ -475,7 +518,8 @@ let cases: (string * (unit -> unit)) array =
                 templated "a title reader returning null sets an empty document.title" nullTitleEmpty
                 templated "title entries from two graphs withdrawn out of order keep the shown title and restore the original" crossGraphTitles
                 [|
-                    "event and property parts on a document entry fail at definition time; a dynamic key attribute fails", definitionChecks
+                    "event and property parts on a document entry fail at definition time; a dynamic key attribute and a data-ranvier-head attribute fail",
+                    definitionChecks
                     "Html.render writes no document entry under Omit and raises under Reject", serverEntries
                     "each document keeps its own title and adopts only its own marked elements", perDocument
                 |]

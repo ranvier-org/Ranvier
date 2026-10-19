@@ -3011,7 +3011,18 @@ and internal MountState
             reportFailures errors
 
 /// <summary>Mounts a view with an owned commit queue when deferred scheduling is selected.</summary>
-/// <remarks>Nested keyed mounts share the containing mount's scheduler.</remarks>
+/// <remarks>
+/// <para>Nested keyed mounts share the containing mount's scheduler.</para>
+/// <para>
+/// A hook failure during the first placement, outside every boundary, disposes the mount and is rethrown once the
+/// placement ends. The hooks held for that placement all run, including those after the failing one, and are torn down
+/// with the mount.
+/// </para>
+/// <para>
+/// A mount created inside a batch or a computation body, including a placed hook such as a widget's, runs its hooks
+/// after <c>mountWith</c> returns: their failures go to <c>report</c> and are not rethrown.
+/// </para>
+/// </remarks>
 let mountWith mode graph (parentOwner: Owner option) report host before build =
     let parentOwner =
         match parentOwner with

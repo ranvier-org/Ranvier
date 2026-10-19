@@ -94,9 +94,9 @@ Each hook becomes `Api.runWithOwner owner (fun () -> Api.createEffect (fun () ->
 
 Failures:
 
-- During `mountWith`, before it returns: the first failure unwinds the mount and is rethrown from `mountWith`, as a setup failure is (boundary Decision 3). Hooks that ran have their cleanups run by the unwind.
+- During `mountWith`, before it returns: the first failure unwinds the mount and is rethrown from `mountWith`, as a setup failure is (boundary Decision 3). The placement's remaining hooks still run, including those after the failing one; every hook that ran has its cleanup run by the unwind.
 - Afterwards: the failure goes to the instance's scope, `Fail [ error ]`. Under a boundary the content is replaced by the error view (the boundary design's rule for every failure under content); outside every boundary the mount's `report` receives it once per exception object. The instance stays (Decision 4).
-- A mount created inside an outer `Api.batch` runs its hooks after the batch, after `mountWith` has returned: their failures take the second path.
+- A mount created inside an outer `Api.batch` or a computation body runs its hooks after the batch or the body, after `mountWith` has returned: their failures take the second path. A nested `mountWith` inside a placed hook, such as a widget's, is such a mount: its hook failures go to its own `report` and are not rethrown.
 
 Moves (`Mounted.MoveBefore`, keyed reorders, `Relocate`) do not re-run hooks. A row whose nodes were placed once and are later moved by a pass is not placed again.
 
@@ -170,7 +170,7 @@ let search =
 
 ### Lifecycle and disposal
 
-- Order: hooks of one instance in document order of their elements; an instance's hooks before its inlined children's (setup order); a region's rows after the instance that holds the region (Decision 7).
+- Order: hooks of one instance in document order of their elements; an instance's hooks before its inlined children's (setup order); a region's rows after the instance that holds the region, including the instance's elements declared after the region (Decision 7). The region rule holds in template, Program and Tree authoring under both commit modes: a container runs its own hooks, then the hooks its regions' containers released into it, in release order.
 - The hook sees every binding's first settled value: synchronous bindings commit during setup, and a queued binding writes its first settled value at once (`Binding.startQueuedIn`). A binding whose first read was pending has written nothing.
 - Cleanup runs once, when the instance's owner is disposed, before its nodes leave the host (`MountLifetime`'s child-first teardown). A hook that never ran has no cleanup.
 - An instance disposed between registration and placement never runs its hook: its pending effect is disposed with its owner, and a hidden boundary content is discarded.
@@ -192,14 +192,14 @@ Each in template, Program and Tree authoring, under `SynchronousCommits` and `Qu
 
 1. "a mounted hook runs after the element is in the host and its cleanup runs before the element leaves" (`parentNode` checks inside the hook and the cleanup).
 2. "setup-time browser hooks run on an unplaced element" (pins today's `Typed.browser`).
-3. "hooks run in setup order: an instance, its inlined children, then region rows".
+3. "hooks run in setup order: an instance, its inlined children, then region rows"; "hooks run in setup order: an instance's elements, including those after a region, then the region's rows" (an element after the list, and an inner list in each row).
 4. "a row added by a list pass runs its hook after the pass lays it out"; "a row created and removed in one batch never runs its hook".
 5. "an arm's hook runs after the arm is moved in; a replaced arm's cleanup runs before the next arm's hook".
 6. "hooks under a hidden boundary content run at reveal"; "content torn down before reveal runs no hook and no hook cleanup"; "a retried content runs its hooks again at its reveal".
 7. "pending and error view hooks run while shown and clean up when retired".
 8. "a hook failure during mountWith unwinds the mount and rethrows"; "a later hook failure goes to the boundary, or to report once without one".
 9. "a mount inside Api.batch runs its hooks after the batch".
-10. "NodeRef.Current is None during setup, Some while placed, None after disposal and while hidden".
+10. "NodeRef.Current is None during setup, Some while placed, None after disposal and while hidden"; "a NodeRef shared by two rows keeps the remaining row's element when the other row leaves" (a cleanup resets the reference only while it holds the cleanup's element).
 11. "moving a mount or reordering rows does not re-run hooks".
 12. "a mounted hook raises under Reject and writes nothing under Omit".
 13. Chromium: "a mounted hook can focus and measure its element" (`getBoundingClientRect` width above zero).
@@ -275,7 +275,7 @@ As part 1: a widget under hidden content is attached at reveal and destroyed wit
 
 ### Server and hydration
 
-The element is written with its attributes and no children. The placed part follows the browser-part rule (`Reject` raises, `Omit` omits the hook, the element is still written). Under hydration the empty element is adopted and the widget attaches after adoption; a widget element must not be filled on the server.
+The element is written with its attributes and no children. The placed part follows the browser-part rule (`Reject` raises, `Omit` omits the hook, the element is still written). Under `Omit`, `Html.render` raises for an authored widget element with children or a second widget part, with the client mount's messages. Under hydration the empty element is adopted and the widget attaches after adoption; a widget element must not be filled on the server.
 
 ### Tests (`IntegrationChecks.fs`, `integration.test.mjs`; Chromium in `integration.spec.mjs`)
 
@@ -286,7 +286,7 @@ The element is written with its attributes and no children. The placed part foll
 5. "a lent element keeps attributes added by the integration and Ranvier's slots keep updating".
 6. "an integration that moves its element is reported after its cleanup"; "a lent row root moved by a keyed reorder is not reported".
 7. Boundary: "a widget under hidden content attaches at reveal and is destroyed on teardown"; "a widget attach failure shows the error view".
-8. "a widget element renders empty on the server; Reject raises and Omit writes the element".
+8. "a widget element renders empty on the server; Reject raises and Omit writes the element"; "a widget element with children or a second content part raises under Omit" (Tree and Program).
 9. Chromium: "a widget measuring its element on attach sees layout" and "focus inside a widget survives an unrelated list update".
 
 Mutation checks: removing the no-children check, the release check, and running `attach` at setup must each fail a test.
@@ -352,7 +352,7 @@ Component.render article (fun () -> UnsafeHtml.Trust (Sanitizer.clean markdownHt
 3. "an element with raw HTML and template children fails at definition time"; "void, raw-text, template, textarea and title elements reject raw HTML".
 4. "script elements in raw HTML do not run; an onerror attribute does" (Chromium; documents the contract).
 5. "a pending raw-HTML reader keeps its boundary pending; a failing one shows the error view".
-6. "server HTML writes raw content verbatim under Reject and Omit, and text slots beside it stay escaped".
+6. "server HTML writes raw content verbatim under Reject and Omit, and text slots beside it stay escaped"; "a raw-HTML reader returning null fails naming the null value, on the client and the server" (`ArgumentException` "An UnsafeHtml reader returned null").
 7. "hydration rewrites raw content once and the slot then updates".
 8. Generator: "innerHTML, outerHTML, textContent, innerText, outerText and srcdoc setters stay excluded" (existing `check-types.py` case, extended).
 
@@ -407,6 +407,7 @@ let productPage =
 - Per key, the most recently activated live entry is shown; withdrawing it shows the previous live one; withdrawing the last restores the document's title as it was before the first title entry (Decision 14). Unkeyed links are each shown while live.
 - A title entry writes `document.title` in its own effect while shown; meta and link entries own one head element each, attached while shown, with their attribute slots bound as template attributes.
 - The registry adopts a head element carrying `data-ranvier-head` with the same key instead of creating one (Decision 16).
+- Keys: `title`; `meta:charset` or `meta:<attribute>=<value>`; `link:canonical` for a static canonical `rel`; `link:key:<key>` for an explicit link key. An explicit key and a canonical link always have distinct keys. The registry writes `data-ranvier-head`; an entry part naming that attribute raises at definition time.
 
 ### Server fallback
 
@@ -433,10 +434,10 @@ Entries under hidden content activate at reveal, so a loading page keeps the pre
 
 1. "a title entry sets document.title once placed and restores the previous title when disposed".
 2. "the most recent entry for a key is shown and the previous one returns when it withdraws" (two nested components, meta by name).
-3. "unkeyed links are each present while live; a canonical link is keyed".
+3. "unkeyed links are each present while live; a canonical link is keyed"; "a link with the explicit key canonical and a canonical link are both shown".
 4. "a reactive title updates document.title and its pending read waits under a boundary".
 5. "entries under hidden content activate at reveal and withdraw on teardown".
-6. "event and property parts on a document entry fail at definition time; a dynamic key attribute fails".
+6. "event and property parts on a document entry fail at definition time; a dynamic key attribute and a data-ranvier-head attribute fail".
 7. "two concurrent server requests collect only their own entries" (companion test 10's harness).
 8. "an abandoned boundary attempt's entries are not written".
 9. "renderPage escapes titles and attribute values and marks every element".
@@ -491,7 +492,7 @@ Migration tests: every existing `playground.spec.mjs` test passes unchanged exce
 
 ## Performance
 
-- A template with no placed, content or head part pays one empty-array length check per part in `bind`, and no allocation: the placement container's list is created on first `Add`. The keyed benchmarks (`keyed-rows.mjs`) and `run.mjs --template-comparison` must show overlapping ranges before and after, as the boundary design required.
+- A template with no placed, content or head part pays one empty-array length check per part in `bind`, and no allocation per row: a container's hook lists are created on first `Add`. Containers are allocated whether or not a hook exists: one `Placement` per root mount, per hole, per boundary content attempt and per shown boundary view, and one `PlacementPass` per list or arm region with one container per pass that requests one; an authored row mount also looks up its `HeadDocument`. The measurements show this cost neutral. The keyed benchmarks (`keyed-rows.mjs`) and `run.mjs --template-comparison` must show overlapping ranges before and after, as the boundary design required.
 - New measurement, reported not gated: mounting 1, 16 and 128 rows each with one `mounted` hook, against Solid 2's `onSettled` in the same rows.
 - Raw HTML and document entries: micro-measurements only; neither is on a list row path.
 

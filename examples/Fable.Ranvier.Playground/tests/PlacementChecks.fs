@@ -79,6 +79,55 @@ let private setupOrder (ops: Operations<'view>) (run: 'view -> Backend -> unit) 
     mounted.Dispose ()
 
 /// <summary>
+/// A div holding a list followed by a span, each row holding an inner list followed by a span; every element logs its
+/// name from a hook. The rows of a pass run their own hooks before the inner lists' rows.
+/// </summary>
+let private rowsAfterSiblings (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+    let log = ResizeArray<string>()
+    let target = host ()
+
+    let hook (name: string) : Typed.Modifier<'native> =
+        Typed.mounted (fun _ ->
+            log.Add name
+            ignore)
+
+    let view =
+        Typed.div
+            ops
+            [| hook "parent" |]
+            [|
+                Keyed.list ops id (fun () -> [ 1; 2 ]) (fun current ->
+                    let item = current ()
+
+                    Typed.div
+                        ops
+                        [| hook (sprintf "row %d" item) |]
+                        [|
+                            Keyed.list ops id (fun () -> [ 10 * item ]) (fun inner -> span ops [| hook (sprintf "inner %d" (inner ())) |] [||])
+                            span ops [| hook (sprintf "row %d after" item) |] [||]
+                        |])
+                span ops [| hook "after" |] [||]
+            |]
+
+    let mounted = mountView ops run queued graph strict target view
+
+    equal
+        [
+            "parent"
+            "after"
+            "row 1"
+            "row 1 after"
+            "row 2"
+            "row 2 after"
+            "inner 10"
+            "inner 20"
+        ]
+        (List.ofSeq log)
+
+    mounted.Dispose ()
+
+/// <summary>
 /// A list whose rows log their hooks: a row added after the mount runs its hook in the host, and inside one batch the
 /// list pass runs once with the final items.
 /// </summary>
@@ -243,6 +292,28 @@ let private nodeRefLifetime (ops: Operations<'view>) (run: 'view -> Backend -> u
 
     mounted.Dispose ()
     equal ([ false ], true, false) (List.ofSeq seen, placed, field.Current.IsSome)
+
+/// <summary>Two rows sharing one NodeRef: removing the earlier row leaves the reference on the later row's element.</summary>
+let private sharedNodeRef (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+    let rows = graph.Run (fun () -> Api.createSignal [ 1; 2 ])
+    let shared: NodeRef<HTMLSpanElement> = NodeRef.create ()
+    let target = host ()
+
+    let view =
+        Keyed.list ops id (fun () -> rows.Value) (fun current -> span ops [| Typed.ref shared |] [| ops.Text (string (current ())) |])
+
+    let mounted = mountView ops run queued graph strict target view
+
+    let text () =
+        shared.Current |> Option.map _.textContent
+
+    let before = text ()
+    graph.Run (fun () -> rows.Value <- [ 2 ])
+    mounted.Flush ()
+    let after = text ()
+    mounted.Dispose ()
+    equal (Some "2", Some "2", None) (before, after, text ())
 
 let private movesKeepHooks (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
     use graph = new Graph ()
@@ -671,6 +742,76 @@ let private templateSetupOrder queued () =
         mountTemplate queued graph strict (host ()) (Component.render orderParent ())
 
     equal [ "parent"; "child"; "row 1"; "row 2" ] (List.ofSeq orderLog)
+    mounted.Dispose ()
+
+let private orderInner =
+    Component.define (fun _ (item: unit -> int) -> item) (fun t ->
+        t.span
+            [|
+                t.Hooks.mounted (fun item (_: HTMLSpanElement) ->
+                    orderLog.Add ("inner " + string (item ()))
+                    ignore)
+            |]
+            [||])
+
+let private orderOuterRow =
+    Component.define (fun _ (item: unit -> int) -> item) (fun t ->
+        t.div
+            [|
+                t.Hooks.mounted (fun item (_: HTMLDivElement) ->
+                    orderLog.Add ("row " + string (item ()))
+                    ignore)
+            |]
+            [|
+                t.each id (fun (item: unit -> int) -> [| 10 * item () |]) orderInner
+                t.span
+                    [|
+                        t.Hooks.mounted (fun item (_: HTMLSpanElement) ->
+                            orderLog.Add ("row " + string (item ()) + " after")
+                            ignore)
+                    |]
+                    [||]
+            |])
+
+let private orderSiblings =
+    Component.define (fun _ () -> ()) (fun t ->
+        t.div
+            [|
+                t.Hooks.mounted (fun _ (_: HTMLDivElement) ->
+                    orderLog.Add "parent"
+                    ignore)
+            |]
+            [|
+                t.each id (fun _ -> [| 1; 2 |]) orderOuterRow
+                t.span
+                    [|
+                        t.Hooks.mounted (fun _ (_: HTMLSpanElement) ->
+                            orderLog.Add "after"
+                            ignore)
+                    |]
+                    [||]
+            |])
+
+let private templateRowsAfterSiblings queued () =
+    use graph = new Graph ()
+    orderLog.Clear ()
+
+    let mounted =
+        mountTemplate queued graph strict (host ()) (Component.render orderSiblings ())
+
+    equal
+        [
+            "parent"
+            "after"
+            "row 1"
+            "row 1 after"
+            "row 2"
+            "row 2 after"
+            "inner 10"
+            "inner 20"
+        ]
+        (List.ofSeq orderLog)
+
     mounted.Dispose ()
 
 let mutable private rowsProbe: Probe = Unchecked.defaultof<_>
@@ -1173,6 +1314,10 @@ let cases: (string * (unit -> unit)) array =
                 (setupOrder Tree.ops Tree.run)
                 (setupOrder Program.ops Program.run)
             both
+                "hooks run in setup order: an instance's elements, including those after a region, then the region's rows"
+                (rowsAfterSiblings Tree.ops Tree.run)
+                (rowsAfterSiblings Program.ops Program.run)
+            both
                 "a row added by a list pass runs its hook after the pass lays it out, and a batch that adds and removes a row creates none"
                 (rowsAfterLayout Tree.ops Tree.run)
                 (rowsAfterLayout Program.ops Program.run)
@@ -1196,6 +1341,10 @@ let cases: (string * (unit -> unit)) array =
                 "NodeRef.Current is None during setup, Some while placed and None after disposal"
                 (nodeRefLifetime Tree.ops Tree.run)
                 (nodeRefLifetime Program.ops Program.run)
+            both
+                "a NodeRef shared by two rows keeps the remaining row's element when the other row leaves"
+                (sharedNodeRef Tree.ops Tree.run)
+                (sharedNodeRef Program.ops Program.run)
             both "moving a mount or reordering rows does not re-run hooks" (movesKeepHooks Tree.ops Tree.run) (movesKeepHooks Program.ops Program.run)
             both
                 "a mounted hook that writes a signal read by a binding updates the binding and runs once"
@@ -1239,6 +1388,9 @@ let cases: (string * (unit -> unit)) array =
             |]
             templated "a mounted hook runs after the element is in the host and its cleanup runs before the element leaves" templatePlacedInHost
             templated "hooks run in setup order: an instance, its inlined children, then region rows" templateSetupOrder
+            templated
+                "hooks run in setup order: an instance's elements, including those after a region, then the region's rows"
+                templateRowsAfterSiblings
             templated
                 "a row added by a list pass runs its hook after the pass lays it out, and a batch that adds and removes a row creates none"
                 templateRowsAfterLayout
