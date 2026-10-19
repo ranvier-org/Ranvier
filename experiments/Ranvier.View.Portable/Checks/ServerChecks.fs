@@ -417,8 +417,172 @@ let private aggregateFailures () =
         (shape setupAndCleanup [ "Server render failed: "; "setup failed"; "cleanup failed" ],
          shape cleanupOnly [ "Server render cleanup failed: "; "cleanup failed" ])
 
+let private omitOptions =
+    { Server.Options.defaults with
+        Policy = Omit
+    }
+
+type private PageProps = { Title: string; Description: string }
+
+let private description (t: TemplateBuilder<PageProps>) =
+    t.Document.meta
+        [|
+            t.Attrs.attribute ("name", "description")
+            t.Attrs.attribute ("content", fun (page: PageProps) -> Some page.Description)
+        |]
+
+let private headChild =
+    Component.define (fun _ (page: PageProps) -> page) (fun t ->
+        t.fragment [| t.Document.title (fun (page: PageProps) -> page.Title); description t |])
+
+let private preload (t: TemplateBuilder<'inst>) (href: string) =
+    t.Document.link [| t.Attrs.attribute ("rel", "preload"); t.Attrs.attribute ("href", href) |]
+
+let private headParent =
+    Component.define (fun _ () -> ()) (fun t ->
+        t.div
+            [||]
+            [|
+                t.Document.title "Parent"
+                preload t "/a.css"
+                t.Document.meta
+                    [|
+                        t.Attrs.attribute ("name", "description")
+                        t.Attrs.attribute ("content", "parent")
+                    |]
+                t.render headChild (fun _ ->
+                    {
+                        Title = "Child"
+                        Description = "child"
+                    })
+                preload t "/b.css"
+                t.span [||] [| t.text "body" |]
+            |])
+
+let private headOrder () =
+    equal
+        {
+            Server.Page.Body = "<!--[r--><div><span>body</span></div><!--]-->"
+            Server.Page.Head =
+                """<title data-ranvier-head="title">Child</title>"""
+                + """<link data-ranvier-head="" rel="preload" href="/a.css">"""
+                + """<meta data-ranvier-head="meta:name=description" name="description" content="child">"""
+                + """<link data-ranvier-head="" rel="preload" href="/b.css">"""
+        }
+        (Server.renderPage Server.Options.defaults headParent ())
+
+let private escapedPage =
+    Component.define (fun _ (page: PageProps) -> page) (fun t ->
+        t.fragment
+            [|
+                t.Document.title (fun (page: PageProps) -> page.Title)
+                description t
+                t.Document.meta [| t.Attrs.attribute ("charset", "utf-8") |]
+                t.Document.link (
+                    "canonical",
+                    [|
+                        t.Attrs.attribute ("rel", "canonical")
+                        t.Attrs.attribute ("href", fun _ -> Some "/p?a=1&b=2")
+                    |]
+                )
+                t.Document.link (
+                    "icon",
+                    [|
+                        t.Attrs.attribute ("rel", "icon")
+                        t.Attrs.attribute ("href", "/i.png")
+                        t.Attrs.attribute ("type", fun _ -> None)
+                    |]
+                )
+                preload t "/s.css"
+                t.h1 [||] [| t.text (fun (page: PageProps) -> page.Title) |]
+            |])
+
+let private escapedProps =
+    {
+        Title = "<a & \"b\">"
+        Description = "say \"hi\" & <go>"
+    }
+
+let private escapedHead =
+    """<title data-ranvier-head="title">&lt;a &amp; "b"&gt;</title>"""
+    + """<meta data-ranvier-head="meta:name=description" name="description" content="say &quot;hi&quot; &amp; &lt;go&gt;">"""
+    + """<meta data-ranvier-head="meta:charset" charset="utf-8">"""
+    + """<link data-ranvier-head="link:canonical" rel="canonical" href="/p?a=1&amp;b=2">"""
+    + """<link data-ranvier-head="link:key:icon" rel="icon" href="/i.png">"""
+    + """<link data-ranvier-head="" rel="preload" href="/s.css">"""
+
+let private pageEscapes () =
+    let page = Server.renderPage omitOptions escapedPage escapedProps
+    equal escapedHead page.Head
+    equal (Server.render omitOptions escapedPage escapedProps) page.Body
+    equal """<!--[r--><h1>&lt;a &amp; "b"&gt;</h1><!--]-->""" page.Body
+
+let private headPolicy () =
+    let error =
+        failure (fun () ->
+            Server.render Server.Options.defaults escapedPage escapedProps
+            |> ignore)
+
+    equal (true, "Document metadata requires Server.renderPage") (error :? InvalidOperationException, error.Message)
+    equal """<!--[r--><h1>&lt;a &amp; "b"&gt;</h1><!--]-->""" (Server.render omitOptions escapedPage escapedProps)
+    equal escapedHead (Server.renderPage Server.Options.defaults escapedPage escapedProps).Head
+
+let private holedHeads () =
+    let child = { Title = "Held"; Description = "held" }
+
+    let expected =
+        """<title data-ranvier-head="title">Held</title>"""
+        + """<meta data-ranvier-head="meta:name=description" name="description" content="held">"""
+
+    let headOf (body: Program.View) =
+        (Server.renderPage Server.Options.defaults holed { Caption = "C"; Body = body }).Head
+
+    equal
+        [ expected; expected ]
+        [
+            headOf (Component.render headChild child)
+            headOf (Component.renderWith Program.ops headChild child)
+        ]
+
+/// <summary>A page writing a title before <c>pause</c> and a meta after it, both named by the props.</summary>
+let private namedPage (pause: Component<unit>) =
+    Component.define (fun _ (name: string) -> name) (fun t ->
+        t.fragment
+            [|
+                t.Document.title (fun name -> "title " + name)
+                t.render pause ignore
+                t.Document.meta
+                    [|
+                        t.Attrs.attribute ("name", "description")
+                        t.Attrs.attribute ("content", fun name -> Some ("meta " + name))
+                    |]
+            |])
+
+let private namedHead (name: string) =
+    "<title data-ranvier-head=\"title\">title "
+    + name
+    + "</title><meta data-ranvier-head=\"meta:name=description\" name=\"description\" content=\"meta "
+    + name
+    + "\">"
+
+#if FABLE_COMPILER
+let private sequentialHeads () =
+    let page = namedPage (Component.define (fun _ () -> ()) (fun t -> t.span [||] [||]))
+
+    let left = Server.renderPage Server.Options.defaults page "left"
+    let right = Server.renderPage Server.Options.defaults page "right"
+    equal (namedHead "left", namedHead "right") (left.Head, right.Head)
+#endif
+
 let cases: (string * (unit -> unit)) array =
     [|
+        "renderPage writes keys in first-activation order and the last entry for a key", headOrder
+        "renderPage escapes titles and attribute values and marks every element", pageEscapes
+        "render keeps the document entry policy and renderPage collects whatever the policy", headPolicy
+        "renderPage collects the entries of a compiled and an expanded template in a view hole", holedHeads
+#if FABLE_COMPILER
+        "two concurrent server requests collect only their own entries", sequentialHeads
+#endif
         "server plan matches the current writer for every template fixture", templatePins
         "server plan matches the current writer for arms", armPins
         "server plan matches the current writer for boundaries", boundaryPins
@@ -573,6 +737,47 @@ let private concurrentTeardown () =
 
     equal (List.replicate 50 [ for name in names -> true, [ "cleanup " + name ] ]) rounds
 
+let private concurrentHeads () =
+    let parties = 8
+    use barrier = new System.Threading.Barrier (parties)
+
+    let pause =
+        Component.define
+            (fun _ () ->
+                if not (barrier.SignalAndWait (TimeSpan.FromSeconds 10.)) then
+                    failwith "Barrier timed out")
+            (fun t -> t.span [||] [||])
+
+    let page = namedPage pause
+
+    let request name =
+        System.Threading.Tasks.Task.Run (fun () -> Server.renderPage Server.Options.defaults page name)
+
+    let names = [ for party in 1..parties -> "r" + string party ]
+
+    let rounds =
+        [
+            for _ in 1..50 ->
+                let requests = [ for name in names -> request name ]
+                [ for request in requests -> request.Result.Head ]
+        ]
+
+    equal (List.replicate 50 [ for name in names -> namedHead name ]) rounds
+
+let private collectorTruncates () =
+    let heads = HeadCollector ()
+    heads.Add ("title", "<t1>")
+    heads.Add (null, "<l1>")
+    heads.Add ("meta:name=d", "<m1>")
+    let mark = heads.Count
+    heads.Add ("title", "<t2>")
+    heads.Add (null, "<l2>")
+    heads.Add ("meta:name=d", "<m2>")
+    heads.Add ("link:canonical", "<c>")
+    equal "<t2><l1><m2><l2><c>" (heads.ToString ())
+    heads.Truncate mark
+    equal (3, "<t1><l1><m1>") (heads.Count, heads.ToString ())
+
 let dotnetCases: (string * (unit -> unit)) array =
     [|
         "escape returns the input string when nothing needs escaping", escapeKeepsReference
@@ -583,5 +788,7 @@ let dotnetCases: (string * (unit -> unit)) array =
         "a module-level signal read by two requests is shared: an Unchecked graph takes a request's write",
         fun () -> sharedSignal ThreadAffinity.Unchecked
         "two requests whose cleanups fail concurrently each report only their own error", concurrentTeardown
+        "two concurrent server requests collect only their own entries", concurrentHeads
+        "truncating the head collector drops later entries and restores an overridden key's earlier entry", collectorTruncates
     |]
 #endif

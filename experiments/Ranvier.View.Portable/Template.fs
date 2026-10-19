@@ -377,6 +377,20 @@ let skeletonMarkup (root: TemplateNode) =
     let layout = skeletonLayout root
     layout.Markup, layout.Targets, layout.RootCount
 
+/// <summary>A document head entry of a server plan; its readers receive the current part's instance.</summary>
+[<NoEquality; NoComparison>]
+type internal HeadPlan =
+    {
+        /// <summary>The entry's key; null for an unkeyed link.</summary>
+        Key: string
+        /// <summary>The marked start tag through the static attributes: closed for a title, open for a meta or link.</summary>
+        Opening: string
+        /// <summary>Dynamic attributes: the name and a reader returning <c>string option</c>.</summary>
+        Slots: (string * Func<obj, obj>) array
+        /// <summary>The reader of a title entry, returning <c>string</c>; null for a meta or link entry.</summary>
+        Title: Func<obj, obj>
+    }
+
 /// <summary>One step of a definition's server plan, interpreted by <c>ServerWriter</c> against the current part.</summary>
 [<NoEquality; NoComparison>]
 type internal ServerOp =
@@ -388,8 +402,8 @@ type internal ServerOp =
     | AttributeOp of string * Slot
     /// <summary>A raw-HTML slot's markup, written verbatim.</summary>
     | ContentOp of Slot
-    /// <summary>A document head entry: raises under <c>Reject</c>, dropped under <c>Omit</c>.</summary>
-    | HeadOp
+    /// <summary>A document head entry: collected under <c>Server.renderPage</c>; otherwise raises under <c>Reject</c> and is dropped under <c>Omit</c>.</summary>
+    | HeadOp of HeadPlan
     /// <summary>A browser-only part: raises under <c>Reject</c>, dropped under <c>Omit</c>; the description names the element and the part.</summary>
     | BrowserOp of description: string
     /// <summary>A region, with its position among the regions of its owning part.</summary>
@@ -471,7 +485,19 @@ let private compilePlan (root: TemplateNode) : ServerPlan =
                 part <- enclosing[enclosing.Count - 1]
                 enclosing.RemoveAt (enclosing.Count - 1)
                 emit LeaveOp
-            | Item (HeadNode _) -> emit HeadOp
+            | Item (HeadNode head) ->
+                for name, _ in head.Slots do
+                    validateAttribute name
+
+                emit (
+                    HeadOp
+                        {
+                            Key = head.Key
+                            Opening = HeadMarkup.opening head.Kind head.Key head.Attributes
+                            Slots = head.Slots
+                            Title = head.Title
+                        }
+                )
             | Item node ->
                 let text = isText node
 
@@ -719,9 +745,27 @@ type internal ServerWriter(backend: HtmlBackend) =
 
                 backend.Append markup
                 index <- index + 1
-            | HeadOp ->
-                if reject then
-                    raise (InvalidOperationException "Document metadata requires Server.renderPage")
+            | HeadOp head ->
+                match backend.Heads with
+                | null ->
+                    if reject then
+                        raise (InvalidOperationException "Document metadata requires Server.renderPage")
+                | heads ->
+                    let markup =
+                        if isNull head.Title then
+                            let parts = Array.zeroCreate<string>(head.Slots.Length + 2)
+                            parts[0] <- head.Opening
+
+                            for slot in 0 .. head.Slots.Length - 1 do
+                                let name, read = head.Slots[slot]
+                                parts[slot + 1] <- HeadMarkup.attribute name (unbox<string option>(read.Invoke instance))
+
+                            parts[parts.Length - 1] <- ">"
+                            String.Join ("", parts)
+                        else
+                            HeadMarkup.title head.Opening (unbox<string>(head.Title.Invoke instance))
+
+                    heads.Add (head.Key, markup)
 
                 index <- index + 1
             | BrowserOp _ ->

@@ -316,6 +316,108 @@ type HtmlSink() =
         builder.ToString ()
 #endif
 
+/// <summary>The server HTML of document head entries, marked with <c>data-ranvier-head</c> for hydration.</summary>
+module internal HeadMarkup =
+    /// <summary>
+    /// The start tag of an entry through its static attributes, led by <c>data-ranvier-head="key"</c>: closed for a
+    /// title, open for a meta or link. A null key writes an empty mark.
+    /// </summary>
+    let opening (kind: HeadKind) (key: string) (attributes: (string * string) array) : string =
+        let tag =
+            match kind with
+            | HeadKind.Title -> "title"
+            | HeadKind.Meta -> "meta"
+            | HeadKind.Link -> "link"
+
+        let parts = ResizeArray<string>()
+
+        parts.Add (
+            "<"
+            + tag
+            + " data-ranvier-head=\""
+            + escapeHtml true key
+            + "\""
+        )
+
+        for name, value in attributes do
+            validateAttribute name
+            parts.Add (" " + name + "=\"" + escapeHtml true value + "\"")
+
+        if kind = HeadKind.Title then
+            parts.Add ">"
+
+        System.String.Join ("", parts)
+
+    /// <summary><c> name="value"</c> for <c>Some</c>, and the empty string for <c>None</c>.</summary>
+    let attribute (name: string) (value: string option) : string =
+        match value with
+        | Some value -> " " + name + "=\"" + escapeHtml true value + "\""
+        | None -> ""
+
+    /// <summary>A title element from its opening and its text; null text is written as empty.</summary>
+    let title (opening: string) (text: string) : string =
+        opening + escapeHtml false text + "</title>"
+
+    /// <summary>The HTML of an entry bound to its instance.</summary>
+    let entry (entry: HeadEntry) : string =
+        let opening = opening entry.Kind entry.Key entry.Attributes
+
+        if entry.Kind = HeadKind.Title then
+            title opening (entry.Title ())
+        else
+            let parts = ResizeArray<string>()
+            parts.Add opening
+
+            for name, read in entry.Readers do
+                validateAttribute name
+                parts.Add (attribute name (read ()))
+
+            parts.Add ">"
+            System.String.Join ("", parts)
+
+/// <summary>
+/// The document head entries written by one request, as a log of keyed markup. Per key, the last entry is written at
+/// the position of the key's first entry; unkeyed entries are each written at their own position.
+/// </summary>
+[<Sealed; AllowNullLiteral>]
+type internal HeadCollector() =
+    let keys = ResizeArray<string>()
+    let markup = ResizeArray<string>()
+
+    member _.Count = keys.Count
+
+    /// <summary>Logs an entry; a null key marks it unkeyed.</summary>
+    member _.Add(key: string, html: string) =
+        keys.Add key
+        markup.Add html
+
+    /// <summary>Keeps the first <c>count</c> entries; the head is then the one those entries write.</summary>
+    member _.Truncate(count: int) =
+        if count < 0 || count > keys.Count then
+            invalidArg "count" "The count must lie between zero and the number of entries"
+
+        keys.RemoveRange (count, keys.Count - count)
+        markup.RemoveRange (count, markup.Count - count)
+
+    /// <summary>The head HTML of the logged entries, concatenated without separators.</summary>
+    override _.ToString() =
+        let written = ResizeArray<string>()
+        let positions = System.Collections.Generic.Dictionary<string, int>()
+
+        for index in 0 .. keys.Count - 1 do
+            let key = keys[index]
+
+            if isNull key then
+                written.Add markup[index]
+            else
+                match positions.TryGetValue key with
+                | true, position -> written[position] <- markup[index]
+                | _ ->
+                    positions[key] <- written.Count
+                    written.Add markup[index]
+
+        System.String.Join ("", written)
+
 [<AbstractClass>]
 type Backend() =
     abstract Text: string -> unit
@@ -492,6 +594,9 @@ and [<Sealed>] HtmlBackend(policy: BrowserPolicy, sink: HtmlSink) =
     /// <summary>The active <c>ServerScope</c>: a template rendered through this backend runs under it. Null selects an <c>HtmlScope</c>.</summary>
     member val internal Scope: obj = null with get, set
 
+    /// <summary>The request's head collector: a document entry is collected whatever the policy. Null applies the policy.</summary>
+    member val internal Heads: HeadCollector = null with get, set
+
     override _.Text value =
         childNodes <- childNodes + 1
         append (escapeHtml false value)
@@ -540,9 +645,12 @@ and [<Sealed>] HtmlBackend(policy: BrowserPolicy, sink: HtmlSink) =
 
             widget <- true
 
-    override _.Head _ =
-        if policy = Reject then
-            raise (System.InvalidOperationException "Document metadata requires Server.renderPage")
+    override this.Head entry =
+        match this.Heads with
+        | null ->
+            if policy = Reject then
+                raise (System.InvalidOperationException "Document metadata requires Server.renderPage")
+        | heads -> heads.Add (entry.Key, HeadMarkup.entry entry)
 
     override _.Listen(_, _) =
         browserCapability ()

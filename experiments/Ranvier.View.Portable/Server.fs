@@ -75,9 +75,16 @@ type internal RequestScope(lifetime: MountLifetime) =
 
 /// <summary>
 /// Renders <c>definition</c> into <c>sink</c> inside <c>graph</c> under a new request root, and disposes the root before
-/// returning or raising.
+/// returning or raising. Document entries go to <c>heads</c>; a null <c>heads</c> applies the policy to them.
 /// </summary>
-let internal renderOn (graph: Graph) (options: Options) (definition: Component<'props>) (props: 'props) (sink: HtmlSink) : unit =
+let internal renderOn
+    (graph: Graph)
+    (heads: HeadCollector)
+    (options: Options)
+    (definition: Component<'props>)
+    (props: 'props)
+    (sink: HtmlSink)
+    : unit =
     let cleanupErrors = ResizeArray<exn>()
 
     let failure =
@@ -90,6 +97,7 @@ let internal renderOn (graph: Graph) (options: Options) (definition: Component<'
                     try
                         try
                             let backend = HtmlBackend (options.Policy, sink)
+                            backend.Heads <- heads
                             let writer = ServerWriter backend
                             backend.Writer <- writer
                             sink.Append "<!--[r-->"
@@ -141,7 +149,7 @@ let internal renderOn (graph: Graph) (options: Options) (definition: Component<'
 let render (options: Options) (definition: Component<'props>) (props: 'props) : string =
     let sink = HtmlSink ()
     use graph = new Graph (options.GraphOptions)
-    renderOn graph options definition props sink
+    renderOn graph null options definition props sink
     sink.ToString ()
 
 /// <summary>Renders as <c>render</c> does, then passes the output's segments to <c>write</c> in order; a failed render writes nothing.</summary>
@@ -150,6 +158,35 @@ let renderTo (options: Options) (definition: Component<'props>) (props: 'props) 
 
     do
         use graph = new Graph (options.GraphOptions)
-        renderOn graph options definition props sink
+        renderOn graph null options definition props sink
 
     sink.Segments write
+
+/// <summary>A rendered page: the body as <c>render</c> returns it, and the document head entries' HTML.</summary>
+type Page = { Body: string; Head: string }
+
+/// <summary>Renders as <c>render</c> does, and collects the request's document head entries whatever the policy.</summary>
+/// <remarks>
+/// <para>
+/// The head lists one element per entry key in the order the keys were first written; a key's element is its last
+/// written entry, and each unkeyed link has its own element. A title is <c>&lt;title&gt;</c> with escaped text; a meta
+/// or link is a void element with its static attributes, then its attribute slots, each in definition order. A slot
+/// returning <c>None</c> is omitted.
+/// </para>
+/// <para>
+/// Every element carries <c>data-ranvier-head</c> with its key, the empty string for an unkeyed link, and the
+/// elements are concatenated without separators.
+/// </para>
+/// </remarks>
+let renderPage (options: Options) (definition: Component<'props>) (props: 'props) : Page =
+    let sink = HtmlSink ()
+    let heads = HeadCollector ()
+
+    do
+        use graph = new Graph (options.GraphOptions)
+        renderOn graph heads options definition props sink
+
+    {
+        Body = sink.ToString ()
+        Head = heads.ToString ()
+    }
