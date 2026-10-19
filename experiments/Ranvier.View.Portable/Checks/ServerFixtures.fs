@@ -302,3 +302,78 @@ let renderKeyedPage (rows: int) : string =
         }
         keyedPage
         rows
+
+/// <summary>The ids issued while the identity fixtures set up, in setup order.</summary>
+let identityLog = ResizeArray<string>()
+
+/// <summary>An identity fixture's instance: the first id its setup issued, shown as the element's id, and its props.</summary>
+[<Sealed>]
+type Issued<'props>(id: string, props: 'props) =
+    member _.Id = id
+    member _.Props = props
+
+let private issue (setup: Setup) (props: 'props) =
+    let id = setup.CreateId ()
+    identityLog.Add id
+    Issued (id, props)
+
+let idLeaf =
+    Component.define (fun setup () -> issue setup ()) (fun t -> t.i [| t.Attrs.id (fun (r: Issued<unit>) -> r.Id) |] [||])
+
+let idCell =
+    Component.define (fun setup (item: unit -> int) -> issue setup item) (fun t ->
+        t.b [| t.Attrs.id (fun r -> r.Id) |] [| t.text (fun r -> string (r.Props ())) |])
+
+let idRow =
+    Component.define (fun setup (item: unit -> int) -> issue setup item) (fun t ->
+        t.li [| t.Attrs.id (fun r -> r.Id) |] [| t.render idLeaf ignore; t.each id (fun r -> [| r.Props () * 10 |]) idCell |])
+
+let idArm =
+    Component.define (fun setup (count: unit -> int) -> issue setup count) (fun t ->
+        t.span [| t.Attrs.id (fun r -> r.Id) |] [| t.text (fun r -> string (r.Props ())) |])
+
+let identified =
+    Component.define
+        (fun setup (items: int array) ->
+            let issued = issue setup items
+            identityLog.Add (setup.CreateId ())
+            issued)
+        (fun t ->
+            t.div
+                [| t.Attrs.id (fun r -> r.Id) |]
+                [|
+                    t.render idLeaf ignore
+                    t.ul [||] [| t.each id (fun r -> r.Props) idRow |]
+                    t.render idLeaf ignore
+                    t.matchWith (fun r -> r.Props.Length) (fun count -> t.arm idArm count)
+                |])
+
+/// <summary>The ids <c>identified</c> issues for the items 7 and 8 under <c>prefix</c>, sorted.</summary>
+let identityIds (prefix: string) =
+    [
+        "0-0"
+        "0-1"
+        "0.c0-0"
+        "0.c1-0"
+        "0.r0.0-0"
+        "0.r0.0.c0-0"
+        "0.r0.0.r0.0-0"
+        "0.r0.1-0"
+        "0.r0.1.c0-0"
+        "0.r0.1.r0.0-0"
+        "0.r1.0-0"
+    ]
+    |> List.map (fun id -> prefix + "-" + id)
+    |> List.sort
+
+/// <summary>A view hole whose view renders <c>idLeaf</c> twice.</summary>
+let idHole =
+    Component.define (fun setup () -> issue setup ()) (fun t ->
+        t.div
+            [| t.Attrs.id (fun r -> r.Id) |]
+            [|
+                t.view (fun _ -> Program.fragment [| Component.render idLeaf (); Component.render idLeaf () |])
+            |])
+
+/// <summary>The ids <c>idHole</c> issues, in document order: the view's first template takes the row's position.</summary>
+let holeIds = [ "r-0-0"; "r-0.r0.0-0"; "r-0.r0.0.a0-0" ]

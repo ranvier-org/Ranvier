@@ -569,6 +569,8 @@ let rec internal mount
             modifierNode <- previousNode
             modifierTag <- previousTag
 
+    let identity = IdentityScope "r"
+
     let backend =
         { new Backend() with
             member _.Text value =
@@ -955,7 +957,13 @@ let rec internal mount
                     Api.createRoot (fun owner ->
                         Api.onCleanup child.Dispose
                         child.OnCleanup owner.Dispose
-                        Api.untrack (fun () -> setup { OnCleanup = child.OnCleanup }))
+
+                        Api.untrack (fun () ->
+                            setup
+                                {
+                                    OnCleanup = child.OnCleanup
+                                    CreateId = fun () -> identity.CreateAuthoredId InstancePath.Root
+                                }))
                 finally
                     scope <- previous
         }

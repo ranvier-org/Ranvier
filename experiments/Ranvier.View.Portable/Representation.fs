@@ -12,7 +12,17 @@ type BrowserPolicy =
     | Reject
     | Omit
 
-type Setup = { OnCleanup: (unit -> unit) -> unit }
+type Setup =
+    {
+        OnCleanup: (unit -> unit) -> unit
+        /// <summary>
+        /// A new id, valid during setup only. A template instance's ids are the root prefix, the instance's positional
+        /// path and a counter within the instance, as in <c>r-0.c1.r0.3-0</c>, and the server and a synchronous client
+        /// mount issue the same ids for the same structure. A template's call after its setup raises
+        /// <c>InvalidOperationException</c>.
+        /// </summary>
+        CreateId: unit -> string
+    }
 
 /// <summary>The items of a keyed region, with the key of each item; list items keep the caller's references.</summary>
 [<NoEquality; NoComparison>]
@@ -425,7 +435,7 @@ type internal HeadContainer(parent: HeadContainer) =
 /// child containers follow, ordered by the position at which each child closed. Per key, the last activated entry is
 /// written at the position of the key's first activated entry; unkeyed entries are each written at their own position.
 /// </summary>
-/// <remarks>A container or a group without entries allocates nothing beyond the open-container stack's slots.</remarks>
+/// <remarks>Until its first entry, a container or a group occupies its slots in the open-container stack alone.</remarks>
 [<Sealed; AllowNullLiteral>]
 type internal HeadCollector() =
     let keys = ResizeArray<string>()
@@ -723,6 +733,12 @@ and [<Sealed>] HtmlBackend(policy: BrowserPolicy, sink: HtmlSink) =
     /// <summary>The request's head collector: a document entry is collected whatever the policy. Null applies the policy.</summary>
     member val internal Heads: HeadCollector = null with get, set
 
+    /// <summary>The ids of the render; a server request replaces it with one of its own prefix.</summary>
+    member val Identity: IdentityScope = IdentityScope "r" with get, set
+
+    /// <summary>The path that authored content sits under: the root's, or a view row's while its view runs.</summary>
+    member val internal Path: InstancePath = InstancePath.Root with get, set
+
     override _.Text value =
         childNodes <- childNodes + 1
         append (escapeHtml false value)
@@ -844,18 +860,22 @@ and [<Sealed>] HtmlBackend(policy: BrowserPolicy, sink: HtmlSink) =
             append ("</" + name tag + ">")
 
     override this.Component setup =
+        this.ComponentWith (setup, (fun () -> this.Identity.CreateAuthoredId this.Path))
+
+    /// <summary>Runs a component as <c>Component</c> does, its <c>Setup</c> issuing ids through <c>createId</c>.</summary>
+    member internal this.ComponentWith(setup: Setup -> unit, createId: unit -> string) =
         match this.Heads with
-        | null -> this.RunComponent setup
+        | null -> this.RunComponent (setup, createId)
         | heads ->
             let outer = heads.EnterGroup ()
 
             try
-                this.RunComponent setup
+                this.RunComponent (setup, createId)
             finally
                 heads.LeaveGroup outer
 
     /// <summary>Runs a component's setup, then its cleanups; a failure of either raises after every cleanup has run.</summary>
-    member private _.RunComponent(setup: Setup -> unit) =
+    member private _.RunComponent(setup: Setup -> unit, createId: unit -> string) =
         let cleanups = ResizeArray<unit -> unit>()
         let mutable completed = false
 
@@ -868,7 +888,11 @@ and [<Sealed>] HtmlBackend(policy: BrowserPolicy, sink: HtmlSink) =
         let mutable setupFailure: exn option = None
 
         try
-            setup { OnCleanup = onCleanup }
+            setup
+                {
+                    OnCleanup = onCleanup
+                    CreateId = createId
+                }
         with error ->
             setupFailure <- Some error
 

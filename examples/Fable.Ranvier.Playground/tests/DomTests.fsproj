@@ -15,6 +15,7 @@
     <Compile Include="ScheduledChecks.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Portable/Lifetime.fs" Link="Lifetime.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Portable/Scope.fs" Link="Scope.fs" />
+    <Compile Include="../../../experiments/Ranvier.View.Portable/Identity.fs" Link="Identity.fs" />
     <Compile Include="LifetimeChecks.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Scheduling.fs" Link="Scheduling.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Binding.fs" Link="Binding.fs" />
@@ -68,6 +69,7 @@
     <Compile Include="OwnedAsyncChecks.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Portable/Checks/ServerFixtures.fs" Link="Checks/ServerFixtures.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Portable/Checks/ServerChecks.fs" Link="Checks/ServerChecks.fs" />
+    <Compile Include="HydrationChecks.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/ComponentBench.fs" Link="ComponentBench.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Fixtures.fs" Link="Fixtures.fs" />
     <Compile Include="RepresentationBench.fs" />

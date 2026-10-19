@@ -1100,6 +1100,7 @@ and private RowBuilder(state: MountState) =
     let setup: Setup =
         {
             OnCleanup = fun callback -> state.OwnedCleanup (Api.getOwner (), callback)
+            CreateId = state.Identity.CreateId
         }
 
     member _.Staging =
@@ -1108,7 +1109,10 @@ and private RowBuilder(state: MountState) =
 
         staging
 
-    member this.Build(materialise: Func<(unit -> obj), TemplateDom.MountServices, unit>, current: unit -> obj, target: PlacementPass) : Row =
+    /// <summary>Materialises the row created at index <c>row</c> of its region, its hooks held by <c>target</c>.</summary>
+    member this.Build
+        (materialise: Func<(unit -> obj), TemplateDom.MountServices, int, unit>, current: unit -> obj, target: PlacementPass, row: int)
+        : Row =
         placement <- target
         roots.Clear ()
         setupFailure <- None
@@ -1116,7 +1120,7 @@ and private RowBuilder(state: MountState) =
 
         try
             try
-                materialise.Invoke (current, this :> TemplateDom.MountServices)
+                materialise.Invoke (current, this :> TemplateDom.MountServices, row)
             with _ ->
                 for index in 0 .. roots.Count - 1 do
                     remove (roots[index] :?> ChildNode)
@@ -1170,8 +1174,10 @@ and private RowBuilder(state: MountState) =
         member _.Head(entry) =
             state.HeadIn (placement.Container, entry)
 
-        member _.Region(start, finish, _, kind, items, render, rows) =
-            state.NestedRegion (start, finish, kind, items, render, rows, placement.Container)
+        member _.Identity = state.Identity
+
+        member _.Region(start, finish, _, kind, items, render, rows, parentPath, region) =
+            state.NestedRegion (start, finish, kind, items, render, rows, parentPath, region, placement.Container)
 
 /// <summary>
 /// The markers and laid-out rows of one region, with the region's owner, row builder and failure state.
@@ -1183,9 +1189,16 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
     let pending = ResizeArray<Row>()
     let mutable owner: Owner = Unchecked.defaultof<_>
     let mutable builder: RowBuilder = Unchecked.defaultof<_>
+    let mutable created = 0
 
     member _.LaidOut = laidOut
     member _.Errors = errors
+
+    /// <summary>The creation index of the region's next row, counting from 0 for the region's first row.</summary>
+    member _.NextRow() : int =
+        let row = created
+        created <- row + 1
+        row
 
     /// <summary>The region's owner, set by <c>Own</c>.</summary>
     member _.Owner = owner
@@ -1368,7 +1381,9 @@ and [<Sealed>] private ViewBoundary
         outer: ViewScope,
         unwinds: unit -> bool,
         parent: Placement,
-        mountView: (unit -> obj) -> ((unit -> obj) -> Backend -> unit) -> ViewScope -> Placement -> Row
+        parentPath: InstancePath,
+        region: int,
+        mountView: (unit -> obj) -> ((unit -> obj) -> Backend -> unit) -> ViewScope -> Placement -> InstancePath -> int -> int -> Row
     ) =
     // The content's nested mount; null until its setup returns.
     let mutable content: Row = null
@@ -1429,7 +1444,10 @@ and [<Sealed>] private ViewBoundary
         let viewContainer = Placement parent
 
         try
-            row <- Api.runWithOwner site.Owner (fun () -> mountView noItem (fun _ backend -> render backend) outer viewContainer)
+            row <-
+                Api.runWithOwner site.Owner (fun () ->
+                    mountView noItem (fun _ backend -> render backend) outer viewContainer parentPath region (site.NextRow ()))
+
             place row
             shown <- row
             viewContainer.Place ()
@@ -1537,7 +1555,14 @@ and [<Sealed>] private ViewBoundary
             try
                 content <-
                     Api.runWithOwner site.Owner (fun () ->
-                        mountView noItem (fun _ backend -> views.Content status backend) (this :> ViewScope) contentContainer)
+                        mountView
+                            noItem
+                            (fun _ backend -> views.Content status backend)
+                            (this :> ViewScope)
+                            contentContainer
+                            parentPath
+                            region
+                            (site.NextRow ()))
             with error ->
                 failure <- Some error
         finally
@@ -1638,11 +1663,34 @@ and internal MountState
         report: exn list -> unit,
         host: Node,
         boundary: ViewScope,
-        inherited: Placement
+        inherited: Placement,
+        identity: IdentityScope,
+        parentPath: InstancePath,
+        kind: int,
+        a: int,
+        b: int
     ) =
     inherit Prepared.Backend()
 
     let range = OwnedRange host
+
+    // The mount's path, one step of `kind` below `parentPath`; null until first requested.
+    let mutable mountPath: InstancePath = null
+    // Whether a template took the mount's own position; later templates take authored steps under the mount's path.
+    let mutable positioned = false
+    // The authored steps under the mount's path taken by templates and authored regions.
+    let mutable authoredSteps = 0
+
+    let pathOfMount () =
+        if isNull mountPath then
+            mountPath <- InstancePath.Below (parentPath, kind, a, b)
+
+        mountPath
+
+    let nextAuthored () =
+        let step = authoredSteps
+        authoredSteps <- step + 1
+        step
 
     // The container of the mount's hooks: a root mount's own, or the container of the pass, arm, hole or boundary view
     // that created the mount.
@@ -1979,6 +2027,8 @@ and internal MountState
 
     member _.Root: MountLifetime = root
 
+    member internal _.Identity: IdentityScope = identity
+
     member internal _.OwnedCleanup(owner: Owner, callback: unit -> unit) =
         ownedCleanup owner callback
 
@@ -2299,7 +2349,9 @@ and internal MountState
                 range.AppendGenerated (target, regionEnd)
                 NestedRegion
 
-        this.RegionOf (regionStart, regionEnd, placement, kind, items, render, null, container)
+        // An authored region's rows sit under an authored step of the mount's own path.
+        let regionPath = pathOfMount().Authored(nextAuthored ())
+        this.RegionOf (regionStart, regionEnd, placement, kind, items, render, null, regionPath, 0, container)
 
     member internal this.NestedRegion
         (
@@ -2308,10 +2360,12 @@ and internal MountState
             kind: TemplateDom.RegionKind,
             items: KeyedItems,
             render: (unit -> obj) -> Backend -> unit,
-            rows: Func<(unit -> obj), TemplateDom.MountServices, unit>,
+            rows: Func<(unit -> obj), TemplateDom.MountServices, int, unit>,
+            parentPath: InstancePath,
+            region: int,
             parentContainer: Placement
         ) =
-        this.RegionOf (start, finish, NestedRegion, kind, items, render, rows, parentContainer)
+        this.RegionOf (start, finish, NestedRegion, kind, items, render, rows, parentPath, region, parentContainer)
 
     member private _.PlaceRegion(regionStart: Node, regionEnd: Node, placement: RegionPlacement, validate: unit -> unit, relocate: unit -> unit) =
         match placement with
@@ -2334,12 +2388,39 @@ and internal MountState
 
         site
 
-    /// <summary>Mounts an authored row or a boundary's view as a nested mount under <c>scope</c> and returns its nodes.</summary>
-    member private this.MountRow(current: unit -> obj, render: (unit -> obj) -> Backend -> unit, scope: ViewScope, target: Placement) : Row =
+    /// <summary>
+    /// Mounts an authored row or a boundary's view as a nested mount under <c>scope</c> and returns its nodes. The
+    /// nested mount's first template takes the position of row <c>row</c> of region <c>region</c> under
+    /// <c>parentPath</c>.
+    /// </summary>
+    member private this.MountRow
+        (
+            current: unit -> obj,
+            render: (unit -> obj) -> Backend -> unit,
+            scope: ViewScope,
+            target: Placement,
+            parentPath: InstancePath,
+            region: int,
+            row: int
+        ) : Row =
         let rowHost = fragment ()
 
         let nested =
-            MountState (scheduling, graph, root, Unchecked.defaultof<_>, report, rowHost, scope, target)
+            MountState (
+                scheduling,
+                graph,
+                root,
+                Unchecked.defaultof<_>,
+                report,
+                rowHost,
+                scope,
+                target,
+                identity,
+                parentPath,
+                InstanceStep.Row,
+                region,
+                row
+            )
 
         nested.HeadDocument <- this.HeadDocument
 
@@ -2367,7 +2448,9 @@ and internal MountState
             placement: RegionPlacement,
             items: KeyedItems,
             render: (unit -> obj) -> Backend -> unit,
-            rows: Func<(unit -> obj), TemplateDom.MountServices, unit>,
+            rows: Func<(unit -> obj), TemplateDom.MountServices, int, unit>,
+            parentPath: InstancePath,
+            region: int,
             parentContainer: Placement
         ) =
         let site = this.Site (regionStart, regionEnd, placement)
@@ -2439,9 +2522,9 @@ and internal MountState
 
             row <-
                 if isNull rows then
-                    this.MountRow (current, render, boundary, passPlacement.Container)
+                    this.MountRow (current, render, boundary, passPlacement.Container, parentPath, region, site.NextRow ())
                 else
-                    site.Builder.Build (rows, current, passPlacement)
+                    site.Builder.Build (rows, current, passPlacement, site.NextRow ())
 
             row
 
@@ -2755,7 +2838,9 @@ and internal MountState
             placement: RegionPlacement,
             read: unit -> obj array,
             render: (unit -> obj) -> Backend -> unit,
-            rows: Func<(unit -> obj), TemplateDom.MountServices, unit>,
+            rows: Func<(unit -> obj), TemplateDom.MountServices, int, unit>,
+            parentPath: InstancePath,
+            region: int,
             parentContainer: Placement
         ) =
         let site = this.Site (regionStart, regionEnd, placement)
@@ -2799,9 +2884,9 @@ and internal MountState
 
                             row <-
                                 if isNull rows then
-                                    this.MountRow (current, render, boundary, armPlacement.Container)
+                                    this.MountRow (current, render, boundary, armPlacement.Container, parentPath, region, site.NextRow ())
                                 else
-                                    site.Builder.Build (rows, current, armPlacement)))
+                                    site.Builder.Build (rows, current, armPlacement, site.NextRow ())))
 
                     // An arm whose setup disposed the region leaves with the region's owner.
                     if site.Live () then
@@ -2868,13 +2953,18 @@ and internal MountState
             placement: RegionPlacement,
             read: unit -> obj array,
             render: (unit -> obj) -> Backend -> unit,
+            parentPath: InstancePath,
+            region: int,
             parentContainer: Placement
         ) =
         let site = this.Site (regionStart, regionEnd, placement)
         let items = read ()
         let view = KeyedItems.value (items[0])
         let holeContainer = Placement parentContainer
-        let row = this.MountRow ((fun () -> view), render, boundary, holeContainer)
+
+        let row =
+            this.MountRow ((fun () -> view), render, boundary, holeContainer, parentPath, region, site.NextRow ())
+
         Row.MoveBefore (row, site.Parent (), regionEnd)
         row.Mount.Relocate ()
         site.LaidOut.Add row
@@ -2882,8 +2972,15 @@ and internal MountState
 
     /// <summary>Mounts a boundary between the markers. Its content's bindings report to the boundary, and its pending view's bindings to this mount's boundary, or to the view's own mount outside every boundary.</summary>
     member private this.BoundaryRegion
-        (regionStart: Node, regionEnd: Node, placement: RegionPlacement, views: BoundaryViews, parentContainer: Placement)
-        =
+        (
+            regionStart: Node,
+            regionEnd: Node,
+            placement: RegionPlacement,
+            views: BoundaryViews,
+            parentPath: InstancePath,
+            region: int,
+            parentContainer: Placement
+        ) =
         let site = this.Site (regionStart, regionEnd, placement)
 
         let created =
@@ -2897,7 +2994,9 @@ and internal MountState
                 boundary,
                 (fun () -> isNull (box boundary) && root.Phase = SettingUp),
                 parentContainer,
-                fun current render scope target -> this.MountRow (current, render, scope, target)
+                parentPath,
+                region,
+                fun current render scope target parentPath region row -> this.MountRow (current, render, scope, target, parentPath, region, row)
             )
 
         site.Own (fun () -> created.Start ())
@@ -2910,16 +3009,19 @@ and internal MountState
             kind: TemplateDom.RegionKind,
             items: KeyedItems,
             render: (unit -> obj) -> Backend -> unit,
-            rows: Func<(unit -> obj), TemplateDom.MountServices, unit>,
+            rows: Func<(unit -> obj), TemplateDom.MountServices, int, unit>,
+            parentPath: InstancePath,
+            region: int,
             parentContainer: Placement
         ) =
         match kind with
-        | TemplateDom.ListRows -> this.ListRegion (start, finish, placement, items, render, rows, parentContainer)
-        | TemplateDom.SelectedArm -> this.ArmRegion (start, finish, placement, items.Read, render, rows, parentContainer)
-        | TemplateDom.ViewHole -> this.HoleRegion (start, finish, placement, items.Read, render, parentContainer)
+        | TemplateDom.ListRows -> this.ListRegion (start, finish, placement, items, render, rows, parentPath, region, parentContainer)
+        | TemplateDom.SelectedArm -> this.ArmRegion (start, finish, placement, items.Read, render, rows, parentPath, region, parentContainer)
+        | TemplateDom.ViewHole -> this.HoleRegion (start, finish, placement, items.Read, render, parentPath, region, parentContainer)
         | TemplateDom.BoundaryContent ->
             let pairs = items.Read ()
-            this.BoundaryRegion (start, finish, placement, unbox<BoundaryViews>(KeyedItems.value (pairs[0])), parentContainer)
+
+            this.BoundaryRegion (start, finish, placement, unbox<BoundaryViews>(KeyedItems.value (pairs[0])), parentPath, region, parentContainer)
 
     override _.Component(setup) =
         ensureSetup ()
@@ -2931,6 +3033,7 @@ and internal MountState
             setup
                 {
                     OnCleanup = ownedCleanup (Api.getOwner ())
+                    CreateId = fun () -> identity.CreateAuthoredId (pathOfMount ())
                 }
 #else
             Api.createRoot (fun owner ->
@@ -2940,6 +3043,7 @@ and internal MountState
                     setup
                         {
                             OnCleanup = fun callback -> ownedCleanup owner callback
+                            CreateId = fun () -> identity.CreateAuthoredId (pathOfMount ())
                         })
 
                 if owner.IsDisposed then
@@ -2948,13 +3052,24 @@ and internal MountState
         finally
             container.Leave previous
 
+    /// <summary>
+    /// Renders a template: the mount's first template takes the mount's own position, and each later one the next
+    /// authored step under the mount's path.
+    /// </summary>
     override this.Template(definition, props) =
         ensureSetup ()
         let previous = container.Enter ()
 
         try
             match scheduling with
-            | Synchronous -> TemplateDom.materialise definition props (this :> TemplateDom.MountServices)
+            | Synchronous ->
+                let services = this :> TemplateDom.MountServices
+
+                if positioned then
+                    TemplateDom.materialise definition props services (pathOfMount ()) InstanceStep.Authored (nextAuthored ()) 0
+                else
+                    positioned <- true
+                    TemplateDom.materialise definition props services parentPath kind a b
             | Queued _ -> definition.Expand (this, props)
         finally
             container.Leave previous
@@ -2968,9 +3083,12 @@ and internal MountState
                 templateSetup <-
                     {
                         OnCleanup = fun callback -> ownedCleanup (Api.getOwner ()) callback
+                        CreateId = identity.CreateId
                     }
 
             templateSetup
+
+        member _.Identity = identity
 
         member _.SettingUp() =
             root.Phase = SettingUp
@@ -3003,7 +3121,7 @@ and internal MountState
         member this.Head(entry) =
             this.HeadIn (container, entry)
 
-        member this.Region(start, finish, rootLevel, kind, items, render, rows) =
+        member this.Region(start, finish, rootLevel, kind, items, render, rows, parentPath, region) =
             ensureSetup ()
 
             let placement =
@@ -3012,7 +3130,7 @@ and internal MountState
                 else
                     NestedRegion
 
-            this.RegionOf (start, finish, placement, kind, items, render, rows, container)
+            this.RegionOf (start, finish, placement, kind, items, render, rows, parentPath, region, container)
 
     interface ViewScope with
         member _.Tracks = false
@@ -3047,13 +3165,42 @@ let mountWith mode graph (parentOwner: Owner option) report host before build =
 
     match mode with
     | SynchronousCommits ->
-        MountState(Synchronous, graph, null, parentOwner, report, host, Unchecked.defaultof<_>, Unchecked.defaultof<_>).Run(before, build)
+        MountState(
+            Synchronous,
+            graph,
+            null,
+            parentOwner,
+            report,
+            host,
+            Unchecked.defaultof<_>,
+            Unchecked.defaultof<_>,
+            IdentityScope "r",
+            null,
+            InstanceStep.Root,
+            0,
+            0
+        )
+            .Run(before, build)
     | QueuedCommits (failure, post) ->
         let queue = Queue (graph, failure, post)
 
         try
             let state =
-                MountState (Queued queue, graph, null, parentOwner, report, host, Unchecked.defaultof<_>, Unchecked.defaultof<_>)
+                MountState (
+                    Queued queue,
+                    graph,
+                    null,
+                    parentOwner,
+                    report,
+                    host,
+                    Unchecked.defaultof<_>,
+                    Unchecked.defaultof<_>,
+                    IdentityScope "r",
+                    null,
+                    InstanceStep.Root,
+                    0,
+                    0
+                )
 
             let mounted = state.Run (before, build)
             state.Root.OnCleanup queue.Dispose

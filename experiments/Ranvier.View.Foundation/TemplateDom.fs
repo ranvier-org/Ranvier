@@ -56,6 +56,8 @@ type CompiledRegion =
         Marker: int
         /// <summary>The part whose instance the region reads: 0 for the template, k for the k-th inlined child.</summary>
         Owner: int
+        /// <summary>The region's position among its owning part's regions.</summary>
+        Index: int
         /// <summary>True when the markers are roots of a multi-root skeleton.</summary>
         RootLevel: bool
         Kind: RegionKind
@@ -335,14 +337,22 @@ let compile (definition: TemplateComponent) : Compiled =
     let targets = layout.Targets
     let rootCount = layout.RootCount
 
+    // The number of regions compiled so far, per part.
+    let partRegions = Array.zeroCreate<int>(layout.Children.Length + 1)
+
     let regions =
         [|
             for index in 0 .. targets.Length - 1 do
                 match targets[index] with
                 | RegionNode region, path ->
+                    let owner = layout.Owners[index]
+                    let position = partRegions[owner]
+                    partRegions[owner] <- position + 1
+
                     {
                         CompiledRegion.Marker = index
-                        Owner = layout.Owners[index]
+                        Owner = owner
+                        Index = position
                         RootLevel = rootCount > 1 && path.Length = 1
                         Items = region.Items
                         Key = region.Key
@@ -417,11 +427,25 @@ type internal MountServices =
     abstract Placement: Placement
     /// <summary>Binds a document head entry for the instance being materialised.</summary>
     abstract Head: HeadEntry -> unit
+    /// <summary>The ids of the mount; an instance's setup runs in its window.</summary>
+    abstract Identity: IdentityScope
 
-    /// <summary>Mounts a region between its start and end markers. The flag marks markers that are roots of the appended
-    /// clone; the materialiser is null for a view hole.</summary>
+    /// <summary>
+    /// Mounts a region between its start and end markers. The flag marks markers that are roots of the appended clone;
+    /// the materialiser, null for a view hole or a boundary, receives a row's current item, its services and its
+    /// creation index. The region's rows sit under the owning part's path at the region's index.
+    /// </summary>
     abstract Region:
-        Node * Node * bool * RegionKind * KeyedItems * ((unit -> obj) -> Backend -> unit) * Func<(unit -> obj), MountServices, unit> -> unit
+        Node *
+        Node *
+        bool *
+        RegionKind *
+        KeyedItems *
+        ((unit -> obj) -> Backend -> unit) *
+        Func<(unit -> obj), MountServices, int, unit> *
+        InstancePath *
+        int ->
+            unit
 
 let private unset = obj ()
 
@@ -726,17 +750,44 @@ let private setUp (template: TemplateComponent) (services: MountServices) (props
 let private setUpChild (services: MountServices) (child: CompiledChild) (owner: obj) =
     Api.untrack (fun () -> child.Definition.Setup.Invoke (services.Setup, child.Props.Invoke owner))
 
-/// <summary>Materialises one instance: runs setup, clones the skeleton, binds its slots, events and placed hooks and those of its inlined children, appends it and mounts its regions.</summary>
-let rec internal materialise (definition: TemplateDefinition) (props: obj) (services: MountServices) =
+/// <summary>
+/// Materialises one instance at the position one step of <c>kind</c> below <c>parent</c>: runs setup, clones the
+/// skeleton, binds its slots, events and placed hooks and those of its inlined children, appends it and mounts its
+/// regions.
+/// </summary>
+let rec internal materialise
+    (definition: TemplateDefinition)
+    (props: obj)
+    (services: MountServices)
+    (parent: InstancePath)
+    (kind: int)
+    (a: int)
+    (b: int)
+    =
     let template = definition :?> TemplateComponent
 
     if isNull definition.Compiled then
         definition.Compiled <- box (compile template)
 
     let compiled = definition.Compiled :?> Compiled
-    let instance = setUp template services props
-    let clone = compiled.Skeleton.cloneNode true
     let children = compiled.Children
+    let identity = services.Identity
+    // The instance's path, taken only when a region or an inlined child sits under it.
+    let mutable path: InstancePath = null
+    identity.Enter (parent, kind, a, b)
+
+    let instance =
+        try
+            let instance = setUp template services props
+
+            if compiled.Regions.Length > 0 || children.Length > 0 then
+                path <- identity.Path ()
+
+            instance
+        finally
+            identity.Leave ()
+
+    let clone = compiled.Skeleton.cloneNode true
     let state = stateFor compiled instance children.Length
     collect clone compiled.Walk state
     bind services compiled state
@@ -753,8 +804,13 @@ let rec internal materialise (definition: TemplateDefinition) (props: obj) (serv
     for k in 0 .. children.Length - 1 do
         let child = at children k
 
+        identity.Enter (path, InstanceStep.Child, k, 0)
+
         let childInstance =
-            setUpChild services child (partInstance state childBase child.Owner)
+            try
+                setUpChild services child (partInstance state childBase child.Owner)
+            finally
+                identity.Leave ()
 
         let tables = child.Tables
         let childState = stateFor tables childInstance 0
@@ -779,10 +835,25 @@ let rec internal materialise (definition: TemplateDefinition) (props: obj) (serv
             root <- next
 
     let regions = compiled.Regions
+    // The path of the part owning the latest region, kept for the regions of the same part that follow it.
+    let mutable pathOwner = -1
+    let mutable partPath: InstancePath = null
 
     for i in 0 .. regions.Length - 1 do
         let region = at regions i
         let owner = partInstance state childBase region.Owner
+
+        if region.Owner <> pathOwner then
+            pathOwner <- region.Owner
+
+            partPath <-
+                if region.Owner = 0 then
+                    path
+                else
+                    path.Child (region.Owner - 1)
+
+        let regionPath = partPath
+        let regionIndex = region.Index
         let start: Node = unbox (at state (StateNodes + region.Marker))
         let finish: Node = unbox start.nextSibling
         let items = region.Items
@@ -799,12 +870,23 @@ let rec internal materialise (definition: TemplateDefinition) (props: obj) (serv
         let rows =
             match region.Row with
             | ItemRow (rowDefinition, rowProps) ->
-                Func<(unit -> obj), MountServices, unit>(fun current rowServices -> materialise rowDefinition (rowProps.Invoke current) rowServices)
+                Func<(unit -> obj), MountServices, int, unit>(fun current rowServices row ->
+                    materialise rowDefinition (rowProps.Invoke current) rowServices regionPath InstanceStep.Row regionIndex row)
             | ArmRow ->
-                Func<(unit -> obj), MountServices, unit>(fun current rowServices ->
+                Func<(unit -> obj), MountServices, int, unit>(fun current rowServices row ->
                     let arm = unbox<Arm>(current ())
-                    materialise arm.Definition (arm.Reader.Invoke current) rowServices)
+                    materialise arm.Definition (arm.Reader.Invoke current) rowServices regionPath InstanceStep.Row regionIndex row)
             | ViewRow
             | BoundaryRow -> null
 
-        services.Region (start, finish, region.RootLevel, region.Kind, { Read = read; Key = region.Key }, region.Render, rows)
+        services.Region (
+            start,
+            finish,
+            region.RootLevel,
+            region.Kind,
+            { Read = read; Key = region.Key },
+            region.Render,
+            rows,
+            regionPath,
+            regionIndex
+        )

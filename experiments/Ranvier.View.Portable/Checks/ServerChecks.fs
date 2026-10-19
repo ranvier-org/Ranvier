@@ -232,7 +232,7 @@ type private StandInOwner() =
             cleanup ()
 
 /// <summary>A server scope that gives each nested instance a child owner of <c>owner</c>.</summary>
-type private OwnedScope(owner: StandInOwner) =
+type private OwnedScope(owner: StandInOwner, identity: IdentityScope) =
     inherit ServerScope()
 
     override _.Nest body =
@@ -240,9 +240,10 @@ type private OwnedScope(owner: StandInOwner) =
         owner.Children.Add child
 
         body
-            (OwnedScope child)
+            (OwnedScope (child, identity))
             {
                 OnCleanup = fun cleanup -> child.Cleanups.Add cleanup
+                CreateId = identity.CreateId
             }
 
     override this.Attempt body = body this
@@ -262,7 +263,7 @@ let private holeTemplateOwnedByRequest () =
     let root = StandInOwner ()
     let sink = HtmlSink ()
     let backend = HtmlBackend (Omit, sink)
-    backend.Scope <- OwnedScope root
+    backend.Scope <- OwnedScope (root, backend.Identity)
     Program.run (Component.render holeHolder (Component.render holeChild ())) backend
     let during = List.ofSeq cleanupLog
     root.Dispose ()
@@ -678,8 +679,62 @@ let private sequentialHeads () =
     equal (namedHead "left", namedHead "right") (left.Head, right.Head)
 #endif
 
+let private serverIdentity () =
+    identityLog.Clear ()
+
+    Server.render
+        { Server.Options.defaults with
+            IdPrefix = "a"
+        }
+        identified
+        [| 7; 8 |]
+    |> ignore
+
+    equal (identityIds "a") (List.sort (List.ofSeq identityLog))
+
+let private createIdAfterSetup () =
+    let captured: Setup option ref = ref None
+
+    let capturing =
+        Component.define (fun setup () -> captured.Value <- Some setup) (fun t -> t.span [||] [||])
+
+    Server.render Server.Options.defaults capturing ()
+    |> ignore
+
+    equal true (failure (fun () -> captured.Value.Value.CreateId () |> ignore) :? InvalidOperationException)
+
+let private authoredIds () =
+    let ids = ResizeArray<string>()
+
+    let authored =
+        Program.createComponent (fun setup ->
+            ids.Add (setup.CreateId ())
+            Program.text "x")
+
+    Html.render Reject (Program.run (Program.fragment [| authored; authored |]))
+    |> ignore
+
+    identityLog.Clear ()
+
+    Html.render Reject (Program.run (Component.render idLeaf ()))
+    |> ignore
+
+    equal ([ "r-0-a0"; "r-0-a1" ], [ "r-0-0" ]) (List.ofSeq ids, List.ofSeq identityLog)
+
+let private holeIdentity () =
+    identityLog.Clear ()
+    let html = Server.render Server.Options.defaults idHole ()
+
+    equal
+        ("""<!--[r--><div id="r-0-0"><!--[--><i id="r-0.r0.0-0"></i><i id="r-0.r0.0.a0-0"></i><!--]--></div><!--]-->""", holeIds)
+        (html, List.ofSeq identityLog)
+
 let cases: (string * (unit -> unit)) array =
     [|
+        "CreateId follows the instance path for inlined children before and after regions, nested rows and arms", serverIdentity
+        "CreateId after setup raises", createIdAfterSetup
+        "authored components receive ids distinct from template ids", authoredIds
+        "a view hole's first template takes the row's position and a later one the authored step under it", holeIdentity
         "renderPage writes keys in first-activation order and the last entry for a key", headOrder
         "renderPage activates an instance's own entries before its inlined children's and its regions' instances after both", activationOrder
         "renderPage activates every row of a pass before the rows' inner rows, compiled and expanded", containerOrder

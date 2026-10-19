@@ -420,6 +420,8 @@ type internal ServerPlan =
         Ops: ServerOp array
         /// <summary>The inlined children, at every depth, in document order; <c>EnterOp k</c> sets up the child at <c>k - 1</c>.</summary>
         Children: InlinedChild array
+        /// <summary>Whether the plan has an inlined child or a region, whose position needs the instance's path.</summary>
+        Positioned: bool
     }
 
 let private placedPart kind =
@@ -582,6 +584,13 @@ let private compilePlan (root: TemplateNode) : ServerPlan =
     {
         Ops = ops.ToArray ()
         Children = children.ToArray ()
+        Positioned =
+            children.Count > 0
+            || ops
+               |> Seq.exists (fun op ->
+                   match op with
+                   | RegionOp _ -> true
+                   | _ -> false)
     }
 
 /// <summary>The definition's server plan, compiled on first use; every later call returns the same plan.</summary>
@@ -672,7 +681,7 @@ type internal HtmlScope(backend: HtmlBackend) =
     inherit ServerScope()
 
     override this.Nest body =
-        backend.Component (fun setup -> body this setup)
+        backend.ComponentWith ((fun setup -> body this setup), (fun () -> backend.Identity.CreateId ()))
 
     override this.Inline(parent, body) =
         body this parent
@@ -680,9 +689,21 @@ type internal HtmlScope(backend: HtmlBackend) =
     override this.Attempt body = body this
 
 /// <summary>Writes template instances to a backend from their definitions' server plans.</summary>
+/// <remarks>
+/// Each instance is written at a position, one step below a parent path (see <c>InstanceStep</c>), and its setup runs in
+/// the identity window of that position.
+/// </remarks>
 [<Sealed>]
 type internal ServerWriter(backend: HtmlBackend) =
     let reject = backend.Policy = Reject
+    // The position the next template reached from authored content takes, while `pending` is set.
+    let mutable pending = false
+    let mutable pendingParent: InstancePath = null
+    let mutable pendingKind = 0
+    let mutable pendingA = 0
+    let mutable pendingB = 0
+    // The templates reached from authored content at the authored step under `backend.Path`.
+    let mutable authored = 0
 
     /// <summary>Runs <c>body</c> with <c>scope</c> as the backend's active scope.</summary>
     let under (scope: ServerScope) (body: unit -> unit) =
@@ -694,36 +715,107 @@ type internal ServerWriter(backend: HtmlBackend) =
         finally
             backend.Scope <- outer
 
-    /// <summary>Sets up an instance of <c>definition</c> in <c>scope.Nest</c> and writes it.</summary>
+    /// <summary>Sets the position the next template reached from authored content takes.</summary>
+    member _.Pend(parent: InstancePath, kind: int, a: int, b: int) =
+        pending <- true
+        pendingParent <- parent
+        pendingKind <- kind
+        pendingA <- a
+        pendingB <- b
+
+    /// <summary>
+    /// Writes an instance reached from authored content at the pending position, or, when none is pending, at the next
+    /// authored step under the backend's <c>Path</c>.
+    /// </summary>
+    member this.Embed(scope: ServerScope, definition: TemplateComponent, props: obj) : unit =
+        if pending then
+            pending <- false
+            this.Write (scope, definition, props, pendingParent, pendingKind, pendingA, pendingB)
+        else
+            let n = authored
+            authored <- n + 1
+            this.Write (scope, definition, props, backend.Path, InstanceStep.Authored, n, 0)
+
+    /// <summary>
+    /// Runs <c>render</c> under <c>scope</c> as the view of row <c>row</c> of region <c>region</c> under <c>parent</c>:
+    /// the first template it reaches takes the row's position, and its authored content sits under the row's path.
+    /// </summary>
+    member _.View(scope: ServerScope, render: Backend -> unit, parent: InstancePath, region: int, row: int) : unit =
+        let outerPending = pending
+        let outerParent = pendingParent
+        let outerKind = pendingKind
+        let outerA = pendingA
+        let outerB = pendingB
+        let outerAuthored = authored
+        let outerPath = backend.Path
+        pending <- true
+        pendingParent <- parent
+        pendingKind <- InstanceStep.Row
+        pendingA <- region
+        pendingB <- row
+        authored <- 0
+        backend.Path <- parent.Row (region, row)
+
+        try
+            under scope (fun () -> render backend)
+        finally
+            pending <- outerPending
+            pendingParent <- outerParent
+            pendingKind <- outerKind
+            pendingA <- outerA
+            pendingB <- outerB
+            authored <- outerAuthored
+            backend.Path <- outerPath
+
+    /// <summary>
+    /// Sets up an instance of <c>definition</c> in <c>scope.Nest</c>, at the position one step of <c>kind</c> below
+    /// <c>parent</c>, and writes it.
+    /// </summary>
     /// <remarks>
     /// The instance and each inlined child are groups of the backend's innermost open head container, entered in
     /// document order; each region is a child container of it, closed in region order.
     /// </remarks>
-    member this.Write(scope: ServerScope, definition: TemplateComponent, props: obj) : unit =
+    member this.Write(scope: ServerScope, definition: TemplateComponent, props: obj, parent: InstancePath, kind: int, a: int, b: int) : unit =
         match backend.Heads with
-        | null -> this.Instance (scope, definition, props)
+        | null -> this.Instance (scope, definition, props, parent, kind, a, b)
         | heads ->
             let outer = heads.EnterGroup ()
 
             try
-                this.Instance (scope, definition, props)
+                this.Instance (scope, definition, props, parent, kind, a, b)
             finally
                 heads.LeaveGroup outer
 
-    member private this.Instance(scope: ServerScope, definition: TemplateComponent, props: obj) : unit =
+    member private this.Instance
+        (scope: ServerScope, definition: TemplateComponent, props: obj, parent: InstancePath, kind: int, a: int, b: int)
+        : unit =
         let plan = serverPlan definition
 
         scope.Nest (fun scope setup ->
+            let identity = backend.Identity
             let parts = Array.zeroCreate<obj>(plan.Children.Length + 1)
-            parts[0] <- definition.Setup.Invoke (setup, props)
+            let mutable path: InstancePath = null
+            identity.Enter (parent, kind, a, b)
 
-            this.Run (scope, setup, plan, parts, 0, 0)
+            try
+                parts[0] <- definition.Setup.Invoke (setup, props)
+
+                if plan.Positioned then
+                    path <- identity.Path ()
+            finally
+                identity.Leave ()
+
+            this.Run (scope, setup, plan, parts, path, 0, 0)
             |> ignore)
 
-    /// <summary>Interprets the plan from <c>start</c> against <c>part</c> until its <c>LeaveOp</c> or the end; returns the index after it.</summary>
-    member private this.Run(scope: ServerScope, setup: Setup, plan: ServerPlan, parts: obj array, part: int, start: int) : int =
+    /// <summary>
+    /// Interprets the plan from <c>start</c> against <c>part</c> until its <c>LeaveOp</c> or the end; returns the index
+    /// after it. <c>path</c> is the instance's path, null for a plan that is not <c>Positioned</c>.
+    /// </summary>
+    member private this.Run(scope: ServerScope, setup: Setup, plan: ServerPlan, parts: obj array, path: InstancePath, part: int, start: int) : int =
         let ops = plan.Ops
         let instance = parts[part]
+        let mutable partPath: InstancePath = null
         let mutable index = start
         let mutable running = true
 
@@ -788,14 +880,17 @@ type internal ServerWriter(backend: HtmlBackend) =
                     raise (InvalidOperationException "Browser capability requires explicit Omit policy")
 
                 index <- index + 1
-            | RegionOp (_, region) ->
+            | RegionOp (regionIndex, region) ->
+                if isNull partPath then
+                    partPath <- if part = 0 then path else path.Child (part - 1)
+
                 match backend.Heads with
-                | null -> this.Region (scope, region, instance)
+                | null -> this.Region (scope, region, instance, partPath, regionIndex)
                 | heads ->
                     heads.Open ()
 
                     try
-                        this.Region (scope, region, instance)
+                        this.Region (scope, region, instance, partPath, regionIndex)
                     finally
                         heads.Close ()
 
@@ -806,19 +901,27 @@ type internal ServerWriter(backend: HtmlBackend) =
                 let resume = index + 1
                 let next = ref resume
 
+                let write (scope: ServerScope) (childSetup: Setup) =
+                    let identity = backend.Identity
+                    identity.Enter (path, InstanceStep.Child, child - 1, 0)
+
+                    try
+                        parts[child] <- inlined.Definition.Setup.Invoke (childSetup, props)
+                    finally
+                        identity.Leave ()
+
+                    next.Value <- this.Run (scope, childSetup, plan, parts, path, child, resume)
+
                 scope.Inline (
                     setup,
                     fun scope childSetup ->
                         match backend.Heads with
-                        | null ->
-                            parts[child] <- inlined.Definition.Setup.Invoke (childSetup, props)
-                            next.Value <- this.Run (scope, childSetup, plan, parts, child, resume)
+                        | null -> write scope childSetup
                         | heads ->
                             let outer = heads.EnterGroup ()
 
                             try
-                                parts[child] <- inlined.Definition.Setup.Invoke (childSetup, props)
-                                next.Value <- this.Run (scope, childSetup, plan, parts, child, resume)
+                                write scope childSetup
                             finally
                                 heads.LeaveGroup outer
                 )
@@ -830,7 +933,8 @@ type internal ServerWriter(backend: HtmlBackend) =
 
         index
 
-    member private this.Region(scope: ServerScope, region: Region, instance: obj) =
+    /// <summary>Writes a region whose rows sit under <c>parent</c>, the path of its owning part, at index <c>regionIndex</c>.</summary>
+    member private this.Region(scope: ServerScope, region: Region, instance: obj, parent: InstancePath, regionIndex: int) =
         let items = Array.copy (region.Items.Invoke instance)
         Projection.ensureUniqueKeys region.Key.Invoke items
 
@@ -839,25 +943,26 @@ type internal ServerWriter(backend: HtmlBackend) =
         | ViewRow ->
             backend.Append "<!--[-->"
 
-            under scope (fun () ->
-                for item in items do
-                    (unbox<Program.View>(KeyedItems.value item)).Invoke backend)
+            for row in 0 .. items.Length - 1 do
+                let view = unbox<Program.View>(KeyedItems.value items[row])
+                this.View (scope, (fun target -> view.Invoke target), parent, regionIndex, row)
 
             backend.Append "<!--]-->"
         | ArmRow ->
             backend.Append "<!--[-->"
 
-            for item in items do
-                let value = KeyedItems.value item
+            for row in 0 .. items.Length - 1 do
+                let value = KeyedItems.value items[row]
                 let arm = unbox<Arm> value
-                this.Write (scope, arm.Definition, arm.Reader.Invoke (fun () -> value))
+                this.Write (scope, arm.Definition, arm.Reader.Invoke (fun () -> value), parent, InstanceStep.Row, regionIndex, row)
 
             backend.Append "<!--]-->"
         | ItemRow (definition, props) ->
             backend.Append "<!--[-->"
 
-            for item in items do
-                this.Write (scope, definition, props.Invoke (fun () -> item))
+            for row in 0 .. items.Length - 1 do
+                let item = items[row]
+                this.Write (scope, definition, props.Invoke (fun () -> item), parent, InstanceStep.Row, regionIndex, row)
 
             backend.Append "<!--]-->"
 
@@ -944,7 +1049,9 @@ type Component<'props> internal (setup: Func<Setup, obj, obj>, root: TemplateNod
         let writer =
             match backend.Writer with
             | null ->
+                // The first template of an Html.render backend is its root instance.
                 let writer = ServerWriter backend
+                writer.Pend (null, InstanceStep.Root, 0, 0)
                 backend.Writer <- writer
                 writer
             | writer -> unbox<ServerWriter> writer
@@ -957,7 +1064,7 @@ type Component<'props> internal (setup: Func<Setup, obj, obj>, root: TemplateNod
                 scope :> ServerScope
             | scope -> unbox<ServerScope> scope
 
-        writer.Write (scope, this, props)
+        writer.Embed (scope, this, props)
 
 /// <summary>One part of an element in a template for instances of type <c>'inst</c>.</summary>
 [<NoEquality; NoComparison>]

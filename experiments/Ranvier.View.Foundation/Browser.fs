@@ -74,6 +74,8 @@ let mount (graph: Graph) (host: HTMLElement) (report: exn list -> unit) (counts:
     let count action =
         counts |> Option.iter action
 
+    let identity = IdentityScope "r"
+
     let append node =
         if obj.ReferenceEquals (parent, host) then
             roots.Add node
@@ -175,7 +177,12 @@ let mount (graph: Graph) (host: HTMLElement) (report: exn list -> unit) (counts:
                                 c.Owners <- c.Owners + 1
                                 c.Setups <- c.Setups + 1)
 
-                            Api.untrack (fun () -> setup { OnCleanup = child.OnCleanup })
+                            Api.untrack (fun () ->
+                                setup
+                                    {
+                                        OnCleanup = child.OnCleanup
+                                        CreateId = fun () -> identity.CreateAuthoredId InstancePath.Root
+                                    })
                     )
                     |> ignore
                 finally

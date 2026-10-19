@@ -1,5 +1,6 @@
 #if INTERACTIVE
 #r "../../src/Ranvier/bin/Release/net10.0/Ranvier.dll"
+#load "../Ranvier.View.Portable/Identity.fs"
 #load "../Ranvier.View.Portable/Representation.fs"
 #load "Fixtures.fs"
 #endif

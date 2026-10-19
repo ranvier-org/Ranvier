@@ -35,25 +35,26 @@ let strict (errors: exn list) =
 
 /// <summary>
 /// The cases, each failing when its run passes any report to <c>strict</c>. A case also fails, without running, when
-/// <c>strict</c> received a report after the previous case returned.
+/// <c>strict</c> received a report after the previous case returned. A final case, "no late report", fails when
+/// <c>strict</c> received a report after the last case returned.
 /// </summary>
 let strictCases (cases: (string * (unit -> unit)) array) =
-    [|
-        for name, check in cases ->
-            name,
-            fun () ->
-                if strictReports.Count > 0 then
-                    let reported = List.ofSeq strictReports
-                    strictReports.Clear ()
-                    failwithf "Late report from the previous case %A" reported
+    let lateReport (message: string) =
+        if strictReports.Count > 0 then
+            let reported = List.ofSeq strictReports
+            strictReports.Clear ()
+            failwithf "%s %A" message reported
 
-                check ()
-
-                if strictReports.Count > 0 then
-                    let reported = List.ofSeq strictReports
-                    strictReports.Clear ()
-                    failwithf "Unexpected report %A" reported
-    |]
+    Array.append
+        [|
+            for name, check in cases ->
+                name,
+                fun () ->
+                    lateReport "Late report from the previous case"
+                    check ()
+                    lateReport "Unexpected report"
+        |]
+        [| "no late report", (fun () -> lateReport "Late report after the last case") |]
 
 /// <summary>The messages of each recorded report, in report order.</summary>
 let messages (reports: ResizeArray<exn list>) =

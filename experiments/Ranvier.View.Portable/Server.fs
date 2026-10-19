@@ -30,7 +30,7 @@ module Options =
 /// registers cleanups on that child until the instance is written.
 /// </summary>
 [<Sealed>]
-type internal RequestScope(lifetime: MountLifetime) =
+type internal RequestScope(lifetime: MountLifetime, identity: IdentityScope) =
     inherit ServerScope()
 
     override _.Nest body =
@@ -47,10 +47,11 @@ type internal RequestScope(lifetime: MountLifetime) =
                                     raise (InvalidOperationException "Server component setup is completed")
 
                                 child.OnCleanup cleanup
+                        CreateId = identity.CreateId
                     }
 
                 try
-                    body (RequestScope child) setup
+                    body (RequestScope (child, identity)) setup
                 finally
                     completed.Value <- true
         )
@@ -64,7 +65,7 @@ type internal RequestScope(lifetime: MountLifetime) =
                 ignore,
                 fun child ->
                     attempt.Value <- child
-                    body (RequestScope child)
+                    body (RequestScope (child, identity))
             )
             |> ignore
         with _ ->
@@ -98,10 +99,11 @@ let internal renderOn
                         try
                             let backend = HtmlBackend (options.Policy, sink)
                             backend.Heads <- heads
+                            backend.Identity <- IdentityScope options.IdPrefix
                             let writer = ServerWriter backend
                             backend.Writer <- writer
                             sink.Append "<!--[r-->"
-                            writer.Write (RequestScope root, definition, box props)
+                            writer.Write (RequestScope (root, backend.Identity), definition, box props, null, InstanceStep.Root, 0, 0)
                             sink.Append "<!--]-->"
                             None
                         with error ->
@@ -168,7 +170,7 @@ type Page = { Body: string; Head: string }
 /// <summary>Renders as <c>render</c> does, and collects the request's document head entries whatever the policy.</summary>
 /// <remarks>
 /// <para>
-/// Entries activate in a synchronous client mount's activation order. The head lists one element per entry key in the
+/// Entries activate in the order of a client mount built in one synchronous call, under either commit mode. The head lists one element per entry key in the
 /// order the keys first activated, a key's element being its last activated entry, and one element per unkeyed link.
 /// A title is <c>&lt;title&gt;</c> with escaped text; a meta
 /// or link is a void element with its static attributes, then its attribute slots, each in definition order. A slot
