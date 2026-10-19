@@ -35,6 +35,7 @@
     <Compile Include="Helpers.fs" />
     <Compile Include="Backend.fs" />
     <Compile Include="WireCodec.fs" />
+    <Compile Include="Codecs.fs" />
     <None Include="Vendor/Thoth.Json/LICENSE.txt" Pack="true" PackagePath="licenses/Thoth.Json/" />
     <None Include="README.md" Pack="true" PackagePath="\" />
     <None Include="../../brand/icon/ranvier-icon.png" Pack="true" PackagePath="\" Visible="false" />

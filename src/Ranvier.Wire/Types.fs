@@ -24,10 +24,17 @@ type WireLimits =
         MaxDepth: int
         /// <summary>The total number of array elements and object members, at least 1; checked before parsing.</summary>
         MaxItems: int
+        /// <summary>The most digits a <c>Codecs.bigint</c> value has, between 1 and 100,000.</summary>
+        MaxBigIntDigits: int
     }
 
-    /// <summary>A depth of 64, as System.Text.Json's default, and 100,000 items.</summary>
-    static member Default = { MaxDepth = 64; MaxItems = 100_000 }
+    /// <summary>A depth of 64, as System.Text.Json's default, 100,000 items and 4,300 bigint digits.</summary>
+    static member Default =
+        {
+            MaxDepth = 64
+            MaxItems = 100_000
+            MaxBigIntDigits = 4_300
+        }
 
 /// <summary>Writes a <c>'T</c> as wire text and reads it back, with the same text on .NET and Fable.</summary>
 type WireCodec<'T> =
@@ -41,3 +48,7 @@ type WireCodec<'T> =
     /// is <c>WireError.Syntax</c>.
     /// </summary>
     abstract Decode: text: string -> Result<'T, WireError>
+
+module internal TestAccess =
+    [<assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Ranvier.Tests.Fable")>]
+    do ()

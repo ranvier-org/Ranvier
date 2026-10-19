@@ -4,5 +4,6 @@
         <Compile Include="$(MSBuildThisFileDirectory)WireSupport.fs" Link="WireSupport.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)VendoredThoth.fs" Link="VendoredThoth.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)WireDecoding.fs" Link="WireDecoding.fs" />
+        <Compile Include="$(MSBuildThisFileDirectory)NumericDecoding.fs" Link="NumericDecoding.fs" />
     </ItemGroup>
 </Project>

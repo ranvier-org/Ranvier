@@ -25,6 +25,16 @@ module WireCodec =
                  + string limits.MaxItems
                  + ".")
 
+        if
+            limits.MaxBigIntDigits < 1
+            || limits.MaxBigIntDigits > 100_000
+        then
+            invalidArg
+                "limits"
+                ("MaxBigIntDigits must be between 1 and 100000; it is "
+                 + string limits.MaxBigIntDigits
+                 + ".")
+
         { new WireCodec<'T> with
             member _.Encode value =
                 Backend.encode (codec.Encoder value)

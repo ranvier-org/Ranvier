@@ -62,6 +62,15 @@ let checks () : (string * bool * string) list =
         with :? System.ArgumentException as ex ->
             ex.Message
 
+    let int64Past = (WireCodec.ofCodec Codec.int64).Decode "9223372036854775808"
+    let decimalPast = (WireCodec.ofCodec Codecs.decimal).Decode "1e30"
+
+    let bigNumber =
+        (WireCodec.ofCodec Codecs.bigint).Decode "-123456789012345678901234567890"
+
+    let bigPast = (WireCodec.ofCodec Codecs.bigint).Decode(String.replicate 4301 "7")
+    let floatPast = (WireCodec.ofCodec Codec.float).Decode "1e400"
+
     [
         "a vendored Thoth record encodes", pointText = """{"x":3,"label":"a"}""", pointText
         "an unknown variant tag is an error", tag.Contains "Expected exactly one object key", tag
@@ -74,4 +83,9 @@ let checks () : (string * bool * string) list =
         "null for a record is a shape error", kind (points.Decode "null") = "Shape", kind (points.Decode "null")
         "an escaped lone surrogate is a syntax error", kind loneText = "Syntax", kind loneText
         "a lone surrogate does not encode", loneEncode.Contains "lone surrogate", loneEncode
+        "an int64 number past its range is a shape error", kind int64Past = "Shape", kind int64Past
+        "a decimal number past the decimal range is a shape error", kind decimalPast = "Shape", kind decimalPast
+        ("a bigint number decodes exactly", bigNumber = Ok (System.Numerics.BigInteger.Parse "-123456789012345678901234567890"), kind bigNumber)
+        "a bigint past the digit limit is a limit error", kind bigPast = "Limit", kind bigPast
+        "a float past the double range is a shape error", kind floatPast = "Shape", kind floatPast
     ]

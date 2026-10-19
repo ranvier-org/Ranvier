@@ -113,6 +113,7 @@ let all =
             testList "QueryNavigationTests.fs" [ Ranvier.Tests.QueryNavigationTests.tests ]
             testList "VendoredThoth.fs" [ Ranvier.Wire.Tests.VendoredThoth.tests ]
             testList "WireDecoding.fs" [ Ranvier.Wire.Tests.WireDecoding.tests ]
+            testList "NumericDecoding.fs" [ Ranvier.Wire.Tests.NumericDecoding.tests ]
         ]
 
 Mocha.runTests all |> ignore
