@@ -57,7 +57,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | DischargeReentry.fs | 29 | 29 | 29 | 29 | 29 | 29 | 1 | 0 |
 | MapSemantics.fs | 42 | 42 | 42 | 42 | 42 | 42 | 0 | 1 |
 | Lenses.fs | 23 | 20 | 20 | 23 | 20 | 20 | 0 | 0 |
-| Combinators.fs | 190 | 190 | 190 | 190 | 190 | 190 | 1 | 0 |
+| Combinators.fs | 190 | 190 | 190 | 190 | 190 | 190 | 2 | 0 |
 | Timed.fs | 31 | 31 | 31 | 38 | 38 | 38 | 0 | 0 |
 | Streams.fs | 26 | 26 | 26 | 26 | 26 | 26 | 1 | 0 |
 | PreviousValues.fs | 12 | 12 | 12 | 12 | 12 | 12 | 15 | 0 |
@@ -81,7 +81,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 9 | 9 | 9 | 9 | 9 | 9 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1477 | 1456 | 1453 | 1617 | 1591 | 1588 | 100 | 1 |
+| **Total** | 1477 | 1456 | 1453 | 1617 | 1591 | 1588 | 101 | 1 |
 
 ## Tests.fs
 
@@ -1426,6 +1426,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Excluded | Reason |
 | --- | --- |
 | foldGroup rejects a null subtract | Fable wraps a null function argument in a closure, so it is never null. |
+| a read through a memo of another graph publishes the current mean under a custom policy | the policy is an object expression over a generic interface member. |
 
 <details><summary>190 passed in every build and delivery that runs them</summary>
 

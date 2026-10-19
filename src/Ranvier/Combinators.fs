@@ -1716,10 +1716,8 @@ module Projection =
     /// settled.
     /// </summary>
     /// <remarks>
-    /// Kept current per row change in O(1), as <c>sumBy</c>; while the sum is infinite or NaN, each row change re-adds
-    /// every cached value in O(N). Pending and failed rows follow <c>foldGroup</c>. A pass producing a mean equal to the
-    /// last one returns the last result instance, leaving readers unwoken. Supports <c>float</c>, <c>float32</c>,
-    /// <c>decimal</c> and any type with <c>+</c>, <c>-</c>, <c>Zero</c> and <c>DivideByInt</c>.
+    /// Costs and pending rows follow <c>sumBy</c>. Readers wake only when the mean changes. Supports <c>float</c>,
+    /// <c>float32</c>, <c>decimal</c> and any type with <c>+</c>, <c>-</c>, <c>Zero</c>, <c>DivideByInt</c> and equality.
     /// </remarks>
     /// <example>
     /// <code lang="fsharp">
@@ -1735,7 +1733,7 @@ module Projection =
             projection
             (fun state ->
                 match mean state, last.Value with
-                | Some current, Some previous when Graph.Current.Options.Equality.Comparer< ^N>().Equals(current, previous) -> last.Value
+                | Some current, Some previous when current = previous -> last.Value
                 | current, _ ->
                     last.Value <- current
                     current)

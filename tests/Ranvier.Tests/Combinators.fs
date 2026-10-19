@@ -3178,6 +3178,42 @@ let averageTests =
                 Expect.equal runs.Value 1 "the mean is unchanged"
             }
 
+#if !FABLE_COMPILER
+            // .NET only: the policy is an object expression over a generic interface member.
+            test "a read through a memo of another graph publishes the current mean under a custom policy" {
+                let always =
+                    { new IEqualityPolicy with
+                        member _.Comparer<'T>() =
+                            { new Collections.Generic.IEqualityComparer<'T> with
+                                member _.Equals(_, _) = true
+                                member _.GetHashCode _ = 0
+                            }
+                    }
+
+                use a =
+                    new Graph (
+                        { GraphOptions.Default with
+                            Equality = always
+                        }
+                    )
+
+                use b = new Graph ()
+                use _ = b.Activate ()
+                let source = createSignal (items [ 1, 3 ])
+                let mean = rows source |> Projection.tryAverageBy float
+                let seen = ResizeArray<float option>()
+
+                createEffect (fun () ->
+                    source.Value |> ignore
+                    let viaA = a.Run (fun () -> createMemo (fun _ -> mean.Value))
+                    seen.Add viaA.Value)
+
+                source.Value <- items [ 1, 5 ]
+
+                Expect.equal (Seq.last seen) (Some 5.0) "the read sees the current mean"
+            }
+#endif
+
             test "an edit at N=1000 makes one addition" {
                 use g = new Graph ()
                 use _ = g.Activate ()
