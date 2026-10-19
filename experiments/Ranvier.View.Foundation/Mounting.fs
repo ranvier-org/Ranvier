@@ -2058,9 +2058,21 @@ and internal MountState
 
         ownedCleanup (Api.getOwner ()) cleanup
 
-    override _.Listen(eventName, handler) =
+    override this.Listen(eventName, handler) =
         let node = currentElement ()
-        let invoke = Typed.ownedHandler handler
+        let scope = this.Scope
+
+        let invoke =
+            if scope.Tracks then
+                let owned = Typed.ownedHandler handler
+
+                fun event ->
+                    try
+                        owned event
+                    with error ->
+                        graph.Run (fun () -> scope.Fail [ error ])
+            else
+                Typed.ownedHandler handler
 
         if isDelegated delegatedEvents eventName then
             setDelegatedHandler node eventName invoke

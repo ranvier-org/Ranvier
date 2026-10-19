@@ -508,6 +508,121 @@ let private errorViewFailure (ops: Operations<'view>) (run: 'view -> Backend -> 
     equal ("outer: error view", [ [ "content" ]; [ "error view" ] ]) (host.textContent, messages reports)
     mounted.Dispose ()
 
+[<Emit("$0.dispatchEvent(new FocusEvent('focus'))")>]
+let private dispatchFocus (node: HTMLElement) : unit = jsNative
+
+/// <summary>Runs <c>action</c> and returns the messages of the errors the window reported meanwhile; a report is marked handled.</summary>
+[<Emit("(() => { const seen = []; const listener = e => { seen.push(e.error ? e.error.message : String(e.message)); e.preventDefault(); }; window.addEventListener('error', listener); try { $0(); } finally { window.removeEventListener('error', listener); } return seen; })()")>]
+let private windowErrors (action: unit -> unit) : string[] = jsNative
+
+let private fire (eventName: string) (button: HTMLButtonElement) =
+    if eventName = "focus" then
+        dispatchFocus button
+    else
+        button.click ()
+
+/// <summary>A button whose <c>eventName</c> handler throws, under a boundary; click is delegated, focus is direct.</summary>
+let private handlerFailure (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued (eventName: string) =
+    use graph = new Graph ()
+    let host, log, reports = host (), ResizeArray<string>(), ResizeArray<exn list>()
+
+    let mounted =
+        underBoundary ops run queued graph host log reports (fun () ->
+            Typed.button ops [| Typed.listener eventName (fun _ -> failwith "handler") |] [| ops.Text "press" |])
+
+    let button =
+        host.querySelector "button"
+        |> unbox<HTMLButtonElement>
+
+    let escaped = windowErrors (fun () -> fire eventName button)
+
+    equal
+        ("failed: handler", [ "content"; "content cleanup"; "error handler" ], [ [ "handler" ] ], [||])
+        (host.textContent, List.ofSeq log, messages reports, escaped)
+
+    mounted.Dispose ()
+
+/// <summary>A handler outside every boundary throws out of its dispatch.</summary>
+let private handlerOutsideBoundary (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued (eventName: string) =
+    use graph = new Graph ()
+    let host, reports = host (), ResizeArray<exn list>()
+
+    let view =
+        Typed.button ops [| Typed.listener eventName (fun _ -> failwith "handler") |] [| ops.Text "press" |]
+
+    let mounted =
+        mountWith (modeOf queued) graph None reports.Add host None (fun context -> run view context.Backend)
+
+    let button =
+        host.querySelector "button"
+        |> unbox<HTMLButtonElement>
+
+    let escaped = windowErrors (fun () -> fire eventName button)
+
+    equal ([| "handler" |], [], "press") (escaped, messages reports, host.textContent)
+    mounted.Dispose ()
+
+/// <summary>
+/// A click handler sets a signal that fails a content setter, then throws. Synchronously, the setter failure tears the
+/// content down before the handler throws, so the handler's error reaches a failed boundary; queued, the handler's error
+/// tears the content down before the setter commits. With <c>sameObject</c> both failures are one exception object.
+/// </summary>
+let private handlerAfterFailure (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued sameObject =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal "ok")
+    let host, log, reports = host (), ResizeArray<string>(), ResizeArray<exn list>()
+    let shared = Exception "shared"
+
+    let mounted =
+        underBoundary ops run queued graph host log reports (fun () ->
+            Typed.button
+                ops
+                [|
+                    Typed.reactiveProperty
+                        (fun (node: HTMLButtonElement) (value: string) ->
+                            if value = "bad" then
+                                if sameObject then raise shared else failwith "setter"
+
+                            node.title <- value)
+                        (fun () -> source.Value)
+                    Typed.listener "click" (fun _ ->
+                        source.Value <- "bad"
+                        if sameObject then raise shared else failwith "handler")
+                |]
+                [| ops.Text "press" |])
+
+    let button =
+        host.querySelector "button"
+        |> unbox<HTMLButtonElement>
+
+    let escaped = windowErrors (fun () -> button.click ())
+    mounted.Flush ()
+
+    let shown =
+        reports
+        |> Seq.tryHead
+        |> Option.bind List.tryHead
+        |> Option.map _.Message
+        |> Option.defaultValue ""
+
+    let reported =
+        [
+            for errors in reports do
+                yield! errors |> List.map _.Message
+        ]
+        |> List.sort
+
+    let expectedReports =
+        if sameObject then [ "shared" ]
+        elif queued then [ "handler" ]
+        else [ "handler"; "setter" ]
+
+    equal
+        ("failed: " + shown, [ "content"; "content cleanup"; "error " + shown ], expectedReports, [||])
+        (host.textContent, List.ofSeq log, reported, escaped)
+
+    mounted.Dispose ()
+
 /// <summary>A content whose setup raises one exception object on every attempt.</summary>
 let private retryCachedFailure (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
     use graph = new Graph ()
@@ -676,4 +791,27 @@ let cases: (string * (unit -> unit)) array =
         fun () -> initialReaderFailure Program.ops Program.run false
         "program queued: a content binding failing on its first read shows the error view",
         fun () -> initialReaderFailure Program.ops Program.run true
+        "tree synchronous: a throwing delegated handler under a boundary shows the error view",
+        fun () -> handlerFailure Tree.ops Tree.run false "click"
+        "program queued: a throwing delegated handler under a boundary shows the error view",
+        fun () -> handlerFailure Program.ops Program.run true "click"
+        "tree queued: a throwing direct handler under a boundary shows the error view", fun () -> handlerFailure Tree.ops Tree.run true "focus"
+        "program synchronous: a throwing direct handler under a boundary shows the error view",
+        fun () -> handlerFailure Program.ops Program.run false "focus"
+        "tree synchronous: a throwing delegated handler outside every boundary throws out of its dispatch",
+        fun () -> handlerOutsideBoundary Tree.ops Tree.run false "click"
+        "program queued: a throwing direct handler outside every boundary throws out of its dispatch",
+        fun () -> handlerOutsideBoundary Program.ops Program.run true "focus"
+        "tree synchronous: a handler exception after the error view is shown tears down once and is reported once",
+        fun () -> handlerAfterFailure Tree.ops Tree.run false false
+        "program synchronous: a handler exception after the error view is shown tears down once and is reported once",
+        fun () -> handlerAfterFailure Program.ops Program.run false false
+        "tree queued: a handler exception tears the content down before a failing setter commits and is reported once",
+        fun () -> handlerAfterFailure Tree.ops Tree.run true false
+        "tree synchronous: the same exception object from a handler and a setter is reported once",
+        fun () -> handlerAfterFailure Tree.ops Tree.run false true
+        "tree queued: the same exception object from a handler and a setter is reported once",
+        fun () -> handlerAfterFailure Tree.ops Tree.run true true
+        "program synchronous: the same exception object from a handler and a setter is reported once",
+        fun () -> handlerAfterFailure Program.ops Program.run false true
     |]
