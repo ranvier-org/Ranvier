@@ -1,0 +1,32 @@
+# View boundaries: mutation checks and measurements
+
+Date: 2026-10-19. Branch `poc/fable-ranvier-dom`. Plan: [view boundaries](../superpowers/plans/2026-10-19-view-boundaries.md).
+
+## Mutation checks
+
+Each mutant is one edit to `experiments/Ranvier.View.Foundation`, compiled into the JS under test by `npm run test:dom` (which runs the Fable compile first), then restored with `git checkout`. The baseline run is 485 tests, all passing; the final run is 487 after the test added for the last mutant. File names below are in that directory.
+
+| Mutant | Edit | Killed by |
+|---|---|---|
+| Authored waiting registration removed | `Mounting.fs` `startBinding`, synchronous effect: `state <- BindingState.rejected scope state error` becomes `state <- state` | 11 failures of 485, including `tree synchronous: a boundary reveals its content in one insertion once every binding, row and arm has a value`, `tree synchronous: removing the last pending row reveals the boundary`, `tree synchronous: retry remounts the content with a new setup and pending phase` |
+| Template render-slot waiting registration removed | `TemplateDom.fs` `startRender`: `flags <- BindingState.rejected scope flags error` becomes `flags <- flags` | `template: a boundary waits for a pending render slot after its isolated slots settle`, `a recurring slot failure object is reported again after the slot recovers` (2 of 485) |
+| Template isolated-slot waiting registration removed | `TemplateDom.fs` `startIsolated`: the same edit | `template: a boundary waits for a pending isolated slot after its render slots settle` (1 of 485) |
+| `Ready` reveal check removed | `Mounting.fs` `ViewBoundary` `Ready`: `if waiting = 0 then` becomes `if true then` | 9 of 485, including `tree synchronous: a boundary reveals its content in one insertion once every binding, row and arm has a value`, `program queued: removing the last pending row reveals the boundary`, `template: removing the one pending row before the reveal reveals the remaining row` |
+| `MountContent` reveal check removed | `Mounting.fs` `MountContent`: `\| None when waiting = 0 -> this.Reveal ()` becomes `\| None when true -> this.Reveal ()` | 25 of 485, including all four `... a boundary reveals its content in one insertion ...` tests and `tree queued: a failing pending view goes to the enclosing boundary` |
+| Unregistration on disposal removed | `Mounting.fs` `startBinding`: `if scope.Tracks then Api.onCleanup (...)` becomes `if false then ...` | `program queued: removing the last pending row reveals the boundary`, `tree synchronous: removing the last pending row reveals the boundary` (2 of 485) |
+| Synchronous setter catch removed | `Mounting.fs` `startBinding` `commit`: `\| error -> scope.Fail [ error ]` becomes `\| error -> reraise ()` | `tree: a live synchronous setter failure is reported and an equal later value retries the write`, `tree synchronous: a live setter failure under a boundary replaces the content with the error view`, and 6 more (8 of 485) |
+| Queued per-scope report removed | `Scheduling.fs` `Queue.Flush`: `if failures.Count > 0 then` becomes `if false then` | `a flush reports each scope's failures in one call, in commit order`, `tree: a live queued setter failure is reported after the flush and kept in the queue's errors`, `tree queued: a queued setter failure under a boundary replaces the content after the flush`, and 12 more (15 of 485) |
+| Authored handler catch removed | `Mounting.fs` `MountState.Listen`: `scope.FailAll [ error ]` becomes `reraise ()` | `tree synchronous: a throwing delegated handler under a boundary shows the error view`, `program synchronous: a throwing direct handler under a boundary shows the error view`, and 12 more (14 of 485) |
+| Template delegated handler catch removed | `TemplateDom.fs` `dispatchFor`: `scope.FailAll [ error ])` becomes `reraise ())` | `template: a throwing delegated handler under a boundary shows the error view`, `template: a delegated handler throwing NotReadyException under a boundary shows the error view`, `template: a delegated handler after one whose failure tore the content down is skipped` (3 of 485) |
+| Template direct handler catch removed | `TemplateDom.fs` `listenDirect`: `scope.FailAll [ error ]` becomes `reraise ()` | `template: a throwing direct handler under a boundary shows the error view`, `template: a direct handler throwing NotReadyException under a boundary shows the error view`, `template: a direct handler after one whose failure tore the content down is skipped` (3 of 485) |
+| Reveal run synchronously in `Ready` | `Mounting.fs` `ViewBoundary`: `member _.Ready()` becomes `member this.Ready()` and `Api.untrack (fun () -> wake.Value <- wake.Value + 1)` becomes `this.Settle ()` | Survived at 485 of 485. Killed after adding `tree synchronous: replacing the last pending row reveals both rows after the pass` and `program queued: replacing the last pending row reveals both rows after the pass` (2 failures of 487) |
+| Pending flag not set on a later pending read | `Mounting.fs` `ViewBoundary` `Wait`: `pending.Value <- true` becomes `()` | `tree synchronous: a pending read after the reveal keeps the content and sets IsPending`, `template synchronous: a boundary reveals rows and arms in one insertion and keeps them through a refetch`, and 4 more (6 of 485) |
+| Per-handler disposal check removed | `TemplateDom.fs` `dispatchFor`: the line `&& not owner.IsDisposed` is deleted | `delegated clicks reach a moved row and stop after its removal`, `template: a delegated handler after one whose failure tore the content down is skipped` (2 of 485) |
+
+### The surviving mutant
+
+Running a reveal synchronously from `Ready` left every test passing. The reveal runs inside a list pass when the pending row's disposal releases the last waiting binding. The existing `removing the last pending row` tests remove the row without another change in the pass, so a reveal in the middle of the pass has nothing left to disturb. `replacedPendingRow` removes the pending row and adds a row in one pass (`[1; 2]` to `[3; 1]`) and expects `x3x1` once the pass ends. The mutant fails it in the tree synchronous and program queued modes.
+
+## Finding
+
+Replacing a pending `Branch.select` arm with another pending arm reveals the boundary with empty content on the unmutated code: the cause is not established. Restoring `&& waiting = 0` to `Settle` does not change the result. No test records this; it needs a fix in the boundary, not a test.
