@@ -1148,6 +1148,10 @@ and private RowBuilder(state: MountState) =
         member _.ClearFailure() =
             state.ClearReported ()
 
+        member _.Scope = state.Scope
+
+        member _.HandlerFailure = state.HandlerFailure
+
         member _.Region(start, finish, _, kind, items, render, rows) =
             state.NestedRegion (start, finish, kind, items, render, rows)
 
@@ -1575,6 +1579,8 @@ and internal MountState
     // in that flush, which can follow the release.
     let mutable releasedRows: ResizeArray<Row> = null
     let mutable rowsReleased = false
+    // The template handler-failure receiver; null until first read under a boundary.
+    let mutable handlerFailure: exn -> unit = Unchecked.defaultof<_>
 
     // Removes the nodes of a template row. A row whose first node is detached left with an enclosing row's nodes and is
     // only marked removed.
@@ -1916,6 +1922,15 @@ and internal MountState
             this :> ViewScope
         else
             boundary
+
+    /// <summary>Takes an exception thrown by a template event handler under this mount's boundary; null outside every boundary.</summary>
+    member internal _.HandlerFailure: exn -> unit =
+        if isNull (box handlerFailure) then
+            match boundary with
+            | :? ViewBoundary as scoped -> handlerFailure <- fun error -> scoped.FailAll [ error ]
+            | _ -> ()
+
+        handlerFailure
 
     member internal _.ClearReported() =
         clearReported ()
@@ -2817,6 +2832,10 @@ and internal MountState
 
         member _.ClearFailure() =
             clearReported ()
+
+        member this.Scope = this.Scope
+
+        member this.HandlerFailure = this.HandlerFailure
 
         member this.Region(start, finish, rootLevel, kind, items, render, rows) =
             ensureSetup ()

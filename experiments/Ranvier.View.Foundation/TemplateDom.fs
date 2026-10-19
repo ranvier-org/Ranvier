@@ -133,6 +133,14 @@ let walkProgram (paths: int array array) : int array =
 
     ops.ToArray ()
 
+/// <summary>Marks an event node of a template instance under a boundary with the boundary's handler-failure receiver.</summary>
+[<Emit("$0.$$ranvierScope = $1")>]
+let private attachFailure (node: obj) (failure: exn -> unit) : unit = jsNative
+
+/// <summary>The handler-failure receiver of an event node, or null outside every boundary.</summary>
+[<Emit("$0.$$ranvierScope")>]
+let private failureOf (node: Node) : exn -> unit = jsNative
+
 let private dispatchFor (nodeCount: int) (events: (int * string * Func<obj, obj, unit>) array) (eventNames: string array) =
     Func<obj array, Node, obj, unit>(fun state node event ->
         let eventType: string = event?``type``
@@ -160,8 +168,16 @@ let private dispatchFor (nodeCount: int) (events: (int * string * Func<obj, obj,
 
                     for target, eventName, handler in events do
                         if target = index && eventName = eventType then
-                            graph.Run (fun () ->
-                                Api.runWithOwner owner (fun () -> Api.untrack (fun () -> handler.Invoke (state[StateInstance], event)))))
+                            try
+                                graph.Run (fun () ->
+                                    Api.runWithOwner owner (fun () -> Api.untrack (fun () -> handler.Invoke (state[StateInstance], event))))
+                            with error ->
+                                let failure = failureOf node
+
+                                if isNull (box failure) then
+                                    reraise ()
+
+                                failure error)
 
 /// <summary>Dispatches a delegated event to the template instance whose state is attached to the node.</summary>
 let dispatch =
@@ -318,6 +334,7 @@ let compile (definition: TemplateComponent) : Compiled =
                             | ItemRow _ -> ListRows
                             | ArmRow -> SelectedArm
                             | ViewRow -> ViewHole
+                            | BoundaryRow -> BoundaryContent
                         Render = rowRenderer region.Row
                         Row = region.Row
                     }
@@ -377,6 +394,10 @@ type internal MountServices =
     abstract ListenDirect: Node * string * (obj -> unit) -> unit
     abstract ReportFailure: exn -> unit
     abstract ClearFailure: unit -> unit
+    /// <summary>The receiver of the pending reads and failures of the instance's bindings.</summary>
+    abstract Scope: ViewScope
+    /// <summary>Takes an exception thrown by an event handler of the instance; null outside every boundary.</summary>
+    abstract HandlerFailure: (exn -> unit)
 
     /// <summary>Mounts a region between its start and end markers. The flag marks markers that are roots of the appended
     /// clone; the materialiser is null for a view hole.</summary>
@@ -477,7 +498,14 @@ let private stateFor (compiled: Compiled) (instance: obj) (extra: int) =
 
 /// <summary>Starts the effect that reads every render slot of a part and commits them together.</summary>
 let private startRender (services: MountServices) (state: obj array) =
-    let mutable failed = false
+    let scope = services.Scope
+    let mutable flags = 0
+
+    if scope.Tracks then
+        Api.onCleanup (fun () ->
+            let previous = flags
+            flags <- BindingState.released previous
+            BindingState.ready scope previous)
 
     Api.createEffect (fun () ->
         let compiled = at state StateCompiled :?> Compiled
@@ -491,6 +519,7 @@ let private startRender (services: MountServices) (state: obj array) =
             + compiled.IsolatedSlots.Length
 
         let mutable failure: exn = null
+        let mutable waiting = false
 
         for k in 0 .. renderCount - 1 do
             let _, slot = at compiled.RenderSlots k
@@ -498,14 +527,14 @@ let private startRender (services: MountServices) (state: obj array) =
             let value =
                 try
                     slot.Read.Invoke instance
-                with
-                | NotReadyException _ -> unset
-                | error ->
-                    failed <- true
-                    services.ReportFailure error
+                with error ->
+                    flags <- BindingState.rejected scope flags error
+                    BindingState.report scope error
 
-                    if isNull failure then
-                        failure <- error
+                    match error with
+                    | NotReadyException _ -> waiting <- true
+                    | _ when isNull failure -> failure <- error
+                    | _ -> ()
 
                     unset
 
@@ -516,18 +545,30 @@ let private startRender (services: MountServices) (state: obj array) =
                 let nodeIndex, slot = at compiled.RenderSlots k
                 commit services state slot nodeIndex (previousBase + k) (at state (pendingBase + k)))
 
+        if flags <> 0 then
+            if isNull failure then
+                flags <- BindingState.recovered services.ClearFailure flags
+
+            if not waiting then
+                let previous = flags
+                flags <- BindingState.released previous
+                BindingState.ready scope previous
+
         if not (isNull failure) then
-            failed <- true
-            raise failure
-        elif failed then
-            failed <- false
-            services.ClearFailure ())
+            raise failure)
 
     services.RaiseSetupFailure ()
 
 /// <summary>Starts the effect of the isolated slot at index <c>k</c> of a part.</summary>
 let private startIsolated (services: MountServices) (state: obj array) (k: int) =
-    let mutable failed = false
+    let scope = services.Scope
+    let mutable flags = 0
+
+    if scope.Tracks then
+        Api.onCleanup (fun () ->
+            let previous = flags
+            flags <- BindingState.released previous
+            BindingState.ready scope previous)
 
     Api.createEffect (fun () ->
         let compiled = at state StateCompiled :?> Compiled
@@ -540,26 +581,34 @@ let private startIsolated (services: MountServices) (state: obj array) (k: int) 
             + k
 
         let mutable failure: exn = null
+        let mutable waiting = false
 
         let value =
             try
                 slot.Read.Invoke (at state StateInstance)
-            with
-            | NotReadyException _ -> unset
-            | error ->
-                failed <- true
-                services.ReportFailure error
-                failure <- error
+            with error ->
+                flags <- BindingState.rejected scope flags error
+                BindingState.report scope error
+
+                match error with
+                | NotReadyException _ -> waiting <- true
+                | _ -> failure <- error
+
                 unset
 
         Api.untrack (fun () -> commit services state slot nodeIndex previousIndex value)
 
+        if flags <> 0 then
+            if isNull failure then
+                flags <- BindingState.recovered services.ClearFailure flags
+
+            if not waiting then
+                let previous = flags
+                flags <- BindingState.released previous
+                BindingState.ready scope previous
+
         if not (isNull failure) then
-            failed <- true
-            raise failure
-        elif failed then
-            failed <- false
-            services.ClearFailure ())
+            raise failure)
 
     services.RaiseSetupFailure ()
 
@@ -568,13 +617,20 @@ let private listenDirect (services: MountServices) (state: obj array) (node: obj
     let owner = at state StateOwner :?> Owner
     let graph = at state StateGraph :?> Graph
     let instance = at state StateInstance
+    let failure = services.HandlerFailure
 
     services.ListenDirect (
         unbox node,
         eventName,
         fun event ->
             if not owner.IsDisposed then
-                graph.Run (fun () -> Api.runWithOwner owner (fun () -> Api.untrack (fun () -> handler.Invoke (instance, event))))
+                try
+                    graph.Run (fun () -> Api.runWithOwner owner (fun () -> Api.untrack (fun () -> handler.Invoke (instance, event))))
+                with error ->
+                    if isNull (box failure) then
+                        reraise ()
+
+                    failure error
     )
 
 /// <summary>Writes a part's static properties, starts its render and isolated effects, and attaches its events.</summary>
@@ -601,6 +657,12 @@ let private bind (services: MountServices) (compiled: Compiled) (state: obj arra
 
     let events = compiled.Events
 
+    let failure =
+        if events.Length > 0 then
+            services.HandlerFailure
+        else
+            Unchecked.defaultof<_>
+
     for i in 0 .. events.Length - 1 do
         let nodeIndex, eventName, handler = at events i
         let node = at state (StateNodes + nodeIndex)
@@ -608,6 +670,10 @@ let private bind (services: MountServices) (compiled: Compiled) (state: obj arra
         if services.IsDelegated eventName then
             if attached <> nodeIndex then
                 attachState node state
+
+                if not (isNull (box failure)) then
+                    attachFailure node failure
+
                 attached <- nodeIndex
 
             services.Delegate eventName
@@ -701,6 +767,7 @@ let rec internal materialise (definition: TemplateDefinition) (props: obj) (serv
                 Func<(unit -> obj), MountServices, unit>(fun current rowServices ->
                     let arm = unbox<Arm>(current ())
                     materialise arm.Definition (arm.Reader.Invoke current) rowServices)
-            | ViewRow -> null
+            | ViewRow
+            | BoundaryRow -> null
 
         services.Region (start, finish, region.RootLevel, region.Kind, { Read = read; Key = region.Key }, region.Render, rows)

@@ -71,6 +71,8 @@ and [<NoEquality; NoComparison>] RegionRow =
     | ArmRow
     /// <summary>The item is a row value; the conversion turns a reader of the current item into the definition's props.</summary>
     | ItemRow of TemplateComponent * Func<(unit -> obj), obj>
+    /// <summary>The item is the region's <c>BoundaryViews</c>, read once per instance.</summary>
+    | BoundaryRow
 
 /// <summary>A template component definition without its props type.</summary>
 and [<AbstractClass>] TemplateComponent internal (setup: Func<Setup, obj, obj>, root: TemplateNode) =
@@ -168,13 +170,15 @@ let internal rowRenderer (row: RegionRow) (current: unit -> obj) (backend: Backe
         let arm = unbox<Arm>(current ())
         backend.Template (arm.Definition, arm.Reader.Invoke current)
     | ItemRow (definition, props) -> backend.Template (definition, props.Invoke current)
+    | BoundaryRow -> backend.Boundary (unbox<BoundaryViews>(current ()))
 
 /// <summary>The value a region item's row reads: the item of an <c>ItemRow</c>, otherwise the value of its pair.</summary>
 let private rowValue (row: RegionRow) (item: obj) =
     match row with
     | ItemRow _ -> item
     | ViewRow
-    | ArmRow -> KeyedItems.value item
+    | ArmRow
+    | BoundaryRow -> KeyedItems.value item
 
 let private serverRow (backend: Backend) (row: RegionRow) (item: obj) =
     let value = rowValue row item
@@ -340,12 +344,16 @@ let private writeMarkup (append: string -> unit) (mode: MarkupMode) (state: Writ
             | Server (_, _, backend) ->
                 let items = Array.copy (region.Items.Invoke state.Instance)
                 Projection.ensureUniqueKeys region.Key.Invoke items
-                append "<!--[-->"
 
-                for item in items do
-                    serverRow backend region.Row item
+                match region.Row with
+                | BoundaryRow -> serverRow backend region.Row (items[0])
+                | _ ->
+                    append "<!--[-->"
 
-                append "<!--]-->"
+                    for item in items do
+                        serverRow backend region.Row item
+
+                    append "<!--]-->"
 
     writeChildren [| root |] []
 
@@ -401,7 +409,8 @@ let rec private expandNode (ops: Operations<'view>) (instance: obj) (node: Templ
         ops.Element tag modifiers (Array.map (expandNode ops instance) children)
     | RegionNode region ->
         match region.Row with
-        | ViewRow ->
+        | ViewRow
+        | BoundaryRow ->
             let item = KeyedItems.value ((region.Items.Invoke instance)[0])
             expandRow ops region.Row (fun () -> item)
         | ArmRow -> ops.Switch (fun () -> Array.map unbox<obj * obj> (region.Items.Invoke instance)) (expandRow ops region.Row)
@@ -417,7 +426,8 @@ let rec private expandNode (ops: Operations<'view>) (instance: obj) (node: Templ
 /// <summary>Expands a region row through the operations; the reader returns the row's current item.</summary>
 and private expandRow (ops: Operations<'view>) (row: RegionRow) (current: unit -> obj) : 'view =
     match row with
-    | ViewRow -> ops.Embed (rowRenderer row current)
+    | ViewRow
+    | BoundaryRow -> ops.Embed (rowRenderer row current)
     | ArmRow ->
         let arm = unbox<Arm>(current ())
         expandWith ops arm.Definition (arm.Reader.Invoke current)
@@ -629,6 +639,28 @@ type TemplateBuilder<'inst> internal () =
                     Items = Func<obj, obj array>(fun instance -> [| box ((null: obj), box (read (unbox instance))) |])
                     Key = KeyedItems.pairKey
                     Row = ViewRow
+                }
+        )
+
+    /// <summary>
+    /// A boundary between region markers. <c>content</c> receives the boundary's status and is shown once every binding
+    /// under it has read a value; <c>pending</c> is shown until then, and <c>failed</c> replaces either after a failure
+    /// under the content.
+    /// </summary>
+    member _.boundary (pending: Component<unit>) (failed: Component<BoundaryFailure>) (content: Component<BoundaryStatus>) : TemplateView<'inst> =
+        let views =
+            {
+                Pending = fun backend -> backend.Template (pending, box ())
+                Failed = fun failure backend -> backend.Template (failed, box failure)
+                Content = fun status backend -> backend.Template (content, box status)
+            }
+
+        TemplateView (
+            RegionNode
+                {
+                    Items = Func<obj, obj array>(fun _ -> [| box ((null: obj), box views) |])
+                    Key = KeyedItems.pairKey
+                    Row = BoundaryRow
                 }
         )
 

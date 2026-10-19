@@ -8,6 +8,7 @@ open Ranvier.View.Foundation
 open Ranvier.View.Foundation.Representation
 open Ranvier.View.Foundation.Scheduling
 open Ranvier.View.Foundation.Mounting
+open Ranvier.View.Foundation.Template
 
 let private equal expected actual =
     if expected <> actual then
@@ -604,6 +605,292 @@ let private pendingAfterReveal (ops: Operations<'view>) (run: 'view -> Backend -
     equal ("two.", 1) (host.textContent, log.Count)
     mounted.Dispose ()
 
+let private templateLog = ResizeArray<string>()
+
+let mutable private templateFlight: Signal<AsyncSource<string>> =
+    Unchecked.defaultof<_>
+
+let private templatePending =
+    Component.define
+        (fun setup () ->
+            templateLog.Add "pending"
+            setup.OnCleanup (fun () -> templateLog.Add "pending cleanup"))
+        (fun t -> t.span [||] [| t.text "loading" |])
+
+let private templateFailed =
+    Component.define (fun _ (failure: BoundaryFailure) -> failure) (fun t ->
+        t.button [| t.Events.onClick (fun failure _ -> failure.Retry ()) |] [| t.text (fun failure -> "failed: " + failure.Error.Message) |])
+
+let private templateRow =
+    Component.define (fun _ (item: unit -> int) -> item) (fun t ->
+        t.span [||] [| t.text (fun item -> templateFlight.Value.Value + string (item ())) |])
+
+let private templateArm =
+    Component.define (fun _ (_: unit -> unit) -> ()) (fun t -> t.span [||] [| t.text (fun () -> "|" + templateFlight.Value.Value) |])
+
+let private templateContent =
+    Component.define
+        (fun setup (status: BoundaryStatus) ->
+            templateLog.Add "content"
+            setup.OnCleanup (fun () -> templateLog.Add "content cleanup")
+            status)
+        (fun t ->
+            t.div
+                [||]
+                [|
+                    t.text (fun _ -> templateFlight.Value.Value)
+                    t.isolated (t.text (fun _ -> templateFlight.Value.Value))
+                    t.each id (fun _ -> [| 1; 2 |]) templateRow
+                    t.branch (fun _ -> 0) (fun _ -> t.arm templateArm ())
+                    t.text (fun status -> if status.IsPending () then "*" else ".")
+                |])
+
+let private guarded =
+    Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.boundary templatePending templateFailed templateContent |])
+
+/// <summary>A template boundary reveals rows and arms in one insertion, then keeps them through a refetch.</summary>
+let private templateReveal queued () =
+    use graph = new Graph ()
+    templateLog.Clear ()
+    templateFlight <- graph.Run (fun () -> Api.createSignal (Api.createAsyncSource<string>()))
+    let host = host ()
+
+    let mounted =
+        mountWith (modeOf queued) graph None strict host None (fun context -> Program.run (Component.render guarded ()) context.Backend)
+
+    equal ("loading", [ "content"; "pending" ]) (host.textContent, List.ofSeq templateLog)
+    let outer = host.querySelector "div" |> unbox<HTMLElement>
+    let inserts = countInserts outer
+    graph.Run (fun () -> templateFlight.Value.Settle "A")
+    mounted.Flush ()
+    equal ("AAA1A2|A.", 1) (host.textContent, inserts ())
+    equal [ "content"; "pending"; "pending cleanup" ] (List.ofSeq templateLog)
+    graph.Run (fun () -> templateFlight.Value <- Api.createAsyncSource<string>())
+    mounted.Flush ()
+    equal "AAA1A2|A*" host.textContent
+    graph.Run (fun () -> templateFlight.Value.Settle "B")
+    mounted.Flush ()
+    // The flush that releases the waiting bindings writes IsPending; its text commits in the next flush.
+    mounted.Flush ()
+    equal "BBB1B2|B." host.textContent
+    mounted.Dispose ()
+    equal ("content cleanup", "") (templateLog[templateLog.Count - 1], host.textContent)
+
+let mutable private rowNever: AsyncSource<string> = Unchecked.defaultof<_>
+let mutable private rowOther: AsyncSource<string> = Unchecked.defaultof<_>
+let mutable private rowItems: Signal<int array> = Unchecked.defaultof<_>
+
+let private rowText (item: int) =
+    if item = 2 then rowNever.Value else rowOther.Value
+
+let private pendingRow =
+    Component.define (fun _ (item: unit -> int) -> item) (fun t ->
+        t.span
+            [||]
+            [|
+                t.text (fun item -> rowText (item ()))
+                t.isolated (t.text (fun item -> rowText (item ())))
+            |])
+
+let private pendingRows =
+    Component.define (fun _ (_: BoundaryStatus) -> ()) (fun t -> t.div [||] [| t.each id (fun () -> rowItems.Value) pendingRow |])
+
+let private guardedRows =
+    Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.boundary templatePending templateFailed pendingRows |])
+
+/// <summary>Removes the one template row still pending before the reveal; the boundary reveals the remaining row.</summary>
+let private templateRemovedPendingRow () =
+    use graph = new Graph ()
+    rowNever <- graph.Run (fun () -> Api.createAsyncSource<string>())
+    rowOther <- graph.Run (fun () -> Api.createAsyncSource<string>())
+    rowItems <- graph.Run (fun () -> Api.createSignal [| 1; 2 |])
+    let host = host ()
+
+    let mounted =
+        Mounting.mount graph None strict host None (fun context -> Program.run (Component.render guardedRows ()) context.Backend)
+
+    graph.Run (fun () -> rowOther.Settle "x")
+    equal "loading" host.textContent
+    graph.Run (fun () -> rowItems.Value <- [| 1 |])
+    equal "xx" host.textContent
+    mounted.Dispose ()
+
+let mutable private renderSource: AsyncSource<string> = Unchecked.defaultof<_>
+let mutable private isolatedSource: AsyncSource<string> = Unchecked.defaultof<_>
+
+let private slotKinds =
+    Component.define (fun _ (_: BoundaryStatus) -> ()) (fun t ->
+        t.span
+            [||]
+            [|
+                t.text (fun () -> renderSource.Value)
+                t.isolated (t.text (fun () -> isolatedSource.Value))
+            |])
+
+let private guardedSlots =
+    Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.boundary templatePending templateFailed slotKinds |])
+
+/// <summary>A boundary over a pending render slot and a pending isolated slot reveals once both settle, in either order.</summary>
+let private templateSlotKinds renderFirst () =
+    use graph = new Graph ()
+    renderSource <- graph.Run (fun () -> Api.createAsyncSource<string>())
+    isolatedSource <- graph.Run (fun () -> Api.createAsyncSource<string>())
+    let host = host ()
+
+    let mounted =
+        Mounting.mount graph None strict host None (fun context -> Program.run (Component.render guardedSlots ()) context.Backend)
+
+    let first, second =
+        if renderFirst then
+            renderSource, isolatedSource
+        else
+            isolatedSource, renderSource
+
+    graph.Run (fun () -> first.Settle "a")
+    equal "loading" host.textContent
+    graph.Run (fun () -> second.Settle "b")
+
+    equal (if renderFirst then "ab" else "ba") host.textContent
+    mounted.Dispose ()
+
+type private Fragile = { Value: Signal<string> }
+
+let mutable private fragileValue: Signal<string> = Unchecked.defaultof<_>
+let mutable private fragileBroken = false
+
+let private fragileContent =
+    Component.define
+        (fun setup (_: BoundaryStatus) ->
+            if fragileBroken then
+                failwith "setup"
+
+            templateLog.Add "content"
+            setup.OnCleanup (fun () -> templateLog.Add "content cleanup")
+            { Value = fragileValue })
+        (fun t ->
+            t.button
+                [|
+                    t.Props.propertyWith (
+                        (fun (_: HTMLButtonElement) (value: string) ->
+                            if value = "bad" then
+                                failwith "setter"),
+                        (fun fragile -> fragile.Value.Value),
+                        primitiveSame
+                    )
+                    t.Events.onClick (fun _ _ -> failwith "handler")
+                    t.Events.onFocus (fun _ _ -> failwith "focus handler")
+                |]
+                [| t.text (fun fragile -> fragile.Value.Value) |])
+
+let private fragile =
+    Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.boundary templatePending templateFailed fragileContent |])
+
+/// <summary>
+/// Mounts the fragile template boundary, runs <c>trigger</c>, and expects the error view for <c>message</c> after the
+/// content's cleanups ran once.
+/// </summary>
+let private templateFailure queued (trigger: Graph -> HTMLElement -> unit) (message: string) () =
+    use graph = new Graph ()
+    templateLog.Clear ()
+    fragileBroken <- false
+    fragileValue <- graph.Run (fun () -> Api.createSignal "ok")
+    let host = host ()
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        mountWith (modeOf queued) graph None reports.Add host None (fun context -> Program.run (Component.render fragile ()) context.Backend)
+
+    equal "ok" host.textContent
+    trigger graph host
+    mounted.Flush ()
+
+    equal ("failed: " + message, [ [ message ] ], [ "content"; "content cleanup" ]) (host.textContent, messages reports, List.ofSeq templateLog)
+
+    mounted.Dispose ()
+
+let private button (host: HTMLElement) =
+    host.querySelector "button"
+    |> unbox<HTMLButtonElement>
+
+/// <summary>A template content whose setup fails while broken; the error view's button retries it.</summary>
+let private templateRetry () =
+    use graph = new Graph ()
+    fragileBroken <- true
+    fragileValue <- graph.Run (fun () -> Api.createSignal "ok")
+    let host = host ()
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        Mounting.mount graph None reports.Add host None (fun context -> Program.run (Component.render fragile ()) context.Backend)
+
+    equal "failed: setup" host.textContent
+    (button host).click()
+    equal ("failed: setup", 2) (host.textContent, reports.Count)
+    fragileBroken <- false
+    (button host).click()
+    equal ("ok", 2) (host.textContent, reports.Count)
+    mounted.Dispose ()
+
+let mutable private handlerSource: AsyncSource<string> = Unchecked.defaultof<_>
+
+let private waitingHandler =
+    Component.define (fun _ (_: BoundaryStatus) -> ()) (fun t ->
+        t.button
+            [|
+                t.Events.onClick (fun _ _ -> handlerSource.Value |> ignore)
+                t.Events.onFocus (fun _ _ -> handlerSource.Value |> ignore)
+            |]
+            [| t.text "press" |])
+
+let private guardedHandler =
+    Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.boundary templatePending templateFailed waitingHandler |])
+
+/// <summary>A template handler reading a pending source under a boundary shows the error view and is reported once.</summary>
+let private templateHandlerNotReady (trigger: HTMLButtonElement -> unit) () =
+    use graph = new Graph ()
+    handlerSource <- graph.Run (fun () -> Api.createAsyncSource<string>())
+    let host = host ()
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        Mounting.mount graph None reports.Add host None (fun context -> Program.run (Component.render guardedHandler ()) context.Backend)
+
+    equal "press" host.textContent
+    let escaped = windowErrors (fun () -> trigger (button host))
+    equal (1, true, [||]) (reports.Count, host.textContent.StartsWith "failed: ", escaped)
+    mounted.Dispose ()
+
+let mutable private serverSource: AsyncSource<string> = Unchecked.defaultof<_>
+
+let private serverPending =
+    Component.define (fun _ () -> ()) (fun t -> t.span [||] [| t.text "loading" |])
+
+let private serverFailed =
+    Component.define (fun _ (failure: BoundaryFailure) -> failure) (fun t -> t.span [||] [| t.text (fun failure -> failure.Error.Message) |])
+
+let private serverContent =
+    Component.define (fun _ (status: BoundaryStatus) -> status) (fun t -> t.span [||] [| t.text (fun _ -> serverSource.Value) |])
+
+let private guardedServer =
+    Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.boundary serverPending serverFailed serverContent |])
+
+/// <summary>Renders the template boundary as HTML while its source is pending, settled and failed.</summary>
+let private templateServer () =
+    use graph = new Graph ()
+
+    graph.Run (fun () ->
+        Api.createRoot (fun _ ->
+            serverSource <- Api.createAsyncSource<string>()
+
+            let render () =
+                Html.render Omit (Program.run (Component.render guardedServer ()))
+
+            equal "<div><!--[--><span>loading</span><!--]--></div>" (render ())
+            serverSource.Settle "<A>"
+            equal "<div><!--[--><span>&lt;A&gt;</span><!--]--></div>" (render ())
+            serverSource.Fail (Exception "<bad>")
+            equal "<div><!--[--><span>&lt;bad&gt;</span><!--]--></div>" (render ())))
+
 /// <summary>A handler outside every boundary throws out of its dispatch.</summary>
 let private handlerOutsideBoundary (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued (eventName: string) =
     use graph = new Graph ()
@@ -889,4 +1176,22 @@ let cases: (string * (unit -> unit)) array =
         fun () -> handlerAfterFailure Tree.ops Tree.run true true
         "program synchronous: the same exception object from a handler and a setter is reported once",
         fun () -> handlerAfterFailure Program.ops Program.run false true
+        "template synchronous: a boundary reveals rows and arms in one insertion and keeps them through a refetch", templateReveal false
+        "template queued: a boundary reveals rows and arms in one insertion and keeps them through a refetch", templateReveal true
+        "template synchronous: a live setter failure under a boundary shows the error view",
+        templateFailure false (fun graph _ -> graph.Run (fun () -> fragileValue.Value <- "bad")) "setter"
+        "template queued: a live setter failure under a boundary shows the error view",
+        templateFailure true (fun graph _ -> graph.Run (fun () -> fragileValue.Value <- "bad")) "setter"
+        "template: a throwing delegated handler under a boundary shows the error view",
+        templateFailure false (fun _ host -> (button host).click()) "handler"
+        "template: a throwing direct handler under a boundary shows the error view",
+        templateFailure false (fun _ host -> dispatchFocus (button host)) "focus handler"
+        "template: a delegated handler throwing NotReadyException under a boundary shows the error view",
+        templateHandlerNotReady (fun button -> button.click ())
+        "template: a direct handler throwing NotReadyException under a boundary shows the error view", templateHandlerNotReady dispatchFocus
+        "template: a boundary waits for a pending isolated slot after its render slots settle", templateSlotKinds true
+        "template: a boundary waits for a pending render slot after its isolated slots settle", templateSlotKinds false
+        "template: retry remounts a content whose setup failed", templateRetry
+        "template: removing the one pending row before the reveal reveals the remaining row", templateRemovedPendingRow
+        "template HTML renders a boundary's pending, content or error view between markers", templateServer
     |]
