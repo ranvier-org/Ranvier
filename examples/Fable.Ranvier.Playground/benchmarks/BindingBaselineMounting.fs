@@ -609,7 +609,7 @@ let rec internal mount
                 scope.OnCleanup cleanup
 
             member this.Listen(eventName, handler) =
-                this.Browser (fun node -> Typed.listenDirect node eventName (Typed.ownedHandler handler))
+                this.Browser (fun node -> DomEvents.listenDirect node eventName (Typed.ownedHandler handler))
 
             member _.Property write =
                 write (box (currentElement ()))

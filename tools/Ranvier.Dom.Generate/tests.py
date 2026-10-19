@@ -120,7 +120,7 @@ with tempfile.TemporaryDirectory() as folder:
     assert "type Groups.InputProperties<'inst> with" in ttext
     assert "member _.onClick<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.PointerEvent -> unit)" in ttext
     assert "TemplateParts.readAttribute \"aria-expanded\" (fun instance -> Some (TemplateParts.ariaText (read instance)))" in ttext
-    handwritten = (root / "../../experiments/Ranvier.View.Foundation/Template.fs").read_text(encoding="utf-8")
+    handwritten = (root / "../../experiments/Ranvier.View.Portable/Template.fs").read_text(encoding="utf-8")
     builder_members = {}
     for builder in ("TemplateBuilder", "AttributeBuilder", "PropertyBuilder", "EventBuilder"):
         body = re.search(r"^type " + builder + r"<'inst>.*?(?=^\S)", handwritten, re.M | re.S)

@@ -6,15 +6,10 @@
         <GenerateDocumentationFile>false</GenerateDocumentationFile>
     </PropertyGroup>
     <ItemGroup>
-        <Compile Include="Lifetime.fs" />
-        <Compile Include="Scope.fs" />
+        <Compile Include="DomEvents.fs" />
         <Compile Include="Scheduling.fs" />
         <Compile Include="Binding.fs" />
         <Compile Include="Microtask.fs" />
-        <Compile Include="Representation.fs" />
-        <Compile Include="Typed.fs" />
-        <Compile Include="Template.fs" />
-        <Compile Include="Generated/HtmlTemplate.fs" />
         <Compile Include="Generated/Html.fs" />
         <Compile Include="Prepared.fs" />
         <Compile Include="Placement.fs" />
@@ -24,6 +19,7 @@
         <Compile Include="Components.fs" />
         <Compile Include="Authoring.fs" />
         <ProjectReference Include="../../src/Fable.Ranvier/Fable.Ranvier.fsproj" />
+        <ProjectReference Include="../Ranvier.View.Portable/Ranvier.View.Portable.fsproj" />
         <PackageReference Update="FSharp.Core" Version="10.1.401" />
     </ItemGroup>
 </Project>

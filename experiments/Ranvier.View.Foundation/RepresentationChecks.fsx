@@ -1,6 +1,6 @@
 #if INTERACTIVE
 #r "../../src/Ranvier/bin/Release/net10.0/Ranvier.dll"
-#load "Representation.fs"
+#load "../Ranvier.View.Portable/Representation.fs"
 #load "Fixtures.fs"
 #endif
 
@@ -604,3 +604,10 @@ equal
     (render Omit (Component.render staticTemplate ()))
 
 printfn "PASS template catalogue server markup"
+
+let runCases (cases: (string * (unit -> unit)) array) =
+    for name, check in cases do
+        check ()
+        printfn "PASS %s" name
+
+runCases PackagingChecks.cases

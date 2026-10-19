@@ -202,7 +202,7 @@ let typeName (declarations: Declaration array) (native: Type) =
 
     render native
 
-let generate compilerRoot policyRoot packageRoot output =
+let generate compilerRoot policyRoot packageRoot output (templateOutput: string option) =
     let declarations, sources = loadCatalogue packageRoot
 
     use package =
@@ -1296,11 +1296,13 @@ let generate compilerRoot policyRoot packageRoot output =
         |> fun formatted -> formatted.Code.Replace ("\r\n", "\n")
 
     let templateOutput =
-        Path.Combine (
-            Path.GetDirectoryName (Path.GetFullPath output),
-            Path.GetFileNameWithoutExtension output
-            + "Template.fs"
-        )
+        templateOutput
+        |> Option.defaultWith (fun () ->
+            Path.Combine (
+                Path.GetDirectoryName (Path.GetFullPath output),
+                Path.GetFileNameWithoutExtension output
+                + "Template.fs"
+            ))
 
     let templateEventCount =
         sharedEvents.Count
@@ -1390,7 +1392,14 @@ let main args =
 
         let policyRoot = if args.Length > 2 then args[2] else compilerRoot
 
-        generate compilerRoot policyRoot packageRoot output
+        let templateOutput =
+            if args.Length = 0 then
+                Path.GetFullPath (Path.Combine (__SOURCE_DIRECTORY__, "../../experiments/Ranvier.View.Portable/Generated/HtmlTemplate.fs"))
+                |> Some
+            else
+                None
+
+        generate compilerRoot policyRoot packageRoot output templateOutput
         0
     with error ->
         eprintfn "%s" error.Message

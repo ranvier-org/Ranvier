@@ -1967,7 +1967,7 @@ and internal MountState
                     root.OnCleanup releaseDelegation
 
     let listenDirect (node: Node) eventName (invoke: obj -> unit) =
-        let cleanup = Typed.listenDirect (box node) eventName invoke
+        let cleanup = DomEvents.listenDirect (box node) eventName invoke
 
         if root.IsDisposed then
             cleanup ()

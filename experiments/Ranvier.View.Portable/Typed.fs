@@ -125,10 +125,6 @@ let ownedHandler (handler: obj -> unit) : obj -> unit =
         if not owner.IsDisposed then
             graph.Run (fun () -> Api.runWithOwner owner (fun () -> Api.untrack (fun () -> handler event)))
 
-/// <summary>Adds a direct event listener and returns its removal.</summary>
-[<Emit("(() => { $0.addEventListener($1, $2); return () => $0.removeEventListener($1, $2); })()")>]
-let listenDirect (node: obj) (eventName: string) (handler: obj -> unit) : unit -> unit = jsNative
-
 /// <summary>
 /// Handles a named DOM event through the backend's listener. The handler runs unbatched: a handler that groups several
 /// writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.
