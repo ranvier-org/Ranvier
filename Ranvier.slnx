@@ -30,6 +30,7 @@
   </Folder>
   <Folder Name="/experiments/Ranvier.View.Portable/">
     <Project Path="experiments/Ranvier.View.Portable/Ranvier.View.Portable.fsproj" />
+    <Project Path="experiments/Ranvier.View.Portable/ServerBench/ServerBench.fsproj" />
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/Ranvier.Dom.Generate/Ranvier.Dom.Generate.fsproj" />
