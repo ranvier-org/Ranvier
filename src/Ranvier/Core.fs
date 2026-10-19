@@ -3076,7 +3076,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
 
     let mutable link: OwnerLink = null
 
-    /// <summary>The node disposed with the memo, or null.</summary>
+    /// <summary>The companion disposed with the memo, or null.</summary>
     let mutable adopted: IDisposable = null
 
     /// <summary>

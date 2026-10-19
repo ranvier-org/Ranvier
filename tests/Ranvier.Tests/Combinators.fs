@@ -2297,4 +2297,64 @@ let ownershipTests =
                 source.Value <- items [ 1, 1 ]
                 Expect.isTrue any.Value "the last value"
             }
+
+            test "disposing only the calling scope of a foldGroupBy memo stops its fold steps" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1; 2, 2 ])
+                let up = rows source
+                let steps = ref 0
+
+                let count step =
+                    fun s n ->
+                        steps.Value <- steps.Value + 1
+                        step s n
+
+                let total, scope =
+                    createRoot (fun owner ->
+                        (up
+                         |> Projection.foldGroupBy id (count (+)) (count (-)) 0 id),
+                        owner)
+
+                Expect.equal total.Value 3 "precondition"
+                scope.Dispose ()
+                steps.Value <- 0
+
+                source.Value <- setN 1 5 source.Value
+                Expect.equal total.Value 3 "the last value"
+                Expect.equal steps.Value 0 "the read after the write runs no fold step"
+                Expect.equal scope.ErrorCount 0 "the scope recorded no teardown error"
+                Expect.equal g.Root.ErrorCount 0 "the graph recorded no teardown error"
+                Expect.equal (readersOf up 1) 0 "the rows are released"
+            }
+
+            test "Memo.Adopt disposes a replaced companion and the last companion once" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let memo = createMemo (fun _ -> 1)
+                let firstDisposals = ref 0
+                let secondDisposals = ref 0
+
+                let companion (disposals: int ref) =
+                    { new IDisposable with
+                        member _.Dispose() =
+                            disposals.Value <- disposals.Value + 1
+                    }
+
+                let first = companion firstDisposals
+                let second = companion secondDisposals
+
+                memo.Adopt first
+                memo.Adopt second
+                Expect.equal firstDisposals.Value 1 "adopting a second companion disposes the first"
+                Expect.equal secondDisposals.Value 0 "the second companion is live"
+
+                memo.Adopt second
+                Expect.equal secondDisposals.Value 0 "re-adopting the same companion keeps it"
+
+                memo.Dispose ()
+                memo.Dispose ()
+                Expect.equal firstDisposals.Value 1 "the first companion is disposed once"
+                Expect.equal secondDisposals.Value 1 "disposing the memo disposes the current companion once"
+            }
         ]

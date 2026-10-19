@@ -57,7 +57,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | DischargeReentry.fs | 29 | 29 | 29 | 29 | 29 | 29 | 1 | 0 |
 | MapSemantics.fs | 42 | 42 | 42 | 42 | 42 | 42 | 0 | 1 |
 | Lenses.fs | 23 | 20 | 20 | 23 | 20 | 20 | 0 | 0 |
-| Combinators.fs | 143 | 143 | 143 | 143 | 143 | 143 | 1 | 0 |
+| Combinators.fs | 145 | 145 | 145 | 145 | 145 | 145 | 1 | 0 |
 | Timed.fs | 31 | 31 | 31 | 38 | 38 | 38 | 0 | 0 |
 | Streams.fs | 26 | 26 | 26 | 26 | 26 | 26 | 1 | 0 |
 | PreviousValues.fs | 12 | 12 | 12 | 12 | 12 | 12 | 15 | 0 |
@@ -81,7 +81,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 9 | 9 | 9 | 9 | 9 | 9 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1427 | 1406 | 1403 | 1567 | 1541 | 1538 | 99 | 1 |
+| **Total** | 1429 | 1408 | 1405 | 1569 | 1543 | 1540 | 99 | 1 |
 
 ## Tests.fs
 
@@ -1423,7 +1423,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | --- | --- |
 | foldGroup rejects a null subtract | Fable wraps a null function argument in a closure, so it is never null. |
 
-<details><summary>143 passed in every build and delivery that runs them</summary>
+<details><summary>145 passed in every build and delivery that runs them</summary>
 
 - 200 single edits at N=1000 make 200 predicate calls
 - a Keys reader wakes only when membership flips
@@ -1568,6 +1568,8 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - disposing the forall memo twice, then its scope, records no error
 - creating an aggregate inside a pure memo body fails that memo and attaches nothing
 - a disposed aggregate reads its last value
+- disposing only the calling scope of a foldGroupBy memo stops its fold steps
+- Memo.Adopt disposes a replaced companion and the last companion once
 
 </details>
 

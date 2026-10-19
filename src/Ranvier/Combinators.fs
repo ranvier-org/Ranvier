@@ -1370,6 +1370,7 @@ module Projection =
     /// when the fold state changes. Costs, pending and failed rows follow <c>foldGroup</c>. Disposing the memo, or the
     /// calling scope, disposes the view and the fold.
     /// </remarks>
+    /// <exception cref="T:System.ArgumentNullException">On .NET, <c>subtract</c> is null.</exception>
     /// <example>
     /// <code lang="fsharp">
     /// let rows = createProjection (fun t -> t.Id) id (fun () -> todos.Value)
