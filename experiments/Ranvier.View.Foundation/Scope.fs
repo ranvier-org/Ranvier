@@ -8,6 +8,11 @@ type internal ViewScope =
     abstract Tracks: bool
     /// <summary>Records a binding whose read is pending.</summary>
     abstract Wait: unit -> unit
+    /// <summary>
+    /// Records a new binding as waiting until its first read, while the scope's content is hidden. Returns true when
+    /// recorded; <c>Ready</c> releases it.
+    /// </summary>
+    abstract Expect: unit -> bool
     /// <summary>Records that a waiting binding read a value or was disposed.</summary>
     abstract Ready: unit -> unit
     /// <summary>Takes failures in the order they occurred; a pending read is dropped.</summary>
@@ -24,6 +29,13 @@ module internal BindingState =
     /// <summary>The binding's last read was pending and the binding is registered with its scope.</summary>
     [<Literal>]
     let Waiting = 2
+
+    /// <summary>
+    /// The state word of a new binding: <c>Waiting</c> when a tracking scope records it as waiting for its first read,
+    /// 0 otherwise.
+    /// </summary>
+    let started (scope: ViewScope) : int =
+        if scope.Tracks && scope.Expect () then Waiting else 0
 
     /// <summary>
     /// The state word after a read raised <c>error</c>. A pending read sets <c>Waiting</c> and registers the binding

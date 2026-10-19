@@ -499,7 +499,7 @@ let private stateFor (compiled: Compiled) (instance: obj) (extra: int) =
 /// <summary>Starts the effect that reads every render slot of a part and commits them together.</summary>
 let private startRender (services: MountServices) (state: obj array) =
     let scope = services.Scope
-    let mutable flags = 0
+    let mutable flags = BindingState.started scope
 
     if scope.Tracks then
         Api.onCleanup (fun () ->
@@ -562,7 +562,7 @@ let private startRender (services: MountServices) (state: obj array) =
 /// <summary>Starts the effect of the isolated slot at index <c>k</c> of a part.</summary>
 let private startIsolated (services: MountServices) (state: obj array) (k: int) =
     let scope = services.Scope
-    let mutable flags = 0
+    let mutable flags = BindingState.started scope
 
     if scope.Tracks then
         Api.onCleanup (fun () ->

@@ -1487,6 +1487,7 @@ and [<Sealed>] private ViewBoundary
             not revealed
             && not failed
             && not settingUp
+            && waiting = 0
             && not (isNull content)
             && site.Live ()
         then
@@ -1544,6 +1545,13 @@ and [<Sealed>] private ViewBoundary
 
             if revealed then
                 pending.Value <- true
+
+        member _.Expect() =
+            if revealed || failed then
+                false
+            else
+                waiting <- waiting + 1
+                true
 
         member _.Ready() =
             if waiting > 0 then
@@ -1732,7 +1740,7 @@ and internal MountState
 #if LADDER_NAIVE_BINDINGS
         Api.createEffect (fun () -> write (read ()))
 #else
-        let mutable state = 0
+        let mutable state = BindingState.started scope
 
         if scope.Tracks then
             Api.onCleanup (fun () ->
@@ -2837,6 +2845,7 @@ and internal MountState
     interface ViewScope with
         member _.Tracks = false
         member _.Wait() = ()
+        member _.Expect() = false
         member _.Ready() = ()
 
         member _.Fail(errors) =

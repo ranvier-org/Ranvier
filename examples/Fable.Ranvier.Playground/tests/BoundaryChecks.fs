@@ -51,6 +51,10 @@ let private modeOf queued =
 [<Emit("(() => { let count = 0; const old = $0.insertBefore; $0.insertBefore = function(n, b) { count++; return old.call(this, n, b); }; return () => { $0.insertBefore = old; return count; }; })()")>]
 let private countInserts (node: Node) : unit -> int = jsNative
 
+/// <summary>Records the text of each node inserted into the node by <c>insertBefore</c>; the returned function restores it and returns the records.</summary>
+[<Emit("(() => { const texts = []; const old = $0.insertBefore; $0.insertBefore = function(n, b) { texts.push(n.textContent); return old.call(this, n, b); }; return () => { $0.insertBefore = old; return texts; }; })()")>]
+let private recordInserts (node: Node) : unit -> string array = jsNative
+
 let private strict (errors: exn list) =
     failwithf "Unexpected report %A" [ for error in errors -> error.Message ]
 
@@ -254,6 +258,108 @@ let private replacedPendingRow (ops: Operations<'view>) (run: 'view -> Backend -
     graph.Run (fun () -> rows.Value <- [ 3; 1 ])
     mounted.Flush ()
     equal "x3x1" host.textContent
+    mounted.Dispose ()
+
+/// <summary>Replacing a pending arm with another pending arm keeps the boundary hidden until the new arm has a value.</summary>
+let private armReplacedWhilePending (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+    let first = graph.Run (fun () -> Api.createAsyncSource<string>())
+    let second = graph.Run (fun () -> Api.createAsyncSource<string>())
+    let arm = graph.Run (fun () -> Api.createSignal 0)
+    let host = host ()
+
+    let view =
+        ops.Boundary (
+            ops.Text "loading",
+            (fun failure -> ops.Text failure.Error.Message),
+            fun _ ->
+                Branch.select ops id (fun () -> arm.Value) (fun current ->
+                    Typed.reactiveText ops (fun () -> if current () = 0 then first.Value else second.Value))
+        )
+
+    let mounted =
+        mountWith (modeOf queued) graph None strict host None (fun context -> run view context.Backend)
+
+    let inserted = recordInserts host
+    graph.Run (fun () -> arm.Value <- 1)
+    mounted.Flush ()
+    equal "loading" host.textContent
+    graph.Run (fun () -> second.Settle "B")
+    mounted.Flush ()
+    equal ("B", [| "B" |]) (host.textContent, inserted ())
+    mounted.Dispose ()
+
+/// <summary>Replacing the one pending row with another pending row keeps the boundary hidden until the new row has a value.</summary>
+let private rowReplacedWhilePending (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+    let never = graph.Run (fun () -> Api.createAsyncSource<string>())
+    let later = graph.Run (fun () -> Api.createAsyncSource<string>())
+    let other = graph.Run (fun () -> Api.createAsyncSource<string>())
+    let rows = graph.Run (fun () -> Api.createSignal [ 1; 2 ])
+    let host = host ()
+
+    let read row =
+        match row with
+        | 1 -> other.Value
+        | 2 -> never.Value
+        | _ -> later.Value
+
+    let view =
+        ops.Boundary (
+            ops.Text "loading",
+            (fun failure -> ops.Text failure.Error.Message),
+            fun _ -> Keyed.list ops id (fun () -> rows.Value) (fun current -> Typed.reactiveText ops (fun () -> read (current ())))
+        )
+
+    let mounted =
+        mountWith (modeOf queued) graph None strict host None (fun context -> run view context.Backend)
+
+    graph.Run (fun () -> other.Settle "x")
+    mounted.Flush ()
+    graph.Run (fun () -> rows.Value <- [ 1; 3 ])
+    mounted.Flush ()
+    equal "loading" host.textContent
+    graph.Run (fun () -> later.Settle "y")
+    mounted.Flush ()
+    equal "xy" host.textContent
+    mounted.Dispose ()
+
+/// <summary>
+/// After the reveal, a row added with a value leaves <c>IsPending</c> false, and a row added with a pending read sets it
+/// until the read settles.
+/// </summary>
+let private rowsAddedAfterReveal (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+    let late = graph.Run (fun () -> Api.createAsyncSource<string>())
+    let rows = graph.Run (fun () -> Api.createSignal [ 1 ])
+    let seen = ResizeArray<bool>()
+    let host = host ()
+
+    let view =
+        ops.Boundary (
+            ops.Text "loading",
+            (fun failure -> ops.Text failure.Error.Message),
+            fun status ->
+                ops.Component (fun _ ->
+                    Api.createEffect (fun () -> seen.Add (status.IsPending ()))
+
+                    Keyed.list ops id (fun () -> rows.Value) (fun current ->
+                        Typed.reactiveText ops (fun () -> if current () = 3 then late.Value else string (current ()))))
+        )
+
+    let mounted =
+        mountWith (modeOf queued) graph None strict host None (fun context -> run view context.Backend)
+
+    graph.Run (fun () -> rows.Value <- [ 1; 2 ])
+    mounted.Flush ()
+    equal ("12", [ false ]) (host.textContent, List.ofSeq seen)
+    graph.Run (fun () -> rows.Value <- [ 1; 2; 3 ])
+    mounted.Flush ()
+    equal ("12", [ false; true ]) (host.textContent, List.ofSeq seen)
+    graph.Run (fun () -> late.Settle "3")
+    mounted.Flush ()
+    mounted.Flush ()
+    equal ("123", [ false; true; false ]) (host.textContent, List.ofSeq seen)
     mounted.Dispose ()
 
 let private messages (reports: ResizeArray<exn list>) =
@@ -745,6 +851,42 @@ let private templateRemovedPendingRow () =
     equal "xx" host.textContent
     mounted.Dispose ()
 
+let mutable private armSources: AsyncSource<string> array = null
+let mutable private armChoice: Signal<int> = Unchecked.defaultof<_>
+
+let private sourceArm =
+    Component.define (fun _ (choice: unit -> int) -> choice) (fun t -> t.span [||] [| t.text (fun choice -> armSources[choice ()].Value) |])
+
+let private sourceArms =
+    Component.define (fun _ (_: BoundaryStatus) -> ()) (fun t ->
+        t.div
+            [||]
+            [|
+                t.branch (fun () -> armChoice.Value) (fun choice -> t.arm sourceArm choice)
+            |])
+
+let private guardedArms =
+    Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.boundary templatePending templateFailed sourceArms |])
+
+/// <summary>Replacing a pending template arm with another pending arm keeps the boundary hidden until the new arm has a value.</summary>
+let private templateArmReplacedWhilePending queued () =
+    use graph = new Graph ()
+    armSources <- graph.Run (fun () -> [| Api.createAsyncSource<string>(); Api.createAsyncSource<string>() |])
+    armChoice <- graph.Run (fun () -> Api.createSignal 0)
+    let host = host ()
+
+    let mounted =
+        mountWith (modeOf queued) graph None strict host None (fun context -> Program.run (Component.render guardedArms ()) context.Backend)
+
+    let inserted = recordInserts (host.querySelector "div" |> unbox<Node>)
+    graph.Run (fun () -> armChoice.Value <- 1)
+    mounted.Flush ()
+    equal "loading" host.textContent
+    graph.Run (fun () -> armSources[1].Settle "B")
+    mounted.Flush ()
+    equal ("B", [| "B" |]) (host.textContent, inserted ())
+    mounted.Dispose ()
+
 let mutable private renderSource: AsyncSource<string> = Unchecked.defaultof<_>
 let mutable private isolatedSource: AsyncSource<string> = Unchecked.defaultof<_>
 
@@ -1165,6 +1307,20 @@ let cases: (string * (unit -> unit)) array =
         "program queued: removing the last pending row reveals the boundary", fun () -> removedPendingRow Program.ops Program.run true
         "tree synchronous: replacing the last pending row reveals both rows after the pass", fun () -> replacedPendingRow Tree.ops Tree.run false
         "program queued: replacing the last pending row reveals both rows after the pass", fun () -> replacedPendingRow Program.ops Program.run true
+        "tree synchronous: replacing a pending arm with another pending arm keeps the boundary hidden",
+        fun () -> armReplacedWhilePending Tree.ops Tree.run false
+        "tree queued: replacing a pending arm with another pending arm keeps the boundary hidden",
+        fun () -> armReplacedWhilePending Tree.ops Tree.run true
+        "program synchronous: replacing a pending arm with another pending arm keeps the boundary hidden",
+        fun () -> armReplacedWhilePending Program.ops Program.run false
+        "tree synchronous: replacing the one pending row with another pending row keeps the boundary hidden",
+        fun () -> rowReplacedWhilePending Tree.ops Tree.run false
+        "program queued: replacing the one pending row with another pending row keeps the boundary hidden",
+        fun () -> rowReplacedWhilePending Program.ops Program.run true
+        "tree synchronous: rows added after the reveal set IsPending only while one of them is pending",
+        fun () -> rowsAddedAfterReveal Tree.ops Tree.run false
+        "program queued: rows added after the reveal set IsPending only while one of them is pending",
+        fun () -> rowsAddedAfterReveal Program.ops Program.run true
         "tree synchronous: a failed reader under a boundary shows the error view, cleans up once and reports once",
         fun () -> readerFailure Tree.ops Tree.run false
         "program queued: a failed reader under a boundary shows the error view, cleans up once and reports once",
@@ -1260,5 +1416,7 @@ let cases: (string * (unit -> unit)) array =
         "template: a direct handler after one whose failure tore the content down is skipped", templateSecondHandler dispatchFocus
         "template: retry remounts a content whose setup failed", templateRetry
         "template: removing the one pending row before the reveal reveals the remaining row", templateRemovedPendingRow
+        "template synchronous: replacing a pending arm with another pending arm keeps the boundary hidden", templateArmReplacedWhilePending false
+        "template queued: replacing a pending arm with another pending arm keeps the boundary hidden", templateArmReplacedWhilePending true
         "template HTML renders a boundary's pending, content or error view between markers", templateServer
     |]

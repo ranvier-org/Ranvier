@@ -348,6 +348,7 @@ let private recordingScope (name: string) (log: ResizeArray<string>) : ViewScope
     { new ViewScope with
         member _.Tracks = false
         member _.Wait() = ()
+        member _.Expect() = false
         member _.Ready() = ()
 
         member _.Fail(errors) =
@@ -366,6 +367,7 @@ let private throwingScope (name: string) (log: ResizeArray<string>) : ViewScope 
     { new ViewScope with
         member _.Tracks = false
         member _.Wait() = ()
+        member _.Expect() = false
         member _.Ready() = ()
 
         member _.Fail(errors) =
