@@ -3,6 +3,7 @@ module HydrationChecks
 
 open System
 open global.Ranvier
+open Fable.Core.JsInterop
 open Fable.Core.TS.Dom
 open Ranvier.View.Foundation
 open Ranvier.View.Foundation.Representation
@@ -104,4 +105,35 @@ let cases: (string * (unit -> unit)) array =
             "a Setup kept from one client setup raises when called during another instance's setup", clientCreateIdInLaterSetup
         |]
 
-let browserCases: (string * (unit -> unit)) array = [||]
+/// <summary>The text and value of the first element matching <c>selector</c> after the browser parses <c>html</c>.</summary>
+let private parsed (html: string) (selector: string) : string * string =
+    let container = globalThis.document.createElement "div"
+    container.innerHTML <- html
+
+    let element =
+        container.querySelector selector
+        |> unbox<HTMLElement>
+
+    element.textContent, (if isNull element?value then "" else string element?value)
+
+let private leadingLineFeeds () =
+    let html =
+        Server.render
+            { Server.Options.defaults with
+                Policy = Omit
+            }
+            ServerChecks.formFixture
+            {
+                ServerChecks.FormState.Text = "\nline"
+                On = false
+                Choice = "a"
+            }
+
+    equal ("\nline", "\nline") (parsed html "textarea")
+    equal "\nline" (fst (parsed html "pre"))
+    equal "\nstatic" (fst (parsed html "pre + pre"))
+
+let browserCases: (string * (unit -> unit)) array =
+    [|
+        "textarea value and pre text keep a leading line feed after parsing", leadingLineFeeds
+    |]

@@ -962,6 +962,64 @@ let private holeAfterChildren () =
 
     equal (hole, hole) ((Server.renderPage Server.Options.defaults holeThenChild ()).Head, expanded.Head)
 
+type FormState =
+    {
+        Text: string
+        On: bool
+        Choice: string
+    }
+
+let formFixture =
+    Component.define (fun _ (state: FormState) -> state) (fun t ->
+        t.form
+            [||]
+            [|
+                t.textarea [| t.Props.TextArea.value (fun r -> r.Text) |] [||]
+                t.input
+                    [|
+                        t.Attrs.Input.``type`` "checkbox"
+                        t.Props.Input.``checked`` (fun r -> r.On)
+                    |]
+                t.select
+                    [| t.Props.Select.value (fun r -> r.Choice) |]
+                    [|
+                        t.option
+                            [|
+                                t.Attrs.Option.value "a"
+                                t.Props.Option.selected (fun r -> r.Choice = "a")
+                            |]
+                            [| t.text "A" |]
+                        t.option
+                            [|
+                                t.Attrs.Option.value "b"
+                                t.Props.Option.selected (fun r -> r.Choice = "b")
+                            |]
+                            [| t.text "B" |]
+                    |]
+                t.pre [||] [| t.text (fun r -> r.Text) |]
+                t.pre [||] [| t.text "\nstatic" |]
+            |])
+
+let private forms () =
+    equal
+        "<!--[r--><form><textarea>\n\nline &lt;1&gt;</textarea><input type=\"checkbox\" checked=\"\"><select><option value=\"a\">A</option><option value=\"b\" selected=\"\">B</option></select><pre>\n\nline &lt;1&gt;</pre><pre>\n\nstatic</pre></form><!--]-->"
+        (Server.render
+            { Server.Options.defaults with
+                Policy = Omit
+            }
+            formFixture
+            {
+                Text = "\nline <1>"
+                On = true
+                Choice = "b"
+            })
+
+let private staticTextarea =
+    Component.define (fun _ () -> ()) (fun t -> t.textarea [| t.Props.TextArea.value "\nstatic" |] [||])
+
+let private staticTextareaLineFeed () =
+    equal "<!--[r--><textarea>\n\nstatic</textarea><!--]-->" (Server.render Server.Options.defaults staticTextarea ())
+
 let cases: (string * (unit -> unit)) array =
     [|
         "CreateId numbers inlined children in pre-order and puts an inlined child's rows under its path", nestedIdentity
@@ -1009,6 +1067,8 @@ let cases: (string * (unit -> unit)) array =
         "duplicate keys fail the server render with the core's exception", duplicateKeys
         "renderTo writes the rendered segments after success and nothing after failure", renderToSegments
         "a render whose cleanups fail raises an aggregate holding and naming every error", aggregateFailures
+        "textarea, checkbox and select write their server state; select.value is browser-only", forms
+        "a static textarea value starting with a line feed gets a second one", staticTextareaLineFeed
     |]
 
 #if !FABLE_COMPILER

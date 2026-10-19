@@ -509,9 +509,9 @@ type internal ServerOp =
     | PropertyOp of PortableProperty * Slot
     /// <summary>A serialised static property: <c> name="value"</c>, or nothing when the serialisation returns <c>None</c>.</summary>
     | StaticPropertyOp of PortableProperty * obj
-    /// <summary>A child-text property slot's escaped value, written after the open tag.</summary>
+    /// <summary>A child-text property slot's escaped value, written after the open tag; with <c>leadingLineFeed</c>, a value starting with a line feed gets a second one.</summary>
     | ChildTextOp of PortableProperty * Slot * leadingLineFeed: bool
-    /// <summary>A static child-text property's escaped value, written after the open tag.</summary>
+    /// <summary>A static child-text property's escaped value, written after the open tag; with <c>leadingLineFeed</c>, a value starting with a line feed gets a second one.</summary>
     | StaticChildTextOp of PortableProperty * obj * leadingLineFeed: bool
     /// <summary>A browser-only part of the element <c>tag</c>: raises under <c>Reject</c>, dropped under <c>Omit</c>.</summary>
     | BrowserOp of tag: string * part: string
@@ -733,14 +733,16 @@ let private compilePlan (root: TemplateNode) : ServerPlan =
 
             write ">"
 
+            let leadingLineFeed = dropsLeadingLineFeed tagName
+
             let childText =
                 [|
                     for property, value in properties do
                         if isChildText property then
-                            StaticChildTextOp (property, value, false)
+                            StaticChildTextOp (property, value, leadingLineFeed)
                     for slot in slots do
                         match slot.Target with
-                        | PropertyTarget property when isChildText property -> ChildTextOp (property, slot, false)
+                        | PropertyTarget property when isChildText property -> ChildTextOp (property, slot, leadingLineFeed)
                         | _ -> ()
                 |]
 
