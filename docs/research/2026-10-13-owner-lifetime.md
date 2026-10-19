@@ -27,7 +27,7 @@ The suites encode these rules. Ten checks were rewritten: four structural-select
 
 ## Measurements
 
-[Raw results](framework-performance/investigation/owner-lifetime-framework-results.json) use the framework harness: three Chromium processes, Release Fable, minified production bundles, all 36 correctness checks passing. Solid is 2.0.0-rc.14 compiled by `@solidjs/compiler` 2.0.0-rc.14. At 128 rows, µs per operation:
+[Raw results](https://github.com/shayanhabibi/Ranvier/blob/d784929cd9c67eed51bb319d1f3c2b993dcd9b54/docs/research/framework-performance/investigation/owner-lifetime-framework-results.json) use the framework harness: three Chromium processes, Release Fable, minified production bundles, all 36 correctness checks passing. Solid is 2.0.0-rc.14 compiled by `@solidjs/compiler` 2.0.0-rc.14. At 128 rows, µs per operation:
 
 | | Ranvier | Solid 2 | Ripple | React |
 |---|---|---|---|---|

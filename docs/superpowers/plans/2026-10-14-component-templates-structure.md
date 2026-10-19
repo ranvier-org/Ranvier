@@ -1,5 +1,7 @@
 # Component templates (dynamic structure) Implementation Plan
 
+The probe scripts this note runs were removed from the branch; they are at commit [d784929](https://github.com/shayanhabibi/Ranvier/tree/d784929cd9c67eed51bb319d1f3c2b993dcd9b54).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Let component templates contain dynamic structure (view holes, `matchWith`, `branch`, `each` and inlined child templates) that renders through the compiled DOM path, the portable markup writer and the default expansion with the same semantics.

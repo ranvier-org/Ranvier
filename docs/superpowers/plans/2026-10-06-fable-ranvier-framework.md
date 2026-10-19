@@ -31,7 +31,7 @@ Components, template path:
 
 The authored path retains 383 KiB per 128-row mount, against 345 KiB at `a0de558`.
 
-Keyed lists and arms, production rows against Solid 2 only, measured at `f9f6b97` ([status run](../../research/framework-performance/investigation/poc-status-2026-10-18/status.json): three processes, 15 shuffled rounds, a forced GC before every sample), with the `e447e21` figure in brackets:
+Keyed lists and arms, production rows against Solid 2 only, measured at `f9f6b97` ([status run](https://github.com/shayanhabibi/Ranvier/blob/d784929cd9c67eed51bb319d1f3c2b993dcd9b54/docs/research/framework-performance/investigation/poc-status-2026-10-18/status.json): three processes, 15 shuffled rounds, a forced GC before every sample), with the `e447e21` figure in brackets:
 
 | Operation | × Solid 2 | Target |
 |---|---|---|
@@ -137,7 +137,7 @@ Contracts: C01–C10. Risks: G03, G09, G12. No public API changes in this task.
 
 **Exit:** a baseline report appended to this plan with actual commands/results and an API migration list. Existing failures are attributed before feature work begins.
 
-Execution record: starting checkpoint `174f07649f38b1ff7a3ebc60c6c3fb9f290d1cb0`. The [baseline report](../../research/2026-10-08-fable-ranvier-baseline.md) and [API snapshot](../../research/2026-10-08-fable-ranvier-api.json) contain the commands, results, migration list and tool limitations. No new view runtime has been implemented. SageFs observed current owner disposal as `parent -> child`; Task 2 must prove the renderer's child-first adapter.
+Execution record: starting checkpoint `174f07649f38b1ff7a3ebc60c6c3fb9f290d1cb0`. The [baseline report](../../research/2026-10-08-fable-ranvier-baseline.md) and [API snapshot](https://github.com/shayanhabibi/Ranvier/blob/d784929cd9c67eed51bb319d1f3c2b993dcd9b54/docs/research/2026-10-08-fable-ranvier-api.json) contain the commands, results, migration list and tool limitations. No new view runtime has been implemented. SageFs observed current owner disposal as `parent -> child`; Task 2 must prove the renderer's child-first adapter.
 
 ## Task 2 — Prove disposal and portable view representation
 

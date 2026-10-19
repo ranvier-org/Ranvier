@@ -1,12 +1,14 @@
 # armsClear1k and component dispose: where the remaining ratio comes from — 2026-10-19
 
+The probe scripts this note runs were removed from the branch; they are at commit [d784929](https://github.com/shayanhabibi/Ranvier/tree/d784929cd9c67eed51bb319d1f3c2b993dcd9b54).
+
 ## Environment and commits
 
 - Machine: AMD Ryzen 9 9900X (12 cores, 62 GB), Windows 11 10.0.26200. Rider open and idle; profiles and timings ran one at a time, with no build running alongside.
 - Chromium 153.0.8010.12 (Playwright 1.63.0), Node 26.7.0, Fable 5.18.0 (`--noCache`, Release). Solid 2: `solid-js`, `@solidjs/web`, `@solidjs/compiler` 2.0.0-rc.14.
 - Code: `31fc732` (`poc/fable-ranvier-dom`). Profiles use the unminified bundle `generated-keyed-profile`; the template timings use `run.mjs --build`'s minified bundle.
 
-Raw data in [`framework-performance/investigation/arms-and-dispose-profile/`](framework-performance/investigation/arms-and-dispose-profile/):
+Raw data in [`framework-performance/investigation/arms-and-dispose-profile/`](https://github.com/shayanhabibi/Ranvier/tree/d784929cd9c67eed51bb319d1f3c2b993dcd9b54/docs/research/framework-performance/investigation/arms-and-dispose-profile):
 
 - `keyed-profile-buckets.json`: armsClear1k, clear1k and armsCreate1k, loop protocol (`keyed-profile-buckets.mjs`).
 - `template-profile-buckets.json`: template-component mount and dispose at 128 rows (`template-profile.mjs`, then `keyed-profile-buckets.mjs`).

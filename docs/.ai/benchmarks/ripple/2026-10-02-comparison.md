@@ -1,5 +1,7 @@
 # Ranvier / Fable.Ripple browser comparison
 
+The probe scripts this note runs were removed from the branch; they are at commit [d784929](https://github.com/shayanhabibi/Ranvier/tree/d784929cd9c67eed51bb319d1f3c2b993dcd9b54).
+
 Measured 2026-10-02. This is an exploratory comparison of Ranvier's DOM PoC and published Ripple packages, not a renderer completeness or production performance ranking. No product implementation was changed and no Ripple workaround was added. [API and first-party source research](../../RESEARCH-fable-ripple-comparison.md).
 
 ## Findings
@@ -19,9 +21,9 @@ All values below are milliseconds for the **entire named workload**, not per ope
 - **100,000 diamond graph writes:** run 1 medians **10.7 / 15.1**, p95 **11.3 / 15.9**; run 2 medians **10.9 / 15.1**, p95 **11.5 / 15.8**. Ranvier took approximately **28–29% less time**, about **1.4× throughput**, for this particular graph.
 - **20,000 sequential async request-to-DOM roundtrips:** run 1 medians **13.7 / 13.7**, p95 **15.1 / 14.8**; run 2 medians **13.6 / 13.2**, p95 **15.8 / 14.5**. These results support similar cost for this fixture, not an async speed ranking.
 
-![Second-run medians, separately scaled per workload](2026-10-02-medians.svg)
+![Second-run medians, separately scaled per workload](https://github.com/shayanhabibi/Ranvier/blob/d784929cd9c67eed51bb319d1f3c2b993dcd9b54/docs/.ai/benchmarks/ripple/2026-10-02-medians.svg)
 
-[Run 1 raw data](2026-10-02-run-1.json), [run 2 raw data](2026-10-02-run-2.json), [latest correctness rerun](2026-10-02-checks.json). The initial shorter run produced sub-millisecond samples, so workload sizes were increased; [preliminary raw data](2026-10-02-preliminary.json) is retained but excluded from the conclusions above.
+[Run 1 raw data](https://github.com/shayanhabibi/Ranvier/blob/d784929cd9c67eed51bb319d1f3c2b993dcd9b54/docs/.ai/benchmarks/ripple/2026-10-02-run-1.json), [run 2 raw data](https://github.com/shayanhabibi/Ranvier/blob/d784929cd9c67eed51bb319d1f3c2b993dcd9b54/docs/.ai/benchmarks/ripple/2026-10-02-run-2.json), [latest correctness rerun](https://github.com/shayanhabibi/Ranvier/blob/d784929cd9c67eed51bb319d1f3c2b993dcd9b54/docs/.ai/benchmarks/ripple/2026-10-02-checks.json). The initial shorter run produced sub-millisecond samples, so workload sizes were increased; [preliminary raw data](https://github.com/shayanhabibi/Ranvier/blob/d784929cd9c67eed51bb319d1f3c2b993dcd9b54/docs/.ai/benchmarks/ripple/2026-10-02-preliminary.json) is retained but excluded from the conclusions above.
 
 ## Workloads and timing boundaries
 
@@ -68,7 +70,7 @@ No uncaught errors were captured on the correctness pages via Playwright `pageer
 
 ## Fixture bundle size
 
-Separately built minified ES library bundles export all fixture cases, including async and error probes. Same Vite options; no common comparison runner included. Ranvier **75,324 bytes**, Ripple **34,764 bytes**; gzip level 9 **17,712 / 8,818 bytes**. Ripple is about half the size for this exported fixture. This is not a minimal counter app, NuGet package size or a renderer breadth comparison. [Size metadata](2026-10-02-bundles.json).
+Separately built minified ES library bundles export all fixture cases, including async and error probes. Same Vite options; no common comparison runner included. Ranvier **75,324 bytes**, Ripple **34,764 bytes**; gzip level 9 **17,712 / 8,818 bytes**. Ripple is about half the size for this exported fixture. This is not a minimal counter app, NuGet package size or a renderer breadth comparison. [Size metadata](https://github.com/shayanhabibi/Ranvier/blob/d784929cd9c67eed51bb319d1f3c2b993dcd9b54/docs/.ai/benchmarks/ripple/2026-10-02-bundles.json).
 
 ## Follow-up: size by exported workload
 
@@ -83,13 +85,13 @@ The dashboard export reduces Ranvier's measured fixture output by approximately 
 
 The bundler's retained-module report identifies `Core.js` as the largest Ranvier contribution, with additional Fable runtime collections/utilities. Those module `renderedLength` values are intermediate bundler metrics, not additive final gzip costs. Trace modules are not retained in the dashboard output. This supports investigating core representation, generated JavaScript and tree-shaking boundaries; it does not establish a recoverable byte budget or show that any particular guarantee accounts for the size difference.
 
-[Inspection data](2026-10-02-size-inspection.json) and [inspection script](2026-10-02-inspect-size.mjs). Copy the script into the extracted probe directory, then run `rtk proxy node inspect-size.mjs` there. The JSON's gzip values use Node `gzipSync` level 9; original bundle metadata above used Python gzip level 9, whose byte output differs slightly. Compare minified bytes across the two measurements directly.
+[Inspection data](https://github.com/shayanhabibi/Ranvier/blob/d784929cd9c67eed51bb319d1f3c2b993dcd9b54/docs/.ai/benchmarks/ripple/2026-10-02-size-inspection.json) and [inspection script](https://github.com/shayanhabibi/Ranvier/blob/d784929cd9c67eed51bb319d1f3c2b993dcd9b54/docs/.ai/benchmarks/ripple/2026-10-02-inspect-size.mjs). Copy the script into the extracted probe directory, then run `rtk proxy node inspect-size.mjs` there. The JSON's gzip values use Node `gzipSync` level 9; original bundle metadata above used Python gzip level 9, whose byte output differs slightly. Compare minified bytes across the two measurements directly.
 
 ## Environment and reproduction
 
 Windows; AMD Ryzen 9 9900X 12-Core; Node 26.7.0; Chromium 153.0.8010.12; .NET SDK 10.0.401; Fable 5.18.0; Release compilation; Vite 8.3.2. Pinned Ripple core 1.0.0-beta.6 / DOM 1.0.0-beta.7; Fable.Promise 3.2.0. Both fixtures resolve FSharp.Core 10.1.401 and Fable.Core 5.3.0. Ranvier is the local DOM PoC on `poc/fable-ranvier-dom`; no production source was modified during this experiment.
 
-The [source archive](2026-10-02-harness.zip) contains only the experimental fixture and runner, excluding generated code, packages and build output. Restore the repository's .NET tools and install the existing playground npm dependencies/browser first if absent. From the repository root:
+The [source archive](https://github.com/shayanhabibi/Ranvier/blob/d784929cd9c67eed51bb319d1f3c2b993dcd9b54/docs/.ai/benchmarks/ripple/2026-10-02-harness.zip) contains only the experimental fixture and runner, excluding generated code, packages and build output. Restore the repository's .NET tools and install the existing playground npm dependencies/browser first if absent. From the repository root:
 
 ```powershell
 rtk proxy powershell -NoProfile -ExecutionPolicy Bypass -File docs/.ai/benchmarks/ripple/reproduce.ps1

@@ -1,12 +1,14 @@
 # Mount cost rationale
 
+The probe scripts this note runs were removed from the branch; they are at commit [d784929](https://github.com/shayanhabibi/Ranvier/tree/d784929cd9c67eed51bb319d1f3c2b993dcd9b54).
+
 This accounts for the remaining 128-row mount gap after [owner lifetime](../../2026-10-13-owner-lifetime.md): Ranvier 884 µs against Solid 2 353 µs and Ripple 512 µs. Each cost is classified as buying a guarantee the other frameworks lack, buying a design choice, or buying nothing.
 
 Solid is `solid-js` and `@solidjs/web` 2.0.0-rc.14, compiled by Solid's native compiler `@solidjs/compiler` 2.0.0-rc.14. Its adapters call `flush()` after each write, so batched DOM work is measured.
 
 ## Behaviour probes
 
-`benchmarks/frameworks/semantics.mjs` runs the same scenarios against all three frameworks in Chromium; [raw results](semantics-results.json).
+`benchmarks/frameworks/semantics.mjs` runs the same scenarios against all three frameworks in Chromium; [raw results](https://github.com/shayanhabibi/Ranvier/blob/d784929cd9c67eed51bb319d1f3c2b993dcd9b54/docs/research/framework-performance/investigation/semantics-results.json).
 
 | Scenario | Ranvier | Solid 2 | Ripple beta.9 |
 |---|---|---|---|
