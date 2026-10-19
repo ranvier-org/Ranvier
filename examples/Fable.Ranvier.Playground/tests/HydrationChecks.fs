@@ -36,7 +36,7 @@ let private clientIdentity () =
     let issued = List.sort (List.ofSeq identityLog)
     let shown = domIds target
     mounted.Dispose ()
-    // The root issues a second id that no element shows.
+    // The root's second id is logged only.
     let visible =
         identityIds "r"
         |> List.filter (fun id -> id <> "r-0-1")
@@ -58,16 +58,39 @@ let private clientCreateIdAfterSetup () =
     mounted.Dispose ()
     equal true (rejected :? InvalidOperationException)
 
-let private clientHoleIdentity () =
-    let served = servedIds idHole ()
+/// <summary>
+/// Mounts <c>definition</c> and checks that the client's sorted id log and its DOM ids in document order equal
+/// <c>expected</c>, and that the server's DOM ids equal the client's.
+/// </summary>
+let private sameIds (definition: Component<'props>) (props: 'props) (expected: string list) =
+    let served = servedIds definition props
     use graph = new Graph ()
     let target = host ()
     identityLog.Clear ()
-    let mounted = mount graph target (Component.render idHole ())
-    let issued = List.ofSeq identityLog
+    let mounted = mount graph target (Component.render definition props)
+    let issued = List.sort (List.ofSeq identityLog)
     let shown = domIds target
     mounted.Dispose ()
-    equal (holeIds, holeIds, served) (issued, shown, shown)
+    equal (List.sort expected, expected, shown) (issued, shown, served)
+
+let private clientHoleIdentity () =
+    sameIds idHole () holeIds
+
+let private clientNestedIdentity () =
+    sameIds idNested [| 1; 2 |] nestedIds
+
+let private clientHolesIdentity () =
+    sameIds idHoles () holesIds
+
+let private clientCreateIdInLaterSetup () =
+    use graph = new Graph ()
+
+    let error =
+        ServerChecks.failure (fun () ->
+            mount graph (host ()) (Component.render (capturedCreateId ()) ())
+            |> ignore)
+
+    equal (true, "CreateId is valid only while a component's setup runs") (error :? InvalidOperationException, error.Message)
 
 let cases: (string * (unit -> unit)) array =
     strictCases
@@ -75,6 +98,10 @@ let cases: (string * (unit -> unit)) array =
             "a client mount issues the server's ids for the same structure", clientIdentity
             "CreateId after a client setup raises", clientCreateIdAfterSetup
             "a client view hole's first template takes the row's position and a later one the authored step under it", clientHoleIdentity
+            "a client mount numbers inlined children in pre-order and puts an inlined child's rows under its path, as the server does",
+            clientNestedIdentity
+            "each client view row counts its authored steps from 0 and the enclosing row resumes its count, as the server does", clientHolesIdentity
+            "a Setup kept from one client setup raises when called during another instance's setup", clientCreateIdInLaterSetup
         |]
 
 let browserCases: (string * (unit -> unit)) array = [||]

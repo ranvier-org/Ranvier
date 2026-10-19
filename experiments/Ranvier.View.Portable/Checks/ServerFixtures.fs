@@ -377,3 +377,84 @@ let idHole =
 
 /// <summary>The ids <c>idHole</c> issues, in document order: the view's first template takes the row's position.</summary>
 let holeIds = [ "r-0-0"; "r-0.r0.0-0"; "r-0.r0.0.a0-0" ]
+
+/// <summary>
+/// A parent whose setup keeps its <c>Setup</c>, and whose inlined child calls the kept <c>CreateId</c> during its own
+/// setup. Each call builds new definitions.
+/// </summary>
+let capturedCreateId () : Component<unit> =
+    let captured: Setup option ref = ref None
+
+    let caller =
+        Component.define (fun _ () -> captured.Value.Value.CreateId () |> ignore) (fun t -> t.span [||] [||])
+
+    Component.define (fun setup () -> captured.Value <- Some setup) (fun t -> t.div [||] [| t.render caller ignore |])
+
+/// <summary>An inlined child that inlines <c>idLeaf</c> and owns a list of <c>idCell</c> rows.</summary>
+let idBranch =
+    Component.define (fun setup (items: int array) -> issue setup items) (fun t ->
+        t.span [| t.Attrs.id (fun r -> r.Id) |] [| t.render idLeaf ignore; t.each id (fun r -> r.Props) idCell |])
+
+/// <summary><c>idBranch</c> inlined before a list of the instance's own.</summary>
+let idNested =
+    Component.define (fun setup (items: int array) -> issue setup items) (fun t ->
+        t.div
+            [| t.Attrs.id (fun r -> r.Id) |]
+            [|
+                t.render idBranch (fun r -> r.Props)
+                t.div [||] [| t.each id (fun r -> r.Props) idCell |]
+            |])
+
+/// <summary>
+/// The ids <c>idNested</c> issues for the items 1 and 2, in document order: the inlined children are numbered in
+/// pre-order, and the inlined child's rows sit under its own path.
+/// </summary>
+let nestedIds =
+    [
+        "r-0-0"
+        "r-0.c0-0"
+        "r-0.c1-0"
+        "r-0.c0.r0.0-0"
+        "r-0.c0.r0.1-0"
+        "r-0.r0.0-0"
+        "r-0.r0.1-0"
+    ]
+
+/// <summary>Two view holes, each rendering <c>idLeaf</c> twice.</summary>
+let idPair =
+    let pair =
+        Program.fragment [| Component.render idLeaf (); Component.render idLeaf () |]
+
+    Component.define (fun setup () -> issue setup ()) (fun t ->
+        t.div [| t.Attrs.id (fun r -> r.Id) |] [| t.view (fun _ -> pair); t.view (fun _ -> pair) |])
+
+/// <summary>A view hole rendering <c>idLeaf</c>, then <c>idPair</c>, then <c>idLeaf</c>.</summary>
+let idHoles =
+    Component.define (fun setup () -> issue setup ()) (fun t ->
+        t.div
+            [| t.Attrs.id (fun r -> r.Id) |]
+            [|
+                t.view (fun _ ->
+                    Program.fragment
+                        [|
+                            Component.render idLeaf ()
+                            Component.render idPair ()
+                            Component.render idLeaf ()
+                        |])
+            |])
+
+/// <summary>
+/// The ids <c>idHoles</c> issues, in document order: each view row counts its authored steps from 0, and the outer
+/// row's count resumes after the inner rows.
+/// </summary>
+let holesIds =
+    [
+        "r-0-0"
+        "r-0.r0.0-0"
+        "r-0.r0.0.a0-0"
+        "r-0.r0.0.a0.r0.0-0"
+        "r-0.r0.0.a0.r0.0.a0-0"
+        "r-0.r0.0.a0.r1.0-0"
+        "r-0.r0.0.a0.r1.0.a0-0"
+        "r-0.r0.0.a1-0"
+    ]

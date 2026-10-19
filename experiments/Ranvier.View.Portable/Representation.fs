@@ -15,13 +15,37 @@ type BrowserPolicy =
 type Setup =
     {
         OnCleanup: (unit -> unit) -> unit
-        /// <summary>
-        /// A new id, valid during setup only. A template instance's ids are the root prefix, the instance's positional
-        /// path and a counter within the instance, as in <c>r-0.c1.r0.3-0</c>, and the server and a synchronous client
-        /// mount issue the same ids for the same structure. A template's call after its setup raises
-        /// <c>InvalidOperationException</c>.
-        /// </summary>
+        /// <summary>A new id for the instance whose setup receives this <c>Setup</c>.</summary>
+        /// <remarks>
+        /// <para>
+        /// A compiled template rendered on the server or mounted with <c>SynchronousCommits</c> receives positional
+        /// ids: the root prefix, the instance's positional path and a counter within the instance, as in
+        /// <c>r-0.c1.r0.3-0</c>. Positional ids match between the server and a client mount with
+        /// <c>SynchronousCommits</c> for the same compiled template structure.
+        /// </para>
+        /// <para>
+        /// An authored component, and a compiled template mounted with <c>QueuedCommits</c>, receive authored ids,
+        /// <c>prefix-path-an</c> with <c>n</c> counting across the render or mount; these can differ between server
+        /// and client.
+        /// </para>
+        /// <para>
+        /// A positional <c>CreateId</c> raises <c>InvalidOperationException</c> when it is called outside its own
+        /// instance's setup: after that setup returns, or during another instance's setup. An authored
+        /// <c>CreateId</c> returns an id whenever it is called.
+        /// </para>
+        /// </remarks>
         CreateId: unit -> string
+    }
+
+/// <summary>
+/// <c>setup</c> with a <c>CreateId</c> that issues positional ids in the window open in <c>identity</c>, and raises
+/// once another window is open or none is.
+/// </summary>
+let internal ownSetup (identity: IdentityScope) (setup: Setup) : Setup =
+    let owner = identity.Window
+
+    { setup with
+        CreateId = fun () -> identity.CreateIdIn owner
     }
 
 /// <summary>The items of a keyed region, with the key of each item; list items keep the caller's references.</summary>
@@ -435,7 +459,7 @@ type internal HeadContainer(parent: HeadContainer) =
 /// child containers follow, ordered by the position at which each child closed. Per key, the last activated entry is
 /// written at the position of the key's first activated entry; unkeyed entries are each written at their own position.
 /// </summary>
-/// <remarks>Until its first entry, a container or a group occupies its slots in the open-container stack alone.</remarks>
+/// <remarks>Until its first entry, a container or a group holds just its slots in the open-container stack.</remarks>
 [<Sealed; AllowNullLiteral>]
 type internal HeadCollector() =
     let keys = ResizeArray<string>()
@@ -663,6 +687,8 @@ and [<Sealed>] HtmlBackend(policy: BrowserPolicy, sink: HtmlSink) =
 
     let mutable attributeKeys: ResizeArray<string> = Unchecked.defaultof<_>
     let mutable attributeTag = Div
+    // Allocated on the first read of `Identity` unless set first.
+    let mutable identity: IdentityScope = Unchecked.defaultof<_>
 
     let ensureAttributes () =
         if isNull (box attributeTarget) then
@@ -733,8 +759,14 @@ and [<Sealed>] HtmlBackend(policy: BrowserPolicy, sink: HtmlSink) =
     /// <summary>The request's head collector: a document entry is collected whatever the policy. Null applies the policy.</summary>
     member val internal Heads: HeadCollector = null with get, set
 
-    /// <summary>The ids of the render; a server request replaces it with one of its own prefix.</summary>
-    member val Identity: IdentityScope = IdentityScope "r" with get, set
+    /// <summary>The ids of the render, an <c>IdentityScope "r"</c> until set; a server request sets one of its own prefix.</summary>
+    member _.Identity
+        with get (): IdentityScope =
+            if isNull (box identity) then
+                identity <- IdentityScope "r"
+
+            identity
+        and set (value: IdentityScope) = identity <- value
 
     /// <summary>The path that authored content sits under: the root's, or a view row's while its view runs.</summary>
     member val internal Path: InstancePath = InstancePath.Root with get, set

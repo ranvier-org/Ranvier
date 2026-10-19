@@ -75,6 +75,7 @@ type internal IdentityWindow =
         B: int
         Path: InstancePath
         Issued: int
+        Window: int
     }
 
 /// <summary>
@@ -91,11 +92,20 @@ type IdentityScope(prefix: string) =
     // The open window's path, null until its first request.
     let mutable path: InstancePath = null
     let mutable issued = 0
+    // The open window's number, unique within the scope; 0 outside every window.
+    let mutable window = 0
+    let mutable windowCount = 0
     // The windows enclosing the open one, innermost last; null until a window opens inside another.
     let mutable enclosing: ResizeArray<IdentityWindow> = null
     let mutable authored = 0
 
+    let notInSetup () =
+        InvalidOperationException "CreateId is valid only while a component's setup runs"
+
     member _.Prefix = prefix
+
+    /// <summary>The open window's number, unique within the scope; 0 outside every window.</summary>
+    member _.Window = window
 
     /// <summary>
     /// Opens the setup window of the instance one step of <c>kind</c> below <c>parent</c>: <c>InstanceStep.Root</c>
@@ -115,8 +125,11 @@ type IdentityScope(prefix: string) =
                     B = windowB
                     Path = path
                     Issued = issued
+                    Window = window
                 }
 
+        windowCount <- windowCount + 1
+        window <- windowCount
         opened <- true
         windowParent <- parent
         windowKind <- kind
@@ -128,20 +141,23 @@ type IdentityScope(prefix: string) =
     /// <summary>Closes the open window and reopens the window it was entered in, if any.</summary>
     member _.Leave() : unit =
         if not (isNull enclosing) && enclosing.Count > 0 then
-            let window = enclosing[enclosing.Count - 1]
+            let outer = enclosing[enclosing.Count - 1]
             enclosing.RemoveAt (enclosing.Count - 1)
-            windowParent <- window.Parent
-            windowKind <- window.Kind
-            windowA <- window.A
-            windowB <- window.B
-            path <- window.Path
-            issued <- window.Issued
+            windowParent <- outer.Parent
+            windowKind <- outer.Kind
+            windowA <- outer.A
+            windowB <- outer.B
+            path <- outer.Path
+            issued <- outer.Issued
+            window <- outer.Window
         else
             opened <- false
             windowParent <- null
             path <- null
+            window <- 0
 
     /// <summary>The open window's path, allocated on the first call within the window.</summary>
+    /// <exception cref="T:System.InvalidOperationException">No setup window is open.</exception>
     member _.Path() : InstancePath =
         if not opened then
             raise (InvalidOperationException "An instance path is available only while a component's setup runs")
@@ -155,12 +171,23 @@ type IdentityScope(prefix: string) =
     /// <exception cref="T:System.InvalidOperationException">No setup window is open.</exception>
     member this.CreateId() : string =
         if not opened then
-            raise (InvalidOperationException "CreateId is valid only while a component's setup runs")
+            raise (notInSetup ())
 
         let text = this.Path().Text
         let n = issued
         issued <- n + 1
         prefix + "-" + text + "-" + string n
+
+    /// <summary>
+    /// <c>CreateId</c> for the instance whose setup opened window <c>owner</c>, a <c>Window</c> value read inside that
+    /// setup.
+    /// </summary>
+    /// <exception cref="T:System.InvalidOperationException"><c>owner</c> is not the open window.</exception>
+    member this.CreateIdIn(owner: int) : string =
+        if owner = 0 || owner <> window then
+            raise (notInSetup ())
+
+        this.CreateId ()
 
     /// <summary><c>prefix-path-an</c> for an authored component under <c>path</c>, <c>n</c> counting across the scope.</summary>
     member _.CreateAuthoredId(path: InstancePath) : string =

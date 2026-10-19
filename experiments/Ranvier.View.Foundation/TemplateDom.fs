@@ -742,13 +742,18 @@ let private partInstance (state: obj array) (childBase: int) (part: int) : obj =
     else
         at (unbox<obj array>(at state (childBase + part - 1))) StateInstance
 
-/// <summary>Runs a template's setup on <c>props</c>, untracked.</summary>
+/// <summary>Runs a template's setup on <c>props</c>, untracked, inside the instance's open identity window.</summary>
 let private setUp (template: TemplateComponent) (services: MountServices) (props: obj) =
-    Api.untrack (fun () -> template.Setup.Invoke (services.Setup, props))
+    let setup = ownSetup services.Identity services.Setup
+    Api.untrack (fun () -> template.Setup.Invoke (setup, props))
 
-/// <summary>Runs an inlined child's setup on the props read from <c>owner</c>, the instance of its owning part, untracked.</summary>
+/// <summary>
+/// Runs an inlined child's setup on the props read from <c>owner</c>, the instance of its owning part, untracked,
+/// inside the child's open identity window.
+/// </summary>
 let private setUpChild (services: MountServices) (child: CompiledChild) (owner: obj) =
-    Api.untrack (fun () -> child.Definition.Setup.Invoke (services.Setup, child.Props.Invoke owner))
+    let setup = ownSetup services.Identity services.Setup
+    Api.untrack (fun () -> child.Definition.Setup.Invoke (setup, child.Props.Invoke owner))
 
 /// <summary>
 /// Materialises one instance at the position one step of <c>kind</c> below <c>parent</c>: runs setup, clones the

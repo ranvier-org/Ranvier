@@ -729,8 +729,36 @@ let private holeIdentity () =
         ("""<!--[r--><div id="r-0-0"><!--[--><i id="r-0.r0.0-0"></i><i id="r-0.r0.0.a0-0"></i><!--]--></div><!--]-->""", holeIds)
         (html, List.ofSeq identityLog)
 
+/// <summary>The <c>id</c> attribute values of <c>html</c>, in document order.</summary>
+let private htmlIds (html: string) =
+    [
+        for found in Text.RegularExpressions.Regex.Matches (html, " id=\"([^\"]*)\"") do
+            found.Groups[1].Value
+    ]
+
+let private nestedIdentity () =
+    identityLog.Clear ()
+    let html = Server.render Server.Options.defaults idNested [| 1; 2 |]
+    equal (nestedIds, nestedIds) (List.ofSeq identityLog, htmlIds html)
+
+let private holesIdentity () =
+    identityLog.Clear ()
+    let html = Server.render Server.Options.defaults idHoles ()
+    equal (holesIds, holesIds) (List.ofSeq identityLog, htmlIds html)
+
+let private createIdInLaterSetup () =
+    let error =
+        failure (fun () ->
+            Server.render Server.Options.defaults (capturedCreateId ()) ()
+            |> ignore)
+
+    equal (true, "CreateId is valid only while a component's setup runs") (error :? InvalidOperationException, error.Message)
+
 let cases: (string * (unit -> unit)) array =
     [|
+        "CreateId numbers inlined children in pre-order and puts an inlined child's rows under its path", nestedIdentity
+        "each view row counts its authored steps from 0 and the enclosing row resumes its count after it", holesIdentity
+        "a Setup kept from one setup raises when called during another instance's setup", createIdInLaterSetup
         "CreateId follows the instance path for inlined children before and after regions, nested rows and arms", serverIdentity
         "CreateId after setup raises", createIdAfterSetup
         "authored components receive ids distinct from template ids", authoredIds

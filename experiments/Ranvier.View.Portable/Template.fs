@@ -798,7 +798,7 @@ type internal ServerWriter(backend: HtmlBackend) =
             identity.Enter (parent, kind, a, b)
 
             try
-                parts[0] <- definition.Setup.Invoke (setup, props)
+                parts[0] <- definition.Setup.Invoke (ownSetup identity setup, props)
 
                 if plan.Positioned then
                     path <- identity.Path ()
@@ -906,7 +906,7 @@ type internal ServerWriter(backend: HtmlBackend) =
                     identity.Enter (path, InstanceStep.Child, child - 1, 0)
 
                     try
-                        parts[child] <- inlined.Definition.Setup.Invoke (childSetup, props)
+                        parts[child] <- inlined.Definition.Setup.Invoke (ownSetup identity childSetup, props)
                     finally
                         identity.Leave ()
 
