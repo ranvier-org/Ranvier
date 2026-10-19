@@ -30,6 +30,11 @@ module Spec =
         projects
         |> List.filter _.RelativePath.StartsWith("src")
 
+    /// The source projects that pack: every one except those with `<IsPackable>false</IsPackable>`.
+    let packableProjects =
+        sourceProjects
+        |> List.filter (fun project -> not ((System.IO.File.ReadAllText project.Path).Contains "<IsPackable>false</IsPackable>"))
+
     let testProjects =
         projects
         |> List.filter _.RelativePath.StartsWith("tests")
@@ -125,7 +130,9 @@ module Stage =
 
                     run (
                         async {
-                            !!"**/**/bin" ++ "temp" -- "bin" -- "**/node_modules/**"
+                            !!"**/**/bin" ++ "temp"
+                            -- "bin"
+                            -- "**/node_modules/**"
                             |> Shell.cleanDirs
                         }
                     )
@@ -216,7 +223,7 @@ module Stage =
 
                     projects
                     |> function
-                        | [] -> Spec.sourceProjects |> List.map _.Path
+                        | [] -> Spec.packableProjects |> List.map _.Path
                         | projects -> projects
                     |> List.map (fun project ->
                         stage $"pack {project}" {
@@ -250,7 +257,7 @@ module Stage =
 
                     projects
                     |> function
-                        | [] -> Spec.sourceProjects |> List.map _.Path
+                        | [] -> Spec.packableProjects |> List.map _.Path
                         | projects -> projects
                     |> List.map (fun project ->
                         stage $"pack traced {project}" {
