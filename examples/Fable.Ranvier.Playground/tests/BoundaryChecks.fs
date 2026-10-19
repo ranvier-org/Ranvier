@@ -226,6 +226,36 @@ let private removedPendingRow (ops: Operations<'view>) (run: 'view -> Backend ->
     equal "x" host.textContent
     mounted.Dispose ()
 
+/// <summary>Replaces the one pending row and adds a row in the same pass; the boundary reveals both rows after the pass.</summary>
+let private replacedPendingRow (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+    let never = graph.Run (fun () -> Api.createAsyncSource<string>())
+    let other = graph.Run (fun () -> Api.createAsyncSource<string>())
+    let rows = graph.Run (fun () -> Api.createSignal [ 1; 2 ])
+    let host = host ()
+
+    let view =
+        ops.Boundary (
+            ops.Text "loading",
+            (fun failure -> ops.Text failure.Error.Message),
+            fun _ ->
+                Keyed.list ops id (fun () -> rows.Value) (fun current ->
+                    Typed.reactiveText ops (fun () ->
+                        (if current () = 2 then never.Value else other.Value)
+                        + string (current ())))
+        )
+
+    let mounted =
+        mountWith (modeOf queued) graph None strict host None (fun context -> run view context.Backend)
+
+    graph.Run (fun () -> other.Settle "x")
+    mounted.Flush ()
+    equal "loading" host.textContent
+    graph.Run (fun () -> rows.Value <- [ 3; 1 ])
+    mounted.Flush ()
+    equal "x3x1" host.textContent
+    mounted.Dispose ()
+
 let private messages (reports: ResizeArray<exn list>) =
     [ for errors in reports -> errors |> List.map _.Message ]
 
@@ -1133,6 +1163,8 @@ let cases: (string * (unit -> unit)) array =
         fun () -> movedWhilePending Program.ops Program.run false
         "tree synchronous: removing the last pending row reveals the boundary", fun () -> removedPendingRow Tree.ops Tree.run false
         "program queued: removing the last pending row reveals the boundary", fun () -> removedPendingRow Program.ops Program.run true
+        "tree synchronous: replacing the last pending row reveals both rows after the pass", fun () -> replacedPendingRow Tree.ops Tree.run false
+        "program queued: replacing the last pending row reveals both rows after the pass", fun () -> replacedPendingRow Program.ops Program.run true
         "tree synchronous: a failed reader under a boundary shows the error view, cleans up once and reports once",
         fun () -> readerFailure Tree.ops Tree.run false
         "program queued: a failed reader under a boundary shows the error view, cleans up once and reports once",
