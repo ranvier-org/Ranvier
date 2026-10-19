@@ -25,8 +25,12 @@ Each mutant is one edit to `experiments/Ranvier.View.Foundation`, compiled into 
 
 ### The surviving mutant
 
-Running a reveal synchronously from `Ready` left every test passing. The reveal runs inside a list pass when the pending row's disposal releases the last waiting binding. The existing `removing the last pending row` tests remove the row without another change in the pass, so a reveal in the middle of the pass has nothing left to disturb. `replacedPendingRow` removes the pending row and adds a row in one pass (`[1; 2]` to `[3; 1]`) and expects `x3x1` once the pass ends. The mutant fails it in the tree synchronous and program queued modes.
+Running a reveal synchronously from `Ready` left every test passing. The reveal runs inside a list pass when the pending row's disposal releases the last waiting binding. The existing `removing the last pending row` tests remove the row, and the existing tests change nothing else in the pass. `replacedPendingRow` removes the pending row and adds a row in one pass (`[1; 2]` to `[3; 1]`) and expects `x3x1` once the pass ends. The mutant fails it in the tree synchronous and program queued modes.
 
 ## Finding
 
-Replacing a pending `Branch.select` arm with another pending arm reveals the boundary with empty content on the unmutated code: the cause is not established. Restoring `&& waiting = 0` to `Settle` does not change the result. No test records this; it needs a fix in the boundary, not a test.
+Replacing a pending `Branch.select` arm with another pending arm reveals the boundary with empty content on the unmutated code. `Settle` has no `&& waiting = 0` clause in this code; adding it alone does not change the result.
+
+The brief's `Settle` clause mutant was not run: the clause it removes is absent.
+
+Cause and fix: a new binding's first read runs in its own queued effect, after the boundary effect that the replaced binding's `Ready` already queued, so `Settle` saw `waiting = 0` before the new binding registered; `7e90084` records each new binding under an unrevealed boundary as waiting until its first read (`ViewScope.Expect`) and adds `&& waiting = 0` to `Settle`; template arms show the same bug and take the same fix, and a keyed row replacing the one pending row with another pending row needs only the `Settle` clause.
