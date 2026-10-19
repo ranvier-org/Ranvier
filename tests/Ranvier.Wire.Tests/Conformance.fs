@@ -182,6 +182,26 @@ let private primitives: Codec<Primitives> =
             }
     }
 
+type Builder =
+    {
+        Name: string
+        Constructor: int option
+    }
+
+let private builder: Codec<Builder> =
+    objectCodec {
+        let! name = Codec.field "name" (fun (value: Builder) -> value.Name) Codec.string
+
+        and! constructor =
+            Codec.optional "constructor" (fun (value: Builder) -> value.Constructor) Codec.int
+
+        return
+            {
+                Name = name
+                Constructor = constructor
+            }
+    }
+
 let private alice =
     {
         Name = "Alice"
@@ -482,4 +502,45 @@ let tests =
             reads "a uint16 string -0" (=) Codec.uint16 "\"-0\"" 0us "0"
             reads "a uint32 string -0" (=) Codec.uint32 "\"-0\"" 0u "0"
             reads "a uint64 string -0" (=) Codec.uint64 "\"-0\"" 0UL "\"0\""
+            case
+                "a map with keys in JavaScript's own-property order"
+                (=)
+                (Codec.dict Codec.int)
+                (Map.ofList [ "10", 0; "2", 1; "a", 2; "__proto__", 3; "01", 4; "-1", 5; "4294967295", 6 ])
+                (Same """{"2":1,"10":0,"-1":5,"01":4,"4294967295":6,"__proto__":3,"a":2}""")
+            reads
+                "key-value pairs in JavaScript's own-property order"
+                (=)
+                (Codec.keyValuePairs Codec.int)
+                """{"b":1,"2":2,"__proto__":3}"""
+                [ "2", 2; "b", 1; "__proto__", 3 ]
+                """{"2":2,"b":1,"__proto__":3}"""
+            reads
+                "a map with a repeated key keeps its last value"
+                (=)
+                (Codec.dict Codec.int)
+                """{"a":1,"a":2}"""
+                (Map.ofList [ "a", 2 ])
+                """{"a":2}"""
+            reads
+                "key-value pairs with a repeated key keep one pair"
+                (=)
+                (Codec.keyValuePairs Codec.int)
+                """{"a":1,"b":3,"a":2}"""
+                [ "a", 2; "b", 3 ]
+                """{"a":2,"b":3}"""
+            reads
+                "a record beside keys named after Object.prototype members"
+                (=)
+                person
+                """{"name":"A","age":1,"hasOwnProperty":0,"constructor":1,"toString":2,"__proto__":3}"""
+                { Name = "A"; Age = 1; Email = None }
+                """{"name":"A","age":1}"""
+            case "a record whose absent optional field is named constructor" (=) builder { Name = "A"; Constructor = None } (Same """{"name":"A"}""")
+            case
+                "a record whose optional field named constructor is present"
+                (=)
+                builder
+                { Name = "A"; Constructor = Some 1 }
+                (Same """{"name":"A","constructor":1}""")
         ]

@@ -27,7 +27,8 @@ let back = wire.Decode text // Ok ..., or Error (WireError.Syntax | Limit | Shap
 `Decode` returns every failure as an `Error`: `Syntax` for text that is null, not JSON or holds a lone surrogate,
 `Limit` for text over the codec's `WireLimits` (depth 64 and 100,000 array elements plus object members, checked before
 parsing, and 4,300 digits for a `Codecs.bigint` value, by default), and `Shape` for JSON that does not fit the type,
-including an exception raised inside a decoder. `Encode` raises `ArgumentException` (under Fable, an `Error`) for a
+including an exception raised inside a decoder. A `Shape` message quotes a number value in full and at most 256
+characters of any other value's JSON text, followed by `…`. `Encode` raises `ArgumentException` (under Fable, an `Error`) for a
 value holding a lone surrogate.
 
 ## Wire contract
@@ -51,6 +52,11 @@ On both targets, an integer string for the codecs from `sbyte` to `uint64` is ex
 and optional ASCII whitespace, holding a value within the type's range: `" 42"`, `"+42"` and `"0042"` decode as 42, and
 `"-0"` as 0. Any other string is a `Shape` error, including `"0x10"`, `"1_000"`, `"1e3"` and a string holding U+FEFF
 or U+0000.
+
+On both targets an object's keys are written, and listed by `Codec.keyValuePairs` and `Decode.keyValuePairs`, in
+JavaScript's own-property order: the keys that are array indexes (the canonical decimal text of an integer from 0 to
+4294967294) first in ascending numeric order, then the other keys in insertion order, with a repeated key at its first
+position holding its last value.
 
 Use `Codecs.dateTimeOffset`, `Codecs.bigint` and `Codecs.decimal` for those types. Thoth's own `datetimeOffset`,
 `bigint` and `decimal` codecs, encoders and decoders write or read differently on the two targets and are marked

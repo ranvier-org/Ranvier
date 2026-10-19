@@ -1,5 +1,6 @@
 module Ranvier.Wire.Tests.WireDecoding
 
+open System
 open Expecto
 open Ranvier.Wire.Thoth.Json.Core
 open Ranvier.Wire
@@ -61,6 +62,12 @@ let private raisesLoneSurrogate (name: string) (index: int) (encode: unit -> str
 
 let private raisesNaming (field: string) (create: unit -> WireCodec<Json>) =
     Expect.throwsC (create >> ignore) (fun ex -> Expect.stringContains ex.Message field field)
+
+/// <summary>A 60-deep array holding 90,001 ints, within the default limits.</summary>
+let private deepInts =
+    String.replicate 60 "["
+    + String.concat "," (List.replicate 90001 "7")
+    + String.replicate 60 "]"
 
 let private throwing: Codec<int> =
     Codec.create
@@ -304,4 +311,40 @@ let tests =
                 raisesNaming "MaxDepth" (fun () -> within 0 100)
                 raisesNaming "MaxDepth" (fun () -> within 1025 100)
                 raisesNaming "MaxItems" (fun () -> within 64 0)
+
+            testCase "an object of 100,000 members decodes through Codec.dict in under three seconds"
+            <| fun () ->
+                let text =
+                    "{"
+                    + String.concat "," (List.init 100000 (fun i -> quote + "k" + string i + quote + ":" + string i))
+                    + "}"
+
+                let started = DateTime.UtcNow
+                let decoded = counts.Decode text |> expectOk "100,000 members"
+                let elapsed = (DateTime.UtcNow - started).TotalMilliseconds
+                Expect.equal decoded.Count 100000 "member count"
+                Expect.equal decoded["k99999"] 99999 "last member"
+                Expect.isLessThan elapsed 3000.0 "elapsed milliseconds"
+
+            testCase "a shape error echoes at most 256 characters of a large value"
+            <| fun () ->
+                let error =
+                    people.Decode deepInts
+                    |> expectError "a deep array"
+
+                Expect.isTrue (isShape error) "kind"
+                Expect.isLessThan error.Message.Length 2000 "message length"
+                Expect.stringContains error.Message "…" "truncation mark"
+#if !FABLE_COMPILER
+            // .NET only: GC.GetAllocatedBytesForCurrentThread has no Fable counterpart.
+            testCase "a shape error on a large value allocates less than 16 MB"
+            <| fun () ->
+                let before = GC.GetAllocatedBytesForCurrentThread ()
+
+                people.Decode deepInts
+                |> expectError "a deep array"
+                |> ignore
+
+                Expect.isLessThan (GC.GetAllocatedBytesForCurrentThread () - before) (16L * 1024L * 1024L) "allocated bytes"
+#endif
         ]

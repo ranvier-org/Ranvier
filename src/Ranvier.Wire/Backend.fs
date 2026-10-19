@@ -58,8 +58,7 @@ let private safeIntegerText (value: obj) : string option =
     else
         None
 
-let private encoderHelpers =
-    Helpers.encoding Ranvier.Wire.Thoth.Json.JavaScript.Encode.helpers
+let private encoderHelpers = Helpers.encoding Helpers.fableEncoding
 
 /// <summary>The value's wire text, as <c>JSON.stringify</c> writes it.</summary>
 let encode (value: IEncodable) : string =
@@ -90,7 +89,7 @@ let decodeWithSourceText (sourceText: bool) (limits: WireLimits) (decoder: Decod
         | Ok json ->
             let numberText = if sourceText then exactNumberText else safeIntegerText
 
-            let inner = Ranvier.Wire.Thoth.Json.JavaScript.Decode.helpers
+            let inner = Helpers.fableDecoding
             let helpers = Helpers.decoding numberText limits.MaxBigIntDigits inner
 
             let locating () =
@@ -130,7 +129,7 @@ let decode (limits: WireLimits) (decoder: Decoder<'T>) (text: string) : Result<'
             use document =
                 JsonDocument.Parse (text, JsonDocumentOptions (MaxDepth = limits.MaxDepth))
 
-            let inner = Ranvier.Wire.Thoth.Json.System.Text.Json.Decode.helpers
+            let inner = Helpers.netDecoding document.RootElement
             let helpers = Helpers.decoding Helpers.netNumberText limits.MaxBigIntDigits inner
 
             let locating () =
