@@ -567,6 +567,35 @@ let private focusInsideWidget () =
     equal true focused
 
 
+/// <summary>A strict report raised after a case returns fails the next case, and only that one.</summary>
+let private lateStrictReport () =
+    let wrapped = strictCases [| "first", ignore; "second", ignore |]
+
+    let outcome (check: unit -> unit) =
+        try
+            check ()
+            None
+        with error ->
+            Some error.Message
+
+    snd wrapped[0] ()
+
+    try
+        strict [ Exception "late" ]
+    with _ ->
+        ()
+
+    let next = outcome (snd wrapped[1])
+    let after = outcome (snd wrapped[1])
+
+    let late =
+        next
+        |> Option.exists (fun message ->
+            message.StartsWith "Late report from the previous case"
+            && message.Contains "late")
+
+    equal (true, None) (late, after)
+
 let cases: (string * (unit -> unit)) array =
     strictCases
     <| Array.concat
@@ -624,6 +653,7 @@ let cases: (string * (unit -> unit)) array =
             [|
                 "a widget element renders empty on the server; Reject raises and Omit writes the element", serverWidget
                 "a widget hosting a mount on another graph disposes it with the outer mount", widgetOnOtherGraph
+                "a strict report raised after a case returns fails the next case", lateStrictReport
             |]
         ]
 

@@ -33,13 +33,20 @@ let strict (errors: exn list) =
     strictReports.Add reported
     failwithf "Unexpected report %A" reported
 
-/// <summary>The cases, each failing when its run passes any report to <c>strict</c>.</summary>
+/// <summary>
+/// The cases, each failing when its run passes any report to <c>strict</c>. A case also fails, without running, when
+/// <c>strict</c> received a report after the previous case returned.
+/// </summary>
 let strictCases (cases: (string * (unit -> unit)) array) =
     [|
         for name, check in cases ->
             name,
             fun () ->
-                strictReports.Clear ()
+                if strictReports.Count > 0 then
+                    let reported = List.ofSeq strictReports
+                    strictReports.Clear ()
+                    failwithf "Late report from the previous case %A" reported
+
                 check ()
 
                 if strictReports.Count > 0 then

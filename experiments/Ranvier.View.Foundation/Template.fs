@@ -8,8 +8,9 @@ open Ranvier
 open Ranvier.View.Foundation.Representation
 
 /// <summary>
-/// Markup inserted into an element without escaping. Create it only from trusted or sanitised content: scripts in it
-/// stay inert, while inline event handler attributes and <c>javascript:</c> URLs run.
+/// Markup inserted into an element without escaping. Create it only from trusted or sanitised content. On the client,
+/// script elements in the markup stay inert while inline event handler attributes and <c>javascript:</c> URLs run; in
+/// server HTML the markup is part of the document, and every script, handler and URL in it runs.
 /// </summary>
 /// <remarks>The markup must be a well-formed fragment for the element that receives it.</remarks>
 [<Sealed>]
@@ -716,7 +717,10 @@ type HookBuilder<'inst> internal () =
 /// <summary>Raw-HTML parts: the element's whole content, parsed without escaping.</summary>
 [<Sealed>]
 type UnsafeBuilder<'inst> internal () =
-    /// <summary>The element's content, parsed as HTML without escaping. The template declares the element empty.</summary>
+    /// <summary>
+    /// The element's content, parsed as HTML without escaping. The template declares the element empty. Scripts,
+    /// handlers and URLs in the markup run as <c>UnsafeHtml</c> states for the client and for server HTML.
+    /// </summary>
     member _.html(content: UnsafeHtml) : Part<'native, 'inst> =
         DynamicPart
             {
@@ -726,7 +730,10 @@ type UnsafeBuilder<'inst> internal () =
                 Same = contentSame
             }
 
-    /// <summary>The element's content, parsed as HTML without escaping and parsed again when the reader returns different markup.</summary>
+    /// <summary>
+    /// The element's content, parsed as HTML without escaping and parsed again when the reader returns different
+    /// markup. Scripts, handlers and URLs in the markup run as <c>UnsafeHtml</c> states for the client and for server HTML.
+    /// </summary>
     member _.html(read: 'inst -> UnsafeHtml) : Part<'native, 'inst> =
         DynamicPart (slot ContentTarget RenderMode read contentSame)
 
