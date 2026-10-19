@@ -623,9 +623,9 @@ let tests =
 
                 graph.Pump () |> ignore
                 offThread (fun () -> feed.Push 1)
-                graph.Pump () |> ignore
-                Expect.equal graph.PendingWork 1 "the item during the wake posted one wake"
-                graph.Pump () |> ignore
+                let ran = graph.Pump ()
+                Expect.equal ran 2 "the first wake and exactly one further wake"
+                Expect.equal graph.PendingWork 0 "nothing left queued"
                 Expect.sequenceEqual seen [ 1; 11 ] "the later item's state is published"
 
             testCase "an off-thread item delivered during a wake that runs inline posts a further wake"
