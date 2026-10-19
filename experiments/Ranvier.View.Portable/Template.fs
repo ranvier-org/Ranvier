@@ -696,19 +696,19 @@ type internal ServerWriter(backend: HtmlBackend) =
 
     /// <summary>Sets up an instance of <c>definition</c> in <c>scope.Nest</c> and writes it.</summary>
     /// <remarks>
-    /// The head entries of the instance and of its inlined children activate in a new frame of the backend's head
-    /// collector; the content of each region activates in a later child frame of it, in region order.
+    /// The instance and each inlined child are groups of the backend's innermost open head container, entered in
+    /// document order; each region is a child container of it, closed in region order.
     /// </remarks>
     member this.Write(scope: ServerScope, definition: TemplateComponent, props: obj) : unit =
         match backend.Heads with
         | null -> this.Instance (scope, definition, props)
         | heads ->
-            let outer = heads.Enter ()
+            let outer = heads.EnterGroup ()
 
             try
                 this.Instance (scope, definition, props)
             finally
-                heads.Leave outer
+                heads.LeaveGroup outer
 
     member private this.Instance(scope: ServerScope, definition: TemplateComponent, props: obj) : unit =
         let plan = serverPlan definition
@@ -780,7 +780,7 @@ type internal ServerWriter(backend: HtmlBackend) =
                         else
                             HeadMarkup.title head.Opening (unbox<string>(head.Title.Invoke instance))
 
-                    heads.Add (part, head.Key, markup)
+                    heads.Add (head.Key, markup)
 
                 index <- index + 1
             | BrowserOp _ ->
@@ -792,12 +792,12 @@ type internal ServerWriter(backend: HtmlBackend) =
                 match backend.Heads with
                 | null -> this.Region (scope, region, instance)
                 | heads ->
-                    let outer = heads.Enter ()
+                    heads.Open ()
 
                     try
                         this.Region (scope, region, instance)
                     finally
-                        heads.Leave outer
+                        heads.Close ()
 
                 index <- index + 1
             | EnterOp child ->
@@ -809,8 +809,18 @@ type internal ServerWriter(backend: HtmlBackend) =
                 scope.Inline (
                     setup,
                     fun scope childSetup ->
-                        parts[child] <- inlined.Definition.Setup.Invoke (childSetup, props)
-                        next.Value <- this.Run (scope, childSetup, plan, parts, child, resume)
+                        match backend.Heads with
+                        | null ->
+                            parts[child] <- inlined.Definition.Setup.Invoke (childSetup, props)
+                            next.Value <- this.Run (scope, childSetup, plan, parts, child, resume)
+                        | heads ->
+                            let outer = heads.EnterGroup ()
+
+                            try
+                                parts[child] <- inlined.Definition.Setup.Invoke (childSetup, props)
+                                next.Value <- this.Run (scope, childSetup, plan, parts, child, resume)
+                            finally
+                                heads.LeaveGroup outer
                 )
 
                 index <- next.Value

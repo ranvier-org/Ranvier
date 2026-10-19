@@ -519,6 +519,62 @@ let private activationOrder () =
          + """<link data-ranvier-head="" rel="preload" href="/c.css">""")
         (Server.renderPage Server.Options.defaults rowsThenChild [| 1; 2 |]).Head
 
+let private innerRow =
+    Component.define (fun _ (item: unit -> int) -> item) (fun t -> t.fragment [| t.Document.title "Inner"; preload t "/inner.css" |])
+
+let private outerRow =
+    Component.define (fun _ (item: unit -> int) -> item ()) (fun t ->
+        t.fragment
+            [|
+                t.Document.title (fun (index: int) -> "Row " + string index)
+                t.Document.link
+                    [|
+                        t.Attrs.attribute ("rel", "preload")
+                        t.Attrs.attribute ("href", fun (index: int) -> Some ("/row-" + string index + ".css"))
+                    |]
+                t.ul
+                    [||]
+                    [|
+                        t.each id (fun (index: int) -> if index = 1 then [| 10 |] else [||]) innerRow
+                    |]
+            |])
+
+let private nestedLists =
+    Component.define (fun _ () -> [| 1; 2 |]) (fun t -> t.div [||] [| t.each id id outerRow |])
+
+let private nestedListsHead =
+    """<title data-ranvier-head="title">Inner</title>"""
+    + """<link data-ranvier-head="" rel="preload" href="/row-1.css">"""
+    + """<link data-ranvier-head="" rel="preload" href="/row-2.css">"""
+    + """<link data-ranvier-head="" rel="preload" href="/inner.css">"""
+
+let private containerOrder () =
+    let expandedHole =
+        Server.renderPage
+            Server.Options.defaults
+            holed
+            {
+                Caption = "C"
+                Body = Component.renderWith Program.ops rowsThenChild [| 1; 2 |]
+            }
+
+    equal
+        (nestedListsHead,
+         nestedListsHead,
+         """<title data-ranvier-head="title">Row 2</title>"""
+         + """<meta data-ranvier-head="meta:name=description" name="description" content="child">"""
+         + """<link data-ranvier-head="" rel="preload" href="/c.css">""")
+        ((Server.renderPage Server.Options.defaults nestedLists ()).Head,
+         (Server.renderPage
+             Server.Options.defaults
+             holed
+             {
+                 Caption = "C"
+                 Body = Component.renderWith Program.ops nestedLists ()
+             })
+             .Head,
+         expandedHole.Head)
+
 let private escapedPage =
     Component.define (fun _ (page: PageProps) -> page) (fun t ->
         t.fragment
@@ -626,6 +682,7 @@ let cases: (string * (unit -> unit)) array =
     [|
         "renderPage writes keys in first-activation order and the last entry for a key", headOrder
         "renderPage activates an instance's own entries before its inlined children's and its regions' instances after both", activationOrder
+        "renderPage activates every row of a pass before the rows' inner rows, compiled and expanded", containerOrder
         "renderPage escapes titles and attribute values and marks every element", pageEscapes
         "render keeps the document entry policy and renderPage collects whatever the policy", headPolicy
         "renderPage collects the entries of a compiled and an expanded template in a view hole", holedHeads
@@ -815,17 +872,19 @@ let private concurrentHeads () =
 
 let private collectorTruncates () =
     let heads = HeadCollector ()
-    heads.Add (0, "title", "<t1>")
-    heads.Add (0, null, "<l1>")
-    heads.Add (0, "meta:name=d", "<m1>")
+    heads.Add ("title", "<t1>")
+    heads.Add (null, "<l1>")
+    heads.Add ("meta:name=d", "<m1>")
     let mark = heads.Count
-    let outer = heads.Enter ()
-    heads.Add (0, "title", "<t2>")
-    heads.Add (0, null, "<l2>")
-    heads.Add (0, "meta:name=d", "<m2>")
-    heads.Add (0, "link:canonical", "<c>")
-    heads.Leave outer
-    equal "<t2><l1><m2><l2><c>" (heads.ToString ())
+    heads.Open ()
+    let outer = heads.EnterGroup ()
+    heads.Add ("title", "<t2>")
+    heads.Add (null, "<l2>")
+    heads.LeaveGroup outer
+    heads.Add ("meta:name=d", "<m2>")
+    heads.Add ("link:canonical", "<c>")
+    heads.Close ()
+    equal "<t2><l1><m2><c><l2>" (heads.ToString ())
     heads.Truncate mark
     equal (3, "<t1><l1><m1>") (heads.Count, heads.ToString ())
     equal true ((failure (fun () -> heads.Truncate 4)) :? ArgumentException)

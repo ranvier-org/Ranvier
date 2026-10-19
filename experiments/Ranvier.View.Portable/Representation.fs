@@ -375,35 +375,82 @@ module internal HeadMarkup =
             parts.Add ">"
             System.String.Join ("", parts)
 
-/// <summary>An instance's place in a request's activation order: the path of child indexes from the request root.</summary>
-[<Sealed>]
-type internal HeadFrame(path: int array) =
-    let mutable children = 0
+/// <summary>
+/// The server counterpart of a client placement container (the request's root, a region, or a view's keyed, switch or
+/// boundary content) with at least one entry in it or in a descendant.
+/// </summary>
+[<Sealed; AllowNullLiteral>]
+type internal HeadContainer(parent: HeadContainer) =
+    let mutable completed = 0
+    let mutable path: int array = null
 
-    member _.Path = path
+    /// <summary>The position among the parent's child containers in the order they closed; -1 while open.</summary>
+    member val Position = -1 with get, set
 
-    /// <summary>A new frame that activates after this frame's own entries and after every earlier child frame.</summary>
-    member _.Child() =
-        children <- children + 1
-        HeadFrame (Array.append path [| children - 1 |])
+    /// <summary>Gives <c>child</c> the next position among this container's closed children.</summary>
+    member _.Close(child: HeadContainer) =
+        child.Position <- completed
+        completed <- completed + 1
+
+    /// <summary>Whether this container and every ancestor except the root have closed.</summary>
+    member this.Final: bool =
+        isNull parent
+        || (this.Position >= 0 && parent.Final)
+
+    /// <summary>The positions from the root's child down to this container; empty for the root.</summary>
+    member this.Path: int array =
+        if not (isNull path) then
+            path
+        elif isNull parent then
+            path <- [||]
+            path
+        else
+            // An open container closes after every closed sibling.
+            let position =
+                if this.Position < 0 then
+                    System.Int32.MaxValue
+                else
+                    this.Position
+
+            let computed = Array.append parent.Path [| position |]
+
+            if this.Final then
+                path <- computed
+
+            computed
 
 /// <summary>
 /// The document head entries written by one request, as a log of keyed markup, written in the client's activation
-/// order: a frame's own entries by part and then in log order, followed by its child frames in creation order. Per
-/// key, the last activated entry is written at the position of the key's first activated entry; unkeyed entries are
-/// each written at their own position.
+/// order. A container's own entries come first, ordered by their instance group and then as logged; the entries of its
+/// child containers follow, ordered by the position at which each child closed. Per key, the last activated entry is
+/// written at the position of the key's first activated entry; unkeyed entries are each written at their own position.
 /// </summary>
+/// <remarks>A container or a group without entries allocates nothing beyond the open-container stack's slots.</remarks>
 [<Sealed; AllowNullLiteral>]
 type internal HeadCollector() =
     let keys = ResizeArray<string>()
     let markup = ResizeArray<string>()
-    let paths = ResizeArray<int array>()
-    let parts = ResizeArray<int>()
-    let mutable current = HeadFrame [||]
+    let owners = ResizeArray<HeadContainer>()
+    let groups = ResizeArray<int>()
+    // The open containers, innermost last: each one's container (null until its first entry), current group and
+    // number of groups entered.
+    let containers = ResizeArray<HeadContainer>([ null ])
+    let currentGroups = ResizeArray<int>([ 0 ])
+    let entered = ResizeArray<int>([ 0 ])
+
+    let current () =
+        let top = containers.Count - 1
+
+        if isNull containers[top] then
+            for index in 0..top do
+                if isNull containers[index] then
+                    containers[index] <- HeadContainer (if index = 0 then null else containers[index - 1])
+
+        containers[top]
 
     let activation (left: int) (right: int) =
-        let leftPath = paths[left]
-        let rightPath = paths[right]
+        let leftPath = owners[left].Path
+        let rightPath = owners[right].Path
         let shared = min leftPath.Length rightPath.Length
         let mutable order = 0
         let mutable index = 0
@@ -416,29 +463,52 @@ type internal HeadCollector() =
             order
         elif leftPath.Length <> rightPath.Length then
             compare leftPath.Length rightPath.Length
-        elif parts[left] <> parts[right] then
-            compare parts[left] parts[right]
+        elif groups[left] <> groups[right] then
+            compare groups[left] groups[right]
         else
             compare left right
 
     member _.Count = keys.Count
 
-    /// <summary>Logs an entry of <c>part</c> of the current frame; a null key marks it unkeyed.</summary>
-    member _.Add(part: int, key: string, html: string) =
+    /// <summary>Logs an entry of the current group of the innermost open container; a null key marks it unkeyed.</summary>
+    member _.Add(key: string, html: string) =
         keys.Add key
         markup.Add html
-        paths.Add current.Path
-        parts.Add part
+        owners.Add (current ())
+        groups.Add currentGroups[currentGroups.Count - 1]
 
-    /// <summary>Makes a new child of the current frame current, and returns the frame to pass to <c>Leave</c>.</summary>
-    member _.Enter() : HeadFrame =
-        let outer = current
-        current <- outer.Child ()
-        outer
+    /// <summary>Opens a child container of the innermost open container.</summary>
+    member _.Open() =
+        containers.Add null
+        currentGroups.Add 0
+        entered.Add 0
 
-    /// <summary>Makes <c>outer</c>, returned by the matching <c>Enter</c>, current again.</summary>
-    member _.Leave(outer: HeadFrame) =
-        current <- outer
+    /// <summary>Closes the innermost open container, placing its entries after those of its closed siblings.</summary>
+    member _.Close() =
+        let top = containers.Count - 1
+        let closing = containers[top]
+
+        if not (isNull closing) then
+            containers[top - 1].Close closing
+
+        containers.RemoveAt top
+        currentGroups.RemoveAt top
+        entered.RemoveAt top
+
+    /// <summary>
+    /// Starts the group of an instance in the innermost open container: its entries activate after those of the groups
+    /// entered before it. Returns the group to pass to <c>LeaveGroup</c>.
+    /// </summary>
+    member _.EnterGroup() : int =
+        let top = containers.Count - 1
+        let previous = currentGroups[top]
+        entered[top] <- entered[top] + 1
+        currentGroups[top] <- entered[top]
+        previous
+
+    /// <summary>Ends an instance's group: later entries join <c>previous</c>, the group returned by its <c>EnterGroup</c>.</summary>
+    member _.LeaveGroup(previous: int) =
+        currentGroups[currentGroups.Count - 1] <- previous
 
     /// <summary>
     /// Keeps the first <c>count</c> entries, so <c>ToString</c> writes the head of those entries alone. Raises
@@ -450,8 +520,8 @@ type internal HeadCollector() =
 
         keys.RemoveRange (count, keys.Count - count)
         markup.RemoveRange (count, markup.Count - count)
-        paths.RemoveRange (count, paths.Count - count)
-        parts.RemoveRange (count, parts.Count - count)
+        owners.RemoveRange (count, owners.Count - count)
+        groups.RemoveRange (count, groups.Count - count)
 
     /// <summary>The head HTML of the logged entries, concatenated without separators.</summary>
     override _.ToString() =
@@ -666,8 +736,18 @@ and [<Sealed>] HtmlBackend(policy: BrowserPolicy, sink: HtmlSink) =
         let values = Array.copy (items.Read ())
         Ranvier.Projection.ensureUniqueKeys items.Key.Invoke values
 
-        for item in values do
-            render (fun () -> item) this
+        match this.Heads with
+        | null ->
+            for item in values do
+                render (fun () -> item) this
+        | heads ->
+            heads.Open ()
+
+            try
+                for item in values do
+                    render (fun () -> item) this
+            finally
+                heads.Close ()
 
     override _.Attribute(key, value) =
         validateAttribute key
@@ -706,7 +786,7 @@ and [<Sealed>] HtmlBackend(policy: BrowserPolicy, sink: HtmlSink) =
         | null ->
             if policy = Reject then
                 raise (System.InvalidOperationException "Document metadata requires Server.renderPage")
-        | heads -> heads.Add (0, entry.Key, HeadMarkup.entry entry)
+        | heads -> heads.Add (entry.Key, HeadMarkup.entry entry)
 
     override _.Listen(_, _) =
         browserCapability ()
@@ -767,12 +847,12 @@ and [<Sealed>] HtmlBackend(policy: BrowserPolicy, sink: HtmlSink) =
         match this.Heads with
         | null -> this.RunComponent setup
         | heads ->
-            let outer = heads.Enter ()
+            let outer = heads.EnterGroup ()
 
             try
                 this.RunComponent setup
             finally
-                heads.Leave outer
+                heads.LeaveGroup outer
 
     /// <summary>Runs a component's setup, then its cleanups; a failure of either raises after every cleanup has run.</summary>
     member private _.RunComponent(setup: Setup -> unit) =
@@ -819,21 +899,37 @@ and [<Sealed>] HtmlBackend(policy: BrowserPolicy, sink: HtmlSink) =
         append "<!--[-->"
         let mark = sink.Mark ()
 
+        let heads = this.Heads
+
+        if not (isNull heads) then
+            heads.Open ()
+
         let outcome =
             try
-                views.Content { IsPending = fun () -> false } this
-                None
-            with error ->
-                Some error
+                try
+                    views.Content { IsPending = fun () -> false } this
+                    None
+                with error ->
+                    Some error
+            finally
+                if not (isNull heads) then
+                    heads.Close ()
 
         match outcome with
         | None -> ()
-        | Some (Ranvier.NotReadyException _) ->
-            sink.Truncate mark
-            views.Pending this
         | Some error ->
             sink.Truncate mark
-            views.Failed { Error = error; Retry = ignore } this
+
+            if not (isNull heads) then
+                heads.Open ()
+
+            try
+                match error with
+                | Ranvier.NotReadyException _ -> views.Pending this
+                | error -> views.Failed { Error = error; Retry = ignore } this
+            finally
+                if not (isNull heads) then
+                    heads.Close ()
 
         append "<!--]-->"
 

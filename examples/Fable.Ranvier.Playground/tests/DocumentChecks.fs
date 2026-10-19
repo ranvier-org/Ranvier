@@ -594,6 +594,51 @@ let private serverHeadShown queued () =
 
     equal [ ("Child", "child"); ("Row 2", "child") ] [ for definition in [ lateParent; rowsThenChild ] -> serverShown definition ]
 
+let private innerRow =
+    Component.define (fun _ (_: unit -> int) -> ()) (fun t -> t.fragment [| t.Document.title "Inner"; description "inner" t |])
+
+let private outerRow =
+    Component.define (fun _ (item: unit -> int) -> item ()) (fun t ->
+        t.fragment
+            [|
+                t.Document.title (fun (index: int) -> "Row " + string index)
+                t.Document.meta
+                    [|
+                        t.Attrs.attribute ("name", "description")
+                        t.Attrs.attribute ("content", fun (index: int) -> Some ("row " + string index))
+                    |]
+                t.ul
+                    [||]
+                    [|
+                        t.each id (fun (index: int) -> if index = 1 then [| 10 |] else [||]) innerRow
+                    |]
+            |])
+
+let private nestedLists =
+    Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.each id (fun _ -> [| 1; 2 |]) outerRow |])
+
+/// <summary>A template whose view hole holds <c>definition</c> expanded into a Program view.</summary>
+let private expandedIn (definition: Component<unit>) =
+    Component.define (fun _ () -> Component.renderWith Program.ops definition ()) (fun t -> t.div [||] [| t.view id |])
+
+let private containerShown queued () =
+    let clientShown (definition: Component<unit>) =
+        use graph = new Graph ()
+
+        let mounted =
+            mountTemplate queued graph strict (host ()) (Component.render definition ())
+
+        let shown = title (), headAttribute "meta[name=description]" "content"
+        mounted.Dispose ()
+        shown
+
+    let definitions = [ nestedLists; expandedIn nestedLists; expandedIn rowsThenChild ]
+
+    let expected = [ ("Inner", "inner"); ("Inner", "inner"); ("Row 2", "child") ]
+
+    equal expected [ for definition in definitions -> clientShown definition ]
+    equal expected [ for definition in definitions -> serverShown definition ]
+
 let cases: (string * (unit -> unit)) array =
     strictCases (
         Array.concat
@@ -610,6 +655,9 @@ let cases: (string * (unit -> unit)) array =
                 templated
                     "renderPage's head shows the title and meta a client mount shows for an inlined child before its parent's later entries and rows after both"
                     serverHeadShown
+                templated
+                    "renderPage's head shows the title and meta a client mount shows for nested lists and for rows and a child expanded in a view hole"
+                    containerShown
                 templated "a reactive title updates document.title and its pending read waits under a boundary" reactiveTitle
                 templated "entries under hidden content activate at reveal and withdraw on teardown" hiddenEntries
                 templated "a client mount adopts marked head elements without hydrate" adoptsMarked
