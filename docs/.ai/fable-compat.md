@@ -34,7 +34,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Edges.fs | 5 | 5 | 5 | 5 | 5 | 5 | 0 | 0 |
 | Invalidation.fs | 4 | 4 | 4 | 4 | 4 | 4 | 0 | 0 |
 | Lifetime.fs | 6 | 6 | 6 | 6 | 6 | 6 | 0 | 0 |
-| Retention.fs | 2 | 2 | 2 | 2 | 2 | 2 | 14 | 0 |
+| Retention.fs | 2 | 2 | 2 | 2 | 2 | 2 | 15 | 0 |
 | Tracing.fs | 2 | 2 | 2 | 82 | 77 | 77 | 1 | 0 |
 | TraceModelTests.fs | 0 | 0 | 0 | 12 | 12 | 12 | 2 | 0 |
 | Observers.fs | 102 | 102 | 102 | 102 | 102 | 102 | 0 | 0 |
@@ -57,7 +57,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | DischargeReentry.fs | 29 | 29 | 29 | 29 | 29 | 29 | 1 | 0 |
 | MapSemantics.fs | 42 | 42 | 42 | 42 | 42 | 42 | 0 | 1 |
 | Lenses.fs | 23 | 20 | 20 | 23 | 20 | 20 | 0 | 0 |
-| Combinators.fs | 202 | 202 | 202 | 202 | 202 | 202 | 2 | 0 |
+| Combinators.fs | 209 | 209 | 209 | 209 | 209 | 209 | 2 | 0 |
 | Timed.fs | 31 | 31 | 31 | 38 | 38 | 38 | 0 | 0 |
 | Streams.fs | 26 | 26 | 26 | 26 | 26 | 26 | 1 | 0 |
 | PreviousValues.fs | 12 | 12 | 12 | 12 | 12 | 12 | 15 | 0 |
@@ -81,7 +81,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 9 | 9 | 9 | 9 | 9 | 9 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1489 | 1468 | 1465 | 1629 | 1603 | 1600 | 101 | 1 |
+| **Total** | 1496 | 1475 | 1472 | 1636 | 1610 | 1607 | 102 | 1 |
 
 ## Tests.fs
 
@@ -506,6 +506,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | a failed read swallowed inside a {name} is released when it ends | JavaScript exposes no forced collection. |
 | a disposed aggregate memo is not retained by its fold | JavaScript exposes no forced collection. |
 | a tryFind memo disposed with its root is not retained | JavaScript exposes no forced collection. |
+| partition halves disposed with their root are not retained | JavaScript exposes no forced collection. |
 
 <details><summary>2 passed in every build and delivery that runs them</summary>
 
@@ -1428,7 +1429,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | foldGroup rejects a null subtract | Fable wraps a null function argument in a closure, so it is never null. |
 | a read through a memo of another graph publishes the current mean under a custom policy | the policy is an object expression over a generic interface member. |
 
-<details><summary>202 passed in every build and delivery that runs them</summary>
+<details><summary>209 passed in every build and delivery that runs them</summary>
 
 - 200 single edits at N=1000 make 200 predicate calls
 - a Keys reader wakes only when membership flips
@@ -1632,6 +1633,13 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - minBy stays asleep while it stays empty
 - disposing the calling scope stops the rank calls
 - disposing the tryMinBy memo releases the upstream rows
+- the halves are complementary, in upstream order
+- 200 single edits at N=1000 make 200 predicate calls across both halves
+- a throwing predicate excludes the key from both halves
+- a pending predicate keeps the last side; a never-settled key is pending in both
+- an effect reading both halves runs once per write
+- disposing one half leaves the other following edits
+- disposing the calling scope stops every predicate call
 
 </details>
 

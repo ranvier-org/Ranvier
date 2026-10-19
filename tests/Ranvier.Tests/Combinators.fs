@@ -3538,3 +3538,155 @@ let extremeTests =
                 Expect.equal (readersOf up 1) 0 "disposing the memo disposed its view and fold"
             }
         ]
+
+[<Tests>]
+let partitionTests =
+    let even (n: int) = n % 2 = 0
+
+    testList
+        "Projection.partition"
+        [
+            test "the halves are complementary, in upstream order" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1; 2, 2; 3, 3; 4, 4 ])
+                let evens, odds = rows source |> Projection.partition even
+
+                Expect.equal (evens.Keys, odds.Keys) ([| 2; 4 |], [| 1; 3 |]) "initial"
+                source.Value <- setN 1 6 source.Value
+                Expect.equal (evens.Keys, odds.Keys) ([| 1; 2; 4 |], [| 3 |]) "key 1 moves across"
+            }
+
+            test "200 single edits at N=1000 make 200 predicate calls across both halves" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ for i in 1..1000 -> i, 2 * i ])
+                let calls = ref 0
+
+                let fours, rest =
+                    rows source
+                    |> Projection.partition (fun n ->
+                        calls.Value <- calls.Value + 1
+                        n % 4 = 0)
+
+                keysAndRows fours |> ignore
+                keysAndRows rest |> ignore
+                calls.Value <- 0
+
+                for i in 1..200 do
+                    source.Value <- setN i (2 * i + 2) source.Value
+
+                Expect.equal calls.Value 200 "one predicate call per edit"
+            }
+
+            test "a throwing predicate excludes the key from both halves" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1; 2, 2; 3, 3; 4, 4 ])
+
+                let evens, odds =
+                    rows source
+                    |> Projection.partition (fun n -> if n = 13 then invalidOp "boom 13" else even n)
+
+                keysAndRows evens |> ignore
+                keysAndRows odds |> ignore
+                source.Value <- setN 2 13 source.Value
+
+                Expect.equal (evens.Keys, odds.Keys) ([| 4 |], [| 1; 3 |]) "key 2 is in neither half"
+                Expect.throwsC (fun () -> evens.Get 2 |> ignore) (fun ex -> Expect.equal ex.Message "boom 13" "evens.Get")
+                Expect.throwsC (fun () -> odds.Get 2 |> ignore) (fun ex -> Expect.equal ex.Message "boom 13" "odds.Get")
+                source.Value <- setN 2 2 source.Value
+                Expect.equal evens.Keys [| 2; 4 |] "recovered"
+            }
+
+            test "a pending predicate keeps the last side; a never-settled key is pending in both" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let flights = dict [ for n in [ 10; 11; 30 ] -> n, createAsyncSource<bool>() ]
+                flights[10].Settle true
+                let source = createSignal (items [ 1, 10; 3, 30 ])
+
+                let yes, no =
+                    rows source
+                    |> Projection.partition (fun n -> flights[n].Value)
+
+                Expect.equal (yes.Keys, no.Keys) ([| 1 |], [||]) "key 3 has never settled"
+                Expect.sequenceEqual yes.PendingKeys [ 3 ] "pending in the first half"
+                Expect.sequenceEqual no.PendingKeys [ 3 ] "pending in the second half"
+
+                source.Value <- setN 1 11 source.Value
+                Expect.equal yes.Keys [| 1 |] "key 1 keeps its side"
+                flights[11].Settle false
+                Expect.equal (yes.Keys, no.Keys) ([||], [| 1 |]) "key 1 moves once settled"
+                flights[30].Settle true
+                Expect.equal yes.Keys [| 3 |] "key 3 joins"
+            }
+
+            test "an effect reading both halves runs once per write" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ for i in 1..6 -> i, i ])
+                let evens, odds = rows source |> Projection.partition even
+                let runs = ref 0
+
+                createEffect (fun () ->
+                    runs.Value <- runs.Value + 1
+
+                    for key in evens.Keys do
+                        evens.Get key |> ignore
+
+                    for key in odds.Keys do
+                        odds.Get key |> ignore)
+
+                once runs source "move a key across" (setN 1 2)
+                once runs source "edit within a half" (setN 2 4)
+                once runs source "remove a key" (List.filter (fun x -> x.Id <> 3))
+                once runs source "add a key" (fun xs -> xs @ items [ 7, 7 ])
+                once runs source "reorder" List.rev
+            }
+
+            test "disposing one half leaves the other following edits" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1; 2, 2; 3, 3 ])
+                let evens, odds = rows source |> Projection.partition even
+
+                keysAndRows odds |> ignore
+                evens.Dispose ()
+                source.Value <- setN 1 6 source.Value
+
+                Expect.isEmpty evens.Keys "a disposed half is empty"
+                Expect.equal odds.Keys [| 3 |] "the other half follows"
+            }
+
+            test "disposing the calling scope stops every predicate call" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1; 2, 2 ])
+                let up = rows source
+                let calls = ref 0
+                let scope = ref Unchecked.defaultof<Owner>
+
+                let evens, odds =
+                    createRoot (fun owner ->
+                        scope.Value <- owner
+
+                        up
+                        |> Projection.partition (fun n ->
+                            calls.Value <- calls.Value + 1
+                            even n))
+
+                up.Get 1 |> ignore
+                evens.Keys |> ignore
+                odds.Keys |> ignore
+                Expect.isGreaterThan (readersOf up 1) 0 "the predicate view reads row 1"
+                scope.Value.Dispose ()
+                calls.Value <- 0
+                source.Value <- setN 1 8 source.Value
+
+                Expect.isEmpty evens.Keys "the first half is disposed"
+                Expect.isEmpty odds.Keys "the second half is disposed"
+                Expect.equal (readersOf up 1) 0 "the shared predicate view released the upstream row"
+                Expect.equal calls.Value 0 "no predicate runs after disposal"
+            }
+        ]

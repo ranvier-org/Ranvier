@@ -450,5 +450,23 @@ let tests =
 
                 Expect.isLessThan (aliveOf refs) 20 "a disposed search leaves no view behind"
             }
+
+            test "partition halves disposed with their root are not retained" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal [ 1; 2; 3 ]
+                let up = createProjection id id (fun () -> source.Value)
+                let refs = ResizeArray<WeakReference>()
+
+                for _ in 1..200 do
+                    let owner, (evens, _) =
+                        createRoot (fun owner -> owner, up |> Projection.partition (fun n -> n % 2 = 0))
+
+                    evens.Keys |> ignore
+                    owner.Dispose ()
+                    refs.Add (WeakReference evens)
+
+                Expect.isLessThan (aliveOf refs) 20 "a disposed partition leaves no helper behind"
+            }
 #endif
         ]

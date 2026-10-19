@@ -191,14 +191,14 @@ type internal SliceView<'K, 'V when 'K: equality>(graph: Graph, upstream: Projec
         heldOut.Publish upstream
 
 /// <summary>
-/// The keys of <c>inclusion</c> whose predicate row holds <c>true</c>, each with the value of <c>read</c> at the key.
+/// The keys of <c>inclusion</c> whose predicate row holds <c>admit</c>, each with the value of <c>read</c> at the key.
 /// </summary>
 /// <remarks>
 /// A pending predicate keeps the key's last settled membership. A failed predicate leaves the key out of <c>Keys</c> and
 /// keeps its row, which raises the failure. <c>read</c> raises when the key's predicate row is pending or failed.
 /// </remarks>
 type internal FilterView<'K, 'V, 'U when 'K: equality>
-    (graph: Graph, upstream: Projection<'K, 'V>, inclusion: Projection<'K, bool> ref, read: 'K -> 'U) =
+    (graph: Graph, upstream: Projection<'K, 'V>, inclusion: Projection<'K, bool> ref, read: 'K -> 'U, admit: bool) =
     inherit RowsOf<'K, 'K, 'U>(graph, read, Unchecked.defaultof<_>)
 
     let heldOut = HeldOut<'K> graph
@@ -220,12 +220,13 @@ type internal FilterView<'K, 'V, 'U when 'K: equality>
 
             if not (Platform.isNull entry) then
                 match entry.Row.TryValue with
-                | Ready true -> this.Visit (key, key)
-                | Ready false -> ()
+                | Ready included ->
+                    if included = admit then
+                        this.Visit (key, key)
                 | Pending ->
                     if not entry.Settled then
                         heldOut.Add key
-                    elif entry.Row.Peek then
+                    elif entry.Row.Peek = admit then
                         this.Visit (key, key)
                 | Failed _ ->
                     this.Visit (key, key)
@@ -1032,6 +1033,11 @@ module Projection =
         owner.SetParent (parent.AttachLinked owner)
         owner
 
+    /// <summary>A projection over the keys of <c>upstream</c>, each row holding <c>f</c> of the upstream value.</summary>
+    let private perKey (graph: Graph) (upstream: Projection<'K, 'V>) (f: 'V -> 'X) : Projection<'K, 'X> =
+        new KeyedProjection<'K, 'K, 'X> (graph, id, (fun key -> f (upstream.Get key)), Unchecked.defaultof<_>, fun () -> upstream.Keys)
+        :> Projection<'K, 'X>
+
     /// <summary>A function returning the value inside Some, and raising one KeyNotFoundException instance with message for every None.</summary>
     let inline private orRaise (message: string) : 'T option -> 'T =
         let empty = ref (null: exn)
@@ -1105,21 +1111,9 @@ module Projection =
             inclusion.Value.Get key |> ignore
             upstream.Get key
 
-        let view = new FilterView<'K, 'V, 'V> (graph, upstream, inclusion, read)
+        let view = new FilterView<'K, 'V, 'V> (graph, upstream, inclusion, read, true)
 
-        inclusion.Value <-
-            graph.RunOwned (
-                view.Scope,
-                fun () ->
-                    new KeyedProjection<'K, 'K, bool> (
-                        graph,
-                        id,
-                        (fun key -> predicate (upstream.Get key)),
-                        Unchecked.defaultof<_>,
-                        fun () -> upstream.Keys
-                    )
-                    :> Projection<'K, bool>
-            )
+        inclusion.Value <- graph.RunOwned (view.Scope, fun () -> perKey graph upstream predicate)
 
         view.PendingExtra <- fun () -> view.HeldOut
         view :> Projection<'K, 'V>
@@ -1152,19 +1146,12 @@ module Projection =
             | Some value -> value
             | None -> raise (System.Collections.Generic.KeyNotFoundException ("The projection has no key " + string key + "."))
 
-        let view = new FilterView<'K, 'V, 'U> (graph, upstream, inclusion, read)
+        let view = new FilterView<'K, 'V, 'U> (graph, upstream, inclusion, read, true)
 
         graph.RunOwned (
             view.Scope,
             fun () ->
-                choices.Value <-
-                    new KeyedProjection<'K, 'K, 'U option> (
-                        graph,
-                        id,
-                        (fun key -> chooser (upstream.Get key)),
-                        Unchecked.defaultof<_>,
-                        fun () -> upstream.Keys
-                    )
+                choices.Value <- perKey graph upstream chooser
 
                 inclusion.Value <-
                     new KeyedProjection<'K, 'K, bool> (
@@ -1235,19 +1222,7 @@ module Projection =
         let sortKeys = ref Unchecked.defaultof<Projection<'K, 'S>>
         let view = new SortView<'K, 'V, 'S> (graph, upstream, sortKeys, descending)
 
-        sortKeys.Value <-
-            graph.RunOwned (
-                view.Scope,
-                fun () ->
-                    new KeyedProjection<'K, 'K, 'S> (
-                        graph,
-                        id,
-                        (fun key -> projection (upstream.Get key)),
-                        Unchecked.defaultof<_>,
-                        fun () -> upstream.Keys
-                    )
-                    :> Projection<'K, 'S>
-            )
+        sortKeys.Value <- graph.RunOwned (view.Scope, fun () -> perKey graph upstream projection)
 
         view.PendingExtra <- fun () -> view.HeldOut
         view :> Projection<'K, 'V>
@@ -1373,19 +1348,7 @@ module Projection =
         let groupKeys = ref Unchecked.defaultof<Projection<'K, 'G>>
         let view = new Grouping<'G, 'K, 'V> (graph, upstream, groupKeys)
 
-        groupKeys.Value <-
-            graph.RunOwned (
-                view.Scope,
-                fun () ->
-                    new KeyedProjection<'K, 'K, 'G> (
-                        graph,
-                        id,
-                        (fun key -> projection (upstream.Get key)),
-                        Unchecked.defaultof<_>,
-                        fun () -> upstream.Keys
-                    )
-                    :> Projection<'K, 'G>
-            )
+        groupKeys.Value <- graph.RunOwned (view.Scope, fun () -> perKey graph upstream projection)
 
         view
 
@@ -1877,3 +1840,37 @@ module Projection =
             projection
             (orRaise "Projection.maxBy: the projection has no settled values.")
             upstream
+
+    /// <summary>
+    /// The keys of <c>upstream</c> whose value satisfies <c>predicate</c>, and the other keys, each half in upstream order
+    /// with the values.
+    /// </summary>
+    /// <remarks>
+    /// The halves share one predicate view, which runs <c>predicate</c> once per key when its upstream row changes. A
+    /// throwing predicate removes the key from both halves, and <c>Get</c> of either raises its exception. A pending
+    /// predicate keeps the key on its last side; a key never settled is in the <c>PendingKeys</c> of both.
+    /// </remarks>
+    /// <example>
+    /// <code lang="fsharp">
+    /// let rows = createProjection (fun t -> t.Id) id (fun () -> todos.Value)
+    /// let finished, pending = rows |> Projection.partition (fun t -> t.Done)
+    /// </code>
+    /// </example>
+    let partition (predicate: 'V -> bool) (upstream: Projection<'K, 'V>) : Projection<'K, 'V> * Projection<'K, 'V> =
+        upstream.RequireRowMemos "Projection.partition"
+        let graph = upstream.Graph
+        let owner = ownedScope graph
+
+        let inclusion =
+            ref (graph.RunOwned (owner, fun () -> perKey graph upstream predicate))
+
+        let read key =
+            inclusion.Value.Get key |> ignore
+            upstream.Get key
+
+        let half admit =
+            let view = new FilterView<'K, 'V, 'V> (graph, upstream, inclusion, read, admit)
+            view.PendingExtra <- fun () -> view.HeldOut
+            view :> Projection<'K, 'V>
+
+        half true, half false

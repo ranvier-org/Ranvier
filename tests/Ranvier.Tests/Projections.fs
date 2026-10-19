@@ -2810,6 +2810,12 @@ let rowOptionTests =
                 Expect.throwsT<NotSupportedException> (fun () -> Projection.pick Some proj |> ignore) "pick"
                 Expect.throwsT<NotSupportedException> (fun () -> Projection.tryAverageBy float proj |> ignore) "tryAverageBy"
                 Expect.throwsT<NotSupportedException> (fun () -> Projection.tryMinBy id proj |> ignore) "tryMinBy"
+
+                Expect.throwsT<NotSupportedException>
+                    (fun () ->
+                        Projection.partition (fun _ -> true) proj
+                        |> ignore)
+                    "partition"
             }
 
             test "size and position memos read a projection from createProjectionOnce" {

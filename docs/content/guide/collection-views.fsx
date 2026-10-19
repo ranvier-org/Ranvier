@@ -16,7 +16,7 @@ let active = graph.Activate ()
 
 The examples run inside an [active graph](graph.fsx).
 
-Derive a live view from a projection with `filter`, `choose`, `map`, `mapWith`, `sortBy`, `sortByDescending` or `groupBy`.
+Derive a live view from a projection with `filter`, `choose`, `map`, `mapWith`, `sortBy`, `sortByDescending`, `partition` or `groupBy`.
 Each view keeps rows by key and re-runs its function only for changed upstream rows.
 
 As with a source projection, `Keys` tracks membership and order; `Get key` tracks a row value.
@@ -206,6 +206,29 @@ An inner view is disposed once its group is empty: a reader holding it sees empt
 Pinned by the `Projection.mapWith` and `Projection.groupBy` tests, including `a never-settled key is in UngroupedKeys,
 in upstream order, until it settles and joins its group` and `filter then groupBy lists the keys the filter holds out
 in UngroupedKeys`
+([Combinators.fs](https://github.com/shayanhabibi/Ranvier/blob/master/tests/Ranvier.Tests/Combinators.fs)).
+:::
+
+### Split rows
+
+`Projection.partition` returns the keys whose value satisfies a predicate and the rest, as two views over one
+predicate view: the predicate runs once per changed row for both halves. A raising predicate leaves the key out of
+both halves; a pending one keeps the key on its last side. Each half can be disposed on its own.
+
+
+*)
+let shortTitles, longerTitles = orderedTitles |> Projection.partition (fun title -> title.Length < 2)
+(shortTitles.Keys, longerTitles.Keys)
+(**
+
+```text
+([|2|], [|1; 3|])
+```
+
+:::details Tests covering this behaviour
+
+Pinned by the `Projection.partition` tests, including `200 single edits at N=1000 make 200 predicate calls across
+both halves` and `a pending predicate keeps the last side; a never-settled key is pending in both`
 ([Combinators.fs](https://github.com/shayanhabibi/Ranvier/blob/master/tests/Ranvier.Tests/Combinators.fs)).
 :::
 
