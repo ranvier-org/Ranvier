@@ -1,5 +1,6 @@
 module Ranvier.Wire.Tests.WireSupport
 
+open System
 open Expecto
 open Ranvier.Wire.Thoth.Json.Core
 open Ranvier.Wire
@@ -70,3 +71,11 @@ let person: Codec<Person> =
                 Email = email
             }
     }
+
+/// <summary>The instant at the Unix milliseconds, shown in the offset (minutes).</summary>
+let instant (milliseconds: int64) (offsetMinutes: float) =
+    DateTimeOffset.FromUnixTimeMilliseconds(milliseconds).ToOffset(TimeSpan.FromMinutes offsetMinutes)
+
+/// <summary>Equal instants with equal offsets; F# equality on DateTimeOffset compares instants only.</summary>
+let sameInstantAndOffset (a: DateTimeOffset) (b: DateTimeOffset) =
+    a.UtcTicks = b.UtcTicks && a.Offset = b.Offset

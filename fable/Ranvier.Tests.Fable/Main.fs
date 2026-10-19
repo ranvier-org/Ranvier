@@ -114,6 +114,7 @@ let all =
             testList "VendoredThoth.fs" [ Ranvier.Wire.Tests.VendoredThoth.tests ]
             testList "WireDecoding.fs" [ Ranvier.Wire.Tests.WireDecoding.tests ]
             testList "NumericDecoding.fs" [ Ranvier.Wire.Tests.NumericDecoding.tests ]
+            testList "DateTimeOffsetCodec.fs" [ Ranvier.Wire.Tests.DateTimeOffsetCodec.tests ]
         ]
 
 Mocha.runTests all |> ignore

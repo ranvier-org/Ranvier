@@ -70,6 +70,12 @@ let checks () : (string * bool * string) list =
 
     let bigPast = (WireCodec.ofCodec Codecs.bigint).Decode(String.replicate 4301 "7")
     let floatPast = (WireCodec.ofCodec Codec.float).Decode "1e400"
+    let dates = WireCodec.ofCodec Codecs.dateTimeOffset
+
+    let dateText =
+        dates.Encode (System.DateTimeOffset(2024, 3, 5, 6, 7, 8, 789, System.TimeSpan.FromMinutes 330.0).AddTicks 1234L)
+
+    let oldDate = dates.Decode "\"2024-03-05T06:07:08.7891234+05:30\""
 
     [
         "a vendored Thoth record encodes", pointText = """{"x":3,"label":"a"}""", pointText
@@ -88,4 +94,12 @@ let checks () : (string * bool * string) list =
         ("a bigint number decodes exactly", bigNumber = Ok (System.Numerics.BigInteger.Parse "-123456789012345678901234567890"), kind bigNumber)
         "a bigint past the digit limit is a limit error", kind bigPast = "Limit", kind bigPast
         "a float past the double range is a shape error", kind floatPast = "Shape", kind floatPast
+        "a DateTimeOffset writes milliseconds and its offset", dateText = "\"2024-03-05T06:07:08.789+05:30\"", dateText
+        ("a seven-digit DateTimeOffset reads at millisecond precision",
+         (match oldDate with
+          | Ok value ->
+              value.Offset.TotalMinutes = 330.0
+              && value.ToUnixTimeMilliseconds () = 1709599028789L
+          | Error _ -> false),
+         kind oldDate)
     ]
