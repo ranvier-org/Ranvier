@@ -18,7 +18,7 @@ let u (code: int) =
 
 /// <summary>The JSON escape <c>\u</c> followed by the four hex digits, as written in wire text.</summary>
 let esc (hex: string) =
-    "\u" + hex
+    "\\u" + hex
 
 let quote = "\""
 

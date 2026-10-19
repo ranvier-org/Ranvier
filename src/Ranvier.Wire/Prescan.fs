@@ -29,8 +29,9 @@ let private loneSurrogate = "A string in the wire text holds a lone surrogate."
 
 /// <summary>
 /// The first problem found in the text before parsing: nesting past <c>MaxDepth</c> or more than <c>MaxItems</c>
-/// items (<c>WireError.Limit</c>), or a string holding a lone surrogate, raw or escaped (<c>WireError.Syntax</c>).
-/// Brackets and commas inside strings are skipped; other malformed text is left to the parser.
+/// items (<c>WireError.Limit</c>), or a null text, a closing bracket without its opening one, or a string holding a
+/// lone surrogate, raw or escaped (<c>WireError.Syntax</c>). Brackets and commas inside strings are skipped; other
+/// malformed text is left to the parser.
 /// </summary>
 let check (limits: WireLimits) (text: string) : WireError option =
     let mutable depth = 0
@@ -39,14 +40,21 @@ let check (limits: WireLimits) (text: string) : WireError option =
     // 0: no high surrogate pending; 1: a raw one; 2: an escaped one. A pair is two raw or two escaped code units.
     let mutable pendingHigh = 0
     let mutable opened = false
-    let mutable failure = None
+
+    let mutable failure =
+        if isNull text then
+            Some (WireError.Syntax "The wire text is null.")
+        else
+            None
+
     let mutable i = 0
 
     while failure.IsNone && i < text.Length do
         let c = text[i]
 
         if inString then
-            // The UTF-16 code unit the string holds at this point (-1 at its closing quote), and how it is written.
+            // code: the code unit of a raw character or a \u escape, 0 for any other escape, -1 at the closing quote.
+            // form: 1 for a raw character, 2 for an escape.
             let mutable form = 1
 
             let code =
@@ -99,7 +107,11 @@ let check (limits: WireLimits) (text: string) : WireError option =
                             )
                         )
             | ']'
-            | '}' -> depth <- depth - 1
+            | '}' ->
+                depth <- depth - 1
+
+                if depth < 0 then
+                    failure <- Some (WireError.Syntax "The wire text closes more brackets than it opens.")
             | ',' -> items <- items + 1
             | _ -> ()
 

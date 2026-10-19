@@ -2,18 +2,22 @@ module internal Ranvier.Wire.Helpers
 
 open Ranvier.Wire.Thoth.Json.Core
 
-/// <summary>The index of the first UTF-16 code unit of the text that is a surrogate without its pair, or -1.</summary>
+/// <summary>
+/// The index of the first UTF-16 code unit of the text that is a surrogate without its pair; -1 when every surrogate
+/// is paired or the text is null.
+/// </summary>
 let loneSurrogate (text: string) : int =
+    let length = if isNull text then 0 else text.Length
     let mutable found = -1
     let mutable i = 0
 
-    while found < 0 && i < text.Length do
+    while found < 0 && i < length do
         let code = int text[i]
 
         if
             code >= 0xD800
             && code <= 0xDBFF
-            && i + 1 < text.Length
+            && i + 1 < length
             && int text[i + 1] >= 0xDC00
             && int text[i + 1] <= 0xDFFF
         then
