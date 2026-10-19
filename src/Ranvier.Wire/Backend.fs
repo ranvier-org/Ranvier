@@ -102,10 +102,9 @@ let decodeWithSourceText (sourceText: bool) (limits: WireLimits) (decoder: Decod
 let decode (limits: WireLimits) (decoder: Decoder<'T>) (text: string) : Result<'T, WireError> =
     decodeWithSourceText sourceText limits decoder text
 #else
-let private encoderHelpers =
-    Helpers.encoding Ranvier.Wire.Thoth.Json.System.Text.Json.Encode.helpers
+let private encoderHelpers = Helpers.encoding Helpers.netEncoding
 
-/// <summary>The value's wire text: System.Text.Json with relaxed escaping.</summary>
+/// <summary>The value's wire text: System.Text.Json with relaxed escaping, and doubles in ECMAScript form.</summary>
 let encode (value: IEncodable) : string =
     let json = Encode.toJsonValue encoderHelpers value
     use stream = new MemoryStream ()

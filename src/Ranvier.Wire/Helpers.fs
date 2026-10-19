@@ -5,6 +5,7 @@ open Ranvier.Wire.Thoth.Json.Core
 #if !FABLE_COMPILER
 open System.Globalization
 open System.Text.Json
+open System.Text.Json.Nodes
 #endif
 
 /// <summary>
@@ -204,6 +205,48 @@ let locating (numberText: 'J -> string option) (maxBigIntDigits: int) (inner: ID
     ScopedHelpers (inner, numberText, maxBigIntDigits, true)
 
 #if !FABLE_COMPILER
+/// <summary>The System.Text.Json encoder helpers, with every double written as ECMAScript number text.</summary>
+let netEncoding: IEncoderHelpers<JsonNode> =
+    let inner = Ranvier.Wire.Thoth.Json.System.Text.Json.Encode.helpers
+
+    { new IEncoderHelpers<JsonNode> with
+        member _.encodeString value =
+            inner.encodeString value
+
+        member _.encodeChar value =
+            inner.encodeChar value
+
+        member _.encodeDecimalNumber value =
+            JsonNode.Parse (Numbers.ecmaString value)
+
+        member _.encodeBool value =
+            inner.encodeBool value
+
+        member _.encodeNull() =
+            inner.encodeNull ()
+
+        member _.encodeObject values =
+            inner.encodeObject values
+
+        member _.encodeArray values =
+            inner.encodeArray values
+
+        member _.encodeList values =
+            inner.encodeList values
+
+        member _.encodeSeq values =
+            inner.encodeSeq values
+
+        member _.encodeResizeArray values =
+            inner.encodeResizeArray values
+
+        member _.encodeSignedIntegralNumber value =
+            inner.encodeSignedIntegralNumber value
+
+        member _.encodeUnsignedIntegralNumber value =
+            inner.encodeUnsignedIntegralNumber value
+    }
+
 /// <summary>A number's text, read verbatim from the document.</summary>
 let netNumberText (value: JsonElement) : string option =
     Some (value.GetRawText ())

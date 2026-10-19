@@ -80,3 +80,8 @@ let instant (milliseconds: int64) (offsetMinutes: float) =
 /// <remarks>Unlike <c>=</c>, also compares the offset.</remarks>
 let sameInstantAndOffset (a: DateTimeOffset) (b: DateTimeOffset) =
     a.UtcTicks = b.UtcTicks && a.Offset = b.Offset
+
+/// <summary>Equal doubles, with NaN equal to NaN and 0.0 distinct from -0.0.</summary>
+let sameFloat (a: float) (b: float) =
+    (Double.IsNaN a && Double.IsNaN b)
+    || (a = b && 1.0 / a = 1.0 / b)

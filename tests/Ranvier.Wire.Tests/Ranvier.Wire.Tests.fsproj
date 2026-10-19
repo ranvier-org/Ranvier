@@ -11,6 +11,7 @@
 
     <ItemGroup>
         <Compile Include="Main.fs" />
+        <None Include="ecma-numbers.txt" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 
     <ItemGroup>

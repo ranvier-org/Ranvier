@@ -32,6 +32,7 @@
     <Compile Include="Vendor/Thoth.Json/Thoth.Json.JavaScript/Encode.fs" />
     <Compile Include="Types.fs" />
     <Compile Include="Prescan.fs" />
+    <Compile Include="Numbers.fs" />
     <Compile Include="Helpers.fs" />
     <Compile Include="Backend.fs" />
     <Compile Include="WireCodec.fs" />

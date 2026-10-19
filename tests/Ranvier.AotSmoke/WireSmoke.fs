@@ -77,6 +77,9 @@ let checks () : (string * bool * string) list =
 
     let oldDate = dates.Decode "\"2024-03-05T06:07:08.7891234+05:30\""
 
+    let floatText =
+        (WireCodec.ofCodec (Codec.list Codec.float)).Encode [ 4.0; 0.1; 1e21; 1.5e-7; -0.0; 5e-324; nan ]
+
     [
         "a vendored Thoth record encodes", pointText = """{"x":3,"label":"a"}""", pointText
         "an unknown variant tag is an error", tag.Contains "Expected exactly one object key", tag
@@ -102,4 +105,5 @@ let checks () : (string * bool * string) list =
               && value.ToUnixTimeMilliseconds () = 1709599028789L
           | Error _ -> false),
          kind oldDate)
+        "doubles write in ECMAScript form", floatText = """[4,0.1,1e+21,1.5e-7,0,5e-324,"NaN"]""", floatText
     ]
