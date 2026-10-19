@@ -145,9 +145,11 @@ module Encode =
         value.ToString("O", CultureInfo.InvariantCulture) |> string
 
     /// <summary>Encode a TimeSpan as a string.</summary>
+    [<Obsolete("Ranvier.Wire: Thoth's timespan text is target-dependent; see the section Differences between .NET and Fable in the Ranvier.Wire README.")>]
     let inline timespan value = value.ToString() |> string
 
     /// <summary>Encode a DateTime as an ISO 8601 string.</summary>
+    [<Obsolete("Ranvier.Wire: use Ranvier.Wire.Codecs.dateTimeOffset, which writes and reads the same wire text on .NET and Fable.")>]
     let inline datetime (value: DateTime) =
         value.ToString("O", CultureInfo.InvariantCulture) |> string
 

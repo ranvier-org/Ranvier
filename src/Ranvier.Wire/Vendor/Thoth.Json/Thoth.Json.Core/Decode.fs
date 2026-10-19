@@ -525,6 +525,7 @@ module Decode =
         }
 
     /// Decode a System.DateTime value using Sytem.DateTime.TryParse, then convert it to UTC.
+    [<Obsolete("Ranvier.Wire: use Ranvier.Wire.Codecs.dateTimeOffset, which writes and reads the same wire text on .NET and Fable.")>]
     let datetimeUtc: Decoder<System.DateTime> =
         { new Decoder<System.DateTime> with
             member _.Decode(helpers, value) =
@@ -537,6 +538,7 @@ module Decode =
         }
 
     /// Decode a System.DateTime with DateTime.TryParse; uses default System.DateTimeStyles.
+    [<Obsolete("Ranvier.Wire: use Ranvier.Wire.Codecs.dateTimeOffset, which writes and reads the same wire text on .NET and Fable.")>]
     let datetimeLocal: Decoder<System.DateTime> =
         { new Decoder<System.DateTime> with
             member _.Decode(helpers, value) =
@@ -565,6 +567,7 @@ module Decode =
         }
 
     /// <summary>Decode a JSON string into a TimeSpan.</summary>
+    [<Obsolete("Ranvier.Wire: Thoth's timespan text is target-dependent; see the section Differences between .NET and Fable in the Ranvier.Wire README.")>]
     let timespan: Decoder<System.TimeSpan> =
         { new Decoder<System.TimeSpan> with
             member _.Decode(helpers, value) =

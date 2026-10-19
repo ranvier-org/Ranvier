@@ -83,6 +83,7 @@ module Codec =
         create Encode.datetimeOffset Decode.datetimeOffset
 
     /// <summary>A codec for TimeSpan, using the same representation as <c>Encode.timespan</c> and <c>Decode.timespan</c>.</summary>
+    [<Obsolete("Ranvier.Wire: Thoth's timespan text is target-dependent; see the section Differences between .NET and Fable in the Ranvier.Wire README.")>]
     let timespan: Codec<TimeSpan> = create Encode.timespan Decode.timespan
 
     /// <summary>

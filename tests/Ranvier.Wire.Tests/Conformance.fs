@@ -202,6 +202,10 @@ let private builder: Codec<Builder> =
             }
     }
 
+let private guidText = "0f8fad5b-d9cb-469f-a165-70867728950e"
+
+let private guidValue = Guid.Parse guidText
+
 let private alice =
     {
         Name = "Alice"
@@ -543,4 +547,19 @@ let tests =
                 builder
                 { Name = "A"; Constructor = Some 1 }
                 (Same """{"name":"A","constructor":1}""")
+            reads "an upper-case Guid" (=) Codec.guid (quote + guidText.ToUpperInvariant () + quote) guidValue (quote + guidText + quote)
+            reads "a Guid without hyphens" (=) Codec.guid (quote + guidText.Replace ("-", "") + quote) guidValue (quote + guidText + quote)
+            reads "a Guid in braces" (=) Codec.guid (quote + "{" + guidText + "}" + quote) guidValue (quote + guidText + quote)
+            reads "a Guid in parentheses" (=) Codec.guid (quote + "(" + guidText + ")" + quote) guidValue (quote + guidText + quote)
+            reads
+                "a Guid with surrounding whitespace"
+                (=)
+                Codec.guid
+                (quote + " " + guidText + esc "0009" + quote)
+                guidValue
+                (quote + guidText + quote)
+            rejects "a Guid in brackets" isShape Codec.guid (quote + "[" + guidText + "]" + quote)
+            readsOn "a Guid in doubled braces" Codec.guid (quote + "{{" + guidText + "}}" + quote) None (Some guidValue)
+            readsOn "a Guid with an unmatched brace" Codec.guid (quote + "{" + guidText + ")" + quote) None (Some guidValue)
+            readsOn "a Guid led by a byte order mark" Codec.guid (quote + u 0xFEFF + guidText + quote) None (Some guidValue)
         ]

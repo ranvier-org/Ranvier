@@ -19,7 +19,7 @@ Applied in name order by `refresh.ps1`. CI runs `refresh.ps1 -Check`, which fail
 | `0002-target-guards.patch` | wraps the System.Text.Json files in `#if !FABLE_COMPILER` and the JavaScript files in `#if FABLE_COMPILER` | this directory is replaced by package references |
 | `0003-linear-list-decode.patch` | `Decode.list` conses and reverses instead of appending, so a list decodes in linear time | the same change is released upstream |
 | `0004-ranvier-namespaces.patch` | prefixes `Ranvier.Wire.` to every namespace, `open` and `cref` of `Thoth.Json.Core`, `Thoth.Json.System.Text.Json` and `Thoth.Json.JavaScript`, so an app that also references the upstream packages gets no duplicate types | this directory is replaced by package references (callers then open `Thoth.Json.*`) |
-| `0005-obsolete-target-dependent-codecs.patch` | marks `Codec`, `Encode` and `Decode` `bigint`, `decimal` and `datetimeOffset` `[<Obsolete>]`, pointing to `Ranvier.Wire.Codecs`, and adds `#nowarn "44"` to `Codec.fs`, whose obsolete codecs use the obsolete members | this directory is replaced by package references |
+| `0005-obsolete-target-dependent-codecs.patch` | marks `Codec`, `Encode` and `Decode` `bigint`, `decimal`, `datetimeOffset` and `timespan`, and `Encode.datetime`, `Decode.datetimeUtc` and `Decode.datetimeLocal`, `[<Obsolete>]`, pointing to `Ranvier.Wire.Codecs` (for `timespan`, to the Ranvier.Wire README's target differences), and adds `#nowarn "44"` to `Codec.fs`, whose obsolete codecs use the obsolete members | this directory is replaced by package references |
 | `0006-finite-float-decode.patch` | `Decode.float` returns an error for a number outside the double range (`1e400`), and `Decode.float32` for a number whose double value rounds to ±∞ as a float32 (`1e39`, and `3.4028235677973366e38` upward), instead of ±∞; the strings `"Infinity"` and `"-Infinity"` still decode | the same change is released upstream |
 | `0007-decimal-integer-strings.patch` | on both targets, the integer decoders up to `uint32` and `Decode.int64`/`Decode.uint64` read a string only when it is optional ASCII whitespace, an optional sign, decimal digits and optional ASCII whitespace. Without it, fable-library's parse also reads `0x`/`0o`/`0b` prefixes, `_` separators and other whitespace and wraps signed values (`"0xFF"` as an sbyte is -1), and .NET's reads trailing NUL characters and, for `int64`/`uint64`, exponents (`"1e3"`) | the same change is released upstream |
 
@@ -31,7 +31,7 @@ SHA-256 of each patch file, as committed (LF line ends, kept by `.gitattributes`
 | 0002 | `482e9341ef350e00a176202e7aad0adab32a636f818ad2096d002955b1843e0e` |
 | 0003 | `f8bb71680fe91eb0d0883150f72e75035d63733887a8b15241a4417dbfdcdfa9` |
 | 0004 | `0d468cd5d839eaeaca24acc30c76331ac492e4ca45f29a64cb4b636fd04a65d8` |
-| 0005 | `d64a246cfa7e04b2ffbe6808b5b3c426a5e998dafb3634a7e51c676bfefcf9d6` |
+| 0005 | `13863b44372d67f98bbaf97acfb84ab4c968a6d3b8c86e6528ebdffc2817cc1a` |
 | 0006 | `5277419dddb815c9185311f1f593c4531dfcf3a64da2dea22297269f2e6ef763` |
 | 0007 | `457ca53745eef7d42e11cc895a3d9170614f5818a20880b3f89bd02aae97dede` |
 
