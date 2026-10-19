@@ -491,6 +491,50 @@ let tests =
                 Expect.isFalse (memo.Status.HasFlag Status.Pending) "published although the upstream was only checked"
                 Expect.equal memo.Peek 5 "the item"
 
+            testCase "graph-thread items in a batch publish once, when the batch ends"
+            <| fun _ ->
+                use graph = new Graph ()
+                let feed = ManualStream<int>()
+                let memo = graph.Run (fun () -> Api.createStreamFold 0 (+) (fun _ -> feed.Source))
+                let seen = ResizeArray<int>()
+
+                new Effect (
+                    graph,
+                    fun () ->
+                        match memo.TryValue with
+                        | Ready v -> seen.Add v
+                        | _ -> ()
+                )
+                |> ignore
+
+                feed.Push 1
+                seen.Clear ()
+                let mutable inside = Unchecked.defaultof<Reading<int>>
+
+                graph.Run (fun () ->
+                    Api.batch (fun () ->
+                        feed.Push 2
+                        feed.Push 3
+                        inside <- Ready memo.Peek))
+
+                Expect.equal inside (Ready 1) "unpublished while the batch runs"
+                Expect.sequenceEqual seen [ 6 ] "one effect run with both items"
+                Expect.equal (reading memo) (Ready 6) "published when the batch ends"
+
+            testCase "completion after a graph-thread item keeps the item"
+            <| fun _ ->
+                use graph = new Graph ()
+                let feed = ManualStream<int>()
+                let memo = graph.Run (fun () -> Api.createStreamFold 0 (+) (fun _ -> feed.Source))
+                reading memo |> ignore
+
+                graph.Run (fun () ->
+                    Api.batch (fun () ->
+                        feed.Push 4
+                        feed.Complete ()))
+
+                Expect.equal (reading memo) (Ready 4) "the item completed inside the batch is published"
+
             testCase "a pending read inside Run fails the node"
             <| fun _ ->
                 use graph = new Graph ()
@@ -673,6 +717,48 @@ let tests =
                 Expect.equal graph.PendingWork 1 "the item during the inline wake posted one wake"
                 graph.Pump () |> ignore
                 Expect.sequenceEqual seen [ 1; 11 ] "the later item's state is published"
+
+            testCase "a graph-thread item and an off-thread item before the same pump both land"
+            <| fun _ ->
+                use graph = manualGraph ()
+                let feed = ManualStream<int>()
+                let memo = graph.Run (fun () -> Api.createStreamFold 0 (+) (fun _ -> feed.Source))
+                let seen = ResizeArray<int>()
+
+                new Effect (
+                    graph,
+                    fun () ->
+                        match memo.TryValue with
+                        | Ready v -> seen.Add v
+                        | _ -> ()
+                )
+                |> ignore
+
+                graph.Pump () |> ignore
+                offThread (fun () -> feed.Push 1)
+                Expect.equal graph.PendingWork 1 "the off-thread item posted a wake"
+                feed.Push 2
+                Expect.equal (reading memo) (Ready 3) "the graph-thread item publishes both items without a pump"
+                graph.Pump () |> ignore
+                Expect.equal (reading memo) (Ready 3) "the pump adds nothing"
+                Expect.sequenceEqual seen [ 3 ] "one effect run"
+
+            testCase "an off-thread item after a graph-thread item in the same batch lands"
+            <| fun _ ->
+                use graph = manualGraph ()
+                let feed = ManualStream<int>()
+                let memo = graph.Run (fun () -> Api.createStreamFold 0 (+) (fun _ -> feed.Source))
+                reading memo |> ignore
+
+                graph.Run (fun () ->
+                    Api.batch (fun () ->
+                        feed.Push 1
+                        offThread (fun () -> feed.Push 10)))
+
+                Expect.equal (reading memo) (Ready 11) "the batch publishes the items folded before it ended"
+                Expect.equal graph.PendingWork 1 "the off-thread item posted a wake"
+                graph.Pump () |> ignore
+                Expect.equal (reading memo) (Ready 11) "the wake republishes the same state"
 
             testCase "completion after off-thread items publishes the final state first"
             <| fun _ ->
