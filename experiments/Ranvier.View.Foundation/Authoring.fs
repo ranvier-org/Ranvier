@@ -36,3 +36,7 @@ let inline keyedArray key read render =
 /// <remarks>Include the branch discriminator in the key when the component shape changes.</remarks>
 let inline branch key read render =
     Branch.select Program.ops key read render
+
+/// <summary>Renders <c>content</c> under a boundary: <c>pending</c> until its bindings have values, <c>failed</c> after a failure under it.</summary>
+let inline boundary pending failed content =
+    Program.ops.Boundary (pending, failed, content)

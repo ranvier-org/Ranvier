@@ -6,8 +6,9 @@ import { cases as bindings, microtaskFixture } from "../generated-tests/BindingC
 import { cases as integration } from "../generated-tests/BindingIntegrationChecks.js";
 import { cases as generated } from "../generated-tests/GeneratedChecks.js";
 import { cases as attributes } from "../generated-tests/AttributeChecks.js";
+import { cases as boundaries } from "../generated-tests/BoundaryChecks.js";
 import { browserCases as templateBrowser } from "../generated-tests/TemplateChecks.js";
-window.rangeCases = [...cases, ...bindings, ...integration, ...generated, ...attributes];
+window.rangeCases = [...cases, ...bindings, ...integration, ...generated, ...attributes, ...boundaries];
 window.bindingMicrotaskFixture = microtaskFixture;
 window.templateBrowserCases = templateBrowser;
 </script>

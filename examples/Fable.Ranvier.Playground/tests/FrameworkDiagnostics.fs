@@ -152,6 +152,7 @@ let private modifierTokens: Operations<ModifierAction array> =
         Switch = fun _ _ -> invalidOp "Token extraction requires an element"
         Component = fun _ -> invalidOp "Token extraction requires an element"
         Embed = fun _ -> invalidOp "Token extraction requires an element"
+        Boundary = fun _ -> invalidOp "Token extraction requires an element"
     }
 
 /// <summary>Mounts equivalent typed modifiers directly through the existing owned backend, bypassing per-element Program views.</summary>

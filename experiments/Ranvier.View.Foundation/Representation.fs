@@ -46,6 +46,24 @@ module internal KeyedItems =
     let value (pair: obj) =
         snd (unbox<obj * obj> pair)
 
+/// <summary>The failure an error view receives.</summary>
+[<NoEquality; NoComparison>]
+type BoundaryFailure =
+    {
+        /// <summary>The first exception of the failure that replaced the boundary's content.</summary>
+        Error: exn
+        /// <summary>Disposes the error view and mounts the content again, with a new setup and a new pending phase.</summary>
+        Retry: unit -> unit
+    }
+
+/// <summary>The state of a boundary that its content reads.</summary>
+[<NoEquality; NoComparison>]
+type BoundaryStatus =
+    {
+        /// <summary>A tracked reader: true after the first reveal while a binding under the boundary waits for a pending read.</summary>
+        IsPending: unit -> bool
+    }
+
 [<AbstractClass>]
 type Backend() =
     abstract Text: string -> unit
@@ -97,6 +115,13 @@ type Backend() =
     default this.Template(definition, props) =
         definition.Expand (this, props)
 
+    /// <summary>Renders content under a boundary with its pending and error views.</summary>
+    /// <remarks>The default renders the content only.</remarks>
+    abstract Boundary: BoundaryViews -> unit
+
+    default this.Boundary(views) =
+        views.Content { IsPending = fun () -> false } this
+
 /// <summary>A component definition whose template is built once and compiled lazily per backend.</summary>
 and [<AbstractClass>] TemplateDefinition internal () =
     /// <summary>Renders the definition through ordinary backend operations.</summary>
@@ -107,6 +132,14 @@ and [<AbstractClass>] TemplateDefinition internal () =
 
     /// <summary>The DOM backend's compiled form, or null before the first DOM render.</summary>
     member val Compiled: obj = null with get, set
+
+/// <summary>The three views of a boundary, each rendered through the backend it receives.</summary>
+and [<NoEquality; NoComparison>] BoundaryViews =
+    {
+        Pending: Backend -> unit
+        Failed: BoundaryFailure -> Backend -> unit
+        Content: BoundaryStatus -> Backend -> unit
+    }
 
 /// <summary>Applies a modifier to the backend's current element.</summary>
 type ModifierAction = Backend -> unit
@@ -149,6 +182,8 @@ type Operations<'view> =
         Component: (Setup -> 'view) -> 'view
         /// <summary>Runs backend operations in the view's place; a template view hole embeds its view through it.</summary>
         Embed: (Backend -> unit) -> 'view
+        /// <summary>Renders the content under a boundary: the pending view until the content's bindings have values, the error view after a failure under the content.</summary>
+        Boundary: 'view * (BoundaryFailure -> 'view) * (BoundaryStatus -> 'view) -> 'view
     }
 
 module Keyed =
@@ -270,6 +305,15 @@ module Tree =
             Switch = fun read render -> Embed (fun backend -> backend.Switch (read, fun current target -> run (render current) target))
             Component = Component
             Embed = Embed
+            Boundary =
+                fun (pending, failed, content) ->
+                    Embed (fun backend ->
+                        backend.Boundary
+                            {
+                                Pending = run pending
+                                Failed = fun failure target -> run (failed failure) target
+                                Content = fun status target -> run (content status) target
+                            })
         }
 
 module Program =
@@ -320,6 +364,15 @@ module Program =
             Switch = fun read render -> View (fun backend -> backend.Switch (read, fun current target -> (render current).Invoke target))
             Component = createComponent
             Embed = fun build -> View (fun backend -> build backend)
+            Boundary =
+                fun (pending, failed, content) ->
+                    View (fun backend ->
+                        backend.Boundary
+                            {
+                                Pending = fun target -> pending.Invoke target
+                                Failed = fun failure target -> (failed failure).Invoke target
+                                Content = fun status target -> (content status).Invoke target
+                            })
         }
 
 let private validNameCharacters underscore (value: string) =
@@ -398,7 +451,7 @@ module Html =
             escaped
 
     let render policy build =
-        let output = System.Text.StringBuilder ()
+        let mutable sink = System.Text.StringBuilder ()
         let mutable leadingLineFeed = false
 
         let mutable attributeTarget: System.Collections.Generic.Dictionary<string, string> =
@@ -456,9 +509,9 @@ module Html =
                 leadingLineFeed <- false
 
                 if value[0] = '\n' then
-                    output.Append '\n' |> ignore
+                    sink.Append '\n' |> ignore
 
-            output.Append value |> ignore
+            sink.Append value |> ignore
 
         let backend =
             { new Backend() with
@@ -580,10 +633,33 @@ module Html =
 
                 member this.Template(definition, props) =
                     this.Component (fun context -> definition.RenderHtml (this, context, props, (policy = Reject), append))
+
+                member this.Boundary(views) =
+                    append "<!--[-->"
+                    let outer = sink
+                    let buffer = System.Text.StringBuilder ()
+                    sink <- buffer
+
+                    let outcome =
+                        try
+                            try
+                                views.Content { IsPending = fun () -> false } this
+                                None
+                            with error ->
+                                Some error
+                        finally
+                            sink <- outer
+
+                    match outcome with
+                    | None -> sink.Append (buffer.ToString ()) |> ignore
+                    | Some (Ranvier.NotReadyException _) -> views.Pending this
+                    | Some error -> views.Failed { Error = error; Retry = ignore } this
+
+                    append "<!--]-->"
             }
 
         build backend
-        output.ToString ()
+        sink.ToString ()
 
 type FragmentBuilder<'view>(ops: Operations<'view>) =
     member _.Yield(view: 'view) =
