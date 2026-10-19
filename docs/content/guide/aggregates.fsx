@@ -44,6 +44,7 @@ let rows = createProjection _.Id id (fun () -> tasks.Value)
 - For any/all checks, use `exists` and `forall`.
 - For a fold with an inverse, use `foldGroup` to update changed contributions.
 - For a minimum or maximum, use `tryMinBy` and `tryMaxBy`; for another order-dependent result, use `fold` to recompute from cached values.
+- For one aggregate per group, use `Grouping.aggregate` over a `groupBy` (see [Collection views](collection-views.fsx)).
 
 :::details Aggregate functions and row-edit costs
 

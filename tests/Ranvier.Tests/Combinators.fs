@@ -3841,3 +3841,168 @@ let distinctByTests =
                 Expect.isEmpty view.Keys "a disposed view is empty"
             }
         ]
+
+/// <summary>The keys of <c>view</c> with their values, in <c>Keys</c> order.</summary>
+let private pairsOf (view: Projection<'G, 'S>) =
+    [ for key in view.Keys -> key, view.Get key ]
+
+[<Tests>]
+let groupingAggregateTests =
+    let parity (n: int) = n % 2
+
+    testList
+        "Grouping.aggregate"
+        [
+            test "totals per group follow edits, moves and emptying" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1; 2, 2; 3, 3; 4, 4 ])
+
+                let totals =
+                    rows source
+                    |> Projection.groupBy parity
+                    |> Grouping.aggregate (Projection.sumBy id)
+
+                Expect.equal (pairsOf totals) [ 1, 4; 0, 6 ] "initial"
+                source.Value <- setN 3 6 source.Value
+                Expect.equal (pairsOf totals) [ 1, 1; 0, 12 ] "key 3 moves to the even group"
+                source.Value <- setN 1 8 source.Value
+                Expect.equal (pairsOf totals) [ 0, 20 ] "the odd group empties"
+                source.Value <- setN 1 9 source.Value
+                Expect.equal (pairsOf totals) [ 1, 9; 0, 12 ] "the odd group returns"
+            }
+
+            test "an edit within a group runs only that group's aggregate" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1; 2, 2; 3, 3; 4, 4 ])
+                let adds = ref 0
+
+                let totals =
+                    rows source
+                    |> Projection.groupBy parity
+                    |> Grouping.aggregate (
+                        Projection.foldGroup
+                            (fun s n ->
+                                adds.Value <- adds.Value + 1
+                                s + n)
+                            (-)
+                            0
+                    )
+
+                keysAndRows totals |> ignore
+                adds.Value <- 0
+                source.Value <- setN 2 20 source.Value
+
+                Expect.equal adds.Value 1 "one add in the even group"
+                Expect.equal (pairsOf totals) [ 1, 4; 0, 24 ] "the totals"
+            }
+
+            test "an emptied group's aggregate is disposed, and a returning group gets a new one" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1; 2, 2; 3, 3 ])
+                let created = ResizeArray<Memo<int>>()
+
+                let totals =
+                    rows source
+                    |> Projection.groupBy parity
+                    |> Grouping.aggregate (fun inner ->
+                        let total = Projection.sumBy id inner
+                        created.Add total
+                        total)
+
+                keysAndRows totals |> ignore
+                let odd = created[0]
+                source.Value <- setN 1 2 source.Value
+                Expect.equal odd.Value 3 "key 3 alone in the odd group"
+                source.Value <- setN 3 4 source.Value
+
+                Expect.equal odd.Value 3 "a disposed aggregate reads its last total"
+                source.Value <- setN 1 5 source.Value
+                Expect.equal created.Count 3 "the returning odd group created a new aggregate"
+                Expect.equal (pairsOf totals) [ 1, 5; 0, 6 ] "the totals"
+            }
+
+            test "an effect reading every group's total runs once per write" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ for i in 1..6 -> i, i ])
+
+                let totals =
+                    rows source
+                    |> Projection.groupBy parity
+                    |> Grouping.aggregate (Projection.sumBy id)
+
+                let runs = keysAndRows totals
+
+                once runs source "edit a value" (setN 2 8)
+                once runs source "remove a key" (List.filter (fun x -> x.Id <> 4))
+                once runs source "add a key" (fun xs -> xs @ items [ 7, 7 ])
+            }
+
+            test "a reorder that keeps group order and totals wakes no reader" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ for i in 1..5 -> i, i ])
+
+                let totals =
+                    rows source
+                    |> Projection.groupBy parity
+                    |> Grouping.aggregate (Projection.sumBy id)
+
+                let runs = keysAndRows totals
+                source.Value <- List.rev source.Value
+
+                Expect.equal runs.Value 1 "the reader ran only on creation"
+                Expect.equal (pairsOf totals) [ 1, 9; 0, 6 ] "the totals"
+            }
+
+            test "a never-settled group key contributes to no total" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let flight = createAsyncSource<int>()
+                let source = createSignal (items [ 1, 1; 2, -2; 3, 3 ])
+
+                let grouping =
+                    rows source
+                    |> Projection.groupBy (fun n -> if n < 0 then flight.Value else parity n)
+
+                let totals =
+                    grouping
+                    |> Grouping.aggregate (Projection.sumBy id)
+
+                Expect.equal (pairsOf totals) [ 1, 4 ] "key 2 has no group"
+                Expect.sequenceEqual grouping.UngroupedKeys [ 2 ] "key 2 is ungrouped"
+                flight.Settle 0
+                Expect.equal (pairsOf totals) [ 1, 4; 0, -2 ] "key 2 joins the even group"
+            }
+
+            test "disposing the result disposes every aggregate; disposing the grouping empties the result" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1; 2, 2 ])
+                let created = ResizeArray<Memo<int>>()
+                let grouping = rows source |> Projection.groupBy parity
+
+                let totals =
+                    grouping
+                    |> Grouping.aggregate (fun inner ->
+                        let total = Projection.sumBy id inner
+                        created.Add total
+                        total)
+
+                keysAndRows totals |> ignore
+                totals.Dispose ()
+                source.Value <- items [ 1, 11; 2, 12 ]
+                Expect.equal [ for total in created -> total.Value ] [ 1; 2 ] "the aggregates read their last totals"
+
+                let again =
+                    grouping
+                    |> Grouping.aggregate (Projection.sumBy id)
+
+                Expect.equal (pairsOf again) [ 1, 11; 0, 12 ] "a new result"
+                grouping.Dispose ()
+                Expect.isEmpty again.Keys "the result of a disposed grouping is empty"
+            }
+        ]

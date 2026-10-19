@@ -16,7 +16,7 @@ let active = graph.Activate ()
 
 The examples run inside an [active graph](graph.fsx).
 
-Derive a live view from a projection with `filter`, `choose`, `map`, `mapWith`, `sortBy`, `sortByDescending`, `partition`, `distinctBy` or `groupBy`.
+Derive a live view from a projection with `filter`, `choose`, `map`, `mapWith`, `sortBy`, `sortByDescending`, `partition`, `distinctBy` or `groupBy`, and aggregate each group of a `groupBy` with `Grouping.aggregate`.
 Each view keeps rows by key and re-runs its function only for changed upstream rows.
 
 As with a source projection, `Keys` tracks membership and order; `Get key` tracks a row value.
@@ -252,6 +252,28 @@ Pinned by the `Projection.distinctBy` tests, including `a key reader sees a hand
 `distinctBy keys follow the law while values fail and recover`
 ([Combinators.fs](https://github.com/shayanhabibi/Ranvier/blob/master/tests/Ranvier.Tests/Combinators.fs),
 [Projections.fs](https://github.com/shayanhabibi/Ranvier/blob/master/tests/Ranvier.Tests/Projections.fs)).
+:::
+
+### Aggregate each group
+
+`Grouping.aggregate` turns a grouping into a projection holding the value of one memo per group, such as a total. The memo is created
+once per group, in the group's scope, so an emptied group disposes it and a returning group gets a new one.
+
+
+*)
+let titleCountByLength = byLengthGroup |> Grouping.aggregate Projection.length
+[ for length in titleCountByLength.Keys -> length, titleCountByLength.Get length ]
+(**
+
+```text
+[(2, 2); (1, 1)]
+```
+
+:::details Tests covering this behaviour
+
+Pinned by the `Grouping.aggregate` tests, including `an edit within a group runs only that group's aggregate` and `an
+emptied group's aggregate is disposed, and a returning group gets a new one`
+([Combinators.fs](https://github.com/shayanhabibi/Ranvier/blob/master/tests/Ranvier.Tests/Combinators.fs)).
 :::
 
 ### Page through rows

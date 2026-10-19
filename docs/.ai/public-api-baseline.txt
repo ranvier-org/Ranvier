@@ -182,6 +182,7 @@ member Ranvier.GraphOptions get_Equality() : Ranvier.IEqualityPolicy
 member Ranvier.GraphOptions get_FlightPolicy() : Ranvier.FlightPolicy
 member Ranvier.GraphOptions get_ThreadAffinity() : Ranvier.ThreadAffinity
 member Ranvier.GraphOptions static get_Default() : Ranvier.GraphOptions
+member Ranvier.GroupingModule static aggregate<4>(Microsoft.FSharp.Core.FSharpFunc`2<Ranvier.Projection`2<!!0,!!1>,Ranvier.Memo`1<!!2>>,Ranvier.Grouping`3<!!3,!!0,!!1>) : Ranvier.Projection`2<!!3,!!2>
 member Ranvier.Grouping`3 GroupOf(!1) : !0
 member Ranvier.Grouping`3 get_UngroupedKeys() : !1[]
 member Ranvier.IEqualityPolicy Comparer<1>() : System.Collections.Generic.IEqualityComparer`1<!!0>
@@ -463,6 +464,7 @@ type Ranvier.GraphExtensions : System.Object
 type Ranvier.GraphOptions : System.Object
 type Ranvier.GraphOptions implements System.Collections.IStructuralEquatable
 type Ranvier.GraphOptions implements System.IEquatable`1<Ranvier.GraphOptions>
+type Ranvier.GroupingModule : System.Object
 type Ranvier.Grouping`3 : Ranvier.Projection`2<!0,Ranvier.Projection`2<!1,!2>>
 type Ranvier.Grouping`3 implements Ranvier.IProjectionPass
 type Ranvier.IEqualityPolicy : 

@@ -468,5 +468,28 @@ let tests =
 
                 Expect.isLessThan (aliveOf refs) 20 "a disposed partition leaves no helper behind"
             }
+
+            test "an emptied group's aggregate is not retained" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal [ 1; 2 ]
+                let up = createProjection id id (fun () -> source.Value)
+                let refs = ResizeArray<WeakReference>()
+
+                let totals =
+                    up
+                    |> Projection.groupBy id
+                    |> Grouping.aggregate (fun inner ->
+                        let total = Projection.sumBy id inner
+                        refs.Add (WeakReference total)
+                        total)
+
+                for i in 1..200 do
+                    source.Value <- [ 1; 2 + i ]
+                    totals.Keys |> ignore
+
+                Expect.isGreaterThan refs.Count 200 "every returning key created an aggregate"
+                Expect.isLessThan (aliveOf refs) 20 "each emptied group released its aggregate"
+            }
 #endif
         ]

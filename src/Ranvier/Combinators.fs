@@ -1954,3 +1954,32 @@ module Projection =
 
         view.PendingExtra <- fun () -> view.HeldOut
         view :> Projection<'K, 'V>
+
+/// <summary>Operations over the groups of a <c>Grouping</c>.</summary>
+[<RequireQualifiedAccess>]
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module Grouping =
+    /// <summary>
+    /// A projection keyed and ordered as <c>grouping</c>, whose row for a group is the value of the memo created by
+    /// <c>perGroup</c> over the group's inner view.
+    /// </summary>
+    /// <remarks>
+    /// <c>perGroup</c> runs once per group row, in a scope that owns the nodes it creates and is disposed with the row: an
+    /// emptied group disposes its memo, and a returning group gets a new one. A pending or failed memo makes its row
+    /// pending or failed. Keys in <c>UngroupedKeys</c> are excluded from every memo.
+    /// </remarks>
+    /// <example>
+    /// <code lang="fsharp">
+    /// let rows = createProjection (fun t -> t.Id) id (fun () -> todos.Value)
+    ///
+    /// let hoursByOwner =
+    ///     rows
+    ///     |> Projection.groupBy (fun t -> t.Owner)
+    ///     |> Grouping.aggregate (Projection.sumBy (fun t -> t.Hours))
+    /// </code>
+    /// </example>
+    let aggregate (perGroup: Projection<'K, 'V> -> Memo<'S>) (grouping: Grouping<'G, 'K, 'V>) : Projection<'G, 'S> =
+        (grouping :> Projection<'G, Projection<'K, 'V>>)
+        |> Projection.mapWith (fun _ group ->
+            let total = perGroup (group ())
+            fun () -> total.Value)
