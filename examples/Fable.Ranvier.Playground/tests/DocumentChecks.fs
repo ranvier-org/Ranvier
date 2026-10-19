@@ -545,6 +545,55 @@ let private serverEntries () =
 
     equal [ ("<h1>Lamp</h1>", true); ("<h1>Lamp</h1>", true) ] [ for view in views -> Html.render Omit (Program.run view), rejected view ]
 
+let private earlyChild =
+    Component.define (fun _ () -> ()) (fun t -> t.fragment [| t.Document.title "Child"; description "child" t |])
+
+let private lateParent =
+    Component.define (fun _ () -> ()) (fun t ->
+        t.div
+            [||]
+            [|
+                t.render earlyChild ignore
+                t.Document.title "Parent"
+                description "parent" t
+            |])
+
+let private titledRow =
+    Component.define (fun _ (item: unit -> int) -> item) (fun t -> t.Document.title (fun (item: unit -> int) -> "Row " + string (item ())))
+
+let private rowsThenChild =
+    Component.define (fun _ () -> ()) (fun t ->
+        t.div
+            [||]
+            [|
+                t.ul [||] [| t.each id (fun _ -> [| 1; 2 |]) titledRow |]
+                t.render earlyChild ignore
+            |])
+
+/// <summary>The title text and the meta description of <c>Server.renderPage</c>'s head for <c>definition</c>.</summary>
+let private serverShown (definition: Component<unit>) =
+    let head = (Server.renderPage Server.Options.defaults definition ()).Head
+    let opening = "<title data-ranvier-head=\"title\">"
+    let start = head.IndexOf opening + opening.Length
+    let marker = "name=\"description\" content=\""
+    let content = head.IndexOf marker + marker.Length
+    head.Substring (start, head.IndexOf ("</title>", start) - start), head.Substring (content, head.IndexOf ("\"", content) - content)
+
+let private serverHeadShown queued () =
+    let clientShown (definition: Component<unit>) =
+        use graph = new Graph ()
+
+        let mounted =
+            mountTemplate queued graph strict (host ()) (Component.render definition ())
+
+        let shown = title (), headAttribute "meta[name=description]" "content"
+        mounted.Dispose ()
+        shown
+
+    equal [ ("Child", "child"); ("Row 2", "child") ] [ for definition in [ lateParent; rowsThenChild ] -> clientShown definition ]
+
+    equal [ ("Child", "child"); ("Row 2", "child") ] [ for definition in [ lateParent; rowsThenChild ] -> serverShown definition ]
+
 let cases: (string * (unit -> unit)) array =
     strictCases (
         Array.concat
@@ -558,6 +607,9 @@ let cases: (string * (unit -> unit)) array =
                     "an inlined child's title entry is shown over its parent's later title entry"
                     (nestedTitle Tree.ops Tree.run)
                     (nestedTitle Program.ops Program.run)
+                templated
+                    "renderPage's head shows the title and meta a client mount shows for an inlined child before its parent's later entries and rows after both"
+                    serverHeadShown
                 templated "a reactive title updates document.title and its pending read waits under a boundary" reactiveTitle
                 templated "entries under hidden content activate at reveal and withdraw on teardown" hiddenEntries
                 templated "a client mount adopts marked head elements without hydrate" adoptsMarked

@@ -695,7 +695,22 @@ type internal ServerWriter(backend: HtmlBackend) =
             backend.Scope <- outer
 
     /// <summary>Sets up an instance of <c>definition</c> in <c>scope.Nest</c> and writes it.</summary>
+    /// <remarks>
+    /// The head entries of the instance and of its inlined children activate in a new frame of the backend's head
+    /// collector; the content of each region activates in a later child frame of it, in region order.
+    /// </remarks>
     member this.Write(scope: ServerScope, definition: TemplateComponent, props: obj) : unit =
+        match backend.Heads with
+        | null -> this.Instance (scope, definition, props)
+        | heads ->
+            let outer = heads.Enter ()
+
+            try
+                this.Instance (scope, definition, props)
+            finally
+                heads.Leave outer
+
+    member private this.Instance(scope: ServerScope, definition: TemplateComponent, props: obj) : unit =
         let plan = serverPlan definition
 
         scope.Nest (fun scope setup ->
@@ -765,7 +780,7 @@ type internal ServerWriter(backend: HtmlBackend) =
                         else
                             HeadMarkup.title head.Opening (unbox<string>(head.Title.Invoke instance))
 
-                    heads.Add (head.Key, markup)
+                    heads.Add (part, head.Key, markup)
 
                 index <- index + 1
             | BrowserOp _ ->
@@ -774,7 +789,16 @@ type internal ServerWriter(backend: HtmlBackend) =
 
                 index <- index + 1
             | RegionOp (_, region) ->
-                this.Region (scope, region, instance)
+                match backend.Heads with
+                | null -> this.Region (scope, region, instance)
+                | heads ->
+                    let outer = heads.Enter ()
+
+                    try
+                        this.Region (scope, region, instance)
+                    finally
+                        heads.Leave outer
+
                 index <- index + 1
             | EnterOp child ->
                 let inlined = plan.Children[child - 1]

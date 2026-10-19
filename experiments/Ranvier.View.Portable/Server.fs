@@ -168,8 +168,10 @@ type Page = { Body: string; Head: string }
 /// <summary>Renders as <c>render</c> does, and collects the request's document head entries whatever the policy.</summary>
 /// <remarks>
 /// <para>
-/// The head lists one element per entry key in the order the keys were first written; a key's element is its last
-/// written entry, and each unkeyed link has its own element. A title is <c>&lt;title&gt;</c> with escaped text; a meta
+/// Entries activate in a client mount's order: an instance's own entries in document order, then its inlined
+/// children's, then the instances of its regions. The head lists one element per entry key in the order the keys first
+/// activated; a key's element is its last activated entry, so the head matches what a synchronous client mount shows
+/// first, and each unkeyed link has its own element. A title is <c>&lt;title&gt;</c> with escaped text; a meta
 /// or link is a void element with its static attributes, then its attribute slots, each in definition order. A slot
 /// returning <c>None</c> is omitted.
 /// </para>

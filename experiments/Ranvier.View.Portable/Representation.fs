@@ -375,36 +375,92 @@ module internal HeadMarkup =
             parts.Add ">"
             System.String.Join ("", parts)
 
+/// <summary>An instance's place in a request's activation order: the path of child indexes from the request root.</summary>
+[<Sealed>]
+type internal HeadFrame(path: int array) =
+    let mutable children = 0
+
+    member _.Path = path
+
+    /// <summary>A new frame that activates after this frame's own entries and after every earlier child frame.</summary>
+    member _.Child() =
+        children <- children + 1
+        HeadFrame (Array.append path [| children - 1 |])
+
 /// <summary>
-/// The document head entries written by one request, as a log of keyed markup. Per key, the last entry is written at
-/// the position of the key's first entry; unkeyed entries are each written at their own position.
+/// The document head entries written by one request, as a log of keyed markup, written in the client's activation
+/// order: a frame's own entries by part and then in log order, followed by its child frames in creation order. Per
+/// key, the last activated entry is written at the position of the key's first activated entry; unkeyed entries are
+/// each written at their own position.
 /// </summary>
 [<Sealed; AllowNullLiteral>]
 type internal HeadCollector() =
     let keys = ResizeArray<string>()
     let markup = ResizeArray<string>()
+    let paths = ResizeArray<int array>()
+    let parts = ResizeArray<int>()
+    let mutable current = HeadFrame [||]
+
+    let activation (left: int) (right: int) =
+        let leftPath = paths[left]
+        let rightPath = paths[right]
+        let shared = min leftPath.Length rightPath.Length
+        let mutable order = 0
+        let mutable index = 0
+
+        while order = 0 && index < shared do
+            order <- compare leftPath[index] rightPath[index]
+            index <- index + 1
+
+        if order <> 0 then
+            order
+        elif leftPath.Length <> rightPath.Length then
+            compare leftPath.Length rightPath.Length
+        elif parts[left] <> parts[right] then
+            compare parts[left] parts[right]
+        else
+            compare left right
 
     member _.Count = keys.Count
 
-    /// <summary>Logs an entry; a null key marks it unkeyed.</summary>
-    member _.Add(key: string, html: string) =
+    /// <summary>Logs an entry of <c>part</c> of the current frame; a null key marks it unkeyed.</summary>
+    member _.Add(part: int, key: string, html: string) =
         keys.Add key
         markup.Add html
+        paths.Add current.Path
+        parts.Add part
 
-    /// <summary>Keeps the first <c>count</c> entries; the head is then the one those entries write.</summary>
+    /// <summary>Makes a new child of the current frame current, and returns the frame to pass to <c>Leave</c>.</summary>
+    member _.Enter() : HeadFrame =
+        let outer = current
+        current <- outer.Child ()
+        outer
+
+    /// <summary>Makes <c>outer</c>, returned by the matching <c>Enter</c>, current again.</summary>
+    member _.Leave(outer: HeadFrame) =
+        current <- outer
+
+    /// <summary>
+    /// Keeps the first <c>count</c> entries, so <c>ToString</c> writes the head of those entries alone. Raises
+    /// <c>ArgumentException</c> when <c>count</c> lies outside zero to <c>Count</c>.
+    /// </summary>
     member _.Truncate(count: int) =
         if count < 0 || count > keys.Count then
             invalidArg "count" "The count must lie between zero and the number of entries"
 
         keys.RemoveRange (count, keys.Count - count)
         markup.RemoveRange (count, markup.Count - count)
+        paths.RemoveRange (count, paths.Count - count)
+        parts.RemoveRange (count, parts.Count - count)
 
     /// <summary>The head HTML of the logged entries, concatenated without separators.</summary>
     override _.ToString() =
         let written = ResizeArray<string>()
         let positions = System.Collections.Generic.Dictionary<string, int>()
+        let order = Array.init keys.Count id
+        Array.sortInPlaceWith activation order
 
-        for index in 0 .. keys.Count - 1 do
+        for index in order do
             let key = keys[index]
 
             if isNull key then
@@ -650,7 +706,7 @@ and [<Sealed>] HtmlBackend(policy: BrowserPolicy, sink: HtmlSink) =
         | null ->
             if policy = Reject then
                 raise (System.InvalidOperationException "Document metadata requires Server.renderPage")
-        | heads -> heads.Add (entry.Key, HeadMarkup.entry entry)
+        | heads -> heads.Add (0, entry.Key, HeadMarkup.entry entry)
 
     override _.Listen(_, _) =
         browserCapability ()
@@ -707,7 +763,19 @@ and [<Sealed>] HtmlBackend(policy: BrowserPolicy, sink: HtmlSink) =
 
             append ("</" + name tag + ">")
 
-    override _.Component setup =
+    override this.Component setup =
+        match this.Heads with
+        | null -> this.RunComponent setup
+        | heads ->
+            let outer = heads.Enter ()
+
+            try
+                this.RunComponent setup
+            finally
+                heads.Leave outer
+
+    /// <summary>Runs a component's setup, then its cleanups; a failure of either raises after every cleanup has run.</summary>
+    member private _.RunComponent(setup: Setup -> unit) =
         let cleanups = ResizeArray<unit -> unit>()
         let mutable completed = false
 

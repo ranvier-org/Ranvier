@@ -471,6 +471,54 @@ let private headOrder () =
         }
         (Server.renderPage Server.Options.defaults headParent ())
 
+let private earlyChild =
+    Component.define (fun _ () -> ()) (fun t ->
+        t.fragment
+            [|
+                t.Document.title "Child"
+                t.Document.meta
+                    [|
+                        t.Attrs.attribute ("name", "description")
+                        t.Attrs.attribute ("content", "child")
+                    |]
+                preload t "/c.css"
+            |])
+
+let private lateParent =
+    Component.define (fun _ () -> ()) (fun t ->
+        t.div
+            [||]
+            [|
+                t.render earlyChild ignore
+                t.Document.title "Parent"
+                t.Document.meta
+                    [|
+                        t.Attrs.attribute ("name", "description")
+                        t.Attrs.attribute ("content", "parent")
+                    |]
+                preload t "/p.css"
+            |])
+
+let private titledRow =
+    Component.define (fun _ (item: unit -> int) -> item) (fun t -> t.Document.title (fun (item: unit -> int) -> "Row " + string (item ())))
+
+let private rowsThenChild =
+    Component.define (fun _ (rows: int array) -> rows) (fun t -> t.div [||] [| t.ul [||] [| t.each id id titledRow |]; t.render earlyChild ignore |])
+
+let private activationOrder () =
+    equal
+        ("""<title data-ranvier-head="title">Child</title>"""
+         + """<meta data-ranvier-head="meta:name=description" name="description" content="child">"""
+         + """<link data-ranvier-head="" rel="preload" href="/p.css">"""
+         + """<link data-ranvier-head="" rel="preload" href="/c.css">""")
+        (Server.renderPage Server.Options.defaults lateParent ()).Head
+
+    equal
+        ("""<title data-ranvier-head="title">Row 2</title>"""
+         + """<meta data-ranvier-head="meta:name=description" name="description" content="child">"""
+         + """<link data-ranvier-head="" rel="preload" href="/c.css">""")
+        (Server.renderPage Server.Options.defaults rowsThenChild [| 1; 2 |]).Head
+
 let private escapedPage =
     Component.define (fun _ (page: PageProps) -> page) (fun t ->
         t.fragment
@@ -544,7 +592,7 @@ let private holedHeads () =
             headOf (Component.renderWith Program.ops headChild child)
         ]
 
-/// <summary>A page writing a title before <c>pause</c> and a meta after it, both named by the props.</summary>
+/// <summary>A page writing a title before <c>pause</c> and a meta after it, both taken from the props.</summary>
 let private namedPage (pause: Component<unit>) =
     Component.define (fun _ (name: string) -> name) (fun t ->
         t.fragment
@@ -577,6 +625,7 @@ let private sequentialHeads () =
 let cases: (string * (unit -> unit)) array =
     [|
         "renderPage writes keys in first-activation order and the last entry for a key", headOrder
+        "renderPage activates an instance's own entries before its inlined children's and its regions' instances after both", activationOrder
         "renderPage escapes titles and attribute values and marks every element", pageEscapes
         "render keeps the document entry policy and renderPage collects whatever the policy", headPolicy
         "renderPage collects the entries of a compiled and an expanded template in a view hole", holedHeads
@@ -766,17 +815,20 @@ let private concurrentHeads () =
 
 let private collectorTruncates () =
     let heads = HeadCollector ()
-    heads.Add ("title", "<t1>")
-    heads.Add (null, "<l1>")
-    heads.Add ("meta:name=d", "<m1>")
+    heads.Add (0, "title", "<t1>")
+    heads.Add (0, null, "<l1>")
+    heads.Add (0, "meta:name=d", "<m1>")
     let mark = heads.Count
-    heads.Add ("title", "<t2>")
-    heads.Add (null, "<l2>")
-    heads.Add ("meta:name=d", "<m2>")
-    heads.Add ("link:canonical", "<c>")
+    let outer = heads.Enter ()
+    heads.Add (0, "title", "<t2>")
+    heads.Add (0, null, "<l2>")
+    heads.Add (0, "meta:name=d", "<m2>")
+    heads.Add (0, "link:canonical", "<c>")
+    heads.Leave outer
     equal "<t2><l1><m2><l2><c>" (heads.ToString ())
     heads.Truncate mark
     equal (3, "<t1><l1><m1>") (heads.Count, heads.ToString ())
+    equal true ((failure (fun () -> heads.Truncate 4)) :? ArgumentException)
 
 let dotnetCases: (string * (unit -> unit)) array =
     [|
