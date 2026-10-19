@@ -1,5 +1,7 @@
 # Rebuilds the vendored Thoth.Json files from the pinned upstream commit plus ./patches (applied in name order),
-# or, with -Check, fails when a committed file differs from that result. Needs network access to GitHub.
+# removing any other file in the package directories. With -Check, fails instead when a committed file differs from
+# that result byte for byte, CRLF read as LF and a byte order mark included, or when a package directory holds another
+# file. Needs network access to GitHub.
 #
 #   pwsh src/Ranvier.Wire/Vendor/Thoth.Json/refresh.ps1 [-Check]
 param([switch]$Check)
@@ -18,7 +20,10 @@ function Invoke-Git {
     if ($LASTEXITCODE -ne 0) { throw "git $($args -join ' ') failed with exit code $LASTEXITCODE" }
 }
 
-function Read-Normalised([string]$path) { (Get-Content -LiteralPath $path -Raw) -replace "`r`n", "`n" }
+# The file's bytes, one character per byte, with CRLF read as LF.
+function Read-Normalised([string]$path) {
+    [Text.Encoding]::GetEncoding(28591).GetString([IO.File]::ReadAllBytes($path)).Replace("`r`n", "`n")
+}
 
 try {
     Invoke-Git -c core.autocrlf=false clone --quiet --no-checkout https://github.com/thoth-org/Thoth.Json.git $work
@@ -36,7 +41,8 @@ try {
         $source = Join-Path $work $pair.Source
         $target = Join-Path $PSScriptRoot $pair.Target
         if ($Check) {
-            if (-not (Test-Path -LiteralPath $target) -or (Read-Normalised $source) -ne (Read-Normalised $target)) {
+            if (-not (Test-Path -LiteralPath $target) -or
+                -not [string]::Equals((Read-Normalised $source), (Read-Normalised $target), [StringComparison]::Ordinal)) {
                 Write-Host "differs from the pin plus patches: $($pair.Target)"
                 $differences++
             }
@@ -45,7 +51,22 @@ try {
             Copy-Item -LiteralPath $source -Destination $target -Force
         }
     }
-    if ($differences -gt 0) { throw "$differences vendored file(s) differ; run refresh.ps1 without -Check and review the diff" }
+    foreach ($package in $files.Keys) {
+        $directory = Join-Path $PSScriptRoot $package
+        if (-not (Test-Path -LiteralPath $directory)) { continue }
+        foreach ($extra in Get-ChildItem -LiteralPath $directory -Recurse -File -Force) {
+            $relative = [IO.Path]::GetRelativePath($directory, $extra.FullName).Replace([char]92, [char]47)
+            if ($files[$package] -cnotcontains $relative) {
+                if ($Check) {
+                    Write-Host "not in the pin plus patches: $package/$relative"
+                    $differences++
+                } else {
+                    Remove-Item -LiteralPath $extra.FullName -Force
+                }
+            }
+        }
+    }
+    if ($differences -gt 0) { throw "$differences vendored file(s) differ or are extra; run refresh.ps1 without -Check and review the diff" }
     $verb = if ($Check) { 'matches' } else { 'refreshed from' }
     Write-Host "vendored Thoth.Json $verb $pin plus $($patches.Count) patch(es)"
 } finally {

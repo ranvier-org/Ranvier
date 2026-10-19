@@ -38,10 +38,12 @@ let checks () : (string * bool * string) list =
     let tag = failure (Decode.fromString shape """{"hexagon":null}""")
     let index = failure (Decode.fromString (Codec.array Codec.int) """[1,"x"]""")
     let overflow = failure (Decode.fromString Codec.float "1e400")
+    let overflow32 = failure (Decode.fromString Codec.float32 "1e39")
 
     [
         "a vendored Thoth record encodes", pointText = """{"x":3,"label":"a"}""", pointText
         "an unknown variant tag is an error", tag.Contains "Expected exactly one object key", tag
         "an array element error names its index", index.Contains "$.[1]", index
         "a vendored float past the double range is an error", overflow.Contains "Value is outside the float range", overflow
+        "a vendored float32 past the single range is an error", overflow32.Contains "Value is outside the float32 range", overflow32
     ]

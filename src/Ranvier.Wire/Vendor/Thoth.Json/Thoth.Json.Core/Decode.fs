@@ -439,7 +439,16 @@ module Decode =
                             ("", BadPrimitive("a float", value)) |> Error
 
                 if helpers.isNumber value then
-                    decodeString (helpers.anyToString value)
+                    if Double.IsInfinity(helpers.asFloat value) then
+                        ("",
+                         BadPrimitiveExtra(
+                             "a float",
+                             value,
+                             "Value is outside the float range"
+                         ))
+                        |> Error
+                    else
+                        decodeString (helpers.anyToString value)
                 elif helpers.isString value then
                     decodeString (helpers.asString value)
                 else
@@ -452,13 +461,13 @@ module Decode =
         { new Decoder<float32> with
             member _.Decode(helpers, value) =
                 if helpers.isNumber value then
-                    // A double of this magnitude or more rounds to an infinite float32.
+                    // A number whose double value has this magnitude or more rounds to ±∞ as a float32.
                     if abs (helpers.asFloat value) >= 3.4028235677973366e38 then
                         ("",
                          BadPrimitiveExtra(
                              "a float32",
                              value,
-                             "Value is outside the float range"
+                             "Value is outside the float32 range"
                          ))
                         |> Error
                     else

@@ -1,9 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <!--
-    A NativeAOT app over Ranvier, Ranvier.CSharp, Ranvier.Elmish, Ranvier.Query and Ranvier.Wire. `dotnet publish -c Release -r linux-x64` fails on any
-    IL2xxx/IL3xxx warning: the assemblies are rooted, so ILC analyses their whole public surface. The published
-    binary exits non-zero when an exception or a ToString text differs from the JIT build's.
+    A NativeAOT app over Ranvier, Ranvier.CSharp, Ranvier.Elmish, Ranvier.Query and Ranvier.Wire.
+    `dotnet publish -c Release -r linux-x64` fails on any IL2xxx/IL3xxx warning: the assemblies are rooted, so ILC
+    analyses their whole public surface. The published binary exits non-zero when an exception or a ToString text
+    differs from the JIT build's.
     -->
     <PropertyGroup>
         <OutputType>Exe</OutputType>

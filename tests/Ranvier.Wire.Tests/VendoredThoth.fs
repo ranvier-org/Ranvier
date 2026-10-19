@@ -29,6 +29,13 @@ let private failure (result: Result<'T, string>) =
     | Ok _ -> "decoded"
     | Error message -> message
 
+/// <summary>Passes when the decode failed with a BadPrimitiveExtra error naming the expected type and the reason.</summary>
+let private expectOutOfRange (expected: string) (reason: string) (text: string) (result: Result<'T, string>) =
+    let message = failure result
+    Expect.stringContains message ("Expecting " + expected + " but instead got:") text
+
+    Expect.stringContains message ("Reason: " + reason) text
+
 [<Tests>]
 let tests =
     testList
@@ -52,15 +59,15 @@ let tests =
             testCase "a float past the double range is an error, and the string Infinity still decodes"
             <| fun () ->
                 for text in [ "1e400"; "-1e400"; "\"1e400\"" ] do
-                    Expect.notEqual (failure (Decode.fromString Codec.float text)) "decoded" text
+                    expectOutOfRange "a float" "Value is outside the float range" text (Decode.fromString Codec.float text)
 
-                Expect.notEqual (failure (Decode.fromString Codec.float32 "1e400")) "decoded" "float32"
+                expectOutOfRange "a float32" "Value is outside the float32 range" "1e400" (Decode.fromString Codec.float32 "1e400")
                 Expect.equal (Decode.fromString Codec.float "\"Infinity\"") (Ok infinity) "the string Infinity"
 
-            testCase "a float32 past the single range is an error, and the single maximum still decodes"
+            testCase "a float32 whose double value rounds to infinity as a float32 is an error, and the single maximum still decodes"
             <| fun () ->
                 for text in [ "1e39"; "-1e39"; "3.4028235677973366e38" ] do
-                    Expect.notEqual (failure (Decode.fromString Codec.float32 text)) "decoded" text
+                    expectOutOfRange "a float32" "Value is outside the float32 range" text (Decode.fromString Codec.float32 text)
 
                 Expect.equal (Decode.fromString Codec.float32 "3.4028234663852886e38") (Ok Single.MaxValue) "the single maximum"
                 Expect.equal (Decode.fromString Codec.float32 "\"Infinity\"") (Ok Single.PositiveInfinity) "the string Infinity"
