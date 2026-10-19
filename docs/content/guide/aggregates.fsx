@@ -50,6 +50,7 @@ let rows = createProjection _.Id id (fun () -> tasks.Value)
 | Function | Result | Cost of a row edit |
 |----------|--------|--------------------|
 | `Projection.foldGroup add subtract zero` | the fold of every settled value with `add` | O(1) calls: `subtract` of the old value, `add` of the new |
+| `Projection.foldGroupBy projection add subtract zero result` | `result` of the `foldGroup` of `projection` over the values | as `foldGroup` |
 | `Projection.fold folder state` | the fold of every settled value in `Keys` order | O(N) calls of `folder` over the cached values |
 | `Projection.sumBy projection` | the sum of `projection` over the values | as `foldGroup` |
 | `Projection.countBy predicate` | the count of values satisfying `predicate` | as `foldGroup` |
@@ -105,6 +106,22 @@ tasks.Value <- tasks.Value |> List.map (fun t -> if t.Id = 1 then { t with Estim
 totalEstimate.Value // 15
 
 (**
+`Projection.foldGroupBy` folds a projection of each value and finishes the state with `result`. The memo owns the
+view of projected values and the fold.
+*)
+
+let meanEstimate =
+    rows
+    |> Projection.foldGroupBy
+        _.Estimate
+        (fun (struct (sum, count)) estimate -> struct (sum + estimate, count + 1))
+        (fun (struct (sum, count)) estimate -> struct (sum - estimate, count - 1))
+        (struct (0, 0))
+        (fun (struct (sum, count)) -> if count = 0 then 0 else sum / count)
+
+meanEstimate.Value // 5
+
+(**
 :::details Pending and failed rows
 
 The fold reads settled values. A pending row keeps its last settled value in the state, as in `Snapshot`, and
@@ -121,7 +138,7 @@ Use these shorthands for common totals and predicates. Their functions re-run fo
 A pending or throwing function behaves like a pending or failed row.
 
 :::details How the shorthands are built
-They combine `Projection.map` with `foldGroup`.
+Each is `Projection.foldGroupBy`: a `Projection.map` view and a `foldGroup` that the returned memo owns.
 :::
 *)
 
@@ -182,13 +199,14 @@ These functions re-run on row changes, outside the calling scope. A node created
 
 ## Lifetime
 
-The aggregate belongs to the scope that created it and is disposed with it. After disposal it stops observing the
-rows, and reads return the last state.
+The aggregate belongs to the scope that created it. Disposing the aggregate, or that scope, disposes it with the views
+and folds it built; it stops observing the rows, and reads return the last state.
 
 :::details Tests covering this behaviour
 
 Pinned by the `Projection.foldGroup` tests, including `an edit at N=1000 makes one add and one subtract`, `sumBy over
-floats recovers from infinity and NaN` and `sumBy over floats reads zero once every row leaves`
+floats recovers from infinity and NaN` and `sumBy over floats reads zero once every row leaves`, and by the
+`Projection aggregate ownership` tests
 ([Combinators.fs](https://github.com/shayanhabibi/Ranvier/blob/master/tests/Ranvier.Tests/Combinators.fs)).
 :::
 *)

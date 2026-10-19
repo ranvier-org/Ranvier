@@ -270,6 +270,7 @@ member Ranvier.ProjectionModule static exists<2>(Microsoft.FSharp.Core.FSharpFun
 member Ranvier.ProjectionModule static filter<2>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,Boolean>,Ranvier.Projection`2<!!1,!!0>) : Ranvier.Projection`2<!!1,!!0>
 member Ranvier.ProjectionModule static fold<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,Microsoft.FSharp.Core.FSharpFunc`2<!!1,!!0>>,!!0,Ranvier.Projection`2<!!2,!!1>) : Ranvier.Memo`1<!!0>
 member Ranvier.ProjectionModule static foldGroup<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,Microsoft.FSharp.Core.FSharpFunc`2<!!1,!!0>>,Microsoft.FSharp.Core.FSharpFunc`2<!!0,Microsoft.FSharp.Core.FSharpFunc`2<!!1,!!0>>,!!0,Ranvier.Projection`2<!!2,!!1>) : Ranvier.Memo`1<!!0>
+member Ranvier.ProjectionModule static foldGroupBy<5>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,Microsoft.FSharp.Core.FSharpFunc`2<!!2,Microsoft.FSharp.Core.FSharpFunc`2<!!1,!!2>>,Microsoft.FSharp.Core.FSharpFunc`2<!!2,Microsoft.FSharp.Core.FSharpFunc`2<!!1,!!2>>,!!2,Microsoft.FSharp.Core.FSharpFunc`2<!!2,!!3>,Ranvier.Projection`2<!!4,!!0>) : Ranvier.Memo`1<!!3>
 member Ranvier.ProjectionModule static forall<2>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,Boolean>,Ranvier.Projection`2<!!1,!!0>) : Ranvier.Memo`1<Boolean>
 member Ranvier.ProjectionModule static groupBy<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,Ranvier.Projection`2<!!2,!!0>) : Ranvier.Grouping`3<!!1,!!2,!!0>
 member Ranvier.ProjectionModule static map<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,Ranvier.Projection`2<!!2,!!0>) : Ranvier.Projection`2<!!2,!!1>

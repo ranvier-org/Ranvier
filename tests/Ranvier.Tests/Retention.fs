@@ -411,4 +411,23 @@ let tests =
                     GC.KeepAlive g
                 }
 #endif
+
+#if !FABLE_COMPILER
+            // .NET only: JavaScript exposes no forced collection.
+            test "a disposed aggregate memo is not retained by its fold" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal [ 1; 2; 3 ]
+                let up = createProjection id id (fun () -> source.Value)
+                let refs = ResizeArray<WeakReference>()
+
+                for _ in 1..200 do
+                    let total = up |> Projection.foldGroup (+) (-) 0
+                    total.Value |> ignore
+                    total.Dispose ()
+                    refs.Add (WeakReference total)
+
+                Expect.isLessThan (aliveOf refs) 20 "a disposed aggregate leaves no fold behind"
+            }
+#endif
         ]

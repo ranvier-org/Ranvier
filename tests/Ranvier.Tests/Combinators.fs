@@ -2207,3 +2207,94 @@ let foldTests =
                 Expect.sequenceEqual seen [ 10; 65 ] "one run for the batch"
             }
         ]
+
+/// <summary>How many nodes read the row of <c>key</c> in <c>view</c>.</summary>
+let private readersOf (view: Projection<int, 'V>) (key: int) =
+    (view.Entries.Find key).Row.ObserverCount
+
+/// <summary>Each aggregate over an int projection, as a read and a disposal of its memo.</summary>
+let private aggregateHandles: (string * (Projection<int, int> -> (unit -> unit) * (unit -> unit))) list =
+    let handle (memo: Memo<'T>) =
+        (fun () -> memo.Value |> ignore), (fun () -> memo.Dispose ())
+
+    [
+        "foldGroup", (fun up -> handle (Projection.foldGroup (+) (-) 0 up))
+        "fold", (fun up -> handle (Projection.fold (+) 0 up))
+        "foldGroupBy", (fun up -> handle (Projection.foldGroupBy id (+) (-) 0 string up))
+        "sumBy", (fun up -> handle (Projection.sumBy id up))
+        "countBy", (fun up -> handle (Projection.countBy (fun n -> n > 1) up))
+        "exists", (fun up -> handle (Projection.exists (fun n -> n > 1) up))
+        "forall", (fun up -> handle (Projection.forall (fun n -> n > 0) up))
+    ]
+
+[<Tests>]
+let ownershipTests =
+    testList
+        "Projection aggregate ownership"
+        [
+            for name, create in aggregateHandles do
+                test $"disposing the {name} memo releases the upstream rows" {
+                    use g = new Graph ()
+                    use _ = g.Activate ()
+                    let source = createSignal (items [ 1, 1; 2, 2 ])
+                    let up = rows source
+                    up.Get 1 |> ignore
+                    Expect.equal (readersOf up 1) 0 "precondition: nothing reads row 1"
+
+                    let read, dispose = create up
+                    read ()
+                    Expect.isGreaterThan (readersOf up 1) 0 "the aggregate reads row 1"
+
+                    dispose ()
+                    Expect.equal (readersOf up 1) 0 "disposing the memo disposed its view and fold"
+                }
+
+                test $"disposing the {name} memo twice, then its scope, records no error" {
+                    use g = new Graph ()
+                    use _ = g.Activate ()
+                    let source = createSignal (items [ 1, 1; 2, 2 ])
+                    let up = rows source
+                    let scope = ref Unchecked.defaultof<Owner>
+
+                    let read, dispose =
+                        createRoot (fun owner ->
+                            scope.Value <- owner
+                            create up)
+
+                    read ()
+                    dispose ()
+                    dispose ()
+                    scope.Value.Dispose ()
+
+                    Expect.equal scope.Value.ErrorCount 0 "the scope recorded no teardown error"
+                    Expect.equal g.Root.ErrorCount 0 "the graph recorded no teardown error"
+                    Expect.equal (readersOf up 1) 0 "the rows are released"
+                }
+
+            test "creating an aggregate inside a pure memo body fails that memo and attaches nothing" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1; 2, 2 ])
+                let up = rows source
+                up.Get 1 |> ignore
+                let inner = createMemo (fun _ -> (up |> Projection.exists (fun n -> n > 1)).Value)
+
+                match inner.TryValue with
+                | Failed ex -> Expect.isTrue (ex :? InvalidOperationException) "the purity error"
+                | other -> failtestf "expected Failed, got %A" other
+
+                Expect.equal (readersOf up 1) 0 "no half-built aggregate reads the upstream"
+            }
+
+            test "a disposed aggregate reads its last value" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1; 2, 2 ])
+                let any = rows source |> Projection.exists (fun n -> n > 1)
+
+                Expect.isTrue any.Value "precondition"
+                any.Dispose ()
+                source.Value <- items [ 1, 1 ]
+                Expect.isTrue any.Value "the last value"
+            }
+        ]

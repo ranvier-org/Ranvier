@@ -975,6 +975,10 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
             link <- null
             this.Dispose ()
 
+    interface System.IDisposable with
+        member this.Dispose() =
+            this.Dispose ()
+
 /// <summary>Views over a <c>Projection</c> that re-run the user function only for keys whose upstream row changed.</summary>
 /// <remarks>
 /// A view is a <c>Projection</c> owned by the scope that creates it. A membership or order change costs O(N) per view, and O(window) for <c>take</c>, <c>skip</c> and <c>sub</c>.
@@ -994,6 +998,13 @@ module Projection =
 
             if not (seen.Add key) then
                 raise (ProjectionFailures.duplicateKey key)
+
+    /// <summary>An owner parented to the calling scope, for the nodes built by a composed memo.</summary>
+    let private ownedScope (graph: Graph) =
+        let parent = graph.CurrentOwner
+        let owner = new Owner (graph.Root)
+        owner.SetParent (parent.AttachLinked owner)
+        owner
 
     /// <summary>The keys of <c>upstream</c> whose value satisfies <c>predicate</c>, in upstream order, with their values.</summary>
     /// <remarks>
@@ -1279,6 +1290,29 @@ module Projection =
         view
 
     /// <summary>
+    /// A memo of <c>result</c> applied to the fold of <c>rows ()</c>. The memo owns the fold and every node created by
+    /// <c>rows</c>.
+    /// </summary>
+    let private foldOwned
+        (graph: Graph)
+        (rows: unit -> Projection<'K, 'U>)
+        (add: 'S -> 'U -> 'S)
+        (subtract: 'S -> 'U -> 'S)
+        (zero: 'S)
+        (result: 'S -> 'R)
+        : Memo<'R> =
+        let owner = ownedScope graph
+
+        let aggregate =
+            graph.RunOwned (owner, fun () -> new ProjectionFold<'K, 'U, 'S> (graph, rows (), add, subtract, zero))
+
+        let memo =
+            Memo<'R>.Create(graph, (fun _ -> result (aggregate.Compute ValueNone)), ScopeMode.Pure)
+
+        memo.Adopt owner
+        memo
+
+    /// <summary>
     /// A memo of the settled values of <c>upstream</c> folded into <c>zero</c> with <c>add</c>, kept current by applying each
     /// row change: <c>add</c> for an added key, <c>subtract</c> of its last value for a removed key, and both for a changed value.
     /// </summary>
@@ -1286,7 +1320,7 @@ module Projection =
     /// <c>subtract</c> must invert <c>add</c>. A row edit costs O(1) calls and reads the edited row alone; a key change costs
     /// an O(N) key diff. The fold covers settled values: a pending row keeps its last one, as in <c>Snapshot</c>, and
     /// <c>AnyPending</c> reports it. A failed row makes a read raise its exception. A value read by <c>add</c> or
-    /// <c>subtract</c> re-folds the cached values on change. The memo is disposed with the calling scope.
+    /// <c>subtract</c> re-folds the cached values on change. Disposing the memo, or the calling scope, disposes the fold.
     /// </remarks>
     /// <example>
     /// <code lang="fsharp">
@@ -1301,9 +1335,14 @@ module Projection =
             raise (System.ArgumentNullException (nameof subtract))
 
         let graph = upstream.Graph
-        let aggregate = ProjectionFold<'K, 'V, 'S>(graph, upstream, add, subtract, zero)
-        aggregate.Memo <- Memo<'S>.Create(graph, aggregate.Compute, ScopeMode.Pure)
-        aggregate.Memo
+
+        let aggregate =
+            new ProjectionFold<'K, 'V, 'S> (graph, upstream, add, subtract, zero)
+
+        let memo = Memo<'S>.Create(graph, aggregate.Compute, ScopeMode.Pure)
+        aggregate.Memo <- memo
+        memo.Adopt aggregate
+        memo
 
     /// <summary>A memo of the settled values of <c>upstream</c> folded with <c>folder</c> from <c>state</c>, in <c>Keys</c> order.</summary>
     /// <remarks>
@@ -1315,14 +1354,54 @@ module Projection =
         let graph = upstream.Graph
 
         let aggregate =
-            ProjectionFold<'K, 'V, 'S>(graph, upstream, folder, Unchecked.defaultof<_>, state)
+            new ProjectionFold<'K, 'V, 'S> (graph, upstream, folder, Unchecked.defaultof<_>, state)
 
-        aggregate.Memo <- Memo<'S>.Create(graph, aggregate.Compute, ScopeMode.Pure)
-        aggregate.Memo
+        let memo = Memo<'S>.Create(graph, aggregate.Compute, ScopeMode.Pure)
+        aggregate.Memo <- memo
+        memo.Adopt aggregate
+        memo
+
+    /// <summary>
+    /// A memo of <c>result</c> applied to the <c>foldGroup add subtract zero</c> of <c>projection</c> over the values of
+    /// <c>upstream</c>.
+    /// </summary>
+    /// <remarks>
+    /// <c>projection</c> re-runs for a key when its upstream row changes, in a view the memo owns; <c>result</c> re-runs
+    /// when the fold state changes. Costs, pending and failed rows follow <c>foldGroup</c>. Disposing the memo, or the
+    /// calling scope, disposes the view and the fold.
+    /// </remarks>
+    /// <example>
+    /// <code lang="fsharp">
+    /// let rows = createProjection (fun t -> t.Id) id (fun () -> todos.Value)
+    ///
+    /// let anyOpen =
+    ///     rows
+    ///     |> Projection.foldGroupBy
+    ///         (fun t -> t.Done)
+    ///         (fun n d -> if d then n else n + 1)
+    ///         (fun n d -> if d then n else n - 1)
+    ///         0
+    ///         (fun n -> n > 0)
+    /// </code>
+    /// </example>
+    let foldGroupBy
+        (projection: 'V -> 'U)
+        (add: 'S -> 'U -> 'S)
+        (subtract: 'S -> 'U -> 'S)
+        (zero: 'S)
+        (result: 'S -> 'R)
+        (upstream: Projection<'K, 'V>)
+        : Memo<'R> =
+        upstream.RequireRowMemos "Projection.foldGroupBy"
+
+        if Platform.isNull (box subtract) then
+            raise (System.ArgumentNullException (nameof subtract))
+
+        foldOwned upstream.Graph (fun () -> map projection upstream) add subtract zero result
 
     /// <summary>A memo of the sum of <c>projection</c> over the values of <c>upstream</c>, kept current per row change.</summary>
     /// <remarks>
-    /// <c>projection</c> re-runs for a key when its upstream row changes, in a view the memo reads as <c>foldGroup</c> does.
+    /// <c>projection</c> re-runs for a key when its upstream row changes, in a view the memo owns.
     /// A pending or throwing <c>projection</c> behaves as a pending or failed row of <c>foldGroup</c>. While the sum is
     /// infinite or NaN, each row change re-adds every cached value: O(N).
     /// </remarks>
@@ -1335,8 +1414,8 @@ module Projection =
     [<NoDynamicInvocation>]
     let inline sumBy (projection: 'V -> ^N) (upstream: Projection<'K, 'V>) : Memo< ^N > =
         upstream
-        |> map projection
-        |> foldGroup
+        |> foldGroupBy
+            projection
             (fun s n -> s + n)
             (fun s n ->
                 let d = s - n
@@ -1347,6 +1426,7 @@ module Projection =
 
                 d)
             LanguagePrimitives.GenericZero
+            id
 
     /// <summary>A memo of how many values of <c>upstream</c> satisfy <c>predicate</c>, kept current per row change.</summary>
     /// <remarks>
@@ -1355,17 +1435,16 @@ module Projection =
     /// </remarks>
     let countBy (predicate: 'V -> bool) (upstream: Projection<'K, 'V>) : Memo<int> =
         upstream
-        |> map predicate
-        |> foldGroup (fun n hit -> if hit then n + 1 else n) (fun n hit -> if hit then n - 1 else n) 0
+        |> foldGroupBy predicate (fun n hit -> if hit then n + 1 else n) (fun n hit -> if hit then n - 1 else n) 0 id
 
     /// <summary>A memo of whether some value of <c>upstream</c> satisfies <c>predicate</c>: a <c>countBy</c> above zero.</summary>
     /// <remarks>Costs and pending and failed rows follow <c>countBy</c>. An empty projection reads <c>false</c>.</remarks>
     let exists (predicate: 'V -> bool) (upstream: Projection<'K, 'V>) : Memo<bool> =
-        let count = countBy predicate upstream
-        Memo<bool>.Create(upstream.Graph, (fun _ -> count.Value > 0), ScopeMode.Pure)
+        upstream
+        |> foldGroupBy predicate (fun n hit -> if hit then n + 1 else n) (fun n hit -> if hit then n - 1 else n) 0 (fun n -> n > 0)
 
     /// <summary>A memo of whether every value of <c>upstream</c> satisfies <c>predicate</c>: a <c>countBy</c> of misses at zero.</summary>
     /// <remarks>Costs and pending and failed rows follow <c>countBy</c>. An empty projection reads <c>true</c>.</remarks>
     let forall (predicate: 'V -> bool) (upstream: Projection<'K, 'V>) : Memo<bool> =
-        let misses = countBy (predicate >> not) upstream
-        Memo<bool>.Create(upstream.Graph, (fun _ -> misses.Value = 0), ScopeMode.Pure)
+        upstream
+        |> foldGroupBy predicate (fun n hit -> if hit then n else n + 1) (fun n hit -> if hit then n else n - 1) 0 (fun n -> n = 0)

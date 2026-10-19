@@ -230,6 +230,7 @@ let tests =
                         "forall (fun _ -> true)"
                         "fold (+) 0"
                         "foldGroup (+) (-) 0"
+                        "foldGroupBy id (+) (-) 0 id"
                     ] do
                     let _, _, bindings =
                         scenario ($"let total =\n    rows\n    |> Projection.{aggregate} // aggregate\ncontrols []")

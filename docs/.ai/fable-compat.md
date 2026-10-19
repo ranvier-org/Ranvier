@@ -34,7 +34,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Edges.fs | 5 | 5 | 5 | 5 | 5 | 5 | 0 | 0 |
 | Invalidation.fs | 4 | 4 | 4 | 4 | 4 | 4 | 0 | 0 |
 | Lifetime.fs | 6 | 6 | 6 | 6 | 6 | 6 | 0 | 0 |
-| Retention.fs | 2 | 2 | 2 | 2 | 2 | 2 | 12 | 0 |
+| Retention.fs | 2 | 2 | 2 | 2 | 2 | 2 | 13 | 0 |
 | Tracing.fs | 2 | 2 | 2 | 82 | 77 | 77 | 1 | 0 |
 | TraceModelTests.fs | 0 | 0 | 0 | 12 | 12 | 12 | 2 | 0 |
 | Observers.fs | 102 | 102 | 102 | 102 | 102 | 102 | 0 | 0 |
@@ -57,7 +57,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | DischargeReentry.fs | 29 | 29 | 29 | 29 | 29 | 29 | 1 | 0 |
 | MapSemantics.fs | 42 | 42 | 42 | 42 | 42 | 42 | 0 | 1 |
 | Lenses.fs | 23 | 20 | 20 | 23 | 20 | 20 | 0 | 0 |
-| Combinators.fs | 127 | 127 | 127 | 127 | 127 | 127 | 1 | 0 |
+| Combinators.fs | 143 | 143 | 143 | 143 | 143 | 143 | 1 | 0 |
 | Timed.fs | 31 | 31 | 31 | 38 | 38 | 38 | 0 | 0 |
 | Streams.fs | 26 | 26 | 26 | 26 | 26 | 26 | 1 | 0 |
 | PreviousValues.fs | 12 | 12 | 12 | 12 | 12 | 12 | 15 | 0 |
@@ -81,7 +81,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 9 | 9 | 9 | 9 | 9 | 9 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1411 | 1390 | 1387 | 1551 | 1525 | 1522 | 98 | 1 |
+| **Total** | 1427 | 1406 | 1403 | 1567 | 1541 | 1538 | 99 | 1 |
 
 ## Tests.fs
 
@@ -504,6 +504,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | {name}: a flight that never settles is released when the memo is disposed | JavaScript exposes no forced collection. |
 | the items and keys {name} from a projection over {source} source are released | JavaScript exposes no forced collection. |
 | a failed read swallowed inside a {name} is released when it ends | JavaScript exposes no forced collection. |
+| a disposed aggregate memo is not retained by its fold | JavaScript exposes no forced collection. |
 
 <details><summary>2 passed in every build and delivery that runs them</summary>
 
@@ -1422,7 +1423,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | --- | --- |
 | foldGroup rejects a null subtract | Fable wraps a null function argument in a closure, so it is never null. |
 
-<details><summary>127 passed in every build and delivery that runs them</summary>
+<details><summary>143 passed in every build and delivery that runs them</summary>
 
 - 200 single edits at N=1000 make 200 predicate calls
 - a Keys reader wakes only when membership flips
@@ -1551,6 +1552,22 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - sumBy over floats reads zero once every row leaves
 - a throwing add recomputes from the cached values on the next read
 - a batch of edits reads the combined result
+- disposing the foldGroup memo releases the upstream rows
+- disposing the foldGroup memo twice, then its scope, records no error
+- disposing the fold memo releases the upstream rows
+- disposing the fold memo twice, then its scope, records no error
+- disposing the foldGroupBy memo releases the upstream rows
+- disposing the foldGroupBy memo twice, then its scope, records no error
+- disposing the sumBy memo releases the upstream rows
+- disposing the sumBy memo twice, then its scope, records no error
+- disposing the countBy memo releases the upstream rows
+- disposing the countBy memo twice, then its scope, records no error
+- disposing the exists memo releases the upstream rows
+- disposing the exists memo twice, then its scope, records no error
+- disposing the forall memo releases the upstream rows
+- disposing the forall memo twice, then its scope, records no error
+- creating an aggregate inside a pure memo body fails that memo and attaches nothing
+- a disposed aggregate reads its last value
 
 </details>
 
