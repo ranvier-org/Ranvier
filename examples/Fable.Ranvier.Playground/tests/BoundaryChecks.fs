@@ -1427,6 +1427,57 @@ let private cancelledBeforeReveal (ops: Operations<'view>) (run: 'view -> Backen
     equal ("A1", [ [ "setter" ] ]) (host.textContent, messages reports)
     mounted.Dispose ()
 
+/// <summary>
+/// A second refetch starts after the reveal while a first is in flight: IsPending stays set until both settle, and each
+/// value commits when its source settles.
+/// </summary>
+let private overlappingWaits (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+
+    let settled (value: string) =
+        let source = Api.createAsyncSource<string>()
+        source.Settle value
+        source
+
+    let left = graph.Run (fun () -> Api.createSignal (settled "1"))
+    let right = graph.Run (fun () -> Api.createSignal (settled "2"))
+    let host = host ()
+
+    let view =
+        ops.Boundary (
+            ops.Text "loading",
+            (fun failure -> ops.Text failure.Error.Message),
+            fun status ->
+                ops.Fragment
+                    [|
+                        Typed.reactiveText ops (fun () -> left.Value.Value)
+                        Typed.reactiveText ops (fun () -> right.Value.Value)
+                        Typed.reactiveText ops (fun () -> if status.IsPending () then "*" else ".")
+                    |]
+        )
+
+    let mounted =
+        mountWith (modeOf queued) graph None strict host None (fun context -> run view context.Backend)
+
+    // A queued IsPending text commits in the flush after the one that changes it.
+    let flushTwice () =
+        mounted.Flush ()
+        mounted.Flush ()
+
+    equal "12." host.textContent
+    graph.Run (fun () -> left.Value <- Api.createAsyncSource<string>())
+    flushTwice ()
+    equal "12*" host.textContent
+    graph.Run (fun () -> right.Value <- Api.createAsyncSource<string>())
+    flushTwice ()
+    equal "12*" host.textContent
+    graph.Run (fun () -> left.Value.Settle "3")
+    flushTwice ()
+    equal "32*" host.textContent
+    graph.Run (fun () -> right.Value.Settle "4")
+    flushTwice ()
+    equal "34." host.textContent
+    mounted.Dispose ()
 
 let cases: (string * (unit -> unit)) array =
     [|
@@ -1532,6 +1583,10 @@ let cases: (string * (unit -> unit)) array =
         fun () -> cancelledAfterReveal Program.ops Program.run
         "program queued: a fail-fast flush stopped outside a hidden boundary still reveals it once every source settles",
         fun () -> cancelledBeforeReveal Program.ops Program.run
+        "tree synchronous: overlapping refetches after the reveal keep IsPending set until both settle",
+        fun () -> overlappingWaits Tree.ops Tree.run false
+        "program queued: overlapping refetches after the reveal keep IsPending set until both settle",
+        fun () -> overlappingWaits Program.ops Program.run true
         "tree synchronous: a delegated handler throwing NotReadyException under a boundary shows the error view",
         fun () -> handlerNotReady Tree.ops Tree.run false "click"
         "program queued: a delegated handler throwing NotReadyException under a boundary shows the error view",
