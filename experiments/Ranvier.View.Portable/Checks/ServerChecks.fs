@@ -1020,6 +1020,32 @@ let private staticTextarea =
 let private staticTextareaLineFeed () =
     equal "<!--[r--><textarea>\n\nstatic</textarea><!--]-->" (Server.render Server.Options.defaults staticTextarea ())
 
+let private formsUnset () =
+    equal
+        "<!--[r--><form><textarea>text</textarea><input type=\"checkbox\"><select><option value=\"a\">A</option><option value=\"b\">B</option></select><pre>text</pre><pre>\n\nstatic</pre></form><!--]-->"
+        (Server.render
+            { Server.Options.defaults with
+                Policy = Omit
+            }
+            formFixture
+            {
+                Text = "text"
+                On = false
+                Choice = "c"
+            })
+
+let private textareaValues () =
+    let render (value: string) =
+        Server.render Server.Options.defaults childText value
+
+    equal
+        [
+            "<!--[r--><textarea>&lt;/textarea&gt;&amp;</textarea><textarea>&lt;static&gt;</textarea><!--]-->"
+            "<!--[r--><textarea></textarea><textarea>&lt;static&gt;</textarea><!--]-->"
+            "<!--[r--><textarea></textarea><textarea>&lt;static&gt;</textarea><!--]-->"
+        ]
+        [ render "</textarea>&"; render ""; render null ]
+
 let cases: (string * (unit -> unit)) array =
     [|
         "CreateId numbers inlined children in pre-order and puts an inlined child's rows under its path", nestedIdentity
@@ -1069,6 +1095,8 @@ let cases: (string * (unit -> unit)) array =
         "a render whose cleanups fail raises an aggregate holding and naming every error", aggregateFailures
         "textarea, checkbox and select write their server state; select.value is browser-only", forms
         "a static textarea value starting with a line feed gets a second one", staticTextareaLineFeed
+        "an unchecked checkbox and a select with no matching option write no checked or selected attribute", formsUnset
+        "a textarea value escapes its closing tag and ampersand; an empty or null value writes no text", textareaValues
     |]
 
 #if !FABLE_COMPILER
