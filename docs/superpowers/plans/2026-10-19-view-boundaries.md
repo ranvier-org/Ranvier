@@ -12,7 +12,7 @@
 
 ## Core and view state
 
-Required by `.claude/rules/view-uses-core.md`. The spec has no such section; this one covers both documents.
+Required by `.claude/rules/view-uses-core.md`.
 
 **Core primitives used:**
 
