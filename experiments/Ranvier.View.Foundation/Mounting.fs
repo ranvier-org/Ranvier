@@ -1364,6 +1364,7 @@ and [<Sealed>] private ViewBoundary
     // The exception objects reported since the latest retry.
     let reported = System.Collections.Generic.HashSet<exn>(HashIdentity.Reference)
     let mutable wake: Signal<int> = Unchecked.defaultof<_>
+    let mutable pending: Signal<bool> = Unchecked.defaultof<_>
     let mutable status: BoundaryStatus = Unchecked.defaultof<_>
 
     let noItem () : obj = null
@@ -1449,6 +1450,7 @@ and [<Sealed>] private ViewBoundary
         site.LaidOut.Clear ()
         waiting <- 0
         revealed <- false
+        pending.Value <- false
 
         let failure =
             {
@@ -1512,7 +1514,8 @@ and [<Sealed>] private ViewBoundary
     /// <summary>Creates the boundary's effect and mounts its content. Call once, inside the region's owner.</summary>
     member this.Start() =
         wake <- Api.createSignal 0
-        status <- { IsPending = fun () -> false }
+        pending <- Api.createSignal false
+        status <- { IsPending = fun () -> pending.Value }
 
         Api.createEffect (fun () ->
             wake.Value |> ignore
@@ -1537,12 +1540,18 @@ and [<Sealed>] private ViewBoundary
         member _.Wait() =
             waiting <- waiting + 1
 
+            if revealed then
+                pending.Value <- true
+
         member _.Ready() =
             if waiting > 0 then
                 waiting <- waiting - 1
 
-                if waiting = 0 && not revealed then
-                    Api.untrack (fun () -> wake.Value <- wake.Value + 1)
+                if waiting = 0 then
+                    if revealed then
+                        pending.Value <- false
+                    else
+                        Api.untrack (fun () -> wake.Value <- wake.Value + 1)
 
         member this.Fail(errors) =
             this.FailAll (

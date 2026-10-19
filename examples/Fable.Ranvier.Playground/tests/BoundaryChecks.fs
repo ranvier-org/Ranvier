@@ -563,6 +563,47 @@ let private handlerFailure (ops: Operations<'view>) (run: 'view -> Backend -> un
 
     mounted.Dispose ()
 
+/// <summary>Refetches a revealed boundary's source: the content stays with its last value and reads IsPending.</summary>
+let private pendingAfterReveal (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+
+    let flight =
+        graph.Run (fun () -> Api.createSignal (Api.createAsyncSource<string>()))
+
+    let log = ResizeArray<string>()
+    let host = host ()
+
+    let view =
+        ops.Boundary (
+            ops.Component (fun _ ->
+                log.Add "pending"
+                ops.Text "loading"),
+            (fun failure -> ops.Text failure.Error.Message),
+            fun status ->
+                ops.Fragment
+                    [|
+                        Typed.reactiveText ops (fun () -> flight.Value.Value)
+                        Typed.reactiveText ops (fun () -> if status.IsPending () then "*" else ".")
+                    |]
+        )
+
+    let mounted =
+        mountWith (modeOf queued) graph None strict host None (fun context -> run view context.Backend)
+
+    equal "loading" host.textContent
+    graph.Run (fun () -> flight.Value.Settle "one")
+    mounted.Flush ()
+    equal "one." host.textContent
+    graph.Run (fun () -> flight.Value <- Api.createAsyncSource<string>())
+    mounted.Flush ()
+    equal ("one*", 1) (host.textContent, log.Count)
+    graph.Run (fun () -> flight.Value.Settle "two")
+    mounted.Flush ()
+    // The flush that releases the waiting binding writes IsPending; its text commits in the next flush.
+    mounted.Flush ()
+    equal ("two.", 1) (host.textContent, log.Count)
+    mounted.Dispose ()
+
 /// <summary>A handler outside every boundary throws out of its dispatch.</summary>
 let private handlerOutsideBoundary (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued (eventName: string) =
     use graph = new Graph ()
@@ -818,6 +859,12 @@ let cases: (string * (unit -> unit)) array =
         "tree queued: a throwing direct handler under a boundary shows the error view", fun () -> handlerFailure Tree.ops Tree.run true "focus"
         "program synchronous: a throwing direct handler under a boundary shows the error view",
         fun () -> handlerFailure Program.ops Program.run false "focus"
+        "tree synchronous: a pending read after the reveal keeps the content and sets IsPending", fun () -> pendingAfterReveal Tree.ops Tree.run false
+        "tree queued: a pending read after the reveal keeps the content and sets IsPending", fun () -> pendingAfterReveal Tree.ops Tree.run true
+        "program synchronous: a pending read after the reveal keeps the content and sets IsPending",
+        fun () -> pendingAfterReveal Program.ops Program.run false
+        "program queued: a pending read after the reveal keeps the content and sets IsPending",
+        fun () -> pendingAfterReveal Program.ops Program.run true
         "tree synchronous: a delegated handler throwing NotReadyException under a boundary shows the error view",
         fun () -> handlerNotReady Tree.ops Tree.run false "click"
         "program queued: a delegated handler throwing NotReadyException under a boundary shows the error view",
