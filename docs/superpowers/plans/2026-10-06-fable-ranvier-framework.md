@@ -68,7 +68,7 @@ The core alone, with no DOM ([trimmed pass](../../research/2026-10-14-core-trimm
 2. armsClear1k (1.96x) and component dispose (1.33–1.43× Solid 2 at every width). A profile ([note](../../research/2026-10-19-arms-clear-and-dispose-profile.md)): in steady state armsClear1k is 1.03× Solid 2, so its timing-protocol ratio is the first operation after a forced GC (item 3). Component dispose is still 1.32–1.43×; node removal costs the same as Solid 2's, and the difference is removing edges from wide sources (`ObserverSet.Remove`, `SourceList.trimFrom`), the cost [#54](https://github.com/shayanhabibi/Ranvier/pull/54)'s deferred indexed-edge design removes. [#98](https://github.com/shayanhabibi/Ranvier/pull/98), merged 2026-10-19 and merged into this branch, removes edges by handle: component dispose at 128 rows is 1.03–1.14× Solid 2 and at 16 rows 1.17–1.22×; a one-row root stays at 1.35–1.39× (0.4 µs).
 3. swap1k after a forced GC: about 0.26 ms above the loop, most of it in `RowsOf.Stage` ([post-GC note](../../research/2026-10-17-arms-clear-and-post-gc.md#the-first-operation-after-a-forced-gc)).
 4. Investigated: the queued commit `Queue` (`Scheduling.fs`) stays in the view ([note](../../research/2026-10-19-queued-commits-on-core.md)). Queued bindings are already core effects. Under Fable a dispatcher never sees the graph's own writes, and a write flushes its effects before it returns, so deferring DOM writes would need a core deferred-flush mode. Queued mounts expand templates through `definition.Expand`.
-5. Structural view boundaries and live setter-failure handling (Task 5).
+5. Done: structural view boundaries and live setter-failure handling ([plan](2026-10-19-view-boundaries.md)).
 6. The playground screen migration (Task 7). Owned async cancellation is covered by `OwnedAsyncChecks.fs`.
 7. Server HTML: precomputed static segments in `renderHtml`, escaping, request isolation; then hydration (Task 9).
 8. Performance and release acceptance, then sugar (Tasks 8 and 10).
@@ -202,10 +202,10 @@ Corrected 2026-10-11 after the user rejected per-binding outcome presentation. T
 - [x] Preserve queued coalescing, fixed snapshot waves, stale-value cancellation, recursive flush rejection, failure policies and disposal.
 - [x] Measure the corrected runtime beside a frozen original implementation with the same current core in Release Chromium.
 - [ ] Expand source/memo/binding equality and arbitrary setter/reentry coverage when typed properties are added.
-- [ ] Implement structural view boundaries and coordinated reveal semantics. Core computation boundaries do not catch descendant effect failures; this remains a separate renderer contract.
+- [x] Implement structural view boundaries and coordinated reveal semantics. Core computation boundaries do not catch descendant effect failures; this remains a separate renderer contract. Done 2026-10-19: [plan](2026-10-19-view-boundaries.md), [measurements](../../research/2026-10-19-view-boundaries.md).
 
 The [structural composition proof](../../research/2026-10-11-structural-boundary-composition.md) demonstrates keyed loading/error/content selection from a shared core computation boundary, with same-key identity, replacement cleanup and portable snapshots. It adds no runtime API. Structural reconciliation remains synchronous under queued text commits; dedicated branches, descendant effect-error capture and coordinated reveal remain open.
-- [ ] Define explicit handling of live synchronous DOM setter failures and deferred commit reporting for the production API.
+- [x] Define explicit handling of live synchronous DOM setter failures and deferred commit reporting for the production API. Done 2026-10-19: [plan](2026-10-19-view-boundaries.md), [measurements](../../research/2026-10-19-view-boundaries.md).
 - [ ] Measure retained allocations, microtask latency and property workloads before public API freeze.
 
 **Exit:** minimal binding operations and independently selected boundary presentation/scheduling, backed by production coverage and measured budgets.

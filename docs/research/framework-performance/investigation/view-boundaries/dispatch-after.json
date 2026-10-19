@@ -1,0 +1,595 @@
+{
+  "measuredAt": "2026-10-19T07:05:24.195Z",
+  "commit": "40ab5ba36ba88acd09ccaceb98c814a7df8c963c",
+  "dirty": [
+    "M examples/Fable.Ranvier.Playground/benchmarks/frameworks/page.mjs",
+    " M examples/Fable.Ranvier.Playground/benchmarks/frameworks/vite.config.mjs",
+    " M examples/Fable.Ranvier.Playground/tests/DomTests.fsproj",
+    "?? docs/research/framework-performance/investigation/view-boundaries/boundary-reveal.json",
+    "?? docs/research/framework-performance/investigation/view-boundaries/keyed-after.json",
+    "?? docs/research/framework-performance/investigation/view-boundaries/template-after.json",
+    "?? examples/Fable.Ranvier.Playground/benchmarks/frameworks/_lines.tmp.mjs",
+    "?? examples/Fable.Ranvier.Playground/benchmarks/frameworks/boundary-page.mjs",
+    "?? examples/Fable.Ranvier.Playground/benchmarks/frameworks/boundary-reveal.mjs",
+    "?? examples/Fable.Ranvier.Playground/benchmarks/frameworks/boundary-solid.jsx",
+    "?? examples/Fable.Ranvier.Playground/benchmarks/frameworks/dispatch-clicks.mjs",
+    "?? examples/Fable.Ranvier.Playground/benchmarks/frameworks/dispatch-page.mjs",
+    "?? examples/Fable.Ranvier.Playground/benchmarks/frameworks/dispatch.html",
+    "?? examples/Fable.Ranvier.Playground/tests/BoundaryPerf.fs",
+    "?? examples/Fable.Ranvier.Playground/tests/DispatchPerf.fs"
+  ],
+  "node": "v26.7.0",
+  "cpu": "AMD Ryzen 9 9900X 12-Core Processor            ",
+  "platform": "win32 10.0.26200",
+  "unit": "microseconds per click",
+  "count": 100,
+  "clicksPerRow": 50,
+  "processes": 3,
+  "rounds": 15,
+  "warmups": 3,
+  "notes": [
+    "Each sample mounts `count` rows without a boundary and calls click() on each row `clicksPerRow` times; every click reaches one handler through the delegated listener."
+  ],
+  "summaries": [
+    {
+      "mode": "authored",
+      "medianUs": 1.3799999952316284,
+      "byProcessUs": [
+        1.4,
+        1.3600000023841858,
+        1.3799999952316284
+      ]
+    },
+    {
+      "mode": "template",
+      "medianUs": 1.5200000047683715,
+      "byProcessUs": [
+        1.5600000023841858,
+        1.4599999904632568,
+        1.5399999976158143
+      ]
+    }
+  ],
+  "samples": [
+    {
+      "mode": "template",
+      "replicate": 0,
+      "round": 0,
+      "us": 1.5600000023841858
+    },
+    {
+      "mode": "authored",
+      "replicate": 0,
+      "round": 0,
+      "us": 1.5
+    },
+    {
+      "mode": "authored",
+      "replicate": 0,
+      "round": 1,
+      "us": 1.4799999952316285
+    },
+    {
+      "mode": "template",
+      "replicate": 0,
+      "round": 1,
+      "us": 1.7600000023841857
+    },
+    {
+      "mode": "template",
+      "replicate": 0,
+      "round": 2,
+      "us": 1.5800000071525573
+    },
+    {
+      "mode": "authored",
+      "replicate": 0,
+      "round": 2,
+      "us": 1.4799999952316285
+    },
+    {
+      "mode": "authored",
+      "replicate": 0,
+      "round": 3,
+      "us": 1.7199999928474425
+    },
+    {
+      "mode": "template",
+      "replicate": 0,
+      "round": 3,
+      "us": 1.8600000023841858
+    },
+    {
+      "mode": "template",
+      "replicate": 0,
+      "round": 4,
+      "us": 1.4
+    },
+    {
+      "mode": "authored",
+      "replicate": 0,
+      "round": 4,
+      "us": 1.3600000023841858
+    },
+    {
+      "mode": "authored",
+      "replicate": 0,
+      "round": 5,
+      "us": 1.4
+    },
+    {
+      "mode": "template",
+      "replicate": 0,
+      "round": 5,
+      "us": 1.5600000023841858
+    },
+    {
+      "mode": "template",
+      "replicate": 0,
+      "round": 6,
+      "us": 1.4
+    },
+    {
+      "mode": "authored",
+      "replicate": 0,
+      "round": 6,
+      "us": 1.3799999952316284
+    },
+    {
+      "mode": "authored",
+      "replicate": 0,
+      "round": 7,
+      "us": 1.3200000047683715
+    },
+    {
+      "mode": "template",
+      "replicate": 0,
+      "round": 7,
+      "us": 1.7199999928474425
+    },
+    {
+      "mode": "template",
+      "replicate": 0,
+      "round": 8,
+      "us": 2.0799999952316286
+    },
+    {
+      "mode": "authored",
+      "replicate": 0,
+      "round": 8,
+      "us": 1.3199999928474426
+    },
+    {
+      "mode": "authored",
+      "replicate": 0,
+      "round": 9,
+      "us": 1.4
+    },
+    {
+      "mode": "template",
+      "replicate": 0,
+      "round": 9,
+      "us": 1.4800000071525574
+    },
+    {
+      "mode": "template",
+      "replicate": 0,
+      "round": 10,
+      "us": 1.4399999976158142
+    },
+    {
+      "mode": "authored",
+      "replicate": 0,
+      "round": 10,
+      "us": 1.3600000023841858
+    },
+    {
+      "mode": "authored",
+      "replicate": 0,
+      "round": 11,
+      "us": 1.3200000047683715
+    },
+    {
+      "mode": "template",
+      "replicate": 0,
+      "round": 11,
+      "us": 1.4
+    },
+    {
+      "mode": "template",
+      "replicate": 0,
+      "round": 12,
+      "us": 1.640000009536743
+    },
+    {
+      "mode": "authored",
+      "replicate": 0,
+      "round": 12,
+      "us": 1.6600000023841859
+    },
+    {
+      "mode": "authored",
+      "replicate": 0,
+      "round": 13,
+      "us": 1.3
+    },
+    {
+      "mode": "template",
+      "replicate": 0,
+      "round": 13,
+      "us": 1.5200000047683715
+    },
+    {
+      "mode": "template",
+      "replicate": 0,
+      "round": 14,
+      "us": 1.4399999976158142
+    },
+    {
+      "mode": "authored",
+      "replicate": 0,
+      "round": 14,
+      "us": 1.4
+    },
+    {
+      "mode": "authored",
+      "replicate": 1,
+      "round": 0,
+      "us": 1.4600000023841857
+    },
+    {
+      "mode": "template",
+      "replicate": 1,
+      "round": 0,
+      "us": 1.6600000023841859
+    },
+    {
+      "mode": "template",
+      "replicate": 1,
+      "round": 1,
+      "us": 1.6
+    },
+    {
+      "mode": "authored",
+      "replicate": 1,
+      "round": 1,
+      "us": 1.4799999952316285
+    },
+    {
+      "mode": "authored",
+      "replicate": 1,
+      "round": 2,
+      "us": 1.5
+    },
+    {
+      "mode": "template",
+      "replicate": 1,
+      "round": 2,
+      "us": 1.5399999976158143
+    },
+    {
+      "mode": "template",
+      "replicate": 1,
+      "round": 3,
+      "us": 1.5600000023841858
+    },
+    {
+      "mode": "authored",
+      "replicate": 1,
+      "round": 3,
+      "us": 1.7799999952316283
+    },
+    {
+      "mode": "authored",
+      "replicate": 1,
+      "round": 4,
+      "us": 1.359999990463257
+    },
+    {
+      "mode": "template",
+      "replicate": 1,
+      "round": 4,
+      "us": 1.4
+    },
+    {
+      "mode": "template",
+      "replicate": 1,
+      "round": 5,
+      "us": 1.9799999952316285
+    },
+    {
+      "mode": "authored",
+      "replicate": 1,
+      "round": 5,
+      "us": 1.8399999976158141
+    },
+    {
+      "mode": "authored",
+      "replicate": 1,
+      "round": 6,
+      "us": 1.3399999976158141
+    },
+    {
+      "mode": "template",
+      "replicate": 1,
+      "round": 6,
+      "us": 1.3799999952316284
+    },
+    {
+      "mode": "template",
+      "replicate": 1,
+      "round": 7,
+      "us": 2.3200000047683718
+    },
+    {
+      "mode": "authored",
+      "replicate": 1,
+      "round": 7,
+      "us": 1.3399999976158141
+    },
+    {
+      "mode": "authored",
+      "replicate": 1,
+      "round": 8,
+      "us": 1.3199999928474426
+    },
+    {
+      "mode": "template",
+      "replicate": 1,
+      "round": 8,
+      "us": 1.4399999976158142
+    },
+    {
+      "mode": "template",
+      "replicate": 1,
+      "round": 9,
+      "us": 1.3800000071525573
+    },
+    {
+      "mode": "authored",
+      "replicate": 1,
+      "round": 9,
+      "us": 1.3399999976158141
+    },
+    {
+      "mode": "authored",
+      "replicate": 1,
+      "round": 10,
+      "us": 1.3399999976158141
+    },
+    {
+      "mode": "template",
+      "replicate": 1,
+      "round": 10,
+      "us": 1.4
+    },
+    {
+      "mode": "template",
+      "replicate": 1,
+      "round": 11,
+      "us": 1.4399999976158142
+    },
+    {
+      "mode": "authored",
+      "replicate": 1,
+      "round": 11,
+      "us": 2.0799999952316286
+    },
+    {
+      "mode": "authored",
+      "replicate": 1,
+      "round": 12,
+      "us": 1.3600000023841858
+    },
+    {
+      "mode": "template",
+      "replicate": 1,
+      "round": 12,
+      "us": 1.4599999904632568
+    },
+    {
+      "mode": "template",
+      "replicate": 1,
+      "round": 13,
+      "us": 1.4600000023841857
+    },
+    {
+      "mode": "authored",
+      "replicate": 1,
+      "round": 13,
+      "us": 1.3799999952316284
+    },
+    {
+      "mode": "authored",
+      "replicate": 1,
+      "round": 14,
+      "us": 1.3399999976158141
+    },
+    {
+      "mode": "template",
+      "replicate": 1,
+      "round": 14,
+      "us": 1.4
+    },
+    {
+      "mode": "template",
+      "replicate": 2,
+      "round": 0,
+      "us": 1.5799999952316284
+    },
+    {
+      "mode": "authored",
+      "replicate": 2,
+      "round": 0,
+      "us": 1.5
+    },
+    {
+      "mode": "authored",
+      "replicate": 2,
+      "round": 1,
+      "us": 1.4600000023841857
+    },
+    {
+      "mode": "template",
+      "replicate": 2,
+      "round": 1,
+      "us": 1.8600000023841858
+    },
+    {
+      "mode": "template",
+      "replicate": 2,
+      "round": 2,
+      "us": 1.5799999952316284
+    },
+    {
+      "mode": "authored",
+      "replicate": 2,
+      "round": 2,
+      "us": 1.5
+    },
+    {
+      "mode": "authored",
+      "replicate": 2,
+      "round": 3,
+      "us": 1.6800000071525574
+    },
+    {
+      "mode": "template",
+      "replicate": 2,
+      "round": 3,
+      "us": 1.9
+    },
+    {
+      "mode": "template",
+      "replicate": 2,
+      "round": 4,
+      "us": 1.4200000047683716
+    },
+    {
+      "mode": "authored",
+      "replicate": 2,
+      "round": 4,
+      "us": 1.3
+    },
+    {
+      "mode": "authored",
+      "replicate": 2,
+      "round": 5,
+      "us": 1.3799999952316284
+    },
+    {
+      "mode": "template",
+      "replicate": 2,
+      "round": 5,
+      "us": 1.5399999976158143
+    },
+    {
+      "mode": "template",
+      "replicate": 2,
+      "round": 6,
+      "us": 1.4
+    },
+    {
+      "mode": "authored",
+      "replicate": 2,
+      "round": 6,
+      "us": 1.5399999976158143
+    },
+    {
+      "mode": "authored",
+      "replicate": 2,
+      "round": 7,
+      "us": 1.3200000047683715
+    },
+    {
+      "mode": "template",
+      "replicate": 2,
+      "round": 7,
+      "us": 1.7
+    },
+    {
+      "mode": "template",
+      "replicate": 2,
+      "round": 8,
+      "us": 2.1199999928474424
+    },
+    {
+      "mode": "authored",
+      "replicate": 2,
+      "round": 8,
+      "us": 1.3
+    },
+    {
+      "mode": "authored",
+      "replicate": 2,
+      "round": 9,
+      "us": 1.3799999952316284
+    },
+    {
+      "mode": "template",
+      "replicate": 2,
+      "round": 9,
+      "us": 1.4800000071525574
+    },
+    {
+      "mode": "template",
+      "replicate": 2,
+      "round": 10,
+      "us": 1.3799999952316284
+    },
+    {
+      "mode": "authored",
+      "replicate": 2,
+      "round": 10,
+      "us": 1.3200000047683715
+    },
+    {
+      "mode": "authored",
+      "replicate": 2,
+      "round": 11,
+      "us": 1.3
+    },
+    {
+      "mode": "template",
+      "replicate": 2,
+      "round": 11,
+      "us": 1.4
+    },
+    {
+      "mode": "template",
+      "replicate": 2,
+      "round": 12,
+      "us": 1.6599999904632567
+    },
+    {
+      "mode": "authored",
+      "replicate": 2,
+      "round": 12,
+      "us": 1.5799999952316284
+    },
+    {
+      "mode": "authored",
+      "replicate": 2,
+      "round": 13,
+      "us": 1.3399999976158141
+    },
+    {
+      "mode": "template",
+      "replicate": 2,
+      "round": 13,
+      "us": 1.5
+    },
+    {
+      "mode": "template",
+      "replicate": 2,
+      "round": 14,
+      "us": 1.4199999928474427
+    },
+    {
+      "mode": "authored",
+      "replicate": 2,
+      "round": 14,
+      "us": 1.3399999976158141
+    }
+  ]
+}
