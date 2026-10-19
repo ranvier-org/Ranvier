@@ -1332,7 +1332,8 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
 /// The pending and error views are mounted under <c>outer</c>, the scope enclosing the boundary's region, or null at the
 /// top level. Their failures go to <c>enclosing</c>; while <c>unwinds</c> is true they raise instead. A failure during
 /// the content's setup or reveal replaces the content at once; after them, the reveal and the teardown run in the
-/// boundary's effect, after the binding, handler or pass that requested them. Each exception object is reported once.
+/// boundary's effect, after the binding, handler or pass that requested them. Each exception object is reported once
+/// until a retry.
 /// </remarks>
 and [<Sealed>] private ViewBoundary
     (
@@ -1360,7 +1361,7 @@ and [<Sealed>] private ViewBoundary
     let held = ResizeArray<exn>()
     // Failures received after setup, waiting for the boundary's effect.
     let mutable received: exn list = []
-    // The exception objects reported so far.
+    // The exception objects reported since the latest retry.
     let reported = System.Collections.Generic.HashSet<exn>(HashIdentity.Reference)
     let mutable wake: Signal<int> = Unchecked.defaultof<_>
     let mutable status: BoundaryStatus = Unchecked.defaultof<_>
@@ -1470,6 +1471,7 @@ and [<Sealed>] private ViewBoundary
             graph.Run (fun () ->
                 retire ()
                 failed <- false
+                reported.Clear ()
                 this.MountContent ())
 
     member private this.Settle() =

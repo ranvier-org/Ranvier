@@ -492,6 +492,109 @@ let private errorViewFailure (ops: Operations<'view>) (run: 'view -> Backend -> 
     equal ("outer: error view", [ [ "content" ]; [ "error view" ] ]) (host.textContent, messages reports)
     mounted.Dispose ()
 
+/// <summary>A content whose setup raises one exception object on every attempt.</summary>
+let private retryCachedFailure (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+    let cached = Exception "cached"
+    let reports = ResizeArray<exn list>()
+    let host = host ()
+
+    let view =
+        ops.Boundary (
+            ops.Text "loading",
+            (fun failure ->
+                Typed.button ops [| Typed.listener "click" (fun _ -> failure.Retry ()) |] [| ops.Text ("retry " + failure.Error.Message) |]),
+            fun _ -> ops.Component (fun _ -> raise cached)
+        )
+
+    let mounted =
+        mountWith (modeOf queued) graph None reports.Add host None (fun context -> run view context.Backend)
+
+    (host.querySelector "button"
+     |> unbox<HTMLButtonElement>)
+        .click()
+
+    equal ("retry cached", [ [ "cached" ]; [ "cached" ] ]) (host.textContent, messages reports)
+    mounted.Dispose ()
+
+/// <summary>Two readers of one failed memo under a boundary receive the memo's exception object.</summary>
+let private sharedReaderFailure (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal "ok")
+
+    let memo =
+        graph.Run (fun () ->
+            Api.createMemo (fun _ ->
+                if source.Value = "bad" then
+                    failwith "memo"
+                else
+                    source.Value))
+
+    let host, log, reports = host (), ResizeArray<string>(), ResizeArray<exn list>()
+
+    let mounted =
+        underBoundary ops run queued graph host log reports (fun () ->
+            ops.Fragment
+                [|
+                    Typed.reactiveText ops (fun () -> memo.Value)
+                    Typed.reactiveText ops (fun () -> memo.Value)
+                |])
+
+    equal "okok" host.textContent
+    graph.Run (fun () -> source.Value <- "bad")
+    mounted.Flush ()
+
+    let expected =
+        "failed: memo", [ "content"; "content cleanup"; "error memo" ], [ [ "memo" ] ]
+
+    equal expected (host.textContent, List.ofSeq log, messages reports)
+    graph.Run (fun () -> source.Value <- "bad again")
+    mounted.Flush ()
+    equal expected (host.textContent, List.ofSeq log, messages reports)
+    mounted.Dispose ()
+
+/// <summary>Setters under an inner boundary and under the outer boundary enclosing it fail in one queued flush.</summary>
+let private nestedQueuedFailures (ops: Operations<'view>) (run: 'view -> Backend -> unit) =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal "ok")
+    let reports = ResizeArray<exn list>()
+    let host = host ()
+
+    let failing (message: string) =
+        Typed.reactiveProperty
+            (fun (node: HTMLDivElement) (value: string) ->
+                if value = "bad" then
+                    failwith message
+
+                node.title <- value)
+            (fun () -> source.Value)
+
+    let failed prefix (failure: BoundaryFailure) =
+        ops.Text (prefix + failure.Error.Message)
+
+    let inner =
+        ops.Boundary (ops.Text "inner loading", failed "inner: ", (fun _ -> Typed.div ops [| failing "inner" |] [||]))
+
+    let view =
+        ops.Boundary (ops.Text "outer loading", failed "outer: ", fun _ -> ops.Fragment [| Typed.div ops [| failing "outer" |] [||]; inner |])
+
+    let mounted =
+        mountWith (modeOf true) graph None reports.Add host None (fun context -> run view context.Backend)
+
+    graph.Run (fun () -> source.Value <- "bad")
+    mounted.Flush ()
+
+    equal
+        ("outer: outer", [ "inner"; "outer" ])
+        (host.textContent,
+         [
+             for errors in reports do
+                 for error in errors -> error.Message
+         ]
+         |> List.sort)
+
+    mounted.Dispose ()
+
 let cases: (string * (unit -> unit)) array =
     [|
         "tree HTML renders a boundary's pending, content or error view between markers", fun () -> server Tree.ops Tree.run
@@ -542,4 +645,13 @@ let cases: (string * (unit -> unit)) array =
         "program synchronous: a failing pending view goes to the enclosing boundary", fun () -> pendingViewFailure Program.ops Program.run false
         "tree synchronous: a failing error view goes to the enclosing boundary", fun () -> errorViewFailure Tree.ops Tree.run false
         "program queued: a failing error view goes to the enclosing boundary", fun () -> errorViewFailure Program.ops Program.run true
+        "tree synchronous: a retry reports again an exception object reported before the retry", fun () -> retryCachedFailure Tree.ops Tree.run false
+        "program queued: a retry reports again an exception object reported before the retry",
+        fun () -> retryCachedFailure Program.ops Program.run true
+        "tree queued: two readers of one failed memo under a boundary report it once and tear down once",
+        fun () -> sharedReaderFailure Tree.ops Tree.run true
+        "program synchronous: two readers of one failed memo under a boundary report it once and tear down once",
+        fun () -> sharedReaderFailure Program.ops Program.run false
+        "tree: an inner and an outer failure in one queued flush are each reported once", fun () -> nestedQueuedFailures Tree.ops Tree.run
+        "program: an inner and an outer failure in one queued flush are each reported once", fun () -> nestedQueuedFailures Program.ops Program.run
     |]
