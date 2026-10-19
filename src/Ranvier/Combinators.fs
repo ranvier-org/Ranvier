@@ -1896,14 +1896,13 @@ module Projection =
             upstream
 
     /// <summary>
-    /// The keys of <c>upstream</c> satisfying <c>predicate</c>, and the keys that do not, each in upstream order with their
+    /// The keys of <c>upstream</c> satisfying <c>predicate</c>, and the remaining keys, each in upstream order with their
     /// values.
     /// </summary>
     /// <remarks>
-    /// The halves share one predicate view, which runs <c>predicate</c> once per changed row and is disposed with the
-    /// calling scope; each half is disposable on its own. A throwing predicate removes the key from both halves, and
-    /// <c>Get</c> and <c>TryGet</c> of either raise its exception. A pending predicate keeps the key on its last side, and
-    /// a never-settled key is in the <c>PendingKeys</c> of both.
+    /// The halves share one predicate view, disposed with the calling scope; each half is disposable on its own. A
+    /// throwing predicate removes the key from both halves, and <c>Get</c> and <c>TryGet</c> of either raise its exception.
+    /// A pending predicate keeps the key on its last side; a never-settled key is in the <c>PendingKeys</c> of both.
     /// </remarks>
     /// <example>
     /// <code lang="fsharp">

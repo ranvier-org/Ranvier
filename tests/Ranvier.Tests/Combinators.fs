@@ -3715,7 +3715,7 @@ let distinctByTests =
                 Expect.sequenceEqual view.Keys [ 4; 3; 2 ] "upstream order"
             }
 
-            test "an edit that keeps every holder's value wakes no Keys reader" {
+            test "distinctBy republishes Keys only when the holder set changes" {
                 use g = new Graph ()
                 use _ = g.Activate ()
                 let source = createSignal (items [ 1, 1; 2, 2; 3, 1 ])
@@ -3780,7 +3780,26 @@ let distinctByTests =
                 Expect.sequenceEqual view.Keys [ 1; 3 ] "key 1 moves to value 2, and key 3 holds value 1"
             }
 
-            test "a throwing value excludes the key, and Get raises its error" {
+            test "a pending key whose last settled value repeats an earlier holder stays out of Keys" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let flights = dict [ for n in [ 10; 20; 21 ] -> n, createAsyncSource<int>() ]
+                flights[10].Settle 1
+                flights[20].Settle 1
+                let source = createSignal (items [ 1, 10; 2, 20 ])
+
+                let view =
+                    rows source
+                    |> Projection.distinctBy (fun n -> flights[n].Value)
+
+                Expect.sequenceEqual view.Keys [ 1 ] "key 2 repeats value 1"
+                source.Value <- setN 2 21 source.Value
+                Expect.sequenceEqual view.Keys [ 1 ] "pending key 2 still repeats value 1"
+                flights[21].Settle 2
+                Expect.sequenceEqual view.Keys [ 1; 2 ] "key 2 settles to value 2"
+            }
+
+            test "a throwing value excludes the key, and Get and TryGet raise its error" {
                 use g = new Graph ()
                 use _ = g.Activate ()
                 let source = createSignal (items [ 1, 1; 2, 4 ])
@@ -3793,6 +3812,7 @@ let distinctByTests =
                 source.Value <- setN 1 13 source.Value
                 Expect.sequenceEqual view.Keys [ 2 ] "key 2 takes over"
                 Expect.throwsC (fun () -> view.Get 1 |> ignore) (fun ex -> Expect.equal ex.Message "boom 13" "Get raises")
+                Expect.throwsC (fun () -> view.TryGet 1 |> ignore) (fun ex -> Expect.equal ex.Message "boom 13" "TryGet raises")
                 source.Value <- setN 1 1 source.Value
                 Expect.sequenceEqual view.Keys [ 1 ] "recovered"
             }
