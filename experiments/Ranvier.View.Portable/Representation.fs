@@ -124,6 +124,195 @@ type HeadEntry =
         Title: unit -> string
     }
 
+let private validNameCharacters underscore (value: string) =
+    let mutable valid = true
+    let mutable index = 0
+
+    while valid && index < value.Length do
+        let c = value[index]
+
+        valid <-
+            (c >= 'a' && c <= 'z')
+            || (c >= '0' && c <= '9')
+            || c = '-'
+            || (underscore && c = '_')
+
+        index <- index + 1
+
+    valid
+
+let name =
+    function
+    | Div -> "div"
+    | Button -> "button"
+    | Input -> "input"
+    | Select -> "select"
+    | Option -> "option"
+    | HtmlTag value ->
+        if
+            System.String.IsNullOrEmpty value
+            || value[0] < 'a'
+            || value[0] > 'z'
+            || not (validNameCharacters false value)
+        then
+            invalidArg "tag" "HTML tag names must contain lowercase letters, digits or hyphens"
+
+        value
+
+let isVoid tag =
+    match name tag with
+    | "area"
+    | "base"
+    | "br"
+    | "col"
+    | "embed"
+    | "hr"
+    | "img"
+    | "input"
+    | "link"
+    | "meta"
+    | "param"
+    | "source"
+    | "track"
+    | "wbr" -> true
+    | _ -> false
+
+let validateAttribute name =
+    if
+        System.String.IsNullOrEmpty name
+        || name[0] < 'a'
+        || name[0] > 'z'
+        || name.StartsWith ("on", System.StringComparison.Ordinal)
+        || name = "srcdoc"
+        || not (validNameCharacters true name)
+    then
+        raise (System.ArgumentException ("Attribute names must be lowercase and cannot contain event handlers or raw document content", "name"))
+
+/// <summary>The entity of an escaped character: one of <c>&amp; &lt; &gt; \r "</c>.</summary>
+let private entity (c: char) =
+    match c with
+    | '&' -> "&amp;"
+    | '<' -> "&lt;"
+    | '>' -> "&gt;"
+    | '\r' -> "&#13;"
+    | _ -> "&quot;"
+
+#if !FABLE_COMPILER
+let private textEscapes: System.Buffers.SearchValues<char> =
+    System.Buffers.SearchValues.Create (System.MemoryExtensions.AsSpan "&<>\r")
+
+let private attributeEscapes: System.Buffers.SearchValues<char> =
+    System.Buffers.SearchValues.Create (System.MemoryExtensions.AsSpan "&<>\r\"")
+#endif
+
+/// <summary>
+/// Escapes <c>&amp; &lt; &gt; \r</c>, and <c>"</c> when <c>attribute</c> is true; a value free of these characters is
+/// returned as the same string.
+/// </summary>
+let internal escapeHtml (attribute: bool) (value: string) : string =
+#if FABLE_COMPILER
+    let escapes c =
+        c = '&'
+        || c = '<'
+        || c = '>'
+        || c = '\r'
+        || (attribute && c = '"')
+
+    let mutable first = -1
+    let mutable index = 0
+
+    while first < 0 && index < value.Length do
+        if escapes value[index] then
+            first <- index
+
+        index <- index + 1
+
+    if first < 0 then
+        value
+    else
+        let parts = ResizeArray<string>()
+        let mutable start = 0
+
+        for index in first .. value.Length - 1 do
+            let c = value[index]
+
+            if escapes c then
+                if index > start then
+                    parts.Add (value.Substring (start, index - start))
+
+                parts.Add (entity c)
+                start <- index + 1
+
+        if start < value.Length then
+            parts.Add (value.Substring start)
+
+        System.String.Join ("", parts)
+#else
+    let search = if attribute then attributeEscapes else textEscapes
+    let span = System.MemoryExtensions.AsSpan value
+    let mutable hit = System.MemoryExtensions.IndexOfAny (span, search)
+
+    if hit < 0 then
+        value
+    else
+        let builder = System.Text.StringBuilder (value.Length + 16)
+        let mutable start = 0
+
+        while hit >= 0 do
+            builder.Append(span.Slice (start, hit)).Append(entity span[start + hit])
+            |> ignore
+
+            start <- start + hit + 1
+            hit <- System.MemoryExtensions.IndexOfAny (span.Slice start, search)
+
+        builder.Append(span.Slice start).ToString()
+#endif
+
+/// <summary>An append-only HTML buffer that can be truncated back to a mark.</summary>
+[<Sealed>]
+type HtmlSink() =
+#if FABLE_COMPILER
+    let parts = ResizeArray<string>()
+
+    member _.Append(value: string) =
+        parts.Add value
+
+    member _.Mark() =
+        parts.Count
+
+    /// <summary>Drops everything appended after <c>mark</c>.</summary>
+    member _.Truncate(mark: int) =
+        parts.RemoveRange (mark, parts.Count - mark)
+
+    /// <summary>Writes the buffer in order.</summary>
+    member _.Segments(write: string -> unit) =
+        for part in parts do
+            write part
+
+    override _.ToString() =
+        System.String.Join ("", parts)
+#else
+    let builder = System.Text.StringBuilder ()
+
+    member _.Append(value: string) =
+        builder.Append value |> ignore
+
+    member _.Mark() =
+        builder.Length
+
+    /// <summary>Drops everything appended after <c>mark</c>.</summary>
+    member _.Truncate(mark: int) =
+        builder.Length <- mark
+
+    /// <summary>Writes the buffer in order.</summary>
+    member _.Segments(write: string -> unit) =
+        for chunk in builder.GetChunks () do
+            write (chunk.ToString ())
+
+    override _.ToString() =
+        builder.ToString ()
+#endif
+
 [<AbstractClass>]
 type Backend() =
     abstract Text: string -> unit
@@ -202,8 +391,8 @@ and [<AbstractClass>] TemplateDefinition internal () =
     /// <summary>Renders the definition through ordinary backend operations.</summary>
     abstract Expand: Backend * obj -> unit
 
-    /// <summary>Writes an instance's HTML through the sink; region rows render through the backend, and a <c>true</c> flag rejects browser-only parts.</summary>
-    abstract RenderHtml: Backend * Setup * obj * bool * (string -> unit) -> unit
+    /// <summary>Writes an instance's HTML through the backend, under the backend's active server scope.</summary>
+    abstract RenderHtml: HtmlBackend * obj -> unit
 
     /// <summary>The DOM backend's compiled form, or null before the first DOM render.</summary>
     member val Compiled: obj = null with get, set
@@ -215,6 +404,259 @@ and [<NoEquality; NoComparison>] BoundaryViews =
         Failed: BoundaryFailure -> Backend -> unit
         Content: BoundaryStatus -> Backend -> unit
     }
+
+/// <summary>
+/// The server backend: writes HTML to <c>sink</c>. Under <c>Reject</c> a browser-only part raises; under <c>Omit</c> it
+/// is dropped.
+/// </summary>
+and [<Sealed>] HtmlBackend(policy: BrowserPolicy, sink: HtmlSink) =
+    inherit Backend()
+    let mutable leadingLineFeed = false
+    // Whether the element receiving modifiers has a widget hook.
+    let mutable widget = false
+    // Advances on each child node a DOM mount would create: text, binding, element, region or template.
+    let mutable childNodes = 0
+
+    let mutable attributeTarget: System.Collections.Generic.Dictionary<string, string> =
+        Unchecked.defaultof<_>
+
+    let mutable attributeKeys: ResizeArray<string> = Unchecked.defaultof<_>
+    let mutable attributeTag = Div
+
+    let ensureAttributes () =
+        if isNull (box attributeTarget) then
+            invalidOp "Element modifiers require an active element"
+
+    let set key value =
+        ensureAttributes ()
+
+        if not (attributeKeys.Contains key) then
+            attributeKeys.Add key
+
+        attributeTarget[key] <- value
+
+    let setOptional key value =
+        ensureAttributes ()
+        validateAttribute key
+
+        match value with
+        | Some value -> set key value
+        | None ->
+            attributeTarget.Remove key |> ignore
+            attributeKeys.Remove key |> ignore
+
+    let applyModifiers (backend: Backend) tag attributes keys (modifiers: (Backend -> unit) array) =
+        let previousTarget = attributeTarget
+        let previousKeys = attributeKeys
+        let previousTag = attributeTag
+        attributeTarget <- attributes
+        attributeKeys <- keys
+        attributeTag <- tag
+
+        try
+            for apply in modifiers do
+                apply backend
+        finally
+            attributeTarget <- previousTarget
+            attributeKeys <- previousKeys
+            attributeTag <- previousTag
+
+    let browserCapability () =
+        ensureAttributes ()
+
+        if policy = Reject then
+            invalidOp "Browser capability requires explicit Omit policy"
+
+    let append (value: string) =
+        if leadingLineFeed && value.Length > 0 then
+            leadingLineFeed <- false
+
+            if value[0] = '\n' then
+                sink.Append "\n"
+
+        sink.Append value
+
+    member _.Policy = policy
+    member _.Sink = sink
+
+    /// <summary>Appends <c>value</c>; the first non-empty value after a <c>pre</c>, <c>textarea</c> or <c>listing</c> open tag gets a second leading line feed when it starts with one.</summary>
+    member _.Append(value: string) =
+        append value
+
+    /// <summary>The active <c>ServerWriter</c>, or null before the first template.</summary>
+    member val internal Writer: obj = null with get, set
+
+    /// <summary>The active <c>ServerScope</c>: a template rendered through this backend runs under it. Null selects an <c>HtmlScope</c>.</summary>
+    member val internal Scope: obj = null with get, set
+
+    override _.Text value =
+        childNodes <- childNodes + 1
+        append (escapeHtml false value)
+
+    override _.Bind(_, read) =
+        childNodes <- childNodes + 1
+        append (escapeHtml false (read ()))
+
+    override this.Keyed(items, render) =
+        childNodes <- childNodes + 1
+        let values = Array.copy (items.Read ())
+        Ranvier.Projection.ensureUniqueKeys items.Key.Invoke values
+
+        for item in values do
+            render (fun () -> item) this
+
+    override _.Attribute(key, value) =
+        validateAttribute key
+        set key value
+
+    override _.OptionalAttribute(key, value) =
+        setOptional key value
+
+    override _.ReactiveAttribute(key, read) =
+        ensureAttributes ()
+        validateAttribute key
+        setOptional key (read ())
+
+    override _.InputValue value =
+        ensureAttributes ()
+
+        if attributeTag <> Input then
+            invalidArg "modifiers" "Input value requires input"
+
+        set "value" value
+
+    override _.Browser _ =
+        browserCapability ()
+
+    override _.Placed(kind, _) =
+        browserCapability ()
+
+        if kind = PlacedKind.Widget then
+            if widget then
+                raise (System.ArgumentException ("An element takes at most one content part", "modifiers"))
+
+            widget <- true
+
+    override _.Head _ =
+        if policy = Reject then
+            raise (System.InvalidOperationException "Document metadata requires Server.renderPage")
+
+    override _.Listen(_, _) =
+        browserCapability ()
+
+    override _.Property _ =
+        browserCapability ()
+
+    override _.ReactiveProperty(_, _) =
+        browserCapability ()
+
+    override this.Element(tag, modifiers, children) =
+        if
+            match name tag with
+            | "script"
+            | "style"
+            | "iframe"
+            | "noscript"
+            | "xmp"
+            | "noembed"
+            | "noframes"
+            | "plaintext" -> true
+            | _ -> false
+        then
+            raise (System.InvalidOperationException "Raw-text elements require an explicit HTML serialization policy")
+
+        childNodes <- childNodes + 1
+        append ("<" + name tag)
+        let attributes = System.Collections.Generic.Dictionary<string, string>()
+        let keys = ResizeArray<string>()
+        let outerWidget = widget
+        widget <- false
+        applyModifiers this tag attributes keys modifiers
+        let isWidget = widget
+        widget <- outerWidget
+
+        for key in keys do
+            match attributes.TryGetValue key with
+            | false, _ -> ()
+            | true, value -> append (" " + key + "=\"" + escapeHtml true value + "\"")
+
+        append ">"
+
+        if not (isVoid tag) then
+            leadingLineFeed <-
+                name tag = "pre"
+                || name tag = "textarea"
+                || name tag = "listing"
+
+            let before = childNodes
+            children ()
+
+            if isWidget && childNodes <> before then
+                raise (System.ArgumentException ("A widget element has no children", "children"))
+
+            append ("</" + name tag + ">")
+
+    override _.Component setup =
+        let cleanups = ResizeArray<unit -> unit>()
+        let mutable completed = false
+
+        let onCleanup callback =
+            if completed then
+                raise (System.InvalidOperationException "Server component setup is completed")
+
+            cleanups.Add callback
+
+        let mutable setupFailure: exn option = None
+
+        try
+            setup { OnCleanup = onCleanup }
+        with error ->
+            setupFailure <- Some error
+
+        completed <- true
+        let errors = ResizeArray<exn>()
+
+        for cleanup in cleanups do
+            try
+                cleanup ()
+            with error ->
+                errors.Add error
+
+        match setupFailure, errors.Count with
+        | None, 0 -> ()
+        | Some error, 0 -> raise error
+        | Some error, _ ->
+            errors.Insert (0, error)
+            raise (System.AggregateException errors)
+        | None, _ -> raise (System.AggregateException errors)
+
+    override this.Template(definition, props) =
+        childNodes <- childNodes + 1
+        definition.RenderHtml (this, props)
+
+    /// <summary>Writes the content; when it raises, the content's output is dropped and the pending or error view is written instead.</summary>
+    override this.Boundary(views) =
+        childNodes <- childNodes + 1
+        append "<!--[-->"
+        let mark = sink.Mark ()
+
+        let outcome =
+            try
+                views.Content { IsPending = fun () -> false } this
+                None
+            with error ->
+                Some error
+
+        match outcome with
+        | None -> ()
+        | Some (Ranvier.NotReadyException _) ->
+            sink.Truncate mark
+            views.Pending this
+        | Some error ->
+            sink.Truncate mark
+            views.Failed { Error = error; Retry = ignore } this
+
+        append "<!--]-->"
 
 /// <summary>Applies a modifier to the backend's current element.</summary>
 type ModifierAction = Backend -> unit
@@ -450,321 +892,18 @@ module Program =
                             })
         }
 
-let private validNameCharacters underscore (value: string) =
-    let mutable valid = true
-    let mutable index = 0
-
-    while valid && index < value.Length do
-        let c = value[index]
-
-        valid <-
-            (c >= 'a' && c <= 'z')
-            || (c >= '0' && c <= '9')
-            || c = '-'
-            || (underscore && c = '_')
-
-        index <- index + 1
-
-    valid
-
-let name =
-    function
-    | Div -> "div"
-    | Button -> "button"
-    | Input -> "input"
-    | Select -> "select"
-    | Option -> "option"
-    | HtmlTag value ->
-        if
-            System.String.IsNullOrEmpty value
-            || value[0] < 'a'
-            || value[0] > 'z'
-            || not (validNameCharacters false value)
-        then
-            invalidArg "tag" "HTML tag names must contain lowercase letters, digits or hyphens"
-
-        value
-
-let isVoid tag =
-    match name tag with
-    | "area"
-    | "base"
-    | "br"
-    | "col"
-    | "embed"
-    | "hr"
-    | "img"
-    | "input"
-    | "link"
-    | "meta"
-    | "param"
-    | "source"
-    | "track"
-    | "wbr" -> true
-    | _ -> false
-
-let validateAttribute name =
-    if
-        System.String.IsNullOrEmpty name
-        || name[0] < 'a'
-        || name[0] > 'z'
-        || name.StartsWith ("on", System.StringComparison.Ordinal)
-        || name = "srcdoc"
-        || not (validNameCharacters true name)
-    then
-        raise (System.ArgumentException ("Attribute names must be lowercase and cannot contain event handlers or raw document content", "name"))
-
 module Html =
-    /// <summary>Escapes text for HTML; a <c>true</c> flag also escapes double quotes for attribute values.</summary>
+    /// <summary>
+    /// Escapes text for HTML; a <c>true</c> flag also escapes double quotes for attribute values. A value free of
+    /// escaped characters is returned as the same string.
+    /// </summary>
     let escape attribute (value: string) =
-        let escaped =
-            value.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\r", "&#13;")
+        escapeHtml attribute value
 
-        if attribute then
-            escaped.Replace ("\"", "&quot;")
-        else
-            escaped
-
-    let render policy build =
-        let mutable sink = System.Text.StringBuilder ()
-        let mutable leadingLineFeed = false
-        // Whether the element receiving modifiers has a widget hook.
-        let mutable widget = false
-        // Advances on each child node a DOM mount would create: text, binding, element, region or template.
-        let mutable childNodes = 0
-
-        let mutable attributeTarget: System.Collections.Generic.Dictionary<string, string> =
-            Unchecked.defaultof<_>
-
-        let mutable attributeKeys: ResizeArray<string> = Unchecked.defaultof<_>
-        let mutable attributeTag = Div
-
-        let ensureAttributes () =
-            if isNull (box attributeTarget) then
-                invalidOp "Element modifiers require an active element"
-
-        let set key value =
-            ensureAttributes ()
-
-            if not (attributeKeys.Contains key) then
-                attributeKeys.Add key
-
-            attributeTarget[key] <- value
-
-        let setOptional key value =
-            ensureAttributes ()
-            validateAttribute key
-
-            match value with
-            | Some value -> set key value
-            | None ->
-                attributeTarget.Remove key |> ignore
-                attributeKeys.Remove key |> ignore
-
-        let applyModifiers (backend: Backend) tag attributes keys modifiers =
-            let previousTarget = attributeTarget
-            let previousKeys = attributeKeys
-            let previousTag = attributeTag
-            attributeTarget <- attributes
-            attributeKeys <- keys
-            attributeTag <- tag
-
-            try
-                for apply in modifiers do
-                    apply backend
-            finally
-                attributeTarget <- previousTarget
-                attributeKeys <- previousKeys
-                attributeTag <- previousTag
-
-        let browserCapability () =
-            ensureAttributes ()
-
-            if policy = Reject then
-                invalidOp "Browser capability requires explicit Omit policy"
-
-        let append (value: string) =
-            if leadingLineFeed && value.Length > 0 then
-                leadingLineFeed <- false
-
-                if value[0] = '\n' then
-                    sink.Append '\n' |> ignore
-
-            sink.Append value |> ignore
-
-        let backend =
-            { new Backend() with
-                member _.Text value =
-                    childNodes <- childNodes + 1
-                    append (escape false value)
-
-                member _.Bind(_, read) =
-                    childNodes <- childNodes + 1
-                    append (escape false (read ()))
-
-                member this.Keyed(items, render) =
-                    childNodes <- childNodes + 1
-                    let values = Array.copy (items.Read ())
-                    Ranvier.Projection.ensureUniqueKeys items.Key.Invoke values
-
-                    for item in values do
-                        render (fun () -> item) this
-
-                member _.Attribute(key, value) =
-                    validateAttribute key
-                    set key value
-
-                member _.OptionalAttribute(key, value) =
-                    setOptional key value
-
-                member _.ReactiveAttribute(key, read) =
-                    ensureAttributes ()
-                    validateAttribute key
-                    setOptional key (read ())
-
-                member _.InputValue value =
-                    ensureAttributes ()
-
-                    if attributeTag <> Input then
-                        invalidArg "modifiers" "Input value requires input"
-
-                    set "value" value
-
-                member _.Browser _ =
-                    browserCapability ()
-
-                member _.Placed(kind, _) =
-                    browserCapability ()
-
-                    if kind = PlacedKind.Widget then
-                        if widget then
-                            raise (System.ArgumentException ("An element takes at most one content part", "modifiers"))
-
-                        widget <- true
-
-                member _.Head _ =
-                    if policy = Reject then
-                        raise (System.InvalidOperationException "Document metadata requires Server.renderPage")
-
-                member _.Listen(_, _) =
-                    browserCapability ()
-
-                member _.Property _ =
-                    browserCapability ()
-
-                member _.ReactiveProperty(_, _) =
-                    browserCapability ()
-
-                member this.Element(tag, modifiers, children) =
-                    if
-                        match name tag with
-                        | "script"
-                        | "style"
-                        | "iframe"
-                        | "noscript"
-                        | "xmp"
-                        | "noembed"
-                        | "noframes"
-                        | "plaintext" -> true
-                        | _ -> false
-                    then
-                        raise (System.InvalidOperationException "Raw-text elements require an explicit HTML serialization policy")
-
-                    childNodes <- childNodes + 1
-                    append ("<" + name tag)
-                    let attributes = System.Collections.Generic.Dictionary<string, string>()
-                    let keys = ResizeArray<string>()
-                    let outerWidget = widget
-                    widget <- false
-                    applyModifiers this tag attributes keys modifiers
-                    let isWidget = widget
-                    widget <- outerWidget
-
-                    for key in keys do
-                        match attributes.TryGetValue key with
-                        | false, _ -> ()
-                        | true, value -> append (" " + key + "=\"" + escape true value + "\"")
-
-                    append ">"
-
-                    if not (isVoid tag) then
-                        leadingLineFeed <-
-                            name tag = "pre"
-                            || name tag = "textarea"
-                            || name tag = "listing"
-
-                        let before = childNodes
-                        children ()
-
-                        if isWidget && childNodes <> before then
-                            raise (System.ArgumentException ("A widget element has no children", "children"))
-
-                        append ("</" + name tag + ">")
-
-                member _.Component setup =
-                    let cleanups = ResizeArray<unit -> unit>()
-                    let mutable completed = false
-
-                    let onCleanup callback =
-                        if completed then
-                            raise (System.InvalidOperationException "Server component setup is completed")
-
-                        cleanups.Add callback
-
-                    let mutable setupFailure: exn option = None
-
-                    try
-                        setup { OnCleanup = onCleanup }
-                    with error ->
-                        setupFailure <- Some error
-
-                    completed <- true
-                    let errors = ResizeArray<exn>()
-
-                    for cleanup in cleanups do
-                        try
-                            cleanup ()
-                        with error ->
-                            errors.Add error
-
-                    match setupFailure, errors.Count with
-                    | None, 0 -> ()
-                    | Some error, 0 -> raise error
-                    | Some error, _ ->
-                        errors.Insert (0, error)
-                        raise (System.AggregateException errors)
-                    | None, _ -> raise (System.AggregateException errors)
-
-                member this.Template(definition, props) =
-                    childNodes <- childNodes + 1
-                    this.Component (fun context -> definition.RenderHtml (this, context, props, (policy = Reject), append))
-
-                member this.Boundary(views) =
-                    childNodes <- childNodes + 1
-                    append "<!--[-->"
-                    let outer = sink
-                    let buffer = System.Text.StringBuilder ()
-                    sink <- buffer
-
-                    let outcome =
-                        try
-                            try
-                                views.Content { IsPending = fun () -> false } this
-                                None
-                            with error ->
-                                Some error
-                        finally
-                            sink <- outer
-
-                    match outcome with
-                    | None -> sink.Append (buffer.ToString ()) |> ignore
-                    | Some (Ranvier.NotReadyException _) -> views.Pending this
-                    | Some error -> views.Failed { Error = error; Retry = ignore } this
-
-                    append "<!--]-->"
-            }
-
-        build backend
+    /// <summary>Renders <c>build</c> into a new sink and returns the HTML.</summary>
+    let render policy (build: Backend -> unit) =
+        let sink = HtmlSink ()
+        build (HtmlBackend (policy, sink))
         sink.ToString ()
 
 type FragmentBuilder<'view>(ops: Operations<'view>) =

@@ -119,11 +119,19 @@ and [<NoEquality; NoComparison>] HeadTemplate =
 /// <summary>A template component definition without its props type.</summary>
 and [<AbstractClass>] TemplateComponent internal (setup: Func<Setup, obj, obj>, root: TemplateNode) =
     inherit TemplateDefinition()
+
+    /// <summary>The definition's <c>ServerPlan</c>; null before the first server render.</summary>
+    [<DefaultValue>]
+    val mutable internal serverPlan: obj
+
+    [<DefaultValue>]
+    val mutable internal armReader: Func<(unit -> obj), obj>
+
     member internal _.Setup = setup
     member internal _.Root = root
 
     /// <summary>The arm reader shared by every arm of the definition; <c>null</c> until the definition first appears in an arm.</summary>
-    member val internal ArmReader: Func<(unit -> obj), obj> = null with get, set
+    member internal this.ArmReader = this.armReader
 
 /// <summary>A component definition selected by a <c>matchWith</c> or <c>branch</c> arm, with the payload read by its props.</summary>
 [<NoEquality; NoComparison>]
@@ -198,26 +206,6 @@ let private rawText tag =
     | "plaintext" -> true
     | _ -> false
 
-[<NoEquality; NoComparison>]
-type private MarkupMode =
-    | Skeleton
-    | Server of setup: Setup * rejectBrowser: bool * backend: Backend
-
-let private hasBrowserParts
-    properties
-    (slots: Slot array)
-    (events: (string * Func<obj, obj, unit>) array)
-    (placed: (PlacedKind * Func<obj, obj, (unit -> unit)>) array)
-    =
-    Array.length properties > 0
-    || events.Length > 0
-    || placed.Length > 0
-    || slots
-       |> Array.exists (fun slot ->
-           match slot.Target with
-           | PropertyTarget _ -> true
-           | _ -> false)
-
 /// <summary>The number of skeleton sibling nodes occupied by a flattened node.</summary>
 let private width node =
     match node with
@@ -233,18 +221,6 @@ let internal rowRenderer (row: RegionRow) (current: unit -> obj) (backend: Backe
         backend.Template (arm.Definition, arm.Reader.Invoke current)
     | ItemRow (definition, props) -> backend.Template (definition, props.Invoke current)
     | BoundaryRow -> backend.Boundary (unbox<BoundaryViews>(current ()))
-
-/// <summary>The value a region item's row reads: the item of an <c>ItemRow</c>, otherwise the value of its pair.</summary>
-let private rowValue (row: RegionRow) (item: obj) =
-    match row with
-    | ItemRow _ -> item
-    | ViewRow
-    | ArmRow
-    | BoundaryRow -> KeyedItems.value item
-
-let private serverRow (backend: Backend) (row: RegionRow) (item: obj) =
-    let value = rowValue row item
-    rowRenderer row (fun () -> value) backend
 
 [<NoEquality; NoComparison>]
 type InlinedChild =
@@ -275,9 +251,7 @@ type SkeletonLayout =
         Heads: (HeadTemplate * int) array
     }
 
-type private WriterState(instance: obj) =
-    member val Instance = instance with get, set
-    member val Instances = ResizeArray<obj>()
+type private WriterState() =
     member val Targets = ResizeArray<TemplateNode * int array>()
     member val Owners = ResizeArray<int>()
     member val Children = ResizeArray<InlinedChild>()
@@ -285,52 +259,38 @@ type private WriterState(instance: obj) =
     member val Parts = ResizeArray<int>()
     member val Part = 0 with get, set
 
-let private writeMarkup (append: string -> unit) (mode: MarkupMode) (state: WriterState) (root: TemplateNode) =
+let private writeMarkup (append: string -> unit) (state: WriterState) (root: TemplateNode) =
     let target node (path: int list) =
         state.Targets.Add (node, Array.ofList (List.rev path))
         state.Owners.Add state.Part
 
     let enter (definition: TemplateComponent) (props: Func<obj, obj>) =
-        match mode with
-        | Skeleton ->
-            state.Children.Add
-                {
-                    InlinedChild.Definition = definition
-                    Props = props
-                    Owner = state.Part
-                    First = state.Targets.Count
-                    Count = 0
-                }
+        state.Children.Add
+            {
+                InlinedChild.Definition = definition
+                Props = props
+                Owner = state.Part
+                First = state.Targets.Count
+                Count = 0
+            }
 
-            state.Parts.Add state.Part
-            state.Part <- state.Children.Count
-        | Server (setup, _, _) ->
-            state.Instances.Add state.Instance
-            state.Instance <- definition.Setup.Invoke (setup, props.Invoke state.Instance)
+        state.Parts.Add state.Part
+        state.Part <- state.Children.Count
 
     let leave () =
-        match mode with
-        | Skeleton ->
-            let index = state.Part - 1
-            let child = state.Children[index]
+        let index = state.Part - 1
+        let child = state.Children[index]
 
-            state.Children[index] <-
-                { child with
-                    Count = state.Targets.Count - child.First
-                }
+        state.Children[index] <-
+            { child with
+                Count = state.Targets.Count - child.First
+            }
 
-            state.Part <- state.Parts[state.Parts.Count - 1]
-            state.Parts.RemoveAt (state.Parts.Count - 1)
-        | Server _ ->
-            state.Instance <- state.Instances[state.Instances.Count - 1]
-            state.Instances.RemoveAt (state.Instances.Count - 1)
+        state.Part <- state.Parts[state.Parts.Count - 1]
+        state.Parts.RemoveAt (state.Parts.Count - 1)
 
     let writeHead (head: HeadTemplate) =
-        match mode with
-        | Skeleton -> state.Heads.Add ((head, state.Part))
-        | Server (_, rejectBrowser, _) ->
-            if rejectBrowser then
-                raise (InvalidOperationException "Document metadata requires Server.renderPage")
+        state.Heads.Add ((head, state.Part))
 
     let rec writeChildren (children: TemplateNode array) (path: int list) =
         let mutable index = 0
@@ -357,81 +317,40 @@ let private writeMarkup (append: string -> unit) (mode: MarkupMode) (state: Writ
     and writeNode node path =
         match node with
         | TextNode value -> append (Html.escape false value)
-        | TextSlotNode slot ->
-            match mode with
-            | Skeleton ->
-                target node path
-                append " "
-            | Server _ ->
-                let value = unbox<string>(slot.Read.Invoke state.Instance)
-                append (Html.escape false (if isNull value then "" else value))
+        | TextSlotNode _ ->
+            target node path
+            append " "
         | FragmentNode _
         | ChildNode _
         | HeadNode _ -> invalidOp "Fragments, inlined children and head entries are flattened before writing"
         | ElementNode (tag, attributes, properties, slots, events, placed, children) ->
-            if rawText tag then
-                match mode with
-                | Skeleton when children.Length = 0 && name tag <> "plaintext" -> ()
-                | _ -> raise (InvalidOperationException "Raw-text elements require an explicit HTML serialization policy")
+            if
+                rawText tag
+                && (children.Length > 0 || name tag = "plaintext")
+            then
+                raise (InvalidOperationException "Raw-text elements require an explicit HTML serialization policy")
 
-            match mode with
-            | Skeleton ->
-                if
-                    properties.Length > 0
-                    || slots.Length > 0
-                    || events.Length > 0
-                    || placed.Length > 0
-                then
-                    target node path
-            | Server (_, rejectBrowser, _) ->
-                if
-                    rejectBrowser
-                    && hasBrowserParts properties slots events placed
-                then
-                    invalidOp "Browser capability requires explicit Omit policy"
+            if
+                properties.Length > 0
+                || slots.Length > 0
+                || events.Length > 0
+                || placed.Length > 0
+            then
+                target node path
 
             append ("<" + name tag)
 
             for key, value in attributes do
                 append (" " + key + "=\"" + Html.escape true value + "\"")
 
-            match mode with
-            | Server _ ->
-                for slot in slots do
-                    match slot.Target with
-                    | AttributeTarget key ->
-                        match unbox<string option>(slot.Read.Invoke state.Instance) with
-                        | Some value -> append (" " + key + "=\"" + Html.escape true value + "\"")
-                        | None -> ()
-                    | _ -> ()
-            | Skeleton -> ()
-
             append ">"
 
             if not (isVoid tag) then
-                match mode, contentSlot slots with
-                | Server _, Some content -> append (markupOf (content.Read.Invoke state.Instance))
-                | _ -> writeChildren children path |> ignore
-
+                writeChildren children path |> ignore
                 append ("</" + name tag + ">")
-        | RegionNode region ->
-            match mode with
-            | Skeleton ->
-                target node path
-                append "<!--[--><!--]-->"
-            | Server (_, _, backend) ->
-                let items = Array.copy (region.Items.Invoke state.Instance)
-                Projection.ensureUniqueKeys region.Key.Invoke items
-
-                match region.Row with
-                | BoundaryRow -> serverRow backend region.Row (items[0])
-                | _ ->
-                    append "<!--[-->"
-
-                    for item in items do
-                        serverRow backend region.Row item
-
-                    append "<!--]-->"
+        | RegionNode _ ->
+            target node path
+            append "<!--[--><!--]-->"
 
     writeChildren [| root |] []
 
@@ -439,10 +358,9 @@ let private writeMarkup (append: string -> unit) (mode: MarkupMode) (state: Writ
 /// <remarks>A path lists child indexes from the skeleton's root fragment. A region's path leads to its start marker.</remarks>
 let skeletonLayout (root: TemplateNode) : SkeletonLayout =
     let output = StringBuilder ()
-    let state = WriterState (null: obj)
+    let state = WriterState ()
 
-    let rootCount =
-        writeMarkup (fun value -> output.Append value |> ignore) Skeleton state root
+    let rootCount = writeMarkup (fun value -> output.Append value |> ignore) state root
 
     {
         Markup = output.ToString ()
@@ -459,13 +377,394 @@ let skeletonMarkup (root: TemplateNode) =
     let layout = skeletonLayout root
     layout.Markup, layout.Targets, layout.RootCount
 
-/// <summary>Writes an instance as server HTML with the skeleton's markers; region rows render through <c>backend</c>.</summary>
-/// <remarks>Inlined children's setups receive <c>setup</c>; their cleanups run with the enclosing component's.</remarks>
-let renderHtml (definition: TemplateComponent) (backend: Backend) (setup: Setup) (props: obj) (rejectBrowser: bool) (append: string -> unit) =
-    let instance = definition.Setup.Invoke (setup, props)
+/// <summary>One step of a definition's server plan, interpreted by <c>ServerWriter</c> against the current part.</summary>
+[<NoEquality; NoComparison>]
+type internal ServerOp =
+    /// <summary>Markup written as it is.</summary>
+    | Static of string
+    /// <summary>A text slot's escaped value; with <c>leadingLineFeed</c>, a value starting with a line feed gets a second one.</summary>
+    | TextOp of Slot * leadingLineFeed: bool
+    /// <summary>An attribute slot: <c> name="value"</c> for <c>Some</c>; the attribute is omitted for <c>None</c>.</summary>
+    | AttributeOp of string * Slot
+    /// <summary>A raw-HTML slot's markup, written verbatim.</summary>
+    | ContentOp of Slot
+    /// <summary>A document head entry: raises under <c>Reject</c>, dropped under <c>Omit</c>.</summary>
+    | HeadOp
+    /// <summary>A browser-only part: raises under <c>Reject</c>, dropped under <c>Omit</c>; the description names the element and the part.</summary>
+    | BrowserOp of description: string
+    /// <summary>A region, with its position among the regions of its owning part.</summary>
+    | RegionOp of index: int * Region
+    /// <summary>Sets up the inlined child <c>child</c>, which becomes the current part.</summary>
+    | EnterOp of child: int
+    /// <summary>Restores the enclosing part.</summary>
+    | LeaveOp
 
-    writeMarkup append (Server (setup, rejectBrowser, backend)) (WriterState instance) definition.Root
-    |> ignore
+/// <summary>A definition's server HTML as operations over its flattened template, with adjacent static markup merged.</summary>
+[<NoEquality; NoComparison>]
+type internal ServerPlan =
+    {
+        Ops: ServerOp array
+        /// <summary>The inlined children, at every depth, in document order; <c>EnterOp k</c> sets up the child at <c>k - 1</c>.</summary>
+        Children: InlinedChild array
+    }
+
+let private placedPart kind =
+    match kind with
+    | PlacedKind.Mounted -> "mounted hook"
+    | PlacedKind.Lent -> "lent hook"
+    | PlacedKind.Widget -> "widget"
+
+/// <summary>Elements whose first child text loses one leading line feed when parsed.</summary>
+let private dropsLeadingLineFeed tagName =
+    tagName = "pre"
+    || tagName = "textarea"
+    || tagName = "listing"
+
+let private compilePlan (root: TemplateNode) : ServerPlan =
+    let ops = ResizeArray<ServerOp>()
+    let pending = StringBuilder ()
+    let children = ResizeArray<InlinedChild>()
+    let enclosing = ResizeArray<int>()
+    // The number of regions compiled so far, per part.
+    let regions = ResizeArray<int>([ 0 ])
+    let mutable part = 0
+    let mutable targets = 0
+
+    let write (markup: string) =
+        pending.Append markup |> ignore
+
+    let emit op =
+        if pending.Length > 0 then
+            ops.Add (Static (pending.ToString ()))
+            pending.Clear () |> ignore
+
+        ops.Add op
+
+    let rec compileChildren (nodes: TemplateNode array) (leading: bool) =
+        let mutable first = leading
+        let mutable previousText = false
+
+        for flat in flatten nodes do
+            match flat with
+            | Enter (definition, props) ->
+                children.Add
+                    {
+                        InlinedChild.Definition = definition
+                        Props = props
+                        Owner = part
+                        First = targets
+                        Count = 0
+                    }
+
+                enclosing.Add part
+                part <- children.Count
+                regions.Add 0
+                emit (EnterOp part)
+            | Leave ->
+                let child = children[part - 1]
+
+                children[part - 1] <-
+                    { child with
+                        Count = targets - child.First
+                    }
+
+                part <- enclosing[enclosing.Count - 1]
+                enclosing.RemoveAt (enclosing.Count - 1)
+                emit LeaveOp
+            | Item (HeadNode _) -> emit HeadOp
+            | Item node ->
+                let text = isText node
+
+                if text && previousText then
+                    write "<!--!-->"
+
+                compileNode node first
+                first <- false
+                previousText <- text
+
+    and compileNode node leading =
+        match node with
+        | TextNode value ->
+            let escaped = Html.escape false value
+
+            if leading && escaped.Length > 0 && escaped[0] = '\n' then
+                write "\n"
+
+            write escaped
+        | TextSlotNode slot ->
+            targets <- targets + 1
+            emit (TextOp (slot, leading))
+        | ElementNode (tag, attributes, properties, slots, events, placed, nodes) ->
+            let tagName = name tag
+
+            if rawText tag then
+                raise (InvalidOperationException "Raw-text elements require an explicit HTML serialization policy")
+
+            if
+                properties.Length > 0
+                || slots.Length > 0
+                || events.Length > 0
+                || placed.Length > 0
+            then
+                targets <- targets + 1
+
+            for _ in properties do
+                emit (BrowserOp ("<" + tagName + "> property"))
+
+            for slot in slots do
+                match slot.Target with
+                | PropertyTarget _ -> emit (BrowserOp ("<" + tagName + "> property"))
+                | _ -> ()
+
+            for eventName, _ in events do
+                emit (BrowserOp ("<" + tagName + "> listener " + eventName))
+
+            for kind, _ in placed do
+                emit (BrowserOp ("<" + tagName + "> " + placedPart kind))
+
+            write ("<" + tagName)
+
+            for key, value in attributes do
+                write (" " + key + "=\"" + Html.escape true value + "\"")
+
+            for slot in slots do
+                match slot.Target with
+                | AttributeTarget key -> emit (AttributeOp (key, slot))
+                | _ -> ()
+
+            write ">"
+
+            if not (isVoid tag) then
+                match contentSlot slots with
+                | Some content -> emit (ContentOp content)
+                | None -> compileChildren nodes (dropsLeadingLineFeed tagName)
+
+                write ("</" + tagName + ">")
+        | RegionNode region ->
+            targets <- targets + 1
+            emit (RegionOp (regions[part], region))
+            regions[part] <- regions[part] + 1
+        | FragmentNode _
+        | ChildNode _
+        | HeadNode _ -> invalidOp "Fragments, inlined children and head entries are flattened before compiling"
+
+    compileChildren [| root |] false
+
+    if pending.Length > 0 then
+        ops.Add (Static (pending.ToString ()))
+
+    {
+        Ops = ops.ToArray ()
+        Children = children.ToArray ()
+    }
+
+/// <summary>The definition's server plan, compiled on first use; every later call returns the same plan.</summary>
+let internal serverPlan (definition: TemplateComponent) : ServerPlan =
+    match definition.serverPlan with
+    | null ->
+        let plan = compilePlan definition.Root
+#if FABLE_COMPILER
+        definition.serverPlan <- plan
+        plan
+#else
+        match Threading.Interlocked.CompareExchange (&definition.serverPlan, box plan, null) with
+        | null -> plan
+        | published -> unbox published
+#endif
+    | plan -> unbox plan
+
+/// <summary>Whether <c>markup</c> contains a comment whose data starts with <c>[</c> or equals <c>]</c>.</summary>
+let private hasMarkerComment (markup: string) =
+    let find (value: string) (from: int) =
+        markup.IndexOf (value, from, StringComparison.Ordinal)
+
+    let mutable found = false
+    let mutable start = find "<!--" 0
+
+    while not found && start >= 0 do
+        let data = start + 4
+        let rest = markup.Length - data
+
+        if rest > 0 && markup[data] = '>' then
+            start <- find "<!--" (data + 1)
+        elif
+            rest > 1
+            && markup[data] = '-'
+            && markup[data + 1] = '>'
+        then
+            start <- find "<!--" (data + 2)
+        else
+            let close = find "-->" data
+            let finish = if close < 0 then markup.Length else close
+
+            found <-
+                (rest > 0 && markup[data] = '[')
+                || (finish - data = 1 && markup[data] = ']')
+
+            start <- if close < 0 then -1 else find "<!--" (close + 3)
+
+    found
+
+/// <summary>The owners of the instances a server writer sets up.</summary>
+[<AbstractClass>]
+type internal ServerScope() =
+    /// <summary>Runs the body with the scope and <c>Setup</c> of a new nested instance.</summary>
+    abstract Nest: (ServerScope -> Setup -> unit) -> unit
+
+    /// <summary>Runs the body in a new nested scope; when it raises, that scope's cleanups run before the exception propagates.</summary>
+    abstract Attempt: (ServerScope -> unit) -> unit
+
+    /// <summary>Runs the body with the scope and <c>Setup</c> of an inlined child of the instance set up with <c>parent</c>.</summary>
+    abstract Inline: parent: Setup * body: (ServerScope -> Setup -> unit) -> unit
+
+    default this.Inline(_, body) =
+        this.Nest body
+
+/// <summary>
+/// The scope of <c>Html.render</c>: an instance's cleanups run after its markup is written, and an inlined child's run
+/// with its parent's.
+/// </summary>
+[<Sealed>]
+type internal HtmlScope(backend: HtmlBackend) =
+    inherit ServerScope()
+
+    override this.Nest body =
+        backend.Component (fun setup -> body this setup)
+
+    override this.Inline(parent, body) =
+        body this parent
+
+    override this.Attempt body = body this
+
+/// <summary>Writes template instances to a backend from their definitions' server plans.</summary>
+[<Sealed>]
+type internal ServerWriter(backend: HtmlBackend) =
+    let reject = backend.Policy = Reject
+
+    /// <summary>Runs <c>body</c> with <c>scope</c> as the backend's active scope.</summary>
+    let under (scope: ServerScope) (body: unit -> unit) =
+        let outer = backend.Scope
+        backend.Scope <- scope
+
+        try
+            body ()
+        finally
+            backend.Scope <- outer
+
+    /// <summary>Sets up an instance of <c>definition</c> in <c>scope.Nest</c> and writes it.</summary>
+    member this.Write(scope: ServerScope, definition: TemplateComponent, props: obj) : unit =
+        let plan = serverPlan definition
+
+        scope.Nest (fun scope setup ->
+            let parts = Array.zeroCreate<obj>(plan.Children.Length + 1)
+            parts[0] <- definition.Setup.Invoke (setup, props)
+
+            this.Run (scope, setup, plan, parts, 0, 0)
+            |> ignore)
+
+    /// <summary>Interprets the plan from <c>start</c> against <c>part</c> until its <c>LeaveOp</c> or the end; returns the index after it.</summary>
+    member private this.Run(scope: ServerScope, setup: Setup, plan: ServerPlan, parts: obj array, part: int, start: int) : int =
+        let ops = plan.Ops
+        let instance = parts[part]
+        let mutable index = start
+        let mutable running = true
+
+        while running && index < ops.Length do
+            match ops[index] with
+            | Static markup ->
+                backend.Append markup
+                index <- index + 1
+            | TextOp (slot, leadingLineFeed) ->
+                let value = unbox<string>(slot.Read.Invoke instance)
+
+                if not (isNull value) then
+                    if
+                        leadingLineFeed
+                        && value.Length > 0
+                        && value[0] = '\n'
+                    then
+                        backend.Append "\n"
+
+                    backend.Append (Html.escape false value)
+
+                index <- index + 1
+            | AttributeOp (key, slot) ->
+                match unbox<string option>(slot.Read.Invoke instance) with
+                | Some value -> backend.Append (" " + key + "=\"" + Html.escape true value + "\"")
+                | None -> ()
+
+                index <- index + 1
+            | ContentOp slot ->
+                let markup = markupOf (slot.Read.Invoke instance)
+
+                if hasMarkerComment markup then
+                    raise (InvalidOperationException "Raw HTML cannot contain a comment that starts with [ or equals ]")
+
+                backend.Append markup
+                index <- index + 1
+            | HeadOp ->
+                if reject then
+                    raise (InvalidOperationException "Document metadata requires Server.renderPage")
+
+                index <- index + 1
+            | BrowserOp _ ->
+                if reject then
+                    raise (InvalidOperationException "Browser capability requires explicit Omit policy")
+
+                index <- index + 1
+            | RegionOp (_, region) ->
+                this.Region (scope, region, instance)
+                index <- index + 1
+            | EnterOp child ->
+                let inlined = plan.Children[child - 1]
+                let props = inlined.Props.Invoke parts[inlined.Owner]
+                let resume = index + 1
+                let next = ref resume
+
+                scope.Inline (
+                    setup,
+                    fun scope childSetup ->
+                        parts[child] <- inlined.Definition.Setup.Invoke (childSetup, props)
+                        next.Value <- this.Run (scope, childSetup, plan, parts, child, resume)
+                )
+
+                index <- next.Value
+            | LeaveOp ->
+                running <- false
+                index <- index + 1
+
+        index
+
+    member private this.Region(scope: ServerScope, region: Region, instance: obj) =
+        let items = Array.copy (region.Items.Invoke instance)
+        Projection.ensureUniqueKeys region.Key.Invoke items
+
+        match region.Row with
+        | BoundaryRow -> under scope (fun () -> backend.Boundary (unbox<BoundaryViews>(KeyedItems.value items[0])))
+        | ViewRow ->
+            backend.Append "<!--[-->"
+
+            under scope (fun () ->
+                for item in items do
+                    (unbox<Program.View>(KeyedItems.value item)).Invoke backend)
+
+            backend.Append "<!--]-->"
+        | ArmRow ->
+            backend.Append "<!--[-->"
+
+            for item in items do
+                let value = KeyedItems.value item
+                let arm = unbox<Arm> value
+                this.Write (scope, arm.Definition, arm.Reader.Invoke (fun () -> value))
+
+            backend.Append "<!--]-->"
+        | ItemRow (definition, props) ->
+            backend.Append "<!--[-->"
+
+            for item in items do
+                this.Write (scope, definition, props.Invoke (fun () -> item))
+
+            backend.Append "<!--]-->"
 
 /// <summary>The head entry of <c>head</c> for <c>instance</c>.</summary>
 let internal headEntry (head: HeadTemplate) (instance: obj) : HeadEntry =
@@ -546,8 +845,24 @@ type Component<'props> internal (setup: Func<Setup, obj, obj>, root: TemplateNod
     override this.Expand(backend, props) =
         Program.run (expandWith Program.ops (this :> TemplateComponent) props) backend
 
-    override this.RenderHtml(backend, context, props, rejectBrowser, append) =
-        renderHtml (this :> TemplateComponent) backend context props rejectBrowser append
+    override this.RenderHtml(backend, props) =
+        let writer =
+            match backend.Writer with
+            | null ->
+                let writer = ServerWriter backend
+                backend.Writer <- writer
+                writer
+            | writer -> unbox<ServerWriter> writer
+
+        let scope =
+            match backend.Scope with
+            | null ->
+                let scope = HtmlScope backend
+                backend.Scope <- scope
+                scope :> ServerScope
+            | scope -> unbox<ServerScope> scope
+
+        writer.Write (scope, this, props)
 
 /// <summary>One part of an element in a template for instances of type <c>'inst</c>.</summary>
 [<NoEquality; NoComparison>]
@@ -590,6 +905,7 @@ let private writer (write: 'native -> 'value -> unit) =
 let private nodeOf (TemplateView node) = node
 
 let private elementNode tag (parts: Part<'native, 'inst> array) (children: TemplateView<'inst> array) =
+    name tag |> ignore
     let attributes = ResizeArray ()
     let properties = ResizeArray ()
     let slots = ResizeArray ()
@@ -985,8 +1301,16 @@ type TemplateBuilder<'inst> internal () =
     member _.arm (definition: Component<unit -> 'payload>) (payload: 'payload) : Arm =
         let template = definition :> TemplateComponent
 
-        if isNull template.ArmReader then
-            template.ArmReader <- Func<(unit -> obj), obj>(fun current -> box (fun () -> unbox<'payload> (unbox<Arm>(current ())).Payload))
+        if isNull template.armReader then
+            let reader =
+                Func<(unit -> obj), obj>(fun current -> box (fun () -> unbox<'payload> (unbox<Arm>(current ())).Payload))
+
+#if FABLE_COMPILER
+            template.armReader <- reader
+#else
+            Threading.Interlocked.CompareExchange (&template.armReader, reader, null)
+            |> ignore
+#endif
 
         {
             Arm.Definition = template
