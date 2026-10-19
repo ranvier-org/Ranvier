@@ -2,6 +2,7 @@ module Ranvier.AotSmoke.WireSmoke
 
 open Ranvier.Wire.Thoth.Json.Core
 open Ranvier.Wire.Thoth.Json.System.Text.Json
+open Ranvier.Wire
 
 type private Shape =
     | Circle of radius: float
@@ -32,6 +33,13 @@ let private failure (result: Result<'T, string>) =
     | Ok _ -> "decoded"
     | Error message -> message
 
+let private kind (result: Result<'T, WireError>) =
+    match result with
+    | Ok _ -> "Ok"
+    | Error (WireError.Syntax _) -> "Syntax"
+    | Error (WireError.Limit _) -> "Limit"
+    | Error (WireError.Shape _) -> "Shape"
+
 /// <summary>Each wire check as its name, whether it passed, and the text it observed.</summary>
 let checks () : (string * bool * string) list =
     let pointText = Encode.toString 0 (point.Encoder { X = 3; Label = "a" })
@@ -39,6 +47,20 @@ let checks () : (string * bool * string) list =
     let index = failure (Decode.fromString (Codec.array Codec.int) """[1,"x"]""")
     let overflow = failure (Decode.fromString Codec.float "1e400")
     let overflow32 = failure (Decode.fromString Codec.float32 "1e39")
+    let points = WireCodec.ofCodec point
+    let pointWire = points.Encode { X = 3; Label = "a" }
+
+    let deep =
+        (WireCodec.ofCodec Codec.value).Decode(String.replicate 65 "[" + String.replicate 65 "]")
+
+    let strings = WireCodec.ofCodec Codec.string
+    let loneText = strings.Decode ("\"a\\ud800b\"")
+
+    let loneEncode =
+        try
+            strings.Encode ("a" + string (char 0xD800))
+        with :? System.ArgumentException as ex ->
+            ex.Message
 
     [
         "a vendored Thoth record encodes", pointText = """{"x":3,"label":"a"}""", pointText
@@ -46,4 +68,10 @@ let checks () : (string * bool * string) list =
         "an array element error names its index", index.Contains "$.[1]", index
         "a vendored float past the double range is an error", overflow.Contains "Value is outside the float range", overflow
         "a vendored float32 past the single range is an error", overflow32.Contains "Value is outside the float32 range", overflow32
+        "a WireCodec record round-trips", points.Decode pointWire = Ok { X = 3; Label = "a" }, pointWire
+        "unclosed JSON is a syntax error", kind (points.Decode "{") = "Syntax", kind (points.Decode "{")
+        "nesting past the limit is a limit error", kind deep = "Limit", kind deep
+        "null for a record is a shape error", kind (points.Decode "null") = "Shape", kind (points.Decode "null")
+        "an escaped lone surrogate is a syntax error", kind loneText = "Syntax", kind loneText
+        "a lone surrogate does not encode", loneEncode.Contains "lone surrogate", loneEncode
     ]

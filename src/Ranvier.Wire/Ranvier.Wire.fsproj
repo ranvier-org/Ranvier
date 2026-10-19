@@ -30,6 +30,11 @@
     <Compile Include="Vendor/Thoth.Json/Thoth.Json.System.Text.Json/Encode.fs" />
     <Compile Include="Vendor/Thoth.Json/Thoth.Json.JavaScript/Decode.fs" />
     <Compile Include="Vendor/Thoth.Json/Thoth.Json.JavaScript/Encode.fs" />
+    <Compile Include="Types.fs" />
+    <Compile Include="Prescan.fs" />
+    <Compile Include="Helpers.fs" />
+    <Compile Include="Backend.fs" />
+    <Compile Include="WireCodec.fs" />
     <None Include="Vendor/Thoth.Json/LICENSE.txt" Pack="true" PackagePath="licenses/Thoth.Json/" />
     <None Include="README.md" Pack="true" PackagePath="\" />
     <None Include="../../brand/icon/ranvier-icon.png" Pack="true" PackagePath="\" Visible="false" />
