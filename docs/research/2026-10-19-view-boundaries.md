@@ -108,15 +108,33 @@ The wrapper's cost is at most a few percent of a click and lies within the measu
 
 ### Boundary reveal
 
-Rows read one async value under a boundary (Solid 2: `Loading`). Scenario `reveal` mounts the boundary at the root and settles the source afterwards. Scenario `switch` mounts the boundary from a branch switch over an already settled source, so the boundary mounts inside a flush. In both frameworks the switch scenario inserts the pending view, then removes it and inserts the rows: `verify` observes the insertion, asserts that the pending view is absent after the reveal and that the host is empty after disposal. The difference lies in timing: Ranvier reveals within the flush that mounts the boundary, while Solid 2 reads the resolved promise through an async memo created where the branch is created and reveals in a later microtask turn, which the adapter awaits. The switch ratio contains that turn. Medians are per boundary, in µs.
+Rows read one async value under a boundary (Solid 2: `Loading`). Medians are per boundary (or per switch), in µs, with the per-process range in brackets. `verify` asserts, in every scenario and framework, the row text, that the pending view is absent after the reveal, and that the host is empty after disposal; for Ranvier it also asserts that the pending view was inserted before the reveal (observed in the DOM) in the `reveal` and `switch` scenarios.
+
+#### Reveal after the source settles (Ranvier / Solid 2)
+
+The boundary is mounted at the root and its source settles afterwards.
 
 | Scenario | Width | Ranvier median (µs, range) | Solid 2 median (µs, range) | Ranvier / Solid 2 | Ranvier retained bytes per row | Solid 2 retained bytes per row |
 |---|---|---|---|---|---|---|
-| reveal | 1 | 11.8 (11.4-12.0) | 10.8 (10.2-11.4) | 1.09 | 10744 | 1120 |
-| reveal | 16 | 42.0 (41.1-43.1) | 28.1 (26.9-28.6) | 1.49 | 1630 | 682 |
-| reveal | 128 | 209.4 (207.5-213.7) | 131.3 (127.5-136.2) | 1.60 | 957 | 567 |
-| switch | 1 | 15.9 (15.9-16.4) | 12.1 (12.0-12.3) | 1.32 | 14077 | 3139 |
-| switch | 16 | 30.6 (30.0-31.6) | 25.9 (25.3-26.1) | 1.18 | 1758 | 758 |
-| switch | 128 | 141.9 (140.0-146.9) | 124.4 (123.7-128.7) | 1.14 | 808 | 584 |
+| reveal | 1 | 12.1 (10.8-13.9) | 10.4 (10.3-12.2) | 1.17 | 8314 | 4079 |
+| reveal | 16 | 42.3 (42.0-42.8) | 27.8 (27.7-27.8) | 1.52 | 1461 | 624 |
+| reveal | 128 | 228.1 (217.5-231.2) | 135.6 (131.9-150.0) | 1.68 | 949 | 565 |
 
-The 1-wide `reveal` row is parity: the ranges touch at 11.4 µs. Retained bytes per row at width 1 are dominated by the boundary's fixed cost, which the single row carries. At width 128 Ranvier's revealed boundary retains 1.4 to 1.7 times Solid 2's bytes per row, and more at narrower widths. Mounting the boundary inside a flush costs Ranvier about 4 µs more at width 1 than mounting it at the root, and about 11 µs less at width 16 and 68 µs less at width 128; this comparison was not decomposed.
+The 1-wide row is parity: the ranges overlap. Retained bytes per row at width 1 are dominated by the boundary's fixed cost, which the single row carries.
+
+#### What a boundary costs when nothing is pending
+
+The same workload runs with and without a boundary in each framework: an empty branch switches to an arm of N rows reading an already settled source, in a flush. The `plain` scenario mounts the rows directly; the `switch` scenario wraps them in the boundary. The cost of a boundary is the difference `switch` minus `plain` within one framework, per process (the range column), and as a percentage of `plain`. The ratio column is `switch` over `plain`.
+
+What each side does in the `switch` scenario: Ranvier mounts the pending view, removes it and inserts the rows within the same flush. Solid 2 cannot read a promise synchronously: its async memo (created where the branch is created) is not ready in the flush that mounts the branch, so `Loading` shows its fallback and the rows are inserted in a later microtask turn, which the adapter awaits; the `plain` variant in Solid 2 also reads the promise through the async memo and also completes in a later turn. Both Solid 2 numbers therefore include the extra turn, and the difference isolates the boundary's part only to the extent that the turn costs the same with and without `Loading`.
+
+| Framework | Width | Without boundary (µs, range) | With boundary (µs, range) | Boundary cost (µs, per-process range) | Boundary cost (% of without, per-process range) | With / without |
+|---|---|---|---|---|---|---|
+| Ranvier | 1 | 8.3 (8.2-8.3) | 15.6 (14.9-16.1) | 7.3 (6.7 to 7.8) | 89% (82 to 94) | 1.89 |
+| Solid 2 | 1 | 9.9 (9.9-10.1) | 12.1 (11.3-12.5) | 2.2 (1.4 to 2.6) | 22% (14 to 26) | 1.22 |
+| Ranvier | 16 | 21.4 (21.1-22.7) | 30.5 (29.2-31.3) | 9.1 (8.1 to 10.2) | 42% (37 to 48) | 1.42 |
+| Solid 2 | 16 | 23.1 (22.5-24.7) | 25.9 (25.8-26.2) | 2.8 (1.1 to 3.6) | 12% (4 to 16) | 1.12 |
+| Ranvier | 128 | 121.3 (112.5-125.0) | 138.1 (130.6-142.5) | 16.9 (5.6 to 30.0) | 14% (5 to 27) | 1.14 |
+| Solid 2 | 128 | 118.7 (116.3-120.0) | 125.0 (119.4-128.1) | 6.3 (1.3 to 11.9) | 5% (1 to 10) | 1.05 |
+
+Ranvier's boundary adds a fixed cost of about 7 to 9 µs per boundary at widths 1 and 16 (89% and 42% of the plain switch) and a cost that the 128-wide noise (5 to 30 µs) leaves between 5% and 27%. Solid 2's boundary adds 1 to 12 µs (5% to 22%). Retained bytes per row with and without the boundary, Ranvier: 9718 and 13231 at width 1, 1441 and 1693 at 16, 736 and 798 at 128; Solid 2: 4143 and 2586, 687 and 700, 546 and 584.

@@ -1,8 +1,9 @@
-import { mountReveal as ranvierReveal, mountSwitchReveal as ranvierSwitch } from "../../generated-tests/BoundaryPerf.js";
-import { mountReveal as solidReveal, mountSwitchReveal as solidSwitch } from "./boundary-solid.jsx";
+import { mountReveal as ranvierReveal, mountSwitchReveal as ranvierSwitch, mountSwitchPlain as ranvierPlain } from "../../generated-tests/BoundaryPerf.js";
+import { mountReveal as solidReveal, mountSwitchReveal as solidSwitch, mountSwitchPlain as solidPlain } from "./boundary-solid.jsx";
 
-// "reveal" mounts the boundary at the root; "switch" mounts it from a branch switch, inside a flush.
-const scenarios = { reveal: { ranvier: ranvierReveal, solid: solidReveal }, switch: { ranvier: ranvierSwitch, solid: solidSwitch } };
+// "reveal" mounts the boundary at the root; "switch" mounts it from a branch switch, inside a flush; "plain" is the switch
+// workload without a boundary.
+const scenarios = { reveal: { ranvier: ranvierReveal, solid: solidReveal }, switch: { ranvier: ranvierSwitch, solid: solidSwitch }, plain: { ranvier: ranvierPlain, solid: solidPlain } };
 let hostIndex = 0;
 const freshHost = () => {
   const host = document.createElement("div");
@@ -44,7 +45,7 @@ window.boundaryReveal = {
     if (JSON.stringify(rows) !== JSON.stringify(expected)) throw Error(`${scenario}/${mode}/${width}: ${JSON.stringify(rows)}`);
     if (!fallbackAbsent) throw Error(`${scenario}/${mode}/${width}: the pending view remains after the reveal`);
     if (!emptied) throw Error(`${scenario}/${mode}/${width}: the host is not empty after disposal`);
-    if (mode === "ranvier" && !pendingMounted) throw Error(`${scenario}/${mode}/${width}: the pending view was never inserted`);
+    if (mode === "ranvier" && scenario !== "plain" && !pendingMounted) throw Error(`${scenario}/${mode}/${width}: the pending view was never inserted`);
     return { scenario, mode, width, rows: rows.length, pendingMounted };
   },
   async retain(mode, width, count, scenario = "reveal") {

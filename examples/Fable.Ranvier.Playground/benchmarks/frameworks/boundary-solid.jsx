@@ -29,6 +29,26 @@ function Rows(props) {
   </Loading>;
 }
 
+// The switch workload without a boundary: the rows read the resolved value directly.
+function PlainRows(props) {
+  const value = createMemo(() => props.promise);
+  return Array.from({ length: props.width }, (_, i) => <div class="row">{value() + i}</div>);
+}
+
+export async function mountSwitchPlain(host, width) {
+  const promise = Promise.resolve("ready");
+  const [arm, setArm] = createSignal(false);
+  const dispose = render(() => <Show when={arm()}><PlainRows promise={promise} width={width} /></Show>, host);
+  flush();
+  setArm(true);
+  flush();
+  for (let turn = 0; turn < 20 && host.querySelectorAll(".row").length !== width; turn++) {
+    await Promise.resolve();
+    flush();
+  }
+  return dispose;
+}
+
 // A Loading boundary mounted by a Show switch over an already resolved promise; the boundary mounts inside a flush.
 export async function mountSwitchReveal(host, width) {
   const promise = Promise.resolve("ready");
