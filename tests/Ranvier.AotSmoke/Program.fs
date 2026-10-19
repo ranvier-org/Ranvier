@@ -47,6 +47,12 @@ let main _ =
 
     raises<KeyNotFoundException> "a missing int key" "The projection has no key 99." (fun () -> byInt.Get 99 |> ignore)
 
+    let none = Signal (g, ([]: int list))
+    let emptyRows = Api.createProjection id id (fun () -> none.Value)
+
+    raises<KeyNotFoundException> "an empty head" "Projection.head: the projection has no keys." (fun () ->
+        (Projection.head emptyRows).Value |> ignore)
+
     let names = Signal (g, [ "a"; "b" ])
 
     let byName =

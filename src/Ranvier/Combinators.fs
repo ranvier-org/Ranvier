@@ -1006,6 +1006,57 @@ module Projection =
         owner.SetParent (parent.AttachLinked owner)
         owner
 
+    /// <summary>A function returning the value inside Some, and raising one KeyNotFoundException instance with message for every None.</summary>
+    let inline private orRaise (message: string) : 'T option -> 'T =
+        let empty = ref (null: exn)
+
+        fun result ->
+            match result with
+            | Some value -> value
+            | None ->
+                if isNull empty.Value then
+                    empty.Value <- System.Collections.Generic.KeyNotFoundException message :> exn
+
+                raise empty.Value
+
+    /// <summary>The key at position <c>position count</c> of <c>upstream</c>, where <c>count</c> is the key count, with its value; <c>None</c> for a position outside <c>Keys</c>.</summary>
+    /// <remarks>Tracked reads of <c>Keys</c>, of what <c>position</c> reads, and of the row at the position.</remarks>
+    let private entryAt (upstream: Projection<'K, 'V>) (position: int -> int) : ('K * 'V) option =
+        let keys = upstream.Keys
+        let index = position keys.Length
+
+        if index < 0 || index >= keys.Length then
+            None
+        else
+            let key = Platform.itemAt index keys
+            Some (key, upstream.Get key)
+
+    /// <summary>A memo of <c>finish</c> applied to <c>entryAt upstream position</c>.</summary>
+    /// <remarks>A pass producing an entry equal to the last one returns the last result instance, leaving readers unwoken.</remarks>
+    let private positional (upstream: Projection<'K, 'V>) (position: int -> int) (finish: ('K * 'V) option -> 'R) : Memo<'R> =
+        let equalKeys = System.Collections.Generic.EqualityComparer<'K>.Default
+        let equalValues = upstream.Graph.Options.Equality.Comparer<'V>()
+        let lastEntry: ('K * 'V) option ref = ref None
+        let lastResult = ref Unchecked.defaultof<'R>
+
+        let compute (_: 'R voption) =
+            let entry = entryAt upstream position
+
+            match entry, lastEntry.Value with
+            | Some (key, value), Some (lastKey, lastValue) when
+                equalKeys.Equals (key, lastKey)
+                && equalValues.Equals (value, lastValue)
+                ->
+                lastResult.Value
+            | Some _, _ ->
+                let result = finish entry
+                lastEntry.Value <- entry
+                lastResult.Value <- result
+                result
+            | None, _ -> finish entry
+
+        Memo<'R>.Create(upstream.Graph, compute, ScopeMode.Pure)
+
     /// <summary>The keys of <c>upstream</c> whose value satisfies <c>predicate</c>, in upstream order, with their values.</summary>
     /// <remarks>
     /// <c>predicate</c> re-runs for a key when its upstream row changes. A pending predicate keeps the key's last membership;
@@ -1462,3 +1513,42 @@ module Projection =
     /// <remarks>Depends on <c>Keys</c> as <c>length</c> does, and wakes its readers only when emptiness changes.</remarks>
     let isEmpty (upstream: Projection<'K, 'V>) : Memo<bool> =
         Memo<bool>.Create(upstream.Graph, (fun _ -> upstream.Keys.Length = 0), ScopeMode.Pure)
+
+    /// <summary>A memo of the first key of <c>upstream</c> with its value, or <c>None</c> while <c>Keys</c> is empty.</summary>
+    /// <remarks>
+    /// Depends exclusively on <c>Keys</c> and the first key's row. A pending first row makes the memo pending, and a failed
+    /// one makes it raise the row's exception.
+    /// </remarks>
+    let tryHead (upstream: Projection<'K, 'V>) : Memo<('K * 'V) option> =
+        positional upstream (fun _ -> 0) id
+
+    /// <summary>A memo of the last key of <c>upstream</c> with its value, or <c>None</c> while <c>Keys</c> is empty.</summary>
+    /// <remarks>Reads as <c>tryHead</c> does, at the last position.</remarks>
+    let tryLast (upstream: Projection<'K, 'V>) : Memo<('K * 'V) option> =
+        positional upstream (fun count -> count - 1) id
+
+    /// <summary>
+    /// A memo of the key at position <c>index ()</c> of <c>upstream</c> with its value, or <c>None</c> for a position
+    /// outside <c>Keys</c>, negative included.
+    /// </summary>
+    /// <remarks>
+    /// <c>index</c> is a tracked read, as the count of <c>take</c> is. Reads as <c>tryHead</c> does, at that position. A
+    /// throwing <c>index</c> fails the memo.
+    /// </remarks>
+    let tryItem (index: unit -> int) (upstream: Projection<'K, 'V>) : Memo<('K * 'V) option> =
+        positional upstream (fun _ -> index ()) id
+
+    /// <summary><c>tryHead</c>, raising <c>KeyNotFoundException</c> while <c>Keys</c> is empty.</summary>
+    /// <remarks>The memo fails while empty and recovers once a key arrives; prefer <c>tryHead</c> for a binding.</remarks>
+    let head (upstream: Projection<'K, 'V>) : Memo<'K * 'V> =
+        positional upstream (fun _ -> 0) (orRaise "Projection.head: the projection has no keys.")
+
+    /// <summary><c>tryLast</c>, raising <c>KeyNotFoundException</c> while <c>Keys</c> is empty.</summary>
+    /// <remarks>Fails and recovers as <c>head</c> does.</remarks>
+    let last (upstream: Projection<'K, 'V>) : Memo<'K * 'V> =
+        positional upstream (fun count -> count - 1) (orRaise "Projection.last: the projection has no keys.")
+
+    /// <summary><c>tryItem</c>, raising <c>KeyNotFoundException</c> for a position outside <c>Keys</c>.</summary>
+    /// <remarks>Fails and recovers as <c>head</c> does.</remarks>
+    let item (index: unit -> int) (upstream: Projection<'K, 'V>) : Memo<'K * 'V> =
+        positional upstream (fun _ -> index ()) (orRaise "Projection.item: the projection has no key at the index.")

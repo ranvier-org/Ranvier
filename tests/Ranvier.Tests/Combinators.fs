@@ -2509,3 +2509,272 @@ let sizeTests =
                 Expect.equal count.Value 2 "the memo reads its last value"
             }
         ]
+
+/// <summary>Expects <c>memo</c> to raise <c>KeyNotFoundException</c> with <c>message</c>, originating in the memo.</summary>
+let private expectEmpty (memo: Memo<'T>) (message: string) =
+    Expect.throwsC (fun () -> memo.Value |> ignore) (fun ex ->
+        Expect.isTrue (ex :? Collections.Generic.KeyNotFoundException) "a KeyNotFoundException"
+        Expect.equal ex.Message message "the message")
+
+    Expect.isTrue (obj.ReferenceEquals (memo.ErrorOrigin, memo)) "the failure originates in the memo"
+
+[<Tests>]
+let positionTests =
+    testList
+        "Projection.tryHead, tryLast and tryItem"
+        [
+            test "tryHead and tryLast follow order and values" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 10; 2, 20; 3, 30 ])
+                let up = rows source
+                let first = Projection.tryHead up
+                let final = Projection.tryLast up
+
+                Expect.equal (first.Value, final.Value) (Some (1, 10), Some (3, 30)) "initial"
+                source.Value <- setN 1 11 source.Value
+                Expect.equal first.Value (Some (1, 11)) "an edit of the head"
+                source.Value <- source.Value |> List.filter (fun x -> x.Id <> 1)
+                Expect.equal (first.Value, final.Value) (Some (2, 20), Some (3, 30)) "the head removed"
+                source.Value <- List.rev source.Value
+                Expect.equal (first.Value, final.Value) (Some (3, 30), Some (2, 20)) "reversed"
+                source.Value <- []
+                Expect.equal (first.Value, final.Value) (None, None) "empty"
+            }
+
+            test "an edit off the head and the last key wakes no reader" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 10; 2, 20; 3, 30 ])
+                let up = rows source
+                let first = Projection.tryHead up
+                let final = Projection.tryLast up
+                let runs = ref 0
+
+                createEffect (fun () ->
+                    runs.Value <- runs.Value + 1
+                    first.Value |> ignore
+                    final.Value |> ignore)
+
+                source.Value <- setN 2 99 source.Value
+                Expect.equal runs.Value 1 "a middle edit"
+            }
+
+            test "appending a key after the head wakes no tryHead reader" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 10; 2, 20 ])
+                let first = rows source |> Projection.tryHead
+                let runs = ref 0
+
+                createEffect (fun () ->
+                    runs.Value <- runs.Value + 1
+                    first.Value |> ignore)
+
+                source.Value <- items [ 1, 10; 2, 20; 3, 30 ]
+                Expect.equal runs.Value 1 "an append"
+                source.Value <- items [ 1, 10; 3, 30 ]
+                Expect.equal runs.Value 1 "a removal after the head"
+                source.Value <- items [ 1, 11; 3, 30 ]
+                Expect.equal runs.Value 2 "an edit of the head"
+            }
+
+            test "tryHead, tryLast and tryItem read only the row at their position" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ for n in 1..50 -> n, n * 10 ])
+                let rowCalls = ref 0
+
+                let up =
+                    createProjection
+                        (fun x -> x.Id)
+                        (fun x ->
+                            rowCalls.Value <- rowCalls.Value + 1
+                            x.N)
+                        (fun () -> source.Value)
+
+                let first = Projection.tryHead up
+                let final = Projection.tryLast up
+                let at = Projection.tryItem (fun () -> 24) up
+
+                Expect.equal (first.Value, final.Value, at.Value) (Some (1, 10), Some (50, 500), Some (25, 250)) "initial"
+                let callsBefore = rowCalls.Value
+
+                source.Value <- setN 10 7 source.Value
+                Expect.equal (first.Value, final.Value, at.Value) (Some (1, 10), Some (50, 500), Some (25, 250)) "a middle edit"
+                Expect.equal rowCalls.Value callsBefore "no row function call for an edit off the positions"
+
+                source.Value <- source.Value @ items [ 51, 510 ]
+                Expect.equal final.Value (Some (51, 510)) "an append moves the last key"
+                Expect.equal (first.Value, at.Value) (Some (1, 10), Some (25, 250)) "the other positions"
+                Expect.isLessThanOrEqual (rowCalls.Value - callsBefore) 1 "at most the new last row is evaluated"
+            }
+
+            test "tryItem follows its index signal, and a position outside Keys reads None" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 10; 2, 20; 3, 30 ])
+                let index = createSignal 1
+
+                let at =
+                    rows source
+                    |> Projection.tryItem (fun () -> index.Value)
+
+                let seen = ResizeArray<(int * int) option>()
+
+                createEffect (fun () -> seen.Add at.Value)
+                index.Value <- 5
+                index.Value <- -1
+                index.Value <- 0
+
+                Expect.sequenceEqual seen [ Some (2, 20); None; Some (1, 10) ] "one run per change of result"
+            }
+
+            test "a pending head row makes tryHead pending, and a failed head row raises its error" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let flight = createAsyncSource<int>()
+                let bad = createSignal false
+
+                let up =
+                    createProjection
+                        id
+                        (fun k ->
+                            if k = 1 && bad.Value then invalidOp "boom 1"
+                            elif k = 1 then flight.Value
+                            else k * 10)
+                        (fun () -> [ 1; 2 ])
+
+                let first = Projection.tryHead up
+
+                Expect.throwsT<NotReadyException> (fun () -> first.Value |> ignore) "the head row is pending"
+                flight.Settle 10
+                Expect.equal first.Value (Some (1, 10)) "settled"
+                bad.Value <- true
+                Expect.equal (describe first) "boom 1" "the head row's error"
+                bad.Value <- false
+                Expect.equal first.Value (Some (1, 10)) "recovered"
+            }
+
+            test "tryHead over sortBy follows the minimum" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 5; 2, 3; 3, 8 ])
+
+                let least =
+                    rows source
+                    |> Projection.sortBy id
+                    |> Projection.tryHead
+
+                Expect.equal least.Value (Some (2, 3)) "key 2"
+                source.Value <- setN 3 1 source.Value
+                Expect.equal least.Value (Some (3, 1)) "key 3 moves first"
+                source.Value <- setN 3 9 source.Value
+                Expect.equal least.Value (Some (2, 3)) "key 2 again"
+            }
+
+            test "a throwing index fails tryItem until it recovers" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 10 ])
+                let index = createSignal 0
+
+                let at =
+                    rows source
+                    |> Projection.tryItem (fun () ->
+                        if index.Value < -5 then
+                            invalidOp "bad index"
+                        else
+                            index.Value)
+
+                Expect.equal at.Value (Some (1, 10)) "precondition"
+                index.Value <- -10
+                Expect.equal (describe at) "bad index" "the index's error"
+                index.Value <- 0
+                Expect.equal at.Value (Some (1, 10)) "recovered"
+            }
+
+            test "tryHead over a disposed view reads None" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 10 ])
+                let view = rows source |> Projection.filter (fun _ -> true)
+                let first = Projection.tryHead view
+
+                Expect.equal first.Value (Some (1, 10)) "precondition"
+                view.Dispose ()
+                Expect.equal first.Value None "a disposed view is empty"
+            }
+
+            test "head, last and item raise KeyNotFoundException while empty and recover" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [])
+                let up = rows source
+                let first = Projection.head up
+                let final = Projection.last up
+                let second = Projection.item (fun () -> 1) up
+
+                expectEmpty first "Projection.head: the projection has no keys."
+                expectEmpty final "Projection.last: the projection has no keys."
+                expectEmpty second "Projection.item: the projection has no key at the index."
+
+                source.Value <- items [ 1, 10; 2, 20 ]
+                Expect.equal (first.Value, final.Value, second.Value) ((1, 10), (2, 20), (2, 20)) "recovered"
+
+                source.Value <- items [ 3, 30 ]
+                Expect.equal first.Value (3, 30) "one key"
+                expectEmpty second "Projection.item: the projection has no key at the index."
+            }
+
+            test "head raises one exception instance per memo, and a reader runs once per transition" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 10 ])
+                let first = rows source |> Projection.head
+                let runs = ref 0
+                let errors = ResizeArray<exn>()
+
+                createEffect (fun () ->
+                    runs.Value <- runs.Value + 1
+
+                    try
+                        first.Value |> ignore
+                    with ex ->
+                        errors.Add ex)
+
+                source.Value <- []
+                source.Value <- items [ 2, 20 ]
+                source.Value <- []
+
+                Expect.equal runs.Value 4 "value, empty, value, empty"
+                Expect.equal errors.Count 2 "two empty periods"
+                Expect.isTrue (obj.ReferenceEquals (errors[0], errors[1])) "the same exception instance"
+            }
+
+            test "disposing the calling scope stops tryHead" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 10 ])
+                let up = rows source
+                let runs = ref 0
+                let scope = ref Unchecked.defaultof<Owner>
+
+                let first =
+                    createRoot (fun owner ->
+                        scope.Value <- owner
+                        let first = Projection.tryHead up
+
+                        createEffect (fun () ->
+                            runs.Value <- runs.Value + 1
+                            first.Value |> ignore)
+
+                        first)
+
+                scope.Value.Dispose ()
+                source.Value <- items [ 2, 20 ]
+
+                Expect.equal runs.Value 1 "the effect is disposed"
+                Expect.equal first.Value (Some (1, 10)) "the memo reads its last value"
+            }
+        ]

@@ -2806,6 +2806,12 @@ let rowOptionTests =
 
                 Expect.equal (Projection.length proj).Value 2 "length"
                 Expect.isFalse (Projection.isEmpty proj).Value "isEmpty"
+                Expect.equal (Projection.tryHead proj).Value (Some (1, 10)) "tryHead"
+                Expect.equal (Projection.tryLast proj).Value (Some (2, 20)) "tryLast"
+                Expect.equal (Projection.head proj).Value (1, 10) "head"
+                Expect.equal (Projection.last proj).Value (2, 20) "last"
+                Expect.equal (Projection.tryItem (fun () -> 1) proj).Value (Some (2, 20)) "tryItem"
+                Expect.equal (Projection.item (fun () -> 0) proj).Value (1, 10) "item"
             }
 
             test "ensureUniqueKeys raises the pass's message for int, string, record and tuple keys" {

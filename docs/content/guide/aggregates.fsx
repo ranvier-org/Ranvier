@@ -57,6 +57,7 @@ let rows = createProjection _.Id id (fun () -> tasks.Value)
 | `Projection.exists predicate` | whether `countBy predicate` is above zero | as `foldGroup` |
 | `Projection.forall predicate` | whether `countBy` of the misses is zero | as `foldGroup` |
 | `Projection.length`, `Projection.isEmpty` | the key count; whether it is zero | no work: a row edit wakes neither |
+| `Projection.tryHead`, `tryLast`, `tryItem index` (`head`, `last`, `item` raise) | the key at a position with its value | O(1); an edit off the position wakes no reader |
 
 :::
 
@@ -219,6 +220,35 @@ let noScores = scoreRows |> Projection.isEmpty
 
 Pinned by the `Projection.length and isEmpty` tests, including `a row edit wakes no reader` and `isEmpty wakes its
 readers only when emptiness changes`
+([Combinators.fs](https://github.com/shayanhabibi/Ranvier/blob/master/tests/Ranvier.Tests/Combinators.fs)).
+:::
+*)
+
+(**
+## Position
+
+`Projection.tryHead`, `tryLast` and `tryItem` read the key at a position with its value, and `None` when the position
+is outside `Keys`. They depend exclusively on `Keys` and the one row they read, so an edit elsewhere wakes no reader;
+over a sorted view, `tryHead` is the top row. A pending row at the position makes the memo pending, and a failed one
+raises.
+
+`Projection.head`, `last` and `item` raise `KeyNotFoundException` instead of returning `None`. The memo fails while
+the position is empty, so every reader needs a boundary or `TryValue`; prefer the `try` forms for bindings.
+*)
+
+let firstScore = scoreRows |> Projection.tryHead
+let topScore = scoreRows |> Projection.sortBy (fun score -> -score) |> Projection.tryHead
+let secondScore = scoreRows |> Projection.tryItem (fun () -> 1)
+
+(firstScore.Value, topScore.Value, secondScore.Value) // (Some (1, 40), Some (2, 75), Some (2, 75))
+
+(**
+:::details Tests covering this behaviour
+
+Pinned by the `Projection.tryHead, tryLast and tryItem` tests, including `an edit off the head and the last key wakes
+no reader`, `appending a key after the head wakes no tryHead reader`, `a pending head row makes tryHead pending, and a
+failed head row raises its error` and `head raises one exception instance per memo, and a reader runs once per
+transition`
 ([Combinators.fs](https://github.com/shayanhabibi/Ranvier/blob/master/tests/Ranvier.Tests/Combinators.fs)).
 :::
 *)
