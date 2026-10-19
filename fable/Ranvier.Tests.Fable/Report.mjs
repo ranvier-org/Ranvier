@@ -1,6 +1,7 @@
 // Runs each compiled build of the suite under both delivery modes and writes docs/.ai/fable-compat.md.
 // Exits non-zero when a test fails under inline delivery and has no entry in `differences`, or fails only under
-// promise delivery and has no entry in `microtask`.
+// promise delivery and has no entry in `microtask`, or when a `microtask` entry fails in no build. A test skipped
+// under promise delivery needs an `inlineDeliveryOnly` reason in its source.
 //
 //   node fable/Ranvier.Tests.Fable/Report.mjs
 import { spawnSync } from "node:child_process";
@@ -58,11 +59,7 @@ const differences = {
 };
 
 // Each test, by title, that fails only under promise delivery: it reads the graph before a settle reaches it.
-const microtask = new Set([
-    "a flight that is already complete never makes the reader pending",
-    "a memo over an already-complete flight recomputes once per write",
-    "an already-faulted flight is Failed, not pending",
-]);
+const microtask = new Set([]);
 
 const explained = new Map(Object.entries(differences).flatMap(([why, titles]) => titles.map(t => [t, why])));
 
@@ -113,6 +110,20 @@ function exclusions(file) {
     return found;
 }
 
+// Tests skipped under promise delivery, by title, to the reason of the `inlineDeliveryOnly "<reason>"` wrapping each.
+const skipMarker = /^\s*inlineDeliveryOnly\s+"([^"]+)"/;
+
+function promiseSkips(file) {
+    const lines = readFileSync(sources.get(file), "utf8").split(/\r?\n/);
+    const found = new Map();
+    for (let i = 0; i < lines.length; i++) {
+        const marker = lines[i].match(skipMarker);
+        const test = marker && lines.slice(i, i + 3).map(l => l.match(declaration)).find(Boolean);
+        if (test) found.set(test[1], marker[1]);
+    }
+    return found;
+}
+
 // results[build][mode]: test key to its record.
 const results = Object.fromEntries(builds.map(b => [b.name, Object.fromEntries(deliveries.map(m => [m, run(b, m)]))]));
 const runs = builds.flatMap(b => deliveries.map(m => results[b.name][m]));
@@ -128,6 +139,7 @@ const stateOf = (build, mode, key) => results[build][mode].get(key)?.state ?? "n
 const ran = (build, key) => deliveries.some(m => results[build][m].has(key));
 const nameOf = key => key.split(" / ").slice(2).join(" / ");
 const untriaged = [];
+const failing = new Set();
 const summary = [];
 const sections = [];
 const totals = Object.fromEntries(builds.map(b => [b.name, { run: 0, inline: 0, promise: 0 }]));
@@ -141,8 +153,10 @@ for (const [file, keys] of byFile) {
     excludedTotal += whole.length;
     partialTotal += parts.length;
 
+    const skips = files.includes(file) ? promiseSkips(file) : new Map();
     const cells = [];
     const failures = [];
+    const skipped = [];
     for (const { name: build } of builds) {
         const inBuild = keys.filter(k => ran(build, k));
         const passes = mode => inBuild.filter(k => stateOf(build, mode, k) === "passed").length;
@@ -153,6 +167,11 @@ for (const [file, keys] of byFile) {
             const inline = stateOf(build, "inline", key), promise = stateOf(build, "promise", key);
             if (inline === "passed" && promise === "passed") continue;
             const title = key.split(" / ").at(-1);
+            if (inline === "passed" && promise === "skipped" && skips.has(title)) {
+                skipped.push(`| ${build} | ${escape(nameOf(key))} | ${escape(skips.get(title))} |`);
+                continue;
+            }
+            if (inline === "passed" && microtask.has(title)) failing.add(title);
             let why = inline === "passed"
                 ? (microtask.has(title) ? "Async results arrive on a later microtask" : undefined)
                 : explained.get(title);
@@ -168,6 +187,7 @@ for (const [file, keys] of byFile) {
 
     const out = [`## ${file}`, ""];
     if (failures.length > 0) out.push("| Build | Failed | Inline | Promise | Difference |", "| --- | --- | --- | --- | --- |", ...failures, "");
+    if (skipped.length > 0) out.push("| Build | Skipped under promise delivery | Reason |", "| --- | --- | --- |", ...skipped, "");
     if (excluded.length > 0) {
         out.push("| Excluded | Reason |", "| --- | --- |");
         for (const e of excluded)
@@ -205,7 +225,8 @@ writeFileSync(output, [
     "- **inline**: a test's `TaskCompletionSource` settles its awaiters before `SetResult` returns, as on .NET.",
     "  A failure here is a difference in behaviour.",
     "- **promise**: a test's `TaskCompletionSource` is a promise, as in an application. A test that fails only here",
-    "  observes microtask delivery.",
+    "  observes microtask delivery. A test of a settle that applies before `SetResult` returns is skipped here,",
+    "  with its reason.",
     "",
     "Each difference named below is described in [the Fable guide](../content/fable/index.md).",
     "Excluded tests exercise a .NET-only facility and are compiled out with `#if !FABLE_COMPILER`.",
@@ -223,6 +244,8 @@ for (const { name } of builds) {
     console.log(`${name}: inline ${t.inline}/${t.run}, promise ${t.promise}/${t.run}`);
 }
 console.log(`excluded ${excludedTotal}; wrote ${output}`);
+for (const title of microtask)
+    if (!failing.has(title)) untriaged.push(`stale microtask entry, no promise-only failure: ${title}`);
 if (untriaged.length > 0) {
     console.error(`${untriaged.length} untriaged failure(s):\n  ${untriaged.join("\n  ")}`);
     process.exit(1);

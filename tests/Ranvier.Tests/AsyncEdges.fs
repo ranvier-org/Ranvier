@@ -50,7 +50,8 @@ let tests =
     testList
         "AsyncEdges"
         [
-            test "a flight that is already complete never makes the reader pending" {
+            inlineDeliveryOnly "a completed task settles on a later microtask, so its first read is Pending"
+            <| test "a flight that is already complete never makes the reader pending" {
                 let g = new Graph ()
 
                 let a = Make.AsyncMemo<int>(g, (fun _ _ -> completed 42))
@@ -80,7 +81,8 @@ let tests =
                 Expect.sequenceEqual seen [ 0; 10; 20 ] "one run per write"
             }
 
-            test "a memo over an already-complete flight recomputes once per write" {
+            inlineDeliveryOnly "a completed task settles on a later microtask, so its first read is Pending"
+            <| test "a memo over an already-complete flight recomputes once per write" {
                 let g = new Graph ()
                 let s = Signal (g, 0)
                 let a = Make.AsyncMemo<int>(g, (fun _ _ -> completed (s.Value * 10)))
@@ -94,7 +96,8 @@ let tests =
                 Expect.equal (m.Runs - before) 1 "once"
             }
 
-            test "an already-faulted flight is Failed, not pending" {
+            inlineDeliveryOnly "a completed task settles on a later microtask, so its first read is Pending"
+            <| test "an already-faulted flight is Failed, not pending" {
                 let g = new Graph ()
 
                 let a =

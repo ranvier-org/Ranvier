@@ -12,7 +12,8 @@ Each build runs in two deliveries:
 - **inline**: a test's `TaskCompletionSource` settles its awaiters before `SetResult` returns, as on .NET.
   A failure here is a difference in behaviour.
 - **promise**: a test's `TaskCompletionSource` is a promise, as in an application. A test that fails only here
-  observes microtask delivery.
+  observes microtask delivery. A test of a settle that applies before `SetResult` returns is skipped here,
+  with its reason.
 
 Each difference named below is described in [the Fable guide](../content/fable/index.md).
 Excluded tests exercise a .NET-only facility and are compiled out with `#if !FABLE_COMPILER`.
@@ -924,18 +925,21 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 | Build | Failed | Inline | Promise | Difference |
 | --- | --- | --- | --- | --- |
-| untraced | a flight that is already complete never makes the reader pending | passed | failed | Async results arrive on a later microtask |
-| untraced | a memo over an already-complete flight recomputes once per write | passed | failed | Async results arrive on a later microtask |
-| untraced | an already-faulted flight is Failed, not pending | passed | failed | Async results arrive on a later microtask |
 | untraced | the Queue policy applies a failure in the middle without losing what follows | failed | failed | A `Queue` flight applies on a later microtask |
 | untraced | the Queue policy applies a synchronous failure after the flight started before it | failed | failed | A `Queue` flight applies on a later microtask |
 | untraced | the Queue policy keeps a run suspended on a source pending when an older flight lands | failed | failed | A `Queue` flight applies on a later microtask |
-| traced | a flight that is already complete never makes the reader pending | passed | failed | Async results arrive on a later microtask |
-| traced | a memo over an already-complete flight recomputes once per write | passed | failed | Async results arrive on a later microtask |
-| traced | an already-faulted flight is Failed, not pending | passed | failed | Async results arrive on a later microtask |
 | traced | the Queue policy applies a failure in the middle without losing what follows | failed | failed | A `Queue` flight applies on a later microtask |
 | traced | the Queue policy applies a synchronous failure after the flight started before it | failed | failed | A `Queue` flight applies on a later microtask |
 | traced | the Queue policy keeps a run suspended on a source pending when an older flight lands | failed | failed | A `Queue` flight applies on a later microtask |
+
+| Build | Skipped under promise delivery | Reason |
+| --- | --- | --- |
+| untraced | a flight that is already complete never makes the reader pending | a completed task settles on a later microtask, so its first read is Pending |
+| untraced | a memo over an already-complete flight recomputes once per write | a completed task settles on a later microtask, so its first read is Pending |
+| untraced | an already-faulted flight is Failed, not pending | a completed task settles on a later microtask, so its first read is Pending |
+| traced | a flight that is already complete never makes the reader pending | a completed task settles on a later microtask, so its first read is Pending |
+| traced | a memo over an already-complete flight recomputes once per write | a completed task settles on a later microtask, so its first read is Pending |
+| traced | an already-faulted flight is Failed, not pending | a completed task settles on a later microtask, so its first read is Pending |
 
 | Excluded | Reason |
 | --- | --- |
