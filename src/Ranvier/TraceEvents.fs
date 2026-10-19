@@ -172,14 +172,18 @@ type TraceEventKind =
     | TimedPublished = 54
     /// <summary>A captured/published timing snapshot with offsets from this clock's first timed node in the graph.</summary>
     | TimedState = 55
-    /// <summary>A stream memo started a stream. <c>Arg</c>: the generation, from 1.</summary>
+    /// <summary>A stream memo started a stream. <c>Arg</c>: the generation, from 1. <c>Cause</c>: the run's <c>RunStart</c>.</summary>
     | StreamStarted = 60
     /// <summary>
     /// A stream memo published. <c>Arg</c>: its <c>Status</c> byte. <c>Flag</c>: the items folded since the previous
-    /// publication. <c>Payload</c>: the state, or the exception.
+    /// publication. <c>Payload</c>: the state, or the exception. <c>Cause</c>: the node's open <c>RunStart</c>, else the
+    /// latest <c>StreamStarted</c>.
     /// </summary>
     | StreamPublished = 61
-    /// <summary>A stream ended. <c>Arg</c>: a <c>TraceStreamEnd</c>.</summary>
+    /// <summary>
+    /// A stream ended. <c>Arg</c>: a <c>TraceStreamEnd</c>. <c>Cause</c>: the node's open <c>RunStart</c>, else the
+    /// latest <c>StreamStarted</c>.
+    /// </summary>
     | StreamEnded = 62
 
 /// <summary>The node type a <c>NodeNew</c> event records.</summary>

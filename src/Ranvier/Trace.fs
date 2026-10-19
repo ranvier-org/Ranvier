@@ -79,6 +79,9 @@ type internal TraceLog(locked: bool) =
 
     // Node id to the `Settle` or `Fail` seq its next `Moved` takes as cause.
     let settles = Dictionary<int, int>()
+
+    // Stream node id to the `StreamStarted` seq of its latest stream.
+    let streams = Dictionary<int, int>()
     let timedCaptures = Dictionary<int, struct (int * int)>()
     let timedPublications = Dictionary<int, int>()
     let timedWinners = Dictionary<int, int>()
@@ -283,6 +286,20 @@ type internal TraceLog(locked: bool) =
     /// <summary>The <c>Settle</c> or <c>Fail</c> seq recorded for <c>node</c>'s next <c>Moved</c>, or 0.</summary>
     member _.SettleOf(node: int) =
         sync (fun () -> lookup settles node)
+
+    /// <summary>Records <c>seq</c> as the <c>StreamStarted</c> of <c>node</c>'s latest stream.</summary>
+    member _.NoteStream(node: int, seq: int) =
+        sync (fun () -> streams[node] <- seq)
+
+    /// <summary>
+    /// The cause of a stream event of <c>node</c>: the <c>RunStart</c> seq of its open run, else the
+    /// <c>StreamStarted</c> seq of its latest stream, or 0.
+    /// </summary>
+    member _.StreamCause(node: int) =
+        sync (fun () ->
+            match lookup openRuns node with
+            | 0 -> lookup streams node
+            | run -> run)
 
     /// <summary>Whether <c>node</c>'s open run moved its value.</summary>
     member _.MovedInRun(node: int) =
@@ -1213,8 +1230,10 @@ type internal Tracer =
 #if RANVIER_TRACE
         let log = Tracer.LogOf graph
 
-        log.Append (TraceEventKind.StreamStarted, id, 0, generation, 0, log.OpenRun id, null)
-        |> ignore
+        let seq =
+            log.Append (TraceEventKind.StreamStarted, id, 0, generation, 0, log.OpenRun id, null)
+
+        log.NoteStream (id, seq)
 #else
         ()
 #endif
@@ -1224,7 +1243,7 @@ type internal Tracer =
 #if RANVIER_TRACE
         let log = Tracer.LogOf graph
 
-        log.Append (TraceEventKind.StreamPublished, id, 0, status, count, log.OpenRun id, payload)
+        log.Append (TraceEventKind.StreamPublished, id, 0, status, count, log.StreamCause id, payload)
         |> ignore
 #else
         ()
@@ -1235,7 +1254,7 @@ type internal Tracer =
 #if RANVIER_TRACE
         let log = Tracer.LogOf graph
 
-        log.Append (TraceEventKind.StreamEnded, id, 0, reason, 0, log.OpenRun id, null)
+        log.Append (TraceEventKind.StreamEnded, id, 0, reason, 0, log.StreamCause id, null)
         |> ignore
 #else
         ()

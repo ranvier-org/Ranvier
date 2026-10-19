@@ -253,33 +253,34 @@ type StreamMemo<'S>
                 if violated then
                     raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
 
-                run <- started
-                running <- true
-                Tracer.StreamStarted (graph, id, gen)
-                launching <- true
+                if not disposed then
+                    run <- started
+                    running <- true
+                    Tracer.StreamStarted (graph, id, gen)
+                    launching <- true
 
-                let work =
-                    try
+                    let work =
                         try
-                            graph.RunUntracked body
-                        with NotReadyException _ as pending ->
-                            let failure = InvalidOperationException "StreamSource.Run read a pending source."
+                            try
+                                graph.RunUntracked body
+                            with NotReadyException _ as pending ->
+                                let failure = InvalidOperationException "StreamSource.Run read a pending source."
 #if FABLE_COMPILER
-                            Platform.setInner failure pending
-                            raise failure
+                                Platform.setInner failure pending
+                                raise failure
 #else
-                            raise (InvalidOperationException (failure.Message, pending))
+                                raise (InvalidOperationException (failure.Message, pending))
 #endif
-                    finally
-                        launching <- false
+                        finally
+                            launching <- false
 
-                if Platform.isNull work then
-                    raise (InvalidOperationException "StreamSource.Run returned null.")
+                    if Platform.isNull work then
+                        raise (InvalidOperationException "StreamSource.Run returned null.")
 
-                Platform.whenDone work (fun outcome -> graph.Post (fun () -> this.Ended (gen, outcome)))
+                    Platform.whenDone work (fun outcome -> graph.Post (fun () -> this.Ended (gen, outcome)))
 
-                if gen = generation && running && started.Received then
-                    this.PublishLatest false
+                    if gen = generation && running && started.Received then
+                        this.PublishLatest false
             finally
                 if disposed then
                     sources.Clear (this :> IComputation)
@@ -291,6 +292,8 @@ type StreamMemo<'S>
             this.Fail (ScopeMessages.failure ScopeMode.Pure error)
         | NotReadyException _ -> this.Stop StreamEnd.Restarted
         | error -> this.Fail error
+
+        Tracer.RunEnd (graph, id, status)
 
     member private this.EnsureCurrent() =
         if freshness <> Freshness.Clean && not disposed then
@@ -486,8 +489,15 @@ module StreamSource =
                 run sink token
         }
 
+    let private cancelled (token: CancellationToken) : exn =
+#if FABLE_COMPILER
+        OperationCanceledException "The operation was canceled."
+#else
+        OperationCanceledException token
+#endif
+
     /// <summary>Subscribes on each start: <c>OnNext</c> delivers, <c>OnCompleted</c> completes, <c>OnError</c> fails.</summary>
-    /// <remarks>Cancellation disposes the subscription and completes the task.</remarks>
+    /// <remarks>Cancellation disposes the subscription and faults the task with <c>OperationCanceledException</c>.</remarks>
     let ofObservable (items: IObservable<'T>) : StreamSource<'T> =
         if Platform.isNull (box items) then
             nullArg (nameof items)
@@ -514,7 +524,7 @@ module StreamSource =
                 with _ ->
                     ()
 
-                finished.Resolve ())
+                finished.Reject (cancelled token))
             |> ignore
 
             finished.Task :> Task)
@@ -572,7 +582,7 @@ module StreamSource =
                                     if t.IsFaulted then
                                         finish (t.Exception.GetBaseException ())
                                     elif t.IsCanceled then
-                                        finish (OperationCanceledException token)
+                                        finish (cancelled token)
                                     elif t.Result then
                                         try
                                             sink.Next enumerator.Current
@@ -593,8 +603,9 @@ module StreamSource =
 
 #if NET8_0_OR_GREATER && !FABLE_COMPILER
     /// <summary>
-    /// Reads on each start: waits with the stream's token, then delivers every buffered item before waiting again. The
-    /// stream completes when the channel completes, and fails with the exception passed to the writer's <c>Complete</c>.
+    /// Reads on each start: waits with the stream's token, then delivers every buffered item before waiting again, and
+    /// reads nothing once the token is cancelled. The stream completes when the channel completes, and fails with the
+    /// exception passed to the writer's <c>Complete</c>.
     /// </summary>
     let ofChannel (reader: Channels.ChannelReader<'T>) : StreamSource<'T> =
         if Platform.isNull (box reader) then
@@ -603,30 +614,58 @@ module StreamSource =
         create (fun sink token ->
             let finished = Platform.completion<unit>()
 
-            let rec wait () =
-                reader
-                    .WaitToReadAsync(token)
-                    .AsTask()
-                    .ContinueWith(
-                        Action<Task<bool>>(fun t ->
-                            if t.IsCanceled then
-                                finished.Reject (OperationCanceledException token)
-                            elif t.IsFaulted then
-                                finished.Reject (t.Exception.GetBaseException ())
-                            elif t.Result then
-                                let mutable item = Unchecked.defaultof<'T>
+            let drain () =
+                let mutable item = Unchecked.defaultof<'T>
 
-                                while reader.TryRead &item do
-                                    sink.Next item
+                while not token.IsCancellationRequested
+                      && reader.TryRead &item do
+                    sink.Next item
 
-                                wait ()
-                            else
-                                finished.Resolve ()),
-                        TaskContinuationOptions.ExecuteSynchronously
-                    )
-                |> ignore
+            let ready (wait: Task<bool>) =
+                wait.Status = TaskStatus.RanToCompletion
+                && wait.Result
+                && not token.IsCancellationRequested
 
-            wait ()
+            let ended (wait: Task<bool>) =
+                if wait.IsFaulted then
+                    finished.Reject (wait.Exception.GetBaseException ())
+                elif wait.IsCanceled || token.IsCancellationRequested then
+                    finished.Reject (cancelled token)
+                else
+                    finished.Resolve ()
+
+            let rec pump () =
+                try
+                    let mutable wait = reader.WaitToReadAsync token
+
+                    while wait.IsCompletedSuccessfully
+                          && wait.Result
+                          && not token.IsCancellationRequested do
+                        drain ()
+                        wait <- reader.WaitToReadAsync token
+
+                    if wait.IsCompleted then
+                        ended (wait.AsTask ())
+                    else
+                        wait
+                            .AsTask()
+                            .ContinueWith(
+                                Action<Task<bool>>(fun t ->
+                                    if ready t then
+                                        try
+                                            drain ()
+                                            pump ()
+                                        with error ->
+                                            finished.Reject error
+                                    else
+                                        ended t),
+                                TaskContinuationOptions.ExecuteSynchronously
+                            )
+                        |> ignore
+                with error ->
+                    finished.Reject error
+
+            pump ()
             finished.Task :> Task)
 #endif
 
@@ -651,7 +690,10 @@ module StreamSource =
     let private valueOf (result: obj) : 'T =
         Fable.Core.Util.jsNative
 
-    /// <summary>Iterates on each start; cancellation calls the iterator's <c>return ()</c>.</summary>
+    /// <summary>
+    /// Iterates on each start. Cancellation calls the iterator's <c>return ()</c> and faults the task with
+    /// <c>OperationCanceledException</c>.
+    /// </summary>
     let ofAsyncIterable (items: Fable.Core.JS.AsyncIterable<'T>) : StreamSource<'T> =
         if Platform.isNull (box items) then
             nullArg (nameof items)
@@ -669,7 +711,7 @@ module StreamSource =
                 with _ ->
                     ()
 
-                finished.Resolve ())
+                finished.Reject (cancelled token))
             |> ignore
 
             let rec step () =

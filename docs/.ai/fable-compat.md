@@ -58,7 +58,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Lenses.fs | 23 | 20 | 20 | 23 | 20 | 20 | 0 | 0 |
 | Combinators.fs | 127 | 127 | 127 | 127 | 127 | 127 | 1 | 0 |
 | Timed.fs | 31 | 31 | 31 | 38 | 38 | 38 | 0 | 0 |
-| Streams.fs | 23 | 23 | 19 | 23 | 23 | 19 | 0 | 0 |
+| Streams.fs | 24 | 24 | 20 | 24 | 24 | 20 | 1 | 0 |
 | PreviousValues.fs | 12 | 12 | 12 | 12 | 12 | 12 | 15 | 0 |
 | Texts.fs | 5 | 5 | 5 | 43 | 43 | 43 | 1 | 0 |
 | FailureOrigins.fs | 16 | 16 | 15 | 16 | 16 | 15 | 2 | 0 |
@@ -72,9 +72,9 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | QueryDictionary.fs | 2 | 2 | 2 | 2 | 2 | 2 | 0 | 0 |
 | QueryErgonomics.fs | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | QueryNavigationTests.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
-| Streams.fs (sources) | 7 | 7 | 7 | 7 | 7 | 7 | 0 | 0 |
-| Streams.fs (traces) | 0 | 0 | 0 | 2 | 2 | 2 | 0 | 0 |
-| **Total** | 1112 | 1094 | 1026 | 1251 | 1228 | 1150 | 92 | 1 |
+| Streams.fs (sources) | 9 | 9 | 9 | 9 | 9 | 9 | 0 | 0 |
+| Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
+| **Total** | 1115 | 1097 | 1029 | 1255 | 1232 | 1154 | 93 | 1 |
 
 ## Tests.fs
 
@@ -1670,7 +1670,11 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | traced | a misbehaving source's items after completion are ignored | passed | failed | Async results arrive on a later microtask |
 | traced | a closed stream's items are not folded | passed | failed | Async results arrive on a later microtask |
 
-<details><summary>19 passed in every build and delivery that runs them</summary>
+| Excluded | Reason |
+| --- | --- |
+| a failed, superseded or disposed stream's fault is observed | JavaScript has no finalizer thread and no UnobservedTaskException. |
+
+<details><summary>20 passed in every build and delivery that runs them</summary>
 
 - a stream starts on its first read, not at creation
 - an item publishes the latest state; a fold accumulates
@@ -1691,6 +1695,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - items awaiting a wake are not published once a dependency change has made the stream stale
 - items folded in a batch publish when a Check upstream resolves clean
 - a pending read inside Run fails the node
+- disposing the stream memo inside start leaves the source unrun
 
 </details>
 
@@ -1966,23 +1971,26 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## Streams.fs (sources)
 
-<details><summary>7 passed in every build and delivery that runs them</summary>
+<details><summary>9 passed in every build and delivery that runs them</summary>
 
 - ofObservable: OnNext publishes, OnCompleted keeps the state, restart unsubscribes once
 - ofObservable: OnError publishes Failed
 - ofObservable: disposing the memo unsubscribes exactly once
 - create: the function receives the sink and token
+- ofObservable: cancellation ends Run with OperationCanceledException
 - ofAsyncIterable: items fold and done completes
 - ofAsyncIterable: a rejected next fails the stream
 - ofAsyncIterable: disposing while next is pending calls return once and ignores the later value
+- ofAsyncIterable: cancellation ends Run with OperationCanceledException
 
 </details>
 
 ## Streams.fs (traces)
 
-<details><summary>2 passed in every build and delivery that runs them</summary>
+<details><summary>3 passed in every build and delivery that runs them</summary>
 
 - a start, a burst, a restart and a completion are traced (traced only)
+- a stream's run ends with its start, and a reader's later write names the reader (traced only)
 - StreamEnd and TraceStreamEnd carry the same values (traced only)
 
 </details>

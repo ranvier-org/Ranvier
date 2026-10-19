@@ -512,6 +512,24 @@ let tests =
                     | inner -> failtestf "expected NotReadyException inside, got %A" inner
                 | other -> failtestf "expected InvalidOperationException, got %A" other
 
+            testCase "disposing the stream memo inside start leaves the source unrun"
+            <| fun _ ->
+                use graph = new Graph ()
+                let feed = ManualStream<int>()
+                let memo = ref Unchecked.defaultof<StreamMemo<int>>
+
+                memo.Value <-
+                    graph.Run (fun () ->
+                        Api.createStream (fun _ ->
+                            memo.Value.Dispose ()
+                            feed.Source))
+
+                match reading memo.Value with
+                | Failed error when isDisposedError error -> ()
+                | other -> failtestf "expected ObjectDisposedException, got %A" other
+
+                Expect.equal feed.Starts 0 "Run was not called"
+
 #if !FABLE_COMPILER
             // Off-thread delivery and a manual dispatcher have no synchronous Fable equivalent.
             testCase "an off-thread item of a restarted stream publishes although a wake of the previous stream is queued"
@@ -752,6 +770,100 @@ let private manualIterable () =
                 Task.FromResult (null: obj))
 
     nexts, (fun () -> returns), (fun () -> calls), source
+#endif
+
+/// <summary>Runs <c>source</c>, cancels its token, and returns the outcome of <c>Run</c>'s task.</summary>
+let private cancelledRun (source: StreamSource<int>) =
+    async {
+        use cancel = new CancellationTokenSource ()
+        let outcome = ref None
+        let run = source.Run (StreamSink<int> ignore, cancel.Token)
+        Platform.whenDone run (fun o -> outcome.Value <- Some o)
+        cancel.Cancel ()
+#if FABLE_COMPILER
+        // Settlement arrives on a microtask; a macrotask follows all of them.
+        do! Async.Sleep 0
+#endif
+        return outcome.Value
+    }
+
+let private expectCancelled (outcome: Platform.FlightOutcome<unit> option) =
+    match outcome with
+    | Some (Platform.FlightOutcome.Canceled _)
+    | Some (Platform.FlightOutcome.Faulted (:? OperationCanceledException)) -> ()
+#if FABLE_COMPILER
+    // Fable's type test does not distinguish OperationCanceledException from Exception.
+    | Some (Platform.FlightOutcome.Faulted error) when error.Message = "The operation was canceled." -> ()
+#endif
+    | other -> failtestf "expected a cancelled Run, got %A" other
+
+#if NET8_0_OR_GREATER && !FABLE_COMPILER
+/// <summary>A reader of <c>1 .. count</c> whose every wait completes synchronously and admits one item.</summary>
+type private SyncReader(count: int) =
+    inherit Channels.ChannelReader<int>()
+    let mutable next = 1
+    let mutable admitted = false
+
+    override _.TryRead(item: byref<int>) =
+        if admitted && next <= count then
+            item <- next
+            next <- next + 1
+            admitted <- false
+            true
+        else
+            false
+
+    override _.WaitToReadAsync(_: CancellationToken) =
+        admitted <- next <= count
+        ValueTask<bool> admitted
+
+/// <summary>A reader whose first wait completes on <c>Open</c>; then <c>TryRead</c> throws, or the next wait throws.</summary>
+type private FaultyReader(fault: string) =
+    inherit Channels.ChannelReader<int>()
+    let gate = TaskCompletionSource<bool>()
+    let mutable waits = 0
+
+    member _.Open() =
+        gate.SetResult true
+
+    override _.TryRead(item: byref<int>) =
+        if fault = "read" then
+            raise (Exception "read")
+
+        item <- 0
+        false
+
+    override _.WaitToReadAsync(_: CancellationToken) =
+        waits <- waits + 1
+
+        if waits = 1 then ValueTask<bool> gate.Task
+        elif fault = "wait" then raise (Exception "wait")
+        else ValueTask<bool>(TaskCompletionSource<bool>().Task)
+
+/// <summary>A reader of <c>items</c> whose first wait completes on <c>Open</c>; <c>OnRead</c> runs after each read.</summary>
+type private QueueReader(items: int list) =
+    inherit Channels.ChannelReader<int>()
+    let queue = Collections.Generic.Queue<int>(items)
+    let gate = TaskCompletionSource<bool>()
+    member val OnRead: unit -> unit = ignore with get, set
+    member _.Remaining = queue.Count
+
+    member _.Open() =
+        gate.SetResult true
+
+    override this.TryRead(item: byref<int>) =
+        if queue.Count > 0 then
+            item <- queue.Dequeue ()
+            this.OnRead ()
+            true
+        else
+            false
+
+    override _.WaitToReadAsync(token: CancellationToken) =
+        if token.IsCancellationRequested then
+            ValueTask<bool>(Task.FromCanceled<bool> token)
+        else
+            ValueTask<bool> gate.Task
 #endif
 
 [<Tests>]
@@ -1057,7 +1169,51 @@ let converterTests =
                 let mutable item = 0
                 Expect.isTrue (channel.Reader.TryRead &item) "the item stayed in the channel"
                 Expect.equal item 1 "unread"
+
+            testCase "ofChannel: 200,000 waits that complete synchronously drain without a stack overflow"
+            <| fun _ ->
+                use graph = new Graph ()
+                let count = 200000
+
+                let memo =
+                    graph.Run (fun () -> Api.createStreamFold 0L (fun s x -> s + int64 x) (fun _ -> StreamSource.ofChannel (SyncReader count)))
+
+                Expect.equal (reading memo) (Ready (int64 count * int64 (count + 1) / 2L)) "every item folded"
+
+            for fault in [ "read"; "wait" ] do
+                testCase $"ofChannel: a reader whose %s{fault} throws after a wait fails the stream"
+                <| fun _ ->
+                    use graph = new Graph ()
+                    let reader = FaultyReader fault
+
+                    let memo =
+                        graph.Run (fun () -> Api.createStream (fun _ -> StreamSource.ofChannel reader))
+
+                    Expect.equal (reading memo) Pending "waiting"
+                    reader.Open ()
+
+                    match reading memo with
+                    | Failed error -> Expect.equal error.Message fault "the reader's exception"
+                    | other -> failtestf "expected Failed, got %A" other
+
+            testCase "ofChannel: cancellation during a drain leaves the remaining items in the reader"
+            <| fun _ ->
+                use graph = new Graph ()
+                let reader = QueueReader [ 1; 2; 3 ]
+
+                let memo =
+                    graph.Run (fun () -> Api.createStream (fun _ -> StreamSource.ofChannel reader))
+
+                Expect.equal (reading memo) Pending "waiting"
+                reader.OnRead <- fun () -> memo.Dispose ()
+                reader.Open ()
+                Expect.equal reader.Remaining 2 "items after the cancelling read stay unread"
 #endif
+            testCaseAsync "ofObservable: cancellation ends Run with OperationCanceledException"
+            <| async {
+                let! outcome = cancelledRun (StreamSource.ofObservable (Recorder<int>()))
+                expectCancelled outcome
+            }
 #if FABLE_COMPILER
             testCaseAsync "ofAsyncIterable: items fold and done completes"
             <| async {
@@ -1109,8 +1265,62 @@ let converterTests =
                 do! Async.Sleep 0
                 Expect.equal (calls ()) 1 "the later value did not request another"
             }
+
+            testCaseAsync "ofAsyncIterable: cancellation ends Run with OperationCanceledException"
+            <| async {
+                let _, _, _, source = manualIterable ()
+                let! outcome = cancelledRun (StreamSource.ofAsyncIterable source)
+                expectCancelled outcome
+            }
 #endif
         ]
+
+#if !FABLE_COMPILER
+// .NET only: JavaScript has no finalizer thread and no UnobservedTaskException.
+/// <summary>Fails a running, a superseded and a disposed stream with <c>marker</c>, and returns no reference.</summary>
+[<Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+let private faultStreams (marker: string) () =
+    use graph = new Graph ()
+    let feed = ManualStream<int>()
+    let topic = Signal (graph, 0)
+
+    let memo =
+        graph.Run (fun () ->
+            Api.createStream (fun _ ->
+                topic.Value |> ignore
+                feed.Source))
+
+    reading memo |> ignore
+    topic.Value <- 1
+    reading memo |> ignore
+    feed.At(0).Done.SetException(InvalidOperationException marker)
+    feed.Fail (InvalidOperationException marker)
+    reading memo |> ignore
+
+    let other = ManualStream<int>()
+    let disposed = graph.Run (fun () -> Api.createStream (fun _ -> other.Source))
+    reading disposed |> ignore
+    disposed.Dispose ()
+    other.Fail (InvalidOperationException marker)
+
+    let failing =
+        graph.Run (fun () -> Api.createStream (fun _ -> StreamSource.create (fun _ _ -> Task.FromException (InvalidOperationException marker))))
+
+    reading failing |> ignore
+
+[<Tests>]
+let unobserved =
+    testSequenced
+    <| testList
+        "Stream memo unobserved faults"
+        [
+            test "a failed, superseded or disposed stream's fault is observed" {
+                let marker = $"stream-{Guid.NewGuid ()}"
+                let reported = AsyncEdges.unobservedDuring marker (faultStreams marker)
+                Expect.isEmpty reported "no stream exception reached UnobservedTaskException"
+            }
+        ]
+#endif
 
 #if RANVIER_TRACE
 [<Tests>]
@@ -1163,6 +1373,52 @@ let traceTests =
                     ]
                     "events in order"
             }
+
+            testCase "a stream's run ends with its start, and a reader's later write names the reader"
+            <| fun _ ->
+                use graph = new Graph ()
+                let feed = ManualStream<int>()
+                let target = Signal (graph, 0)
+                let memo = graph.Run (fun () -> Api.createStreamFold 0 (+) (fun _ -> feed.Source))
+
+                let reader =
+                    new Effect (
+                        graph,
+                        fun () ->
+                            memo.TryValue |> ignore
+                            target.Value <- target.Peek + 1
+                    )
+
+                feed.Push 4
+                let stream = (memo :> INode).Id
+                let events = Trace.events graph
+
+                let ends =
+                    events
+                    |> Array.filter (fun e -> e.Kind = TraceEventKind.RunEnd && e.Node = stream)
+                    |> Array.map (fun e -> enum<RunStatus> e.Arg)
+
+                Expect.equal ends [| RunStatus.Pending |] "the stream's one run ends Pending when start returns"
+
+                let writers =
+                    events
+                    |> Array.filter (fun e ->
+                        e.Kind = TraceEventKind.Write
+                        && e.Node = (target :> INode).Id)
+                    |> Array.map (fun e -> e.Other)
+
+                Expect.equal writers [| (reader :> INode).Id; (reader :> INode).Id |] "both writes name the reader"
+
+                let started =
+                    events
+                    |> Array.find (fun e -> e.Kind = TraceEventKind.StreamStarted)
+
+                let published =
+                    events
+                    |> Array.filter (fun e -> e.Kind = TraceEventKind.StreamPublished)
+                    |> Array.map (fun e -> e.Cause)
+
+                Expect.equal published [| started.Seq |] "the publication cites the stream's start"
 
             testCase "StreamEnd and TraceStreamEnd carry the same values"
             <| fun _ ->

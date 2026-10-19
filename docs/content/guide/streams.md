@@ -126,7 +126,9 @@ Disposing the node cancels the stream. A node that was still pending becomes fai
 
 A `StreamSource<'T>` runs once per stream start and delivers items to a `StreamSink<'T>`. The
 `StreamSource` module builds sources from common producers. Each converter subscribes or enumerates
-again on every start, and cancelling the token ends the run.
+again on every start. Cancelling the token ends the run: `ofObservable`, `ofChannel` and
+`ofAsyncIterable` fault their task with `OperationCanceledException`, and `ofAsyncEnumerable` passes
+the token to the enumerator.
 
 `StreamSource.create` wraps a function from the sink and token to a `Task`. The task completes when
 the stream completes and faults when it fails:
@@ -157,7 +159,8 @@ Here `readLines` is the application's function returning an `IAsyncEnumerable<st
 
 `StreamSource.ofChannel` reads a `ChannelReader<'T>`. It is available in the net10.0 build, and not
 on netstandard2.1 or under Fable. The stream completes when the channel completes, and fails with
-the exception passed to the writer's `Complete`:
+the exception passed to the writer's `Complete`. Once the token is cancelled the converter reads no
+further items, so after a restart the unread items stay in the channel for the new stream:
 
 ```fsharp
 let events = createStream (fun _ -> StreamSource.ofChannel channel.Reader)
