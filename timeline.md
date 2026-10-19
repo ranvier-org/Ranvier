@@ -27,6 +27,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 84,051 | 125,351 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 84,042 | 126,438 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 84,044 | 126,437 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 84,045 | 126,319 |
 
 ## app-table
 
@@ -55,6 +56,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 9,120,290 | 9,716,121 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 9,120,286 | 9,607,873 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 9,120,416 | 9,753,433 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 9,120,343 | 9,608,947 |
 
 ## async-recover
 
@@ -83,6 +85,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 138,968 | 37,306 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 138,884 | 37,321 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 138,884 | 37,319 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 138,884 | 37,315 |
 
 ## async-resolve
 
@@ -111,6 +114,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 2,791,002 | 1,074,343 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 2,788,200 | 1,074,609 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 2,788,201 | 1,074,533 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 2,788,200 | 1,074,848 |
 
 ## chain
 
@@ -139,6 +143,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 13,035 | 318 | 2,450 | 4,491 | 3,180 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 13,043 | 318 | 2,450 | 4,492 | 3,180 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 13,107 | 318 | 2,450 | 4,492 | 3,180 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 13,043 | 318 | 2,450 | 4,492 | 3,180 |
 
 ## chain-affinity
 
@@ -167,6 +172,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 2,549 | 3,067 | 2,496 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 2,549 | 3,067 | 2,496 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 2,549 | 3,067 | 2,496 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 2,549 | 3,067 | 2,496 |
 
 ## control
 
@@ -195,6 +201,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 74,719 | 826,177 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 74,720 | 826,806 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 74,720 | 826,788 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 74,720 | 826,863 |
 
 ## create
 
@@ -223,6 +230,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 13,451,300 | 2,875,680 | 2,528,385 | 2,131,328 | 3,988,938 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 13,463,506 | 2,865,678 | 2,528,361 | 2,131,968 | 3,984,059 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 13,589,022 | 2,865,678 | 2,528,378 | 2,131,533 | 3,984,654 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 13,714,524 | 2,865,678 | 2,528,410 | 2,131,816 | 3,984,556 |
 
 ## create-on
 
@@ -251,6 +259,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 2,911,520 | 4,366,997 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 2,910,484 | 4,367,150 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 2,910,485 | 4,366,970 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 2,910,484 | 4,366,886 |
 
 ## cutoff
 
@@ -279,6 +288,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 1,182 | 50 | 111 | 65 | 35 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 1,182 | 50 | 111 | 65 | 35 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 1,182 | 50 | 111 | 65 | 35 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 1,182 | 50 | 111 | 65 | 35 |
 
 ## derive-effect
 
@@ -307,6 +317,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 760 | 680 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 760 | 680 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 760 | 680 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 760 | 680 |
 
 ## derive-on
 
@@ -335,6 +346,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 735 | 684 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 735 | 684 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 735 | 684 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 735 | 684 |
 
 ## dispose
 
@@ -363,6 +375,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 2,706,248 | 806,291 | 367,497 | 466,242 | 434,019 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 2,706,244 | 806,291 | 367,497 | 466,122 | 434,369 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 2,706,235 | 806,291 | 367,497 | 466,120 | 434,101 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 2,707,642 | 806,291 | 367,497 | 466,150 | 434,399 |
 
 ## dispose-on
 
@@ -391,6 +404,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 346,497 | 430,305 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 346,497 | 430,144 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 346,497 | 430,205 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 346,497 | 430,425 |
 
 ## editable-edit
 
@@ -419,6 +433,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 179,606 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 179,606 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 179,606 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 179,606 |
 
 ## editable-upstream
 
@@ -447,6 +462,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 230,755 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 230,755 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 230,755 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 230,755 |
 
 ## fail-recompute
 
@@ -475,6 +491,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 64,914 | 1,366 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 64,926 | 1,366 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 64,926 | 1,366 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 64,926 | 1,366 |
 
 ## flight
 
@@ -503,6 +520,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 11,041 | 6,240 | 6,241 | 11,364 | 10,809 | 22,373 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 11,017 | 6,228 | 6,229 | 11,340 | 10,785 | 22,371 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 11,017 | 6,228 | 6,229 | 11,340 | 10,785 | 22,371 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 11,017 | 6,228 | 6,229 | 11,340 | 10,785 | 22,371 |
 
 ## keyed-insert
 
@@ -531,6 +549,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 1,918,527 | 53,980 | 54,609 | 3,115,019 | 164,104 | 166,925 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 1,918,552 | 53,949 | 54,625 | 3,115,013 | 164,072 | 167,272 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 1,918,536 | 53,948 | 54,611 | 3,115,088 | 164,098 | 167,471 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 1,918,536 | 53,948 | 54,610 | 3,115,027 | 163,853 | 167,236 |
 
 ## keyed-remove
 
@@ -559,6 +578,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 1,917,448 | 43,659 | 44,987 | 3,114,552 | 131,804 | 140,487 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 1,917,471 | 43,618 | 44,988 | 3,114,478 | 131,272 | 139,998 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 1,917,459 | 43,618 | 44,972 | 3,114,491 | 131,586 | 139,989 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 1,917,458 | 43,617 | 44,971 | 3,114,439 | 131,414 | 139,928 |
 
 ## keyed-swap
 
@@ -587,6 +607,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 1,970,144 | 46,192 | 46,623 | 3,264,757 | 79,143 | 84,492 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 1,970,170 | 46,160 | 46,639 | 3,264,855 | 79,104 | 84,546 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 1,970,154 | 46,161 | 46,624 | 3,264,892 | 79,137 | 84,571 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 1,970,154 | 46,161 | 46,624 | 3,264,879 | 79,228 | 84,527 |
 
 ## mvu-dispatch
 
@@ -615,6 +636,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 58,066 | 767 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 58,066 | 767 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 58,066 | 767 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 58,066 | 767 |
 
 ## project-chain
 
@@ -643,6 +665,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 3,834,824 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 3,834,791 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 3,834,809 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 3,834,823 |
 
 ## project-churn
 
@@ -671,6 +694,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 36,206 | 34,048 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 36,207 | 34,047 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 36,207 | 34,047 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 36,207 | 34,047 |
 
 ## project-edit
 
@@ -699,6 +723,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 50,165 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 50,166 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 50,166 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 50,166 |
 
 ## project-reorder
 
@@ -727,6 +752,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 778,901 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 778,884 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 778,884 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 778,886 |
 
 ## shape-diamond
 
@@ -755,6 +781,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 59,894 | 88,455 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 59,894 | 88,557 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 59,894 | 88,557 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 59,894 | 88,557 |
 
 ## shape-dynamic
 
@@ -783,6 +810,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 82,520 | 95,381 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 82,520 | 95,580 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 82,520 | 95,583 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 82,520 | 95,581 |
 
 ## stream-burst-1
 
@@ -811,6 +839,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | — | — | — | — | — | — |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 1,969 | 1,567 | 2,500 | 5,235 | 6,299 | 10,091 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 1,969 | 1,567 | 2,500 | 5,235 | 6,299 | 10,088 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 1,969 | 1,567 | 2,500 | 5,235 | 6,299 | 10,091 |
 
 ## stream-burst-16
 
@@ -839,6 +868,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | — | — | — | — | — | — |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 5,626 | 24,937 | 5,710 | 10,349 | 47,734 | 12,740 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 5,626 | 24,937 | 5,710 | 10,353 | 47,730 | 12,744 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 5,626 | 24,937 | 5,710 | 10,350 | 47,734 | 12,742 |
 
 ## stream-burst-256
 
@@ -867,6 +897,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | — | — | — | — | — | — |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 64,126 | 398,821 | 57,049 | 119,395 | 792,637 | 70,591 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 64,126 | 398,821 | 57,049 | 119,391 | 792,583 | 70,588 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 64,126 | 398,821 | 57,049 | 119,395 | 792,558 | 70,588 |
 
 ## stream-restart
 
@@ -895,6 +926,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | — | — | — | — |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 4,187 | 4,980 | 12,700 | 8,950 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 4,187 | 4,980 | 12,699 | 8,949 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 4,187 | 4,980 | 12,698 | 8,949 |
 
 ## timed-admit-both
 
@@ -923,6 +955,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 120,317 | 133,688 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 118,269 | 133,817 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 118,269 | 133,827 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 119,293 | 133,819 |
 
 ## timed-admit-debounce
 
@@ -951,6 +984,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 119,222 | 132,316 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 117,174 | 132,378 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 117,174 | 132,395 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 118,198 | 132,385 |
 
 ## timed-admit-first
 
@@ -979,6 +1013,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 70,309 | 82,092 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 69,285 | 82,222 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 69,285 | 82,222 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 70,309 | 82,222 |
 
 ## timed-admit-last
 
@@ -1007,6 +1042,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 119,484 | 132,627 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 117,436 | 132,734 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 117,436 | 132,722 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 118,460 | 132,728 |
 
 ## timed-capture-both
 
@@ -1035,6 +1071,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 36,748 | 45,029 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 35,724 | 45,094 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 35,724 | 45,092 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 35,724 | 45,094 |
 
 ## timed-capture-debounce
 
@@ -1063,6 +1100,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 36,620 | 43,646 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 35,596 | 43,713 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 35,596 | 43,713 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 35,596 | 43,713 |
 
 ## timed-capture-first
 
@@ -1091,6 +1129,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 33,100 | 38,868 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 32,076 | 38,934 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 32,076 | 38,934 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 32,076 | 38,934 |
 
 ## timed-capture-last
 
@@ -1119,6 +1158,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 36,556 | 43,583 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 35,532 | 43,649 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 35,532 | 43,647 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 35,532 | 43,649 |
 
 ## update
 
@@ -1147,6 +1187,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 1,087,683 | 38,805 | 82,005 | 262,714 | 207,579 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 1,088,383 | 38,805 | 82,005 | 262,492 | 207,613 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 1,089,983 | 38,805 | 82,005 | 262,790 | 207,577 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 1,089,983 | 38,805 | 82,005 | 262,702 | 207,667 |
 
 ## update-on
 
@@ -1175,6 +1216,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 92,805 | 221,301 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 92,805 | 221,308 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 92,805 | 221,299 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 92,805 | 221,299 |
 
 ## work-form
 
@@ -1203,6 +1245,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 169,672 | 163,139 | 288,772 | 287,114 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 169,672 | 163,139 | 288,731 | 287,119 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 169,672 | 163,139 | 288,743 | 287,087 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 169,672 | 163,139 | 288,779 | 287,117 |
 
 ## work-status
 
@@ -1231,6 +1274,7 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 99,945 | 78,615 | 320,911 | 155,426 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 99,945 | 78,615 | 320,893 | 155,405 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 99,945 | 78,615 | 320,907 | 155,406 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 99,945 | 78,615 | 320,929 | 155,415 |
 
 ## work-value
 
@@ -1259,4 +1303,5 @@
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 107,069 | 119,269 | 321,142 | 283,789 |
 | `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 107,069 | 119,269 | 321,163 | 283,797 |
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 107,069 | 119,271 | 321,129 | 283,794 |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 107,069 | 119,269 | 321,250 | 283,777 |
 
