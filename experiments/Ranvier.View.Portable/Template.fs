@@ -1205,7 +1205,7 @@ type internal ServerWriter(backend: HtmlBackend) =
         let mark = sink.Mark ()
         let entries = if isNull heads then 0 else heads.Count
 
-        // Each view is a head container of its own, as a client boundary's content and shown view are.
+        // Each view is a head container of its own.
         let view (scope: ServerScope) (render: Backend -> unit) (row: int) =
             match heads with
             | null -> this.View (scope, render, parent, regionIndex, row)

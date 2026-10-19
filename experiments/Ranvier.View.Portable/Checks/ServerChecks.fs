@@ -1149,19 +1149,24 @@ let private pendingMessage () =
             .Message
 
 let private boundaryIdentity () =
-    let render ready =
+    let render ready fails =
         idContentReady <- ready
+        idContentFails <- fails
         identityLog.Clear ()
         let html = Server.render Server.Options.defaults idBoundary ()
         html, List.ofSeq identityLog
 
-    let ready = render true
-    let pending = render false
+    let ready = render true false
+    let pending = render false false
+    let failed = render true true
     idContentReady <- true
+    idContentFails <- false
 
     equal ("""<!--[r--><div id="r-0-0"><!--[c--><b id="r-0.r0.0-0">ready</b><!--]--></div><!--]-->""", boundaryContentIds) ready
 
     equal ("""<!--[r--><div id="r-0-0"><!--[p--><i id="r-0.r0.1-0"></i><!--]--></div><!--]-->""", boundaryPendingIds) pending
+
+    equal ("""<!--[r--><div id="r-0-0"><!--[e--><span id="r-0.r0.1-0"></span><!--]--></div><!--]-->""", boundaryErrorIds) failed
 
 let private failingCleanupContent =
     Component.define
@@ -1245,8 +1250,8 @@ let cases: (string * (unit -> unit)) array =
         pendingViewFailure
         "a pending read outside every boundary raises ServerPendingException after disposal", pendingOutsideBoundaries
         "ServerPendingException says a read outside every boundary is pending", pendingMessage
-        "a boundary's content takes row 0 and its pending view row 1 of the boundary's region", boundaryIdentity
-        "a cleanup failure of an abandoned content attempt fails the render after the pending view is written", abandonedCleanupFailure
+        "a boundary's content takes row 0 and its pending or error view row 1 of the boundary's region", boundaryIdentity
+        "a cleanup failure of an abandoned content attempt fails the render", abandonedCleanupFailure
         "an abandoned boundary attempt's entries are not written and an overridden key's earlier entry returns", abandonedHeads
 #if FABLE_COMPILER
         "two concurrent server requests collect only their own entries", sequentialHeads
