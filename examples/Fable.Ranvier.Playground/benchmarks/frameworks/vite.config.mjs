@@ -20,7 +20,7 @@ export default defineConfig({
           filename: id, babelrc: false, configFile: false, plugins: [sharedBackendProbe]
         });
       }
-      if (!/\/frameworks\/(semantics-|keyed-|boundary-)?solid\.jsx$/.test(id)) return;
+      if (!/\/frameworks\/(semantics-|keyed-|boundary-|placement-)?solid\.jsx$/.test(id)) return;
       // Solid 2's native compiler, released with the runtime it targets.
       const { code: compiled, map } = solidTransform(code, { filename: id, generate: "dom", hydratable: false, sourceMap: true });
       return { code: compiled, map };

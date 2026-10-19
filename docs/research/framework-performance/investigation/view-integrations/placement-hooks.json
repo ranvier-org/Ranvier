@@ -1,0 +1,5324 @@
+{
+  "measuredAt": "2026-10-19T13:15:44.354Z",
+  "baseCommit": "c58e99f8e234265fd97b8a81b19c3ebaf20973a2",
+  "node": "v26.7.0",
+  "cpu": "AMD Ryzen 9 9900X 12-Core Processor            ",
+  "platform": "win32 10.0.26200",
+  "unit": "milliseconds per list",
+  "notes": [
+    "Each sample mounts `count` keyed lists of `width` rows on fresh hosts. A hooked row sets data-placed from Ranvier's t.Hooks.mounted or Solid 2's onSettled; the adapter waits until every hooked row is marked.",
+    "hookCost is hooked minus plain per width and mode, with per-process values. Reported, not gated."
+  ],
+  "verified": [
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "rows": 1,
+      "placed": 1
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "rows": 1,
+      "placed": 1
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "rows": 16,
+      "placed": 16
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "rows": 16,
+      "placed": 16
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "rows": 128,
+      "placed": 128
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "rows": 128,
+      "placed": 128
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "rows": 1,
+      "placed": 0
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "rows": 1,
+      "placed": 0
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "rows": 16,
+      "placed": 0
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "rows": 16,
+      "placed": 0
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "rows": 128,
+      "placed": 0
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "rows": 128,
+      "placed": 0
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "rows": 1,
+      "placed": 1
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "rows": 1,
+      "placed": 1
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "rows": 16,
+      "placed": 16
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "rows": 16,
+      "placed": 16
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "rows": 128,
+      "placed": 128
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "rows": 128,
+      "placed": 128
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "rows": 1,
+      "placed": 0
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "rows": 1,
+      "placed": 0
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "rows": 16,
+      "placed": 0
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "rows": 16,
+      "placed": 0
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "rows": 128,
+      "placed": 0
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "rows": 128,
+      "placed": 0
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "rows": 1,
+      "placed": 1
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "rows": 1,
+      "placed": 1
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "rows": 16,
+      "placed": 16
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "rows": 16,
+      "placed": 16
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "rows": 128,
+      "placed": 128
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "rows": 128,
+      "placed": 128
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "rows": 1,
+      "placed": 0
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "rows": 1,
+      "placed": 0
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "rows": 16,
+      "placed": 0
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "rows": 16,
+      "placed": 0
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "rows": 128,
+      "placed": 0
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "rows": 128,
+      "placed": 0
+    }
+  ],
+  "samples": [
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 0,
+      "count": 64,
+      "ms": 0.005859375
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 0,
+      "count": 64,
+      "ms": 0.021093749441206455
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 1,
+      "count": 64,
+      "ms": 0.01992187462747097
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 1,
+      "count": 64,
+      "ms": 0.005781250074505806
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 2,
+      "count": 64,
+      "ms": 0.00664062425494194
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 2,
+      "count": 64,
+      "ms": 0.023281250149011612
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 3,
+      "count": 64,
+      "ms": 0.029453125782310963
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 3,
+      "count": 64,
+      "ms": 0.006015624850988388
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 4,
+      "count": 64,
+      "ms": 0.005546875298023224
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 4,
+      "count": 64,
+      "ms": 0.020312500186264515
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 5,
+      "count": 64,
+      "ms": 0.011953124776482582
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 5,
+      "count": 64,
+      "ms": 0.004531250335276127
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 6,
+      "count": 64,
+      "ms": 0.0037499992176890373
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 6,
+      "count": 64,
+      "ms": 0.008984374813735485
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 7,
+      "count": 64,
+      "ms": 0.009062500670552254
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 7,
+      "count": 64,
+      "ms": 0.004296875558793545
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 8,
+      "count": 64,
+      "ms": 0.00429687462747097
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 8,
+      "count": 64,
+      "ms": 0.018906250596046448
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 9,
+      "count": 64,
+      "ms": 0.008671875111758709
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 9,
+      "count": 64,
+      "ms": 0.004453125409781933
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 10,
+      "count": 64,
+      "ms": 0.004062500782310963
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 10,
+      "count": 64,
+      "ms": 0.027500000782310963
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 11,
+      "count": 64,
+      "ms": 0.00820312462747097
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 11,
+      "count": 64,
+      "ms": 0.005078124813735485
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 12,
+      "count": 64,
+      "ms": 0.003828125074505806
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 12,
+      "count": 64,
+      "ms": 0.010312500409781933
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 13,
+      "count": 64,
+      "ms": 0.008281250484287739
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 13,
+      "count": 64,
+      "ms": 0.003984374925494194
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 14,
+      "count": 64,
+      "ms": 0.00429687462747097
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 14,
+      "count": 64,
+      "ms": 0.009218750521540642
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 0,
+      "count": 32,
+      "ms": 0.017812499776482582
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 0,
+      "count": 32,
+      "ms": 0.03515625
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 1,
+      "count": 32,
+      "ms": 0.03531249985098839
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 1,
+      "count": 32,
+      "ms": 0.023593749850988388
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 2,
+      "count": 32,
+      "ms": 0.018125001341104507
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 2,
+      "count": 32,
+      "ms": 0.03609374910593033
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 3,
+      "count": 32,
+      "ms": 0.03499999828636646
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 3,
+      "count": 32,
+      "ms": 0.01796874962747097
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 4,
+      "count": 32,
+      "ms": 0.017656249925494194
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 4,
+      "count": 32,
+      "ms": 0.09515625052154064
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 5,
+      "count": 32,
+      "ms": 0.043437499552965164
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 5,
+      "count": 32,
+      "ms": 0.01874999888241291
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 6,
+      "count": 32,
+      "ms": 0.018906250596046448
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 6,
+      "count": 32,
+      "ms": 0.035624999552965164
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 7,
+      "count": 32,
+      "ms": 0.03500000014901161
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 7,
+      "count": 32,
+      "ms": 0.01875000074505806
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 8,
+      "count": 32,
+      "ms": 0.018124999478459358
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 8,
+      "count": 32,
+      "ms": 0.05093749985098839
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 9,
+      "count": 32,
+      "ms": 0.03921874985098839
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 9,
+      "count": 32,
+      "ms": 0.019375000149011612
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 10,
+      "count": 32,
+      "ms": 0.09375
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 10,
+      "count": 32,
+      "ms": 0.030312499031424522
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 11,
+      "count": 32,
+      "ms": 0.02968749962747097
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 11,
+      "count": 32,
+      "ms": 0.01484374888241291
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 12,
+      "count": 32,
+      "ms": 0.015781249850988388
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 12,
+      "count": 32,
+      "ms": 0.029218750074505806
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 13,
+      "count": 32,
+      "ms": 0.029218750074505806
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 13,
+      "count": 32,
+      "ms": 0.015781249850988388
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 14,
+      "count": 32,
+      "ms": 0.015625
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 14,
+      "count": 32,
+      "ms": 0.028750000521540642
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 0,
+      "count": 8,
+      "ms": 0.10562499612569809
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 0,
+      "count": 8,
+      "ms": 0.22062500566244125
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 1,
+      "count": 8,
+      "ms": 0.20812500268220901
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 1,
+      "count": 8,
+      "ms": 0.1106250062584877
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 2,
+      "count": 8,
+      "ms": 0.10312499850988388
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 2,
+      "count": 8,
+      "ms": 0.17687500268220901
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 3,
+      "count": 8,
+      "ms": 0.16562500596046448
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 3,
+      "count": 8,
+      "ms": 0.09187499433755875
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 4,
+      "count": 8,
+      "ms": 0.0949999988079071
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 4,
+      "count": 8,
+      "ms": 0.16750000417232513
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 5,
+      "count": 8,
+      "ms": 0.17937500029802322
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 5,
+      "count": 8,
+      "ms": 0.09749999642372131
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 6,
+      "count": 8,
+      "ms": 0.09812500327825546
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 6,
+      "count": 8,
+      "ms": 0.19312500208616257
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 7,
+      "count": 8,
+      "ms": 0.5112500041723251
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 7,
+      "count": 8,
+      "ms": 0.10437499731779099
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 8,
+      "count": 8,
+      "ms": 0.09687499701976776
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 8,
+      "count": 8,
+      "ms": 0.1525000035762787
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 9,
+      "count": 8,
+      "ms": 0.1443750038743019
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 9,
+      "count": 8,
+      "ms": 0.09687499701976776
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 10,
+      "count": 8,
+      "ms": 0.10312499850988388
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 10,
+      "count": 8,
+      "ms": 0.17812500149011612
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 11,
+      "count": 8,
+      "ms": 0.17937500029802322
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 11,
+      "count": 8,
+      "ms": 0.109375
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 12,
+      "count": 8,
+      "ms": 0.10625000298023224
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 12,
+      "count": 8,
+      "ms": 0.18687500059604645
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 13,
+      "count": 8,
+      "ms": 0.18562500178813934
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 13,
+      "count": 8,
+      "ms": 0.10562500357627869
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 14,
+      "count": 8,
+      "ms": 0.10062500089406967
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 14,
+      "count": 8,
+      "ms": 0.17937500029802322
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 0,
+      "count": 64,
+      "ms": 0.003437499515712261
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 0,
+      "count": 64,
+      "ms": 0.006406249478459358
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 1,
+      "count": 64,
+      "ms": 0.00742187537252903
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 1,
+      "count": 64,
+      "ms": 0.002734375186264515
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 2,
+      "count": 64,
+      "ms": 0.002499999478459358
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 2,
+      "count": 64,
+      "ms": 0.006171874701976776
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 3,
+      "count": 64,
+      "ms": 0.006640625186264515
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 3,
+      "count": 64,
+      "ms": 0.003359375521540642
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 4,
+      "count": 64,
+      "ms": 0.002421875484287739
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 4,
+      "count": 64,
+      "ms": 0.006015624850988388
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 5,
+      "count": 64,
+      "ms": 0.005781250074505806
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 5,
+      "count": 64,
+      "ms": 0.002265624701976776
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 6,
+      "count": 64,
+      "ms": 0.0022656256332993507
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 6,
+      "count": 64,
+      "ms": 0.00624999962747097
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 7,
+      "count": 64,
+      "ms": 0.005625000223517418
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 7,
+      "count": 64,
+      "ms": 0.0023437505587935448
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 8,
+      "count": 64,
+      "ms": 0.002421874552965164
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 8,
+      "count": 64,
+      "ms": 0.005703125149011612
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 9,
+      "count": 64,
+      "ms": 0.005781250074505806
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 9,
+      "count": 64,
+      "ms": 0.002578125335276127
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 10,
+      "count": 64,
+      "ms": 0.002968749962747097
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 10,
+      "count": 64,
+      "ms": 0.005624999292194843
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 11,
+      "count": 64,
+      "ms": 0.005781250074505806
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 11,
+      "count": 64,
+      "ms": 0.002187499776482582
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 12,
+      "count": 64,
+      "ms": 0.0023437505587935448
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 12,
+      "count": 64,
+      "ms": 0.005859375
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 13,
+      "count": 64,
+      "ms": 0.005625000223517418
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 13,
+      "count": 64,
+      "ms": 0.002187499776482582
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 0,
+      "round": 14,
+      "count": 64,
+      "ms": 0.002265624701976776
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 0,
+      "round": 14,
+      "count": 64,
+      "ms": 0.00624999962747097
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 0,
+      "count": 32,
+      "ms": 0.007968749850988388
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 0,
+      "count": 32,
+      "ms": 0.017500000074505806
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 1,
+      "count": 32,
+      "ms": 0.018437499180436134
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 1,
+      "count": 32,
+      "ms": 0.008281249552965164
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 2,
+      "count": 32,
+      "ms": 0.008124999701976776
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 2,
+      "count": 32,
+      "ms": 0.019375000149011612
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 3,
+      "count": 32,
+      "ms": 0.017500000074505806
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 3,
+      "count": 32,
+      "ms": 0.008281249552965164
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 4,
+      "count": 32,
+      "ms": 0.007968749850988388
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 4,
+      "count": 32,
+      "ms": 0.017031248658895493
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 5,
+      "count": 32,
+      "ms": 0.017656249925494194
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 5,
+      "count": 32,
+      "ms": 0.008749999105930328
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 6,
+      "count": 32,
+      "ms": 0.008750000968575478
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 6,
+      "count": 32,
+      "ms": 0.017812499776482582
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 7,
+      "count": 32,
+      "ms": 0.01796874962747097
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 7,
+      "count": 32,
+      "ms": 0.00859374925494194
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 8,
+      "count": 32,
+      "ms": 0.1114062499254942
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 8,
+      "count": 32,
+      "ms": 0.01875000074505806
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 9,
+      "count": 32,
+      "ms": 0.019999999552965164
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 9,
+      "count": 32,
+      "ms": 0.008124999701976776
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 10,
+      "count": 32,
+      "ms": 0.0078125
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 10,
+      "count": 32,
+      "ms": 0.017812499776482582
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 11,
+      "count": 32,
+      "ms": 0.01718750037252903
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 11,
+      "count": 32,
+      "ms": 0.009062500670552254
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 12,
+      "count": 32,
+      "ms": 0.0078125
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 12,
+      "count": 32,
+      "ms": 0.01718750037252903
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 13,
+      "count": 32,
+      "ms": 0.017031250521540642
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 13,
+      "count": 32,
+      "ms": 0.0078125
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 0,
+      "round": 14,
+      "count": 32,
+      "ms": 0.007968749850988388
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 0,
+      "round": 14,
+      "count": 32,
+      "ms": 0.017343750223517418
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 0,
+      "count": 8,
+      "ms": 0.05624999850988388
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 0,
+      "count": 8,
+      "ms": 0.15124999731779099
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 1,
+      "count": 8,
+      "ms": 0.15625
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 1,
+      "count": 8,
+      "ms": 0.05312500149011612
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 2,
+      "count": 8,
+      "ms": 0.05375000089406967
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 2,
+      "count": 8,
+      "ms": 0.13250000029802322
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 3,
+      "count": 8,
+      "ms": 0.12187500298023224
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 3,
+      "count": 8,
+      "ms": 0.058750003576278687
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 4,
+      "count": 8,
+      "ms": 0.05250000208616257
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 4,
+      "count": 8,
+      "ms": 0.1237499937415123
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 5,
+      "count": 8,
+      "ms": 0.11437500268220901
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 5,
+      "count": 8,
+      "ms": 0.054375000298023224
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 6,
+      "count": 8,
+      "ms": 0.05312500149011612
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 6,
+      "count": 8,
+      "ms": 0.11937499791383743
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 7,
+      "count": 8,
+      "ms": 0.12312499433755875
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 7,
+      "count": 8,
+      "ms": 0.05125000327825546
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 8,
+      "count": 8,
+      "ms": 0.04999999701976776
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 8,
+      "count": 8,
+      "ms": 0.12062499672174454
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 9,
+      "count": 8,
+      "ms": 0.13437499850988388
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 9,
+      "count": 8,
+      "ms": 0.054375000298023224
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 10,
+      "count": 8,
+      "ms": 0.054375000298023224
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 10,
+      "count": 8,
+      "ms": 0.12124999612569809
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 11,
+      "count": 8,
+      "ms": 0.12437500059604645
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 11,
+      "count": 8,
+      "ms": 0.054999999701976776
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 12,
+      "count": 8,
+      "ms": 0.050624996423721313
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 12,
+      "count": 8,
+      "ms": 0.12312500178813934
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 13,
+      "count": 8,
+      "ms": 0.12062499672174454
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 13,
+      "count": 8,
+      "ms": 0.05187499523162842
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 0,
+      "round": 14,
+      "count": 8,
+      "ms": 0.05750000476837158
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 0,
+      "round": 14,
+      "count": 8,
+      "ms": 0.13187499344348907
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 0,
+      "count": 64,
+      "ms": 0.021406250074505806
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 0,
+      "count": 64,
+      "ms": 0.016171875409781933
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 1,
+      "count": 64,
+      "ms": 0.005703125149011612
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 1,
+      "count": 64,
+      "ms": 0.012656250037252903
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 2,
+      "count": 64,
+      "ms": 0.013437500223517418
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 2,
+      "count": 64,
+      "ms": 0.006093749776482582
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 3,
+      "count": 64,
+      "ms": 0.005624999292194843
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 3,
+      "count": 64,
+      "ms": 0.02843749988824129
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 4,
+      "count": 64,
+      "ms": 0.015937499701976776
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 4,
+      "count": 64,
+      "ms": 0.011093750596046448
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 5,
+      "count": 64,
+      "ms": 0.004687500186264515
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 5,
+      "count": 64,
+      "ms": 0.012343750335276127
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 6,
+      "count": 64,
+      "ms": 0.019296875223517418
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 6,
+      "count": 64,
+      "ms": 0.005312500521540642
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 7,
+      "count": 64,
+      "ms": 0.004453124478459358
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 7,
+      "count": 64,
+      "ms": 0.008750000037252903
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 8,
+      "count": 64,
+      "ms": 0.008750000037252903
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 8,
+      "count": 64,
+      "ms": 0.013593750074505806
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 9,
+      "count": 64,
+      "ms": 0.006406250409781933
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 9,
+      "count": 64,
+      "ms": 0.010546875186264515
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 10,
+      "count": 64,
+      "ms": 0.0078125
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 10,
+      "count": 64,
+      "ms": 0.004140624776482582
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 11,
+      "count": 64,
+      "ms": 0.003750000149011612
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 11,
+      "count": 64,
+      "ms": 0.008359375409781933
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 12,
+      "count": 64,
+      "ms": 0.025546874850988388
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 12,
+      "count": 64,
+      "ms": 0.004453125409781933
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 13,
+      "count": 64,
+      "ms": 0.003359375521540642
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 13,
+      "count": 64,
+      "ms": 0.009765625
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 14,
+      "count": 64,
+      "ms": 0.008984374813735485
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 14,
+      "count": 64,
+      "ms": 0.003984374925494194
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 0,
+      "count": 32,
+      "ms": 0.03500000014901161
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 0,
+      "count": 32,
+      "ms": 0.01874999888241291
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 1,
+      "count": 32,
+      "ms": 0.018124999478459358
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 1,
+      "count": 32,
+      "ms": 0.03765625134110451
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 2,
+      "count": 32,
+      "ms": 0.038593750447034836
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 2,
+      "count": 32,
+      "ms": 0.018281251192092896
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 3,
+      "count": 32,
+      "ms": 0.020625000819563866
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 3,
+      "count": 32,
+      "ms": 0.03531249985098839
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 4,
+      "count": 32,
+      "ms": 0.03281250037252903
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 4,
+      "count": 32,
+      "ms": 0.018281249329447746
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 5,
+      "count": 32,
+      "ms": 0.01734374836087227
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 5,
+      "count": 32,
+      "ms": 0.1028124988079071
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 6,
+      "count": 32,
+      "ms": 0.03343749977648258
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 6,
+      "count": 32,
+      "ms": 0.01875000074505806
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 7,
+      "count": 32,
+      "ms": 0.018437501043081284
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 7,
+      "count": 32,
+      "ms": 0.03375000134110451
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 8,
+      "count": 32,
+      "ms": 0.034843750298023224
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 8,
+      "count": 32,
+      "ms": 0.023749999701976776
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 9,
+      "count": 32,
+      "ms": 0.019218750298023224
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 9,
+      "count": 32,
+      "ms": 0.04734375141561031
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 10,
+      "count": 32,
+      "ms": 0.034062499180436134
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 10,
+      "count": 32,
+      "ms": 0.017343750223517418
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 11,
+      "count": 32,
+      "ms": 0.08265624940395355
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 11,
+      "count": 32,
+      "ms": 0.027968749403953552
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 12,
+      "count": 32,
+      "ms": 0.027656249701976776
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 12,
+      "count": 32,
+      "ms": 0.014687499031424522
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 13,
+      "count": 32,
+      "ms": 0.014999998733401299
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 13,
+      "count": 32,
+      "ms": 0.029531249776482582
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 14,
+      "count": 32,
+      "ms": 0.027187500149011612
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 14,
+      "count": 32,
+      "ms": 0.015781249850988388
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 0,
+      "count": 8,
+      "ms": 0.20937499403953552
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 0,
+      "count": 8,
+      "ms": 0.12000000476837158
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 1,
+      "count": 8,
+      "ms": 0.10562499612569809
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 1,
+      "count": 8,
+      "ms": 0.18187499791383743
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 2,
+      "count": 8,
+      "ms": 0.1875
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 2,
+      "count": 8,
+      "ms": 0.10312499850988388
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 3,
+      "count": 8,
+      "ms": 0.09875000268220901
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 3,
+      "count": 8,
+      "ms": 0.17999999970197678
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 4,
+      "count": 8,
+      "ms": 0.1574999988079071
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 4,
+      "count": 8,
+      "ms": 0.09875000268220901
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 5,
+      "count": 8,
+      "ms": 0.09937500208616257
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 5,
+      "count": 8,
+      "ms": 0.18437500298023224
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 6,
+      "count": 8,
+      "ms": 0.18124999850988388
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 6,
+      "count": 8,
+      "ms": 0.109375
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 7,
+      "count": 8,
+      "ms": 0.10625000298023224
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 7,
+      "count": 8,
+      "ms": 0.42125000059604645
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 8,
+      "count": 8,
+      "ms": 0.15187499672174454
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 8,
+      "count": 8,
+      "ms": 0.08624999970197678
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 9,
+      "count": 8,
+      "ms": 0.08187500387430191
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 9,
+      "count": 8,
+      "ms": 0.14999999850988388
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 10,
+      "count": 8,
+      "ms": 0.17750000208616257
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 10,
+      "count": 8,
+      "ms": 0.09562499821186066
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 11,
+      "count": 8,
+      "ms": 0.10062500089406967
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 11,
+      "count": 8,
+      "ms": 0.17937499284744263
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 12,
+      "count": 8,
+      "ms": 0.19437500089406967
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 12,
+      "count": 8,
+      "ms": 0.10312500596046448
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 13,
+      "count": 8,
+      "ms": 0.10625000298023224
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 13,
+      "count": 8,
+      "ms": 0.17937500029802322
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 14,
+      "count": 8,
+      "ms": 0.17874999344348907
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 14,
+      "count": 8,
+      "ms": 0.09812500327825546
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 0,
+      "count": 64,
+      "ms": 0.006796875037252903
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 0,
+      "count": 64,
+      "ms": 0.005859375
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 1,
+      "count": 64,
+      "ms": 0.003124999813735485
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 1,
+      "count": 64,
+      "ms": 0.007734375074505806
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 2,
+      "count": 64,
+      "ms": 0.00546875037252903
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 2,
+      "count": 64,
+      "ms": 0.002656250260770321
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 3,
+      "count": 64,
+      "ms": 0.002500000409781933
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 3,
+      "count": 64,
+      "ms": 0.005781250074505806
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 4,
+      "count": 64,
+      "ms": 0.005625000223517418
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 4,
+      "count": 64,
+      "ms": 0.00234374962747097
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 5,
+      "count": 64,
+      "ms": 0.002499999478459358
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 5,
+      "count": 64,
+      "ms": 0.005625000223517418
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 6,
+      "count": 64,
+      "ms": 0.006171874701976776
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 6,
+      "count": 64,
+      "ms": 0.002500000409781933
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 7,
+      "count": 64,
+      "ms": 0.0022656256332993507
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 7,
+      "count": 64,
+      "ms": 0.005859375
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 8,
+      "count": 64,
+      "ms": 0.005703125149011612
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 8,
+      "count": 64,
+      "ms": 0.002265624701976776
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 9,
+      "count": 64,
+      "ms": 0.0022656256332993507
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 9,
+      "count": 64,
+      "ms": 0.005625000223517418
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 10,
+      "count": 64,
+      "ms": 0.005937499925494194
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 10,
+      "count": 64,
+      "ms": 0.002500000409781933
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 11,
+      "count": 64,
+      "ms": 0.002265624701976776
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 11,
+      "count": 64,
+      "ms": 0.006093749776482582
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 12,
+      "count": 64,
+      "ms": 0.00546875037252903
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 12,
+      "count": 64,
+      "ms": 0.002500000409781933
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 13,
+      "count": 64,
+      "ms": 0.002578125335276127
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 13,
+      "count": 64,
+      "ms": 0.006093749776482582
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 1,
+      "round": 14,
+      "count": 64,
+      "ms": 0.006484375335276127
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 1,
+      "round": 14,
+      "count": 64,
+      "ms": 0.0021875007078051567
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 0,
+      "count": 32,
+      "ms": 0.01718750037252903
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 0,
+      "count": 32,
+      "ms": 0.008281251415610313
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 1,
+      "count": 32,
+      "ms": 0.008124999701976776
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 1,
+      "count": 32,
+      "ms": 0.016875000670552254
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 2,
+      "count": 32,
+      "ms": 0.016093749552965164
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 2,
+      "count": 32,
+      "ms": 0.008906250819563866
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 3,
+      "count": 32,
+      "ms": 0.008281249552965164
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 3,
+      "count": 32,
+      "ms": 0.01718750037252903
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 4,
+      "count": 32,
+      "ms": 0.01718750037252903
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 4,
+      "count": 32,
+      "ms": 0.007968749850988388
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 5,
+      "count": 32,
+      "ms": 0.008124999701976776
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 5,
+      "count": 32,
+      "ms": 0.017343750223517418
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 6,
+      "count": 32,
+      "ms": 0.01859375089406967
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 6,
+      "count": 32,
+      "ms": 0.007968749850988388
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 7,
+      "count": 32,
+      "ms": 0.008906250819563866
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 7,
+      "count": 32,
+      "ms": 0.017500000074505806
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 8,
+      "count": 32,
+      "ms": 0.1074999999254942
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 8,
+      "count": 32,
+      "ms": 0.009531250223517418
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 9,
+      "count": 32,
+      "ms": 0.007968749850988388
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 9,
+      "count": 32,
+      "ms": 0.021250000223517418
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 10,
+      "count": 32,
+      "ms": 0.017031250521540642
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 10,
+      "count": 32,
+      "ms": 0.008437499403953552
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 11,
+      "count": 32,
+      "ms": 0.008124999701976776
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 11,
+      "count": 32,
+      "ms": 0.017343750223517418
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 12,
+      "count": 32,
+      "ms": 0.01656249910593033
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 12,
+      "count": 32,
+      "ms": 0.008281249552965164
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 13,
+      "count": 32,
+      "ms": 0.007968749850988388
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 13,
+      "count": 32,
+      "ms": 0.01640624925494194
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 1,
+      "round": 14,
+      "count": 32,
+      "ms": 0.016249999403953552
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 1,
+      "round": 14,
+      "count": 32,
+      "ms": 0.008281251415610313
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 0,
+      "count": 8,
+      "ms": 0.13562499731779099
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 0,
+      "count": 8,
+      "ms": 0.0612499937415123
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 1,
+      "count": 8,
+      "ms": 0.05874999612569809
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 1,
+      "count": 8,
+      "ms": 0.14375000447034836
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 2,
+      "count": 8,
+      "ms": 0.12312500178813934
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 2,
+      "count": 8,
+      "ms": 0.05624999850988388
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 3,
+      "count": 8,
+      "ms": 0.05562499910593033
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 3,
+      "count": 8,
+      "ms": 0.11874999850988388
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 4,
+      "count": 8,
+      "ms": 0.12562499940395355
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 4,
+      "count": 8,
+      "ms": 0.054375000298023224
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 5,
+      "count": 8,
+      "ms": 0.04999999701976776
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 5,
+      "count": 8,
+      "ms": 0.12125000357627869
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 6,
+      "count": 8,
+      "ms": 0.11124999821186066
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 6,
+      "count": 8,
+      "ms": 0.05375000089406967
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 7,
+      "count": 8,
+      "ms": 0.051875002682209015
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 7,
+      "count": 8,
+      "ms": 0.11562500149011612
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 8,
+      "count": 8,
+      "ms": 0.11937500536441803
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 8,
+      "count": 8,
+      "ms": 0.05125000327825546
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 9,
+      "count": 8,
+      "ms": 0.054999999701976776
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 9,
+      "count": 8,
+      "ms": 0.14625000208616257
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 10,
+      "count": 8,
+      "ms": 0.11875000596046448
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 10,
+      "count": 8,
+      "ms": 0.05687499791383743
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 11,
+      "count": 8,
+      "ms": 0.05062500387430191
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 11,
+      "count": 8,
+      "ms": 0.11249999701976776
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 12,
+      "count": 8,
+      "ms": 0.12187500298023224
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 12,
+      "count": 8,
+      "ms": 0.05000000447034836
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 13,
+      "count": 8,
+      "ms": 0.055625006556510925
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 13,
+      "count": 8,
+      "ms": 0.11187499761581421
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 1,
+      "round": 14,
+      "count": 8,
+      "ms": 0.11937500536441803
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 1,
+      "round": 14,
+      "count": 8,
+      "ms": 0.05562499910593033
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 0,
+      "count": 64,
+      "ms": 0.006406249478459358
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 0,
+      "count": 64,
+      "ms": 0.03078124951571226
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 1,
+      "count": 64,
+      "ms": 0.017734374850988388
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 1,
+      "count": 64,
+      "ms": 0.006015624850988388
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 2,
+      "count": 64,
+      "ms": 0.005703125149011612
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 2,
+      "count": 64,
+      "ms": 0.014765625819563866
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 3,
+      "count": 64,
+      "ms": 0.016015625558793545
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 3,
+      "count": 64,
+      "ms": 0.006874999962747097
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 4,
+      "count": 64,
+      "ms": 0.006015624850988388
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 4,
+      "count": 64,
+      "ms": 0.020078124478459358
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 5,
+      "count": 64,
+      "ms": 0.014453125186264515
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 5,
+      "count": 64,
+      "ms": 0.017578125
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 6,
+      "count": 64,
+      "ms": 0.00429687462747097
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 6,
+      "count": 64,
+      "ms": 0.01171875
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 7,
+      "count": 64,
+      "ms": 0.008828124962747097
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 7,
+      "count": 64,
+      "ms": 0.004140625707805157
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 8,
+      "count": 64,
+      "ms": 0.00945312436670065
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 8,
+      "count": 64,
+      "ms": 0.015625
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 9,
+      "count": 64,
+      "ms": 0.008593750186264515
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 9,
+      "count": 64,
+      "ms": 0.004062499850988388
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 10,
+      "count": 64,
+      "ms": 0.003828125074505806
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 10,
+      "count": 64,
+      "ms": 0.008593750186264515
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 11,
+      "count": 64,
+      "ms": 0.009062499739229679
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 11,
+      "count": 64,
+      "ms": 0.004609375260770321
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 12,
+      "count": 64,
+      "ms": 0.021484375
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 12,
+      "count": 64,
+      "ms": 0.013437500223517418
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 13,
+      "count": 64,
+      "ms": 0.009921874850988388
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 13,
+      "count": 64,
+      "ms": 0.004453124478459358
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 14,
+      "count": 64,
+      "ms": 0.003984374925494194
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 14,
+      "count": 64,
+      "ms": 0.009609375149011612
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 0,
+      "count": 32,
+      "ms": 0.01656249910593033
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 0,
+      "count": 32,
+      "ms": 0.03671875037252903
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 1,
+      "count": 32,
+      "ms": 0.03656249865889549
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 1,
+      "count": 32,
+      "ms": 0.017500000074505806
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 2,
+      "count": 32,
+      "ms": 0.017656249925494194
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 2,
+      "count": 32,
+      "ms": 0.0357812512665987
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 3,
+      "count": 32,
+      "ms": 0.035624999552965164
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 3,
+      "count": 32,
+      "ms": 0.017656249925494194
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 4,
+      "count": 32,
+      "ms": 0.01734374836087227
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 4,
+      "count": 32,
+      "ms": 0.03515625
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 5,
+      "count": 32,
+      "ms": 0.10390624962747097
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 5,
+      "count": 32,
+      "ms": 0.018281249329447746
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 6,
+      "count": 32,
+      "ms": 0.017500000074505806
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 6,
+      "count": 32,
+      "ms": 0.03343749977648258
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 7,
+      "count": 32,
+      "ms": 0.03468749858438969
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 7,
+      "count": 32,
+      "ms": 0.018593749031424522
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 8,
+      "count": 32,
+      "ms": 0.018437499180436134
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 8,
+      "count": 32,
+      "ms": 0.0390625
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 9,
+      "count": 32,
+      "ms": 0.047968750819563866
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 9,
+      "count": 32,
+      "ms": 0.018906250596046448
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 10,
+      "count": 32,
+      "ms": 0.02656250074505806
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 10,
+      "count": 32,
+      "ms": 0.0996874999254942
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 11,
+      "count": 32,
+      "ms": 0.029999999329447746
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 11,
+      "count": 32,
+      "ms": 0.016718748956918716
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 12,
+      "count": 32,
+      "ms": 0.015625
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 12,
+      "count": 32,
+      "ms": 0.03187499940395355
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 13,
+      "count": 32,
+      "ms": 0.02968749962747097
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 13,
+      "count": 32,
+      "ms": 0.015781249850988388
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 14,
+      "count": 32,
+      "ms": 0.0162500012665987
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 14,
+      "count": 32,
+      "ms": 0.03046875074505806
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 0,
+      "count": 8,
+      "ms": 0.1081250011920929
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 0,
+      "count": 8,
+      "ms": 0.32625000178813934
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 1,
+      "count": 8,
+      "ms": 0.23375000059604645
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 1,
+      "count": 8,
+      "ms": 0.11625000089406967
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 2,
+      "count": 8,
+      "ms": 0.16625000536441803
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 2,
+      "count": 8,
+      "ms": 0.3374999985098839
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 3,
+      "count": 8,
+      "ms": 0.24312499910593033
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 3,
+      "count": 8,
+      "ms": 0.09937500208616257
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 4,
+      "count": 8,
+      "ms": 0.08874999731779099
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 4,
+      "count": 8,
+      "ms": 0.23124999552965164
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 5,
+      "count": 8,
+      "ms": 0.22500000149011612
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 5,
+      "count": 8,
+      "ms": 0.10875000059604645
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 6,
+      "count": 8,
+      "ms": 0.09437499940395355
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 6,
+      "count": 8,
+      "ms": 0.21812500059604645
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 7,
+      "count": 8,
+      "ms": 0.7793750017881393
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 7,
+      "count": 8,
+      "ms": 0.10000000149011612
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 8,
+      "count": 8,
+      "ms": 0.09062500298023224
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 8,
+      "count": 8,
+      "ms": 0.17750000208616257
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 9,
+      "count": 8,
+      "ms": 0.20374999940395355
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 9,
+      "count": 8,
+      "ms": 0.10750000178813934
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 10,
+      "count": 8,
+      "ms": 0.10874999314546585
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 10,
+      "count": 8,
+      "ms": 0.19999999552965164
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 11,
+      "count": 8,
+      "ms": 0.20250000059604645
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 11,
+      "count": 8,
+      "ms": 0.10750000178813934
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 12,
+      "count": 8,
+      "ms": 0.09812500327825546
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 12,
+      "count": 8,
+      "ms": 0.2381250038743019
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 13,
+      "count": 8,
+      "ms": 0.24312499910593033
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 13,
+      "count": 8,
+      "ms": 0.10875000059604645
+    },
+    {
+      "scenario": "hooked",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 14,
+      "count": 8,
+      "ms": 0.5887500047683716
+    },
+    {
+      "scenario": "hooked",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 14,
+      "count": 8,
+      "ms": 0.35875000059604645
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 0,
+      "count": 64,
+      "ms": 0.002734375186264515
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 0,
+      "count": 64,
+      "ms": 0.006562500260770321
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 1,
+      "count": 64,
+      "ms": 0.007265624590218067
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 1,
+      "count": 64,
+      "ms": 0.002812500111758709
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 2,
+      "count": 64,
+      "ms": 0.002734375186264515
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 2,
+      "count": 64,
+      "ms": 0.006171875633299351
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 3,
+      "count": 64,
+      "ms": 0.006953124888241291
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 3,
+      "count": 64,
+      "ms": 0.002812500111758709
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 4,
+      "count": 64,
+      "ms": 0.00234374962747097
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 4,
+      "count": 64,
+      "ms": 0.006093750707805157
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 5,
+      "count": 64,
+      "ms": 0.006093749776482582
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 5,
+      "count": 64,
+      "ms": 0.002421875484287739
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 6,
+      "count": 64,
+      "ms": 0.002421875484287739
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 6,
+      "count": 64,
+      "ms": 0.006093749776482582
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 7,
+      "count": 64,
+      "ms": 0.005703125149011612
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 7,
+      "count": 64,
+      "ms": 0.00234374962747097
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 8,
+      "count": 64,
+      "ms": 0.002421874552965164
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 8,
+      "count": 64,
+      "ms": 0.005703125149011612
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 9,
+      "count": 64,
+      "ms": 0.005390625447034836
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 9,
+      "count": 64,
+      "ms": 0.002421874552965164
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 10,
+      "count": 64,
+      "ms": 0.0026562493294477463
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 10,
+      "count": 64,
+      "ms": 0.005390624515712261
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 11,
+      "count": 64,
+      "ms": 0.006953124888241291
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 11,
+      "count": 64,
+      "ms": 0.002578125335276127
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 12,
+      "count": 64,
+      "ms": 0.002734375186264515
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 12,
+      "count": 64,
+      "ms": 0.005937499925494194
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 13,
+      "count": 64,
+      "ms": 0.005781250074505806
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 13,
+      "count": 64,
+      "ms": 0.002500000409781933
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 1,
+      "replicate": 2,
+      "round": 14,
+      "count": 64,
+      "ms": 0.00234374962747097
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 1,
+      "replicate": 2,
+      "round": 14,
+      "count": 64,
+      "ms": 0.005781250074505806
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 0,
+      "count": 32,
+      "ms": 0.009218750521540642
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 0,
+      "count": 32,
+      "ms": 0.019062500447034836
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 1,
+      "count": 32,
+      "ms": 0.018281249329447746
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 1,
+      "count": 32,
+      "ms": 0.008750000968575478
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 2,
+      "count": 32,
+      "ms": 0.008749999105930328
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 2,
+      "count": 32,
+      "ms": 0.018124999478459358
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 3,
+      "count": 32,
+      "ms": 0.01718750037252903
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 3,
+      "count": 32,
+      "ms": 0.008437499403953552
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 4,
+      "count": 32,
+      "ms": 0.00859375111758709
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 4,
+      "count": 32,
+      "ms": 0.01796874962747097
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 5,
+      "count": 32,
+      "ms": 0.017656249925494194
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 5,
+      "count": 32,
+      "ms": 0.008749999105930328
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 6,
+      "count": 32,
+      "ms": 0.008750000968575478
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 6,
+      "count": 32,
+      "ms": 0.02046874910593033
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 7,
+      "count": 32,
+      "ms": 0.019218750298023224
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 7,
+      "count": 32,
+      "ms": 0.008749999105930328
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 8,
+      "count": 32,
+      "ms": 0.11265625059604645
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 8,
+      "count": 32,
+      "ms": 0.018281249329447746
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 9,
+      "count": 32,
+      "ms": 0.017812499776482582
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 9,
+      "count": 32,
+      "ms": 0.008281249552965164
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 10,
+      "count": 32,
+      "ms": 0.008281249552965164
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 10,
+      "count": 32,
+      "ms": 0.018124999478459358
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 11,
+      "count": 32,
+      "ms": 0.017343750223517418
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 11,
+      "count": 32,
+      "ms": 0.009062500670552254
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 12,
+      "count": 32,
+      "ms": 0.008281249552965164
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 12,
+      "count": 32,
+      "ms": 0.017343750223517418
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 13,
+      "count": 32,
+      "ms": 0.017500000074505806
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 13,
+      "count": 32,
+      "ms": 0.008281251415610313
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 16,
+      "replicate": 2,
+      "round": 14,
+      "count": 32,
+      "ms": 0.008437499403953552
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 16,
+      "replicate": 2,
+      "round": 14,
+      "count": 32,
+      "ms": 0.017500000074505806
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 0,
+      "count": 8,
+      "ms": 0.058750003576278687
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 0,
+      "count": 8,
+      "ms": 0.12000000476837158
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 1,
+      "count": 8,
+      "ms": 0.12062499672174454
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 1,
+      "count": 8,
+      "ms": 0.06000000238418579
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 2,
+      "count": 8,
+      "ms": 0.06624999642372131
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 2,
+      "count": 8,
+      "ms": 0.11312499642372131
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 3,
+      "count": 8,
+      "ms": 0.11437500268220901
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 3,
+      "count": 8,
+      "ms": 0.058750003576278687
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 4,
+      "count": 8,
+      "ms": 0.05687499791383743
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 4,
+      "count": 8,
+      "ms": 0.13187500089406967
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 5,
+      "count": 8,
+      "ms": 0.1081249937415123
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 5,
+      "count": 8,
+      "ms": 0.05687499791383743
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 6,
+      "count": 8,
+      "ms": 0.06062500178813934
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 6,
+      "count": 8,
+      "ms": 0.11124999821186066
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 7,
+      "count": 8,
+      "ms": 0.1118750050663948
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 7,
+      "count": 8,
+      "ms": 0.06499999761581421
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 8,
+      "count": 8,
+      "ms": 0.0625
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 8,
+      "count": 8,
+      "ms": 0.11749999970197678
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 9,
+      "count": 8,
+      "ms": 0.10437500476837158
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 9,
+      "count": 8,
+      "ms": 0.0637499988079071
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 10,
+      "count": 8,
+      "ms": 0.06562499701976776
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 10,
+      "count": 8,
+      "ms": 0.11625000089406967
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 11,
+      "count": 8,
+      "ms": 0.11562499403953552
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 11,
+      "count": 8,
+      "ms": 0.05687500536441803
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 12,
+      "count": 8,
+      "ms": 0.05750000476837158
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 12,
+      "count": 8,
+      "ms": 0.11124999821186066
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 13,
+      "count": 8,
+      "ms": 0.10562499612569809
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 13,
+      "count": 8,
+      "ms": 0.058750003576278687
+    },
+    {
+      "scenario": "plain",
+      "mode": "solid",
+      "width": 128,
+      "replicate": 2,
+      "round": 14,
+      "count": 8,
+      "ms": 0.05750000476837158
+    },
+    {
+      "scenario": "plain",
+      "mode": "ranvier",
+      "width": 128,
+      "replicate": 2,
+      "round": 14,
+      "count": 8,
+      "ms": 0.4387499988079071
+    }
+  ],
+  "summaries": [
+    {
+      "scenario": "hooked",
+      "width": 1,
+      "mode": "ranvier",
+      "medianUs": 12.343750335276127,
+      "byProcessUs": [
+        11.953124776482582,
+        12.343750335276127,
+        13.437500223517418
+      ]
+    },
+    {
+      "scenario": "hooked",
+      "width": 1,
+      "mode": "solid",
+      "medianUs": 4.687500186264515,
+      "byProcessUs": [
+        4.453125409781933,
+        5.312500521540642,
+        5.703125149011612
+      ]
+    },
+    {
+      "scenario": "hooked",
+      "width": 16,
+      "mode": "ranvier",
+      "medianUs": 35.00000014901161,
+      "byProcessUs": [
+        35.15625,
+        34.062499180436134,
+        35.624999552965164
+      ]
+    },
+    {
+      "scenario": "hooked",
+      "width": 16,
+      "mode": "solid",
+      "medianUs": 18.124999478459358,
+      "byProcessUs": [
+        18.124999478459358,
+        18.281251192092896,
+        17.500000074505806
+      ]
+    },
+    {
+      "scenario": "hooked",
+      "width": 128,
+      "mode": "ranvier",
+      "medianUs": 186.87500059604645,
+      "byProcessUs": [
+        179.37500029802322,
+        179.99999970197678,
+        233.75000059604645
+      ]
+    },
+    {
+      "scenario": "hooked",
+      "width": 128,
+      "mode": "solid",
+      "medianUs": 103.12499850988388,
+      "byProcessUs": [
+        103.12499850988388,
+        100.62500089406967,
+        107.50000178813934
+      ]
+    },
+    {
+      "scenario": "plain",
+      "width": 1,
+      "mode": "ranvier",
+      "medianUs": 5.937499925494194,
+      "byProcessUs": [
+        5.859375,
+        5.859375,
+        6.093749776482582
+      ]
+    },
+    {
+      "scenario": "plain",
+      "width": 1,
+      "mode": "solid",
+      "medianUs": 2.499999478459358,
+      "byProcessUs": [
+        2.421874552965164,
+        2.500000409781933,
+        2.500000409781933
+      ]
+    },
+    {
+      "scenario": "plain",
+      "width": 16,
+      "mode": "ranvier",
+      "medianUs": 17.500000074505806,
+      "byProcessUs": [
+        17.656249925494194,
+        17.18750037252903,
+        17.96874962747097
+      ]
+    },
+    {
+      "scenario": "plain",
+      "width": 16,
+      "mode": "solid",
+      "medianUs": 8.281251415610313,
+      "byProcessUs": [
+        8.124999701976776,
+        8.281249552965164,
+        8.749999105930328
+      ]
+    },
+    {
+      "scenario": "plain",
+      "width": 128,
+      "mode": "ranvier",
+      "medianUs": 120.62499672174454,
+      "byProcessUs": [
+        123.12500178813934,
+        119.37500536441803,
+        114.37500268220901
+      ]
+    },
+    {
+      "scenario": "plain",
+      "width": 128,
+      "mode": "solid",
+      "medianUs": 55.625006556510925,
+      "byProcessUs": [
+        53.75000089406967,
+        54.999999701976776,
+        58.75000357627869
+      ]
+    }
+  ],
+  "hookCost": [
+    {
+      "width": 1,
+      "mode": "ranvier",
+      "costUs": 6.406250409781933,
+      "byProcessUs": [
+        6.093749776482582,
+        6.484375335276127,
+        7.343750447034836
+      ]
+    },
+    {
+      "width": 1,
+      "mode": "solid",
+      "costUs": 2.1875007078051567,
+      "byProcessUs": [
+        2.0312508568167686,
+        2.812500111758709,
+        3.203124739229679
+      ]
+    },
+    {
+      "width": 16,
+      "mode": "ranvier",
+      "costUs": 17.500000074505806,
+      "byProcessUs": [
+        17.500000074505806,
+        16.874998807907104,
+        17.656249925494194
+      ]
+    },
+    {
+      "width": 16,
+      "mode": "solid",
+      "costUs": 9.843748062849045,
+      "byProcessUs": [
+        9.999999776482582,
+        10.000001639127731,
+        8.750000968575478
+      ]
+    },
+    {
+      "width": 128,
+      "mode": "ranvier",
+      "costUs": 66.25000387430191,
+      "byProcessUs": [
+        56.24999850988388,
+        60.624994337558746,
+        119.37499791383743
+      ]
+    },
+    {
+      "width": 128,
+      "mode": "solid",
+      "costUs": 47.499991953372955,
+      "byProcessUs": [
+        49.37499761581421,
+        45.625001192092896,
+        48.74999821186066
+      ]
+    }
+  ]
+}
