@@ -78,10 +78,10 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | NumericDecoding.fs | 66 | 66 | 66 | 66 | 66 | 66 | 1 | 0 |
 | DateTimeOffsetCodec.fs | 54 | 54 | 54 | 54 | 54 | 54 | 1 | 0 |
 | NumberText.fs | 36 | 36 | 36 | 36 | 36 | 36 | 2 | 0 |
-| Conformance.fs | 82 | 82 | 82 | 82 | 82 | 82 | 0 | 0 |
+| Conformance.fs | 88 | 88 | 88 | 88 | 88 | 88 | 0 | 0 |
 | Streams.fs (sources) | 9 | 9 | 9 | 9 | 9 | 9 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1387 | 1366 | 1363 | 1527 | 1501 | 1498 | 97 | 1 |
+| **Total** | 1393 | 1372 | 1369 | 1533 | 1507 | 1504 | 97 | 1 |
 
 ## Tests.fs
 
@@ -2136,7 +2136,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## Conformance.fs
 
-<details><summary>82 passed in every build and delivery that runs them</summary>
+<details><summary>88 passed in every build and delivery that runs them</summary>
 
 - a record
 - a record without its optional field
@@ -2220,6 +2220,12 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - an int64 string with underscores
 - a uint64 string with a hex prefix
 - a bigint string with a hex prefix
+- an int string with a trailing NUL
+- an int64 string with a trailing NUL
+- a byte string -0
+- a uint16 string -0
+- a uint32 string -0
+- a uint64 string -0
 
 </details>
 

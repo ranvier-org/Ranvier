@@ -221,11 +221,11 @@ module Decode =
                     ("", BadPrimitive("null", value)) |> Error
         }
 
-#if FABLE_COMPILER
     /// <summary>
     /// The result of <c>tryParse</c> when the text is optional ASCII whitespace, an optional sign, decimal digits and
-    /// optional ASCII whitespace, and a failure otherwise. fable-library's integer parse also reads <c>0x</c>,
-    /// <c>0o</c> and <c>0b</c> prefixes, <c>_</c> separators and other whitespace, and wraps signed values.
+    /// optional ASCII whitespace, and a failure otherwise, on both targets. fable-library's integer parse also reads
+    /// <c>0x</c>, <c>0o</c> and <c>0b</c> prefixes, <c>_</c> separators and other whitespace, and wraps signed
+    /// values; .NET's also reads trailing NUL characters and, for <c>int64</c> and <c>uint64</c>, exponents.
     /// </summary>
     let private tryParseDecimal
         (tryParse: string -> bool * 'T)
@@ -241,7 +241,6 @@ module Decode =
             tryParse text
         else
             false, Unchecked.defaultof<'T>
-#endif
 
     let inline private integral
         (name: string)
@@ -278,11 +277,7 @@ module Decode =
                          ))
                         |> Error
                 elif helpers.isString value then
-#if FABLE_COMPILER
                     match tryParseDecimal tryParse (helpers.asString value) with
-#else
-                    match tryParse (helpers.asString value) with
-#endif
                     | true, x -> Ok x
                     | _ -> ("", BadPrimitive(name, value)) |> Error
                 else
@@ -303,11 +298,7 @@ module Decode =
                     | true, x -> Ok x
                     | _ -> ("", BadPrimitive(name, value)) |> Error
                 elif helpers.isString value then
-#if FABLE_COMPILER
                     match tryParseDecimal tryParse (helpers.asString value) with
-#else
-                    match tryParse (helpers.asString value) with
-#endif
                     | true, x -> Ok x
                     | _ -> ("", BadPrimitive(name, value)) |> Error
                 else

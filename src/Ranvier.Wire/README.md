@@ -46,10 +46,11 @@ validation: a date far in the past or a negative quantity decodes when the type 
 | `float32` | as `float`; decoding also rejects a number outside the float32 range (`1e39`) | `Codec.float32` |
 | `sbyte` … `uint32` | a number; decoding reads a number with neither a `.` nor a negative exponent (`1e3` is 1000; `1.0` and `10e-1` are `Shape` errors) within the type's range, or an integer string | `Codec.int` and the others |
 
-An integer string, for the codecs from `sbyte` to `uint64`, is optional whitespace (space, tab, line feed, vertical
-tab, form feed or carriage return), an optional sign, decimal digits and optional whitespace, holding a value within the
-type's range: `"42"`, `" 42"`, `"+42"` and `"0042"` decode as 42. Any other string is a `Shape` error on both targets,
-including `"0x10"`, `"1_000"` and a string led by U+FEFF, except the `int64`/`uint64` exponent form below.
+On both targets, an integer string for the codecs from `sbyte` to `uint64` is exactly optional ASCII whitespace
+(space, tab, line feed, vertical tab, form feed or carriage return), an optional `+` or `-`, one or more decimal digits
+and optional ASCII whitespace, holding a value within the type's range: `" 42"`, `"+42"` and `"0042"` decode as 42, and
+`"-0"` as 0. Any other string is a `Shape` error, including `"0x10"`, `"1_000"`, `"1e3"` and a string holding U+FEFF
+or U+0000.
 
 Use `Codecs.dateTimeOffset`, `Codecs.bigint` and `Codecs.decimal` for those types. Thoth's own `datetimeOffset`,
 `bigint` and `decimal` codecs, encoders and decoders write or read differently on the two targets and are marked
@@ -63,7 +64,7 @@ digits, as .NET Core 3.0 and later do; an older runtime such as Mono can write l
 | Input | .NET | Fable |
 |---|---|---|
 | A string holding a character outside the Basic Multilingual Plane, DEL, U+2028, U+00A0 or other characters System.Text.Json escapes | escaped (`\uD83C\uDF89`), upper-case hex | raw, and lower-case hex for control characters (`\u001f`) |
-| An `int64`/`uint64` number or string in exponent form (`1e3`, `10e-1`, `"1e3"`) | decodes when the value is a whole number in range (`10e-1` is 1) | `Shape` error |
+| An `int64`/`uint64` number in exponent form (`1e3`, `10e-1`) | decodes when the value is a whole number in range (`10e-1` is 1) | `Shape` error |
 
 Both targets read each other's string escapes to the same value.
 

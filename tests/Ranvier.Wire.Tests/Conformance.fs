@@ -457,7 +457,7 @@ let tests =
             readsOn "an int64 number in exponent form" Codec.int64 "1e3" (Some 1000L) None
             readsOn "an int64 number with a negative exponent" Codec.int64 "10e-1" (Some 1L) None
             readsOn "a uint64 number with a negative exponent" Codec.uint64 "100e-2" (Some 1UL) None
-            readsOn "an int64 string in exponent form" Codec.int64 "\"1e3\"" (Some 1000L) None
+            rejects "an int64 string in exponent form" isShape Codec.int64 "\"1e3\""
             reads "an int string with a tab and a line feed" (=) Codec.int (quote + esc "0009" + "42" + esc "000a" + quote) 42 "42"
             reads "an int string with a vertical tab and a form feed" (=) Codec.int (quote + esc "000b" + "42" + esc "000c" + quote) 42 "42"
             rejects "an int string with a hex prefix" isShape Codec.int "\"0x10\""
@@ -476,4 +476,10 @@ let tests =
             rejects "an int64 string with underscores" isShape Codec.int64 "\"1_000\""
             rejects "a uint64 string with a hex prefix" isShape Codec.uint64 "\"0x10\""
             rejects "a bigint string with a hex prefix" isShape Codecs.bigint "\"0x10\""
+            rejects "an int string with a trailing NUL" isShape Codec.int (quote + "42" + esc "0000" + quote)
+            rejects "an int64 string with a trailing NUL" isShape Codec.int64 (quote + "42" + esc "0000" + quote)
+            reads "a byte string -0" (=) Codec.byte "\"-0\"" 0uy "0"
+            reads "a uint16 string -0" (=) Codec.uint16 "\"-0\"" 0us "0"
+            reads "a uint32 string -0" (=) Codec.uint32 "\"-0\"" 0u "0"
+            reads "a uint64 string -0" (=) Codec.uint64 "\"-0\"" 0UL "\"0\""
         ]
