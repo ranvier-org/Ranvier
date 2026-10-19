@@ -647,7 +647,7 @@ let private refRows =
                 t.each id (fun (items: Signal<int list>) -> Array.ofList items.Value) refRow
             |])
 
-/// <summary>Reverses two rows whose handlers read their row's NodeRef, then clicks the first button.</summary>
+/// <summary>Reverses two rows whose handlers read their row's NodeRef, then clicks the first button: the second row's element before the reorder.</summary>
 let private templateRefAcrossReorder queued () =
     use graph = new Graph ()
     let rows = graph.Run (fun () -> Api.createSignal [ 1; 2 ])
@@ -657,14 +657,16 @@ let private templateRefAcrossReorder queued () =
     let mounted =
         mountTemplate queued graph strict target (Component.render refRows rows)
 
+    let second = target.querySelectorAll("button").[1]
     graph.Run (fun () -> rows.Value <- [ 2; 1 ])
     mounted.Flush ()
 
-    (target.querySelector "button"
-     |> unbox<HTMLButtonElement>)
-        .click()
+    let first =
+        target.querySelector "button"
+        |> unbox<HTMLButtonElement>
 
-    equal [ "2" ] (List.ofSeq refReads)
+    first.click ()
+    equal ([ "2" ], true) (List.ofSeq refReads, obj.ReferenceEquals (first, second))
     mounted.Dispose ()
 
 let private serverHooked =

@@ -87,6 +87,11 @@ type NodeRef<'native> internal () =
     member internal _.Set(value: 'native option) =
         current <- value
 
+    /// <summary>Sets the reference to <c>node</c> and returns the cleanup that resets it to <c>None</c>.</summary>
+    member internal this.Place(node: obj) : unit -> unit =
+        this.Set (Some (unbox node))
+        fun () -> this.Set None
+
 module NodeRef =
     let create () : NodeRef<'native> =
         NodeRef<'native>()

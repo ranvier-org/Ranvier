@@ -629,15 +629,12 @@ type HookBuilder<'inst> internal () =
     member _.mounted(hook: 'inst -> 'native -> (unit -> unit)) : Part<'native, 'inst> =
         PlacedPart (PlacedKind.Mounted, placedHook hook)
 
-    /// <summary>Sets the instance's reference while the element is placed.</summary>
+    /// <summary>
+    /// Sets the <c>NodeRef</c> selected from the instance to the element while the element is placed, and to <c>None</c>
+    /// once the instance is disposed.
+    /// </summary>
     member _.ref(select: 'inst -> NodeRef<'native>) : Part<'native, 'inst> =
-        PlacedPart (
-            PlacedKind.Mounted,
-            Func<obj, obj, (unit -> unit)>(fun instance node ->
-                let target = select (unbox instance)
-                target.Set (Some (unbox node))
-                fun () -> target.Set None)
-        )
+        PlacedPart (PlacedKind.Mounted, Func<obj, obj, (unit -> unit)>(fun instance node -> (select (unbox instance)).Place node))
 
 /// <summary>Builds a template for instances of type <c>'inst</c>; dynamic parts receive the instance as their argument.</summary>
 [<Sealed>]

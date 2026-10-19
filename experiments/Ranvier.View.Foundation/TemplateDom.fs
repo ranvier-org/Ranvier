@@ -715,7 +715,7 @@ let private setUp (template: TemplateComponent) (services: MountServices) (props
 let private setUpChild (services: MountServices) (child: CompiledChild) (owner: obj) =
     Api.untrack (fun () -> child.Definition.Setup.Invoke (services.Setup, child.Props.Invoke owner))
 
-/// <summary>Materialises one instance: runs setup, clones the skeleton, binds its slots and events and those of its inlined children, appends it and mounts its regions.</summary>
+/// <summary>Materialises one instance: runs setup, clones the skeleton, binds its slots, events and placed hooks and those of its inlined children, appends it and mounts its regions.</summary>
 let rec internal materialise (definition: TemplateDefinition) (props: obj) (services: MountServices) =
     let template = definition :?> TemplateComponent
 

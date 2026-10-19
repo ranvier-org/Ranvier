@@ -76,13 +76,7 @@ let mounted (hook: 'native -> (unit -> unit)) : Modifier<'native> =
 
 /// <summary>Sets <c>target</c> to the element while the element is placed.</summary>
 let ref (target: NodeRef<'native>) : Modifier<'native> =
-    Modifier (fun backend ->
-        backend.Placed (
-            PlacedKind.Mounted,
-            fun node ->
-                target.Set (Some (unbox node))
-                fun () -> target.Set None
-        ))
+    Modifier (fun backend -> backend.Placed (PlacedKind.Mounted, target.Place))
 
 /// <summary>Applies a fixed property value during element construction.</summary>
 let staticProperty (setter: 'native -> 'value -> unit) value : Modifier<'native> =
