@@ -276,7 +276,11 @@ let private options allowed (repeated: Set<string>) (args: string list) =
             && (key = "--subject"
                 || not (value.StartsWith ("--", StringComparison.Ordinal)))
             ->
-            require (Set.contains key repeated || not (Map.containsKey key acc)) ("Repeated option " + key)
+            require
+                (Set.contains key repeated
+                 || not (Map.containsKey key acc))
+                ("Repeated option " + key)
+
             loop (Map.change key (fun old -> Some (defaultArg old [] @ [ value ])) acc) rest
         | key :: _ -> invalidArg "args" ("Unknown option or missing value: " + key)
 
@@ -320,11 +324,7 @@ let main args =
     match args with
     | "record" :: rest ->
         let o =
-            parse
-                [ "--ab"; "--commit"; "--parent"; "--date"; "--subject"; "--message"; "--out" ]
-                [ "--package" ]
-                [ "--ab"; "--package" ]
-                rest
+            parse [ "--ab"; "--commit"; "--parent"; "--date"; "--subject"; "--message"; "--out" ] [ "--package" ] [ "--ab"; "--package" ] rest
 
         let one key =
             o[key] |> List.exactlyOne
@@ -342,13 +342,15 @@ let main args =
             |> List.map (fun entry ->
                 match entry.Split ('=', 2) with
                 | [| name; version |] when name <> "" && version <> "" -> { Name = name; Version = version }
-                | _ -> invalidArg "args" ("Package entries take the form Name=Version: " + entry))
+                | _ ->
+                    invalidArg
+                        "args"
+                        ("Package entries take the form Name=Version: "
+                         + entry))
             |> List.sortBy _.Name
             |> List.toArray
 
-        require
-            ((packages |> Array.distinctBy _.Name).Length = packages.Length)
-            "Duplicate package name."
+        require ((packages |> Array.distinctBy _.Name).Length = packages.Length) "Duplicate package name."
 
         let record =
             { create (one "--commit") (one "--parent") date (one "--subject") messages runs with

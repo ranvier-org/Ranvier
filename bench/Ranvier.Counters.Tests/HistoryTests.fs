@@ -250,13 +250,20 @@ let tests =
                     Expect.equal
                         r.Packages
                         [|
-                            { History.PackageVersion.Name = "Ranvier"; Version = "0.1.0-preview.5" }
-                            { History.PackageVersion.Name = "Ranvier.Elmish"; Version = "0.1.0-preview.4" }
+                            {
+                                History.PackageVersion.Name = "Ranvier"
+                                Version = "0.1.0-preview.5"
+                            }
+                            {
+                                History.PackageVersion.Name = "Ranvier.Elmish"
+                                Version = "0.1.0-preview.4"
+                            }
                         |]
                         "package versions"
 
                     for extra in [ [ "--package"; "Ranvier=0.2.0" ]; [ "--package"; "Ranvier" ] ] do
                         Expect.throws (fun () -> History.main (args @ extra) |> ignore) "malformed or duplicate package"
+
                     Expect.equal r.Subject "--subject $(echo unsafe); `literal` | \"quoted\"\nnext line" "subject is literal data"
 
                     let runDir = Path.Combine (dir, "runs")
@@ -278,7 +285,7 @@ let tests =
                         0
                         "timeline reads records that predate Compiled"
 
-                    let document = Nodes.JsonNode.Parse(recorded).AsObject ()
+                    let document = Nodes.JsonNode.Parse(recorded).AsObject()
                     Expect.isTrue (document.Remove "Packages") "the record carries Packages"
                     File.WriteAllText (Path.Combine (runDir, "h.json"), document.ToJsonString ())
 
