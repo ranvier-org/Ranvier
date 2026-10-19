@@ -23,6 +23,17 @@ let untracedOnly (test: Test) : Test =
 #endif
 
 /// <summary>
+/// Completes once every settle already delivered to the graph has applied: at once on .NET, after the microtask
+/// queue drains under Fable.
+/// </summary>
+let drained () : Async<unit> =
+#if FABLE_COMPILER
+    Async.Sleep 0
+#else
+    async.Return ()
+#endif
+
+/// <summary>
 /// Memo and async memo construction the suite uses on both platforms. On .NET these are the public constructors;
 /// Fable drops those constructors, so under Fable they call <c>Create</c> with the same mode.
 /// </summary>
