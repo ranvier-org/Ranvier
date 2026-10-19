@@ -2,8 +2,7 @@
 // against Solid 2's renderToString. Each process is a child `node --expose-gc` running this file with --worker=<replicate>.
 // Usage: node benchmarks/frameworks/server-render.mjs [--build] [--label=<name>] [--out=<dir>]
 import { execFileSync } from "node:child_process";
-import { mkdir, writeFile } from "node:fs/promises";
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import os from "node:os";
 
@@ -13,8 +12,12 @@ const argument = (name, fallback) => process.argv.find(arg => arg.startsWith(`--
 const output = argument("out") ?? fileURLToPath(new URL("../../../../docs/research/framework-performance/investigation/server-html/", import.meta.url));
 const label = argument("label", "node-first-content");
 const worker = argument("worker");
-const solidOut = fileURLToPath(new URL("../../generated-server-dist/server-solid.mjs", import.meta.url));
+const solidDist = fileURLToPath(new URL("../../generated-server-dist/", import.meta.url));
+const solidOut = `${solidDist}server-solid.mjs`;
 const modes = ["ranvier", "solid"], processes = 3, rounds = 15, warmups = 3;
+// Before a fixture's rounds, each mode renders for at least warmMs and at least warmRenders times. A sample repeats
+// batches of `count` renders until it has run for at least sampleMs.
+const warmMs = 500, warmRenders = 32, sampleMs = 25;
 const fixtures = [
   { fixture: "component", rows: 1, count: 256 },
   { fixture: "component", rows: 16, count: 64 },
@@ -43,15 +46,25 @@ async function runWorker(replicate) {
     verified.push({ fixture, rows, mode, count: found, bytes: Buffer.byteLength(html, "utf8") });
   }
   for (const { fixture, rows, count } of fixtures) {
+    for (let offset = 0; offset < modes.length; offset++) {
+      const render = renderers[modes[(offset + replicate) % modes.length]][fixture];
+      const start = performance.now();
+      for (let done = 0; done < warmRenders || performance.now() - start < warmMs; done++) render(rows);
+    }
     for (let round = -warmups; round < rounds; round++) for (let offset = 0; offset < modes.length; offset++) {
       const mode = modes[(round + warmups + offset + replicate) % modes.length];
       const render = renderers[mode][fixture];
       globalThis.gc();
+      let renders = 0, elapsed = 0;
       const start = performance.now();
-      for (let index = 0; index < count; index++) render(rows);
-      const us = (performance.now() - start) * 1000 / count;
+      while (elapsed < sampleMs) {
+        for (let index = 0; index < count; index++) render(rows);
+        renders += count;
+        elapsed = performance.now() - start;
+      }
+      const us = elapsed * 1000 / renders;
       if (!Number.isFinite(us) || us <= 0) throw Error(`Invalid timing ${fixture}/${mode}/${rows}: ${us}`);
-      if (round >= 0) samples.push({ fixture, rows, mode, replicate, round, us });
+      if (round >= 0) samples.push({ fixture, rows, mode, replicate, round, renders, us });
     }
   }
   process.stdout.write(JSON.stringify({ verified, samples }));
@@ -59,12 +72,12 @@ async function runWorker(replicate) {
 
 async function runMain() {
   if (process.argv.includes("--build"))
-    execFileSync("rtk", ["dotnet", "fable", "tests/DomTests.fsproj", "--outDir", "generated-tests", "--configuration", "Release", "--noCache"], { cwd, stdio: "inherit", windowsHide: true, env: { ...process.env, RanvierCounters: "false" } });
+    execFileSync("dotnet", ["fable", "tests/DomTests.fsproj", "--outDir", "generated-tests", "--configuration", "Release", "--noCache"], { cwd, stdio: "inherit", windowsHide: true, env: { ...process.env, RanvierCounters: "false" } });
   const { transform } = await import("@solidjs/compiler");
   const source = fileURLToPath(new URL("./server-solid.jsx", import.meta.url));
-  const { code } = transform(readFileSync(source, "utf8"), { filename: source, generate: "ssr", hydratable: true });
-  mkdirSync(fileURLToPath(new URL("../../generated-server-dist/", import.meta.url)), { recursive: true });
-  writeFileSync(solidOut, code);
+  const { code } = transform(await readFile(source, "utf8"), { filename: source, generate: "ssr", hydratable: true });
+  await mkdir(solidDist, { recursive: true });
+  await writeFile(solidOut, code);
 
   const samples = [];
   let verified;
@@ -85,7 +98,7 @@ async function runMain() {
     measuredAt: new Date().toISOString(),
     baseCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd, encoding: "utf8" }).trim(),
     dirty: execFileSync("git", ["status", "--porcelain"], { cwd, encoding: "utf8" }).trim().split("\n").filter(line => line && !line.includes("generated-")),
-    node: process.version, cpu: os.cpus()[0].model, platform: `${os.platform()} ${os.release()}`,
+    node: process.version, nodeEnv: process.env.NODE_ENV ?? null, cpu: os.cpus()[0].model, platform: `${os.platform()} ${os.release()}`,
     unit: "microseconds per render",
     verified, samples, summaries
   };
