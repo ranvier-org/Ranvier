@@ -1384,7 +1384,7 @@ let private restructures (rule: string) (path: string) =
     + ") at "
     + path
 
-/// <summary>The type test and message of the exception <c>render</c> raises.</summary>
+/// <summary>The type test and message of the exception raised by <c>render</c>.</summary>
 let private rejection (render: unit -> unit) =
     let error = failure render
     error :? InvalidOperationException, error.Message
@@ -1415,9 +1415,71 @@ let private contentModel () =
             (fun t -> t.select [||] [| t.div [||] [||] |]), restructures "select-content" "select/div"
             (fun t -> t.textarea [||] [| t.span [||] [||] |]), restructures "rcdata-content" "textarea/span"
             (fun t -> t.textarea [||] [| t.render spanChild (fun _ -> ()) |]), restructures "rcdata-content" "textarea/span"
+            (fun t -> t.table [||] [| t.element (HtmlTag "colgroup") [||] [| t.div [||] [||] |] |]), restructures "table-foster" "table/colgroup/div"
+            (fun t -> t.table [||] [| t.element (HtmlTag "colgroup") [||] [| t.text "x" |] |]), restructures "table-foster" "table/colgroup/#text"
+            (fun t -> t.select [||] [| t.option [||] [| t.option [||] [||] |] |]), restructures "select-content" "select/option/option"
+            (fun t -> t.ul [||] [| t.li [||] [| t.li [||] [||] |] |]), restructures "nested-list-item" "ul/li/li"
+            (fun t -> t.ul [||] [| t.li [||] [| t.div [||] [| t.li [||] [||] |] |] |]), restructures "nested-list-item" "ul/li/div/li"
+            (fun t -> t.ul [||] [| t.li [||] [| t.span [||] [| t.li [||] [||] |] |] |]), restructures "nested-list-item" "ul/li/span/li"
+            (fun t -> t.element (HtmlTag "dl") [||] [| t.element (HtmlTag "dd") [||] [| t.element (HtmlTag "dt") [||] [||] |] |]),
+            restructures "nested-description" "dl/dd/dt"
+            (fun t ->
+                t.element
+                    (HtmlTag "dl")
+                    [||]
+                    [|
+                        t.element (HtmlTag "dt") [||] [| t.div [||] [| t.element (HtmlTag "dd") [||] [||] |] |]
+                    |]),
+            restructures "nested-description" "dl/dt/div/dd"
+            (fun t -> t.element (HtmlTag "dl") [||] [| t.element (HtmlTag "dd") [||] [| t.element (HtmlTag "dd") [||] [||] |] |]),
+            restructures "nested-description" "dl/dd/dd"
+            (fun t -> t.h1 [||] [| t.h2 [||] [||] |]), restructures "nested-heading" "h1/h2"
+            (fun t -> t.button [||] [| t.button [||] [||] |]), restructures "nested-button" "button/button"
+            (fun t -> t.button [||] [| t.span [||] [| t.button [||] [||] |] |]), restructures "nested-button" "button/span/button"
         ]
 
     equal [ for _, expected in cases -> expected ] [ for build, _ in cases -> restructured build ]
+
+    let closers = [ "center"; "dir"; "summary"; "listing"; "li"; "dd"; "dt" ]
+
+    equal
+        [ for tag in closers -> restructures "paragraph-close" ("p/" + tag) ]
+        [
+            for tag in closers -> restructured (fun t -> t.p [||] [| t.element (HtmlTag tag) [||] [||] |])
+        ]
+
+    let nearest =
+        Component.define (fun _ () -> ()) (fun t ->
+            t.fragment
+                [|
+                    t.table
+                        [||]
+                        [|
+                            t.element (HtmlTag "colgroup") [||] [| t.text " "; t.element (HtmlTag "col") [||] [||] |]
+                        |]
+                    t.ul [||] [| t.li [||] [| t.ul [||] [| t.li [||] [||] |] |] |]
+                    t.element
+                        (HtmlTag "dl")
+                        [||]
+                        [|
+                            t.element (HtmlTag "dd") [||] [| t.element (HtmlTag "dl") [||] [| t.element (HtmlTag "dt") [||] [||] |] |]
+                        |]
+                    t.h1 [||] [| t.span [||] [| t.h2 [||] [||] |] |]
+                    t.button [||] [| t.span [||] [||] |]
+                    t.button
+                        [||]
+                        [|
+                            t.table [||] [| t.tbody [||] [| t.tr [||] [| t.td [||] [| t.button [||] [||] |] |] |] |]
+                        |]
+                    t.select [||] [| t.option [||] [||]; t.optgroup [||] [| t.option [||] [||] |] |]
+                |])
+
+    equal
+        ("<!--[r--><table><colgroup> <col></colgroup></table><ul><li><ul><li></li></ul></li></ul>"
+         + "<dl><dd><dl><dt></dt></dl></dd></dl><h1><span><h2></h2></span></h1><button><span></span></button>"
+         + "<button><table><tbody><tr><td><button></button></td></tr></tbody></table></button>"
+         + "<select><option></option><optgroup><option></option></optgroup></select><!--]-->")
+        (Server.render Server.Options.defaults nearest ())
 
     let accepted =
         Component.define (fun _ () -> ()) (fun t ->
@@ -1463,6 +1525,46 @@ let private blocksInParagraph =
 
 let private blocksInButton =
     Component.define (fun _ (rows: int array) -> rows) (fun t -> t.p [||] [| t.button [||] [| t.each id id blockRow |] |])
+
+let private wrapped (inner: TemplateBuilder<unit> -> TemplateView<unit>) =
+    Component.define (fun _ (_: unit -> int) -> ()) (fun t -> t.span [||] [| inner t |])
+
+let private rowsUnder (outer: TemplateBuilder<int array> -> TemplateView<int array> -> TemplateView<int array>) row =
+    Component.define (fun _ (rows: int array) -> rows) (fun t -> outer t (t.each id id row))
+
+let private scopedRows () =
+    let render definition =
+        rejection (fun () ->
+            Server.render Server.Options.defaults definition [| 1 |]
+            |> ignore)
+
+    equal
+        [
+            restructures "nested-anchor" "a/span/a"
+            restructures "nested-form" "form/span/form"
+            restructures "nested-button" "button/span/button"
+            restructures "nested-list-item" "li/span/li"
+            restructures "nested-description" "dd/span/dt"
+            restructures "nested-heading" "h1/h2"
+        ]
+        [
+            render (rowsUnder (fun t region -> t.a [||] [| region |]) (wrapped (fun t -> t.a [||] [||])))
+            render (rowsUnder (fun t region -> t.form [||] [| region |]) (wrapped (fun t -> t.form [||] [||])))
+            render (rowsUnder (fun t region -> t.button [||] [| region |]) (wrapped (fun t -> t.button [||] [||])))
+            render (rowsUnder (fun t region -> t.li [||] [| region |]) (wrapped (fun t -> t.li [||] [||])))
+            render (rowsUnder (fun t region -> t.element (HtmlTag "dd") [||] [| region |]) (wrapped (fun t -> t.element (HtmlTag "dt") [||] [||])))
+            render (rowsUnder (fun t region -> t.h1 [||] [| region |]) (Component.define (fun _ (_: unit -> int) -> ()) (fun t -> t.h2 [||] [||])))
+        ]
+
+    let cellRow =
+        Component.define (fun _ (_: unit -> int) -> ()) (fun t -> t.td [||] [| t.a [||] [||] |])
+
+    let anchorCells =
+        rowsUnder (fun t region -> t.a [||] [| t.table [||] [| t.tbody [||] [| t.tr [||] [| region |] |] |] |]) cellRow
+
+    equal
+        "<!--[r--><a><table><tbody><tr><!--[--><td><a></a></td><!--]--></tr></tbody></table></a><!--]-->"
+        (Server.render Server.Options.defaults anchorCells [| 1 |])
 
 let private dynamicContentModel () =
     let render definition (rows: int array) =
@@ -1583,6 +1685,7 @@ let cases: (string * (unit -> unit)) array =
         "non-empty raw HTML in a pre or listing is written after a line feed, dropped on parsing", contentLeadingLineFeed
         "content-model violations fail at plan compile with the rule and the element path", contentModel
         "a row definition with tr roots inside a table region fails on first render", dynamicContentModel
+        "a row whose descendant closes an open a, form, button, li, dd or heading fails on first render", scopedRows
         "a template in a view hole is checked against the template and authored elements enclosing it", authoredContext
         "a region inside a textarea or title fails at plan compile", rcdataRegion
         "void elements with children and template elements fail at plan compile", templateElement

@@ -561,12 +561,11 @@ type internal RootSummary =
         RootTags: string array
         /// <summary>Whether a root is a text slot or static text with a non-whitespace character.</summary>
         TextRoot: bool
-        /// <summary>The path of the first <c>a</c> outside every <c>td</c>, <c>th</c>, <c>caption</c>, <c>object</c>, <c>marquee</c> and <c>applet</c>.</summary>
-        Anchor: string
-        /// <summary>The path of the first <c>form</c>.</summary>
-        Form: string
-        /// <summary>The path of the first element of the paragraph-closing set outside every paragraph-scope boundary.</summary>
-        ParagraphCloser: string
+        /// <summary>
+        /// For each of <c>ContentModel.scopes</c>, the path of the first closing element whose ancestors in the
+        /// definition all continue the scope's search.
+        /// </summary>
+        Closers: string array
     }
 
 /// <summary>A definition's server HTML as operations over its flattened template; no two <c>Static</c> operations are adjacent.</summary>
@@ -586,8 +585,10 @@ type internal ServerPlan =
         /// <summary>Whether the last root is a text node or a text slot.</summary>
         LastIsText: bool
         Summary: RootSummary
-        /// <summary>The <c>ContentModel.contextKey</c> of each context the roots were accepted in; read and written under <c>lock</c>.</summary>
+        /// <summary>The <c>ContentModel.contextKey</c> of each context the roots were accepted in; guarded by <c>lock</c> on .NET.</summary>
         CheckedContexts: Collections.Generic.HashSet<string>
+        /// <summary>The ancestor list the roots were last accepted under.</summary>
+        mutable Accepted: string list
     }
 
 /// <summary>Elements whose first child text loses one leading line feed when parsed.</summary>
@@ -601,12 +602,19 @@ let private isRcdata tagName =
     tagName = "textarea" || tagName = "title"
 
 /// <summary>
-/// The nesting rules of the HTML parser's tree construction that template markup is checked against: markup matched
-/// by a rule parses to a different tree than the client builds.
+/// Nesting rules from the HTML tree-construction algorithm. Markup matched by a rule parses to a different tree than
+/// the client builds.
 /// </summary>
 /// <remarks>
-/// <c>ancestors</c> lists the tags of the enclosing elements, nearest first. Where two rules match, the first in
-/// <c>check</c>'s order names the violation.
+/// <para>
+/// <c>ancestors</c> lists the tags of the enclosing elements, nearest first. Where two rules match, the first rule in
+/// <c>check</c>'s order is reported.
+/// </para>
+/// <para>
+/// Conservative rejections, parsed as written: <c>input type="hidden"</c> and an empty <c>form</c> in a table part,
+/// <c>table</c> in <c>p</c> in quirks mode, and HTML elements inside <c>svg</c> or <c>math</c> (foreign content is
+/// checked as HTML).
+/// </para>
 /// </remarks>
 module internal ContentModel =
     /// <summary>The ancestors, outermost first, and <c>last</c>, joined by <c>/</c>.</summary>
@@ -627,7 +635,108 @@ module internal ContentModel =
         tag = "thead" || tag = "tbody" || tag = "tfoot"
 
     let private isTablePart tag =
-        tag = "table" || tag = "tr" || isTableSection tag
+        tag = "table"
+        || tag = "tr"
+        || tag = "colgroup"
+        || isTableSection tag
+
+    let private isHeading tag =
+        match tag with
+        | "h1"
+        | "h2"
+        | "h3"
+        | "h4"
+        | "h5"
+        | "h6" -> true
+        | _ -> false
+
+    /// <summary>The HTML elements of the parser's special category.</summary>
+    let private isSpecial tag =
+        match tag with
+        | "address"
+        | "applet"
+        | "area"
+        | "article"
+        | "aside"
+        | "base"
+        | "basefont"
+        | "bgsound"
+        | "blockquote"
+        | "body"
+        | "br"
+        | "button"
+        | "caption"
+        | "center"
+        | "col"
+        | "colgroup"
+        | "dd"
+        | "details"
+        | "dir"
+        | "div"
+        | "dl"
+        | "dt"
+        | "embed"
+        | "fieldset"
+        | "figcaption"
+        | "figure"
+        | "footer"
+        | "form"
+        | "frame"
+        | "frameset"
+        | "h1"
+        | "h2"
+        | "h3"
+        | "h4"
+        | "h5"
+        | "h6"
+        | "head"
+        | "header"
+        | "hgroup"
+        | "hr"
+        | "html"
+        | "iframe"
+        | "img"
+        | "input"
+        | "keygen"
+        | "li"
+        | "link"
+        | "listing"
+        | "main"
+        | "marquee"
+        | "menu"
+        | "meta"
+        | "nav"
+        | "noembed"
+        | "noframes"
+        | "noscript"
+        | "object"
+        | "ol"
+        | "p"
+        | "param"
+        | "plaintext"
+        | "pre"
+        | "script"
+        | "search"
+        | "section"
+        | "select"
+        | "source"
+        | "style"
+        | "summary"
+        | "table"
+        | "tbody"
+        | "td"
+        | "template"
+        | "textarea"
+        | "tfoot"
+        | "th"
+        | "thead"
+        | "title"
+        | "tr"
+        | "track"
+        | "ul"
+        | "wbr"
+        | "xmp" -> true
+        | _ -> false
 
     /// <summary>Elements whose start tag closes an open <c>p</c>.</summary>
     let closesParagraph tag =
@@ -696,18 +805,83 @@ module internal ContentModel =
         | "applet" -> true
         | _ -> false
 
-    let rec private openWithin (bounds: string -> bool) (target: string) (ancestors: string list) =
+    /// <summary>Elements that end the default scope: a <c>button</c> above them stays open.</summary>
+    let boundsButton tag =
+        boundsAnchor tag
+        || tag = "table"
+        || tag = "html"
+        || tag = "template"
+
+    /// <summary>Elements above which the search for an open <c>li</c>, <c>dd</c> or <c>dt</c> continues.</summary>
+    let continuesItem tag =
+        not (isSpecial tag)
+        || tag = "address"
+        || tag = "div"
+        || tag = "p"
+
+    /// <summary>
+    /// A parser step: an element of <c>Closes</c> that starts while an element of <c>Target</c> is open closes it, when
+    /// every element between them is of <c>Continues</c>.
+    /// </summary>
+    [<NoEquality; NoComparison>]
+    type Scope =
+        {
+            Rule: string
+            Closes: string -> bool
+            Target: string -> bool
+            Continues: string -> bool
+        }
+
+    let private isItem tag =
+        tag = "dd" || tag = "dt"
+
+    /// <summary>The scopes, in the order <c>check</c> reports them.</summary>
+    let scopes: Scope array =
+        [|
+            {
+                Rule = "paragraph-close"
+                Closes = closesParagraph
+                Target = (fun tag -> tag = "p")
+                Continues = fun tag -> not (boundsParagraph tag)
+            }
+            {
+                Rule = "nested-anchor"
+                Closes = (fun tag -> tag = "a")
+                Target = (fun tag -> tag = "a")
+                Continues = fun tag -> not (boundsAnchor tag)
+            }
+            {
+                Rule = "nested-form"
+                Closes = (fun tag -> tag = "form")
+                Target = (fun tag -> tag = "form")
+                Continues = fun _ -> true
+            }
+            {
+                Rule = "nested-button"
+                Closes = (fun tag -> tag = "button")
+                Target = (fun tag -> tag = "button")
+                Continues = fun tag -> not (boundsButton tag)
+            }
+            {
+                Rule = "nested-list-item"
+                Closes = (fun tag -> tag = "li")
+                Target = (fun tag -> tag = "li")
+                Continues = continuesItem
+            }
+            {
+                Rule = "nested-description"
+                Closes = isItem
+                Target = isItem
+                Continues = continuesItem
+            }
+        |]
+
+    let rec private openWithin (scope: Scope) (ancestors: string list) =
         match ancestors with
         | [] -> false
         | tag :: rest ->
-            tag = target
-            || (not (bounds tag) && openWithin bounds target rest)
-
-    let private openParagraph ancestors =
-        openWithin boundsParagraph "p" ancestors
-
-    let private openAnchor ancestors =
-        openWithin boundsAnchor "a" ancestors
+            scope.Target tag
+            || (scope.Continues tag && openWithin scope rest)
 
     let private fosters parent tag =
         match parent with
@@ -721,6 +895,7 @@ module internal ContentModel =
         | "tbody"
         | "tfoot" -> tag <> "tr"
         | "tr" -> tag <> "td" && tag <> "th"
+        | "colgroup" -> tag <> "col"
         | _ -> false
 
     let private selectContent parent tag =
@@ -729,6 +904,7 @@ module internal ContentModel =
          && tag <> "optgroup"
          && tag <> "hr")
         || (parent = "optgroup" && tag <> "option")
+        || (parent = "option" && tag = "option")
 
     /// <summary>Raises when an element <c>tag</c> under <c>ancestors</c> is restructured by the HTML parser.</summary>
     let check (ancestors: string list) (tag: string) : unit =
@@ -753,16 +929,15 @@ module internal ContentModel =
                     "table-column"
                 elif fosters parent tag then
                     "table-foster"
-                elif closesParagraph tag && openParagraph ancestors then
-                    "paragraph-close"
-                elif tag = "a" && openAnchor ancestors then
-                    "nested-anchor"
-                elif tag = "form" && List.contains "form" ancestors then
-                    "nested-form"
-                elif selectContent parent tag then
-                    "select-content"
                 else
-                    null
+                    match
+                        scopes
+                        |> Array.tryFind (fun scope -> scope.Closes tag && openWithin scope ancestors)
+                    with
+                    | Some scope -> scope.Rule
+                    | None when isHeading tag && isHeading parent -> "nested-heading"
+                    | None when selectContent parent tag -> "select-content"
+                    | None -> null
 
             if not (isNull rule) then
                 restructures rule ancestors tag
@@ -789,16 +964,16 @@ module internal ContentModel =
             || c = '\f'
             || c = '\r')
 
-    /// <summary>The parts of <c>ancestors</c> that <c>checkSummary</c> depends on: the nearest tag and whether an <c>a</c>, a <c>form</c> and a <c>p</c> are open.</summary>
+    /// <summary>The nearest tag of <c>ancestors</c>, and whether each of <c>scopes</c> has an open target: the inputs of <c>checkSummary</c>.</summary>
     let contextKey (ancestors: string list) =
-        let flag value =
-            if value then "1" else "0"
+        let key = StringBuilder (List.head ancestors)
+        key.Append '|' |> ignore
 
-        List.head ancestors
-        + "|"
-        + flag (openAnchor ancestors)
-        + flag (List.contains "form" ancestors)
-        + flag (openParagraph ancestors)
+        for scope in scopes do
+            key.Append (if openWithin scope ancestors then '1' else '0')
+            |> ignore
+
+        key.ToString ()
 
     /// <summary>Raises when a definition with <c>summary</c>, written under <c>ancestors</c>, is restructured.</summary>
     let checkSummary (summary: RootSummary) (ancestors: string list) : unit =
@@ -808,70 +983,55 @@ module internal ContentModel =
         if summary.TextRoot then
             checkText ancestors false
 
-        if
-            not (isNull summary.ParagraphCloser)
-            && openParagraph ancestors
-        then
-            restructures "paragraph-close" ancestors summary.ParagraphCloser
+        for index in 0 .. scopes.Length - 1 do
+            let closer = summary.Closers[index]
 
-        if
-            not (isNull summary.Anchor)
-            && openAnchor ancestors
-        then
-            restructures "nested-anchor" ancestors summary.Anchor
-
-        if
-            not (isNull summary.Form)
-            && List.contains "form" ancestors
-        then
-            restructures "nested-form" ancestors summary.Form
+            if
+                not (isNull closer)
+                && openWithin scopes[index] ancestors
+            then
+                restructures scopes[index].Rule ancestors closer
 
     /// <summary>The summary of the definition whose template is <c>root</c>.</summary>
     let summarise (root: TemplateNode) : RootSummary =
         let tags = ResizeArray<string>()
         let textRoot = ref false
-        let anchor = ref (null: string)
-        let form = ref (null: string)
-        let closer = ref (null: string)
+        let closers = Array.create<string> scopes.Length null
 
-        let rec walk (nodes: TemplateNode array) (above: string list) (paragraph: bool) (anchors: bool) =
+        // `reaching[i]`: whether every ancestor in the definition continues the search of `scopes[i]`.
+        let rec walk (nodes: TemplateNode array) (above: string list) (reaching: bool array) =
             for flat in flatten nodes do
                 match flat with
                 | Item (ElementNode (tag, _, _, _, _, _, children)) ->
                     let tagName = name tag
-                    let at = String.Join ("/", Array.ofList (List.rev (tagName :: above)))
 
                     if above.IsEmpty then
                         tags.Add tagName
 
-                    if
-                        paragraph
-                        && isNull closer.Value
-                        && closesParagraph tagName
-                    then
-                        closer.Value <- at
+                    for index in 0 .. scopes.Length - 1 do
+                        if
+                            reaching[index]
+                            && isNull closers[index]
+                            && scopes[index].Closes tagName
+                        then
+                            closers[index] <- String.Join ("/", Array.ofList (List.rev (tagName :: above)))
 
-                    if anchors && isNull anchor.Value && tagName = "a" then
-                        anchor.Value <- at
+                    let inner =
+                        Array.init scopes.Length (fun index -> reaching[index] && scopes[index].Continues tagName)
 
-                    if isNull form.Value && tagName = "form" then
-                        form.Value <- at
-
-                    walk children (tagName :: above) (paragraph && not (boundsParagraph tagName)) (anchors && not (boundsAnchor tagName))
+                    walk children (tagName :: above) inner
                 | Item (TextSlotNode _) when above.IsEmpty -> textRoot.Value <- true
                 | Item (TextNode value) when above.IsEmpty && not (isWhitespace value) -> textRoot.Value <- true
                 | Item _
                 | Enter _
                 | Leave -> ()
 
-        walk [| root |] [] true true
+        walk [| root |] [] (Array.create scopes.Length true)
 
         {
             RootTags = tags.ToArray ()
             TextRoot = textRoot.Value
-            Anchor = anchor.Value
-            Form = form.Value
-            ParagraphCloser = closer.Value
+            Closers = closers
         }
 
 let private isBrowserOnly (property: PortableProperty) =
@@ -1194,11 +1354,18 @@ let private compilePlan (root: TemplateNode) : ServerPlan =
         LastIsText = not roots.IsEmpty && isText (List.last roots)
         Summary = ContentModel.summarise root
         CheckedContexts = Collections.Generic.HashSet<string>()
+        Accepted = []
     }
 
-/// <summary>Raises when the plan's roots are restructured under <c>ancestors</c>; each context key is checked until it is accepted once.</summary>
+/// <summary>
+/// Raises when the plan's roots are restructured under <c>ancestors</c>; each context key is checked until it is
+/// accepted once, and the rows of a region, which share one ancestor list, are checked by its first row.
+/// </summary>
 let private checkRoots (plan: ServerPlan) (ancestors: string list) =
-    if not ancestors.IsEmpty then
+    if
+        not ancestors.IsEmpty
+        && not (obj.ReferenceEquals (plan.Accepted, ancestors))
+    then
         let key = ContentModel.contextKey ancestors
         let contexts = plan.CheckedContexts
 #if FABLE_COMPILER
@@ -1210,6 +1377,7 @@ let private checkRoots (plan: ServerPlan) (ancestors: string list) =
             ContentModel.checkSummary plan.Summary ancestors
             lock contexts (fun () -> contexts.Add key |> ignore)
 #endif
+        plan.Accepted <- ancestors
 
 /// <summary>The definition's server plan, compiled on first use; every later call returns the same plan.</summary>
 let internal serverPlan (definition: TemplateComponent) : ServerPlan =

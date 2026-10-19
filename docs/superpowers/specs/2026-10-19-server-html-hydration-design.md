@@ -164,7 +164,7 @@ Server output fits the [boundary design](2026-10-19-view-boundaries-design.md): 
 
 ### Malformed HTML normalisation
 
-The HTML parser restructures some markup: `tr` directly in `table` gains an implied `tbody`, text inside table parts is foster-parented, a block element closes an open `p`, `a` inside `a` and `form` inside `form` are split, `option` outside `select`/`datalist` loses its wrapper. The client never parses rows in context: it clones each row's skeleton from a template element and appends it. Server HTML is parsed in context, so these cases diverge between server and client.
+The HTML parser restructures some markup: `tr` directly in `table` gains an implied `tbody`, text inside table parts is foster-parented, a block element closes an open `p`, `a` inside `a` and `form` inside `form` are split, a `select` drops a child other than `option`, `optgroup` and `hr`, an `optgroup` a child other than `option`, and an `option` inside an `option` closes the outer one (parser-version dependent). An `li` inside an open `li`, and a `dd` or `dt` inside an open `dd` or `dt`, closes the outer item, also through `div`, `span` and other non-special elements; a heading as the direct child of a heading closes it; a `button` inside a `button` closes the outer one. The client never parses rows in context: it clones each row's skeleton from a template element and appends it. Server HTML is parsed in context, so these cases diverge between server and client.
 
 The renderer rejects them instead of correcting them:
 
