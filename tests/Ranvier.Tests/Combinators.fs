@@ -796,30 +796,67 @@ let sortByTests =
                 Expect.equal runs.Value 2 "an upstream reorder that keeps the sorted order"
             }
 
-            test "a pass whose sort keys and upstream order are unchanged does not re-sort" {
-                use g = new Graph ()
-                use _ = g.Activate ()
-                let flight = createAsyncSource<Counted>()
-                let source = createSignal (items [ for i in 1..1000 -> i, i ])
+            testSequenced (
+                testList
+                    "tests reading the shared comparison counter"
+                    [
+                        test "a pass whose sort keys and upstream order are unchanged does not re-sort" {
+                            use g = new Graph ()
+                            use _ = g.Activate ()
+                            let flight = createAsyncSource<Counted>()
+                            let source = createSignal (items [ for i in 1..1000 -> i, i ])
 
-                let view =
-                    rows source
-                    |> Projection.sortBy (fun n -> if n < 0 then flight.Value else Counted n)
+                            let view =
+                                rows source
+                                |> Projection.sortBy (fun n -> if n < 0 then flight.Value else Counted n)
 
-                keysAndRows view |> ignore
-                comparisons.Value <- 0
+                            keysAndRows view |> ignore
+                            comparisons.Value <- 0
 
-                source.Value <- setN 1 -1 source.Value
-                flight.Settle (Counted 1)
+                            source.Value <- setN 1 -1 source.Value
+                            flight.Settle (Counted 1)
 
-                Expect.isLessThan comparisons.Value 3000 "O(N) comparisons over two passes, no sort"
-                Expect.equal view.Keys[0] 1 "key 1 keeps its slot"
+                            Expect.isLessThan comparisons.Value 3000 "O(N) comparisons over two passes, no sort"
+                            Expect.equal view.Keys[0] 1 "key 1 keeps its slot"
 
-                comparisons.Value <- 0
-                source.Value <- setN 2 5000 source.Value
-                Expect.isGreaterThan comparisons.Value 0 "a changed sort key re-sorts"
-                Expect.equal (Array.last view.Keys) 2 "key 2 sorts last"
-            }
+                            comparisons.Value <- 0
+                            source.Value <- setN 2 5000 source.Value
+                            Expect.isGreaterThan comparisons.Value 0 "a changed sort key re-sorts"
+                            Expect.equal (Array.last view.Keys) 2 "key 2 sorts last"
+                        }
+
+                        test "a sortByDescending pass whose sort keys and upstream order are unchanged does not re-sort" {
+                            use g = new Graph ()
+                            use _ = g.Activate ()
+                            let flight = createAsyncSource<Counted>()
+                            let source = createSignal (items [ for i in 1..1000 -> i, i ])
+
+                            let view =
+                                rows source
+                                |> Projection.sortByDescending (fun n -> if n < 0 then flight.Value else Counted n)
+
+                            keysAndRows view |> ignore
+                            let keysRuns = ref 0
+
+                            createEffect (fun () ->
+                                keysRuns.Value <- keysRuns.Value + 1
+                                view.Keys |> ignore)
+
+                            comparisons.Value <- 0
+                            source.Value <- setN 1 -1 source.Value
+                            flight.Settle (Counted 1)
+
+                            Expect.isLessThan comparisons.Value 3000 "O(N) comparisons over two passes, no sort"
+                            Expect.equal (Array.last view.Keys) 1 "key 1 keeps its slot"
+                            Expect.equal keysRuns.Value 1 "no Keys write"
+
+                            comparisons.Value <- 0
+                            source.Value <- setN 2 5000 source.Value
+                            Expect.isGreaterThan comparisons.Value 0 "a changed sort key re-sorts"
+                            Expect.equal view.Keys[0] 2 "key 2 sorts first"
+                        }
+                    ]
+            )
 
             test "an effect reading Keys and Get runs exactly once per write" {
                 use g = new Graph ()
@@ -1016,6 +1053,70 @@ let sortByTests =
                 let view =
                     rows source
                     |> Projection.sortBy (fun n ->
+                        calls.Value <- calls.Value + 1
+                        n)
+
+                keysAndRows view |> ignore
+                view.Dispose ()
+                calls.Value <- 0
+                source.Value <- setN 1 6 source.Value
+
+                Expect.equal calls.Value 0 "no sort-key runs after disposal"
+                Expect.isEmpty view.Keys "a disposed view is empty"
+            }
+
+            test "sortByDescending sorts largest first, and equal sort keys keep upstream order" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 2; 2, 3; 3, 2; 4, 1 ])
+                let view = rows source |> Projection.sortByDescending id
+
+                Expect.sequenceEqual view.Keys [ 2; 1; 3; 4 ] "descending, ties in upstream order"
+                source.Value <- List.rev source.Value
+                Expect.sequenceEqual view.Keys [ 2; 3; 1; 4 ] "the tie follows the upstream reorder"
+            }
+
+            test "sortByDescending orders NaN last, across updates" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, -1; 2, 3; 3, -1; 4, 1 ])
+
+                let view =
+                    rows source
+                    |> Projection.sortByDescending (fun n -> if n < 0 then nan else float n)
+
+                Expect.sequenceEqual view.Keys [ 2; 4; 1; 3 ] "NaN last, in upstream order"
+                source.Value <- setN 4 -1 source.Value
+                Expect.sequenceEqual view.Keys [ 2; 1; 3; 4 ] "a key turned NaN moves last"
+                source.Value <- setN 1 5 source.Value
+                Expect.sequenceEqual view.Keys [ 1; 2; 3; 4 ] "a key leaving NaN takes its sorted slot"
+                source.Value <- List.rev source.Value
+                Expect.sequenceEqual view.Keys [ 1; 2; 4; 3 ] "NaN ties follow the upstream reorder"
+            }
+
+            test "sortByDescending orders None after Some" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 2; 2, -1; 3, 1; 4, -1 ])
+
+                let view =
+                    rows source
+                    |> Projection.sortByDescending (fun n -> if n < 0 then None else Some n)
+
+                Expect.sequenceEqual view.Keys [ 1; 3; 2; 4 ] "None last, in upstream order"
+                source.Value <- setN 1 -1 source.Value
+                Expect.sequenceEqual view.Keys [ 3; 1; 2; 4 ] "a key turned None moves among the Nones in upstream order"
+            }
+
+            test "disposing a sortByDescending view detaches it from the upstream" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 2; 2, 4 ])
+                let calls = ref 0
+
+                let view =
+                    rows source
+                    |> Projection.sortByDescending (fun n ->
                         calls.Value <- calls.Value + 1
                         n)
 
@@ -1317,6 +1418,9 @@ let chainTests =
             >> Projection.sortBy (fun n -> n / 4)
             "sortBy then take",
             Projection.sortBy (fun n -> n / 4)
+            >> Projection.take (fun () -> 10)
+            "sortByDescending then take",
+            Projection.sortByDescending (fun n -> n / 4)
             >> Projection.take (fun () -> 10)
             "sub then map",
             Projection.sub (fun () -> 0) (fun () -> 10)

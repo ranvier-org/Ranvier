@@ -234,15 +234,43 @@ type internal FilterView<'K, 'V, 'U when 'K: equality>
         heldOut.Publish upstream
 
 /// <summary>
-/// The keys of <c>sortKeys</c> whose sort key has settled, ascending by sort key and then by upstream position, each with
-/// a row reading the upstream value.
+/// The rank orders of sorts and extremes: <c>compare</c>, with a <c>float</c> or <c>float32</c> NaN equal to NaN and
+/// after every other rank.
+/// </summary>
+module internal Ranks =
+    let isNaN (rank: 'S) =
+        match box rank with
+        | :? float as f -> System.Double.IsNaN f
+        | :? float32 as f -> System.Single.IsNaN f
+        | _ -> false
+
+    /// <summary>The order of <c>sortBy</c>.</summary>
+    let ascending (a: 'S) (b: 'S) =
+        match isNaN a, isNaN b with
+        | true, true -> 0
+        | true, false -> 1
+        | false, true -> -1
+        | false, false -> compare a b
+
+    /// <summary>The order of <c>sortByDescending</c>: largest first, NaN last.</summary>
+    let descending (a: 'S) (b: 'S) =
+        match isNaN a, isNaN b with
+        | true, true -> 0
+        | true, false -> 1
+        | false, true -> -1
+        | false, false -> compare b a
+
+/// <summary>
+/// The keys of <c>sortKeys</c> whose sort key has settled, ascending by sort key, or descending when <c>descending</c> is
+/// set, and then by upstream position, each with a row reading the upstream value.
 /// </summary>
 /// <remarks>
 /// A pending sort key keeps the key's last settled sort key. A failed sort key leaves the key out of <c>Keys</c> and keeps
-/// its row, which raises the failure. A <c>float</c> or <c>float32</c> NaN sort key orders after every other sort key.
+/// its row, which raises the failure. A <c>float</c> or <c>float32</c> NaN sort key orders after every other sort key in
+/// both directions.
 /// </remarks>
-type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>(graph: Graph, upstream: Projection<'K, 'V>, sortKeys: Projection<'K, 'S> ref)
-    =
+type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
+    (graph: Graph, upstream: Projection<'K, 'V>, sortKeys: Projection<'K, 'S> ref, descending: bool) =
     inherit
         RowsOf<'K, 'K, 'V>(
             graph,
@@ -266,19 +294,7 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>(graph: G
     /// <summary>Whether <c>order</c> holds the result of a completed sort.</summary>
     let mutable sorted = false
 
-    let isNaN (rank: 'S) =
-        match box rank with
-        | :? float as f -> System.Double.IsNaN f
-        | :? float32 as f -> System.Single.IsNaN f
-        | _ -> false
-
-    /// <summary><c>compare</c>, with NaN equal to NaN and after every other value.</summary>
-    let compareRanks (a: 'S) (b: 'S) =
-        match isNaN a, isNaN b with
-        | true, true -> 0
-        | true, false -> 1
-        | false, true -> -1
-        | false, false -> compare a b
+    let compareRanks = if descending then Ranks.descending else Ranks.ascending
 
     /// <summary>
     /// Whether <c>order</c> applies to this pass: the last sort completed, and this pass placed the keys and sort keys of the
@@ -1200,26 +1216,11 @@ module Projection =
 
         view :> Projection<'K, 'U>
 
-    /// <summary>
-    /// The keys of <c>upstream</c> with their values, ascending by <c>projection</c> of the value; equal sort keys keep upstream
-    /// order.
-    /// </summary>
-    /// <remarks>
-    /// A <c>float</c> or <c>float32</c> NaN sort key orders last; <c>None</c> orders first. A pending sort key keeps the key's last
-    /// settled sort key; a key whose sort key has never settled is only in <c>PendingKeys</c>. A throwing sort key excludes the
-    /// key, and <c>Get</c> and <c>TryGet</c> of the key raise its exception.
-    /// </remarks>
-    /// <example>
-    /// <code lang="fsharp">
-    /// let rows = createProjection (fun t -> t.Id) id (fun () -> todos.Value)
-    /// let byDue = rows |> Projection.sortBy (fun t -> t.Due)
-    /// </code>
-    /// </example>
-    let sortBy (projection: 'V -> 'S) (upstream: Projection<'K, 'V>) : Projection<'K, 'V> =
-        upstream.RequireRowMemos "Projection.sortBy"
+    let private sortIn (operation: string) (descending: bool) (projection: 'V -> 'S) (upstream: Projection<'K, 'V>) : Projection<'K, 'V> =
+        upstream.RequireRowMemos operation
         let graph = upstream.Graph
         let sortKeys = ref Unchecked.defaultof<Projection<'K, 'S>>
-        let view = new SortView<'K, 'V, 'S> (graph, upstream, sortKeys)
+        let view = new SortView<'K, 'V, 'S> (graph, upstream, sortKeys, descending)
 
         sortKeys.Value <-
             graph.RunOwned (
@@ -1237,6 +1238,41 @@ module Projection =
 
         view.PendingExtra <- fun () -> view.HeldOut
         view :> Projection<'K, 'V>
+
+    /// <summary>
+    /// The keys of <c>upstream</c> with their values, ascending by <c>projection</c> of the value; equal sort keys keep upstream
+    /// order.
+    /// </summary>
+    /// <remarks>
+    /// A <c>float</c> or <c>float32</c> NaN sort key orders last; <c>None</c> orders first. A pending sort key keeps the key's last
+    /// settled sort key; a key whose sort key has never settled is only in <c>PendingKeys</c>. A throwing sort key excludes the
+    /// key, and <c>Get</c> and <c>TryGet</c> of the key raise its exception.
+    /// </remarks>
+    /// <example>
+    /// <code lang="fsharp">
+    /// let rows = createProjection (fun t -> t.Id) id (fun () -> todos.Value)
+    /// let byDue = rows |> Projection.sortBy (fun t -> t.Due)
+    /// </code>
+    /// </example>
+    let sortBy (projection: 'V -> 'S) (upstream: Projection<'K, 'V>) : Projection<'K, 'V> =
+        sortIn "Projection.sortBy" false projection upstream
+
+    /// <summary>
+    /// The keys of <c>upstream</c> with their values, descending by <c>projection</c> of the value; equal sort keys keep
+    /// upstream order.
+    /// </summary>
+    /// <remarks>
+    /// A <c>float</c> or <c>float32</c> NaN sort key orders last; <c>None</c> orders after <c>Some</c>. Costs, pending and
+    /// failed sort keys follow <c>sortBy</c>.
+    /// </remarks>
+    /// <example>
+    /// <code lang="fsharp">
+    /// let rows = createProjection (fun t -> t.Id) id (fun () -> todos.Value)
+    /// let newestFirst = rows |> Projection.sortByDescending (fun t -> t.Created)
+    /// </code>
+    /// </example>
+    let sortByDescending (projection: 'V -> 'S) (upstream: Projection<'K, 'V>) : Projection<'K, 'V> =
+        sortIn "Projection.sortByDescending" true projection upstream
 
     let private slice (offset: unit -> int) (count: unit -> int) (upstream: Projection<'K, 'V>) : Projection<'K, 'V> =
         upstream.RequireRowMemos "Projection.slice"

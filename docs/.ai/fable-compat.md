@@ -48,7 +48,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Reads.fs | 14 | 14 | 14 | 14 | 14 | 14 | 0 | 0 |
 | Batching.fs | 11 | 11 | 11 | 11 | 11 | 11 | 0 | 0 |
 | AsyncEdges.fs | 25 | 22 | 19 | 25 | 22 | 19 | 4 | 0 |
-| Projections.fs | 117 | 117 | 117 | 117 | 117 | 117 | 10 | 0 |
+| Projections.fs | 119 | 119 | 119 | 119 | 119 | 119 | 10 | 0 |
 | TrimmedPass.fs | 59 | 59 | 59 | 59 | 59 | 59 | 0 | 0 |
 | Lookups.fs | 31 | 31 | 31 | 31 | 31 | 31 | 0 | 0 |
 | MemoScopes.fs | 24 | 24 | 24 | 24 | 24 | 24 | 0 | 0 |
@@ -57,7 +57,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | DischargeReentry.fs | 29 | 29 | 29 | 29 | 29 | 29 | 1 | 0 |
 | MapSemantics.fs | 42 | 42 | 42 | 42 | 42 | 42 | 0 | 1 |
 | Lenses.fs | 23 | 20 | 20 | 23 | 20 | 20 | 0 | 0 |
-| Combinators.fs | 176 | 176 | 176 | 176 | 176 | 176 | 1 | 0 |
+| Combinators.fs | 182 | 182 | 182 | 182 | 182 | 182 | 1 | 0 |
 | Timed.fs | 31 | 31 | 31 | 38 | 38 | 38 | 0 | 0 |
 | Streams.fs | 26 | 26 | 26 | 26 | 26 | 26 | 1 | 0 |
 | PreviousValues.fs | 12 | 12 | 12 | 12 | 12 | 12 | 15 | 0 |
@@ -81,7 +81,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 9 | 9 | 9 | 9 | 9 | 9 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1461 | 1440 | 1437 | 1601 | 1575 | 1572 | 100 | 1 |
+| **Total** | 1469 | 1448 | 1445 | 1609 | 1583 | 1580 | 100 | 1 |
 
 ## Tests.fs
 
@@ -995,7 +995,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | a view stops following when the scope that created it re-runs | AsObservableCollection returns an ObservableCollection, which the library omits under Fable. |
 | AsObservableCollection over a pending pass resets once when the pass settles | AsObservableCollection returns an ObservableCollection, which the library omits under Fable. |
 
-<details><summary>117 passed in every build and delivery that runs them</summary>
+<details><summary>119 passed in every build and delivery that runs them</summary>
 
 - the key order follows the source
 - a projection nothing reads is never recomputed
@@ -1090,10 +1090,12 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a removal whose cleanup disposes the projection gives a reset with empty keys
 - disposing the last reader, or its owner, stops recording
 - groupBy groups follow the law (seed 11)
+- sortByDescending keys follow the law while sort keys fail and recover (seed 11)
 - index projection keys follow the law (seed 11)
 - filter keys follow the law while predicates fail and recover (seed 11)
 - sortBy keys follow the law while sort keys fail and recover (seed 11)
 - groupBy groups follow the law (seed 4242)
+- sortByDescending keys follow the law while sort keys fail and recover (seed 4242)
 - index projection keys follow the law (seed 4242)
 - filter keys follow the law while predicates fail and recover (seed 4242)
 - sortBy keys follow the law while sort keys fail and recover (seed 4242)
@@ -1425,7 +1427,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | --- | --- |
 | foldGroup rejects a null subtract | Fable wraps a null function argument in a closure, so it is never null. |
 
-<details><summary>176 passed in every build and delivery that runs them</summary>
+<details><summary>182 passed in every build and delivery that runs them</summary>
 
 - 200 single edits at N=1000 make 200 predicate calls
 - a Keys reader wakes only when membership flips
@@ -1458,7 +1460,6 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - None sorts before Some, across updates
 - 200 single edits at N=1000 make 200 sort-key calls
 - a Keys reader wakes only when the order changes
-- a pass whose sort keys and upstream order are unchanged does not re-sort
 - an effect reading Keys and Get runs exactly once per write
 - an unread view leaves an unread upstream idle
 - a key removed and re-added while unread sorts by the new upstream row
@@ -1469,6 +1470,12 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - Get outside Keys raises KeyNotFoundException
 - removing a key disposes the key's memo
 - disposing the view detaches it from the upstream
+- sortByDescending sorts largest first, and equal sort keys keep upstream order
+- sortByDescending orders NaN last, across updates
+- sortByDescending orders None after Some
+- disposing a sortByDescending view detaches it from the upstream
+- tests reading the shared comparison counter / a pass whose sort keys and upstream order are unchanged does not re-sort
+- tests reading the shared comparison counter / a sortByDescending pass whose sort keys and upstream order are unchanged does not re-sort
 - take, skip and sub select positions and clamp counts as List.truncate and a clamped skip do
 - the window follows signals read by offset and count, and a reader runs once per change
 - a key that stays in a shifted window keeps its row
@@ -1487,6 +1494,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - an effect reading Keys and Get of filter then mapWith runs exactly once per write
 - an effect reading Keys and Get of choose then sortBy runs exactly once per write
 - an effect reading Keys and Get of sortBy then take runs exactly once per write
+- an effect reading Keys and Get of sortByDescending then take runs exactly once per write
 - an effect reading Keys and Get of sub then map runs exactly once per write
 - mapping runs once per key and its reader re-runs on an edit
 - a node the mapping creates is disposed with its key

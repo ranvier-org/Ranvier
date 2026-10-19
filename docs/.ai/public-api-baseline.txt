@@ -285,6 +285,7 @@ member Ranvier.ProjectionModule static mapWith<3>(Microsoft.FSharp.Core.FSharpFu
 member Ranvier.ProjectionModule static pick<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,Microsoft.FSharp.Core.FSharpOption`1<!!1>>,Ranvier.Projection`2<!!2,!!0>) : Ranvier.Memo`1<!!1>
 member Ranvier.ProjectionModule static skip<2>(Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,Int32>,Ranvier.Projection`2<!!0,!!1>) : Ranvier.Projection`2<!!0,!!1>
 member Ranvier.ProjectionModule static sortBy<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,Ranvier.Projection`2<!!2,!!0>) : Ranvier.Projection`2<!!2,!!0>
+member Ranvier.ProjectionModule static sortByDescending<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,Ranvier.Projection`2<!!2,!!0>) : Ranvier.Projection`2<!!2,!!0>
 member Ranvier.ProjectionModule static sub<2>(Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,Int32>,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,Int32>,Ranvier.Projection`2<!!0,!!1>) : Ranvier.Projection`2<!!0,!!1>
 member Ranvier.ProjectionModule static sumBy$W<3>(Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,!!1>,Microsoft.FSharp.Core.FSharpFunc`2<!!1,Microsoft.FSharp.Core.FSharpFunc`2<!!1,!!1>>,Microsoft.FSharp.Core.FSharpFunc`2<!!1,Microsoft.FSharp.Core.FSharpFunc`2<!!1,!!1>>,Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,Ranvier.Projection`2<!!2,!!0>) : Ranvier.Memo`1<!!1>
 member Ranvier.ProjectionModule static sumBy<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,Ranvier.Projection`2<!!2,!!0>) : Ranvier.Memo`1<!!1>

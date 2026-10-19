@@ -16,7 +16,7 @@ let active = graph.Activate ()
 
 The examples run inside an [active graph](graph.fsx).
 
-Derive a live view from a projection with `filter`, `choose`, `map`, `mapWith`, `sortBy` or `groupBy`.
+Derive a live view from a projection with `filter`, `choose`, `map`, `mapWith`, `sortBy`, `sortByDescending` or `groupBy`.
 Each view keeps rows by key and re-runs its function only for changed upstream rows.
 
 As with a source projection, `Keys` tracks membership and order; `Get key` tracks a row value.
@@ -94,6 +94,19 @@ byLength.Keys
 [|2; 1; 3|]
 ```
 
+`Projection.sortByDescending` orders largest first. Equal sort keys keep their upstream order, a NaN sort key still
+comes last, and `None` comes after `Some`.
+
+
+*)
+let longestFirst = orderedTitles |> Projection.sortByDescending String.length
+longestFirst.Keys
+(**
+
+```text
+[|1; 3; 2|]
+```
+
 :::details Sort costs
 
 When every sort key, membership and the upstream order are unchanged, a `sortBy` pass costs O(N) and publishes no new
@@ -126,7 +139,7 @@ describe its pass, not its rows.
 
 Pinned by `a throwing predicate excludes the key, and Get and TryGet raise its error`, `a pending predicate keeps
 membership; a never-settled key is only in PendingKeys`, `an effect reading Keys and Get runs exactly once per write`,
-`sorts ascending, and equal sort keys keep upstream order`, `ties keep upstream order at 40 keys, across reorder and
+`sorts ascending, and equal sort keys keep upstream order`, `sortByDescending sorts largest first, and equal sort keys keep upstream order`, `sortByDescending orders NaN last, across updates`, `ties keep upstream order at 40 keys, across reorder and
 removal`, `NaN sort keys sort after every other key, across updates`, `None sorts before Some, across updates`, `a pass whose sort keys and upstream order are unchanged does not re-sort` and
 `a pending sort key keeps its last settled sort key; a never-settled key is only in PendingKeys`, `a pending chooser
 keeps membership; a never-settled key is only in PendingKeys`, `a throwing chooser excludes the key, and Get and TryGet
