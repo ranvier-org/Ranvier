@@ -37,24 +37,30 @@ public class StreamTests
     [Fact]
     public void FromAsyncEnumerableDeliversItems()
     {
-        using var active = new Graph().Activate();
-        var memo = Reactive.StreamFold(0, (int s, int x) => s + x, _ => StreamSources.FromAsyncEnumerable(Items()));
+        var graph = new Graph(GraphOptions.Default.WithDispatcher(new ManualDispatcher()));
+        using var active = graph.Activate();
+        var finished = new TaskCompletionSource();
+        var memo = Reactive.StreamFold(0, (int s, int x) => s + x,
+            _ => StreamSources.FromAsyncEnumerable(Items(finished)));
 
-        var done = false;
-        for (var i = 0; i < 100 && !done; i++)
-        {
-            Thread.Sleep(50);
-            done = memo.TryValue.TryGetValue(out var total) && total == 6;
-        }
-
-        Assert.True(done);
+        Assert.True(memo.TryValue.IsPending || memo.TryValue.TryGetValue(out _));
+        Assert.True(finished.Task.Wait(TimeSpan.FromSeconds(10)), "the enumerator did not finish within 10 s");
+        graph.Pump();
+        Assert.Equal(6, memo.Value);
     }
 
-    private static async IAsyncEnumerable<int> Items()
+    private static async IAsyncEnumerable<int> Items(TaskCompletionSource finished)
     {
-        await Task.Yield();
-        yield return 1;
-        yield return 2;
-        yield return 3;
+        try
+        {
+            await Task.Yield();
+            yield return 1;
+            yield return 2;
+            yield return 3;
+        }
+        finally
+        {
+            finished.TrySetResult();
+        }
     }
 }
