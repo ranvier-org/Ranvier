@@ -273,6 +273,8 @@ member Ranvier.ProjectionModule static foldGroup<3>(Microsoft.FSharp.Core.FSharp
 member Ranvier.ProjectionModule static foldGroupBy<5>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,Microsoft.FSharp.Core.FSharpFunc`2<!!2,Microsoft.FSharp.Core.FSharpFunc`2<!!1,!!2>>,Microsoft.FSharp.Core.FSharpFunc`2<!!2,Microsoft.FSharp.Core.FSharpFunc`2<!!1,!!2>>,!!2,Microsoft.FSharp.Core.FSharpFunc`2<!!2,!!3>,Ranvier.Projection`2<!!4,!!0>) : Ranvier.Memo`1<!!3>
 member Ranvier.ProjectionModule static forall<2>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,Boolean>,Ranvier.Projection`2<!!1,!!0>) : Ranvier.Memo`1<Boolean>
 member Ranvier.ProjectionModule static groupBy<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,Ranvier.Projection`2<!!2,!!0>) : Ranvier.Grouping`3<!!1,!!2,!!0>
+member Ranvier.ProjectionModule static isEmpty<2>(Ranvier.Projection`2<!!0,!!1>) : Ranvier.Memo`1<Boolean>
+member Ranvier.ProjectionModule static length<2>(Ranvier.Projection`2<!!0,!!1>) : Ranvier.Memo`1<Int32>
 member Ranvier.ProjectionModule static map<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,Ranvier.Projection`2<!!2,!!0>) : Ranvier.Projection`2<!!2,!!1>
 member Ranvier.ProjectionModule static mapWith<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,!!1>,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,!!2>>>,Ranvier.Projection`2<!!0,!!1>) : Ranvier.Projection`2<!!0,!!2>
 member Ranvier.ProjectionModule static skip<2>(Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,Int32>,Ranvier.Projection`2<!!0,!!1>) : Ranvier.Projection`2<!!0,!!1>

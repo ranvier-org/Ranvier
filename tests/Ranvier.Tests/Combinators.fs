@@ -2358,3 +2358,116 @@ let ownershipTests =
                 Expect.equal secondDisposals.Value 1 "disposing the memo disposes the current companion once"
             }
         ]
+
+[<Tests>]
+let sizeTests =
+    testList
+        "Projection.length and isEmpty"
+        [
+            test "length and isEmpty follow membership" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1; 2, 2 ])
+                let up = rows source
+                let count = Projection.length up
+                let empty = Projection.isEmpty up
+                let seen = ResizeArray<int * bool>()
+
+                createEffect (fun () -> seen.Add (count.Value, empty.Value))
+                source.Value <- source.Value |> List.filter (fun x -> x.Id <> 1)
+                source.Value <- source.Value |> List.filter (fun x -> x.Id <> 2)
+                source.Value <- source.Value @ items [ 3, 3 ]
+
+                Expect.sequenceEqual seen [ (2, false); (1, false); (0, true); (1, false) ] "one result per membership change"
+            }
+
+            test "a row edit wakes no reader" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1; 2, 2 ])
+                let up = rows source
+                let count = Projection.length up
+                let empty = Projection.isEmpty up
+                let runs = ref 0
+
+                createEffect (fun () ->
+                    runs.Value <- runs.Value + 1
+                    count.Value |> ignore
+                    empty.Value |> ignore)
+
+                source.Value <- setN 1 5 source.Value
+                Expect.equal runs.Value 1 "an edit keeps the key count"
+            }
+
+            test "isEmpty wakes its readers only when emptiness changes" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1; 2, 2; 3, 3 ])
+                let empty = rows source |> Projection.isEmpty
+                let runs = ref 0
+
+                createEffect (fun () ->
+                    runs.Value <- runs.Value + 1
+                    empty.Value |> ignore)
+
+                source.Value <- source.Value |> List.filter (fun x -> x.Id <> 3)
+                Expect.equal runs.Value 1 "a removal that leaves keys"
+                source.Value <- []
+                Expect.equal runs.Value 2 "the last removal"
+            }
+
+            test "length over a filter follows the filter's membership" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1; 2, 2; 3, 3 ])
+
+                let count =
+                    rows source
+                    |> Projection.filter (fun n -> n % 2 = 0)
+                    |> Projection.length
+
+                Expect.equal count.Value 1 "key 2"
+                source.Value <- setN 1 4 source.Value
+                Expect.equal count.Value 2 "key 1 joins"
+            }
+
+            test "a pending pass makes length pending until it settles" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createAsyncSource<int list>()
+
+                let count =
+                    createProjection id id (fun () -> source.Value)
+                    |> Projection.length
+
+                Expect.throwsT<NotReadyException> (fun () -> count.Value |> ignore) "pending"
+                source.Settle [ 1; 2 ]
+                Expect.equal count.Value 2 "settled"
+            }
+
+            test "disposing the calling scope stops length" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1; 2, 2 ])
+                let up = rows source
+                let runs = ref 0
+                let scope = ref Unchecked.defaultof<Owner>
+
+                let count =
+                    createRoot (fun owner ->
+                        scope.Value <- owner
+                        let count = Projection.length up
+
+                        createEffect (fun () ->
+                            runs.Value <- runs.Value + 1
+                            count.Value |> ignore)
+
+                        count)
+
+                scope.Value.Dispose ()
+                source.Value <- items [ 1, 1 ]
+
+                Expect.equal runs.Value 1 "the effect is disposed"
+                Expect.equal count.Value 2 "the memo reads its last value"
+            }
+        ]

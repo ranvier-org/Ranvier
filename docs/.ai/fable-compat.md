@@ -48,7 +48,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Reads.fs | 14 | 14 | 14 | 14 | 14 | 14 | 0 | 0 |
 | Batching.fs | 11 | 11 | 11 | 11 | 11 | 11 | 0 | 0 |
 | AsyncEdges.fs | 25 | 22 | 19 | 25 | 22 | 19 | 4 | 0 |
-| Projections.fs | 116 | 116 | 116 | 116 | 116 | 116 | 10 | 0 |
+| Projections.fs | 117 | 117 | 117 | 117 | 117 | 117 | 10 | 0 |
 | TrimmedPass.fs | 59 | 59 | 59 | 59 | 59 | 59 | 0 | 0 |
 | Lookups.fs | 31 | 31 | 31 | 31 | 31 | 31 | 0 | 0 |
 | MemoScopes.fs | 24 | 24 | 24 | 24 | 24 | 24 | 0 | 0 |
@@ -57,7 +57,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | DischargeReentry.fs | 29 | 29 | 29 | 29 | 29 | 29 | 1 | 0 |
 | MapSemantics.fs | 42 | 42 | 42 | 42 | 42 | 42 | 0 | 1 |
 | Lenses.fs | 23 | 20 | 20 | 23 | 20 | 20 | 0 | 0 |
-| Combinators.fs | 145 | 145 | 145 | 145 | 145 | 145 | 1 | 0 |
+| Combinators.fs | 151 | 151 | 151 | 151 | 151 | 151 | 1 | 0 |
 | Timed.fs | 31 | 31 | 31 | 38 | 38 | 38 | 0 | 0 |
 | Streams.fs | 26 | 26 | 26 | 26 | 26 | 26 | 1 | 0 |
 | PreviousValues.fs | 12 | 12 | 12 | 12 | 12 | 12 | 15 | 0 |
@@ -81,7 +81,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 9 | 9 | 9 | 9 | 9 | 9 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1429 | 1408 | 1405 | 1569 | 1543 | 1540 | 99 | 1 |
+| **Total** | 1436 | 1415 | 1412 | 1576 | 1550 | 1547 | 99 | 1 |
 
 ## Tests.fs
 
@@ -994,7 +994,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | a view stops following when the scope that created it re-runs | AsObservableCollection returns an ObservableCollection, which the library omits under Fable. |
 | AsObservableCollection over a pending pass resets once when the pass settles | AsObservableCollection returns an ObservableCollection, which the library omits under Fable. |
 
-<details><summary>116 passed in every build and delivery that runs them</summary>
+<details><summary>117 passed in every build and delivery that runs them</summary>
 
 - the key order follows the source
 - a projection nothing reads is never recomputed
@@ -1110,6 +1110,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a memo-free factory failure is raised by reads of its row
 - memo-free create-first rows keep the previous rows when a factory fails
 - value readers and combinators reject memo-free rows
+- size and position memos read a projection from createProjectionOnce
 - ensureUniqueKeys raises the pass's message for int, string, record and tuple keys
 - ensureUniqueKeys keeps boxed keys of different types apart, as = does
 
@@ -1423,7 +1424,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | --- | --- |
 | foldGroup rejects a null subtract | Fable wraps a null function argument in a closure, so it is never null. |
 
-<details><summary>145 passed in every build and delivery that runs them</summary>
+<details><summary>151 passed in every build and delivery that runs them</summary>
 
 - 200 single edits at N=1000 make 200 predicate calls
 - a Keys reader wakes only when membership flips
@@ -1570,6 +1571,12 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a disposed aggregate reads its last value
 - disposing only the calling scope of a foldGroupBy memo stops its fold steps
 - Memo.Adopt disposes a replaced companion and the last companion once
+- length and isEmpty follow membership
+- a row edit wakes no reader
+- isEmpty wakes its readers only when emptiness changes
+- length over a filter follows the filter's membership
+- a pending pass makes length pending until it settles
+- disposing the calling scope stops length
 
 </details>
 

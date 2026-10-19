@@ -2796,6 +2796,18 @@ let rowOptionTests =
                 Expect.throwsT<NotSupportedException> (fun () -> Projection.fold (+) 0 proj |> ignore) "fold"
             }
 
+            test "size and position memos read a projection from createProjectionOnce" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let items = createSignal [ 1; 2 ]
+
+                let proj =
+                    createProjectionOnce ProjectionOptions.None id (fun item -> item () * 10) (fun () -> items.Value)
+
+                Expect.equal (Projection.length proj).Value 2 "length"
+                Expect.isFalse (Projection.isEmpty proj).Value "isEmpty"
+            }
+
             test "ensureUniqueKeys raises the pass's message for int, string, record and tuple keys" {
                 use g = new Graph ()
                 use _ = g.Activate ()

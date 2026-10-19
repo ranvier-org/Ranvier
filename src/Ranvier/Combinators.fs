@@ -1449,3 +1449,16 @@ module Projection =
     let forall (predicate: 'V -> bool) (upstream: Projection<'K, 'V>) : Memo<bool> =
         upstream
         |> foldGroupBy predicate (fun n hit -> if hit then n else n + 1) (fun n hit -> if hit then n else n - 1) 0 (fun n -> n = 0)
+
+    /// <summary>A memo of the number of keys of <c>upstream</c>.</summary>
+    /// <remarks>
+    /// Depends exclusively on <c>Keys</c>. Pending rows count, as in <c>Count</c>. A pending or failed pass makes the memo
+    /// pending or failed.
+    /// </remarks>
+    let length (upstream: Projection<'K, 'V>) : Memo<int> =
+        Memo<int>.Create(upstream.Graph, (fun _ -> upstream.Keys.Length), ScopeMode.Pure)
+
+    /// <summary>A memo of whether <c>Keys</c> of <c>upstream</c> is empty.</summary>
+    /// <remarks>Depends on <c>Keys</c> as <c>length</c> does, and wakes its readers only when emptiness changes.</remarks>
+    let isEmpty (upstream: Projection<'K, 'V>) : Memo<bool> =
+        Memo<bool>.Create(upstream.Graph, (fun _ -> upstream.Keys.Length = 0), ScopeMode.Pure)

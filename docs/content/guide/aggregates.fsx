@@ -56,6 +56,7 @@ let rows = createProjection _.Id id (fun () -> tasks.Value)
 | `Projection.countBy predicate` | the count of values satisfying `predicate` | as `foldGroup` |
 | `Projection.exists predicate` | whether `countBy predicate` is above zero | as `foldGroup` |
 | `Projection.forall predicate` | whether `countBy` of the misses is zero | as `foldGroup` |
+| `Projection.length`, `Projection.isEmpty` | the key count; whether it is zero | no work: a row edit wakes neither |
 
 :::
 
@@ -196,7 +197,33 @@ These functions re-run on row changes, outside the calling scope. A node created
 `InvalidOperationException`; create it outside the aggregate and read it inside.
 
 :::
+*)
 
+(**
+## Size
+
+`Projection.length` and `Projection.isEmpty` follow `Keys` alone: a row edit wakes neither, and `isEmpty` wakes its
+readers only when the projection becomes empty or stops being empty. Both also read a projection from
+`createProjectionOnce`.
+*)
+
+let scores = createSignal [ 1, 40; 2, 75; 3, 60 ]
+let scoreRows = createProjection fst snd (fun () -> scores.Value)
+let scoreCount = scoreRows |> Projection.length
+let noScores = scoreRows |> Projection.isEmpty
+
+(scoreCount.Value, noScores.Value) // (3, false)
+
+(**
+:::details Tests covering this behaviour
+
+Pinned by the `Projection.length and isEmpty` tests, including `a row edit wakes no reader` and `isEmpty wakes its
+readers only when emptiness changes`
+([Combinators.fs](https://github.com/shayanhabibi/Ranvier/blob/master/tests/Ranvier.Tests/Combinators.fs)).
+:::
+*)
+
+(**
 ## Lifetime
 
 The aggregate belongs to the scope that created it. Disposing the aggregate, or that scope, disposes it with the views
