@@ -465,3 +465,207 @@ type StreamMemo<'S>
     interface IDisposable with
         member this.Dispose() =
             this.Dispose ()
+
+/// <summary>Stream sources from common item producers.</summary>
+[<RequireQualifiedAccess; CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module StreamSource =
+    /// <summary>A source whose every start calls <c>run</c>.</summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>run</c> is null.</exception>
+    let create (run: StreamSink<'T> -> CancellationToken -> Task) : StreamSource<'T> =
+        if Platform.isNull (box run) then
+            nullArg (nameof run)
+
+        { new StreamSource<'T>() with
+            member _.Run(sink, token) =
+                run sink token
+        }
+
+    /// <summary>Subscribes on each start: <c>OnNext</c> delivers, <c>OnCompleted</c> completes, <c>OnError</c> fails.</summary>
+    /// <remarks>Cancellation disposes the subscription and completes the task.</remarks>
+    let ofObservable (items: IObservable<'T>) : StreamSource<'T> =
+        if Platform.isNull (box items) then
+            nullArg (nameof items)
+
+        create (fun sink token ->
+            let finished = Platform.completion<unit>()
+
+            let subscription =
+                items.Subscribe
+                    { new IObserver<'T> with
+                        member _.OnNext item =
+                            sink.Next item
+
+                        member _.OnCompleted() =
+                            finished.Resolve ()
+
+                        member _.OnError error =
+                            finished.Reject error
+                    }
+
+            token.Register (fun () ->
+                subscription.Dispose ()
+                finished.Resolve ())
+            |> ignore
+
+            finished.Task :> Task)
+
+#if !FABLE_COMPILER
+    /// <summary>
+    /// Enumerates on each start with the stream's token. Items already available are delivered without an
+    /// intervening continuation. <c>DisposeAsync</c> runs once, on completion, failure or cancellation.
+    /// </summary>
+    let ofAsyncEnumerable (items: Collections.Generic.IAsyncEnumerable<'T>) : StreamSource<'T> =
+        if Platform.isNull (box items) then
+            nullArg (nameof items)
+
+        create (fun sink token ->
+            let finished = Platform.completion<unit>()
+            let enumerator = items.GetAsyncEnumerator token
+
+            let finish (error: exn) =
+                let disposal =
+                    try
+                        enumerator.DisposeAsync().AsTask()
+                    with disposeError ->
+                        Task.FromException disposeError
+
+                disposal.ContinueWith (
+                    Action<Task>(fun d ->
+                        if not (isNull error) then
+                            finished.Reject error
+                        elif d.IsFaulted then
+                            finished.Reject (d.Exception.GetBaseException ())
+                        else
+                            finished.Resolve ()),
+                    TaskContinuationOptions.ExecuteSynchronously
+                )
+                |> ignore
+
+            let rec pump () =
+                try
+                    let mutable next = enumerator.MoveNextAsync ()
+                    let mutable go = true
+
+                    while go && next.IsCompleted do
+                        if next.Result then
+                            sink.Next enumerator.Current
+                            next <- enumerator.MoveNextAsync ()
+                        else
+                            go <- false
+                            finish null
+
+                    if go then
+                        next
+                            .AsTask()
+                            .ContinueWith(
+                                Action<Task<bool>>(fun t ->
+                                    if t.IsFaulted then
+                                        finish (t.Exception.GetBaseException ())
+                                    elif t.IsCanceled then
+                                        finish (OperationCanceledException token)
+                                    elif t.Result then
+                                        sink.Next enumerator.Current
+                                        pump ()
+                                    else
+                                        finish null),
+                                TaskContinuationOptions.ExecuteSynchronously
+                            )
+                        |> ignore
+                with error ->
+                    finish error
+
+            pump ()
+            finished.Task :> Task)
+#endif
+
+#if NET8_0_OR_GREATER && !FABLE_COMPILER
+    /// <summary>
+    /// Reads on each start: waits with the stream's token, then delivers every buffered item before waiting again. The
+    /// stream completes when the channel completes, and fails with the exception the writer completed it with.
+    /// </summary>
+    let ofChannel (reader: Channels.ChannelReader<'T>) : StreamSource<'T> =
+        if Platform.isNull (box reader) then
+            nullArg (nameof reader)
+
+        create (fun sink token ->
+            let finished = Platform.completion<unit>()
+
+            let rec wait () =
+                reader
+                    .WaitToReadAsync(token)
+                    .AsTask()
+                    .ContinueWith(
+                        Action<Task<bool>>(fun t ->
+                            if t.IsCanceled then
+                                finished.Reject (OperationCanceledException token)
+                            elif t.IsFaulted then
+                                finished.Reject (t.Exception.GetBaseException ())
+                            elif t.Result then
+                                let mutable item = Unchecked.defaultof<'T>
+
+                                while reader.TryRead &item do
+                                    sink.Next item
+
+                                wait ()
+                            else
+                                finished.Resolve ()),
+                        TaskContinuationOptions.ExecuteSynchronously
+                    )
+                |> ignore
+
+            wait ()
+            finished.Task :> Task)
+#endif
+
+#if FABLE_COMPILER
+    [<Fable.Core.Emit("$0[Symbol.asyncIterator]()")>]
+    let private iteratorOf (items: Fable.Core.JS.AsyncIterable<'T>) : obj =
+        Fable.Core.Util.jsNative
+
+    [<Fable.Core.Emit("$0.next()")>]
+    let private nextOf (iterator: obj) : Task<obj> =
+        Fable.Core.Util.jsNative
+
+    [<Fable.Core.Emit("($0.return ? $0.return() : undefined)")>]
+    let private returnOf (iterator: obj) : unit =
+        Fable.Core.Util.jsNative
+
+    [<Fable.Core.Emit("$0.done")>]
+    let private isDone (result: obj) : bool =
+        Fable.Core.Util.jsNative
+
+    [<Fable.Core.Emit("$0.value")>]
+    let private valueOf (result: obj) : 'T =
+        Fable.Core.Util.jsNative
+
+    /// <summary>Iterates on each start; cancellation calls the iterator's <c>return ()</c>.</summary>
+    let ofAsyncIterable (items: Fable.Core.JS.AsyncIterable<'T>) : StreamSource<'T> =
+        if Platform.isNull (box items) then
+            nullArg (nameof items)
+
+        create (fun sink token ->
+            let finished = Platform.completion<unit>()
+            let iterator = iteratorOf items
+            let mutable stopped = false
+
+            token.Register (fun () ->
+                stopped <- true
+                returnOf iterator
+                finished.Resolve ())
+            |> ignore
+
+            let rec step () =
+                Platform.whenSettled (nextOf iterator) (fun outcome ->
+                    if not stopped then
+                        match outcome with
+                        | Platform.FlightOutcome.Completed result when isDone result -> finished.Resolve ()
+                        | Platform.FlightOutcome.Completed result ->
+                            sink.Next (valueOf<'T> result)
+                            step ()
+                        | Platform.FlightOutcome.Faulted error
+                        | Platform.FlightOutcome.Canceled error -> finished.Reject error)
+                |> ignore
+
+            step ()
+            finished.Task :> Task)
+#endif

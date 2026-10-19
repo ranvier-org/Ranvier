@@ -709,3 +709,173 @@ let tests =
                 Expect.equal (reading memo) (Ready expected) "every item folded once"
 #endif
         ]
+
+type private Recorder<'T>() =
+    let observers = ResizeArray<IObserver<'T>>()
+    member val Unsubscribed = 0 with get, set
+    member _.Observer = observers[observers.Count - 1]
+
+    interface IObservable<'T> with
+        member this.Subscribe observer =
+            observers.Add observer
+
+            { new IDisposable with
+                member _.Dispose() =
+                    this.Unsubscribed <- this.Unsubscribed + 1
+            }
+
+[<Tests>]
+let converterTests =
+    testList
+        "Stream sources"
+        [
+            testCaseAsync "ofObservable: OnNext publishes, OnCompleted keeps the state, restart unsubscribes once"
+            <| async {
+                use graph = new Graph ()
+                let subject = Recorder<int>()
+                let topic = Signal (graph, 0)
+
+                let memo =
+                    graph.Run (fun () ->
+                        Api.createStream (fun _ ->
+                            topic.Value |> ignore
+                            StreamSource.ofObservable subject))
+
+                graph.Run (fun () -> memo.TryValue) |> ignore
+                subject.Observer.OnNext 3
+                Expect.equal (graph.Run (fun () -> memo.TryValue)) (Ready 3) "item"
+                topic.Value <- 1
+                graph.Run (fun () -> memo.TryValue) |> ignore
+                Expect.equal subject.Unsubscribed 1 "the restart disposed the first subscription"
+                subject.Observer.OnCompleted ()
+#if FABLE_COMPILER
+                do! Async.Sleep 10
+#endif
+
+                match graph.Run (fun () -> memo.TryValue) with
+                | Failed (:? InvalidOperationException) -> ()
+                | other -> failtestf "empty second stream: expected InvalidOperationException, got %A" other
+            }
+
+            testCaseAsync "ofObservable: OnError publishes Failed"
+            <| async {
+                use graph = new Graph ()
+                let subject = Recorder<int>()
+
+                let memo =
+                    graph.Run (fun () -> Api.createStream (fun _ -> StreamSource.ofObservable subject))
+
+                graph.Run (fun () -> memo.TryValue) |> ignore
+                subject.Observer.OnError (Exception "rx")
+#if FABLE_COMPILER
+                do! Async.Sleep 10
+#endif
+
+                match graph.Run (fun () -> memo.TryValue) with
+                | Failed error -> Expect.equal error.Message "rx" "error"
+                | other -> failtestf "expected Failed, got %A" other
+            }
+
+            testCase "create: the function receives the sink and token"
+            <| fun _ ->
+                use graph = new Graph ()
+                let mutable token = CancellationToken.None
+
+                let memo =
+                    graph.Run (fun () ->
+                        Api.createStream (fun _ ->
+                            StreamSource.create (fun sink t ->
+                                token <- t
+                                sink.Next 1
+                                TaskCompletionSource<unit>().Task :> Task)))
+
+                Expect.equal (graph.Run (fun () -> memo.TryValue)) (Ready 1) "item"
+                memo.Dispose ()
+                Expect.isTrue token.IsCancellationRequested "token"
+#if !FABLE_COMPILER
+            testCase "ofAsyncEnumerable: items, completion, and DisposeAsync exactly once on cancellation"
+            <| fun _ ->
+                use graph = new Graph ()
+                let mutable disposedCount = 0
+                let gate = TaskCompletionSource<bool>()
+
+                let items =
+                    { new Collections.Generic.IAsyncEnumerable<int> with
+                        member _.GetAsyncEnumerator token =
+                            let mutable i = 0
+
+                            { new Collections.Generic.IAsyncEnumerator<int> with
+                                member _.Current = i
+
+                                member _.MoveNextAsync() =
+                                    i <- i + 1
+
+                                    if i <= 2 then
+                                        ValueTask<bool> true
+                                    else
+                                        ValueTask<bool> gate.Task
+
+                                member _.DisposeAsync() =
+                                    disposedCount <- disposedCount + 1
+                                    ValueTask ()
+                            }
+                    }
+
+                let memo =
+                    graph.Run (fun () -> Api.createStreamFold 0 (+) (fun _ -> StreamSource.ofAsyncEnumerable items))
+
+                Expect.equal (graph.Run (fun () -> memo.TryValue)) (Ready 3) "the synchronous burst"
+                memo.Dispose ()
+                gate.SetResult false
+                Expect.equal disposedCount 1 "DisposeAsync once"
+#endif
+#if NET8_0_OR_GREATER && !FABLE_COMPILER
+            testCase "ofChannel: items buffered before the first read publish with that read"
+            <| fun _ ->
+                use graph = new Graph ()
+                let channel = Channels.Channel.CreateUnbounded<int>()
+
+                for i in 1..100 do
+                    channel.Writer.TryWrite i |> ignore
+
+                channel.Writer.Complete ()
+
+                let memo =
+                    graph.Run (fun () -> Api.createStreamFold 0 (+) (fun _ -> StreamSource.ofChannel channel.Reader))
+
+                Expect.equal (graph.Run (fun () -> memo.TryValue)) (Ready 5050) "every buffered item, then completion"
+
+            testCase "ofChannel: an off-thread burst queues one wake and the completion"
+            <| fun _ ->
+                use graph =
+                    new Graph (
+                        { GraphOptions.Default with
+                            Dispatcher = Some (ManualDispatcher () :> IGraphDispatcher)
+                        }
+                    )
+                // Synchronous continuations run the reader on the writer's thread, so the test needs no waiting.
+                let channel =
+                    Channels.Channel.CreateUnbounded<int>(Channels.UnboundedChannelOptions (AllowSynchronousContinuations = true))
+
+                let memo =
+                    graph.Run (fun () -> Api.createStreamFold 0 (+) (fun _ -> StreamSource.ofChannel channel.Reader))
+
+                Expect.equal (graph.Run (fun () -> memo.TryValue)) Pending "waiting on an empty channel"
+
+                let writer =
+                    Thread (
+                        (fun () ->
+                            for i in 1..100 do
+                                channel.Writer.TryWrite i |> ignore
+
+                            channel.Writer.Complete ()),
+                        IsBackground = true
+                    )
+
+                writer.Start ()
+                writer.Join ()
+                Expect.equal graph.PendingWork 2 "one wake for 100 items, and the completion"
+                graph.Pump () |> ignore
+                Expect.equal (graph.Run (fun () -> memo.TryValue)) (Ready 5050) "every item"
+#endif
+        ]

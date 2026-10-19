@@ -240,6 +240,45 @@ module internal Platform =
         d.TrySetResult value |> ignore
 #endif
 
+    /// <summary>A task completed or faulted by hand, once.</summary>
+    type Completion<'T> =
+        {
+            Task: Task<'T>
+            Resolve: 'T -> unit
+            Reject: exn -> unit
+        }
+
+#if FABLE_COMPILER
+    [<Emit("new Promise((resolve, reject) => $0(resolve, reject))")>]
+    let private promiseWith (executor: ('T -> unit) -> (exn -> unit) -> unit) : Task<'T> = jsNative
+
+    /// <summary>A task that completes or faults when <c>Resolve</c> or <c>Reject</c> is called. Awaiters resume on a later microtask.</summary>
+    let completion<'T> () : Completion<'T> =
+        let mutable resolver = Unchecked.defaultof<'T -> unit>
+        let mutable rejecter = Unchecked.defaultof<exn -> unit>
+
+        let task =
+            promiseWith (fun resolve reject ->
+                resolver <- resolve
+                rejecter <- reject)
+
+        {
+            Task = task
+            Resolve = resolver
+            Reject = rejecter
+        }
+#else
+    /// <summary>A task that completes or faults when <c>Resolve</c> or <c>Reject</c> is called. Continuations run inline on the calling thread.</summary>
+    let completion<'T> () : Completion<'T> =
+        let source = TaskCompletionSource<'T>()
+
+        {
+            Task = source.Task
+            Resolve = source.TrySetResult >> ignore
+            Reject = source.TrySetException >> ignore
+        }
+#endif
+
     /// <summary>A task already completed with <c>value</c>.</summary>
     let completedWith (value: 'T) : Task<'T> =
         Task.FromResult value

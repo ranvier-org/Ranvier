@@ -72,7 +72,8 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | QueryDictionary.fs | 2 | 2 | 2 | 2 | 2 | 2 | 0 | 0 |
 | QueryErgonomics.fs | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | QueryNavigationTests.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1027 | 1009 | 941 | 1164 | 1141 | 1063 | 91 | 1 |
+| Streams.fs (sources) | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
+| **Total** | 1030 | 1012 | 944 | 1167 | 1144 | 1066 | 91 | 1 |
 
 ## Tests.fs
 
@@ -1880,5 +1881,15 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - Back disposes the editor while its client-owned save reconciles retained pages
 - adding a word stores the saved draft without fetching full detail
 - Home cancels the old load and ignores messages for removed pages
+
+</details>
+
+## Streams.fs (sources)
+
+<details><summary>3 passed in every build and delivery that runs them</summary>
+
+- ofObservable: OnNext publishes, OnCompleted keeps the state, restart unsubscribes once
+- ofObservable: OnError publishes Failed
+- create: the function receives the sink and token
 
 </details>
