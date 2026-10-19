@@ -2862,6 +2862,51 @@ let findTests =
                 Expect.equal runs.Value 2 "the first match changes"
             }
 
+            test "editing the matching row's value with its key unchanged wakes no tryFindKey reader" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1; 2, 4; 3, 6 ])
+                let key = rows source |> Projection.tryFindKey even
+                let required = rows source |> Projection.findKey even
+                let runs = ref 0
+
+                createEffect (fun () ->
+                    runs.Value <- runs.Value + 1
+                    key.Value |> ignore
+                    required.Value |> ignore)
+
+                Expect.equal runs.Value 1 "precondition"
+                source.Value <- setN 2 8 source.Value
+                Expect.equal runs.Value 1 "the value changes, the key stays"
+                Expect.equal (key.Value, required.Value) (Some 2, 2) "the key"
+            }
+
+            test "a non-matching row past the first match costs one predicate call and wakes no reader" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1; 2, 4; 3, 6; 4, 3 ])
+                let calls = ref 0
+
+                let value =
+                    rows source
+                    |> Projection.tryFind (fun n ->
+                        calls.Value <- calls.Value + 1
+                        even n)
+
+                let key = rows source |> Projection.tryFindKey even
+                let runs = ref 0
+
+                createEffect (fun () ->
+                    runs.Value <- runs.Value + 1
+                    value.Value |> ignore
+                    key.Value |> ignore)
+
+                calls.Value <- 0
+                source.Value <- setN 4 5 source.Value
+                Expect.equal calls.Value 1 "one predicate call"
+                Expect.equal runs.Value 1 "no reader wakes"
+            }
+
             test "a throwing predicate excludes its key from the search" {
                 use g = new Graph ()
                 use _ = g.Activate ()

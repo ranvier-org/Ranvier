@@ -57,7 +57,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | DischargeReentry.fs | 29 | 29 | 29 | 29 | 29 | 29 | 1 | 0 |
 | MapSemantics.fs | 42 | 42 | 42 | 42 | 42 | 42 | 0 | 1 |
 | Lenses.fs | 23 | 20 | 20 | 23 | 20 | 20 | 0 | 0 |
-| Combinators.fs | 174 | 174 | 174 | 174 | 174 | 174 | 1 | 0 |
+| Combinators.fs | 176 | 176 | 176 | 176 | 176 | 176 | 1 | 0 |
 | Timed.fs | 31 | 31 | 31 | 38 | 38 | 38 | 0 | 0 |
 | Streams.fs | 26 | 26 | 26 | 26 | 26 | 26 | 1 | 0 |
 | PreviousValues.fs | 12 | 12 | 12 | 12 | 12 | 12 | 15 | 0 |
@@ -81,7 +81,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 9 | 9 | 9 | 9 | 9 | 9 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1459 | 1438 | 1435 | 1599 | 1573 | 1570 | 100 | 1 |
+| **Total** | 1461 | 1440 | 1437 | 1601 | 1575 | 1572 | 100 | 1 |
 
 ## Tests.fs
 
@@ -1425,7 +1425,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | --- | --- |
 | foldGroup rejects a null subtract | Fable wraps a null function argument in a closure, so it is never null. |
 
-<details><summary>174 passed in every build and delivery that runs them</summary>
+<details><summary>176 passed in every build and delivery that runs them</summary>
 
 - 200 single edits at N=1000 make 200 predicate calls
 - a Keys reader wakes only when membership flips
@@ -1596,6 +1596,8 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - 200 single edits at N=1000 make 200 predicate calls
 - tryPick returns the first chosen value
 - an edit outside the first match wakes no tryFind reader
+- editing the matching row's value with its key unchanged wakes no tryFindKey reader
+- a non-matching row past the first match costs one predicate call and wakes no reader
 - a throwing predicate excludes its key from the search
 - a pending predicate on the head makes the search pending; elsewhere it keeps membership
 - find, findKey and pick raise KeyNotFoundException while nothing matches and recover
