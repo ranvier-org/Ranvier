@@ -1331,7 +1331,7 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
             | None -> settle recorded
 
 /// <summary>
-/// A boundary between region markers: its content, mounted detached until no binding under it waits for a pending read;
+/// A boundary between region markers: its content, mounted detached until every binding under it has read a value;
 /// its pending view, shown between the markers meanwhile; and its error view, which replaces both after a failure under
 /// the content.
 /// </summary>
