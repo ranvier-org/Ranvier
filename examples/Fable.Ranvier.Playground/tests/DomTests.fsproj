@@ -14,6 +14,7 @@
     <Compile Include="DomChecks.fs" />
     <Compile Include="ScheduledChecks.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Lifetime.fs" Link="Lifetime.fs" />
+    <Compile Include="../../../experiments/Ranvier.View.Foundation/Scope.fs" Link="Scope.fs" />
     <Compile Include="LifetimeChecks.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Scheduling.fs" Link="Scheduling.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Binding.fs" Link="Binding.fs" />

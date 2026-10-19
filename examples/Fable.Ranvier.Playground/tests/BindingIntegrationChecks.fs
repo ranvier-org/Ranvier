@@ -600,10 +600,48 @@ let private liveSetterFailure (ops: Operations<'view>) (run: 'view -> Backend ->
     let div = host.querySelector "div" |> unbox<HTMLDivElement>
     graph.Run (fun () -> source.Value <- "bad")
     mounted.Flush ()
-    equal ("a", 0, (if queued then 1 else 0)) (div.title, reported.Count, mounted.CommitErrors.Length)
+    equal ("a", [ "setter" ], (if queued then 1 else 0)) (div.title, [ for error in reported -> error.Message ], mounted.CommitErrors.Length)
     graph.Run (fun () -> tick.Value <- 1)
     mounted.Flush ()
-    equal ("bad", 0, 2) (div.title, reported.Count, attempts)
+    equal ("bad", 1, 2) (div.title, reported.Count, attempts)
+    mounted.Dispose ()
+
+/// <summary>Mounts a div whose setter raises one cached exception object for every value but "a".</summary>
+let private repeatedSetterFailure (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal "a")
+    let failure = Exception "cached"
+    let reported = ResizeArray<exn>()
+    let host = host ()
+
+    let mode =
+        if queued then
+            QueuedCommits (CollectAndContinue, ignore)
+        else
+            SynchronousCommits
+
+    let view =
+        Typed.div
+            ops
+            [|
+                Typed.reactiveProperty
+                    (fun (node: HTMLDivElement) (value: string) ->
+                        if value <> "a" then
+                            raise failure
+
+                        node.title <- value)
+                    (fun () -> source.Value)
+            |]
+            [||]
+
+    let mounted =
+        mountWith mode graph None reported.AddRange host None (fun context -> run view context.Backend)
+
+    graph.Run (fun () -> source.Value <- "b")
+    mounted.Flush ()
+    graph.Run (fun () -> source.Value <- "c")
+    mounted.Flush ()
+    equal [ "cached" ] [ for error in reported -> error.Message ]
     mounted.Dispose ()
 
 let cases =
@@ -631,10 +669,18 @@ let cases =
             "a recurring failure object is reported again after its binding recovers", recoveredFailureRecurs
             "a keyed row reading a failed memo reports the failure", keyedRowReaderFailure
             "two throwing component cleanups are reported together on disposal", componentCleanupFailures
-            "tree: a live synchronous setter failure is not reported and an equal later value retries the write",
+            "tree: a live synchronous setter failure is reported and an equal later value retries the write",
             fun () -> liveSetterFailure Tree.ops Tree.run false
-            "program: a live synchronous setter failure is not reported and an equal later value retries the write",
+            "program: a live synchronous setter failure is reported and an equal later value retries the write",
             fun () -> liveSetterFailure Program.ops Program.run false
-            "tree: a live queued setter failure reaches only the queue's errors", fun () -> liveSetterFailure Tree.ops Tree.run true
-            "program: a live queued setter failure reaches only the queue's errors", fun () -> liveSetterFailure Program.ops Program.run true
+            "tree: a live queued setter failure is reported after the flush and kept in the queue's errors",
+            fun () -> liveSetterFailure Tree.ops Tree.run true
+            "program: a live queued setter failure is reported after the flush and kept in the queue's errors",
+            fun () -> liveSetterFailure Program.ops Program.run true
+            "tree: a synchronous setter raising one exception object twice is reported once", fun () -> repeatedSetterFailure Tree.ops Tree.run false
+            "program: a synchronous setter raising one exception object twice is reported once",
+            fun () -> repeatedSetterFailure Program.ops Program.run false
+            "tree: a queued setter raising one exception object twice is reported once", fun () -> repeatedSetterFailure Tree.ops Tree.run true
+            "program: a queued setter raising one exception object twice is reported once",
+            fun () -> repeatedSetterFailure Program.ops Program.run true
         |]

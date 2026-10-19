@@ -1132,7 +1132,7 @@ and private RowBuilder(state: MountState) =
             state.ListenDirect (node, eventName, invoke)
 
         member _.ReportFailure(error) =
-            state.ReportReaderFailure error
+            state.Scope.Fail [ error ]
 
         member _.ClearFailure() =
             state.ClearReported ()
@@ -1446,25 +1446,32 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
 
     let mutable lastReported: exn = null
 
-    // Sends a reader failure to `report`, untracked, once per exception object until `clearReported` runs.
-    // A pending read (`NotReadyException`) is not reported.
-    let reportReaderFailure (error: exn) =
-        match error with
-        | NotReadyException _ -> ()
-        | _ when obj.ReferenceEquals (error, lastReported) -> ()
-        | _ ->
-            lastReported <- error
+    // Reports the failures in one untracked call. A pending read is dropped, and each exception object is reported once
+    // until `clearReported` runs.
+    let reportFailures (errors: exn list) =
+        let fresh = ResizeArray<exn>()
+
+        for error in errors do
+            match error with
+            | NotReadyException _ -> ()
+            | _ when obj.ReferenceEquals (error, lastReported) -> ()
+            | _ ->
+                lastReported <- error
+                fresh.Add error
+
+        if fresh.Count > 0 then
+            let reported = List.ofSeq fresh
 
             try
-                Api.untrack (fun () -> report [ error ])
+                Api.untrack (fun () -> report reported)
             with reporterError ->
-                raise (AggregateException ("Binding reader and reporter failed", [| error; reporterError |]))
+                raise (AggregateException ("Binding failure and reporter failed", List.toArray (reported @ [ reporterError ])))
 
     // Called when a failed reader recovers; the same exception object is reported again if it recurs.
     let clearReported () =
         lastReported <- null
 
-    let startBinding (equals: Func<_, _, bool>) read write =
+    let startBinding (scope: ViewScope) (equals: Func<_, _, bool>) read write =
 #if LADDER_NAIVE_BINDINGS
         Api.createEffect (fun () -> write (read ()))
 #else
@@ -1484,23 +1491,29 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                         write pending
                         committed <- pending
                         hasCommitted <- true
-                    with error when root.Phase = SettingUp ->
+                    with
+                    | error when root.Phase = SettingUp ->
                         bindingSetupFailure <- Some error
                         reraise ()
+                    | error -> scope.Fail [ error ]
 
-            let mutable failed = false
+            let mutable state = 0
 
             Api.createEffect (fun () ->
                 let value =
                     try
                         read ()
                     with error ->
-                        failed <- true
-                        reportReaderFailure error
+                        match error with
+                        | NotReadyException _ -> ()
+                        | _ ->
+                            state <- state ||| BindingState.ReadFailed
+                            scope.Fail [ error ]
+
                         reraise ()
 
-                if failed then
-                    failed <- false
+                if state &&& BindingState.ReadFailed <> 0 then
+                    state <- state &&& ~~~BindingState.ReadFailed
                     clearReported ()
 
                 if not root.IsDisposed then
@@ -1517,24 +1530,36 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                     bindingSetupFailure <- Some error
                     reraise ()
 
-            let mutable failed = false
+            let mutable state = 0
 
             let reportingRead () =
                 let value =
                     try
                         read ()
                     with error ->
-                        failed <- true
-                        reportReaderFailure error
+                        match error with
+                        | NotReadyException _ -> ()
+                        | _ ->
+                            state <- state ||| BindingState.ReadFailed
+                            scope.Fail [ error ]
+
                         reraise ()
 
-                if failed then
-                    failed <- false
+                if state &&& BindingState.ReadFailed <> 0 then
+                    state <- state &&& ~~~BindingState.ReadFailed
                     clearReported ()
 
                 value
 
-            Binding.startQueued root.OnCleanup live queue (fun left right -> equals.Invoke (left, right)) reportingRead guardedWrite
+            Binding.startQueuedIn
+                scope
+                (fun () -> root.Phase = SettingUp)
+                root.OnCleanup
+                live
+                queue
+                (fun left right -> equals.Invoke (left, right))
+                reportingRead
+                guardedWrite
 
         bindingSetupFailure |> Option.iter raise
 #endif
@@ -1623,8 +1648,8 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
     member internal _.ListenDirect(node: Node, eventName: string, invoke: obj -> unit) =
         listenDirect node eventName invoke
 
-    member internal _.ReportReaderFailure(error: exn) =
-        reportReaderFailure error
+    /// <summary>The receiver of the pending reads and failures of the bindings this mount creates.</summary>
+    member internal this.Scope: ViewScope = this :> ViewScope
 
     member internal _.ClearReported() =
         clearReported ()
@@ -1724,13 +1749,13 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
 
         applyModifiers this tag node modifiers
 
-    override _.BindText(node, read) =
+    override this.BindText(node, read) =
         ensurePrepared node
 
         if node.nodeType <> 3. then
             raise (ArgumentException ("Prepared text bindings require a text node", "node"))
 
-        startBinding (Func<_, _, _>(fun left right -> left = right)) read (fun value -> node.textContent <- Some value)
+        startBinding this.Scope (Func<_, _, _>(fun left right -> left = right)) read (fun value -> node.textContent <- Some value)
         ensureSetup ()
 
     override _.Text(value) =
@@ -1751,12 +1776,12 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
 #endif
         attributeValue node key value
 
-    override _.ReactiveAttribute(key, read) =
+    override this.ReactiveAttribute(key, read) =
         let node = currentElement ()
 #if !LADDER_NAIVE_CHECKS && !LADDER_UNCHECKED_ATTRIBUTES
         validateAttribute key
 #endif
-        startBinding attributeEquals read (attributeValue node key)
+        startBinding this.Scope attributeEquals read (attributeValue node key)
 
     override _.InputValue(value) =
         let node = currentElement ()
@@ -1788,9 +1813,9 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
     override _.Property(write) =
         write (box (currentElement ()))
 
-    override _.ReactiveProperty(read, write) =
+    override this.ReactiveProperty(read, write) =
         let node = currentElement ()
-        startBinding propertyEquals read (fun value -> write.Invoke (box node, value))
+        startBinding this.Scope propertyEquals read (fun value -> write.Invoke (box node, value))
 
     override this.Element(tag, modifiers, children) =
         let node = openElement this tag modifiers
@@ -1823,11 +1848,11 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
         if tag = Select then
             applyModifiers this tag node modifiers
 
-    override _.Bind(equals, read) =
+    override this.Bind(equals, read) =
         ensureSetup ()
         let node = text ""
         append node
-        startBinding (Func<_, _, _>(fun left right -> equals left right)) read (fun value -> node.textContent <- value)
+        startBinding this.Scope (Func<_, _, _>(fun left right -> equals left right)) read (fun value -> node.textContent <- value)
 
     override this.Keyed(items, render) =
         this.AuthoredRegion (TemplateDom.ListRows, items, render)
@@ -2474,8 +2499,8 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
         member _.ListenDirect(node, eventName, invoke) =
             listenDirect node eventName invoke
 
-        member _.ReportFailure(error) =
-            reportReaderFailure error
+        member this.ReportFailure(error) =
+            this.Scope.Fail [ error ]
 
         member _.ClearFailure() =
             clearReported ()
@@ -2490,6 +2515,14 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                     NestedRegion
 
             this.RegionOf (start, finish, placement, kind, items, render, rows)
+
+    interface ViewScope with
+        member _.Tracks = false
+        member _.Wait() = ()
+        member _.Ready() = ()
+
+        member _.Fail(errors) =
+            reportFailures errors
 
 /// <summary>Mounts a view with an owned commit queue when deferred scheduling is selected.</summary>
 /// <remarks>Nested keyed mounts share the containing mount's scheduler.</remarks>

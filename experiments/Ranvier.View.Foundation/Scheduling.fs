@@ -11,8 +11,9 @@ type CommitFailure =
     | CollectAndContinue
     | FailFastCancel
 
-type Slot internal (owner: obj) =
+type Slot internal (owner: obj, scope: ViewScope) =
     member internal _.Owner = owner
+    member internal _.Scope = scope
     member val internal Version = 0 with get, set
     member val internal Listed = false with get, set
     member val internal Action: (unit -> unit) option = None with get, set
@@ -57,7 +58,14 @@ type Queue(graph: Graph, failure: CommitFailure, post: (unit -> unit) -> unit) a
         if disposed then
             raise (InvalidOperationException "Commit queue is disposed")
 
-        Slot (this)
+        Slot (this, Unchecked.defaultof<_>)
+
+    /// <summary>Reserves a slot whose commit failures go to <c>scope</c> after each flush.</summary>
+    member internal _.Reserve(scope: ViewScope) =
+        if disposed then
+            raise (InvalidOperationException "Commit queue is disposed")
+
+        Slot (this, scope)
 
     member _.Cancel(slot: Slot) =
         owned slot
@@ -86,6 +94,7 @@ type Queue(graph: Graph, failure: CommitFailure, post: (unit -> unit) -> unit) a
             scheduled <- false
             flushing <- true
             let failures = ResizeArray<exn>()
+            let failedSlots = ResizeArray<Slot>()
 
             try
                 graph.Run (fun () ->
@@ -119,13 +128,50 @@ type Queue(graph: Graph, failure: CommitFailure, post: (unit -> unit) -> unit) a
                                     Api.untrack commit
                                 with error ->
                                     failures.Add error
-                                    stopped <- failure = FailFastCancel)
+                                    failedSlots.Add slot
+                                    stopped <- failure = FailFastCancel
+
+                    if failures.Count > 0 then
+                        Queue.Report (failures, failedSlots))
             finally
                 errors <- failures.ToArray ()
                 flushing <- false
                 this.Request ()
 
     member _.Errors = Array.copy errors
+
+    /// <summary>Sends each scope the failures of its slots in one call, in commit order.</summary>
+    static member private Report(failures: ResizeArray<exn>, slots: ResizeArray<Slot>) =
+        let reporterErrors = ResizeArray<exn>()
+
+        for index in 0 .. slots.Count - 1 do
+            let scope = slots[index].Scope
+            let mutable first = not (isNull (box scope))
+            let mutable earlier = 0
+
+            while first && earlier < index do
+                if obj.ReferenceEquals (slots[earlier].Scope, scope) then
+                    first <- false
+
+                earlier <- earlier + 1
+
+            if first then
+                let errors =
+                    [
+                        for later in index .. slots.Count - 1 do
+                            if obj.ReferenceEquals (slots[later].Scope, scope) then
+                                failures[later]
+                    ]
+
+                try
+                    scope.Fail errors
+                with error ->
+                    reporterErrors.Add error
+
+        if reporterErrors.Count = 1 then
+            raise reporterErrors[0]
+        elif reporterErrors.Count > 1 then
+            raise (AggregateException ("Commit failure reporting failed", reporterErrors))
 
     member _.Dispose() =
         if not disposed then

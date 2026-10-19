@@ -5,9 +5,10 @@ open Ranvier.View.Foundation.Scheduling
 
 /// <summary>Creates an owned text effect whose updates are committed through the supplied queue.</summary>
 /// <remarks>The first settled value is written immediately. A suspended or failed read cancels any older queued write.
-/// Pending and error presentation belongs to the reader's boundary. The enclosing owner disposes the effect.</remarks>
-let internal startQueued registerCleanup isLive (queue: Queue) equals read write =
-    let slot = queue.Reserve ()
+/// A failed immediate write after setup goes to <c>scope</c>; a failed queued write goes to the queue, which reports it
+/// to <c>scope</c> after the flush. The enclosing owner disposes the effect.</remarks>
+let internal startQueuedIn (scope: ViewScope) (settingUp: unit -> bool) registerCleanup isLive (queue: Queue) equals read write =
+    let slot = queue.Reserve scope
     let mutable first = true
     let mutable version = 0
     let mutable hasCommitted = false
@@ -46,6 +47,17 @@ let internal startQueued registerCleanup isLive (queue: Queue) equals read write
 
         if first then
             first <- false
-            commit ()
+
+            if isNull (box scope) then
+                commit ()
+            else
+                try
+                    commit ()
+                with error when not (settingUp ()) ->
+                    scope.Fail [ error ]
         else
             queue.Enqueue (slot, commit))
+
+/// <summary>Creates an owned text effect whose updates are committed through the supplied queue, with no scope.</summary>
+let internal startQueued registerCleanup isLive (queue: Queue) equals read write =
+    startQueuedIn Unchecked.defaultof<_> (fun () -> false) registerCleanup isLive queue equals read write

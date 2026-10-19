@@ -343,6 +343,44 @@ let private reentrantCommit () =
     equal [ "a2"; "b2" ] (writes |> Seq.skip 1 |> Seq.sort |> List.ofSeq)
     queue.Dispose ()
 
+/// <summary>A scope that records each failure call as its name followed by the failures' messages.</summary>
+let private recordingScope (name: string) (log: ResizeArray<string>) : ViewScope =
+    { new ViewScope with
+        member _.Tracks = false
+        member _.Wait() = ()
+        member _.Ready() = ()
+
+        member _.Fail(errors) =
+            log.Add (
+                name
+                + ":"
+                + String.concat "," [ for error in errors -> error.Message ]
+            )
+    }
+
+/// <summary>Flushes four failing commits: two under one scope, one under another, one without a scope.</summary>
+let private failuresByScope failure =
+    use graph = new Graph ()
+    let queue = Queue (graph, failure, ignore)
+    let log = ResizeArray<string>()
+    let left, right = recordingScope "left" log, recordingScope "right" log
+
+    let a, b, c, d =
+        queue.Reserve left, queue.Reserve right, queue.Reserve left, queue.Reserve ()
+
+    queue.Enqueue (a, (fun () -> failwith "a"))
+    queue.Enqueue (b, (fun () -> failwith "b"))
+    queue.Enqueue (c, (fun () -> failwith "c"))
+    queue.Enqueue (d, (fun () -> failwith "d"))
+    queue.Flush ()
+    List.ofSeq log, [ for error in queue.Errors -> error.Message ]
+
+let private collectedByScope () =
+    equal ([ "left:a,c"; "right:b" ], [ "a"; "b"; "c"; "d" ]) (failuresByScope CollectAndContinue)
+
+let private cancelledAreUnreported () =
+    equal ([ "left:a" ], [ "a" ]) (failuresByScope FailFastCancel)
+
 let pureCases =
     [|
         "comparer disposal prevents queued writes", comparerDisposal
@@ -359,6 +397,8 @@ let pureCases =
         "recursive queue flush is rejected", recursiveFlush
         "queue disposal during flush cancels remaining work", snapshotDisposal
         "fail-fast cancels replacements but preserves independent next wave", failFastReplacements
+        "a flush reports each scope's failures in one call, in commit order", collectedByScope
+        "fail-fast cancellation reports only the commit that failed", cancelledAreUnreported
     |]
 
 let cases = pureCases

@@ -7,6 +7,7 @@
     </PropertyGroup>
     <ItemGroup>
         <Compile Include="Lifetime.fs" />
+        <Compile Include="Scope.fs" />
         <Compile Include="Scheduling.fs" />
         <Compile Include="Binding.fs" />
         <Compile Include="Microtask.fs" />
