@@ -267,7 +267,7 @@ let private movesKeepHooks (ops: Operations<'view>) (run: 'view -> Backend -> un
     equal (2, "21") (runs.Value, second.textContent)
     mounted.Dispose ()
 
-/// <summary>A hook that writes a signal read by a text binding of the same view.</summary>
+/// <summary>A hook that reads and writes a signal read by a text binding of the same view.</summary>
 let private hookWritesBinding (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
     use graph = new Graph ()
     let focused = graph.Run (fun () -> Api.createSignal "no")
@@ -280,7 +280,10 @@ let private hookWritesBinding (ops: Operations<'view>) (run: 'view -> Backend ->
             [|
                 Typed.mounted (fun (_: HTMLDivElement) ->
                     runs.Value <- runs.Value + 1
-                    focused.Value <- "yes"
+
+                    if focused.Value = "no" then
+                        focused.Value <- "yes"
+
                     ignore)
             |]
             [| Typed.reactiveText ops (fun () -> focused.Value) |]

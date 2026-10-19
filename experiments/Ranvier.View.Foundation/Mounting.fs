@@ -1118,6 +1118,7 @@ and private RowBuilder(state: MountState) =
                 reraise ()
         finally
             settingUp <- false
+            container <- null
 
         if roots.Count = 0 then
             let marker = comment "ranvier:row"
