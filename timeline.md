@@ -25,6 +25,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 84,053 | 125,352 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 84,053 | 125,324 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 84,051 | 125,351 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 84,042 | 126,438 |
 
 ## app-table
 
@@ -51,6 +52,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 9,120,258 | 9,782,395 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 9,120,251 | 9,605,263 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 9,120,290 | 9,716,121 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 9,120,286 | 9,607,873 |
 
 ## async-recover
 
@@ -77,6 +79,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 138,968 | 37,303 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 138,968 | 37,305 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 138,968 | 37,306 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 138,884 | 37,321 |
 
 ## async-resolve
 
@@ -103,6 +106,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 2,791,003 | 1,073,813 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 2,791,002 | 1,073,817 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 2,791,002 | 1,074,343 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 2,788,200 | 1,074,609 |
 
 ## chain
 
@@ -129,6 +133,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 13,035 | 318 | 2,450 | 4,491 | 3,180 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 13,355 | 318 | 2,450 | 4,491 | 3,180 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 13,035 | 318 | 2,450 | 4,491 | 3,180 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 13,043 | 318 | 2,450 | 4,492 | 3,180 |
 
 ## chain-affinity
 
@@ -155,6 +160,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 2,549 | 3,067 | 2,496 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 2,549 | 3,067 | 2,496 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 2,549 | 3,067 | 2,496 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 2,549 | 3,067 | 2,496 |
 
 ## control
 
@@ -181,6 +187,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 74,719 | 826,138 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 74,719 | 832,961 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 74,719 | 826,177 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 74,720 | 826,806 |
 
 ## create
 
@@ -207,6 +214,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 13,531,174 | 2,859,679 | 2,528,399 | 2,132,031 | 3,988,931 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 13,451,365 | 2,859,678 | 2,528,380 | 2,131,543 | 3,989,083 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 13,451,300 | 2,875,680 | 2,528,385 | 2,131,328 | 3,988,938 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 13,463,506 | 2,865,678 | 2,528,361 | 2,131,968 | 3,984,059 |
 
 ## create-on
 
@@ -233,6 +241,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 2,911,490 | 4,366,645 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 2,927,488 | 4,366,998 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 2,911,520 | 4,366,997 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 2,910,484 | 4,367,150 |
 
 ## cutoff
 
@@ -259,6 +268,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 1,182 | 50 | 111 | 65 | 35 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 1,182 | 50 | 111 | 65 | 35 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 1,182 | 50 | 111 | 65 | 35 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 1,182 | 50 | 111 | 65 | 35 |
 
 ## derive-effect
 
@@ -285,6 +295,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 760 | 680 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 760 | 680 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 760 | 680 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 760 | 680 |
 
 ## derive-on
 
@@ -311,6 +322,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 735 | 684 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 751 | 684 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 735 | 684 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 735 | 684 |
 
 ## dispose
 
@@ -337,6 +349,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 2,706,750 | 806,290 | 367,497 | 466,306 | 434,416 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 2,706,242 | 806,291 | 367,497 | 466,002 | 434,253 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 2,706,248 | 806,291 | 367,497 | 466,242 | 434,019 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 2,706,244 | 806,291 | 367,497 | 466,122 | 434,369 |
 
 ## dispose-on
 
@@ -363,6 +376,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 346,497 | 430,156 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 346,497 | 430,446 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 346,497 | 430,305 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 346,497 | 430,144 |
 
 ## editable-edit
 
@@ -389,6 +403,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 179,606 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 179,606 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 179,606 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 179,606 |
 
 ## editable-upstream
 
@@ -415,6 +430,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 230,755 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 230,755 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 230,755 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 230,755 |
 
 ## fail-recompute
 
@@ -441,6 +457,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 64,914 | 1,366 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 64,914 | 1,366 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 64,914 | 1,366 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 64,926 | 1,366 |
 
 ## flight
 
@@ -467,6 +484,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 11,041 | 6,240 | 6,241 | 11,365 | 10,809 | 22,373 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 11,041 | 6,240 | 6,241 | 11,365 | 10,809 | 22,373 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 11,041 | 6,240 | 6,241 | 11,364 | 10,809 | 22,373 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 11,017 | 6,228 | 6,229 | 11,340 | 10,785 | 22,371 |
 
 ## keyed-insert
 
@@ -493,6 +511,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 1,918,543 | 53,948 | 54,624 | 3,114,971 | 164,122 | 167,165 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 1,918,527 | 53,948 | 54,610 | 3,115,059 | 164,083 | 167,374 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 1,918,527 | 53,980 | 54,609 | 3,115,019 | 164,104 | 166,925 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 1,918,552 | 53,949 | 54,625 | 3,115,013 | 164,072 | 167,272 |
 
 ## keyed-remove
 
@@ -519,6 +538,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 1,917,460 | 43,626 | 45,002 | 3,114,557 | 131,766 | 140,540 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 1,917,458 | 43,626 | 44,988 | 3,114,556 | 131,915 | 140,265 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 1,917,448 | 43,659 | 44,987 | 3,114,552 | 131,804 | 140,487 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 1,917,471 | 43,618 | 44,988 | 3,114,478 | 131,272 | 139,998 |
 
 ## keyed-swap
 
@@ -545,6 +565,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 1,970,160 | 46,161 | 46,638 | 3,264,730 | 79,254 | 84,519 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 1,970,144 | 46,160 | 46,622 | 3,264,638 | 79,189 | 84,515 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 1,970,144 | 46,192 | 46,623 | 3,264,757 | 79,143 | 84,492 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 1,970,170 | 46,160 | 46,639 | 3,264,855 | 79,104 | 84,546 |
 
 ## mvu-dispatch
 
@@ -571,6 +592,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 58,066 | 767 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 58,066 | 767 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 58,066 | 767 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 58,066 | 767 |
 
 ## project-chain
 
@@ -597,6 +619,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 3,834,759 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 3,834,745 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 3,834,824 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 3,834,791 |
 
 ## project-churn
 
@@ -623,6 +646,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 36,206 | 34,048 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 36,206 | 34,048 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 36,206 | 34,048 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 36,207 | 34,047 |
 
 ## project-edit
 
@@ -649,6 +673,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 50,181 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 50,165 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 50,165 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 50,166 |
 
 ## project-reorder
 
@@ -675,6 +700,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 778,916 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 778,899 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 778,901 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 778,884 |
 
 ## shape-diamond
 
@@ -701,6 +727,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 59,894 | 88,455 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 59,894 | 88,455 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 59,894 | 88,455 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 59,894 | 88,557 |
 
 ## shape-dynamic
 
@@ -727,6 +754,115 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 82,520 | 95,378 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 82,520 | 95,381 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 82,520 | 95,381 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 82,520 | 95,580 |
+
+## stream-burst-1
+
+| Commit | Date | Subject | dotnet Ranvier (AsyncSource, batched) | dotnet Ranvier (AsyncSource, unbatched) | dotnet Ranvier (stream, batched) | node Ranvier (AsyncSource, batched) | node Ranvier (AsyncSource, unbatched) | node Ranvier (stream, batched) |
+|---|---|---|---:|---:|---:|---:|---:|---:|
+| `878e5bd` | 2026-10-16 | feat(ci): CI performance/benchmark automation (#64) | — | — | — | — | — | — |
+| `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | — | — | — | — | — | — |
+| `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | — | — | — | — | — | — |
+| `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | — | — | — | — | — | — |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | — | — | — | — | — | — |
+| `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | — | — | — | — | — | — |
+| `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | — | — | — | — | — | — |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | — | — | — | — | — | — |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | — | — | — | — | — | — |
+| `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | — | — | — | — | — | — |
+| `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | — | — | — | — | — | — |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | — | — | — | — | — | — |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | — | — | — | — | — | — |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | — | — | — | — | — | — |
+| `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | — | — | — | — | — | — |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | — | — | — | — | — | — |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | — | — | — | — | — | — |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | — | — | — | — | — | — |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | — | — | — | — | — | — |
+| `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | — | — | — | — | — | — |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | — | — | — | — | — | — |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 1,969 | 1,567 | 2,500 | 5,235 | 6,299 | 10,091 |
+
+## stream-burst-16
+
+| Commit | Date | Subject | dotnet Ranvier (AsyncSource, batched) | dotnet Ranvier (AsyncSource, unbatched) | dotnet Ranvier (stream, batched) | node Ranvier (AsyncSource, batched) | node Ranvier (AsyncSource, unbatched) | node Ranvier (stream, batched) |
+|---|---|---|---:|---:|---:|---:|---:|---:|
+| `878e5bd` | 2026-10-16 | feat(ci): CI performance/benchmark automation (#64) | — | — | — | — | — | — |
+| `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | — | — | — | — | — | — |
+| `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | — | — | — | — | — | — |
+| `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | — | — | — | — | — | — |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | — | — | — | — | — | — |
+| `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | — | — | — | — | — | — |
+| `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | — | — | — | — | — | — |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | — | — | — | — | — | — |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | — | — | — | — | — | — |
+| `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | — | — | — | — | — | — |
+| `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | — | — | — | — | — | — |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | — | — | — | — | — | — |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | — | — | — | — | — | — |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | — | — | — | — | — | — |
+| `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | — | — | — | — | — | — |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | — | — | — | — | — | — |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | — | — | — | — | — | — |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | — | — | — | — | — | — |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | — | — | — | — | — | — |
+| `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | — | — | — | — | — | — |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | — | — | — | — | — | — |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 5,626 | 24,937 | 5,710 | 10,349 | 47,734 | 12,740 |
+
+## stream-burst-256
+
+| Commit | Date | Subject | dotnet Ranvier (AsyncSource, batched) | dotnet Ranvier (AsyncSource, unbatched) | dotnet Ranvier (stream, batched) | node Ranvier (AsyncSource, batched) | node Ranvier (AsyncSource, unbatched) | node Ranvier (stream, batched) |
+|---|---|---|---:|---:|---:|---:|---:|---:|
+| `878e5bd` | 2026-10-16 | feat(ci): CI performance/benchmark automation (#64) | — | — | — | — | — | — |
+| `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | — | — | — | — | — | — |
+| `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | — | — | — | — | — | — |
+| `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | — | — | — | — | — | — |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | — | — | — | — | — | — |
+| `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | — | — | — | — | — | — |
+| `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | — | — | — | — | — | — |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | — | — | — | — | — | — |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | — | — | — | — | — | — |
+| `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | — | — | — | — | — | — |
+| `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | — | — | — | — | — | — |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | — | — | — | — | — | — |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | — | — | — | — | — | — |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | — | — | — | — | — | — |
+| `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | — | — | — | — | — | — |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | — | — | — | — | — | — |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | — | — | — | — | — | — |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | — | — | — | — | — | — |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | — | — | — | — | — | — |
+| `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | — | — | — | — | — | — |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | — | — | — | — | — | — |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 64,126 | 398,821 | 57,049 | 119,395 | 792,637 | 70,591 |
+
+## stream-restart
+
+| Commit | Date | Subject | dotnet Ranvier (async memo, CancelPrevious) | dotnet Ranvier (stream) | node Ranvier (async memo, CancelPrevious) | node Ranvier (stream) |
+|---|---|---|---:|---:|---:|---:|
+| `878e5bd` | 2026-10-16 | feat(ci): CI performance/benchmark automation (#64) | — | — | — | — |
+| `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | — | — | — | — |
+| `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | — | — | — | — |
+| `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | — | — | — | — |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | — | — | — | — |
+| `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | — | — | — | — |
+| `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | — | — | — | — |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | — | — | — | — |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | — | — | — | — |
+| `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | — | — | — | — |
+| `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | — | — | — | — |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | — | — | — | — |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | — | — | — | — |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | — | — | — | — |
+| `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | — | — | — | — |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | — | — | — | — |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | — | — | — | — |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | — | — | — | — |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | — | — | — | — |
+| `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | — | — | — | — |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | — | — | — | — |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 4,187 | 4,980 | 12,700 | 8,950 |
 
 ## timed-admit-both
 
@@ -753,6 +889,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 118,269 | 133,685 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 120,317 | 133,684 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 120,317 | 133,688 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 118,269 | 133,817 |
 
 ## timed-admit-debounce
 
@@ -779,6 +916,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 117,174 | 132,327 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 119,222 | 132,300 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 119,222 | 132,316 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 117,174 | 132,378 |
 
 ## timed-admit-first
 
@@ -805,6 +943,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 69,285 | 82,092 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 71,333 | 82,091 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 70,309 | 82,092 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 69,285 | 82,222 |
 
 ## timed-admit-last
 
@@ -831,6 +970,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 117,436 | 132,611 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 119,484 | 132,618 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 119,484 | 132,627 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 117,436 | 132,734 |
 
 ## timed-capture-both
 
@@ -857,6 +997,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 35,724 | 45,028 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 36,748 | 45,029 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 36,748 | 45,029 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 35,724 | 45,094 |
 
 ## timed-capture-debounce
 
@@ -883,6 +1024,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 35,596 | 43,646 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 36,620 | 43,647 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 36,620 | 43,646 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 35,596 | 43,713 |
 
 ## timed-capture-first
 
@@ -909,6 +1051,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 32,076 | 38,868 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 33,100 | 38,868 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 33,100 | 38,868 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 32,076 | 38,934 |
 
 ## timed-capture-last
 
@@ -935,6 +1078,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 35,532 | 43,583 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 36,556 | 43,583 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 36,556 | 43,583 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 35,532 | 43,649 |
 
 ## update
 
@@ -961,6 +1105,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 1,087,690 | 38,805 | 82,005 | 262,586 | 207,601 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 1,094,083 | 38,805 | 82,005 | 262,564 | 207,605 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 1,087,683 | 38,805 | 82,005 | 262,714 | 207,579 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 1,088,383 | 38,805 | 82,005 | 262,492 | 207,613 |
 
 ## update-on
 
@@ -987,6 +1132,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 92,805 | 221,283 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 94,405 | 221,303 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 92,805 | 221,301 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 92,805 | 221,308 |
 
 ## work-form
 
@@ -1013,6 +1159,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 169,672 | 163,139 | 288,752 | 287,018 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 169,672 | 163,139 | 288,718 | 287,090 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 169,672 | 163,139 | 288,772 | 287,114 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 169,672 | 163,139 | 288,731 | 287,119 |
 
 ## work-status
 
@@ -1039,6 +1186,7 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 99,945 | 78,615 | 320,915 | 155,412 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 99,945 | 80,215 | 320,892 | 155,412 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 99,945 | 78,615 | 320,911 | 155,426 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 99,945 | 78,615 | 320,893 | 155,405 |
 
 ## work-value
 
@@ -1065,4 +1213,5 @@
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 107,071 | 119,269 | 321,107 | 283,844 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 107,069 | 120,869 | 321,228 | 283,833 |
 | `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 107,069 | 119,269 | 321,142 | 283,789 |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | 107,069 | 119,269 | 321,163 | 283,797 |
 
