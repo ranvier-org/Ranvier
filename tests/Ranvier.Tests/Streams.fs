@@ -1044,7 +1044,9 @@ let converterTests =
             testCase "ofChannel: disposing the memo cancels the pending read"
             <| fun _ ->
                 use graph = new Graph ()
-                let channel = Channels.Channel.CreateUnbounded<int>()
+
+                let channel =
+                    Channels.Channel.CreateUnbounded<int>(Channels.UnboundedChannelOptions (AllowSynchronousContinuations = true))
 
                 let memo =
                     graph.Run (fun () -> Api.createStream (fun _ -> StreamSource.ofChannel channel.Reader))
