@@ -860,6 +860,38 @@ let private templateHandlerNotReady (trigger: HTMLButtonElement -> unit) () =
     equal (1, true, [||]) (reports.Count, host.textContent.StartsWith "failed: ", escaped)
     mounted.Dispose ()
 
+let private secondHandlerLog = ResizeArray<string>()
+
+let private twoHandlers =
+    Component.define (fun _ (_: BoundaryStatus) -> ()) (fun t ->
+        t.button
+            [|
+                t.Events.onClick (fun _ _ -> failwith "first")
+                t.Events.onClick (fun _ _ -> secondHandlerLog.Add "second")
+                t.Events.onFocus (fun _ _ -> failwith "first")
+                t.Events.onFocus (fun _ _ -> secondHandlerLog.Add "second")
+            |]
+            [| t.text "press" |])
+
+let private guardedTwoHandlers =
+    Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.boundary templatePending templateFailed twoHandlers |])
+
+/// <summary>Two handlers on one node and event under a boundary: the first throws and tears the content down, and the second is skipped.</summary>
+let private templateSecondHandler (trigger: HTMLButtonElement -> unit) () =
+    use graph = new Graph ()
+    secondHandlerLog.Clear ()
+    let host = host ()
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        Mounting.mount graph None reports.Add host None (fun context -> Program.run (Component.render guardedTwoHandlers ()) context.Backend)
+
+    trigger (button host)
+
+    equal ("failed: first", [ [ "first" ] ], []) (host.textContent, messages reports, List.ofSeq secondHandlerLog)
+
+    mounted.Dispose ()
+
 let mutable private serverSource: AsyncSource<string> = Unchecked.defaultof<_>
 
 let private serverPending =
@@ -1191,6 +1223,9 @@ let cases: (string * (unit -> unit)) array =
         "template: a direct handler throwing NotReadyException under a boundary shows the error view", templateHandlerNotReady dispatchFocus
         "template: a boundary waits for a pending isolated slot after its render slots settle", templateSlotKinds true
         "template: a boundary waits for a pending render slot after its isolated slots settle", templateSlotKinds false
+        "template: a delegated handler after one whose failure tore the content down is skipped",
+        templateSecondHandler (fun button -> button.click ())
+        "template: a direct handler after one whose failure tore the content down is skipped", templateSecondHandler dispatchFocus
         "template: retry remounts a content whose setup failed", templateRetry
         "template: removing the one pending row before the reveal reveals the remaining row", templateRemovedPendingRow
         "template HTML renders a boundary's pending, content or error view between markers", templateServer

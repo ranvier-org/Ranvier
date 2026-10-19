@@ -10,8 +10,10 @@ type internal ViewScope =
     abstract Wait: unit -> unit
     /// <summary>Records that a waiting binding read a value or was disposed.</summary>
     abstract Ready: unit -> unit
-    /// <summary>Takes failures in the order they occurred.</summary>
+    /// <summary>Takes failures in the order they occurred; a pending read is dropped.</summary>
     abstract Fail: exn list -> unit
+    /// <summary>Takes failures in the order they occurred, a pending read included.</summary>
+    abstract FailAll: exn list -> unit
 
 /// <summary>The bits of a binding's state word, and its transitions.</summary>
 module internal BindingState =

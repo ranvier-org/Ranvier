@@ -356,6 +356,9 @@ let private recordingScope (name: string) (log: ResizeArray<string>) : ViewScope
                 + ":"
                 + String.concat "," [ for error in errors -> error.Message ]
             )
+
+        member this.FailAll(errors) =
+            this.Fail errors
     }
 
 /// <summary>Flushes four failing commits: two under one scope, one under another, one without a scope.</summary>
@@ -373,6 +376,9 @@ let private throwingScope (name: string) (log: ResizeArray<string>) : ViewScope 
             )
 
             failwith (name + " reporter")
+
+        member this.FailAll(errors) =
+            this.Fail errors
     }
 
 let private failuresByScope failure =

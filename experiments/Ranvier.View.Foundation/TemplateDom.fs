@@ -133,13 +133,13 @@ let walkProgram (paths: int array array) : int array =
 
     ops.ToArray ()
 
-/// <summary>Marks an event node of a template instance under a boundary with the boundary's handler-failure receiver.</summary>
+/// <summary>Marks an event node of a template instance under a boundary with the boundary.</summary>
 [<Emit("$0.$$ranvierScope = $1")>]
-let private attachFailure (node: obj) (failure: exn -> unit) : unit = jsNative
+let private attachScope (node: obj) (scope: ViewScope) : unit = jsNative
 
-/// <summary>The handler-failure receiver of an event node, or null outside every boundary.</summary>
+/// <summary>The boundary of an event node, or null outside every boundary.</summary>
 [<Emit("$0.$$ranvierScope")>]
-let private failureOf (node: Node) : exn -> unit = jsNative
+let private scopeOf (node: Node) : ViewScope = jsNative
 
 let private dispatchFor (nodeCount: int) (events: (int * string * Func<obj, obj, unit>) array) (eventNames: string array) =
     Func<obj array, Node, obj, unit>(fun state node event ->
@@ -162,22 +162,24 @@ let private dispatchFor (nodeCount: int) (events: (int * string * Func<obj, obj,
 
             if index >= 0 then
                 let owner = state[StateOwner] :?> Owner
+                let graph = state[StateGraph] :?> Graph
 
-                if not owner.IsDisposed then
-                    let graph = state[StateGraph] :?> Graph
+                for target, eventName, handler in events do
+                    if
+                        target = index
+                        && eventName = eventType
+                        && not owner.IsDisposed
+                    then
+                        try
+                            graph.Run (fun () ->
+                                Api.runWithOwner owner (fun () -> Api.untrack (fun () -> handler.Invoke (state[StateInstance], event))))
+                        with error ->
+                            let scope = scopeOf node
 
-                    for target, eventName, handler in events do
-                        if target = index && eventName = eventType then
-                            try
-                                graph.Run (fun () ->
-                                    Api.runWithOwner owner (fun () -> Api.untrack (fun () -> handler.Invoke (state[StateInstance], event))))
-                            with error ->
-                                let failure = failureOf node
+                            if isNull (box scope) || not scope.Tracks then
+                                reraise ()
 
-                                if isNull (box failure) then
-                                    reraise ()
-
-                                failure error)
+                            scope.FailAll [ error ])
 
 /// <summary>Dispatches a delegated event to the template instance whose state is attached to the node.</summary>
 let dispatch =
@@ -396,8 +398,6 @@ type internal MountServices =
     abstract ClearFailure: unit -> unit
     /// <summary>The receiver of the pending reads and failures of the instance's bindings.</summary>
     abstract Scope: ViewScope
-    /// <summary>Takes an exception thrown by an event handler of the instance; null outside every boundary.</summary>
-    abstract HandlerFailure: (exn -> unit)
 
     /// <summary>Mounts a region between its start and end markers. The flag marks markers that are roots of the appended
     /// clone; the materialiser is null for a view hole.</summary>
@@ -617,7 +617,7 @@ let private listenDirect (services: MountServices) (state: obj array) (node: obj
     let owner = at state StateOwner :?> Owner
     let graph = at state StateGraph :?> Graph
     let instance = at state StateInstance
-    let failure = services.HandlerFailure
+    let scope = services.Scope
 
     services.ListenDirect (
         unbox node,
@@ -627,10 +627,10 @@ let private listenDirect (services: MountServices) (state: obj array) (node: obj
                 try
                     graph.Run (fun () -> Api.runWithOwner owner (fun () -> Api.untrack (fun () -> handler.Invoke (instance, event))))
                 with error ->
-                    if isNull (box failure) then
+                    if not scope.Tracks then
                         reraise ()
 
-                    failure error
+                    scope.FailAll [ error ]
     )
 
 /// <summary>Writes a part's static properties, starts its render and isolated effects, and attaches its events.</summary>
@@ -657,9 +657,9 @@ let private bind (services: MountServices) (compiled: Compiled) (state: obj arra
 
     let events = compiled.Events
 
-    let failure =
+    let scope =
         if events.Length > 0 then
-            services.HandlerFailure
+            services.Scope
         else
             Unchecked.defaultof<_>
 
@@ -671,8 +671,8 @@ let private bind (services: MountServices) (compiled: Compiled) (state: obj arra
             if attached <> nodeIndex then
                 attachState node state
 
-                if not (isNull (box failure)) then
-                    attachFailure node failure
+                if scope.Tracks then
+                    attachScope node scope
 
                 attached <- nodeIndex
 
