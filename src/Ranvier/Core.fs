@@ -186,10 +186,10 @@ module internal ObserverSlots =
 /// </remarks>
 type internal ObserverSet() =
 #if FABLE_COMPILER
-    let mutable observers: ObserverSlot[] = ObserverSlots.none
+    let mutable items: ObserverSlot[] = ObserverSlots.none
 
     /// <summary>
-    /// The slot of each observer. Grown and blanked together with <c>observers</c>, and never read past <c>count</c>.
+    /// The slot of each observer. Grown and blanked together with <c>items</c>, and never read past <c>count</c>.
     /// </summary>
     let mutable slots: int[] = ObserverSlots.noSlots
 #else
@@ -208,28 +208,6 @@ type internal ObserverSet() =
     let mutable traceId = 0
 #endif
 
-    let observerAt (i: int) =
-#if FABLE_COMPILER
-        (Platform.itemAt i observers).Observer
-#else
-        (Platform.itemAt i items).Observer
-#endif
-
-    let slotAt (i: int) =
-#if FABLE_COMPILER
-        Platform.itemAt i slots
-#else
-        (Platform.itemAt i items).Slot
-#endif
-
-    let place (i: int) (c: IComputation) (slot: int) =
-#if FABLE_COMPILER
-        Platform.setItemAt i observers (ObserverSlot c)
-        Platform.setItemAt i slots slot
-#else
-        items[i] <- ObserverSlot (c, slot)
-#endif
-
     /// <summary>
     /// Doubles the capacity of every array, a first observer getting a single slot: most sources keep exactly one.
     /// </summary>
@@ -238,21 +216,14 @@ type internal ObserverSet() =
 #if FABLE_COMPILER
         let grownObservers = Array.zeroCreate size
         let grownSlots = Platform.positions size
-        Array.blit observers 0 grownObservers 0 count
+        Array.blit items 0 grownObservers 0 count
         Platform.copyPositions slots grownSlots count
-        observers <- grownObservers
+        items <- grownObservers
         slots <- grownSlots
 #else
         let grown = Array.zeroCreate size
         Array.blit items 0 grown 0 count
         items <- grown
-#endif
-
-    let capacity () =
-#if FABLE_COMPILER
-        observers.Length
-#else
-        items.Length
 #endif
 
     /// <summary>
@@ -266,11 +237,16 @@ type internal ObserverSet() =
     /// Appends <c>c</c>, recording <c>slot</c> for its <c>MovedIn</c>, and returns its handle.
     /// </summary>
     member this.Add(c: IComputation, slot: int) =
-        if count = capacity () then
+        if count = items.Length then
             grow ()
 
         let handle = count
-        place handle c slot
+#if FABLE_COMPILER
+        Platform.setItemAt handle items (ObserverSlot c)
+        Platform.setItemAt handle slots slot
+#else
+        items[handle] <- ObserverSlot (c, slot)
+#endif
         count <- handle + 1
         latest <- handle
 #if RANVIER_COUNTERS
@@ -288,14 +264,14 @@ type internal ObserverSet() =
             this.Add (c, slot)
         elif
             latest < count
-            && obj.ReferenceEquals (observerAt latest, c)
+            && obj.ReferenceEquals ((Platform.itemAt latest items).Observer, c)
         then
             EdgeHandle.Unlinked
         elif count <= EdgeHandle.ScanLimit then
             let mutable i = 0
 
             while i < count
-                  && not (obj.ReferenceEquals (observerAt i, c)) do
+                  && not (obj.ReferenceEquals ((Platform.itemAt i items).Observer, c)) do
                 i <- i + 1
 
             if i < count then
@@ -318,7 +294,7 @@ type internal ObserverSet() =
         if handle >= 0 then
             if
                 handle >= count
-                || not (obj.ReferenceEquals (observerAt handle, c))
+                || not (obj.ReferenceEquals ((Platform.itemAt handle items).Observer, c))
             then
                 raise (
                     InvalidOperationException (
@@ -339,13 +315,32 @@ type internal ObserverSet() =
             if handle = last then
                 // Blanked so a dropped observer is not kept alive by a slot past
                 // the end of the list.
-                place last Unchecked.defaultof<IComputation> EdgeHandle.Unlinked
+#if FABLE_COMPILER
+                Platform.setItemAt last items (ObserverSlot Unchecked.defaultof<IComputation>)
+                Platform.setItemAt last slots EdgeHandle.Unlinked
+#else
+                items[last] <- ObserverSlot (Unchecked.defaultof<IComputation>, EdgeHandle.Unlinked)
+#endif
                 count <- last
             else
-                let moved = observerAt last
-                let movedSlot = slotAt last
-                place handle moved movedSlot
-                place last Unchecked.defaultof<IComputation> EdgeHandle.Unlinked
+                let moved = (Platform.itemAt last items).Observer
+#if FABLE_COMPILER
+                let movedSlot = Platform.itemAt last slots
+#else
+                let movedSlot = (Platform.itemAt last items).Slot
+#endif
+#if FABLE_COMPILER
+                Platform.setItemAt handle items (ObserverSlot moved)
+                Platform.setItemAt handle slots movedSlot
+#else
+                items[handle] <- ObserverSlot (moved, movedSlot)
+#endif
+#if FABLE_COMPILER
+                Platform.setItemAt last items (ObserverSlot Unchecked.defaultof<IComputation>)
+                Platform.setItemAt last slots EdgeHandle.Unlinked
+#else
+                items[last] <- ObserverSlot (Unchecked.defaultof<IComputation>, EdgeHandle.Unlinked)
+#endif
                 count <- last
 
                 if latest = last then
@@ -374,8 +369,8 @@ type internal ObserverSet() =
                 i <- count - 1
 
             if i >= 0 then
-                Tracer.Mark (this, observerAt i, true)
-                (observerAt i).MarkDirty()
+                Tracer.Mark (this, (Platform.itemAt i items).Observer, true)
+                (Platform.itemAt i items).Observer.MarkDirty()
                 i <- i - 1
 
     /// <summary>
@@ -397,7 +392,7 @@ type internal ObserverSet() =
                 i <- count - 1
 
             if i >= 0 then
-                let observer = observerAt i
+                let observer = (Platform.itemAt i items).Observer
 
                 if not (obj.ReferenceEquals (observer, running)) then
                     Tracer.Mark (this, observer, true)
@@ -420,8 +415,8 @@ type internal ObserverSet() =
                 i <- count - 1
 
             if i >= 0 then
-                Tracer.Mark (this, observerAt i, false)
-                (observerAt i).MarkCheck()
+                Tracer.Mark (this, (Platform.itemAt i items).Observer, false)
+                (Platform.itemAt i items).Observer.MarkCheck()
                 i <- i - 1
 
 #if RANVIER_TRACE
@@ -437,7 +432,7 @@ type internal ObserverSet() =
     interface ITracedEdges with
         member _.Owner = traceId
         member _.IsSources = false
-        member _.Ids = Array.init count (fun i -> (observerAt i).Id)
+        member _.Ids = Array.init count (fun i -> (Platform.itemAt i items).Observer.Id)
 #endif
 
 /// <summary>
@@ -567,8 +562,8 @@ type internal SourceList() =
     let mutable cursor = 0
 
     /// <summary>
-    /// Every source in the list, for the run's repeat checks over more than <c>EdgeHandle.ScanLimit</c> slots. Built
-    /// by the first such check and dropped at <c>EndRun</c> or a trim; null otherwise.
+    /// Every source in the list, for repeat checks over more than <c>EdgeHandle.ScanLimit</c> slots. Built by the first
+    /// such check, extended by every later append and dropped by a trim; null otherwise.
     /// </summary>
     let mutable held: Platform.RefIndex<ISource> = null
 
@@ -601,18 +596,6 @@ type internal SourceList() =
             Platform.setItemAt (i - 1) restHandles handle
 #else
             rest[i - 1].Handle <- handle
-#endif
-
-    let place (i: int) (source: ISource) (handle: int) =
-        if i = 0 then
-            first <- source
-            firstHandle <- handle
-        else
-#if FABLE_COMPILER
-            Platform.setItemAt (i - 1) rest (SourceSlot source)
-            Platform.setItemAt (i - 1) restHandles handle
-#else
-            rest[i - 1] <- SourceSlot (source, handle)
 #endif
 
     /// <summary>
@@ -665,19 +648,40 @@ type internal SourceList() =
     /// Drops the slots from <c>from</c> on, unlinking the edges they own.
     /// </summary>
     let trimFrom (self: IComputation) from =
-        held <- null
+        if not (Platform.isNull held) then
+            held <- null
 
+        // Each handle is read when its slot is reached: a removal can move this list's later edges.
         for i in from .. count - 1 do
-            let handle = handleAt i
+            // Blanked so a source dropped by a conditional body is not kept
+            // alive by a slot past the end of the list.
+            if i = 0 then
+                if firstHandle >= 0 then
+                    first.RemoveObserverAt (self, firstHandle)
 
-            if handle >= 0 then
-                (sourceAt i).RemoveObserverAt(self, handle)
+                first <- Unchecked.defaultof<ISource>
+                firstHandle <- EdgeHandle.Unlinked
+            else
+                let k = i - 1
+#if FABLE_COMPILER
+                let handle = Platform.itemAt k restHandles
+
+                if handle >= 0 then
+                    (Platform.itemAt k rest).Source.RemoveObserverAt(self, handle)
+
+                Platform.setItemAt k rest (SourceSlot Unchecked.defaultof<ISource>)
+                Platform.setItemAt k restHandles EdgeHandle.Unlinked
+#else
+                let handle = (Platform.itemAt k rest).Handle
+
+                if handle >= 0 then
+                    (Platform.itemAt k rest).Source.RemoveObserverAt(self, handle)
+
+                rest[k] <- SourceSlot (Unchecked.defaultof<ISource>, EdgeHandle.Unlinked)
+#endif
 #if RANVIER_COUNTERS
             Counters.EdgeRemoved ()
 #endif
-            // Blanked so a source dropped by a conditional body is not kept
-            // alive by a slot past the end of the list.
-            place i Unchecked.defaultof<ISource> EdgeHandle.Unlinked
 
         count <- from
 
@@ -732,32 +736,49 @@ type internal SourceList() =
 
             let slot = count
 
-            if slot > 0 && slot - 1 = rest.Length then
-                grow ()
-
-            place slot source EdgeHandle.Unlinked
-            count <- slot + 1
-            cursor <- count
+            if slot = 0 then
+                first <- source
+                count <- 1
+                cursor <- 1
 #if RANVIER_COUNTERS
-            Counters.EdgeAdded ()
+                Counters.EdgeAdded ()
 #endif
-            Tracer.EdgeAdd (this, source, slot)
+                Tracer.EdgeAdd (this, source, 0)
+                firstHandle <- source.AddObserver (self, 0)
+            else
+                let k = slot - 1
 
-            // A source already in the list keeps the one edge it has: A, B, A links A once.
-            let handle =
-                if slot = 0 then
-                    source.AddObserver (self, slot)
-                else
-                    let tried = source.TryAddObserver (self, slot)
+                if k = rest.Length then
+                    grow ()
 
+#if FABLE_COMPILER
+                Platform.setItemAt k rest (SourceSlot source)
+#else
+                rest[k] <- SourceSlot (source, EdgeHandle.Unlinked)
+#endif
+                count <- slot + 1
+                cursor <- count
+#if RANVIER_COUNTERS
+                Counters.EdgeAdded ()
+#endif
+                Tracer.EdgeAdd (this, source, slot)
+
+                // A source already in the list keeps the one edge it has: A, B, A links A once.
+                let tried = source.TryAddObserver (self, slot)
+
+                let handle =
                     if tried <> EdgeHandle.Unknown then tried
                     elif holds slot source then EdgeHandle.Unlinked
                     else source.AddObserver (self, slot)
 
-            setHandle slot handle
+#if FABLE_COMPILER
+                Platform.setItemAt k restHandles handle
+#else
+                rest[k].Handle <- handle
+#endif
 
-            if not (Platform.isNull held) then
-                Platform.refIndexSet held source slot
+                if not (Platform.isNull held) then
+                    Platform.refIndexSet held source slot
 
     /// <summary>
     /// Closes a run, dropping whatever the body did not read this time. Must
@@ -765,8 +786,6 @@ type internal SourceList() =
     /// edges past that prefix are no longer ones it depends on.
     /// </summary>
     member this.EndRun(self: IComputation) =
-        held <- null
-
         if cursor < count then
             Tracer.EdgesRemove (this, cursor)
             trimFrom self cursor
