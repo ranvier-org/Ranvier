@@ -1556,6 +1556,26 @@ let traceTests =
                 Expect.equal (int StreamEnd.Failed) (int TraceStreamEnd.Failed) "Failed"
                 Expect.equal (int StreamEnd.Restarted) (int TraceStreamEnd.Restarted) "Restarted"
                 Expect.equal (int StreamEnd.Disposed) (int TraceStreamEnd.Disposed) "Disposed"
+#if !FABLE_COMPILER
+
+            // Off-thread delivery and a manual dispatcher have no synchronous Fable equivalent.
+            testCase "a wake overtaken by a graph-thread item records no publication"
+            <| fun _ ->
+                use graph = manualGraph ()
+                let feed = ManualStream<int>()
+                let memo = graph.Run (fun () -> Api.createStreamFold 0 (+) (fun _ -> feed.Source))
+                reading memo |> ignore
+                offThread (fun () -> feed.Push 1)
+                feed.Push 2
+                graph.Pump () |> ignore
+
+                let counts =
+                    Trace.events graph
+                    |> Array.filter (fun e -> e.Kind = TraceEventKind.StreamPublished)
+                    |> Array.map _.Flag
+
+                Expect.equal counts [| 2 |] "one publication of both items, none for the wake"
+#endif
         ]
 #else
 let traceTests = testList "Stream memo traces" []
