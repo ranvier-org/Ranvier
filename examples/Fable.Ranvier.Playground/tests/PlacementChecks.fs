@@ -309,6 +309,387 @@ let private serverHook (ops: Operations<'view>) (run: 'view -> Backend -> unit) 
 
     equal ("<div>x</div>", Some "Browser capability requires explicit Omit policy") (Html.render Omit (run view), rejected)
 
+type Probe =
+    {
+        Log: ResizeArray<string>
+        Host: HTMLElement
+    }
+
+let private mountTemplate queued graph report (target: HTMLElement) (view: Program.View) =
+    mountView Program.ops Program.run queued graph report target view
+
+let private placedDiv =
+    Component.define (fun _ (probe: Probe) -> probe) (fun t ->
+        t.div
+            [|
+                t.Hooks.mounted (fun probe (node: HTMLDivElement) ->
+                    probe.Log.Add (sprintf "hook %b" (probe.Host.contains node))
+                    fun () -> probe.Log.Add (sprintf "cleanup %b" (probe.Host.contains node)))
+            |]
+            [||])
+
+let private templatePlacedInHost queued () =
+    use graph = new Graph ()
+    let probe = { Log = ResizeArray (); Host = host () }
+
+    let mounted =
+        mountTemplate queued graph strict probe.Host (Component.render placedDiv probe)
+
+    equal [ "hook true" ] (List.ofSeq probe.Log)
+    mounted.Dispose ()
+    equal ([ "hook true"; "cleanup true" ], 0.) (List.ofSeq probe.Log, probe.Host.childNodes.length)
+
+let private orderLog = ResizeArray<string>()
+
+let private orderChild =
+    Component.define (fun _ () -> ()) (fun t ->
+        t.span
+            [|
+                t.Hooks.mounted (fun _ (_: HTMLSpanElement) ->
+                    orderLog.Add "child"
+                    ignore)
+            |]
+            [||])
+
+let private orderRow =
+    Component.define (fun _ (item: unit -> int) -> item) (fun t ->
+        t.span
+            [|
+                t.Hooks.mounted (fun item (_: HTMLSpanElement) ->
+                    orderLog.Add ("row " + string (item ()))
+                    ignore)
+            |]
+            [||])
+
+let private orderParent =
+    Component.define (fun _ () -> ()) (fun t ->
+        t.div
+            [|
+                t.Hooks.mounted (fun _ (_: HTMLDivElement) ->
+                    orderLog.Add "parent"
+                    ignore)
+            |]
+            [| t.render orderChild id; t.each id (fun _ -> [| 1; 2 |]) orderRow |])
+
+let private templateSetupOrder queued () =
+    use graph = new Graph ()
+    orderLog.Clear ()
+
+    let mounted =
+        mountTemplate queued graph strict (host ()) (Component.render orderParent ())
+
+    equal [ "parent"; "child"; "row 1"; "row 2" ] (List.ofSeq orderLog)
+    mounted.Dispose ()
+
+let mutable private rowsProbe: Probe = Unchecked.defaultof<_>
+
+let private hookedRow =
+    Component.define (fun _ (item: unit -> int) -> item) (fun t ->
+        t.span
+            [|
+                t.Hooks.mounted (fun item (node: HTMLSpanElement) ->
+                    rowsProbe.Log.Add (sprintf "row %d %b" (item ()) (rowsProbe.Host.contains node))
+                    ignore)
+            |]
+            [| t.text (fun item -> string (item ())) |])
+
+let private hookedRows =
+    Component.define (fun _ (items: Signal<int list>) -> items) (fun t ->
+        t.div
+            [||]
+            [|
+                t.each id (fun (items: Signal<int list>) -> Array.ofList items.Value) hookedRow
+            |])
+
+let private templateRowsAfterLayout queued () =
+    use graph = new Graph ()
+    let rows = graph.Run (fun () -> Api.createSignal [ 1 ])
+    rowsProbe <- { Log = ResizeArray (); Host = host () }
+
+    let mounted =
+        mountTemplate queued graph strict rowsProbe.Host (Component.render hookedRows rows)
+
+    graph.Run (fun () -> rows.Value <- [ 1; 2 ])
+    mounted.Flush ()
+    equal [ "row 1 true"; "row 2 true" ] (List.ofSeq rowsProbe.Log)
+
+    graph.Run (fun () ->
+        Api.batch (fun () ->
+            rows.Value <- [ 1; 2; 3 ]
+            rows.Value <- [ 1; 2 ]))
+
+    mounted.Flush ()
+    equal ([ "row 1 true"; "row 2 true" ], "12") (List.ofSeq rowsProbe.Log, rowsProbe.Host.textContent)
+    mounted.Dispose ()
+
+let mutable private armProbe: Probe = Unchecked.defaultof<_>
+
+let private armSpan =
+    Component.define (fun _ (payload: unit -> int) -> payload) (fun t ->
+        t.span
+            [|
+                t.Hooks.mounted (fun payload (node: HTMLSpanElement) ->
+                    let key = payload ()
+                    armProbe.Log.Add (sprintf "arm %d %b" key (armProbe.Host.contains node))
+                    fun () -> armProbe.Log.Add (sprintf "arm cleanup %d" key))
+            |]
+            [| t.text (fun payload -> string (payload ())) |])
+
+let private armHost =
+    Component.define (fun _ (arm: Signal<int>) -> arm) (fun t ->
+        t.div
+            [||]
+            [|
+                t.branch (fun (arm: Signal<int>) -> arm.Value) (fun key -> t.arm armSpan key)
+            |])
+
+let private templateArmsReplace queued () =
+    use graph = new Graph ()
+    let arm = graph.Run (fun () -> Api.createSignal 0)
+    armProbe <- { Log = ResizeArray (); Host = host () }
+
+    let mounted =
+        mountTemplate queued graph strict armProbe.Host (Component.render armHost arm)
+
+    graph.Run (fun () -> arm.Value <- 1)
+    mounted.Flush ()
+    equal [ "arm 0 true"; "arm cleanup 0"; "arm 1 true" ] (List.ofSeq armProbe.Log)
+    mounted.Dispose ()
+
+let private failingDiv =
+    Component.define (fun _ (log: ResizeArray<string>) -> log) (fun t ->
+        t.div
+            [|
+                t.Hooks.mounted (fun log (_: HTMLDivElement) ->
+                    log.Add "first"
+                    fun () -> log.Add "first cleanup")
+                t.Hooks.mounted (fun _ (_: HTMLDivElement) -> failwith "hook")
+            |]
+            [||])
+
+let private templateInitialHookFailure queued () =
+    use graph = new Graph ()
+    let log = ResizeArray<string>()
+    let target = host ()
+
+    let raised =
+        try
+            mountTemplate queued graph strict target (Component.render failingDiv log)
+            |> ignore
+
+            None
+        with error ->
+            Some error.Message
+
+    equal (Some "hook", [ "first"; "first cleanup" ], 0.) (raised, List.ofSeq log, target.childNodes.length)
+
+let private failingRow =
+    Component.define (fun _ (item: unit -> int) -> item) (fun t ->
+        t.span
+            [|
+                t.Hooks.mounted (fun item (_: HTMLSpanElement) -> if item () = 2 then failwith "row 2" else ignore)
+            |]
+            [| t.text (fun item -> string (item ())) |])
+
+let private failingRows =
+    Component.define (fun _ (items: Signal<int list>) -> items) (fun t ->
+        t.div
+            [||]
+            [|
+                t.each id (fun (items: Signal<int list>) -> Array.ofList items.Value) failingRow
+            |])
+
+let private templateLaterHookFailure queued () =
+    use graph = new Graph ()
+    let rows = graph.Run (fun () -> Api.createSignal [ 1 ])
+    let reports = ResizeArray<exn list>()
+    let target = host ()
+
+    let mounted =
+        mountTemplate queued graph reports.Add target (Component.render failingRows rows)
+
+    graph.Run (fun () -> rows.Value <- [ 1; 2 ])
+    mounted.Flush ()
+    equal ("12", [ [ "row 2" ] ]) (target.textContent, messages reports)
+    mounted.Dispose ()
+
+let private batchedDiv =
+    Component.define (fun _ (probe: Probe) -> probe) (fun t ->
+        t.div
+            [|
+                t.Hooks.mounted (fun probe (node: HTMLDivElement) ->
+                    probe.Log.Add (sprintf "hook %b" (probe.Host.contains node))
+                    ignore)
+                t.Hooks.mounted (fun _ (_: HTMLDivElement) -> failwith "late")
+            |]
+            [||])
+
+let private templateMountInBatch queued () =
+    use graph = new Graph ()
+    let probe = { Log = ResizeArray (); Host = host () }
+    let reports = ResizeArray<exn list>()
+    let mounted = ref Unchecked.defaultof<Mounted>
+
+    graph.Run (fun () ->
+        Api.batch (fun () ->
+            mounted.Value <- mountTemplate queued graph reports.Add probe.Host (Component.render batchedDiv probe)
+            probe.Log.Add "returned"))
+
+    equal ([ "returned"; "hook true" ], [ [ "late" ] ]) (List.ofSeq probe.Log, messages reports)
+    mounted.Value.Dispose ()
+
+type Field =
+    {
+        Field: NodeRef<HTMLInputElement>
+        Seen: ResizeArray<bool>
+    }
+
+let private referenced =
+    Component.define
+        (fun _ (field: Field) ->
+            field.Seen.Add field.Field.Current.IsSome
+            field)
+        (fun t -> t.input [| t.Hooks.ref (fun field -> field.Field) |])
+
+let private templateNodeRef queued () =
+    use graph = new Graph ()
+
+    let field =
+        {
+            Field = NodeRef.create ()
+            Seen = ResizeArray ()
+        }
+
+    let target = host ()
+
+    let mounted =
+        mountTemplate queued graph strict target (Component.render referenced field)
+
+    let placed =
+        match field.Field.Current with
+        | Some node -> obj.ReferenceEquals (node, target.querySelector "input")
+        | None -> false
+
+    mounted.Dispose ()
+    equal ([ false ], true, false) (List.ofSeq field.Seen, placed, field.Field.Current.IsSome)
+
+let private moveRuns = ref 0
+
+let private countedRow =
+    Component.define (fun _ (item: unit -> int) -> item) (fun t ->
+        t.span
+            [|
+                t.Hooks.mounted (fun _ (_: HTMLSpanElement) ->
+                    moveRuns.Value <- moveRuns.Value + 1
+                    ignore)
+            |]
+            [| t.text (fun item -> string (item ())) |])
+
+let private countedRows =
+    Component.define (fun _ (items: Signal<int list>) -> items) (fun t ->
+        t.div
+            [||]
+            [|
+                t.each id (fun (items: Signal<int list>) -> Array.ofList items.Value) countedRow
+            |])
+
+let private templateMovesKeepHooks queued () =
+    use graph = new Graph ()
+    let rows = graph.Run (fun () -> Api.createSignal [ 1; 2 ])
+    let first, second = host (), host ()
+    moveRuns.Value <- 0
+
+    let mounted =
+        mountTemplate queued graph strict first (Component.render countedRows rows)
+
+    graph.Run (fun () -> rows.Value <- [ 2; 1 ])
+    mounted.Flush ()
+    mounted.MoveBefore (second, None)
+    equal (2, "21") (moveRuns.Value, second.textContent)
+    mounted.Dispose ()
+
+type RefRow =
+    {
+        Item: unit -> int
+        Button: NodeRef<HTMLButtonElement>
+    }
+
+let private refReads = ResizeArray<string>()
+
+let private refRow =
+    Component.define
+        (fun _ (item: unit -> int) ->
+            {
+                Item = item
+                Button = NodeRef.create ()
+            })
+        (fun t ->
+            t.button
+                [|
+                    t.Attrs.attribute ("data-item", (fun (row: RefRow) -> Some (string (row.Item ()))))
+                    t.Hooks.ref (fun row -> row.Button)
+                    t.Events.onClick (fun row _ ->
+                        refReads.Add (
+                            match row.Button.Current with
+                            | Some node ->
+                                node.getAttribute "data-item"
+                                |> Option.defaultValue "absent"
+                            | None -> "none"
+                        ))
+                |]
+                [||])
+
+let private refRows =
+    Component.define (fun _ (items: Signal<int list>) -> items) (fun t ->
+        t.div
+            [||]
+            [|
+                t.each id (fun (items: Signal<int list>) -> Array.ofList items.Value) refRow
+            |])
+
+/// <summary>Reverses two rows whose handlers read their row's NodeRef, then clicks the first button.</summary>
+let private templateRefAcrossReorder queued () =
+    use graph = new Graph ()
+    let rows = graph.Run (fun () -> Api.createSignal [ 1; 2 ])
+    let target = host ()
+    refReads.Clear ()
+
+    let mounted =
+        mountTemplate queued graph strict target (Component.render refRows rows)
+
+    graph.Run (fun () -> rows.Value <- [ 2; 1 ])
+    mounted.Flush ()
+
+    (target.querySelector "button"
+     |> unbox<HTMLButtonElement>)
+        .click()
+
+    equal [ "2" ] (List.ofSeq refReads)
+    mounted.Dispose ()
+
+let private serverHooked =
+    Component.define (fun _ () -> ()) (fun t -> t.div [| t.Hooks.mounted (fun _ (_: HTMLDivElement) -> ignore) |] [| t.text "x" |])
+
+let private templateServerHook () =
+    let render policy =
+        Html.render policy (Program.run (Component.render serverHooked ()))
+
+    let rejected =
+        try
+            render Reject |> ignore
+            None
+        with error ->
+            Some error.Message
+
+    equal ("<div>x</div>", Some "Browser capability requires explicit Omit policy") (render Omit, rejected)
+
+/// <summary>The template variant of a check, under synchronous and queued commits.</summary>
+let private templated (name: string) (check: bool -> unit -> unit) =
+    [|
+        for queued in [ false; true ] do
+            yield sprintf "template %s: %s" (if queued then "queued" else "synchronous") name, check queued
+    |]
+
 /// <summary>An input in a host attached to the document; its mounted hook focuses and measures it.</summary>
 let private focusAndMeasure () =
     use graph = new Graph ()
@@ -383,6 +764,21 @@ let cases: (string * (unit -> unit)) array =
             [|
                 "tree: a mounted hook raises under Reject and writes nothing under Omit", (fun () -> serverHook Tree.ops Tree.run)
                 "program: a mounted hook raises under Reject and writes nothing under Omit", (fun () -> serverHook Program.ops Program.run)
+            |]
+            templated "a mounted hook runs after the element is in the host and its cleanup runs before the element leaves" templatePlacedInHost
+            templated "hooks run in setup order: an instance, its inlined children, then region rows" templateSetupOrder
+            templated
+                "a row added by a list pass runs its hook after the pass lays it out, and a batch that adds and removes a row creates none"
+                templateRowsAfterLayout
+            templated "an arm's hook runs after the arm is moved in; a replaced arm's cleanup runs before the next arm's hook" templateArmsReplace
+            templated "a hook failure during mountWith unwinds the mount and rethrows" templateInitialHookFailure
+            templated "a later hook failure goes to report once and the instance stays" templateLaterHookFailure
+            templated "a mount inside Api.batch runs its hooks after the batch and reports their failures" templateMountInBatch
+            templated "NodeRef.Current is None during setup, Some while placed and None after disposal" templateNodeRef
+            templated "moving a mount or reordering rows does not re-run hooks" templateMovesKeepHooks
+            templated "a NodeRef read from a handler after a keyed reorder holds its row's element" templateRefAcrossReorder
+            [|
+                "template: a mounted hook raises under Reject and writes nothing under Omit", templateServerHook
             |]
         ]
 

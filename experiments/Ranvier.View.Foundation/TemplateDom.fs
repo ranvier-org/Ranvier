@@ -78,6 +78,8 @@ type Compiled =
         IsolatedSlots: (int * Slot) array
         Properties: (int * Func<obj, obj, unit> * obj) array
         Events: (int * string * Func<obj, obj, unit>) array
+        /// <summary>The placed hooks of the part's nodes: node index, kind and hook.</summary>
+        Placed: (int * PlacedKind * Func<obj, obj, (unit -> unit)>) array
         EventNames: string array
         Dispatch: Func<obj array, Node, obj, unit>
         Regions: CompiledRegion array
@@ -212,7 +214,7 @@ let private validateParsed (content: DocumentFragment) (walk: int array) (target
 
             let expected, matches =
                 match target with
-                | ElementNode (tag, _, _, _, _, _) ->
+                | ElementNode (tag, _, _, _, _, _, _) ->
                     let tagName = name tag
 
                     "<" + tagName + ">",
@@ -249,6 +251,7 @@ let private tables (targets: (TemplateNode * int array) array) (owners: int arra
     let isolatedSlots = ResizeArray<int * Slot>()
     let properties = ResizeArray<int * Func<obj, obj, unit> * obj>()
     let events = ResizeArray<int * string * Func<obj, obj, unit>>()
+    let placed = ResizeArray<int * PlacedKind * Func<obj, obj, (unit -> unit)>>()
 
     let add index (slot: Slot) =
         if slot.Mode = IsolatedMode then
@@ -262,7 +265,7 @@ let private tables (targets: (TemplateNode * int array) array) (owners: int arra
 
             match fst (targets[absolute]) with
             | TextSlotNode slot -> add index slot
-            | ElementNode (_, _, elementProperties, slots, elementEvents, _) ->
+            | ElementNode (_, _, elementProperties, slots, elementEvents, elementPlaced, _) ->
                 for write, value in elementProperties do
                     properties.Add (index, write, value)
 
@@ -271,12 +274,15 @@ let private tables (targets: (TemplateNode * int array) array) (owners: int arra
 
                 for eventName, handler in elementEvents do
                     events.Add (index, eventName, handler)
+
+                for kind, hook in elementPlaced do
+                    placed.Add (index, kind, hook)
             | RegionNode _ -> ()
             | TextNode _
             | FragmentNode _
             | ChildNode _ -> invalidOp "Static nodes are not dynamic targets"
 
-    renderSlots.ToArray (), isolatedSlots.ToArray (), properties.ToArray (), events.ToArray ()
+    renderSlots.ToArray (), isolatedSlots.ToArray (), properties.ToArray (), events.ToArray (), placed.ToArray ()
 
 let private compilePart
     (layout: SkeletonLayout)
@@ -289,7 +295,7 @@ let private compilePart
     (regions: CompiledRegion array)
     (children: CompiledChild array)
     : Compiled =
-    let renderSlots, isolatedSlots, properties, events =
+    let renderSlots, isolatedSlots, properties, events, placed =
         tables layout.Targets layout.Owners part first count
 
     let eventNames =
@@ -306,6 +312,7 @@ let private compilePart
         IsolatedSlots = isolatedSlots
         Properties = properties
         Events = events
+        Placed = placed
         EventNames = eventNames
         Dispatch = dispatchFor count events eventNames
         Regions = regions
@@ -635,7 +642,7 @@ let private listenDirect (services: MountServices) (state: obj array) (node: obj
                     scope.FailAll [ error ]
     )
 
-/// <summary>Writes a part's static properties, starts its render and isolated effects, and attaches its events.</summary>
+/// <summary>Writes a part's static properties, starts its render and isolated effects, attaches its events and registers its placed hooks.</summary>
 /// <remarks>The effects and listeners retain the state array and the services.</remarks>
 let private bind (services: MountServices) (compiled: Compiled) (state: obj array) =
     let properties = compiled.Properties
@@ -681,6 +688,17 @@ let private bind (services: MountServices) (compiled: Compiled) (state: obj arra
             services.Delegate eventName
         else
             listenDirect services state node eventName handler
+
+    let placed = compiled.Placed
+
+    if placed.Length > 0 then
+        let owner = at state StateOwner :?> Owner
+        let instance = at state StateInstance
+
+        for i in 0 .. placed.Length - 1 do
+            let nodeIndex, kind, hook = at placed i
+            let node: Node = unbox (at state (StateNodes + nodeIndex))
+            PlacedHook.register services.Placement services.Scope owner kind node (fun () -> hook.Invoke (instance, box node))
 
 /// <summary>The instance of a part: the template's own for 0, an inlined child's from its state array otherwise.</summary>
 let private partInstance (state: obj array) (childBase: int) (part: int) : obj =

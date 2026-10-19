@@ -1008,6 +1008,7 @@ let generate compilerRoot policyRoot packageRoot output =
                         "Attrs"
                         "Props"
                         "Events"
+                        "Hooks"
                         "element"
                         "fragment"
                         "text"

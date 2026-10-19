@@ -39,12 +39,14 @@ type Slot =
 /// <summary>A node of a backend-neutral template tree.</summary>
 [<NoEquality; NoComparison>]
 type TemplateNode =
+    /// <summary>An element: its tag, static attributes, static properties, slots, events, placed hooks and children.</summary>
     | ElementNode of
         Tag *
         (string * string) array *
         (Func<obj, obj, unit> * obj) array *
         Slot array *
         (string * Func<obj, obj, unit>) array *
+        (PlacedKind * Func<obj, obj, (unit -> unit)>) array *
         TemplateNode array
     | TextNode of string
     | TextSlotNode of Slot
@@ -147,9 +149,15 @@ type private MarkupMode =
     | Skeleton
     | Server of setup: Setup * rejectBrowser: bool * backend: Backend
 
-let private hasBrowserParts properties (slots: Slot array) (events: (string * Func<obj, obj, unit>) array) =
+let private hasBrowserParts
+    properties
+    (slots: Slot array)
+    (events: (string * Func<obj, obj, unit>) array)
+    (placed: (PlacedKind * Func<obj, obj, (unit -> unit)>) array)
+    =
     Array.length properties > 0
     || events.Length > 0
+    || placed.Length > 0
     || slots
        |> Array.exists (fun slot ->
            match slot.Target with
@@ -294,7 +302,7 @@ let private writeMarkup (append: string -> unit) (mode: MarkupMode) (state: Writ
                 append (Html.escape false (if isNull value then "" else value))
         | FragmentNode _
         | ChildNode _ -> invalidOp "Fragments and inlined children are flattened before writing"
-        | ElementNode (tag, attributes, properties, slots, events, children) ->
+        | ElementNode (tag, attributes, properties, slots, events, placed, children) ->
             if rawText tag then
                 match mode with
                 | Skeleton when children.Length = 0 && name tag <> "plaintext" -> ()
@@ -306,12 +314,13 @@ let private writeMarkup (append: string -> unit) (mode: MarkupMode) (state: Writ
                     properties.Length > 0
                     || slots.Length > 0
                     || events.Length > 0
+                    || placed.Length > 0
                 then
                     target node path
             | Server (_, rejectBrowser, _) ->
                 if
                     rejectBrowser
-                    && hasBrowserParts properties slots events
+                    && hasBrowserParts properties slots events placed
                 then
                     invalidOp "Browser capability requires explicit Omit policy"
 
@@ -393,7 +402,7 @@ let rec private expandNode (ops: Operations<'view>) (instance: obj) (node: Templ
     | TextNode value -> ops.Text value
     | TextSlotNode slot -> ops.Bind (fun left right -> slot.Same.Invoke (box left, box right)) (fun () -> unbox<string>(slot.Read.Invoke instance))
     | FragmentNode children -> ops.Fragment (Array.map (expandNode ops instance) children)
-    | ElementNode (tag, attributes, properties, slots, events, children) ->
+    | ElementNode (tag, attributes, properties, slots, events, placed, children) ->
         let modifiers: ModifierAction array =
             [|
                 for key, value in attributes -> Attribute (key, value)
@@ -404,6 +413,7 @@ let rec private expandNode (ops: Operations<'view>) (instance: obj) (node: Templ
                     | PropertyTarget write -> fun (backend: Backend) -> backend.ReactiveProperty ((fun () -> slot.Read.Invoke instance), write)
                     | TextTarget -> invalidOp "A text slot is a child node"
                 for eventName, handler in events -> listenModifier eventName (fun event -> handler.Invoke (instance, event))
+                for kind, hook in placed -> fun (backend: Backend) -> backend.Placed (kind, (fun node -> hook.Invoke (instance, node)))
             |]
 
         ops.Element tag modifiers (Array.map (expandNode ops instance) children)
@@ -456,6 +466,7 @@ type Part<'native, 'inst> =
     | StaticProperty of Func<obj, obj, unit> * obj
     | DynamicPart of Slot
     | EventPart of string * Func<obj, obj, unit>
+    | PlacedPart of PlacedKind * Func<obj, obj, (unit -> unit)>
     | NoPart
 
 /// <summary>A template subtree for instances of type <c>'inst</c>.</summary>
@@ -492,6 +503,7 @@ let private elementNode tag (parts: Part<'native, 'inst> array) (children: Templ
     let properties = ResizeArray ()
     let slots = ResizeArray ()
     let events = ResizeArray ()
+    let placed = ResizeArray ()
 
     for part in parts do
         match part with
@@ -501,9 +513,20 @@ let private elementNode tag (parts: Part<'native, 'inst> array) (children: Templ
         | StaticProperty (write, value) -> properties.Add (write, value)
         | DynamicPart slot -> slots.Add slot
         | EventPart (name, handler) -> events.Add (name, handler)
+        | PlacedPart (kind, hook) -> placed.Add (kind, hook)
         | NoPart -> ()
 
-    TemplateView (ElementNode (tag, attributes.ToArray (), properties.ToArray (), slots.ToArray (), events.ToArray (), Array.map nodeOf children))
+    TemplateView (
+        ElementNode (
+            tag,
+            attributes.ToArray (),
+            properties.ToArray (),
+            slots.ToArray (),
+            events.ToArray (),
+            placed.ToArray (),
+            Array.map nodeOf children
+        )
+    )
 
 /// <summary>Part constructors used by the generated template catalogue.</summary>
 module internal TemplateParts =
@@ -596,16 +619,38 @@ type EventBuilder<'inst> internal () =
     member _.on(eventName: string, handler: 'inst -> Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event eventName handler
 
+let private placedHook (hook: 'inst -> 'native -> (unit -> unit)) =
+    Func<obj, obj, (unit -> unit)>(fun instance node -> hook (unbox instance) (unbox node))
+
+/// <summary>Hook parts: code that runs once the element is placed in the mount's host.</summary>
+[<Sealed>]
+type HookBuilder<'inst> internal () =
+    /// <summary>Runs once the element is placed; the returned cleanup runs when the instance is disposed, before its nodes leave.</summary>
+    member _.mounted(hook: 'inst -> 'native -> (unit -> unit)) : Part<'native, 'inst> =
+        PlacedPart (PlacedKind.Mounted, placedHook hook)
+
+    /// <summary>Sets the instance's reference while the element is placed.</summary>
+    member _.ref(select: 'inst -> NodeRef<'native>) : Part<'native, 'inst> =
+        PlacedPart (
+            PlacedKind.Mounted,
+            Func<obj, obj, (unit -> unit)>(fun instance node ->
+                let target = select (unbox instance)
+                target.Set (Some (unbox node))
+                fun () -> target.Set None)
+        )
+
 /// <summary>Builds a template for instances of type <c>'inst</c>; dynamic parts receive the instance as their argument.</summary>
 [<Sealed>]
 type TemplateBuilder<'inst> internal () =
     let attrs = AttributeBuilder<'inst>()
     let props = PropertyBuilder<'inst>()
     let events = EventBuilder<'inst>()
+    let hooks = HookBuilder<'inst>()
 
     member _.Attrs = attrs
     member _.Props = props
     member _.Events = events
+    member _.Hooks = hooks
 
     member _.element (tag: Tag) (parts: Part<'native, 'inst> array) (children: TemplateView<'inst> array) : TemplateView<'inst> =
         elementNode tag parts children
