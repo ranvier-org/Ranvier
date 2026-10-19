@@ -359,6 +359,22 @@ let private recordingScope (name: string) (log: ResizeArray<string>) : ViewScope
     }
 
 /// <summary>Flushes four failing commits: two under one scope, one under another, one without a scope.</summary>
+let private throwingScope (name: string) (log: ResizeArray<string>) : ViewScope =
+    { new ViewScope with
+        member _.Tracks = false
+        member _.Wait() = ()
+        member _.Ready() = ()
+
+        member _.Fail(errors) =
+            log.Add (
+                name
+                + ":"
+                + String.concat "," [ for error in errors -> error.Message ]
+            )
+
+            failwith (name + " reporter")
+    }
+
 let private failuresByScope failure =
     use graph = new Graph ()
     let queue = Queue (graph, failure, ignore)
@@ -374,6 +390,44 @@ let private failuresByScope failure =
     queue.Enqueue (d, (fun () -> failwith "d"))
     queue.Flush ()
     List.ofSeq log, [ for error in queue.Errors -> error.Message ]
+
+/// <summary>Flushes failing commits under two scopes of which the given ones raise from Fail.</summary>
+let private failingReporters leftThrows rightThrows =
+    use graph = new Graph ()
+    let queue = Queue (graph, CollectAndContinue, ignore)
+    let log = ResizeArray<string>()
+
+    let make name throws =
+        if throws then
+            throwingScope name log
+        else
+            recordingScope name log
+
+    let a, b =
+        queue.Reserve (make "left" leftThrows), queue.Reserve (make "right" rightThrows)
+
+    queue.Enqueue (a, (fun () -> failwith "a"))
+    queue.Enqueue (b, (fun () -> failwith "b"))
+
+    let raised =
+        try
+            queue.Flush ()
+            null
+        with error ->
+            error
+
+    List.ofSeq log, raised
+
+let private oneReporterThrows () =
+    let log, raised = failingReporters true false
+    equal [ "left:a"; "right:b" ] log
+    equal "left reporter" raised.Message
+
+let private twoReportersThrow () =
+    let log, raised = failingReporters true true
+
+    equal [ "left:a"; "right:b" ] log
+    equal "Commit failure reporting failed" raised.Message
 
 let private collectedByScope () =
     equal ([ "left:a,c"; "right:b" ], [ "a"; "b"; "c"; "d" ]) (failuresByScope CollectAndContinue)
@@ -399,6 +453,8 @@ let pureCases =
         "fail-fast cancels replacements but preserves independent next wave", failFastReplacements
         "a flush reports each scope's failures in one call, in commit order", collectedByScope
         "fail-fast cancellation reports only the commit that failed", cancelledAreUnreported
+        "a throwing reporter does not stop other scopes and its exception is raised by the flush", oneReporterThrows
+        "several throwing reporters are raised by the flush as one combined failure", twoReportersThrow
     |]
 
 let cases = pureCases

@@ -523,6 +523,37 @@ let private keyedRowReaderFailure () =
     equal [ "memo"; "memo"; "memo" ] [ for error in reported -> error.Message ]
     mounted.Dispose ()
 
+/// <summary>Adds a keyed row after setup whose first queued-mode write raises.</summary>
+let private liveRowFirstWriteFailure (ops: Operations<'view>) (run: 'view -> Backend -> unit) =
+    use graph = new Graph ()
+    let rows = graph.Run (fun () -> Api.createSignal [ 1 ])
+    let reported = ResizeArray<exn>()
+    let host = host ()
+
+    let view =
+        Keyed.list ops id (fun () -> rows.Value) (fun current ->
+            Typed.div
+                ops
+                [|
+                    Typed.reactiveProperty
+                        (fun (node: HTMLDivElement) (value: int) ->
+                            if value = 2 then
+                                failwith "first write"
+
+                            node.title <- string value)
+                        current
+                |]
+                [||])
+
+    let mounted =
+        mountWith (QueuedCommits (CollectAndContinue, ignore)) graph None reported.AddRange host None (fun context -> run view context.Backend)
+
+    equal 0 reported.Count
+    graph.Run (fun () -> rows.Value <- [ 1; 2 ])
+    mounted.Flush ()
+    equal ([ "first write" ], 0) ([ for error in reported -> error.Message ], mounted.CommitErrors.Length)
+    mounted.Dispose ()
+
 let portableCases =
     [|
         "tree HTML serializes the boundary's escaped result", fun () -> serverBoundary Tree.ops Tree.run
@@ -677,6 +708,10 @@ let cases =
             fun () -> liveSetterFailure Tree.ops Tree.run true
             "program: a live queued setter failure is reported after the flush and kept in the queue's errors",
             fun () -> liveSetterFailure Program.ops Program.run true
+            "tree: a live row's failed first queued write is reported without reaching the queue's errors",
+            fun () -> liveRowFirstWriteFailure Tree.ops Tree.run
+            "program: a live row's failed first queued write is reported without reaching the queue's errors",
+            fun () -> liveRowFirstWriteFailure Program.ops Program.run
             "tree: a synchronous setter raising one exception object twice is reported once", fun () -> repeatedSetterFailure Tree.ops Tree.run false
             "program: a synchronous setter raising one exception object twice is reported once",
             fun () -> repeatedSetterFailure Program.ops Program.run false

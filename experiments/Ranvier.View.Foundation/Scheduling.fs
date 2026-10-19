@@ -94,7 +94,7 @@ type Queue(graph: Graph, failure: CommitFailure, post: (unit -> unit) -> unit) a
             scheduled <- false
             flushing <- true
             let failures = ResizeArray<exn>()
-            let failedSlots = ResizeArray<Slot>()
+            let mutable failedSlots: ResizeArray<Slot> = null
 
             try
                 graph.Run (fun () ->
@@ -128,6 +128,10 @@ type Queue(graph: Graph, failure: CommitFailure, post: (unit -> unit) -> unit) a
                                     Api.untrack commit
                                 with error ->
                                     failures.Add error
+
+                                    if isNull failedSlots then
+                                        failedSlots <- ResizeArray<Slot>()
+
                                     failedSlots.Add slot
                                     stopped <- failure = FailFastCancel
 
