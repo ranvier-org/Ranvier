@@ -320,7 +320,15 @@ type internal ObserverSet() =
                 handle >= count
                 || not (obj.ReferenceEquals (observerAt handle, c))
             then
-                raise (InvalidOperationException $"Edge handle {handle} of {count} does not hold the observer removed.")
+                raise (
+                    InvalidOperationException (
+                        "Edge handle "
+                        + string handle
+                        + " of "
+                        + string count
+                        + " does not hold the observer removed."
+                    )
+                )
 
 #if RANVIER_COUNTERS
             Counters.ObserverRemoved ()
