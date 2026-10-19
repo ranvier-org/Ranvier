@@ -1094,8 +1094,8 @@ and private RowBuilder(state: MountState) =
     let mutable staging: DocumentFragment = Unchecked.defaultof<_>
     let mutable settingUp = false
     let mutable setupFailure: exn option = None
-    // The container of the row being built.
-    let mutable container: Placement = null
+    // The pass of the row being built.
+    let mutable container: PlacementPass = null
 
     let setup: Setup =
         {
@@ -1108,7 +1108,7 @@ and private RowBuilder(state: MountState) =
 
         staging
 
-    member this.Build(materialise: Func<(unit -> obj), TemplateDom.MountServices, unit>, current: unit -> obj, target: Placement) : Row =
+    member this.Build(materialise: Func<(unit -> obj), TemplateDom.MountServices, unit>, current: unit -> obj, target: PlacementPass) : Row =
         container <- target
         roots.Clear ()
         setupFailure <- None
@@ -1165,13 +1165,13 @@ and private RowBuilder(state: MountState) =
 
         member _.Scope = state.Scope
 
-        member _.Placement = container
+        member _.Placement = container.Container
 
         member _.Head(entry) =
-            state.HeadIn (container, entry)
+            state.HeadIn (container.Container, entry)
 
         member _.Region(start, finish, _, kind, items, render, rows) =
-            state.NestedRegion (start, finish, kind, items, render, rows, container)
+            state.NestedRegion (start, finish, kind, items, render, rows, container.Container)
 
 /// <summary>
 /// The markers and laid-out rows of one region, with the region's owner, row builder and failure state.
@@ -2383,8 +2383,8 @@ and internal MountState
         let retired = ResizeArray<Row>()
         // The positions of an in-place window whose key differs from the last pass, in order.
         let moved = ResizeArray<int>()
-        // The container of the rows created by the current pass; a new one per pass.
-        let mutable pass: Placement = null
+        // The container of the rows created by the current pass; a new one per pass that requests one.
+        let pass = PlacementPass parentContainer
 
         // When the window from `first` keeps its length and spans more than `smallWindow` positions, collects into `moved`
         // the positions whose key differs between `prior` and `next` and returns true.
@@ -2433,7 +2433,7 @@ and internal MountState
 
             row <-
                 if isNull rows then
-                    this.MountRow (current, render, boundary, pass)
+                    this.MountRow (current, render, boundary, pass.Container)
                 else
                     site.Builder.Build (rows, current, pass)
 
@@ -2441,7 +2441,7 @@ and internal MountState
 
         let reconcile () =
             if site.Live () then
-                pass <- Placement parentContainer
+                pass.Begin ()
                 let parent = ref Unchecked.defaultof<Node>
                 let keys = ref Unchecked.defaultof<obj array>
                 let priorKeys = previousKeys
@@ -2759,6 +2759,8 @@ and internal MountState
         let mutable armOwner: Owner = Unchecked.defaultof<_>
         let mutable armItem: Signal<obj> = Unchecked.defaultof<_>
         let mutable armKey: obj = null
+        // The container of the mounted arm; a new one per arm that requests one.
+        let armContainer = PlacementPass parentContainer
 
         let disposeArm () =
             if not (isNull (box armOwner)) then
@@ -2773,7 +2775,7 @@ and internal MountState
             if not (isNull selected) then
                 let key, value = unbox<obj * obj> selected
                 let item = Api.createSignal value
-                let armContainer = Placement parentContainer
+                armContainer.Begin ()
                 let mutable created: Owner = Unchecked.defaultof<_>
                 let mutable row: Row = null
 
@@ -2791,7 +2793,7 @@ and internal MountState
 
                             row <-
                                 if isNull rows then
-                                    this.MountRow (current, render, boundary, armContainer)
+                                    this.MountRow (current, render, boundary, armContainer.Container)
                                 else
                                     site.Builder.Build (rows, current, armContainer)))
 

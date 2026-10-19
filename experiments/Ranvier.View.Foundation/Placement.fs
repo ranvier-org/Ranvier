@@ -92,6 +92,30 @@ type internal Placement(parent: Placement) =
 #endif
         held <- null
 
+/// <summary>
+/// The container of a region's current pass under <c>parent</c>, allocated by the first request of the pass. Every
+/// request within one pass returns the same container.
+/// </summary>
+[<Sealed; AllowNullLiteral>]
+type internal PlacementPass(parent: Placement) =
+    let mutable current: Placement = null
+
+    /// <summary>Starts a pass: the next request allocates a new container.</summary>
+    member _.Begin() =
+        current <- null
+
+    /// <summary>The container of the current pass.</summary>
+    member _.Container: Placement =
+        if isNull current then
+            current <- Placement parent
+
+        current
+
+    /// <summary>Places the container of the current pass, when the pass requested one.</summary>
+    member _.Place() =
+        if not (isNull current) then
+            current.Place ()
+
 /// <summary>Element hooks registered with a placement container.</summary>
 module internal PlacedHook =
     [<Emit("$0.parentNode")>]
