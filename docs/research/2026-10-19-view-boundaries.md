@@ -4,7 +4,7 @@ Date: 2026-10-19. Branch `poc/fable-ranvier-dom`. Plan: [view boundaries](../sup
 
 ## Mutation checks
 
-Each mutant is one edit to `experiments/Ranvier.View.Foundation`, compiled into the JS under test by `npm run test:dom` (which runs the Fable compile first), then restored with `git checkout`. The baseline run is 485 tests, all passing; the final run is 487 after the test added for the last mutant. File names below are in that directory.
+Each mutant is one edit to `experiments/Ranvier.View.Foundation`, compiled into the JS under test by `npm run test:dom` (which runs the Fable compile first), then restored with `git checkout`. The baseline run is 485 tests, all passing; the final run is 487 after the test added for the last mutant. The rows of the table and their counts were measured on `ace6b20`. File names below are in that directory.
 
 | Mutant | Edit | Killed by |
 |---|---|---|
@@ -19,7 +19,7 @@ Each mutant is one edit to `experiments/Ranvier.View.Foundation`, compiled into 
 | Authored handler catch removed | `Mounting.fs` `MountState.Listen`: `scope.FailAll [ error ]` becomes `reraise ()` | `tree synchronous: a throwing delegated handler under a boundary shows the error view`, `program synchronous: a throwing direct handler under a boundary shows the error view`, and 12 more (14 of 485) |
 | Template delegated handler catch removed | `TemplateDom.fs` `dispatchFor`: `scope.FailAll [ error ])` becomes `reraise ())` | `template: a throwing delegated handler under a boundary shows the error view`, `template: a delegated handler throwing NotReadyException under a boundary shows the error view`, `template: a delegated handler after one whose failure tore the content down is skipped` (3 of 485) |
 | Template direct handler catch removed | `TemplateDom.fs` `listenDirect`: `scope.FailAll [ error ]` becomes `reraise ()` | `template: a throwing direct handler under a boundary shows the error view`, `template: a direct handler throwing NotReadyException under a boundary shows the error view`, `template: a direct handler after one whose failure tore the content down is skipped` (3 of 485) |
-| Reveal run synchronously in `Ready` | `Mounting.fs` `ViewBoundary`: `member _.Ready()` becomes `member this.Ready()` and `Api.untrack (fun () -> wake.Value <- wake.Value + 1)` becomes `this.Settle ()` | Survived at 485 of 485. Killed after adding `tree synchronous: replacing the last pending row reveals both rows after the pass` and `program queued: replacing the last pending row reveals both rows after the pass` (2 failures of 487) |
+| Reveal run synchronously in `Ready` | `Mounting.fs` `ViewBoundary`: `member _.Ready()` becomes `member this.Ready()` and `Api.untrack (fun () -> wake.Value <- wake.Value + 1)` becomes `this.Settle ()` | Survived at 485 of 485. Killed after adding `tree synchronous: replacing the last pending row reveals both rows after the pass` and `program queued: replacing the last pending row reveals both rows after the pass` (2 failures of 487). On `6e68d4b`, the 93 boundary tests: 6 fail, all six `replacing a pending arm with another pending arm` cases; the `replacing the last pending row` cases pass |
 | Pending flag not set on a later pending read | `Mounting.fs` `ViewBoundary` `Wait`: `pending.Value <- true` becomes `()` | `tree synchronous: a pending read after the reveal keeps the content and sets IsPending`, `template synchronous: a boundary reveals rows and arms in one insertion and keeps them through a refetch`, and 4 more (6 of 485) |
 | Per-handler disposal check removed | `TemplateDom.fs` `dispatchFor`: the line `&& not owner.IsDisposed` is deleted | `delegated clicks reach a moved row and stop after its removal`, `template: a delegated handler after one whose failure tore the content down is skipped` (2 of 485) |
 
@@ -29,8 +29,12 @@ Running a reveal synchronously from `Ready` left every test passing. The reveal 
 
 ## Finding
 
-Replacing a pending `Branch.select` arm with another pending arm reveals the boundary with empty content on the unmutated code. `Settle` has no `&& waiting = 0` clause in this code; adding it alone does not change the result.
+Replacing a pending `Branch.select` arm with another pending arm reveals the boundary with empty content on the unmutated code. `Settle` had no `&& waiting = 0` clause in this code; adding it alone does not change the result.
 
-The brief's `Settle` clause mutant was not run: the clause it removes is absent.
+Removing the `Settle` clause added by `7e90084` (mutant M1) fails the 5 arm cases of the 90 boundary tests at that commit.
 
-Cause and fix: a new binding's first read runs in its own queued effect, after the boundary effect that the replaced binding's `Ready` already queued, so `Settle` saw `waiting = 0` before the new binding registered; `7e90084` records each new binding under an unrevealed boundary as waiting until its first read (`ViewScope.Expect`) and adds `&& waiting = 0` to `Settle`; template arms show the same bug and take the same fix, and a keyed row replacing the one pending row with another pending row needs only the `Settle` clause.
+Cause and fix: a new binding's first read runs in its own queued effect, after the boundary effect that the replaced binding's `Ready` already queued, so `Settle` saw `waiting = 0` before the new binding registered; `7e90084` records each new binding under an unrevealed boundary as waiting until its first read (`ViewScope.Expect`) and adds `&& waiting = 0` to `Settle`; template arms show the same bug and take the same fix, and a keyed row replacing the one pending row with another pending row is fixed by either part, the `Settle` clause or `Expect`, alone.
+
+A boundary mounted inside a flush mounts, sets up, cleans up and removes its pending view within the same flush, with no paint between; Task 10 measures the cost.
+
+`6e68d4b` writes the wake from `Ready` only after the content has set up (`MountContent` checks `waiting` itself): a boundary over three ready bindings and one pending binding now writes no wake during setup and one when the read settles (`BoundaryCounters.wakes`, tests `... a boundary writes no wake while its content sets up`); removing the `not settingUp` guard fails both.
