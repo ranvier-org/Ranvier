@@ -542,12 +542,32 @@ type internal ServerOp =
     | StaticChildTextOp of PortableProperty * obj * leadingLineFeed: bool
     /// <summary>A browser-only part of the element <c>tag</c>: raises under <c>Reject</c>, dropped under <c>Omit</c>.</summary>
     | BrowserOp of tag: string * part: string
-    /// <summary>A region, with its position among the regions of its owning part.</summary>
-    | RegionOp of index: int * Region
+    /// <summary>
+    /// A region, with its position among the regions of its owning part and the tags of the elements enclosing it in
+    /// the definition, nearest first.
+    /// </summary>
+    | RegionOp of index: int * Region * ancestors: string list
     /// <summary>Sets up the inlined child <c>child</c>, which becomes the current part.</summary>
     | EnterOp of child: int
     /// <summary>Restores the enclosing part.</summary>
     | LeaveOp
+
+/// <summary>The parts of a definition whose parse depends on the elements enclosing the definition.</summary>
+/// <remarks>A path lists tags from a root of the definition, joined by <c>/</c>; null marks an absent element.</remarks>
+[<NoEquality; NoComparison>]
+type internal RootSummary =
+    {
+        /// <summary>The tags of the element roots, inlined children's roots included, in document order.</summary>
+        RootTags: string array
+        /// <summary>Whether a root is a text slot or static text with a non-whitespace character.</summary>
+        TextRoot: bool
+        /// <summary>The path of the first <c>a</c> outside every <c>td</c>, <c>th</c>, <c>caption</c>, <c>object</c>, <c>marquee</c> and <c>applet</c>.</summary>
+        Anchor: string
+        /// <summary>The path of the first <c>form</c>.</summary>
+        Form: string
+        /// <summary>The path of the first element of the paragraph-closing set outside every paragraph-scope boundary.</summary>
+        ParagraphCloser: string
+    }
 
 /// <summary>A definition's server HTML as operations over its flattened template; no two <c>Static</c> operations are adjacent.</summary>
 [<NoEquality; NoComparison>]
@@ -565,6 +585,9 @@ type internal ServerPlan =
         FirstIsText: bool
         /// <summary>Whether the last root is a text node or a text slot.</summary>
         LastIsText: bool
+        Summary: RootSummary
+        /// <summary>The <c>ContentModel.contextKey</c> of each context the roots were accepted in; read and written under <c>lock</c>.</summary>
+        CheckedContexts: Collections.Generic.HashSet<string>
     }
 
 /// <summary>Elements whose first child text loses one leading line feed when parsed.</summary>
@@ -576,6 +599,280 @@ let private dropsLeadingLineFeed tagName =
 /// <summary>Elements whose content is parsed as a single text node.</summary>
 let private isRcdata tagName =
     tagName = "textarea" || tagName = "title"
+
+/// <summary>
+/// The nesting rules of the HTML parser's tree construction that template markup is checked against: markup matched
+/// by a rule parses to a different tree than the client builds.
+/// </summary>
+/// <remarks>
+/// <c>ancestors</c> lists the tags of the enclosing elements, nearest first. Where two rules match, the first in
+/// <c>check</c>'s order names the violation.
+/// </remarks>
+module internal ContentModel =
+    /// <summary>The ancestors, outermost first, and <c>last</c>, joined by <c>/</c>.</summary>
+    let path (ancestors: string list) (last: string) =
+        String.Join ("/", Array.ofList (List.rev (last :: ancestors)))
+
+    let private restructures (rule: string) (ancestors: string list) (last: string) : unit =
+        raise (
+            InvalidOperationException (
+                "The HTML parser restructures this markup ("
+                + rule
+                + ") at "
+                + path ancestors last
+            )
+        )
+
+    let private isTableSection tag =
+        tag = "thead" || tag = "tbody" || tag = "tfoot"
+
+    let private isTablePart tag =
+        tag = "table" || tag = "tr" || isTableSection tag
+
+    /// <summary>Elements whose start tag closes an open <c>p</c>.</summary>
+    let closesParagraph tag =
+        match tag with
+        | "address"
+        | "article"
+        | "aside"
+        | "blockquote"
+        | "center"
+        | "dd"
+        | "details"
+        | "dialog"
+        | "dir"
+        | "div"
+        | "dl"
+        | "dt"
+        | "fieldset"
+        | "figcaption"
+        | "figure"
+        | "footer"
+        | "form"
+        | "h1"
+        | "h2"
+        | "h3"
+        | "h4"
+        | "h5"
+        | "h6"
+        | "header"
+        | "hgroup"
+        | "hr"
+        | "li"
+        | "listing"
+        | "main"
+        | "menu"
+        | "nav"
+        | "ol"
+        | "p"
+        | "pre"
+        | "search"
+        | "section"
+        | "summary"
+        | "table"
+        | "ul" -> true
+        | _ -> false
+
+    /// <summary>Elements that end the paragraph scope: a <c>p</c> above them stays open.</summary>
+    let boundsParagraph tag =
+        match tag with
+        | "button"
+        | "td"
+        | "th"
+        | "caption"
+        | "object"
+        | "marquee"
+        | "applet" -> true
+        | _ -> false
+
+    /// <summary>Elements that end the anchor scope: an <c>a</c> above them stays open.</summary>
+    let boundsAnchor tag =
+        match tag with
+        | "td"
+        | "th"
+        | "caption"
+        | "object"
+        | "marquee"
+        | "applet" -> true
+        | _ -> false
+
+    let rec private openWithin (bounds: string -> bool) (target: string) (ancestors: string list) =
+        match ancestors with
+        | [] -> false
+        | tag :: rest ->
+            tag = target
+            || (not (bounds tag) && openWithin bounds target rest)
+
+    let private openParagraph ancestors =
+        openWithin boundsParagraph "p" ancestors
+
+    let private openAnchor ancestors =
+        openWithin boundsAnchor "a" ancestors
+
+    let private fosters parent tag =
+        match parent with
+        | "table" ->
+            not (
+                tag = "caption"
+                || tag = "colgroup"
+                || isTableSection tag
+            )
+        | "thead"
+        | "tbody"
+        | "tfoot" -> tag <> "tr"
+        | "tr" -> tag <> "td" && tag <> "th"
+        | _ -> false
+
+    let private selectContent parent tag =
+        (parent = "select"
+         && tag <> "option"
+         && tag <> "optgroup"
+         && tag <> "hr")
+        || (parent = "optgroup" && tag <> "option")
+
+    /// <summary>Raises when an element <c>tag</c> under <c>ancestors</c> is restructured by the HTML parser.</summary>
+    let check (ancestors: string list) (tag: string) : unit =
+        match ancestors with
+        | [] -> ()
+        | parent :: _ ->
+            let rule =
+                if isRcdata parent then
+                    "rcdata-content"
+                elif tag = "tr" && not (isTableSection parent) then
+                    "table-row"
+                elif
+                    (isTableSection tag
+                     || tag = "caption"
+                     || tag = "colgroup")
+                    && parent <> "table"
+                then
+                    "table-section"
+                elif (tag = "td" || tag = "th") && parent <> "tr" then
+                    "table-cell"
+                elif tag = "col" && parent <> "colgroup" then
+                    "table-column"
+                elif fosters parent tag then
+                    "table-foster"
+                elif closesParagraph tag && openParagraph ancestors then
+                    "paragraph-close"
+                elif tag = "a" && openAnchor ancestors then
+                    "nested-anchor"
+                elif tag = "form" && List.contains "form" ancestors then
+                    "nested-form"
+                elif selectContent parent tag then
+                    "select-content"
+                else
+                    null
+
+            if not (isNull rule) then
+                restructures rule ancestors tag
+
+    /// <summary>Raises when a text child under <c>ancestors</c> is restructured; a text slot is never <c>whitespace</c>.</summary>
+    let checkText (ancestors: string list) (whitespace: bool) : unit =
+        match ancestors with
+        | parent :: _ when not whitespace && isTablePart parent -> restructures "table-foster" ancestors "#text"
+        | _ -> ()
+
+    /// <summary>Raises when a region's markers under <c>ancestors</c> are parsed as text.</summary>
+    let checkRegion (ancestors: string list) : unit =
+        match ancestors with
+        | parent :: _ when isRcdata parent -> restructures "rcdata-content" ancestors "#region"
+        | _ -> ()
+
+    /// <summary>Whether <c>value</c> consists of HTML whitespace: space, tab, line feed, form feed and carriage return.</summary>
+    let isWhitespace (value: string) =
+        value
+        |> Seq.forall (fun c ->
+            c = ' '
+            || c = '\t'
+            || c = '\n'
+            || c = '\f'
+            || c = '\r')
+
+    /// <summary>The parts of <c>ancestors</c> that <c>checkSummary</c> depends on: the nearest tag and whether an <c>a</c>, a <c>form</c> and a <c>p</c> are open.</summary>
+    let contextKey (ancestors: string list) =
+        let flag value =
+            if value then "1" else "0"
+
+        List.head ancestors
+        + "|"
+        + flag (openAnchor ancestors)
+        + flag (List.contains "form" ancestors)
+        + flag (openParagraph ancestors)
+
+    /// <summary>Raises when a definition with <c>summary</c>, written under <c>ancestors</c>, is restructured.</summary>
+    let checkSummary (summary: RootSummary) (ancestors: string list) : unit =
+        for tag in summary.RootTags do
+            check ancestors tag
+
+        if summary.TextRoot then
+            checkText ancestors false
+
+        if
+            not (isNull summary.ParagraphCloser)
+            && openParagraph ancestors
+        then
+            restructures "paragraph-close" ancestors summary.ParagraphCloser
+
+        if
+            not (isNull summary.Anchor)
+            && openAnchor ancestors
+        then
+            restructures "nested-anchor" ancestors summary.Anchor
+
+        if
+            not (isNull summary.Form)
+            && List.contains "form" ancestors
+        then
+            restructures "nested-form" ancestors summary.Form
+
+    /// <summary>The summary of the definition whose template is <c>root</c>.</summary>
+    let summarise (root: TemplateNode) : RootSummary =
+        let tags = ResizeArray<string>()
+        let textRoot = ref false
+        let anchor = ref (null: string)
+        let form = ref (null: string)
+        let closer = ref (null: string)
+
+        let rec walk (nodes: TemplateNode array) (above: string list) (paragraph: bool) (anchors: bool) =
+            for flat in flatten nodes do
+                match flat with
+                | Item (ElementNode (tag, _, _, _, _, _, children)) ->
+                    let tagName = name tag
+                    let at = String.Join ("/", Array.ofList (List.rev (tagName :: above)))
+
+                    if above.IsEmpty then
+                        tags.Add tagName
+
+                    if
+                        paragraph
+                        && isNull closer.Value
+                        && closesParagraph tagName
+                    then
+                        closer.Value <- at
+
+                    if anchors && isNull anchor.Value && tagName = "a" then
+                        anchor.Value <- at
+
+                    if isNull form.Value && tagName = "form" then
+                        form.Value <- at
+
+                    walk children (tagName :: above) (paragraph && not (boundsParagraph tagName)) (anchors && not (boundsAnchor tagName))
+                | Item (TextSlotNode _) when above.IsEmpty -> textRoot.Value <- true
+                | Item (TextNode value) when above.IsEmpty && not (isWhitespace value) -> textRoot.Value <- true
+                | Item _
+                | Enter _
+                | Leave -> ()
+
+        walk [| root |] [] true true
+
+        {
+            RootTags = tags.ToArray ()
+            TextRoot = textRoot.Value
+            Anchor = anchor.Value
+            Form = form.Value
+            ParagraphCloser = closer.Value
+        }
 
 let private isBrowserOnly (property: PortableProperty) =
     match property.Html with
@@ -650,7 +947,7 @@ let private compilePlan (root: TemplateNode) : ServerPlan =
 
         ops.Add op
 
-    let rec compileChildren (nodes: TemplateNode array) (leading: bool) (marksEmpty: bool) =
+    let rec compileChildren (nodes: TemplateNode array) (leading: bool) (marksEmpty: bool) (ancestors: string list) =
         let mutable first = leading
         let mutable previousText = false
 
@@ -700,13 +997,14 @@ let private compilePlan (root: TemplateNode) : ServerPlan =
                 if text && previousText then
                     write "<!--!-->"
 
-                compileNode node first marksEmpty
+                compileNode node first marksEmpty ancestors
                 first <- false
                 previousText <- text
 
-    and compileNode node leading marksEmpty =
+    and compileNode node leading marksEmpty ancestors =
         match node with
         | TextNode value ->
+            ContentModel.checkText ancestors (ContentModel.isWhitespace value)
             let escaped = Html.escape false value
 
             if leading && escaped.Length > 0 && escaped[0] = '\n' then
@@ -714,6 +1012,7 @@ let private compilePlan (root: TemplateNode) : ServerPlan =
 
             write escaped
         | TextSlotNode slot ->
+            ContentModel.checkText ancestors false
             targets <- targets + 1
             emit (TextOp (slot, leading, marksEmpty))
         | ElementNode (tag, attributes, properties, slots, events, placed, nodes) ->
@@ -721,6 +1020,24 @@ let private compilePlan (root: TemplateNode) : ServerPlan =
 
             if rawText tag then
                 raise (InvalidOperationException "Raw-text elements require an explicit HTML serialization policy")
+
+            if tagName = "template" then
+                raise (
+                    InvalidOperationException (
+                        "Template elements are not supported in templates at "
+                        + ContentModel.path ancestors tagName
+                    )
+                )
+
+            ContentModel.check ancestors tagName
+
+            if isVoid tag && not (List.isEmpty (flatten nodes)) then
+                raise (
+                    InvalidOperationException (
+                        "A void element has children at "
+                        + ContentModel.path ancestors tagName
+                    )
+                )
 
             if
                 properties.Length > 0
@@ -821,18 +1138,19 @@ let private compilePlan (root: TemplateNode) : ServerPlan =
                 match contentSlot slots with
                 | Some content -> emit (ContentOp (content, leadingLineFeed))
                 | None when childText.Length = 1 -> emit childText[0]
-                | None -> compileChildren nodes leadingLineFeed (not rcdata)
+                | None -> compileChildren nodes leadingLineFeed (not rcdata) (tagName :: ancestors)
 
                 write ("</" + tagName + ">")
         | RegionNode region ->
+            ContentModel.checkRegion ancestors
             targets <- targets + 1
-            emit (RegionOp (regions[part], region))
+            emit (RegionOp (regions[part], region, ancestors))
             regions[part] <- regions[part] + 1
         | FragmentNode _
         | ChildNode _
         | HeadNode _ -> invalidOp "Fragments, inlined children and head entries are flattened before compiling"
 
-    compileChildren [| root |] false true
+    compileChildren [| root |] false true []
 
     if pending.Length > 0 then
         ops.Add (Static (pending.ToString ()))
@@ -874,7 +1192,24 @@ let private compilePlan (root: TemplateNode) : ServerPlan =
         RootCount = layout.RootCount
         FirstIsText = not roots.IsEmpty && isText (List.head roots)
         LastIsText = not roots.IsEmpty && isText (List.last roots)
+        Summary = ContentModel.summarise root
+        CheckedContexts = Collections.Generic.HashSet<string>()
     }
+
+/// <summary>Raises when the plan's roots are restructured under <c>ancestors</c>; each context key is checked until it is accepted once.</summary>
+let private checkRoots (plan: ServerPlan) (ancestors: string list) =
+    if not ancestors.IsEmpty then
+        let key = ContentModel.contextKey ancestors
+        let contexts = plan.CheckedContexts
+#if FABLE_COMPILER
+        if not (contexts.Contains key) then
+            ContentModel.checkSummary plan.Summary ancestors
+            contexts.Add key |> ignore
+#else
+        if not (lock contexts (fun () -> contexts.Contains key)) then
+            ContentModel.checkSummary plan.Summary ancestors
+            lock contexts (fun () -> contexts.Add key |> ignore)
+#endif
 
 /// <summary>The definition's server plan, compiled on first use; every later call returns the same plan.</summary>
 let internal serverPlan (definition: TemplateComponent) : ServerPlan =
@@ -1105,6 +1440,7 @@ type internal ServerWriter(backend: HtmlBackend) =
         (scope: ServerScope, definition: TemplateComponent, props: obj, parent: InstancePath, kind: int, a: int, b: int)
         : unit =
         let plan = serverPlan definition
+        checkRoots plan backend.Ancestors
 
         scope.Nest (fun scope setup ->
             let identity = backend.Identity
@@ -1199,19 +1535,25 @@ type internal ServerWriter(backend: HtmlBackend) =
                     raise (browserRejected tag part)
 
                 index <- index + 1
-            | RegionOp (regionIndex, region) ->
+            | RegionOp (regionIndex, region, ancestors) ->
                 if isNull partPath then
                     partPath <- if part = 0 then path else path.Child (part - 1)
 
-                match backend.Heads with
-                | null -> this.Region (scope, region, instance, partPath, regionIndex)
-                | heads ->
-                    heads.Open ()
+                let outer = backend.Ancestors
+                backend.Ancestors <- List.append ancestors outer
 
-                    try
-                        this.Region (scope, region, instance, partPath, regionIndex)
-                    finally
-                        heads.Close ()
+                try
+                    match backend.Heads with
+                    | null -> this.Region (scope, region, instance, partPath, regionIndex)
+                    | heads ->
+                        heads.Open ()
+
+                        try
+                            this.Region (scope, region, instance, partPath, regionIndex)
+                        finally
+                            heads.Close ()
+                finally
+                    backend.Ancestors <- outer
 
                 index <- index + 1
             | EnterOp child ->

@@ -796,6 +796,9 @@ and [<Sealed>] HtmlBackend(policy: BrowserPolicy, sink: HtmlSink) =
     /// <summary>The path that authored content sits under: the root's, or a view row's while its view runs.</summary>
     member val internal Path: InstancePath = InstancePath.Root with get, set
 
+    /// <summary>The tags of the open elements, nearest first.</summary>
+    member val internal Ancestors: string list = [] with get, set
+
     override _.Text value =
         childNodes <- childNodes + 1
         append (escapeHtml false value)
@@ -920,7 +923,13 @@ and [<Sealed>] HtmlBackend(policy: BrowserPolicy, sink: HtmlSink) =
                 || name tag = "listing"
 
             let before = childNodes
-            children ()
+            let outer = this.Ancestors
+            this.Ancestors <- name tag :: outer
+
+            try
+                children ()
+            finally
+                this.Ancestors <- outer
 
             if isWidget && childNodes <> before then
                 raise (System.ArgumentException ("A widget element has no children", "children"))

@@ -86,8 +86,9 @@ let private boundaryPins () =
 
 let private edgePins () =
     equal "<span><!--_--></span>" (renderOmit emptyText "")
-    equal "<div><br></div>" (renderOmit voidChildren ())
-    equal "<table><tr><td>x</td></tr></table>" (renderOmit rowInTable ())
+    equal "A void element has children at div/br" (failure (fun () -> renderOmit voidChildren () |> ignore)).Message
+
+    equal "The HTML parser restructures this markup (table-row) at table/tr" (failure (fun () -> renderOmit rowInTable () |> ignore)).Message
 
 let private cleanupLog = ResizeArray<string>()
 
@@ -1376,6 +1377,144 @@ let private contentLeadingLineFeed () =
             for markup in [ "\nx"; "\r\nx"; "&#10;x"; "<b>x</b>"; "" ] -> renderOmit preformattedContent markup
         ]
 
+let private restructures (rule: string) (path: string) =
+    true,
+    "The HTML parser restructures this markup ("
+    + rule
+    + ") at "
+    + path
+
+/// <summary>The type test and message of the exception <c>render</c> raises.</summary>
+let private rejection (render: unit -> unit) =
+    let error = failure render
+    error :? InvalidOperationException, error.Message
+
+let private restructured (build: TemplateBuilder<unit> -> TemplateView<unit>) =
+    let definition = Component.define (fun _ () -> ()) build
+
+    rejection (fun () ->
+        Server.render Server.Options.defaults definition ()
+        |> ignore)
+
+let private spanChild =
+    Component.define (fun _ () -> ()) (fun t -> t.span [||] [||])
+
+let private contentModel () =
+    let cases =
+        [
+            (fun (t: TemplateBuilder<unit>) -> t.table [||] [| t.tr [||] [| t.td [||] [||] |] |]), restructures "table-row" "table/tr"
+            (fun t -> t.div [||] [| t.tbody [||] [||] |]), restructures "table-section" "div/tbody"
+            (fun t -> t.table [||] [| t.tbody [||] [| t.td [||] [||] |] |]), restructures "table-cell" "table/tbody/td"
+            (fun t -> t.table [||] [| t.element (HtmlTag "col") [||] [||] |]), restructures "table-column" "table/col"
+            (fun t -> t.table [||] [| t.text "x" |]), restructures "table-foster" "table/#text"
+            (fun t -> t.table [||] [| t.tbody [||] [| t.tr [||] [| t.div [||] [||] |] |] |]), restructures "table-foster" "table/tbody/tr/div"
+            (fun t -> t.p [||] [| t.span [||] [| t.div [||] [||] |] |]), restructures "paragraph-close" "p/span/div"
+            (fun t -> t.p [||] [| t.li [||] [||] |]), restructures "paragraph-close" "p/li"
+            (fun t -> t.a [||] [| t.span [||] [| t.a [||] [||] |] |]), restructures "nested-anchor" "a/span/a"
+            (fun t -> t.form [||] [| t.div [||] [| t.form [||] [||] |] |]), restructures "nested-form" "form/div/form"
+            (fun t -> t.select [||] [| t.div [||] [||] |]), restructures "select-content" "select/div"
+            (fun t -> t.textarea [||] [| t.span [||] [||] |]), restructures "rcdata-content" "textarea/span"
+            (fun t -> t.textarea [||] [| t.render spanChild (fun _ -> ()) |]), restructures "rcdata-content" "textarea/span"
+        ]
+
+    equal [ for _, expected in cases -> expected ] [ for build, _ in cases -> restructured build ]
+
+    let accepted =
+        Component.define (fun _ () -> ()) (fun t ->
+            t.div
+                [||]
+                [|
+                    t.p [||] [| t.button [||] [| t.div [||] [||] |] |]
+                    t.table [||] [| t.tbody [||] [| t.text " "; t.tr [||] [| t.td [||] [| t.text "x" |] |] |] |]
+                |])
+
+    equal
+        "<!--[r--><div><p><button><div></div></button></p><table><tbody> <tr><td>x</td></tr></tbody></table></div><!--]-->"
+        (Server.render Server.Options.defaults accepted ())
+
+    let anchorInCell =
+        Component.define (fun _ () -> ()) (fun t ->
+            t.a
+                [||]
+                [|
+                    t.table
+                        [||]
+                        [|
+                            t.tbody [||] [| t.tr [||] [| t.td [||] [| t.a [||] [| t.text "x" |] |] |] |]
+                        |]
+                |])
+
+    equal "<!--[r--><a><table><tbody><tr><td><a>x</a></td></tr></tbody></table></a><!--]-->" (Server.render Server.Options.defaults anchorInCell ())
+
+let private tableRow =
+    Component.define (fun _ (_: unit -> int) -> ()) (fun t -> t.tr [||] [| t.td [||] [||] |])
+
+let private rowsInTable =
+    Component.define (fun _ (rows: int array) -> rows) (fun t -> t.table [||] [| t.each id id tableRow |])
+
+let private rowsInBody =
+    Component.define (fun _ (rows: int array) -> rows) (fun t -> t.table [||] [| t.tbody [||] [| t.each id id tableRow |] |])
+
+let private blockRow =
+    Component.define (fun _ (_: unit -> int) -> ()) (fun t -> t.span [||] [| t.div [||] [||] |])
+
+let private blocksInParagraph =
+    Component.define (fun _ (rows: int array) -> rows) (fun t -> t.p [||] [| t.each id id blockRow |])
+
+let private blocksInButton =
+    Component.define (fun _ (rows: int array) -> rows) (fun t -> t.p [||] [| t.button [||] [| t.each id id blockRow |] |])
+
+let private dynamicContentModel () =
+    let render definition (rows: int array) =
+        Server.render Server.Options.defaults definition rows
+
+    equal
+        [ restructures "table-row" "table/tr"; restructures "table-row" "table/tr" ]
+        [ for _ in 1..2 -> rejection (fun () -> render rowsInTable [| 1 |] |> ignore) ]
+
+    equal
+        [
+            "<!--[r--><table><tbody><!--[--><tr><td></td></tr><!--]--></tbody></table><!--]-->"
+            "<!--[r--><table><tbody><!--[--><tr><td></td></tr><tr><td></td></tr><!--]--></tbody></table><!--]-->"
+        ]
+        [ render rowsInBody [| 1 |]; render rowsInBody [| 1; 2 |] ]
+
+    equal (restructures "paragraph-close" "p/span/div") (rejection (fun () -> render blocksInParagraph [| 1 |] |> ignore))
+
+    equal "<!--[r--><p><button><!--[--><span><div></div></span><!--]--></button></p><!--]-->" (render blocksInButton [| 1 |])
+
+let private tableHole =
+    Component.define (fun _ (body: Program.View) -> body) (fun t -> t.table [||] [| t.view id |])
+
+let private authoredContext () =
+    let row = Component.render tableRow (fun () -> 1)
+
+    let render (body: Program.View) =
+        Server.render Server.Options.defaults tableHole body
+
+    equal (restructures "table-row" "table/tr") (rejection (fun () -> render row |> ignore))
+
+    equal
+        "<!--[r--><table><!--[--><tbody><tr><td></td></tr></tbody><!--]--></table><!--]-->"
+        (render (Program.element (HtmlTag "tbody") [||] [| row |]))
+
+let private titleRegion =
+    Component.define (fun _ (rows: int array) -> rows) (fun t -> t.title [||] [| t.each id id tableRow |])
+
+let private rcdataRegion () =
+    equal
+        (restructures "rcdata-content" "title/#region")
+        (rejection (fun () ->
+            Server.render Server.Options.defaults titleRegion [| 1 |]
+            |> ignore))
+
+let private templateElement () =
+    equal
+        (true, "Template elements are not supported in templates at div/template")
+        (restructured (fun t -> t.div [||] [| t.element (HtmlTag "template") [||] [||] |]))
+
+    equal (true, "A void element has children at p/br") (restructured (fun t -> t.p [||] [| t.element (HtmlTag "br") [||] [| t.span [||] [||] |] |]))
+
 let cases: (string * (unit -> unit)) array =
     [|
         "CreateId numbers inlined children in pre-order and puts an inlined child's rows under its path", nestedIdentity
@@ -1405,7 +1544,7 @@ let cases: (string * (unit -> unit)) array =
         "server plan matches the current writer for every template fixture", templatePins
         "server plan matches the current writer for arms", armPins
         "server plan matches the current writer for boundaries", boundaryPins
-        "empty text, void children and a tr in a table render as recorded", edgePins
+        "empty text renders as recorded; void children and a tr in a table fail at plan compile", edgePins
         "an inlined child's cleanups run with its parent's, after the rows' own", inlinedCleanupOrder
         "raw HTML content is written verbatim", rawHtmlPin
         "raw HTML containing a marker-shaped comment raises", rawHtmlForgesNoMarker
@@ -1442,6 +1581,11 @@ let cases: (string * (unit -> unit)) array =
         "rows are separated only between a trailing and a leading text, and a zero-root arm writes the row marker", rowMarkers
         "an empty text slot in a textarea or title writes nothing, and more than one text child fails at plan compile", rcdataText
         "non-empty raw HTML in a pre or listing is written after a line feed, dropped on parsing", contentLeadingLineFeed
+        "content-model violations fail at plan compile with the rule and the element path", contentModel
+        "a row definition with tr roots inside a table region fails on first render", dynamicContentModel
+        "a template in a view hole is checked against the template and authored elements enclosing it", authoredContext
+        "a region inside a textarea or title fails at plan compile", rcdataRegion
+        "void elements with children and template elements fail at plan compile", templateElement
     |]
 
 #if !FABLE_COMPILER
