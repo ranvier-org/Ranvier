@@ -267,6 +267,7 @@ member Ranvier.ProjectionModule static averageBy$W<3>(Microsoft.FSharp.Core.FSha
 member Ranvier.ProjectionModule static averageBy<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,Ranvier.Projection`2<!!2,!!0>) : Ranvier.Memo`1<!!1>
 member Ranvier.ProjectionModule static choose<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,Microsoft.FSharp.Core.FSharpOption`1<!!1>>,Ranvier.Projection`2<!!2,!!0>) : Ranvier.Projection`2<!!2,!!1>
 member Ranvier.ProjectionModule static countBy<2>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,Boolean>,Ranvier.Projection`2<!!1,!!0>) : Ranvier.Memo`1<Int32>
+member Ranvier.ProjectionModule static distinctBy<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,Ranvier.Projection`2<!!2,!!0>) : Ranvier.Projection`2<!!2,!!0>
 member Ranvier.ProjectionModule static ensureUniqueKeys<2>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,System.Collections.Generic.IEnumerable`1<!!0>) : Void
 member Ranvier.ProjectionModule static exists<2>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,Boolean>,Ranvier.Projection`2<!!1,!!0>) : Ranvier.Memo`1<Boolean>
 member Ranvier.ProjectionModule static filter<2>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,Boolean>,Ranvier.Projection`2<!!1,!!0>) : Ranvier.Projection`2<!!1,!!0>

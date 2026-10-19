@@ -1443,6 +1443,9 @@ let chainTests =
             "sortByDescending then take",
             Projection.sortByDescending (fun n -> n / 4)
             >> Projection.take (fun () -> 10)
+            "distinctBy then sortBy",
+            Projection.distinctBy (fun n -> n % 5)
+            >> Projection.sortBy (fun n -> -n)
             "sub then map",
             Projection.sub (fun () -> 0) (fun () -> 10)
             >> Projection.map (fun n -> n * 3)
@@ -3688,5 +3691,133 @@ let partitionTests =
                 Expect.isEmpty odds.Keys "the second half is disposed"
                 Expect.equal (readersOf up 1) 0 "the shared predicate view released the upstream row"
                 Expect.equal calls.Value 0 "no predicate runs after disposal"
+            }
+        ]
+
+[<Tests>]
+let distinctByTests =
+    testList
+        "Projection.distinctBy"
+        [
+            test "the first holder per value, in upstream order" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1; 2, 2; 3, 1; 4, 3 ])
+
+                let view =
+                    rows source
+                    |> Projection.distinctBy (fun n -> n % 3)
+
+                Expect.sequenceEqual view.Keys [ 1; 2; 4 ] "keys 1, 2 and 4 hold 1, 2 and 0"
+                source.Value <- source.Value |> List.filter (fun x -> x.Id <> 1)
+                Expect.sequenceEqual view.Keys [ 2; 3; 4 ] "key 3 takes over value 1"
+                source.Value <- List.rev source.Value
+                Expect.sequenceEqual view.Keys [ 4; 3; 2 ] "upstream order"
+            }
+
+            test "an edit that keeps every holder's value wakes no Keys reader" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1; 2, 2; 3, 1 ])
+
+                let view =
+                    rows source
+                    |> Projection.distinctBy (fun n -> n % 3)
+
+                let runs = ref 0
+
+                createEffect (fun () ->
+                    runs.Value <- runs.Value + 1
+                    view.Keys |> ignore)
+
+                source.Value <- setN 1 4 source.Value
+                Expect.equal runs.Value 1 "key 1 still holds value 1"
+            }
+
+            test "a key reader sees a hand-over as Removed and Added" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1; 2, 2; 3, 1 ])
+
+                let view =
+                    rows source
+                    |> Projection.distinctBy (fun n -> n % 3)
+
+                createEffect (fun () -> view.Keys |> ignore)
+                let reader = view.NewKeyReader ()
+                reader.Read () |> ignore
+                source.Value <- source.Value |> List.filter (fun x -> x.Id <> 1)
+                let delta = reader.Read ()
+
+                Expect.sequenceEqual delta.Keys [ 2; 3 ] "key 3 holds value 1"
+
+                Expect.equal
+                    (delta.Changes
+                     |> Seq.map (fun pair -> pair.Key, pair.Value)
+                     |> Set.ofSeq)
+                    (set [ 1, KeyChange.Removed; 3, KeyChange.Added ])
+                    "the hand-over"
+            }
+
+            test "a pending value keeps the key's last settled value; a never-settled key is only in PendingKeys" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let flights = dict [ for n in [ 10; 11; 30 ] -> n, createAsyncSource<int>() ]
+                flights[10].Settle 1
+                let source = createSignal (items [ 1, 10; 3, 30 ])
+
+                let view =
+                    rows source
+                    |> Projection.distinctBy (fun n -> flights[n].Value)
+
+                Expect.sequenceEqual view.Keys [ 1 ] "key 3 has never settled"
+                Expect.sequenceEqual view.PendingKeys [ 3 ] "key 3 is pending"
+                source.Value <- setN 1 11 source.Value
+                Expect.sequenceEqual view.Keys [ 1 ] "key 1 keeps its last value"
+                flights[30].Settle 1
+                Expect.sequenceEqual view.Keys [ 1 ] "key 3 settles to key 1's value"
+                flights[11].Settle 2
+                Expect.sequenceEqual view.Keys [ 1; 3 ] "key 1 moves to value 2, and key 3 holds value 1"
+            }
+
+            test "a throwing value excludes the key, and Get raises its error" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1; 2, 4 ])
+
+                let view =
+                    rows source
+                    |> Projection.distinctBy (fun n -> if n = 13 then invalidOp "boom 13" else n % 3)
+
+                Expect.sequenceEqual view.Keys [ 1 ] "key 2 repeats value 1"
+                source.Value <- setN 1 13 source.Value
+                Expect.sequenceEqual view.Keys [ 2 ] "key 2 takes over"
+                Expect.throwsC (fun () -> view.Get 1 |> ignore) (fun ex -> Expect.equal ex.Message "boom 13" "Get raises")
+                source.Value <- setN 1 1 source.Value
+                Expect.sequenceEqual view.Keys [ 1 ] "recovered"
+            }
+
+            test "disposing the view detaches it from the upstream" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1; 2, 2 ])
+                let up = rows source
+                let calls = ref 0
+
+                let view =
+                    up
+                    |> Projection.distinctBy (fun n ->
+                        calls.Value <- calls.Value + 1
+                        n % 3)
+
+                keysAndRows view |> ignore
+                Expect.isGreaterThan (readersOf up 1) 0 "the value view reads row 1"
+                view.Dispose ()
+                Expect.equal (readersOf up 1) 0 "the value view released the upstream row"
+                calls.Value <- 0
+                source.Value <- setN 1 6 source.Value
+
+                Expect.equal calls.Value 0 "no projection runs after disposal"
+                Expect.isEmpty view.Keys "a disposed view is empty"
             }
         ]

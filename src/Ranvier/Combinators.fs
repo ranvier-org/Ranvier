@@ -235,6 +235,60 @@ type internal FilterView<'K, 'V, 'U when 'K: equality>
         heldOut.Publish upstream
 
 /// <summary>
+/// The first key holding each distinct value of <c>values</c>, in upstream order, each with a row reading the upstream
+/// value.
+/// </summary>
+/// <remarks>
+/// A pending value keeps the key's last settled value. A failed value leaves the key out of <c>Keys</c> and keeps its
+/// row, which raises the failure.
+/// </remarks>
+type internal DistinctView<'K, 'V, 'G when 'K: equality and 'G: equality>(graph: Graph, upstream: Projection<'K, 'V>, values: Projection<'K, 'G> ref)
+    =
+    inherit
+        RowsOf<'K, 'K, 'V>(
+            graph,
+            (fun key ->
+                values.Value.Get key |> ignore
+                upstream.Get key),
+            Unchecked.defaultof<_>
+        )
+
+    let heldOut = HeldOut<'K> graph
+    let taken = Platform.KeySet<'G>()
+
+    /// <summary>
+    /// The upstream keys whose value has never settled, in upstream order, followed by the keys <c>upstream</c> holds out
+    /// of its <c>Keys</c>. A tracked read.
+    /// </summary>
+    member _.HeldOut = heldOut.Keys
+
+    override this.Enumerate() =
+        heldOut.Begin ()
+        taken.Clear ()
+        let rows = values.Value
+        let keys = rows.Keys
+
+        for i in 0 .. keys.Length - 1 do
+            let key = Platform.itemAt i keys
+            let entry = rows.Entries.Find key
+
+            if not (Platform.isNull entry) then
+                match entry.Row.TryValue with
+                | Ready value ->
+                    if taken.Add value then
+                        this.Visit (key, key)
+                | Pending ->
+                    if not entry.Settled then
+                        heldOut.Add key
+                    elif taken.Add entry.Row.Peek then
+                        this.Visit (key, key)
+                | Failed _ ->
+                    this.Visit (key, key)
+                    this.HideLast ()
+
+        heldOut.Publish upstream
+
+/// <summary>
 /// The rank orders of sorts and extremes: <c>compare</c>, with a <c>float</c> or <c>float32</c> NaN equal to NaN and
 /// after every other rank.
 /// </summary>
@@ -1842,13 +1896,14 @@ module Projection =
             upstream
 
     /// <summary>
-    /// The keys of <c>upstream</c> whose value satisfies <c>predicate</c>, and the other keys, each half in upstream order
-    /// with the values.
+    /// The keys of <c>upstream</c> satisfying <c>predicate</c>, and the keys that do not, each in upstream order with their
+    /// values.
     /// </summary>
     /// <remarks>
-    /// The halves share one predicate view, which runs <c>predicate</c> once per key when its upstream row changes. A
-    /// throwing predicate removes the key from both halves, and <c>Get</c> of either raises its exception. A pending
-    /// predicate keeps the key on its last side; a key never settled is in the <c>PendingKeys</c> of both.
+    /// The halves share one predicate view, which runs <c>predicate</c> once per changed row and is disposed with the
+    /// calling scope; each half is disposable on its own. A throwing predicate removes the key from both halves, and
+    /// <c>Get</c> and <c>TryGet</c> of either raise its exception. A pending predicate keeps the key on its last side, and
+    /// a never-settled key is in the <c>PendingKeys</c> of both.
     /// </remarks>
     /// <example>
     /// <code lang="fsharp">
@@ -1874,3 +1929,29 @@ module Projection =
             view :> Projection<'K, 'V>
 
         half true, half false
+
+    /// <summary>
+    /// The first key of <c>upstream</c> for each distinct <c>projection</c> of the value, in upstream order, with its
+    /// value.
+    /// </summary>
+    /// <remarks>
+    /// The next key with a value enters when its holder leaves or changes value; a membership change costs O(N). A pending
+    /// value keeps the key's last settled value, and a never-settled key is in <c>PendingKeys</c>. A throwing
+    /// <c>projection</c> excludes the key, and <c>Get</c> and <c>TryGet</c> of the key raise its exception.
+    /// </remarks>
+    /// <example>
+    /// <code lang="fsharp">
+    /// let rows = createProjection (fun t -> t.Id) id (fun () -> todos.Value)
+    /// let onePerOwner = rows |> Projection.distinctBy (fun t -> t.Owner)
+    /// </code>
+    /// </example>
+    let distinctBy (projection: 'V -> 'G) (upstream: Projection<'K, 'V>) : Projection<'K, 'V> =
+        upstream.RequireRowMemos "Projection.distinctBy"
+        let graph = upstream.Graph
+        let values = ref Unchecked.defaultof<Projection<'K, 'G>>
+        let view = new DistinctView<'K, 'V, 'G> (graph, upstream, values)
+
+        values.Value <- graph.RunOwned (view.Scope, fun () -> perKey graph upstream projection)
+
+        view.PendingExtra <- fun () -> view.HeldOut
+        view :> Projection<'K, 'V>

@@ -2401,6 +2401,17 @@ let deltaReaderTests =
                         rewriteFailing failing)
                 }
 
+                test $"distinctBy keys follow the law while values fail and recover (seed {seed})" {
+                    randomPassesWith seed 150 (fun items ->
+                        let failing = createSignal Set.empty<int>
+
+                        createProjection id id (fun () -> items.Value)
+                        |> Projection.distinctBy (fun n ->
+                            failWhen failing n
+                            n % 5),
+                        rewriteFailing failing)
+                }
+
                 test $"index projection keys follow the law (seed {seed})" {
                     randomPasses seed 150 (fun items -> createIndexProjection id (fun () -> items.Value))
                 }
@@ -2816,6 +2827,8 @@ let rowOptionTests =
                         Projection.partition (fun _ -> true) proj
                         |> ignore)
                     "partition"
+
+                Expect.throwsT<NotSupportedException> (fun () -> Projection.distinctBy id proj |> ignore) "distinctBy"
             }
 
             test "size and position memos read a projection from createProjectionOnce" {

@@ -92,6 +92,7 @@ let all =
                     Ranvier.Tests.Combinators.averageTests
                     Ranvier.Tests.Combinators.extremeTests
                     Ranvier.Tests.Combinators.partitionTests
+                    Ranvier.Tests.Combinators.distinctByTests
                 ]
             testList "PreviousValues.fs" [ Ranvier.Tests.PreviousValues.tests; Ranvier.Tests.PreviousValues.asyncTests ]
             testList

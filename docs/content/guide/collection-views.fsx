@@ -16,7 +16,7 @@ let active = graph.Activate ()
 
 The examples run inside an [active graph](graph.fsx).
 
-Derive a live view from a projection with `filter`, `choose`, `map`, `mapWith`, `sortBy`, `sortByDescending`, `partition` or `groupBy`.
+Derive a live view from a projection with `filter`, `choose`, `map`, `mapWith`, `sortBy`, `sortByDescending`, `partition`, `distinctBy` or `groupBy`.
 Each view keeps rows by key and re-runs its function only for changed upstream rows.
 
 As with a source projection, `Keys` tracks membership and order; `Get key` tracks a row value.
@@ -215,7 +215,6 @@ in UngroupedKeys`
 predicate view: the predicate runs once per changed row for both halves. A raising predicate leaves the key out of
 both halves; a pending one keeps the key on its last side. Each half can be disposed on its own.
 
-
 *)
 let shortTitles, longerTitles = orderedTitles |> Projection.partition (fun title -> title.Length < 2)
 (shortTitles.Keys, longerTitles.Keys)
@@ -230,6 +229,29 @@ let shortTitles, longerTitles = orderedTitles |> Projection.partition (fun title
 Pinned by the `Projection.partition` tests, including `200 single edits at N=1000 make 200 predicate calls across
 both halves` and `a pending predicate keeps the last side; a never-settled key is pending in both`
 ([Combinators.fs](https://github.com/shayanhabibi/Ranvier/blob/master/tests/Ranvier.Tests/Combinators.fs)).
+:::
+
+### Distinct rows
+
+`Projection.distinctBy` keeps the first key for each distinct value of a function, in upstream order, under that
+key. When the holder leaves or changes value, the next key with the value takes its place, and a key reader sees the
+old key removed and the new one added. Pending and raising functions follow the predicate rules above.
+
+*)
+let oneTitlePerLength = orderedTitles |> Projection.distinctBy String.length
+oneTitlePerLength.Keys
+(**
+
+```text
+[|1; 2|]
+```
+
+:::details Tests covering this behaviour
+
+Pinned by the `Projection.distinctBy` tests, including `a key reader sees a hand-over as Removed and Added`, and
+`distinctBy keys follow the law while values fail and recover`
+([Combinators.fs](https://github.com/shayanhabibi/Ranvier/blob/master/tests/Ranvier.Tests/Combinators.fs),
+[Projections.fs](https://github.com/shayanhabibi/Ranvier/blob/master/tests/Ranvier.Tests/Projections.fs)).
 :::
 
 ### Page through rows
