@@ -389,7 +389,12 @@ type StreamMemo<'S>
                 finally
                     graph.ExitPull ()
 
-                if freshness = Freshness.Clean then
+                if
+                    freshness = Freshness.Clean
+                    && running
+                    && not disposed
+                    && run.Received
+                then
                     this.PublishLatest true
 
     interface IScopeHost with

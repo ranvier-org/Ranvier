@@ -499,7 +499,10 @@ let tests =
                 let memo = graph.Run (fun () -> Api.createStream (fun _ -> reader))
 
                 match reading memo with
-                | Failed (:? InvalidOperationException) -> ()
+                | Failed (:? InvalidOperationException as error) ->
+                    match error.InnerException with
+                    | NotReadyException _ -> ()
+                    | inner -> failtestf "expected NotReadyException inside, got %A" inner
                 | other -> failtestf "expected InvalidOperationException, got %A" other
 
 #if !FABLE_COMPILER
@@ -533,5 +536,33 @@ let tests =
                 Expect.equal feed.Starts 2 "restarted"
                 graph.Pump () |> ignore
                 Expect.equal (reading memo) (Ready 2) "the second stream's item is published"
+
+            testCase "a wake of the previous stream leaves the restarted stream pending until its first item"
+            <| fun _ ->
+                use graph =
+                    new Graph (
+                        { GraphOptions.Default with
+                            Dispatcher = Some (ManualDispatcher () :> IGraphDispatcher)
+                        }
+                    )
+
+                let feed = ManualStream<int>()
+                let topic = Signal (graph, 0)
+
+                let memo =
+                    graph.Run (fun () ->
+                        Api.createStream (fun _ ->
+                            topic.Value |> ignore
+                            feed.Source))
+
+                reading memo |> ignore
+
+                graph.Run (fun () ->
+                    topic.Value <- 1
+                    offThread (fun () -> feed.At(0).Sink.Next 1)
+                    reading memo |> ignore)
+
+                graph.Pump () |> ignore
+                Expect.equal (reading memo) Pending "no item from the second stream yet"
 #endif
         ]
