@@ -534,117 +534,6 @@ module private Ranvier =
                     (graph :> IDisposable).Dispose()
         }
 
-    /// <summary>Delivers <c>burst</c> items per round into a stream fold read by a memo and an effect, inside one batch.</summary>
-    let streamBurst (burst: int) (n: int) =
-        let graph = Workloads.newGraph ()
-        let sink = ref Unchecked.defaultof<StreamSink<int>>
-
-        let source =
-            StreamSource.create (fun s _ ->
-                sink.Value <- s
-                TaskCompletionSource<unit>().Task :> Task)
-
-        let memo = graph.Run (fun () -> Api.createStreamFold 0 (+) (fun _ -> source))
-        let doubled = new Memo<int> (graph, fun _ -> memo.Value * 2)
-        let seen = ref 0
-
-        new Effect (graph, fun () -> seen.Value <- doubled.Value)
-        |> ignore
-
-        sink.Value.Next 0
-        let expected = ref 0
-
-        {
-            Run =
-                fun () ->
-                    for _ in 1..n do
-                        graph.Batch (fun () ->
-                            for i in 1..burst do
-                                sink.Value.Next i)
-
-                        expected.Value <- expected.Value + burst * (burst + 1) / 2
-
-                    if seen.Value <> 2 * expected.Value then
-                        failwith $"stream-burst folded %d{seen.Value / 2}, expected %d{expected.Value}"
-            Teardown = fun () -> (graph :> IDisposable).Dispose()
-        }
-
-    /// <summary>The baseline for <c>streamBurst</c>: <c>burst</c> async-source settles per round, batched or not.</summary>
-    let settleBurst (batched: bool) (burst: int) (n: int) =
-        let graph = Workloads.newGraph ()
-        let source = AsyncSource<int>(graph)
-        let doubled = new Memo<int> (graph, fun _ -> source.Value * 2)
-        let seen = ref 0
-
-        new Effect (graph, fun () -> seen.Value <- doubled.Value)
-        |> ignore
-
-        source.Settle 0
-        let total = ref 0
-
-        let round () =
-            for i in 1..burst do
-                total.Value <- total.Value + i
-                source.Settle total.Value
-
-        {
-            Run =
-                fun () ->
-                    for _ in 1..n do
-                        if batched then
-                            graph.Batch (fun () -> round ())
-                        else
-                            round ()
-
-                    if seen.Value <> 2 * total.Value then
-                        failwith $"settle-burst saw %d{seen.Value / 2}, expected %d{total.Value}"
-            Teardown = fun () -> (graph :> IDisposable).Dispose()
-        }
-
-    /// <summary>A dependency write restarts an open stream, which then receives one item.</summary>
-    let streamRestart (n: int) =
-        let graph = Workloads.newGraph ()
-        let trigger = Signal (graph, 0)
-        let sink = ref Unchecked.defaultof<StreamSink<int>>
-
-        let source =
-            StreamSource.create (fun s _ ->
-                sink.Value <- s
-                TaskCompletionSource<unit>().Task :> Task)
-
-        let memo =
-            graph.Run (fun () ->
-                Api.createStream (fun _ ->
-                    trigger.Value |> ignore
-                    source))
-
-        let last = ref -1
-
-        new Effect (
-            graph,
-            fun () ->
-                last.Value <-
-                    match memo.TryValue with
-                    | Ready v -> v
-                    | _ -> -1
-        )
-        |> ignore
-
-        let next = ref 0
-
-        {
-            Run =
-                fun () ->
-                    for _ in 1..n do
-                        next.Value <- next.Value + 1
-                        trigger.Value <- next.Value
-                        sink.Value.Next next.Value
-
-                    if last.Value <> next.Value then
-                        failwith $"stream-restart ended at %d{last.Value}, expected %d{next.Value}"
-            Teardown = fun () -> (graph :> IDisposable).Dispose()
-        }
-
     /// <summary>
     /// A memo read by one memo. The first throws a fresh exception on every run when <c>fails</c>, and returns its input
     /// otherwise. An operation writes the trigger the first memo reads, then reads the reader and the node its failure
@@ -1155,16 +1044,16 @@ let all (scale: int) : Case list =
                     $"deliver %d{burst} items per round into a stream fold read by a memo and an effect"
                     ((if burst = 256 then 20 else 500) * scale)
                     [
-                        "Ranvier (stream, batched)", Ranvier.streamBurst burst
-                        "Ranvier (AsyncSource, batched)", Ranvier.settleBurst true burst
-                        "Ranvier (AsyncSource, unbatched)", Ranvier.settleBurst false burst
+                        "Ranvier (stream, batched)", workload (Workloads.streamBurst burst)
+                        "Ranvier (AsyncSource, batched)", workload (Workloads.settleBurst true burst)
+                        "Ranvier (AsyncSource, unbatched)", workload (Workloads.settleBurst false burst)
                     ]
         yield!
             scenario
                 "stream-restart"
                 "write a stream's dependency, restarting it, then deliver one item"
                 (500 * scale)
-                [ "Ranvier", Ranvier.streamRestart ]
+                [ "Ranvier", workload Workloads.streamRestart ]
         yield!
             scenario
                 "chain-affinity"

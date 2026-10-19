@@ -574,4 +574,21 @@ let all (scale: int) : Case list =
                 "fail one source of one error-boundary widget, then settle a replacement"
                 (500 * scale)
                 [ "Ranvier", workload Workloads.asyncRecover ]
+        for burst in [ 1; 16; 256 ] do
+            yield!
+                scenario
+                    $"stream-burst-%d{burst}"
+                    $"deliver %d{burst} items per round into a stream fold read by a memo and an effect"
+                    ((if burst = 256 then 20 else 500) * scale)
+                    [
+                        "Ranvier (stream, batched)", workload (Workloads.streamBurst burst)
+                        "Ranvier (AsyncSource, batched)", workload (Workloads.settleBurst true burst)
+                        "Ranvier (AsyncSource, unbatched)", workload (Workloads.settleBurst false burst)
+                    ]
+        yield!
+            scenario
+                "stream-restart"
+                "write a stream's dependency, restarting it, then deliver one item"
+                (500 * scale)
+                [ "Ranvier", workload Workloads.streamRestart ]
     ]
