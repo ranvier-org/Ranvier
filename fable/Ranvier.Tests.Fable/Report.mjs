@@ -44,6 +44,9 @@ const differences = {
         "the Queue policy applies a synchronous failure after the flight started before it",
         "the Queue policy keeps a run suspended on a source pending when an older flight lands",
         "Queue drops a failure that settles while the newest run waits on a source as Suspended",
+        "async memos with different policies in one graph fly independently",
+        "a node without a policy follows the graph's beside one with its own",
+        "an owning async memo takes its own policy",
     ],
     "Trace records carry less": [
         "a node reports the test's file:line",
