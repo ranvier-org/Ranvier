@@ -220,8 +220,8 @@ let private browserRejection () =
     equal (true, "Browser capability requires explicit Omit policy") (error :? InvalidOperationException, error.Message)
 
 /// <summary>An owner whose cleanups run when it is disposed, after its children's.</summary>
-type private Owner() =
-    member val Children = ResizeArray<Owner>()
+type private StandInOwner() =
+    member val Children = ResizeArray<StandInOwner>()
     member val Cleanups = ResizeArray<unit -> unit>()
 
     member this.Dispose() =
@@ -232,11 +232,11 @@ type private Owner() =
             cleanup ()
 
 /// <summary>A server scope that gives each nested instance a child owner of <c>owner</c>.</summary>
-type private OwnedScope(owner: Owner) =
+type private OwnedScope(owner: StandInOwner) =
     inherit ServerScope()
 
     override _.Nest body =
-        let child = Owner ()
+        let child = StandInOwner ()
         owner.Children.Add child
 
         body
@@ -259,7 +259,7 @@ let private holeHolder =
 
 let private holeTemplateOwnedByRequest () =
     cleanupLog.Clear ()
-    let root = Owner ()
+    let root = StandInOwner ()
     let sink = HtmlSink ()
     let backend = HtmlBackend (Omit, sink)
     backend.Scope <- OwnedScope root
@@ -270,6 +270,116 @@ let private holeTemplateOwnedByRequest () =
     equal
         ("<div><!--[--><span>in</span><!--]--></div>", List.empty<string>, [ "hole child"; "holder" ])
         (sink.ToString (), during, List.ofSeq cleanupLog)
+
+let private requestHolder =
+    Component.define
+        (fun setup (body: Program.View) ->
+            setup.OnCleanup (fun () -> cleanupLog.Add "holder")
+            body)
+        (fun t -> t.div [||] [| t.view id; t.text (fun _ -> string cleanupLog.Count) |])
+
+let private holeTemplateOwnedByRequestScope () =
+    cleanupLog.Clear ()
+
+    let html =
+        Server.render Server.Options.defaults requestHolder (Component.render holeChild ())
+
+    equal ("<!--[r--><div><!--[--><span>in</span><!--]-->0</div><!--]-->", [ "hole child"; "holder" ]) (html, List.ofSeq cleanupLog)
+
+let private requestRoot () =
+    let log = ResizeArray<string>()
+    let owners = ResizeArray<Owner>()
+    let graphs = ResizeArray<Graph>()
+
+    let child =
+        Component.define
+            (fun setup (name: string) ->
+                owners.Add (Api.getOwner ())
+                setup.OnCleanup (fun () -> log.Add ("cleanup " + name))
+                Api.createSignal name)
+            (fun t -> t.span [||] [| t.text (fun (name: Signal<string>) -> name.Value) |])
+
+    let parent =
+        Component.define
+            (fun setup () ->
+                graphs.Add Graph.Current
+                owners.Add (Api.getOwner ())
+                setup.OnCleanup (fun () -> log.Add "cleanup parent"))
+            (fun t -> t.div [||] [| t.render child (fun _ -> "a"); t.render child (fun _ -> "b") |])
+
+    equal "<!--[r--><div><span>a</span><span>b</span></div><!--]-->" (Server.render Server.Options.defaults parent ())
+    equal ("cleanup parent", [ "cleanup a"; "cleanup b"; "cleanup parent" ]) (Seq.last log, List.sort (List.ofSeq log))
+    equal true (owners |> Seq.forall _.IsDisposed)
+    equal true graphs[0].Root.IsDisposed
+
+let private setupFailureDisposes () =
+    let log = ResizeArray<string>()
+    let owners = ResizeArray<Owner>()
+
+    let cleaned =
+        Component.define
+            (fun setup () ->
+                owners.Add (Api.getOwner ())
+                setup.OnCleanup (fun () -> log.Add "first"))
+            (fun t -> t.span [||] [||])
+
+    let throwing =
+        Component.define (fun _ () -> failwith "second failed") (fun t -> t.span [||] [||])
+
+    let parent =
+        Component.define (fun setup () -> setup.OnCleanup (fun () -> log.Add "parent")) (fun t ->
+            t.div [||] [| t.render cleaned ignore; t.render throwing ignore |])
+
+    let error =
+        failure (fun () ->
+            Server.render Server.Options.defaults parent ()
+            |> ignore)
+
+    equal ("second failed", [ "first"; "parent" ], true) (error.Message, List.ofSeq log, owners |> Seq.forall _.IsDisposed)
+
+let private cleanupAfterSetupRejected () =
+    let captured: Setup option ref = ref None
+
+    let capturing =
+        Component.define (fun setup () -> captured.Value <- Some setup) (fun t -> t.span [||] [||])
+
+    Server.render Server.Options.defaults capturing ()
+    |> ignore
+
+    let error = failure (fun () -> captured.Value.Value.OnCleanup ignore)
+    equal true (error :? InvalidOperationException)
+
+let private duplicateKeys () =
+    let items = [| { Id = 1; Text = "a" }; { Id = 1; Text = "b" } |]
+
+    let expected =
+        failure (fun () -> Projection.ensureUniqueKeys (fun (item: obj) -> box (unbox<Listed> item).Id) (Array.map box items))
+
+    let actual =
+        failure (fun () ->
+            Server.render
+                { Server.Options.defaults with
+                    Policy = Omit
+                }
+                listed
+                items
+            |> ignore)
+
+    equal (true, expected.Message) (actual :? InvalidOperationException, actual.Message)
+
+let private renderToSegments () =
+    let written = ResizeArray<string>()
+    Server.renderTo Server.Options.defaults named greetingProps written.Add
+    equal (Server.render Server.Options.defaults named greetingProps) (String.concat "" written)
+    let failed = ResizeArray<string>()
+
+    let throwing =
+        Component.define (fun _ () -> failwith "setup") (fun t -> t.span [||] [||])
+
+    failure (fun () -> Server.renderTo Server.Options.defaults throwing () failed.Add)
+    |> ignore
+
+    equal 0 failed.Count
 
 let cases: (string * (unit -> unit)) array =
     [|
@@ -287,6 +397,12 @@ let cases: (string * (unit -> unit)) array =
         "a definition's server plan is compiled once and merges adjacent static markup", sharedPlan
         "a browser-only part under Reject raises the browser capability error", browserRejection
         "a template in a view hole is owned by the backend's active scope", holeTemplateOwnedByRequest
+        "a template in a view hole is owned by the request and cleaned up child-first after the render", holeTemplateOwnedByRequestScope
+        "a request owns every instance and disposes them child-first after the render", requestRoot
+        "setup failure disposes the request", setupFailureDisposes
+        "OnCleanup after setup raises on the server", cleanupAfterSetupRejected
+        "duplicate keys fail the server render with the core's exception", duplicateKeys
+        "renderTo writes the rendered segments after success and nothing after failure", renderToSegments
     |]
 
 #if !FABLE_COMPILER
@@ -330,9 +446,96 @@ let private concurrentPublication () =
         (readers
          |> Array.forall (fun reader -> obj.ReferenceEquals (reader, readers[0])))
 
+let private concurrentRequests () =
+    use barrier = new System.Threading.Barrier (2)
+    let graphs = System.Collections.Concurrent.ConcurrentBag<Graph>()
+
+    let waiting =
+        Component.define
+            (fun _ (name: string) ->
+                graphs.Add Graph.Current
+
+                if not (barrier.SignalAndWait (TimeSpan.FromSeconds 10.)) then
+                    failwith "Barrier timed out"
+
+                Api.createSignal name)
+            (fun t -> t.span [||] [| t.text (fun (name: Signal<string>) -> name.Value) |])
+
+    let request name =
+        System.Threading.Tasks.Task.Run (fun () -> Server.render Server.Options.defaults waiting name)
+
+    let left, right = request "left", request "right"
+    equal ("<!--[r--><span>left</span><!--]-->", "<!--[r--><span>right</span><!--]-->") (left.Result, right.Result)
+    equal [ true; true ] [ for graph in graphs -> graph.Root.IsDisposed ]
+    equal false (obj.ReferenceEquals (Seq.head graphs, Seq.last graphs))
+
+/// <summary>Reads and writes a signal of a graph outside the request from a request on a pool thread.</summary>
+let private sharedSignal (affinity: ThreadAffinity) =
+    use outer = new Graph (GraphOptions.Default.WithThreadAffinity affinity)
+    let shared = outer.Run (fun () -> Api.createSignal "s")
+
+    let reading =
+        Component.define (fun _ () -> shared) (fun t -> t.span [||] [| t.text (fun (s: Signal<string>) -> s.Value) |])
+
+    let writing =
+        Component.define (fun _ (value: string) -> shared.Value <- value) (fun t -> t.span [||] [||])
+
+    let onPool (body: unit -> string) =
+        try
+            Ok (System.Threading.Tasks.Task.Run(body).Result)
+        with :? AggregateException as error ->
+            Error error.InnerException
+
+    equal (Ok "<!--[r--><span>s</span><!--]-->") (onPool (fun () -> Server.render Server.Options.defaults reading ()))
+
+    match affinity, onPool (fun () -> Server.render Server.Options.defaults writing "w") with
+    | ThreadAffinity.Guarded, Error error -> equal true (error :? InvalidOperationException)
+    | ThreadAffinity.Unchecked, Ok _ ->
+        equal (Ok "<!--[r--><span>w</span><!--]-->") (onPool (fun () -> Server.render Server.Options.defaults reading ()))
+    | _, outcome -> failwithf "Unexpected outcome %A under %O" outcome affinity
+
+/// <summary>The messages of a render failure: an <c>AggregateException</c>'s inner messages, or the message itself.</summary>
+let private messages (error: exn) : string list =
+    match error with
+    | :? AggregateException as aggregate -> [ for inner in aggregate.InnerExceptions -> inner.Message ]
+    | error -> [ error.Message ]
+
+let private concurrentTeardown () =
+    use barrier = new System.Threading.Barrier (2)
+
+    let throwing =
+        Component.define
+            (fun setup (name: string) ->
+                setup.OnCleanup (fun () ->
+                    if not (barrier.SignalAndWait (TimeSpan.FromSeconds 10.)) then
+                        failwith "Barrier timed out"
+
+                    failwith ("cleanup " + name))
+
+                name)
+            (fun t -> t.span [||] [| t.text id |])
+
+    let request name =
+        System.Threading.Tasks.Task.Run (fun () ->
+            failure (fun () ->
+                Server.render Server.Options.defaults throwing name
+                |> ignore))
+
+    let left, right = request "left", request "right"
+
+    equal
+        (("Server render cleanup failed", [ "cleanup left" ]), ("Server render cleanup failed", [ "cleanup right" ]))
+        ((left.Result.Message.Split(" (")[0], messages left.Result), (right.Result.Message.Split(" (")[0], messages right.Result))
+
 let dotnetCases: (string * (unit -> unit)) array =
     [|
         "escape returns the input string when nothing needs escaping", escapeKeepsReference
         "concurrent first renders publish one plan and one arm reader", concurrentPublication
+        "two concurrent requests render their own props", concurrentRequests
+        "a module-level signal read by two requests is shared: a Guarded graph rejects a request's write",
+        fun () -> sharedSignal ThreadAffinity.Guarded
+        "a module-level signal read by two requests is shared: an Unchecked graph takes a request's write",
+        fun () -> sharedSignal ThreadAffinity.Unchecked
+        "two requests whose cleanups fail concurrently each report only their own error", concurrentTeardown
     |]
 #endif

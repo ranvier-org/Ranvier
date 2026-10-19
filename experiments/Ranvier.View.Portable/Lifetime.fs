@@ -80,8 +80,29 @@ type MountLifetime private (graph: Graph, owner: Owner, report: exn list -> unit
     let mutable held: ResizeArray<exn> = null
     let mutable deferred: ResizeArray<unit -> unit> = null
 
+#if FABLE_COMPILER
     static member val private Windows = ResizeArray<TeardownWindow>()
     static member val private Frames = ResizeArray<MountLifetime>()
+#else
+    // Per thread, so that concurrent requests tear down independently.
+    [<ThreadStatic; DefaultValue>]
+    static val mutable private windows: ResizeArray<TeardownWindow>
+
+    [<ThreadStatic; DefaultValue>]
+    static val mutable private frames: ResizeArray<MountLifetime>
+
+    static member private Windows =
+        if isNull MountLifetime.windows then
+            MountLifetime.windows <- ResizeArray ()
+
+        MountLifetime.windows
+
+    static member private Frames =
+        if isNull MountLifetime.frames then
+            MountLifetime.frames <- ResizeArray ()
+
+        MountLifetime.frames
+#endif
 
     static member private CurrentWindow: TeardownWindow =
         let windows = MountLifetime.Windows

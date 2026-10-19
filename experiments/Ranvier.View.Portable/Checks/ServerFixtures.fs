@@ -287,10 +287,18 @@ let renderOmit (definition: Component<'props>) (props: 'props) =
 
 /// <summary>The first content of the component workload at <c>rows</c> rows, rendered as one request.</summary>
 let renderComponentPage (rows: int) : string =
-    use graph = new Graph ()
-    graph.Run (fun () -> renderOmit componentPage rows)
+    Server.render
+        { Server.Options.defaults with
+            Policy = Omit
+        }
+        componentPage
+        rows
 
 /// <summary>The first content of the keyed workload at <c>rows</c> rows, rendered as one request.</summary>
 let renderKeyedPage (rows: int) : string =
-    use graph = new Graph ()
-    graph.Run (fun () -> renderOmit keyedPage rows)
+    Server.render
+        { Server.Options.defaults with
+            Policy = Omit
+        }
+        keyedPage
+        rows
