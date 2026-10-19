@@ -1088,6 +1088,8 @@ and private RowBuilder(state: MountState) =
     let mutable staging: DocumentFragment = Unchecked.defaultof<_>
     let mutable settingUp = false
     let mutable setupFailure: exn option = None
+    // The container of the row being built.
+    let mutable container: Placement = null
 
     let setup: Setup =
         {
@@ -1100,7 +1102,8 @@ and private RowBuilder(state: MountState) =
 
         staging
 
-    member this.Build(materialise: Func<(unit -> obj), TemplateDom.MountServices, unit>, current: unit -> obj) : Row =
+    member this.Build(materialise: Func<(unit -> obj), TemplateDom.MountServices, unit>, current: unit -> obj, target: Placement) : Row =
+        container <- target
         roots.Clear ()
         setupFailure <- None
         settingUp <- true
@@ -1155,8 +1158,10 @@ and private RowBuilder(state: MountState) =
 
         member _.Scope = state.Scope
 
+        member _.Placement = container
+
         member _.Region(start, finish, _, kind, items, render, rows) =
-            state.NestedRegion (start, finish, kind, items, render, rows)
+            state.NestedRegion (start, finish, kind, items, render, rows, container)
 
 /// <summary>
 /// The markers and laid-out rows of one region, with the region's owner, row builder and failure state.
@@ -1352,7 +1357,8 @@ and [<Sealed>] private ViewBoundary
         enclosing: ViewScope,
         outer: ViewScope,
         unwinds: unit -> bool,
-        mountView: (unit -> obj) -> ((unit -> obj) -> Backend -> unit) -> ViewScope -> Row
+        parent: Placement,
+        mountView: (unit -> obj) -> ((unit -> obj) -> Backend -> unit) -> ViewScope -> Placement -> Row
     ) =
     // The content's nested mount; null until its setup returns.
     let mutable content: Row = null
@@ -1410,7 +1416,7 @@ and [<Sealed>] private ViewBoundary
         let mutable row: Row = null
 
         try
-            row <- Api.runWithOwner site.Owner (fun () -> mountView noItem (fun _ backend -> render backend) outer)
+            row <- Api.runWithOwner site.Owner (fun () -> mountView noItem (fun _ backend -> render backend) outer parent)
             place row
             shown <- row
         with error ->
@@ -1507,7 +1513,8 @@ and [<Sealed>] private ViewBoundary
         try
             try
                 content <-
-                    Api.runWithOwner site.Owner (fun () -> mountView noItem (fun _ backend -> views.Content status backend) (this :> ViewScope))
+                    Api.runWithOwner site.Owner (fun () ->
+                        mountView noItem (fun _ backend -> views.Content status backend) (this :> ViewScope) parent)
             with error ->
                 failure <- Some error
         finally
@@ -1587,12 +1594,28 @@ and [<Sealed>] private ViewBoundary
             this.FailAll errors
 
 /// <summary>The state of a mounted view and the backend that builds it.</summary>
-/// <remarks><c>boundary</c> is the boundary enclosing the mount, or null outside every boundary.</remarks>
+/// <remarks>
+/// <c>boundary</c> is the boundary enclosing the mount, or null outside every boundary; <c>inherited</c> is null for a
+/// root mount.
+/// </remarks>
 and internal MountState
-    (scheduling: Scheduling, graph: Graph, parent: MountLifetime, parentOwner: Owner, report: exn list -> unit, host: Node, boundary: ViewScope) =
+    (
+        scheduling: Scheduling,
+        graph: Graph,
+        parent: MountLifetime,
+        parentOwner: Owner,
+        report: exn list -> unit,
+        host: Node,
+        boundary: ViewScope,
+        inherited: Placement
+    ) =
     inherit Prepared.Backend()
 
     let range = OwnedRange host
+
+    // The container of the mount's hooks: a root mount's own, or the container of the pass, arm, hole or boundary view
+    // that created the mount.
+    let container = if isNull inherited then Placement null else inherited
 
     // Template rows retired while the mount tears down, before its release; their nodes leave in the release, before
     // the range's. A row retired after the release removes its nodes at once. A row held for a region's flush leaves
@@ -2008,6 +2031,16 @@ and internal MountState
                 delegationReleased <- true
                 root.OnCleanup releaseDelegation
 
+            if isNull inherited then
+                container.Placing <- true
+
+                try
+                    graph.Run (fun () -> container.Place ())
+                finally
+                    container.Placing <- false
+
+                container.RaiseFailure ()
+
             Mounted this
         with _ ->
             if not (isNull root) then
@@ -2089,6 +2122,10 @@ and internal MountState
             ensureSetup ()
 
         ownedCleanup (Api.getOwner ()) cleanup
+
+    override this.Placed(kind, hook) =
+        let node = currentElement ()
+        PlacedHook.register container this.Scope (Api.getOwner ()) kind (node :> Node) (fun () -> hook (box node))
 
     override this.Listen(eventName, handler) =
         let node = currentElement ()
@@ -2180,7 +2217,7 @@ and internal MountState
                 range.AppendGenerated (target, regionEnd)
                 NestedRegion
 
-        this.RegionOf (regionStart, regionEnd, placement, kind, items, render, null)
+        this.RegionOf (regionStart, regionEnd, placement, kind, items, render, null, container)
 
     member internal this.NestedRegion
         (
@@ -2189,9 +2226,10 @@ and internal MountState
             kind: TemplateDom.RegionKind,
             items: KeyedItems,
             render: (unit -> obj) -> Backend -> unit,
-            rows: Func<(unit -> obj), TemplateDom.MountServices, unit>
+            rows: Func<(unit -> obj), TemplateDom.MountServices, unit>,
+            parentContainer: Placement
         ) =
-        this.RegionOf (start, finish, NestedRegion, kind, items, render, rows)
+        this.RegionOf (start, finish, NestedRegion, kind, items, render, rows, parentContainer)
 
     member private _.PlaceRegion(regionStart: Node, regionEnd: Node, placement: RegionPlacement, validate: unit -> unit, relocate: unit -> unit) =
         match placement with
@@ -2215,11 +2253,11 @@ and internal MountState
         site
 
     /// <summary>Mounts an authored row or a boundary's view as a nested mount under <c>scope</c> and returns its nodes.</summary>
-    member private _.MountRow(current: unit -> obj, render: (unit -> obj) -> Backend -> unit, scope: ViewScope) : Row =
+    member private _.MountRow(current: unit -> obj, render: (unit -> obj) -> Backend -> unit, scope: ViewScope, target: Placement) : Row =
         let rowHost = fragment ()
 
         let mounted =
-            MountState(scheduling, graph, root, Unchecked.defaultof<_>, report, rowHost, scope)
+            MountState(scheduling, graph, root, Unchecked.defaultof<_>, report, rowHost, scope, target)
                 .Run(None, (fun context -> render current context.Backend))
 
         let first =
@@ -2244,7 +2282,8 @@ and internal MountState
             placement: RegionPlacement,
             items: KeyedItems,
             render: (unit -> obj) -> Backend -> unit,
-            rows: Func<(unit -> obj), TemplateDom.MountServices, unit>
+            rows: Func<(unit -> obj), TemplateDom.MountServices, unit>,
+            parentContainer: Placement
         ) =
         let site = this.Site (regionStart, regionEnd, placement)
         let mutable projection: Projection<obj, Row> = Unchecked.defaultof<_>
@@ -2265,6 +2304,8 @@ and internal MountState
         let retired = ResizeArray<Row>()
         // The positions of an in-place window whose key differs from the last pass, in order.
         let moved = ResizeArray<int>()
+        // The container of the rows created by the current pass; a new one per pass.
+        let mutable pass: Placement = null
 
         // When the window from `first` keeps its length and spans more than `smallWindow` positions, collects into `moved`
         // the positions whose key differs between `prior` and `next` and returns true.
@@ -2313,14 +2354,15 @@ and internal MountState
 
             row <-
                 if isNull rows then
-                    this.MountRow (current, render, boundary)
+                    this.MountRow (current, render, boundary, pass)
                 else
-                    site.Builder.Build (rows, current)
+                    site.Builder.Build (rows, current, pass)
 
             row
 
         let reconcile () =
             if site.Live () then
+                pass <- Placement parentContainer
                 let parent = ref Unchecked.defaultof<Node>
                 let keys = ref Unchecked.defaultof<obj array>
                 let priorKeys = previousKeys
@@ -2601,6 +2643,8 @@ and internal MountState
                                 if authored then
                                     previousItems <- Array.copy snapshot
 
+                                pass.Place ()
+
                             site.Errors.Report recorded
                 )
 
@@ -2626,7 +2670,8 @@ and internal MountState
             placement: RegionPlacement,
             read: unit -> obj array,
             render: (unit -> obj) -> Backend -> unit,
-            rows: Func<(unit -> obj), TemplateDom.MountServices, unit>
+            rows: Func<(unit -> obj), TemplateDom.MountServices, unit>,
+            parentContainer: Placement
         ) =
         let site = this.Site (regionStart, regionEnd, placement)
         let mutable items: Memo<obj array> = Unchecked.defaultof<_>
@@ -2649,6 +2694,7 @@ and internal MountState
             if not (isNull selected) then
                 let key, value = unbox<obj * obj> selected
                 let item = Api.createSignal value
+                let armContainer = Placement parentContainer
                 let mutable created: Owner = Unchecked.defaultof<_>
                 let mutable row: Row = null
 
@@ -2666,9 +2712,9 @@ and internal MountState
 
                             row <-
                                 if isNull rows then
-                                    this.MountRow (current, render, boundary)
+                                    this.MountRow (current, render, boundary, armContainer)
                                 else
-                                    site.Builder.Build (rows, current)))
+                                    site.Builder.Build (rows, current, armContainer)))
 
                     // An arm whose setup disposed the region leaves with the region's owner.
                     if site.Live () then
@@ -2681,6 +2727,7 @@ and internal MountState
                         armOwner <- created
                         armItem <- item
                         armKey <- key
+                        armContainer.Place ()
                 with _ ->
                     if not (isNull (box created)) then
                         created.Dispose ()
@@ -2728,18 +2775,28 @@ and internal MountState
 
     /// <summary>Mounts the view read once from the region's single item between its markers.</summary>
     member private this.HoleRegion
-        (regionStart: Node, regionEnd: Node, placement: RegionPlacement, read: unit -> obj array, render: (unit -> obj) -> Backend -> unit)
-        =
+        (
+            regionStart: Node,
+            regionEnd: Node,
+            placement: RegionPlacement,
+            read: unit -> obj array,
+            render: (unit -> obj) -> Backend -> unit,
+            parentContainer: Placement
+        ) =
         let site = this.Site (regionStart, regionEnd, placement)
         let items = read ()
         let view = KeyedItems.value (items[0])
-        let row = this.MountRow ((fun () -> view), render, boundary)
+        let holeContainer = Placement parentContainer
+        let row = this.MountRow ((fun () -> view), render, boundary, holeContainer)
         Row.MoveBefore (row, site.Parent (), regionEnd)
         row.Mount.Relocate ()
         site.LaidOut.Add row
+        holeContainer.Place ()
 
     /// <summary>Mounts a boundary between the markers. Its content's bindings report to the boundary, and its pending view's bindings to this mount's boundary, or to the view's own mount outside every boundary.</summary>
-    member private this.BoundaryRegion(regionStart: Node, regionEnd: Node, placement: RegionPlacement, views: BoundaryViews) =
+    member private this.BoundaryRegion
+        (regionStart: Node, regionEnd: Node, placement: RegionPlacement, views: BoundaryViews, parentContainer: Placement)
+        =
         let site = this.Site (regionStart, regionEnd, placement)
 
         let created =
@@ -2752,7 +2809,8 @@ and internal MountState
                 this.Scope,
                 boundary,
                 (fun () -> isNull (box boundary) && root.Phase = SettingUp),
-                fun current render scope -> this.MountRow (current, render, scope)
+                parentContainer,
+                fun current render scope target -> this.MountRow (current, render, scope, target)
             )
 
         site.Own (fun () -> created.Start ())
@@ -2765,15 +2823,16 @@ and internal MountState
             kind: TemplateDom.RegionKind,
             items: KeyedItems,
             render: (unit -> obj) -> Backend -> unit,
-            rows: Func<(unit -> obj), TemplateDom.MountServices, unit>
+            rows: Func<(unit -> obj), TemplateDom.MountServices, unit>,
+            parentContainer: Placement
         ) =
         match kind with
-        | TemplateDom.ListRows -> this.ListRegion (start, finish, placement, items, render, rows)
-        | TemplateDom.SelectedArm -> this.ArmRegion (start, finish, placement, items.Read, render, rows)
-        | TemplateDom.ViewHole -> this.HoleRegion (start, finish, placement, items.Read, render)
+        | TemplateDom.ListRows -> this.ListRegion (start, finish, placement, items, render, rows, parentContainer)
+        | TemplateDom.SelectedArm -> this.ArmRegion (start, finish, placement, items.Read, render, rows, parentContainer)
+        | TemplateDom.ViewHole -> this.HoleRegion (start, finish, placement, items.Read, render, parentContainer)
         | TemplateDom.BoundaryContent ->
             let pairs = items.Read ()
-            this.BoundaryRegion (start, finish, placement, unbox<BoundaryViews>(KeyedItems.value (pairs[0])))
+            this.BoundaryRegion (start, finish, placement, unbox<BoundaryViews>(KeyedItems.value (pairs[0])), parentContainer)
 
     override _.Component(setup) =
         ensureSetup ()
@@ -2842,6 +2901,8 @@ and internal MountState
 
         member this.Scope = this.Scope
 
+        member _.Placement = container
+
         member this.Region(start, finish, rootLevel, kind, items, render, rows) =
             ensureSetup ()
 
@@ -2851,7 +2912,7 @@ and internal MountState
                 else
                     NestedRegion
 
-            this.RegionOf (start, finish, placement, kind, items, render, rows)
+            this.RegionOf (start, finish, placement, kind, items, render, rows, container)
 
     interface ViewScope with
         member _.Tracks = false
@@ -2874,13 +2935,14 @@ let mountWith mode graph (parentOwner: Owner option) report host before build =
         | None -> Unchecked.defaultof<_>
 
     match mode with
-    | SynchronousCommits -> MountState(Synchronous, graph, null, parentOwner, report, host, Unchecked.defaultof<_>).Run(before, build)
+    | SynchronousCommits ->
+        MountState(Synchronous, graph, null, parentOwner, report, host, Unchecked.defaultof<_>, Unchecked.defaultof<_>).Run(before, build)
     | QueuedCommits (failure, post) ->
         let queue = Queue (graph, failure, post)
 
         try
             let state =
-                MountState (Queued queue, graph, null, parentOwner, report, host, Unchecked.defaultof<_>)
+                MountState (Queued queue, graph, null, parentOwner, report, host, Unchecked.defaultof<_>, Unchecked.defaultof<_>)
 
             let mounted = state.Run (before, build)
             state.Root.OnCleanup queue.Dispose

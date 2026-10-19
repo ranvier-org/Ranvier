@@ -63,8 +63,26 @@ let title value : Modifier<'native> =
 let value text : Modifier<HTMLInputElement> =
     Modifier (InputValue text)
 
+/// <summary>Runs <c>hook</c> during setup, before the element is placed in the mount's host; <c>mounted</c> runs once it is placed.</summary>
 let browser (hook: 'native -> (unit -> unit)) : Modifier<'native> =
     Modifier (browserModifier (fun node -> hook (unbox node)))
+
+/// <summary>
+/// Runs <c>hook</c> once the element is placed in the mount's host. The returned cleanup runs when the element's owner is
+/// disposed, before the element leaves the host.
+/// </summary>
+let mounted (hook: 'native -> (unit -> unit)) : Modifier<'native> =
+    Modifier (fun backend -> backend.Placed (PlacedKind.Mounted, (fun node -> hook (unbox node))))
+
+/// <summary>Sets <c>target</c> to the element while the element is placed.</summary>
+let ref (target: NodeRef<'native>) : Modifier<'native> =
+    Modifier (fun backend ->
+        backend.Placed (
+            PlacedKind.Mounted,
+            fun node ->
+                target.Set (Some (unbox node))
+                fun () -> target.Set None
+        ))
 
 /// <summary>Applies a fixed property value during element construction.</summary>
 let staticProperty (setter: 'native -> 'value -> unit) value : Modifier<'native> =

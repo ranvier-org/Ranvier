@@ -64,6 +64,33 @@ type BoundaryStatus =
         IsPending: unit -> bool
     }
 
+/// <summary>What a placed hook does with its element.</summary>
+[<RequireQualifiedAccess>]
+type PlacedKind =
+    /// <summary>Runs code against the element.</summary>
+    | Mounted
+    /// <summary>Borrows the element: adds listeners, attributes and properties beyond its declared parts, and removes them in its cleanup.</summary>
+    | Lent
+    /// <summary>Owns the element's content.</summary>
+    | Widget
+
+/// <summary>
+/// The element of a placed instance: <c>Some</c> while the element is placed, <c>None</c> during setup, before its
+/// boundary reveals it and after disposal.
+/// </summary>
+/// <remarks>Reading <c>Current</c> is untracked.</remarks>
+[<Sealed>]
+type NodeRef<'native> internal () =
+    let mutable current: 'native option = None
+    member _.Current = current
+
+    member internal _.Set(value: 'native option) =
+        current <- value
+
+module NodeRef =
+    let create () : NodeRef<'native> =
+        NodeRef<'native>()
+
 [<AbstractClass>]
 type Backend() =
     abstract Text: string -> unit
@@ -90,6 +117,16 @@ type Backend() =
     abstract InputValue: string -> unit
     /// <summary>Acquires browser resources for the element currently receiving modifiers.</summary>
     abstract Browser: (obj -> (unit -> unit)) -> unit
+
+    /// <summary>
+    /// Registers a hook for the element currently receiving modifiers, run once the element is placed in the mount's
+    /// host. The hook's returned cleanup runs when the element's owner is disposed.
+    /// </summary>
+    abstract Placed: PlacedKind * (obj -> (unit -> unit)) -> unit
+
+    default _.Placed(_, _) =
+        raise (System.NotSupportedException "Placed hooks require a DOM mount")
+
     /// <summary>Handles a named DOM event on the element currently receiving modifiers.</summary>
     /// <remarks>The handler receives the event object. A backend may dispatch it through a listener on an ancestor.</remarks>
     abstract Listen: string * (obj -> unit) -> unit
@@ -548,6 +585,9 @@ module Html =
                     set "value" value
 
                 member _.Browser _ =
+                    browserCapability ()
+
+                member _.Placed(_, _) =
                     browserCapability ()
 
                 member _.Listen(_, _) =

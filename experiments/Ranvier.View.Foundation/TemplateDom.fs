@@ -398,6 +398,8 @@ type internal MountServices =
     abstract ClearFailure: unit -> unit
     /// <summary>The receiver of the pending reads and failures of the instance's bindings.</summary>
     abstract Scope: ViewScope
+    /// <summary>The container that holds the instance's hooks until its nodes are placed.</summary>
+    abstract Placement: Placement
 
     /// <summary>Mounts a region between its start and end markers. The flag marks markers that are roots of the appended
     /// clone; the materialiser is null for a view hole.</summary>
