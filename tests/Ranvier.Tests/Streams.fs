@@ -724,6 +724,36 @@ type private Recorder<'T>() =
                     this.Unsubscribed <- this.Unsubscribed + 1
             }
 
+#if FABLE_COMPILER
+[<Fable.Core.Emit("({ [Symbol.asyncIterator]() { return { next: $0, return: $1 } } })")>]
+let private iterableOf (next: unit -> Task<obj>) (ret: unit -> Task<obj>) : Fable.Core.JS.AsyncIterable<int> =
+    Fable.Core.Util.jsNative
+
+[<Fable.Core.Emit("({ done: false, value: $0 })")>]
+let private yielded (value: int) : obj =
+    Fable.Core.Util.jsNative
+
+[<Fable.Core.Emit("({ done: true })")>]
+let private finishedResult () : obj =
+    Fable.Core.Util.jsNative
+
+let private manualIterable () =
+    let nexts = Array.init 4 (fun _ -> TaskCompletionSource<obj>())
+    let mutable calls = 0
+    let mutable returns = 0
+
+    let source =
+        iterableOf
+            (fun () ->
+                calls <- calls + 1
+                nexts[calls - 1].Task)
+            (fun () ->
+                returns <- returns + 1
+                Task.FromResult (null: obj))
+
+    nexts, (fun () -> returns), (fun () -> calls), source
+#endif
+
 [<Tests>]
 let converterTests =
     testList
@@ -749,7 +779,8 @@ let converterTests =
                 Expect.equal subject.Unsubscribed 1 "the restart disposed the first subscription"
                 subject.Observer.OnCompleted ()
 #if FABLE_COMPILER
-                do! Async.Sleep 10
+                // Completion arrives on a microtask; a macrotask follows all of them.
+                do! Async.Sleep 0
 #endif
 
                 match graph.Run (fun () -> memo.TryValue) with
@@ -768,13 +799,26 @@ let converterTests =
                 graph.Run (fun () -> memo.TryValue) |> ignore
                 subject.Observer.OnError (Exception "rx")
 #if FABLE_COMPILER
-                do! Async.Sleep 10
+                // Completion arrives on a microtask; a macrotask follows all of them.
+                do! Async.Sleep 0
 #endif
 
                 match graph.Run (fun () -> memo.TryValue) with
                 | Failed error -> Expect.equal error.Message "rx" "error"
                 | other -> failtestf "expected Failed, got %A" other
             }
+
+            testCase "ofObservable: disposing the memo unsubscribes exactly once"
+            <| fun _ ->
+                use graph = new Graph ()
+                let subject = Recorder<int>()
+
+                let memo =
+                    graph.Run (fun () -> Api.createStream (fun _ -> StreamSource.ofObservable subject))
+
+                graph.Run (fun () -> memo.TryValue) |> ignore
+                memo.Dispose ()
+                Expect.equal subject.Unsubscribed 1 "unsubscribed once"
 
             testCase "create: the function receives the sink and token"
             <| fun _ ->
@@ -828,6 +872,108 @@ let converterTests =
                 memo.Dispose ()
                 gate.SetResult false
                 Expect.equal disposedCount 1 "DisposeAsync once"
+
+            testCase "ofAsyncEnumerable: a fault from MoveNextAsync fails the stream and disposes once"
+            <| fun _ ->
+                use graph = new Graph ()
+                let mutable disposedCount = 0
+                let gate = TaskCompletionSource<bool>()
+
+                let items =
+                    { new Collections.Generic.IAsyncEnumerable<int> with
+                        member _.GetAsyncEnumerator token =
+                            { new Collections.Generic.IAsyncEnumerator<int> with
+                                member _.Current = 0
+
+                                member _.MoveNextAsync() =
+                                    ValueTask<bool> gate.Task
+
+                                member _.DisposeAsync() =
+                                    disposedCount <- disposedCount + 1
+                                    ValueTask ()
+                            }
+                    }
+
+                let memo =
+                    graph.Run (fun () -> Api.createStream (fun _ -> StreamSource.ofAsyncEnumerable items))
+
+                graph.Run (fun () -> memo.TryValue) |> ignore
+                gate.SetException (Exception "boom")
+
+                match graph.Run (fun () -> memo.TryValue) with
+                | Failed error -> Expect.equal error.Message "boom" "error"
+                | other -> failtestf "expected Failed, got %A" other
+
+                Expect.equal disposedCount 1 "DisposeAsync once"
+
+            testCase "ofAsyncEnumerable: a throwing Current fails the stream and disposes once"
+            <| fun _ ->
+                use graph = new Graph ()
+                let mutable disposedCount = 0
+                let gate = TaskCompletionSource<bool>()
+
+                let items =
+                    { new Collections.Generic.IAsyncEnumerable<int> with
+                        member _.GetAsyncEnumerator token =
+                            { new Collections.Generic.IAsyncEnumerator<int> with
+                                member _.Current = raise (Exception "current")
+
+                                member _.MoveNextAsync() =
+                                    ValueTask<bool> gate.Task
+
+                                member _.DisposeAsync() =
+                                    disposedCount <- disposedCount + 1
+                                    ValueTask ()
+                            }
+                    }
+
+                let memo =
+                    graph.Run (fun () -> Api.createStream (fun _ -> StreamSource.ofAsyncEnumerable items))
+
+                graph.Run (fun () -> memo.TryValue) |> ignore
+                gate.SetResult true
+
+                match graph.Run (fun () -> memo.TryValue) with
+                | Failed error -> Expect.equal error.Message "current" "error"
+                | other -> failtestf "expected Failed, got %A" other
+
+                Expect.equal disposedCount 1 "DisposeAsync once"
+
+            testCase "ofAsyncEnumerable: cancelling a MoveNextAsync that honours the token disposes once"
+            <| fun _ ->
+                use graph = new Graph ()
+                let mutable disposedCount = 0
+                let mutable seenToken = CancellationToken.None
+
+                let items =
+                    { new Collections.Generic.IAsyncEnumerable<int> with
+                        member _.GetAsyncEnumerator token =
+                            seenToken <- token
+
+                            { new Collections.Generic.IAsyncEnumerator<int> with
+                                member _.Current = 0
+
+                                member _.MoveNextAsync() =
+                                    let pending = TaskCompletionSource<bool>()
+
+                                    token.Register (fun () -> pending.TrySetCanceled token |> ignore)
+                                    |> ignore
+
+                                    ValueTask<bool> pending.Task
+
+                                member _.DisposeAsync() =
+                                    disposedCount <- disposedCount + 1
+                                    ValueTask ()
+                            }
+                    }
+
+                let memo =
+                    graph.Run (fun () -> Api.createStream (fun _ -> StreamSource.ofAsyncEnumerable items))
+
+                graph.Run (fun () -> memo.TryValue) |> ignore
+                memo.Dispose ()
+                Expect.isTrue seenToken.IsCancellationRequested "the token was cancelled"
+                Expect.equal disposedCount 1 "DisposeAsync once"
 #endif
 #if NET8_0_OR_GREATER && !FABLE_COMPILER
             testCase "ofChannel: items buffered before the first read publish with that read"
@@ -853,7 +999,7 @@ let converterTests =
                             Dispatcher = Some (ManualDispatcher () :> IGraphDispatcher)
                         }
                     )
-                // Synchronous continuations run the reader on the writer's thread, so the test needs no waiting.
+                // The reader runs on the writer's thread; the burst is queued when Join returns.
                 let channel =
                     Channels.Channel.CreateUnbounded<int>(Channels.UnboundedChannelOptions (AllowSynchronousContinuations = true))
 
@@ -877,5 +1023,89 @@ let converterTests =
                 Expect.equal graph.PendingWork 2 "one wake for 100 items, and the completion"
                 graph.Pump () |> ignore
                 Expect.equal (graph.Run (fun () -> memo.TryValue)) (Ready 5050) "every item"
+
+            testCase "ofChannel: completing the channel with an exception fails the stream"
+            <| fun _ ->
+                use graph = new Graph ()
+
+                let channel =
+                    Channels.Channel.CreateUnbounded<int>(Channels.UnboundedChannelOptions (AllowSynchronousContinuations = true))
+
+                let memo =
+                    graph.Run (fun () -> Api.createStream (fun _ -> StreamSource.ofChannel channel.Reader))
+
+                graph.Run (fun () -> memo.TryValue) |> ignore
+                channel.Writer.Complete (Exception "x")
+
+                match graph.Run (fun () -> memo.TryValue) with
+                | Failed error -> Expect.equal error.Message "x" "error"
+                | other -> failtestf "expected Failed, got %A" other
+
+            testCase "ofChannel: disposing the memo cancels the pending read"
+            <| fun _ ->
+                use graph = new Graph ()
+                let channel = Channels.Channel.CreateUnbounded<int>()
+
+                let memo =
+                    graph.Run (fun () -> Api.createStream (fun _ -> StreamSource.ofChannel channel.Reader))
+
+                graph.Run (fun () -> memo.TryValue) |> ignore
+                memo.Dispose ()
+                channel.Writer.TryWrite 1 |> ignore
+                let mutable item = 0
+                Expect.isTrue (channel.Reader.TryRead &item) "the item stayed in the channel"
+                Expect.equal item 1 "unread"
+#endif
+#if FABLE_COMPILER
+            testCaseAsync "ofAsyncIterable: items fold and done completes"
+            <| async {
+                use graph = new Graph ()
+                let nexts, _, _, source = manualIterable ()
+
+                let memo =
+                    graph.Run (fun () -> Api.createStreamFold 0 (+) (fun _ -> StreamSource.ofAsyncIterable source))
+
+                graph.Run (fun () -> memo.TryValue) |> ignore
+                nexts[0].SetResult(yielded 1)
+                do! Async.Sleep 0
+                nexts[1].SetResult(yielded 2)
+                do! Async.Sleep 0
+                nexts[2].SetResult(finishedResult ())
+                do! Async.Sleep 0
+                Expect.equal (graph.Run (fun () -> memo.TryValue)) (Ready 3) "both items, then completion"
+            }
+
+            testCaseAsync "ofAsyncIterable: a rejected next fails the stream"
+            <| async {
+                use graph = new Graph ()
+                let nexts, _, _, source = manualIterable ()
+
+                let memo =
+                    graph.Run (fun () -> Api.createStream (fun _ -> StreamSource.ofAsyncIterable source))
+
+                graph.Run (fun () -> memo.TryValue) |> ignore
+                nexts[0].SetException(Exception "boom")
+                do! Async.Sleep 0
+
+                match graph.Run (fun () -> memo.TryValue) with
+                | Failed error -> Expect.equal error.Message "boom" "error"
+                | other -> failtestf "expected Failed, got %A" other
+            }
+
+            testCaseAsync "ofAsyncIterable: disposing while next is pending calls return once and ignores the later value"
+            <| async {
+                use graph = new Graph ()
+                let nexts, returns, calls, source = manualIterable ()
+
+                let memo =
+                    graph.Run (fun () -> Api.createStreamFold 0 (+) (fun _ -> StreamSource.ofAsyncIterable source))
+
+                graph.Run (fun () -> memo.TryValue) |> ignore
+                memo.Dispose ()
+                Expect.equal (returns ()) 1 "return called once"
+                nexts[0].SetResult(yielded 9)
+                do! Async.Sleep 0
+                Expect.equal (calls ()) 1 "the later value did not request another"
+            }
 #endif
         ]

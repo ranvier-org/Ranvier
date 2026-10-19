@@ -503,7 +503,11 @@ module StreamSource =
                     }
 
             token.Register (fun () ->
-                subscription.Dispose ()
+                try
+                    subscription.Dispose ()
+                with _ ->
+                    ()
+
                 finished.Resolve ())
             |> ignore
 
@@ -564,8 +568,11 @@ module StreamSource =
                                     elif t.IsCanceled then
                                         finish (OperationCanceledException token)
                                     elif t.Result then
-                                        sink.Next enumerator.Current
-                                        pump ()
+                                        try
+                                            sink.Next enumerator.Current
+                                            pump ()
+                                        with error ->
+                                            finish error
                                     else
                                         finish null),
                                 TaskContinuationOptions.ExecuteSynchronously
@@ -581,7 +588,7 @@ module StreamSource =
 #if NET8_0_OR_GREATER && !FABLE_COMPILER
     /// <summary>
     /// Reads on each start: waits with the stream's token, then delivers every buffered item before waiting again. The
-    /// stream completes when the channel completes, and fails with the exception the writer completed it with.
+    /// stream completes when the channel completes, and fails with the exception passed to the writer's <c>Complete</c>.
     /// </summary>
     let ofChannel (reader: Channels.ChannelReader<'T>) : StreamSource<'T> =
         if Platform.isNull (box reader) then
@@ -626,7 +633,7 @@ module StreamSource =
     let private nextOf (iterator: obj) : Task<obj> =
         Fable.Core.Util.jsNative
 
-    [<Fable.Core.Emit("($0.return ? $0.return() : undefined)")>]
+    [<Fable.Core.Emit("($0.return ? Promise.resolve($0.return()).catch(() => {}) : undefined)")>]
     let private returnOf (iterator: obj) : unit =
         Fable.Core.Util.jsNative
 
@@ -650,7 +657,12 @@ module StreamSource =
 
             token.Register (fun () ->
                 stopped <- true
-                returnOf iterator
+
+                try
+                    returnOf iterator
+                with _ ->
+                    ()
+
                 finished.Resolve ())
             |> ignore
 

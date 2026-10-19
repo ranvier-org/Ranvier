@@ -72,8 +72,8 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | QueryDictionary.fs | 2 | 2 | 2 | 2 | 2 | 2 | 0 | 0 |
 | QueryErgonomics.fs | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | QueryNavigationTests.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
-| Streams.fs (sources) | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1030 | 1012 | 944 | 1167 | 1144 | 1066 | 91 | 1 |
+| Streams.fs (sources) | 7 | 7 | 7 | 7 | 7 | 7 | 0 | 0 |
+| **Total** | 1034 | 1016 | 948 | 1171 | 1148 | 1070 | 91 | 1 |
 
 ## Tests.fs
 
@@ -1886,10 +1886,14 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## Streams.fs (sources)
 
-<details><summary>3 passed in every build and delivery that runs them</summary>
+<details><summary>7 passed in every build and delivery that runs them</summary>
 
 - ofObservable: OnNext publishes, OnCompleted keeps the state, restart unsubscribes once
 - ofObservable: OnError publishes Failed
+- ofObservable: disposing the memo unsubscribes exactly once
 - create: the function receives the sink and token
+- ofAsyncIterable: items fold and done completes
+- ofAsyncIterable: a rejected next fails the stream
+- ofAsyncIterable: disposing while next is pending calls return once and ignores the later value
 
 </details>
