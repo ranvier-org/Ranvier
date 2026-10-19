@@ -763,6 +763,30 @@ let tests =
                 Expect.equal (reading memo) (Ready 3) "the pump adds nothing"
                 Expect.sequenceEqual seen [ 3 ] "one effect run"
 
+            testCase "a wake overtaken by a graph-thread item republishes nothing"
+            <| fun _ ->
+                use graph = manualGraph ()
+                let feed = ManualStream<float>()
+                let memo = graph.Run (fun () -> Api.createStream (fun _ -> feed.Source))
+                let mutable runs = 0
+
+                // nan is unequal to itself, so every publication of it reaches the effect.
+                new Effect (
+                    graph,
+                    fun () ->
+                        memo.TryValue |> ignore
+                        runs <- runs + 1
+                )
+                |> ignore
+
+                graph.Pump () |> ignore
+                offThread (fun () -> feed.Push nan)
+                feed.Push nan
+                let published = runs
+                Expect.equal graph.PendingWork 1 "the off-thread item's wake is still queued"
+                graph.Pump () |> ignore
+                Expect.equal runs published "the wake finds no new item and notifies no reader"
+
             testCase "an off-thread item after a graph-thread item in the same batch lands"
             <| fun _ ->
                 use graph = manualGraph ()
@@ -778,7 +802,7 @@ let tests =
                 Expect.equal (reading memo) (Ready 11) "the batch publishes the items folded before it ended"
                 Expect.equal graph.PendingWork 1 "the off-thread item posted a wake"
                 graph.Pump () |> ignore
-                Expect.equal (reading memo) (Ready 11) "the wake republishes the same state"
+                Expect.equal (reading memo) (Ready 11) "the wake leaves the published state as it was"
 
             testCase "completion after off-thread items publishes the final state first"
             <| fun _ ->
