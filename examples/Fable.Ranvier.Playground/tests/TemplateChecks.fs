@@ -1254,7 +1254,11 @@ let private stagedServer =
     Component.define (fun _ (stage: Stage) -> stage) (fun t -> t.div [||] [| t.matchWith id (stageArms t) |])
 
 let private matchMarkup () =
-    equal "<div><!--[--><span>working 3</span><!--]--></div>" (Html.render Omit (Program.run (Component.render stagedServer (Working 3))))
+    equal
+        ("<div><!--[a:"
+         + structuralHash workingArm
+         + "--><span>working 3</span><!--]--></div>")
+        (Html.render Omit (Program.run (Component.render stagedServer (Working 3))))
 
 type Phase =
     | Loading of int
@@ -1343,7 +1347,21 @@ let private branchMarkup () =
     use graph = new Graph ()
     let value = graph.Run (fun () -> Api.createSignal 42)
 
-    equal "<div><!--[--><span>4</span><!--]--></div>" (graph.Run (fun () -> Html.render Omit (Program.run (Component.render decades value))))
+    equal
+        ("<div><!--[a:"
+         + structuralHash decadeArm
+         + "--><span>4</span><!--]--></div>")
+        (graph.Run (fun () -> Html.render Omit (Program.run (Component.render decades value))))
+
+let private branchMarkupAsCaller () =
+    use graph = new Graph ()
+    let value = graph.Run (fun () -> Api.createSignal 42)
+
+    equal
+        ("<div><!--[a:"
+         + structuralHash decadeArm
+         + "--><span>4</span><!--]--></div>")
+        (Html.render Omit (Program.run (Component.render decades value)))
 
 let private roleLog = ResizeArray<string>()
 
@@ -4154,6 +4172,7 @@ let cases =
         "branch remounts on a key change and keeps the arm for an equal key", branchSwitching
         "branch renders the same DOM as its default expansion across a key change", branchTwin
         "branch server markup under Fable matches .NET", branchMarkup
+        "branch server markup rendered outside graph.Run under Fable matches .NET", branchMarkupAsCaller
         "branch remounts when its arms select another definition for an equal key", branchDefinitionChange
         "a switched arm sets up after the previous arm restores its saved state", armSaveRestore
         "a switched arm whose setup throws leaves the region empty and a later switch mounts", armSetupFailure

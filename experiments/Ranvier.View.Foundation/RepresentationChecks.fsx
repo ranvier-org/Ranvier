@@ -325,8 +325,8 @@ let staged =
                     | Complete result -> t.arm completeArm result)
             |])
 
-equal "<div><!--[--><span>working 3</span><!--]--></div>" (render Omit (Component.render staged (Working 3)))
-equal "<div><!--[--><span>complete &lt;ok&gt;</span><!--]--></div>" (render Omit (Component.render staged (Complete "<ok>")))
+equal "<div><!--[a:6a39ec02--><span>working 3</span><!--]--></div>" (render Omit (Component.render staged (Working 3)))
+equal "<div><!--[a:6a39ec02--><span>complete &lt;ok&gt;</span><!--]--></div>" (render Omit (Component.render staged (Complete "<ok>")))
 
 equal (stripMarkers (render Omit (Component.render staged Waiting))) (Html.render Omit (Tree.run (Component.renderWith Tree.ops staged Waiting)))
 
@@ -339,7 +339,7 @@ let decades =
     Component.define (fun _ (value: int) -> value) (fun t ->
         t.div [||] [| t.branch (fun value -> value / 10) (fun decade -> t.arm decadeArm decade) |])
 
-equal "<div><!--[--><span>4</span><!--]--></div>" (render Omit (Component.render decades 42))
+equal "<div><!--[a:6a39ec02--><span>4</span><!--]--></div>" (render Omit (Component.render decades 42))
 equal "<div><span>4</span></div>" (Html.render Omit (Tree.run (Component.renderWith Tree.ops decades 42)))
 
 let mutable roleAdmin = false
@@ -395,7 +395,7 @@ let adminHome = homeKey ()
 // An equal key selecting another definition remounts the arm.
 equal false (userHome = adminHome)
 equal "<div><span>admin home</span></div>" (renderRoled "home")
-equal "<div><!--[--><span>admin home</span><!--]--></div>" (render Omit (Component.render roled "home"))
+equal "<div><!--[a:6a39ec02--><span>admin home</span><!--]--></div>" (render Omit (Component.render roled "home"))
 
 equal "<div><span>admin away</span></div>" (renderRoled "away")
 let readAway = regionReads[2]

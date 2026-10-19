@@ -478,6 +478,30 @@ let skeletonMarkup (root: TemplateNode) =
     let layout = skeletonLayout root
     layout.Markup, layout.Targets, layout.RootCount
 
+/// <summary>The 32-bit FNV-1a hash of the string's UTF-16 code units, as eight lowercase hex digits; equal on .NET and under Fable.</summary>
+let fnv1a (value: string) : string =
+    let mutable hash = 2166136261u
+
+    for index in 0 .. value.Length - 1 do
+        hash <- hash ^^^ uint32 value[index]
+        // hash * 16777619, as shifts and adds that stay exact under Fable.
+        hash <-
+            hash
+            + (hash <<< 1)
+            + (hash <<< 4)
+            + (hash <<< 7)
+            + (hash <<< 8)
+            + (hash <<< 24)
+
+    let digits = "0123456789abcdef"
+    let hex = StringBuilder 8
+
+    for shift in [ 28; 24; 20; 16; 12; 8; 4; 0 ] do
+        hex.Append digits[int ((hash >>> shift) &&& 15u)]
+        |> ignore
+
+    hex.ToString ()
+
 /// <summary>A document head entry of a server plan; its readers receive the current part's instance.</summary>
 [<NoEquality; NoComparison>]
 type internal HeadPlan =
@@ -497,12 +521,15 @@ type internal HeadPlan =
 type internal ServerOp =
     /// <summary>Markup written as it is.</summary>
     | Static of string
-    /// <summary>A text slot's escaped value; with <c>leadingLineFeed</c>, a value starting with a line feed gets a second one.</summary>
-    | TextOp of Slot * leadingLineFeed: bool
+    /// <summary>
+    /// A text slot's escaped value; with <c>leadingLineFeed</c>, a value starting with a line feed gets a second one.
+    /// With <c>marksEmpty</c>, an empty or null value writes <c>&lt;!--_--&gt;</c>; otherwise it writes nothing.
+    /// </summary>
+    | TextOp of Slot * leadingLineFeed: bool * marksEmpty: bool
     /// <summary>An attribute slot: <c> name="value"</c> for <c>Some</c>; the attribute is omitted for <c>None</c>.</summary>
     | AttributeOp of string * Slot
-    /// <summary>A raw-HTML slot's markup, written verbatim.</summary>
-    | ContentOp of Slot
+    /// <summary>A raw-HTML slot's markup, written verbatim; with <c>leadingLineFeed</c>, non-empty markup is written after a line feed, dropped on parsing.</summary>
+    | ContentOp of Slot * leadingLineFeed: bool
     /// <summary>A document head entry: collected under <c>Server.renderPage</c>; otherwise raises under <c>Reject</c> and is dropped under <c>Omit</c>.</summary>
     | HeadOp of HeadPlan
     /// <summary>A serialised property slot: <c> name="value"</c>, or nothing when the serialisation returns <c>None</c>.</summary>
@@ -531,6 +558,13 @@ type internal ServerPlan =
         Children: InlinedChild array
         /// <summary>Whether the plan has an inlined child or a region, whose position needs the instance's path.</summary>
         Positioned: bool
+        /// <summary>The definition's <c>structuralHash</c>.</summary>
+        Hash: string
+        RootCount: int
+        /// <summary>Whether the first root is a text node or a text slot.</summary>
+        FirstIsText: bool
+        /// <summary>Whether the last root is a text node or a text slot.</summary>
+        LastIsText: bool
     }
 
 /// <summary>Elements whose first child text loses one leading line feed when parsed.</summary>
@@ -538,6 +572,10 @@ let private dropsLeadingLineFeed tagName =
     tagName = "pre"
     || tagName = "textarea"
     || tagName = "listing"
+
+/// <summary>Elements whose content is parsed as a single text node.</summary>
+let private isRcdata tagName =
+    tagName = "textarea" || tagName = "title"
 
 let private isBrowserOnly (property: PortableProperty) =
     match property.Html with
@@ -612,7 +650,7 @@ let private compilePlan (root: TemplateNode) : ServerPlan =
 
         ops.Add op
 
-    let rec compileChildren (nodes: TemplateNode array) (leading: bool) =
+    let rec compileChildren (nodes: TemplateNode array) (leading: bool) (marksEmpty: bool) =
         let mutable first = leading
         let mutable previousText = false
 
@@ -662,11 +700,11 @@ let private compilePlan (root: TemplateNode) : ServerPlan =
                 if text && previousText then
                     write "<!--!-->"
 
-                compileNode node first
+                compileNode node first marksEmpty
                 first <- false
                 previousText <- text
 
-    and compileNode node leading =
+    and compileNode node leading marksEmpty =
         match node with
         | TextNode value ->
             let escaped = Html.escape false value
@@ -677,7 +715,7 @@ let private compilePlan (root: TemplateNode) : ServerPlan =
             write escaped
         | TextSlotNode slot ->
             targets <- targets + 1
-            emit (TextOp (slot, leading))
+            emit (TextOp (slot, leading, marksEmpty))
         | ElementNode (tag, attributes, properties, slots, events, placed, nodes) ->
             let tagName = name tag
 
@@ -764,11 +802,26 @@ let private compilePlan (root: TemplateNode) : ServerPlan =
                     )
                 )
 
+            let rcdata = isRcdata tagName
+
+            if rcdata then
+                let texts =
+                    flatten nodes
+                    |> List.filter (fun flat ->
+                        match flat with
+                        | Item node -> isText node
+                        | Enter _
+                        | Leave -> false)
+                    |> List.length
+
+                if texts > 1 then
+                    raise (InvalidOperationException ("<" + tagName + "> takes at most one text child"))
+
             if not (isVoid tag) then
                 match contentSlot slots with
-                | Some content -> emit (ContentOp content)
+                | Some content -> emit (ContentOp (content, leadingLineFeed))
                 | None when childText.Length = 1 -> emit childText[0]
-                | None -> compileChildren nodes (dropsLeadingLineFeed tagName)
+                | None -> compileChildren nodes leadingLineFeed (not rcdata)
 
                 write ("</" + tagName + ">")
         | RegionNode region ->
@@ -779,10 +832,33 @@ let private compilePlan (root: TemplateNode) : ServerPlan =
         | ChildNode _
         | HeadNode _ -> invalidOp "Fragments, inlined children and head entries are flattened before compiling"
 
-    compileChildren [| root |] false
+    compileChildren [| root |] false true
 
     if pending.Length > 0 then
         ops.Add (Static (pending.ToString ()))
+
+    let layout = skeletonLayout root
+
+    let kinds =
+        layout.Targets
+        |> Array.choose (fun (node, _) ->
+            match node with
+            | RegionNode region ->
+                match region.Row with
+                | ItemRow _ -> Some "l"
+                | ArmRow -> Some "a"
+                | ViewRow -> Some "v"
+                | BoundaryRow -> Some "b"
+            | _ -> None)
+
+    let roots =
+        flatten [| root |]
+        |> List.choose (fun flat ->
+            match flat with
+            | Item (HeadNode _) -> None
+            | Item node -> Some node
+            | Enter _
+            | Leave -> None)
 
     {
         Ops = ops.ToArray ()
@@ -794,6 +870,10 @@ let private compilePlan (root: TemplateNode) : ServerPlan =
                    match op with
                    | RegionOp _ -> true
                    | _ -> false)
+        Hash = fnv1a (layout.Markup + "|" + String.Join ("", kinds))
+        RootCount = layout.RootCount
+        FirstIsText = not roots.IsEmpty && isText (List.head roots)
+        LastIsText = not roots.IsEmpty && isText (List.last roots)
     }
 
 /// <summary>The definition's server plan, compiled on first use; every later call returns the same plan.</summary>
@@ -810,6 +890,13 @@ let internal serverPlan (definition: TemplateComponent) : ServerPlan =
         | published -> unbox published
 #endif
     | plan -> unbox plan
+
+/// <summary>
+/// The <c>fnv1a</c> hash of the definition's skeleton markup, a <c>|</c>, and one letter per region in document order:
+/// <c>l</c> list, <c>a</c> arm, <c>v</c> view hole, <c>b</c> boundary.
+/// </summary>
+let structuralHash (definition: TemplateComponent) : string =
+    (serverPlan definition).Hash
 
 /// <summary>
 /// Whether an HTML parser can produce a comment from <c>markup</c> whose data starts with <c>[</c> or equals <c>]</c>,
@@ -927,16 +1014,18 @@ type internal ServerWriter(backend: HtmlBackend) =
         | AsChildText
         | BrowserOnly -> raise (InvalidOperationException "Only an attribute serialisation is written as an attribute")
 
-    /// <summary>Writes an escaped text value; with <c>leadingLineFeed</c>, a value starting with a line feed gets a second one.</summary>
-    let writeText (value: obj) (leadingLineFeed: bool) =
+    /// <summary>
+    /// Writes an escaped text value; with <c>leadingLineFeed</c>, a value starting with a line feed gets a second one.
+    /// With <c>marksEmpty</c>, an empty or null value writes <c>&lt;!--_--&gt;</c>.
+    /// </summary>
+    let writeText (value: obj) (leadingLineFeed: bool) (marksEmpty: bool) =
         let value = unbox<string> value
 
-        if not (isNull value) then
-            if
-                leadingLineFeed
-                && value.Length > 0
-                && value[0] = '\n'
-            then
+        if String.IsNullOrEmpty value then
+            if marksEmpty then
+                backend.Append "<!--_-->"
+        else
+            if leadingLineFeed && value[0] = '\n' then
                 backend.Append "\n"
 
             backend.Append (Html.escape false value)
@@ -1050,8 +1139,8 @@ type internal ServerWriter(backend: HtmlBackend) =
             | Static markup ->
                 backend.Append markup
                 index <- index + 1
-            | TextOp (slot, leadingLineFeed) ->
-                writeText (slot.Read.Invoke instance) leadingLineFeed
+            | TextOp (slot, leadingLineFeed, marksEmpty) ->
+                writeText (slot.Read.Invoke instance) leadingLineFeed marksEmpty
                 index <- index + 1
             | AttributeOp (key, slot) ->
                 match unbox<string option>(slot.Read.Invoke instance) with
@@ -1059,11 +1148,14 @@ type internal ServerWriter(backend: HtmlBackend) =
                 | None -> ()
 
                 index <- index + 1
-            | ContentOp slot ->
+            | ContentOp (slot, leadingLineFeed) ->
                 let markup = markupOf (slot.Read.Invoke instance)
 
                 if hasMarkerComment markup then
                     raise (InvalidOperationException "Raw HTML cannot contain a comment that starts with [ or equals ]")
+
+                if leadingLineFeed && markup.Length > 0 then
+                    backend.Append "\n"
 
                 backend.Append markup
                 index <- index + 1
@@ -1097,10 +1189,10 @@ type internal ServerWriter(backend: HtmlBackend) =
                 writeSerialised property value
                 index <- index + 1
             | ChildTextOp (_, slot, leadingLineFeed) ->
-                writeText (slot.Read.Invoke instance) leadingLineFeed
+                writeText (slot.Read.Invoke instance) leadingLineFeed false
                 index <- index + 1
             | StaticChildTextOp (_, value, leadingLineFeed) ->
-                writeText value leadingLineFeed
+                writeText value leadingLineFeed false
                 index <- index + 1
             | BrowserOp (tag, part) ->
                 if reject then
@@ -1176,22 +1268,34 @@ type internal ServerWriter(backend: HtmlBackend) =
 
             backend.Append "<!--]-->"
         | ArmRow ->
-            backend.Append "<!--[-->"
-
-            for row in 0 .. items.Length - 1 do
-                let value = KeyedItems.value items[row]
-                let arm = unbox<Arm> value
-                this.Write (scope, arm.Definition, arm.Reader.Invoke (fun () -> value), parent, InstanceStep.Row, regionIndex, row)
-
+            let value = KeyedItems.value items[0]
+            let arm = unbox<Arm> value
+            let plan = serverPlan arm.Definition
+            backend.Append ("<!--[a:" + plan.Hash + "-->")
+            this.Row (scope, plan, arm.Definition, arm.Reader.Invoke (fun () -> value), parent, regionIndex, 0)
             backend.Append "<!--]-->"
         | ItemRow (definition, props) ->
+            let plan = serverPlan definition
+            let separated = plan.LastIsText && plan.FirstIsText
             backend.Append "<!--[-->"
 
             for row in 0 .. items.Length - 1 do
+                if separated && row > 0 then
+                    backend.Append "<!--!-->"
+
                 let item = items[row]
-                this.Write (scope, definition, props.Invoke (fun () -> item), parent, InstanceStep.Row, regionIndex, row)
+                this.Row (scope, plan, definition, props.Invoke (fun () -> item), parent, regionIndex, row)
 
             backend.Append "<!--]-->"
+
+    /// <summary>Writes row <c>row</c> of region <c>regionIndex</c>; a row whose plan has no roots writes <c>&lt;!--ranvier:row--&gt;</c>.</summary>
+    member private this.Row
+        (scope: ServerScope, plan: ServerPlan, definition: TemplateComponent, props: obj, parent: InstancePath, regionIndex: int, row: int)
+        =
+        this.Write (scope, definition, props, parent, InstanceStep.Row, regionIndex, row)
+
+        if plan.RootCount = 0 then
+            backend.Append "<!--ranvier:row-->"
 
     /// <summary>
     /// Writes a boundary whose views sit under <c>parent</c> in region <c>regionIndex</c>: the content at row 0 in an

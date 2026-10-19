@@ -71,9 +71,9 @@ let private templatePins () =
     equal """<div class="panel" title="T &amp;">Hello <!--!-->&lt;Ada&gt;<!--!-->!</div><span>&lt;Ada&gt;</span>""" (renderOmit pair greetingProps)
 
 let private armPins () =
-    equal "<div><!--[--><span>working 3</span><!--]--></div>" (renderOmit staged (Working 3))
-    equal "<div><!--[--><span>complete &lt;ok&gt;</span><!--]--></div>" (renderOmit staged (Complete "<ok>"))
-    equal "<div><!--[--><span>4</span><!--]--></div>" (renderOmit decades 42)
+    equal "<div><!--[a:6a39ec02--><span>working 3</span><!--]--></div>" (renderOmit staged (Working 3))
+    equal "<div><!--[a:6a39ec02--><span>complete &lt;ok&gt;</span><!--]--></div>" (renderOmit staged (Complete "<ok>"))
+    equal "<div><!--[a:6a39ec02--><span>4</span><!--]--></div>" (renderOmit decades 42)
 
 let private boundaryPins () =
     use graph = new Graph ()
@@ -85,7 +85,7 @@ let private boundaryPins () =
     equal "<div><!--[e--><span>&lt;bad&gt;</span><!--]--></div>" (renderOmit guarded ())
 
 let private edgePins () =
-    equal "<span></span>" (renderOmit emptyText "")
+    equal "<span><!--_--></span>" (renderOmit emptyText "")
     equal "<div><br></div>" (renderOmit voidChildren ())
     equal "<table><tr><td>x</td></tr></table>" (renderOmit rowInTable ())
 
@@ -1230,6 +1230,128 @@ let private abandonedHeads () =
          "")
         (Server.renderPage Server.Options.defaults headGuarded (), holeHead (Component.renderWith Program.ops headGuarded ()), holeHead authored)
 
+let private hashVectors () =
+    equal ("811c9dc5", "e40c292c", "25dbbe5a") (fnv1a "", fnv1a "a", fnv1a "<span>x</span>|")
+    let x = Component.define (fun _ () -> ()) (fun t -> t.span [||] [| t.text "x" |])
+    let y = Component.define (fun _ () -> ()) (fun t -> t.span [||] [| t.text "y" |])
+    equal ("25dbbe5a", "6a39ec02", false) (structuralHash x, structuralHash workingArm, structuralHash x = structuralHash y)
+
+let private armedList =
+    Component.define (fun _ (items: Listed array) -> items) (fun t -> t.ul [||] [| t.matchWith id (fun items -> t.arm listedRow items[0]) |])
+
+let private regionHashes () =
+    equal
+        ("789182d0", "85919747", "f8780f23", "cfae8b1a", "d263bb31")
+        (structuralHash listed, structuralHash armedList, structuralHash holed, structuralHash guarded, structuralHash greeting)
+
+    equal (fnv1a "<ul><!--[--><!--]--></ul>|l", fnv1a "<ul><!--[--><!--]--></ul>|a") (structuralHash listed, structuralHash armedList)
+
+let private texts =
+    Component.define (fun _ (items: string array) -> items) (fun t -> t.div [||] [| t.each id id textRow |])
+
+let private empties =
+    Component.define (fun _ (items: string array) -> items) (fun t -> t.div [||] [| t.each id id emptyRow |])
+
+let private markers () =
+    let render definition props =
+        Server.render Server.Options.defaults definition props
+
+    equal "<!--[r--><div><!--[-->a<!--!-->b<!--!--><!--_--><!--]--></div><!--]-->" (render texts [| "a"; "b"; "" |])
+    equal "<!--[r--><div><!--[--><!--ranvier:row--><!--ranvier:row--><!--]--></div><!--]-->" (render empties [| "a"; "b" |])
+    equal "<!--[r--><div><!--[a:6a39ec02--><span>working 3</span><!--]--></div><!--]-->" (render staged (Working 3))
+    equal "<!--[r--><span><!--_--></span><!--]-->" (render emptyText null)
+
+let private leadingTextRow =
+    Component.define (fun _ (item: unit -> string) -> item) (fun t -> t.fragment [| t.text (fun item -> item ()); t.em [||] [||] |])
+
+let private trailingTextRow =
+    Component.define (fun _ (item: unit -> string) -> item) (fun t -> t.fragment [| t.em [||] [||]; t.text (fun item -> item ()) |])
+
+let private rowEdges =
+    Component.define (fun _ (items: string array) -> items) (fun t ->
+        t.fragment
+            [|
+                t.div [||] [| t.each id id leadingTextRow |]
+                t.div [||] [| t.each id id trailingTextRow |]
+                t.div
+                    [||]
+                    [|
+                        t.matchWith (fun (items: string array) -> items[0]) (fun item -> t.arm emptyRow item)
+                    |]
+            |])
+
+let private rowMarkers () =
+    equal
+        ("<!--[r--><div><!--[-->a<em></em>b<em></em><!--]--></div>"
+         + "<div><!--[--><em></em>a<em></em>b<!--]--></div>"
+         + "<div><!--[a:"
+         + fnv1a "|"
+         + "--><!--ranvier:row--><!--]--></div><!--]-->")
+        (Server.render Server.Options.defaults rowEdges [| "a"; "b" |])
+
+let private rcdataSlots =
+    Component.define (fun _ (value: string) -> value) (fun t ->
+        t.fragment
+            [|
+                t.textarea [||] [| t.text (fun value -> value) |]
+                t.title [||] [| t.text (fun value -> value) |]
+            |])
+
+let private rcdataText () =
+    let render (value: string) =
+        Server.render Server.Options.defaults rcdataSlots value
+
+    equal
+        [
+            "<!--[r--><textarea></textarea><title></title><!--]-->"
+            "<!--[r--><textarea></textarea><title></title><!--]-->"
+            "<!--[r--><textarea>\n\nx &lt;</textarea><title>\nx &lt;</title><!--]-->"
+        ]
+        [ render ""; render null; render "\nx <" ]
+
+    let rejection (definition: Component<unit>) =
+        let error =
+            failure (fun () ->
+                Server.render Server.Options.defaults definition ()
+                |> ignore)
+
+        error :? InvalidOperationException, error.Message
+
+    equal
+        [
+            true, "<textarea> takes at most one text child"
+            true, "<title> takes at most one text child"
+        ]
+        [
+            rejection (Component.define (fun _ () -> ()) (fun t -> t.textarea [||] [| t.text "a"; t.text (fun _ -> "b") |]))
+            rejection (Component.define (fun _ () -> ()) (fun t -> t.title [||] [| t.text (fun _ -> "a"); t.text (fun _ -> "b") |]))
+        ]
+
+let private preformattedContent =
+    Component.define (fun _ (markup: string) -> markup) (fun t ->
+        let trusted (markup: string) =
+            UnsafeHtml.Trust markup
+
+        t.fragment
+            [|
+                t.pre [| t.Unsafe.html trusted |] [||]
+                t.element (HtmlTag "listing") [| t.Unsafe.html trusted |] [||]
+                t.div [| t.Unsafe.html trusted |] [||]
+            |])
+
+let private contentLeadingLineFeed () =
+    equal
+        [
+            "<pre>\n\nx</pre><listing>\n\nx</listing><div>\nx</div>"
+            "<pre>\n\r\nx</pre><listing>\n\r\nx</listing><div>\r\nx</div>"
+            "<pre>\n&#10;x</pre><listing>\n&#10;x</listing><div>&#10;x</div>"
+            "<pre>\n<b>x</b></pre><listing>\n<b>x</b></listing><div><b>x</b></div>"
+            "<pre></pre><listing></listing><div></div>"
+        ]
+        [
+            for markup in [ "\nx"; "\r\nx"; "&#10;x"; "<b>x</b>"; "" ] -> renderOmit preformattedContent markup
+        ]
+
 let cases: (string * (unit -> unit)) array =
     [|
         "CreateId numbers inlined children in pre-order and puts an inlined child's rows under its path", nestedIdentity
@@ -1289,6 +1411,12 @@ let cases: (string * (unit -> unit)) array =
         "a static textarea value starting with a line feed gets a second one", staticTextareaLineFeed
         "an unchecked checkbox and a select with no matching option write no checked or selected attribute", formsUnset
         "a textarea value escapes its closing tag and ampersand; an empty or null value writes no text", textareaValues
+        "the structural hash is FNV-1a over the canonical skeleton, equal on .NET and Fable", hashVectors
+        "the structural hash names each region's kind", regionHashes
+        "server HTML carries arm, empty-text, separator and zero-root markers", markers
+        "rows are separated only between a trailing and a leading text, and a zero-root arm writes the row marker", rowMarkers
+        "an empty text slot in a textarea or title writes nothing, and more than one text child fails at plan compile", rcdataText
+        "non-empty raw HTML in a pre or listing is written after a line feed, dropped on parsing", contentLeadingLineFeed
     |]
 
 #if !FABLE_COMPILER
