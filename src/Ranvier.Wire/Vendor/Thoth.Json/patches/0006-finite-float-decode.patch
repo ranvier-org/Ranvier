@@ -1,0 +1,38 @@
+diff --git a/packages/Thoth.Json.Core/Decode.fs b/packages/Thoth.Json.Core/Decode.fs
+index 7357e42..2edb057 100644
+--- a/packages/Thoth.Json.Core/Decode.fs
++++ b/packages/Thoth.Json.Core/Decode.fs
+@@ -426,6 +426,14 @@ module Decode =
+                             )
+ #endif
+                         with
++                        | true, f when Double.IsInfinity f ->
++                            ("",
++                             BadPrimitiveExtra(
++                                 "a float",
++                                 value,
++                                 "Value is outside the float range"
++                             ))
++                            |> Error
+                         | true, f -> Ok f
+                         | false, _ ->
+                             ("", BadPrimitive("a float", value)) |> Error
+@@ -444,7 +452,17 @@ module Decode =
+         { new Decoder<float32> with
+             member _.Decode(helpers, value) =
+                 if helpers.isNumber value then
+-                    Ok(helpers.asFloat32 value)
++                    // A double of this magnitude or more rounds to an infinite float32.
++                    if abs (helpers.asFloat value) >= 3.4028235677973366e38 then
++                        ("",
++                         BadPrimitiveExtra(
++                             "a float32",
++                             value,
++                             "Value is outside the float range"
++                         ))
++                        |> Error
++                    else
++                        Ok(helpers.asFloat32 value)
+                 elif helpers.isString value then
+                     match helpers.asString value with
+                     | "NaN" -> Ok System.Single.NaN

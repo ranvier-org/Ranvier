@@ -111,6 +111,7 @@ let all =
             testList "QueryDictionary.fs" [ Ranvier.Tests.QueryDictionary.tests ]
             testList "QueryErgonomics.fs" [ Ranvier.Tests.QueryErgonomics.tests ]
             testList "QueryNavigationTests.fs" [ Ranvier.Tests.QueryNavigationTests.tests ]
+            testList "VendoredThoth.fs" [ Ranvier.Wire.Tests.VendoredThoth.tests ]
         ]
 
 Mocha.runTests all |> ignore

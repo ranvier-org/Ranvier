@@ -1,0 +1,7 @@
+<Project>
+    <!-- The wire suite, in compile order. Ranvier.Wire.Tests and fable/Ranvier.Tests.Fable both compile it. -->
+    <ItemGroup>
+        <Compile Include="$(MSBuildThisFileDirectory)WireSupport.fs" Link="WireSupport.fs" />
+        <Compile Include="$(MSBuildThisFileDirectory)VendoredThoth.fs" Link="VendoredThoth.fs" />
+    </ItemGroup>
+</Project>
