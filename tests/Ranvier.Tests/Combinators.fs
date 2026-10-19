@@ -2385,7 +2385,16 @@ let sizeTests =
                 use g = new Graph ()
                 use _ = g.Activate ()
                 let source = createSignal (items [ 1, 1; 2, 2 ])
-                let up = rows source
+                let rowCalls = ref 0
+
+                let up =
+                    createProjection
+                        (fun x -> x.Id)
+                        (fun x ->
+                            rowCalls.Value <- rowCalls.Value + 1
+                            x.N)
+                        (fun () -> source.Value)
+
                 let count = Projection.length up
                 let empty = Projection.isEmpty up
                 let runs = ref 0
@@ -2395,8 +2404,12 @@ let sizeTests =
                     count.Value |> ignore
                     empty.Value |> ignore)
 
+                let callsBefore = rowCalls.Value
                 source.Value <- setN 1 5 source.Value
+                Expect.equal count.Value 2 "the count"
+                Expect.isFalse empty.Value "not empty"
                 Expect.equal runs.Value 1 "an edit keeps the key count"
+                Expect.equal rowCalls.Value callsBefore "neither memo reads a row"
             }
 
             test "isEmpty wakes its readers only when emptiness changes" {
@@ -2443,6 +2456,31 @@ let sizeTests =
                 Expect.throwsT<NotReadyException> (fun () -> count.Value |> ignore) "pending"
                 source.Settle [ 1; 2 ]
                 Expect.equal count.Value 2 "settled"
+            }
+
+            test "a pending pass makes isEmpty pending until it settles" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createAsyncSource<int list>()
+
+                let empty =
+                    createProjection id id (fun () -> source.Value)
+                    |> Projection.isEmpty
+
+                Expect.throwsT<NotReadyException> (fun () -> empty.Value |> ignore) "pending"
+                source.Settle [ 1; 2 ]
+                Expect.isFalse empty.Value "settled"
+            }
+
+            test "a failed pass makes length and isEmpty fail" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let up = createProjection id id (fun () -> failwith "boom")
+                let count = Projection.length up
+                let empty = Projection.isEmpty up
+
+                Expect.throws (fun () -> count.Value |> ignore) "length fails"
+                Expect.throws (fun () -> empty.Value |> ignore) "isEmpty fails"
             }
 
             test "disposing the calling scope stops length" {

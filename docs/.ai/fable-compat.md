@@ -57,7 +57,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | DischargeReentry.fs | 29 | 29 | 29 | 29 | 29 | 29 | 1 | 0 |
 | MapSemantics.fs | 42 | 42 | 42 | 42 | 42 | 42 | 0 | 1 |
 | Lenses.fs | 23 | 20 | 20 | 23 | 20 | 20 | 0 | 0 |
-| Combinators.fs | 151 | 151 | 151 | 151 | 151 | 151 | 1 | 0 |
+| Combinators.fs | 153 | 153 | 153 | 153 | 153 | 153 | 1 | 0 |
 | Timed.fs | 31 | 31 | 31 | 38 | 38 | 38 | 0 | 0 |
 | Streams.fs | 26 | 26 | 26 | 26 | 26 | 26 | 1 | 0 |
 | PreviousValues.fs | 12 | 12 | 12 | 12 | 12 | 12 | 15 | 0 |
@@ -81,7 +81,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 9 | 9 | 9 | 9 | 9 | 9 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1436 | 1415 | 1412 | 1576 | 1550 | 1547 | 99 | 1 |
+| **Total** | 1438 | 1417 | 1414 | 1578 | 1552 | 1549 | 99 | 1 |
 
 ## Tests.fs
 
@@ -1424,7 +1424,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | --- | --- |
 | foldGroup rejects a null subtract | Fable wraps a null function argument in a closure, so it is never null. |
 
-<details><summary>151 passed in every build and delivery that runs them</summary>
+<details><summary>153 passed in every build and delivery that runs them</summary>
 
 - 200 single edits at N=1000 make 200 predicate calls
 - a Keys reader wakes only when membership flips
@@ -1576,6 +1576,8 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - isEmpty wakes its readers only when emptiness changes
 - length over a filter follows the filter's membership
 - a pending pass makes length pending until it settles
+- a pending pass makes isEmpty pending until it settles
+- a failed pass makes length and isEmpty fail
 - disposing the calling scope stops length
 
 </details>
