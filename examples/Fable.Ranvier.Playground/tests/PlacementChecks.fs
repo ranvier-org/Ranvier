@@ -533,7 +533,76 @@ let private heldAfterTeardown (ops: Operations<'view>) (run: 'view -> Backend ->
     let text = target.textContent
     mounted.Dispose ()
     equal (1, 0, "failed first", [ [ "first" ] ]) (hidden, tornDown, text, messages reports)
+
+/// <summary>A boundary content with a mounted hook, disposed with its mount while still pending.</summary>
+let private heldAfterPendingDispose (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createAsyncSource<string>())
+    let log = ResizeArray<string>()
+    let target = host ()
+    let before = PlacementCounters.held.Value
+
+    let view =
+        ops.Boundary (
+            ops.Text "loading",
+            (fun failure -> ops.Text failure.Error.Message),
+            fun _ ->
+                span
+                    ops
+                    [|
+                        Typed.mounted (fun (_: HTMLSpanElement) ->
+                            log.Add "hook"
+                            ignore)
+                    |]
+                    [| Typed.reactiveText ops (fun () -> source.Value) |]
+        )
+
+    let mounted = mountView ops run queued graph strict target view
+    let hidden = PlacementCounters.held.Value - before
+    mounted.Dispose ()
+    equal (1, 0, []) (hidden, PlacementCounters.held.Value - before, List.ofSeq log)
 #endif
+
+/// <summary>A boundary in a boundary content; the inner content settles while the outer content is pending.</summary>
+let private nestedBoundary (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+    let outer = graph.Run (fun () -> Api.createAsyncSource<string>())
+    let inner = graph.Run (fun () -> Api.createAsyncSource<string>())
+    let log = ResizeArray<string>()
+    let target = host ()
+
+    let view =
+        ops.Boundary (
+            ops.Text "outer loading",
+            (fun failure -> ops.Text failure.Error.Message),
+            fun _ ->
+                ops.Fragment
+                    [|
+                        Typed.reactiveText ops (fun () -> outer.Value)
+                        ops.Boundary (
+                            ops.Text "inner loading",
+                            (fun failure -> ops.Text failure.Error.Message),
+                            fun _ ->
+                                span
+                                    ops
+                                    [|
+                                        Typed.mounted (fun (node: HTMLSpanElement) ->
+                                            log.Add (sprintf "inner %b" (target.contains node))
+                                            ignore)
+                                    |]
+                                    [| Typed.reactiveText ops (fun () -> inner.Value) |]
+                        )
+                    |]
+        )
+
+    let mounted = mountView ops run queued graph strict target view
+    graph.Run (fun () -> inner.Settle "b")
+    mounted.Flush ()
+    equal ([], "outer loading") (List.ofSeq log, target.textContent)
+    graph.Run (fun () -> outer.Settle "a")
+    mounted.Flush ()
+    equal ([ "inner true" ], "ab") (List.ofSeq log, target.textContent)
+    mounted.Dispose ()
 
 type Probe =
     {
@@ -931,8 +1000,8 @@ let private hiddenPending =
     Component.define (fun _ () -> ()) (fun t ->
         t.span
             [|
-                t.Hooks.mounted (fun _ (_: HTMLSpanElement) ->
-                    hiddenLog.Add "pending"
+                t.Hooks.mounted (fun _ (node: HTMLSpanElement) ->
+                    hiddenLog.Add (sprintf "pending %b" (hiddenHost.contains node))
                     fun () -> hiddenLog.Add "pending cleanup")
             |]
             [| t.text "loading" |])
@@ -962,10 +1031,10 @@ let private templateHiddenLifecycle queued () =
     let mounted =
         mountTemplate queued graph reports.Add hiddenHost (Component.render hiddenGuarded ())
 
-    equal [ "pending" ] (List.ofSeq hiddenLog)
+    equal [ "pending true" ] (List.ofSeq hiddenLog)
     graph.Run (fun () -> hiddenSource.Value.Fail (Exception "first"))
     mounted.Flush ()
-    equal ([ "pending"; "pending cleanup"; "error" ], "failed first") (List.ofSeq hiddenLog, hiddenHost.textContent)
+    equal ([ "pending true"; "pending cleanup"; "error" ], "failed first") (List.ofSeq hiddenLog, hiddenHost.textContent)
     graph.Run (fun () -> hiddenSource.Value <- Api.createAsyncSource<string>())
 
     (hiddenHost.querySelector "button"
@@ -977,11 +1046,11 @@ let private templateHiddenLifecycle queued () =
 
     equal
         ([
-            "pending"
+            "pending true"
             "pending cleanup"
             "error"
             "error cleanup"
-            "pending"
+            "pending true"
             "pending cleanup"
             "hook true"
          ],
@@ -1025,6 +1094,7 @@ let private templateHiddenNodeRef queued () =
         }
 
     let target = host ()
+    hiddenHost <- target
 
     let mounted =
         mountTemplate queued graph strict target (Component.render hiddenInputGuarded ())
@@ -1143,7 +1213,15 @@ let cases: (string * (unit -> unit)) array =
                 "a content torn down before its reveal leaves the held-hook count at its prior value"
                 (heldAfterTeardown Tree.ops Tree.run)
                 (heldAfterTeardown Program.ops Program.run)
+            both
+                "a content disposed while pending leaves the held-hook count at its prior value and runs no hook"
+                (heldAfterPendingDispose Tree.ops Tree.run)
+                (heldAfterPendingDispose Program.ops Program.run)
 #endif
+            both
+                "an inner boundary settled while its outer content is pending runs its content hooks at the outer reveal"
+                (nestedBoundary Tree.ops Tree.run)
+                (nestedBoundary Program.ops Program.run)
             [|
                 "tree: a mounted hook raises under Reject and writes nothing under Omit", (fun () -> serverHook Tree.ops Tree.run)
                 "program: a mounted hook raises under Reject and writes nothing under Omit", (fun () -> serverHook Program.ops Program.run)

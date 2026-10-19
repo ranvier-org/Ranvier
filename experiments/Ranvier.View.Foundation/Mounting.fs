@@ -1425,6 +1425,8 @@ and [<Sealed>] private ViewBoundary
             shown <- row
             viewContainer.Place ()
         with error ->
+            viewContainer.Discard ()
+
             if not (isNull row) then
                 row.Mount.Dispose ()
 
@@ -1538,7 +1540,10 @@ and [<Sealed>] private ViewBoundary
         | None when waiting = 0 -> this.Reveal ()
         | None -> this.Show views.Pending
 
-    /// <summary>Creates the boundary's effect and mounts its content. Call once, inside the region's owner.</summary>
+    /// <summary>
+    /// Creates the boundary's effect and mounts its content. Call once, inside the region's owner; disposing that owner
+    /// discards the hooks held by an unrevealed content.
+    /// </summary>
     member this.Start() =
         wake <- Api.createSignal 0
         pending <- Api.createSignal false
@@ -1547,6 +1552,11 @@ and [<Sealed>] private ViewBoundary
         Api.createEffect (fun () ->
             wake.Value |> ignore
             Api.untrack (fun () -> this.Settle ()))
+
+        Api.onCleanup (fun () ->
+            if not (isNull contentContainer) then
+                contentContainer.Discard ()
+                contentContainer <- null)
 
         this.MountContent ()
 

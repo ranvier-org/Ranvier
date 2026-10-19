@@ -4,7 +4,7 @@ Date: 2026-10-19. Branch `poc/fable-ranvier-dom`. Task 7 of the [framework plan]
 
 ## Mutation checks
 
-Each mutation was applied alone to the commit named (`78ea5b9`), compiled, run against the named test file, and reverted.
+Each mutation was applied alone to the commit named (`78ea5b9`; the last row to the commit that adds the owner cleanup), compiled, run against the named test file, and reverted.
 
 | Mutation | Location | Test file | Killed by |
 |---|---|---|---|
@@ -15,5 +15,6 @@ Each mutation was applied alone to the commit named (`78ea5b9`), compiled, run a
 | Pass never placed | `ListRegion` | `placement.test.mjs` | tree synchronous: hooks run in setup order: an instance, its inlined children, then region rows |
 | Failure `try` dropped | `PlacedHook.register` | `placement.test.mjs` | tree synchronous: a hook failure during mountWith unwinds the mount and rethrows |
 | `contentContainer.Discard ()` dropped | `ViewBoundary.TearDown` | `placement.test.mjs` | tree synchronous: a content torn down before its reveal leaves the held-hook count at its prior value |
+| Owner cleanup of an unrevealed content dropped | `ViewBoundary.Start` | `placement.test.mjs` | tree synchronous: a content disposed while pending leaves the held-hook count at its prior value and runs no hook |
 
-Dropping `ViewBoundary`'s `contentContainer.Discard ()` alone changes no hook's behaviour: a torn-down content's container is never placed again, and the core disposes an effect created under a disposed owner as it attaches. `Discard` releases the held closures, which the held-hook count (`PlacementCounters.held`, defined under `RANVIER_VIEW_COUNTERS`) observes.
+Dropping either `contentContainer.Discard ()` call alone changes no hook's behaviour: a torn-down or disposed content's container is never placed again, and the core disposes an effect created under a disposed owner as it attaches. `Discard` releases the held closures, which the held-hook count (`PlacementCounters.held`, defined under `RANVIER_VIEW_COUNTERS`) observes.
