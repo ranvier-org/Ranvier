@@ -1163,6 +1163,13 @@ let traceTests =
                     ]
                     "events in order"
             }
+
+            testCase "StreamEnd and TraceStreamEnd carry the same values"
+            <| fun _ ->
+                Expect.equal (int StreamEnd.Completed) (int TraceStreamEnd.Completed) "Completed"
+                Expect.equal (int StreamEnd.Failed) (int TraceStreamEnd.Failed) "Failed"
+                Expect.equal (int StreamEnd.Restarted) (int TraceStreamEnd.Restarted) "Restarted"
+                Expect.equal (int StreamEnd.Disposed) (int TraceStreamEnd.Disposed) "Disposed"
         ]
 #else
 let traceTests = testList "Stream memo traces" []

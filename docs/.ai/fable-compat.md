@@ -73,8 +73,8 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | QueryErgonomics.fs | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | QueryNavigationTests.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
 | Streams.fs (sources) | 7 | 7 | 7 | 7 | 7 | 7 | 0 | 0 |
-| Streams.fs (traces) | 0 | 0 | 0 | 1 | 1 | 1 | 0 | 0 |
-| **Total** | 1034 | 1016 | 948 | 1172 | 1149 | 1071 | 91 | 1 |
+| Streams.fs (traces) | 0 | 0 | 0 | 2 | 2 | 2 | 0 | 0 |
+| **Total** | 1034 | 1016 | 948 | 1173 | 1150 | 1072 | 91 | 1 |
 
 ## Tests.fs
 
@@ -1901,8 +1901,9 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## Streams.fs (traces)
 
-<details><summary>1 passed in every build and delivery that runs them</summary>
+<details><summary>2 passed in every build and delivery that runs them</summary>
 
 - a start, a burst, a restart and a completion are traced (traced only)
+- StreamEnd and TraceStreamEnd carry the same values (traced only)
 
 </details>
