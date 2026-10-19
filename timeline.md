@@ -31,6 +31,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 84,043 | 126,340 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 84,043 | 126,334 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 84,042 | 126,373 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 84,044 | 126,391 |
 
 ## app-table
 
@@ -63,6 +64,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 9,120,295 | 9,711,135 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 9,120,311 | 9,716,978 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 9,120,327 | 9,716,330 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 9,120,285 | 9,783,165 |
 
 ## async-recover
 
@@ -95,6 +97,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 138,884 | 37,323 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 138,884 | 37,316 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 138,884 | 37,318 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 138,884 | 37,321 |
 
 ## async-resolve
 
@@ -127,6 +130,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 2,788,201 | 1,074,446 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 2,788,200 | 1,074,517 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 2,788,202 | 1,074,577 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 2,788,200 | 1,074,546 |
 
 ## chain
 
@@ -159,6 +163,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 13,075 | 318 | 2,450 | 4,491 | 3,180 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 13,043 | 318 | 2,450 | 4,491 | 3,180 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 13,043 | 318 | 2,450 | 4,491 | 3,180 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 13,075 | 318 | 2,450 | 4,491 | 3,180 |
 
 ## chain-affinity
 
@@ -191,6 +196,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 2,549 | 3,067 | 2,496 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 2,549 | 3,067 | 2,496 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 2,549 | 3,067 | 2,496 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 2,549 | 3,067 | 2,496 |
 
 ## control
 
@@ -223,6 +229,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 74,720 | 836,174 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 74,720 | 843,978 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 74,720 | 843,934 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 74,720 | 844,008 |
 
 ## create
 
@@ -255,6 +262,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 13,589,068 | 2,881,678 | 2,528,362 | 2,131,083 | 3,984,508 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 13,621,031 | 2,865,678 | 2,528,362 | 2,131,910 | 3,985,016 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 13,839,911 | 2,881,678 | 2,528,376 | 2,131,058 | 3,984,927 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 13,575,375 | 2,913,676 | 2,528,442 | 2,132,028 | 3,984,669 |
 
 ## create-on
 
@@ -287,6 +295,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 2,910,484 | 4,367,023 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 2,910,484 | 4,366,671 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 2,910,484 | 4,367,075 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 2,910,564 | 4,366,918 |
 
 ## cutoff
 
@@ -319,6 +328,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 1,182 | 50 | 111 | 65 | 35 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 1,182 | 50 | 111 | 65 | 35 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 1,182 | 50 | 111 | 65 | 35 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 1,182 | 50 | 111 | 65 | 35 |
 
 ## derive-effect
 
@@ -351,6 +361,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 760 | 680 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 760 | 680 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 760 | 680 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 760 | 680 |
 
 ## derive-on
 
@@ -383,6 +394,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 735 | 684 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 735 | 684 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 735 | 684 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 735 | 684 |
 
 ## dispose
 
@@ -415,6 +427,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 2,706,245 | 806,291 | 367,497 | 466,179 | 434,221 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 2,706,255 | 806,290 | 367,497 | 466,078 | 434,233 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 2,706,755 | 806,290 | 367,497 | 466,198 | 434,098 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 2,707,644 | 806,290 | 367,497 | 466,421 | 434,430 |
 
 ## dispose-on
 
@@ -447,6 +460,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 346,497 | 430,458 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 346,497 | 430,207 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 346,497 | 430,725 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 346,497 | 430,432 |
 
 ## editable-edit
 
@@ -479,6 +493,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 179,606 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 179,606 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 179,606 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 179,606 |
 
 ## editable-upstream
 
@@ -511,6 +526,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 230,755 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 230,755 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 230,755 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 230,755 |
 
 ## fail-recompute
 
@@ -543,6 +559,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 64,950 | 1,366 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 64,974 | 1,366 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 64,974 | 1,366 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 64,974 | 1,366 |
 
 ## flight
 
@@ -575,6 +592,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 11,017 | 6,228 | 6,229 | 11,340 | 10,785 | 22,371 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 10,999 | 6,217 | 6,218 | 11,320 | 10,766 | 22,345 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 10,999 | 6,217 | 6,218 | 11,320 | 10,767 | 22,345 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 10,999 | 6,217 | 6,218 | 11,320 | 10,767 | 22,345 |
 
 ## keyed-insert
 
@@ -607,6 +625,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 1,918,536 | 53,948 | 54,610 | 3,115,210 | 164,120 | 167,409 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 1,918,536 | 53,948 | 54,610 | 3,115,145 | 164,071 | 167,354 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 1,918,538 | 53,948 | 54,610 | 3,115,288 | 164,080 | 167,386 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 1,918,672 | 54,044 | 54,745 | 3,115,213 | 164,099 | 167,492 |
 
 ## keyed-remove
 
@@ -639,6 +658,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 1,917,454 | 43,617 | 44,971 | 3,114,459 | 131,648 | 139,888 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 1,917,455 | 43,618 | 44,972 | 3,114,492 | 131,716 | 139,915 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 1,917,462 | 43,618 | 44,970 | 3,114,568 | 132,052 | 139,972 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 1,917,586 | 43,714 | 45,108 | 3,114,500 | 131,444 | 139,977 |
 
 ## keyed-swap
 
@@ -671,6 +691,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 1,970,154 | 46,161 | 46,624 | 3,264,823 | 79,109 | 84,534 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 1,970,154 | 46,160 | 46,623 | 3,264,936 | 79,083 | 84,571 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 1,970,155 | 46,160 | 46,624 | 3,264,995 | 79,178 | 84,538 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 1,970,250 | 46,256 | 46,719 | 3,265,024 | 79,175 | 84,567 |
 
 ## mvu-dispatch
 
@@ -703,6 +724,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 58,066 | 767 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 58,066 | 767 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 58,066 | 767 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 58,066 | 767 |
 
 ## project-chain
 
@@ -735,6 +757,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 3,834,800 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 3,834,828 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 3,834,822 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 3,834,796 |
 
 ## project-churn
 
@@ -767,6 +790,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 36,207 | 34,047 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 36,207 | 34,047 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 36,207 | 34,047 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 36,207 | 34,047 |
 
 ## project-edit
 
@@ -799,6 +823,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 50,182 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 50,166 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 50,182 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 50,198 |
 
 ## project-reorder
 
@@ -831,6 +856,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 778,902 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 778,886 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 778,885 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 778,886 |
 
 ## shape-diamond
 
@@ -863,6 +889,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 59,894 | 88,557 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 59,894 | 88,557 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 59,894 | 88,557 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 59,894 | 88,557 |
 
 ## shape-dynamic
 
@@ -895,6 +922,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 82,520 | 95,583 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 82,520 | 95,582 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 82,520 | 95,581 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 82,520 | 95,583 |
 
 ## stream-burst-1
 
@@ -927,6 +955,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) (accepted) | 1,969 | 1,567 | 2,485 | 5,234 | 6,299 | 10,434 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 1,969 | 1,567 | 2,485 | 5,235 | 6,299 | 10,438 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 1,969 | 1,567 | 2,485 | 5,233 | 6,299 | 10,438 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 1,969 | 1,567 | 2,485 | 5,235 | 6,299 | 10,436 |
 
 ## stream-burst-16
 
@@ -959,6 +988,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) (accepted) | 5,626 | 24,937 | 5,695 | 10,350 | 47,734 | 13,089 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 5,626 | 24,937 | 5,695 | 10,349 | 47,734 | 13,089 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 5,626 | 24,937 | 5,695 | 10,349 | 47,734 | 13,089 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 5,626 | 24,937 | 5,695 | 10,346 | 47,734 | 13,089 |
 
 ## stream-burst-256
 
@@ -991,6 +1021,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 64,126 | 398,821 | 57,034 | 119,395 | 792,635 | 70,590 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 64,126 | 398,821 | 57,034 | 119,307 | 792,572 | 70,590 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 64,126 | 398,821 | 57,034 | 119,341 | 792,637 | 70,590 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 64,126 | 398,821 | 57,034 | 119,302 | 792,633 | 70,590 |
 
 ## stream-restart
 
@@ -1023,6 +1054,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 4,187 | 4,965 | 12,696 | 8,953 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 4,184 | 4,965 | 12,436 | 8,950 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 4,184 | 4,965 | 12,436 | 8,953 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 4,184 | 4,981 | 12,436 | 8,951 |
 
 ## timed-admit-both
 
@@ -1055,6 +1087,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 118,269 | 133,815 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 118,269 | 133,820 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 118,269 | 133,820 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 118,269 | 133,823 |
 
 ## timed-admit-debounce
 
@@ -1087,6 +1120,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 117,174 | 132,419 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 117,174 | 132,382 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 117,174 | 132,381 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 117,174 | 132,382 |
 
 ## timed-admit-first
 
@@ -1119,6 +1153,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 69,285 | 82,222 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 69,285 | 82,222 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 69,285 | 82,220 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 69,285 | 82,222 |
 
 ## timed-admit-last
 
@@ -1151,6 +1186,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 117,436 | 132,726 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 117,436 | 132,698 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 117,436 | 132,701 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 117,436 | 132,699 |
 
 ## timed-capture-both
 
@@ -1183,6 +1219,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 35,724 | 45,094 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 35,724 | 45,021 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 35,724 | 45,022 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 35,724 | 45,022 |
 
 ## timed-capture-debounce
 
@@ -1215,6 +1252,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 35,596 | 43,713 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 35,596 | 43,713 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 35,596 | 43,713 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 35,596 | 43,713 |
 
 ## timed-capture-first
 
@@ -1247,6 +1285,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 32,076 | 38,934 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 32,076 | 38,934 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 32,076 | 38,934 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 32,076 | 38,933 |
 
 ## timed-capture-last
 
@@ -1279,6 +1318,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 35,532 | 43,649 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 35,532 | 43,649 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 35,532 | 43,649 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 35,532 | 43,649 |
 
 ## update
 
@@ -1311,6 +1351,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 1,088,390 | 38,805 | 82,005 | 262,864 | 207,640 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 1,091,583 | 38,805 | 82,005 | 262,810 | 207,589 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 1,088,390 | 38,805 | 82,005 | 262,616 | 207,667 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 1,088,390 | 38,805 | 82,005 | 262,888 | 207,655 |
 
 ## update-on
 
@@ -1343,6 +1384,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 92,805 | 221,307 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 92,805 | 221,305 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 92,805 | 221,289 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 92,805 | 221,297 |
 
 ## work-form
 
@@ -1375,6 +1417,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 169,672 | 163,139 | 288,739 | 287,069 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 169,672 | 163,139 | 288,705 | 287,129 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 169,672 | 163,139 | 288,794 | 287,138 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 169,672 | 163,172 | 288,738 | 287,081 |
 
 ## work-status
 
@@ -1407,6 +1450,7 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 99,945 | 78,615 | 320,872 | 155,428 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 99,945 | 78,615 | 320,866 | 155,460 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 99,945 | 78,615 | 320,901 | 155,429 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 99,945 | 78,615 | 320,914 | 155,421 |
 
 ## work-value
 
@@ -1439,4 +1483,5 @@
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 107,069 | 119,269 | 321,113 | 283,780 |
 | `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 107,069 | 119,269 | 321,119 | 283,814 |
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 107,070 | 119,269 | 321,175 | 283,799 |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 107,069 | 119,271 | 321,148 | 283,799 |
 
