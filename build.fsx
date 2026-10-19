@@ -276,6 +276,11 @@ module Stage =
 
                     for { Name = name; Path = path } in Spec.testProjects do
                         stage $"run {name}" { run (cmd $"dotnet test {path} -c {config} -v q") }
+
+                    // The signal map model reads the trace log, so its tests compile only in a traced build.
+                    stage "run Ranvier.Docs.Maps.Tests" {
+                        run (cmd $"dotnet test docs/maps/tests -c {config} -p:RanvierTrace=true -v q")
+                    }
                 }
         }
 
