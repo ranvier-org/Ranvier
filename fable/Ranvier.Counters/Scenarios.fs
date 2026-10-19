@@ -538,6 +538,7 @@ let all (scale: int) : Case list =
                         "Ranvier (fresh items)", workload (Workloads.keyedPass true edit)
                         "Ranvier (stable items)", workload (Workloads.keyedPass false edit)
                     ]
+        yield! scenario "server-render" "render a 100-row keyed table as one request" (5 * scale) [ "Ranvier", workload ServerWorkloads.serverRender ]
         yield!
             scenario
                 "app-table"
