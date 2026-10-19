@@ -714,6 +714,61 @@ type internal SourceList() =
     member _.BeginRun() =
         cursor <- 0
 
+    /// <summary>
+    /// Appends <c>source</c> after a read that missed its slot, trimming the unmatched slots first. Kept out of
+    /// <c>Add</c>, whose matching path runs on every tracked read.
+    /// </summary>
+    member private this.Append(self: IComputation, source: ISource) =
+        if cursor < count then
+            Tracer.EdgesRemove (this, cursor)
+            trimFrom self cursor
+
+        let slot = count
+
+        if slot = 0 then
+            first <- source
+            count <- 1
+            cursor <- 1
+#if RANVIER_COUNTERS
+            Counters.EdgeAdded ()
+#endif
+            Tracer.EdgeAdd (this, source, 0)
+            firstHandle <- source.AddObserver (self, 0)
+        else
+            let k = slot - 1
+
+            if k = rest.Length then
+                grow ()
+
+#if FABLE_COMPILER
+            Platform.setItemAt k rest (SourceSlot source)
+#else
+            rest[k] <- SourceSlot (source, EdgeHandle.Unlinked)
+#endif
+            count <- slot + 1
+            cursor <- count
+#if RANVIER_COUNTERS
+            Counters.EdgeAdded ()
+#endif
+            Tracer.EdgeAdd (this, source, slot)
+
+            // A source already in the list keeps the one edge it has: A, B, A links A once.
+            let tried = source.TryAddObserver (self, slot)
+
+            let handle =
+                if tried <> EdgeHandle.Unknown then tried
+                elif holds slot source then EdgeHandle.Unlinked
+                else source.AddObserver (self, slot)
+
+#if FABLE_COMPILER
+            Platform.setItemAt k restHandles handle
+#else
+            rest[k].Handle <- handle
+#endif
+
+            if not (Platform.isNull held) then
+                Platform.refIndexSet held source slot
+
     member this.Add(self: IComputation, source: ISource) =
         if
             cursor < count
@@ -730,55 +785,7 @@ type internal SourceList() =
             // still match positionally, so nothing would ever shrink it.
             ()
         else
-            if cursor < count then
-                Tracer.EdgesRemove (this, cursor)
-                trimFrom self cursor
-
-            let slot = count
-
-            if slot = 0 then
-                first <- source
-                count <- 1
-                cursor <- 1
-#if RANVIER_COUNTERS
-                Counters.EdgeAdded ()
-#endif
-                Tracer.EdgeAdd (this, source, 0)
-                firstHandle <- source.AddObserver (self, 0)
-            else
-                let k = slot - 1
-
-                if k = rest.Length then
-                    grow ()
-
-#if FABLE_COMPILER
-                Platform.setItemAt k rest (SourceSlot source)
-#else
-                rest[k] <- SourceSlot (source, EdgeHandle.Unlinked)
-#endif
-                count <- slot + 1
-                cursor <- count
-#if RANVIER_COUNTERS
-                Counters.EdgeAdded ()
-#endif
-                Tracer.EdgeAdd (this, source, slot)
-
-                // A source already in the list keeps the one edge it has: A, B, A links A once.
-                let tried = source.TryAddObserver (self, slot)
-
-                let handle =
-                    if tried <> EdgeHandle.Unknown then tried
-                    elif holds slot source then EdgeHandle.Unlinked
-                    else source.AddObserver (self, slot)
-
-#if FABLE_COMPILER
-                Platform.setItemAt k restHandles handle
-#else
-                rest[k].Handle <- handle
-#endif
-
-                if not (Platform.isNull held) then
-                    Platform.refIndexSet held source slot
+            this.Append (self, source)
 
     /// <summary>
     /// Closes a run, dropping whatever the body did not read this time. Must
