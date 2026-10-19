@@ -41,12 +41,21 @@ let private caseDecodingTo (name: string) (equal: 'T -> 'T -> bool) (codec: Code
 let private case name equal codec value text =
     caseDecodingTo name equal codec value value text
 
-let private rejects (name: string) (codec: Codec<'T>) (text: string) =
+let private kindName (error: WireError) =
+    match error with
+    | WireError.Syntax _ -> "Syntax"
+    | WireError.Limit _ -> "Limit"
+    | WireError.Shape _ -> "Shape"
+
+/// <summary>The text is an error of the kind on both targets.</summary>
+let private rejects (name: string) (kind: WireError -> bool) (codec: Codec<'T>) (text: string) =
     testCase name
     <| fun () ->
-        (WireCodec.ofCodec codec).Decode text
-        |> expectError name
-        |> ignore
+        let error =
+            (WireCodec.ofCodec codec).Decode text
+            |> expectError name
+
+        Expect.isTrue (kind error) (kindName error + " error: " + error.Message)
 
 /// <summary>The text decodes to the value, which encodes to the canonical text, on both targets.</summary>
 let private reads (name: string) (equal: 'T -> 'T -> bool) (codec: Codec<'T>) (text: string) (value: 'T) (canonical: string) =
@@ -353,15 +362,7 @@ let tests =
                         (WireCodec.ofCodec Codec.string).Encode("a" + u 0xD800 + "b")
                         |> ignore)
                     "encode"
-            testCase "a string holding an escaped lone surrogate is a syntax error"
-            <| fun () ->
-                let text = quote + "a" + esc "d800" + "b" + quote
-
-                Expect.isTrue
-                    ((WireCodec.ofCodec Codec.string).Decode text
-                     |> expectError text
-                     |> isSyntax)
-                    "kind"
+            rejects "a string holding an escaped lone surrogate is a syntax error" isSyntax Codec.string (quote + "a" + esc "d800" + "b" + quote)
             testCase "a repeated key takes its last value"
             <| fun () ->
                 let decoded =
@@ -376,40 +377,39 @@ let tests =
                     |> expectOk "extra field"
 
                 Expect.equal decoded { Name = "A"; Age = 1; Email = None } "decoded"
-            rejects "an int field past int32" person """{"name":"a","age":2147483648}"""
-            rejects "an int field given 1e400" person """{"name":"a","age":1e400}"""
-            rejects "a float list given 1e400" (Codec.list Codec.float) "[1,1e400]"
-            rejects "a string field given an array" person """{"name":["a"],"age":1}"""
-            rejects "an unknown union tag" shape """{"hexagon":null}"""
-            rejects "a union object with no tag" shape "{}"
-            rejects "a Guid that is not a Guid" Codec.guid "\"not-a-guid\""
-            rejects "a char given two characters" Codec.char "\"ab\""
-            rejects "a byte given 256" Codec.byte "256"
+            rejects "an int field past int32" isShape person """{"name":"a","age":2147483648}"""
+            rejects "an int field given 1e400" isShape person """{"name":"a","age":1e400}"""
+            rejects "a float list given 1e400" isShape (Codec.list Codec.float) "[1,1e400]"
+            rejects "a string field given an array" isShape person """{"name":["a"],"age":1}"""
+            rejects "an unknown union tag" isShape shape """{"hexagon":null}"""
+            rejects "a union object with no tag" isShape shape "{}"
+            rejects "a Guid that is not a Guid" isShape Codec.guid "\"not-a-guid\""
+            rejects "a char given two characters" isShape Codec.char "\"ab\""
+            rejects "a byte given 256" isShape Codec.byte "256"
             rejects
                 "an order whose total is a number past int64"
+                isShape
                 order
                 """{"id":"6f9619ff-8b86-d011-b42d-00c04fc964ff","customer":{"name":"A","age":1},"lines":[],"placedAt":"2024-03-05T06:07:08.789+05:30","total":9223372036854775808,"shape":null}"""
             rejects
                 "an order whose price is in exponent form"
+                isShape
                 order
                 """{"id":"6f9619ff-8b86-d011-b42d-00c04fc964ff","customer":{"name":"A","age":1},"lines":[{"sku":"A","quantity":1,"price":"1e5"}],"placedAt":"2024-03-05T06:07:08.789+05:30","total":"1","shape":null}"""
             rejects
                 "an order whose placedAt has no offset"
+                isShape
                 order
                 """{"id":"6f9619ff-8b86-d011-b42d-00c04fc964ff","customer":{"name":"A","age":1},"lines":[],"placedAt":"2024-03-05T06:07:08","total":"1","shape":null}"""
-            testCase "a field nested past the depth limit is a limit error"
-            <| fun () ->
-                let text =
-                    """{"name":"a","age":1,"email":"""
-                    + String.replicate 64 "["
-                    + String.replicate 64 "]"
-                    + "}"
-
-                Expect.isTrue
-                    ((WireCodec.ofCodec person).Decode text
-                     |> expectError "deep field"
-                     |> isLimit)
-                    "kind"
+            rejects
+                "a field nested past the depth limit is a limit error"
+                isLimit
+                person
+                ("""{"name":"a","age":1,"email":"""
+                 + String.replicate 64 "["
+                 + String.replicate 64 "]"
+                 + "}")
+            case "a float32" (=) Codec.float32 0.1f (Same "0.10000000149011612")
             case "the infinities" sameFloats (Codec.list Codec.float) [ infinity; -infinity ] (Same """["Infinity","-Infinity"]""")
             reads "an int written in exponent form" (=) Codec.int "1e3" 1000 "1000"
             reads
@@ -447,10 +447,10 @@ let tests =
                  + quote)
                 (instant 1709618828789L 0.0)
                 "\"2024-03-05T06:07:08.789+00:00\""
-            rejects "an int given 1.0" Codec.int "1.0"
-            rejects "an int given 10e-1" Codec.int "10e-1"
-            rejects "a float32 given 1e39" Codec.float32 "1e39"
-            rejects "a DateTimeOffset with leading whitespace" Codecs.dateTimeOffset "\" 2024-03-05T06:07:08.789+00:00\""
+            rejects "an int given 1.0" isShape Codec.int "1.0"
+            rejects "an int given 10e-1" isShape Codec.int "10e-1"
+            rejects "a float32 given 1e39" isShape Codec.float32 "1e39"
+            rejects "a DateTimeOffset with leading whitespace" isShape Codecs.dateTimeOffset "\" 2024-03-05T06:07:08.789+00:00\""
             for text in [ " 42"; "42 "; "+42"; "0042" ] do
                 readsOn ("an int string " + quote + text + quote) Codec.int (quote + text + quote) (Some 42) (Some 42)
                 readsOn ("an int64 string " + quote + text + quote) Codec.int64 (quote + text + quote) (Some 42L) (Some 42L)
@@ -458,9 +458,22 @@ let tests =
             readsOn "an int64 number with a negative exponent" Codec.int64 "10e-1" (Some 1L) None
             readsOn "a uint64 number with a negative exponent" Codec.uint64 "100e-2" (Some 1UL) None
             readsOn "an int64 string in exponent form" Codec.int64 "\"1e3\"" (Some 1000L) None
-            readsOn "an int string with a hex prefix" Codec.int "\"0x10\"" None (Some 16)
-            readsOn "an int string with an octal prefix" Codec.int "\"0o17\"" None (Some 15)
-            readsOn "an int string with a binary prefix" Codec.int "\"0b101\"" None (Some 5)
-            readsOn "an int64 string with a hex prefix" Codec.int64 "\"0x10\"" None (Some 16L)
-            readsOn "an int string with underscores" Codec.int "\"1_000\"" None (Some 1000)
+            reads "an int string with a tab and a line feed" (=) Codec.int (quote + esc "0009" + "42" + esc "000a" + quote) 42 "42"
+            reads "an int string with a vertical tab and a form feed" (=) Codec.int (quote + esc "000b" + "42" + esc "000c" + quote) 42 "42"
+            rejects "an int string with a hex prefix" isShape Codec.int "\"0x10\""
+            rejects "an int string with a negative hex prefix" isShape Codec.int "\"-0x10\""
+            rejects "an int string with an octal prefix" isShape Codec.int "\"0o17\""
+            rejects "an int string with a binary prefix" isShape Codec.int "\"0b101\""
+            rejects "an int string with underscores" isShape Codec.int "\"1_000\""
+            rejects "an int string with a doubled underscore" isShape Codec.int "\"1__0\""
+            rejects "an int string with leading and trailing underscores" isShape Codec.int "\"_1_\""
+            rejects "an int string led by a byte order mark" isShape Codec.int (quote + u 0xFEFF + "42" + quote)
+            rejects "an int string led by a no-break space" isShape Codec.int (quote + u 0xA0 + "42" + quote)
+            rejects "an sbyte string 0xFF" isShape Codec.sbyte "\"0xFF\""
+            rejects "an int string 0xFFFFFFFF" isShape Codec.int "\"0xFFFFFFFF\""
+            rejects "an int64 string with a hex prefix" isShape Codec.int64 "\"0x10\""
+            rejects "an int64 string 0xFFFFFFFFFFFFFFFF" isShape Codec.int64 "\"0xFFFFFFFFFFFFFFFF\""
+            rejects "an int64 string with underscores" isShape Codec.int64 "\"1_000\""
+            rejects "a uint64 string with a hex prefix" isShape Codec.uint64 "\"0x10\""
+            rejects "a bigint string with a hex prefix" isShape Codecs.bigint "\"0x10\""
         ]

@@ -78,10 +78,10 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | NumericDecoding.fs | 66 | 66 | 66 | 66 | 66 | 66 | 1 | 0 |
 | DateTimeOffsetCodec.fs | 54 | 54 | 54 | 54 | 54 | 54 | 1 | 0 |
 | NumberText.fs | 36 | 36 | 36 | 36 | 36 | 36 | 2 | 0 |
-| Conformance.fs | 68 | 68 | 68 | 68 | 68 | 68 | 0 | 0 |
+| Conformance.fs | 82 | 82 | 82 | 82 | 82 | 82 | 0 | 0 |
 | Streams.fs (sources) | 9 | 9 | 9 | 9 | 9 | 9 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1373 | 1352 | 1349 | 1513 | 1487 | 1484 | 97 | 1 |
+| **Total** | 1387 | 1366 | 1363 | 1527 | 1501 | 1498 | 97 | 1 |
 
 ## Tests.fs
 
@@ -2136,7 +2136,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## Conformance.fs
 
-<details><summary>68 passed in every build and delivery that runs them</summary>
+<details><summary>82 passed in every build and delivery that runs them</summary>
 
 - a record
 - a record without its optional field
@@ -2177,6 +2177,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - an order whose price is in exponent form
 - an order whose placedAt has no offset
 - a field nested past the depth limit is a limit error
+- a float32
 - the infinities
 - an int written in exponent form
 - a bigint written as a number
@@ -2201,11 +2202,24 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - an int64 number with a negative exponent
 - a uint64 number with a negative exponent
 - an int64 string in exponent form
+- an int string with a tab and a line feed
+- an int string with a vertical tab and a form feed
 - an int string with a hex prefix
+- an int string with a negative hex prefix
 - an int string with an octal prefix
 - an int string with a binary prefix
-- an int64 string with a hex prefix
 - an int string with underscores
+- an int string with a doubled underscore
+- an int string with leading and trailing underscores
+- an int string led by a byte order mark
+- an int string led by a no-break space
+- an sbyte string 0xFF
+- an int string 0xFFFFFFFF
+- an int64 string with a hex prefix
+- an int64 string 0xFFFFFFFFFFFFFFFF
+- an int64 string with underscores
+- a uint64 string with a hex prefix
+- a bigint string with a hex prefix
 
 </details>
 

@@ -1,0 +1,57 @@
+diff --git a/packages/Thoth.Json.Core/Decode.fs b/packages/Thoth.Json.Core/Decode.fs
+index 1257a94..9b6c8af 100644
+--- a/packages/Thoth.Json.Core/Decode.fs
++++ b/packages/Thoth.Json.Core/Decode.fs
+@@ -221,6 +221,28 @@ module Decode =
+                     ("", BadPrimitive("null", value)) |> Error
+         }
+ 
++#if FABLE_COMPILER
++    /// <summary>
++    /// The result of <c>tryParse</c> when the text is optional ASCII whitespace, an optional sign, decimal digits and
++    /// optional ASCII whitespace, and a failure otherwise. fable-library's integer parse also reads <c>0x</c>,
++    /// <c>0o</c> and <c>0b</c> prefixes, <c>_</c> separators and other whitespace, and wraps signed values.
++    /// </summary>
++    let private tryParseDecimal
++        (tryParse: string -> bool * 'T)
++        (text: string)
++        : bool * 'T
++        =
++        if
++            System.Text.RegularExpressions.Regex.IsMatch(
++                text,
++                @"^[\t\n\v\f\r ]*[+-]?[0-9]+[\t\n\v\f\r ]*$"
++            )
++        then
++            tryParse text
++        else
++            false, Unchecked.defaultof<'T>
++#endif
++
+     let inline private integral
+         (name: string)
+         (tryParse: (string -> bool * 'T))
+@@ -256,7 +278,11 @@ module Decode =
+                          ))
+                         |> Error
+                 elif helpers.isString value then
++#if FABLE_COMPILER
++                    match tryParseDecimal tryParse (helpers.asString value) with
++#else
+                     match tryParse (helpers.asString value) with
++#endif
+                     | true, x -> Ok x
+                     | _ -> ("", BadPrimitive(name, value)) |> Error
+                 else
+@@ -277,7 +303,11 @@ module Decode =
+                     | true, x -> Ok x
+                     | _ -> ("", BadPrimitive(name, value)) |> Error
+                 elif helpers.isString value then
++#if FABLE_COMPILER
++                    match tryParseDecimal tryParse (helpers.asString value) with
++#else
+                     match tryParse (helpers.asString value) with
++#endif
+                     | true, x -> Ok x
+                     | _ -> ("", BadPrimitive(name, value)) |> Error
+                 else
