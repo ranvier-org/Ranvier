@@ -109,7 +109,10 @@ let ownedHandler (handler: obj -> unit) : obj -> unit =
 [<Emit("(() => { $0.addEventListener($1, $2); return () => $0.removeEventListener($1, $2); })()")>]
 let listenDirect (node: obj) (eventName: string) (handler: obj -> unit) : unit -> unit = jsNative
 
-/// <summary>Handles a named DOM event through the backend's listener.</summary>
+/// <summary>
+/// Handles a named DOM event through the backend's listener. The handler runs unbatched: a handler that groups several
+/// writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.
+/// </summary>
 let listener (eventName: string) (handler: Event -> unit) : Modifier<'native> =
 #if FABLE_COMPILER
     Modifier (listenModifier eventName (asUntypedHandler handler))

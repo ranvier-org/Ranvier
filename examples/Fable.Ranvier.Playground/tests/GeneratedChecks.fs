@@ -7,6 +7,7 @@ open Fable.Ranvier
 open Ranvier.View.Foundation
 open Ranvier.View.Foundation.Representation
 open Ranvier.View.Foundation.Mounting
+open Ranvier.View.Foundation.Template
 
 module H = Ranvier.View.Foundation.Generated.Html
 
@@ -248,6 +249,225 @@ let private leadingNewlineRoundtrip (ops: Operations<'view>) run =
             finally
                 mounted.Dispose ()
 
+[<Emit("$0.dispatchEvent(new ($0.ownerDocument.defaultView.FocusEvent)('blur'))")>]
+let private dispatchBlur (node: Node) : unit = jsNative
+
+/// <summary>Runs <c>action</c> and returns the messages of the errors reported to the node's window meanwhile; each report is marked handled.</summary>
+[<Emit("(() => { const view = $0.ownerDocument.defaultView; const seen = []; const listener = e => { seen.push(e.error ? e.error.message : String(e.message)); e.preventDefault(); }; view.addEventListener('error', listener); try { $1(); } finally { view.removeEventListener('error', listener); } return seen; })()")>]
+let private windowErrors (node: Node) (action: unit -> unit) : string array = jsNative
+
+type BurstProps =
+    {
+        Count: Signal<int>
+        /// <summary>True to write inside <c>Api.batch</c>.</summary>
+        Batched: bool
+        /// <summary>True to raise "burst" after the writes.</summary>
+        Failing: bool
+        /// <summary>True to handle a direct <c>blur</c> listener instead of the delegated <c>click</c>.</summary>
+        Blur: bool
+    }
+
+type Authoring =
+    | TreeAuthoring
+    | ProgramAuthoring
+    | TemplateAuthoring
+
+let private authoringName authoring =
+    match authoring with
+    | TreeAuthoring -> "tree"
+    | ProgramAuthoring -> "program"
+    | TemplateAuthoring -> "template"
+
+/// <summary>Starts counting the data writes of the first text node under <c>button</c>.</summary>
+[<Emit("(() => { const text = $0.firstChild; const observer = new ($0.ownerDocument.defaultView.MutationObserver)(() => {}); observer.observe(text, { characterData: true }); return observer; })()")>]
+let private observeWrites (button: Node) : obj = jsNative
+
+/// <summary>Returns the number of data writes observed since the previous call, or since <c>observeWrites</c>.</summary>
+[<Emit("$0.takeRecords().length")>]
+let private takeWrites (observer: obj) : int = jsNative
+
+/// <summary>Adds 100 to the count, inside <c>Api.batch</c> when <c>Batched</c>, then raises "burst" when <c>Failing</c>.</summary>
+let private burst (props: BurstProps) =
+    let body () =
+        for _ in 1..100 do
+            props.Count.Value <- props.Count.Value + 1
+
+        if props.Failing then
+            failwith "burst"
+
+    if props.Batched then Api.batch body else body ()
+
+/// <summary>A button whose title shows the count through a text binding and whose generated listener runs <c>burst</c>.</summary>
+let private authoredBurst (ops: Operations<'view>) (props: BurstProps) : 'view =
+    let handler _ =
+        burst props
+
+    Typed.button
+        ops
+        [|
+            if props.Blur then
+                H.Events.onBlur handler
+            else
+                H.Events.onClick handler
+        |]
+        [| Typed.reactiveText ops (fun () -> string props.Count.Value) |]
+
+let private burstButton =
+    Component.define (fun _ (props: BurstProps) -> props) (fun t ->
+        t.button
+            [|
+                t.Events.onClick (fun props _ ->
+                    if not props.Blur then
+                        burst props)
+                t.Events.onBlur (fun props _ ->
+                    if props.Blur then
+                        burst props)
+            |]
+            [| t.text (fun props -> string props.Count.Value) |])
+
+let mutable private guardedProps: BurstProps = Unchecked.defaultof<_>
+
+let private burstContent =
+    Component.define (fun _ (_: BoundaryStatus) -> guardedProps) (fun t -> t.render burstButton id)
+
+let private burstPending =
+    Component.define (fun _ () -> ()) (fun t -> t.span [||] [| t.text "loading" |])
+
+let private burstFailed =
+    Component.define (fun _ (failure: BoundaryFailure) -> failure) (fun t ->
+        t.span [||] [| t.text (fun failure -> "failed: " + failure.Error.Message) |])
+
+let private guardedBurst =
+    Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.boundary burstPending burstFailed burstContent |])
+
+let private guardedView (ops: Operations<'view>) (content: 'view) =
+    ops.Boundary (ops.Text "loading", (fun failure -> ops.Text ("failed: " + failure.Error.Message)), (fun _ -> content))
+
+let private mountBurst authoring queued (graph: Graph) report (host: HTMLElement) (props: BurstProps) guarded =
+    guardedProps <- props
+
+    let mode =
+        if queued then
+            Scheduling.QueuedCommits (Scheduling.CollectAndContinue, ignore)
+        else
+            Scheduling.SynchronousCommits
+
+    mountWith mode graph None report host None (fun context ->
+        match authoring with
+        | TreeAuthoring ->
+            let view = authoredBurst Tree.ops props
+            Tree.run (if guarded then guardedView Tree.ops view else view) context.Backend
+        | ProgramAuthoring ->
+            let view = authoredBurst Program.ops props
+            Program.run (if guarded then guardedView Program.ops view else view) context.Backend
+        | TemplateAuthoring ->
+            Program.run
+                (if guarded then
+                     Component.render guardedBurst ()
+                 else
+                     Component.render burstButton props)
+                context.Backend)
+
+let private burstHost () : HTMLElement =
+    globalThis.document.createElement "div"
+
+let private burstButtonOf (host: HTMLElement) =
+    host.querySelector "button"
+    |> unbox<HTMLButtonElement>
+
+let private unexpected (errors: exn list) =
+    failwithf "Unexpected report %A" [ for error in errors -> error.Message ]
+
+/// <summary>Fires the burst listener once; returns the button text when the dispatch returns, the button text after a flush, and the number of text writes.</summary>
+let private fireBurst authoring queued batched blur =
+    use graph = new Graph ()
+    let count = graph.Run (fun () -> Api.createSignal 0)
+    let host = burstHost ()
+
+    let props =
+        {
+            Count = count
+            Batched = batched
+            Failing = false
+            Blur = blur
+        }
+
+    let mounted = mountBurst authoring queued graph unexpected host props false
+    let button = burstButtonOf host
+    let writes = observeWrites button
+
+    if blur then dispatchBlur button else button.click ()
+
+    let atReturn = button.textContent
+    mounted.Flush ()
+    let result = atReturn, button.textContent, takeWrites writes
+    mounted.Dispose ()
+    result
+
+let private unbatchedBurst authoring queued () =
+    equal (if queued then ("0", "100", 1) else ("100", "100", 100)) (fireBurst authoring queued false false)
+
+let private batchedBurst authoring queued () =
+    equal ((if queued then "0" else "100"), "100", 1) (fireBurst authoring queued true false)
+
+let private directBurst authoring queued () =
+    equal (fireBurst authoring queued true false) (fireBurst authoring queued true true)
+
+let private outerBatch authoring queued () =
+    use graph = new Graph ()
+    let count = graph.Run (fun () -> Api.createSignal 0)
+    let host = burstHost ()
+
+    let props =
+        {
+            Count = count
+            Batched = false
+            Failing = false
+            Blur = false
+        }
+
+    let mounted = mountBurst authoring queued graph unexpected host props false
+    let button = burstButtonOf host
+    let writes = observeWrites button
+
+    let inside =
+        graph.Run (fun () ->
+            Api.batch (fun () ->
+                button.click ()
+                button.textContent))
+
+    mounted.Flush ()
+    equal ("0", "100", 1) (inside, button.textContent, takeWrites writes)
+    mounted.Dispose ()
+
+let private failingBurst authoring queued guarded () =
+    use graph = new Graph ()
+    let count = graph.Run (fun () -> Api.createSignal 0)
+    let host = burstHost ()
+    let reports = ResizeArray<exn list>()
+
+    let props =
+        {
+            Count = count
+            Batched = true
+            Failing = true
+            Blur = false
+        }
+
+    let mounted = mountBurst authoring queued graph reports.Add host props guarded
+    let writes = observeWrites (burstButtonOf host)
+    let escaped = windowErrors host (fun () -> (burstButtonOf host).click())
+    mounted.Flush ()
+    let total = graph.Run (fun () -> count.Value)
+    let messages = [ for errors in reports -> [ for error in errors -> error.Message ] ]
+
+    if guarded then
+        equal (100, (if queued then 0 else 1), "failed: burst", [||], [ [ "burst" ] ]) (total, takeWrites writes, host.textContent, escaped, messages)
+    else
+        equal (100, 1, [| "burst" |], []) (total, takeWrites writes, escaped, messages)
+
+    mounted.Dispose ()
+
 let cases =
     [|
         for queued in [ false; true ] do
@@ -271,4 +491,39 @@ let cases =
         yield "expanded HTML snapshots preserve void and raw-text policies", expandedPortable
         yield "tree initial line feeds roundtrip through the HTML parser", fun () -> leadingNewlineRoundtrip Tree.ops Tree.run
         yield "program initial line feeds roundtrip through the HTML parser", fun () -> leadingNewlineRoundtrip Program.ops Program.run
+
+        for authoring in [ TreeAuthoring; ProgramAuthoring; TemplateAuthoring ] do
+            for queued in [ false; true ] do
+                let prefix =
+                    sprintf "%s %s" (authoringName authoring) (if queued then "queued" else "sync")
+
+                yield
+                    prefix
+                    + ": a generated listener without a batch commits each write",
+                    unbatchedBurst authoring queued
+
+                yield
+                    prefix
+                    + ": a generated listener's writes inside Api.batch commit once",
+                    batchedBurst authoring queued
+
+                yield
+                    prefix
+                    + ": a listener dispatched inside an outer Api.batch commits after the batch",
+                    outerBatch authoring queued
+
+                yield
+                    prefix
+                    + ": a handler that throws inside its batch commits the writes it made and its failure goes to the boundary",
+                    failingBurst authoring queued true
+
+                yield
+                    prefix
+                    + ": a handler that throws inside its batch outside every boundary raises from the dispatch",
+                    failingBurst authoring queued false
+
+                yield
+                    prefix
+                    + ": a delegated and a direct generated listener behave the same inside a batch",
+                    directBurst authoring queued
     |]

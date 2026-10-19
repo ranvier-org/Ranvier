@@ -554,6 +554,10 @@ module internal TemplateParts =
     let sourceProperty (write: 'native -> 'value -> unit) (source: Source<'inst, 'value>) : Part<'native, 'inst> =
         DynamicPart (sourceSlot (PropertyTarget (writer write)) source primitiveSame)
 
+    /// <summary>
+    /// An event part. The handler runs unbatched: a handler that groups several writes wraps them in <c>Api.batch</c>,
+    /// and effects then run once, after the outermost batch.
+    /// </summary>
     let event name (handler: 'inst -> 'event -> unit) : Part<'native, 'inst> =
         EventPart (name, Func<obj, obj, unit>(fun instance event -> handler (unbox instance) (unbox event)))
 
@@ -585,6 +589,10 @@ type PropertyBuilder<'inst> internal () =
 /// <summary>Event parts: one shared handler per template, given the instance and the event.</summary>
 [<Sealed>]
 type EventBuilder<'inst> internal () =
+    /// <summary>
+    /// Handles <c>eventName</c>. The handler runs unbatched: a handler that groups several writes wraps them in
+    /// <c>Api.batch</c>, and effects then run once, after the outermost batch.
+    /// </summary>
     member _.on(eventName: string, handler: 'inst -> Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event eventName handler
 

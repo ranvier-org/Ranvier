@@ -339,6 +339,9 @@ let generate compilerRoot policyRoot packageRoot output =
     require (nativeType eventDeclaration = eventNative.PropertyType) "Event-map native type mismatch"
     let lines = ResizeArray<string>()
 
+    let listenerDoc =
+        "/// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>"
+
     let emit text =
         lines.Add text
 
@@ -698,6 +701,7 @@ let generate compilerRoot policyRoot packageRoot output =
                 || event.Key = "click"
             then
                 listeners <- listeners + 1
+                emit ("    " + listenerDoc)
                 emit $"    let on{moduleName event.Key} (handler: {eventType} -> unit) : Typed.Modifier<{name}> ="
                 emit $"        Typed.listener \"{event.Key}\" (fun event -> handler (unbox event))"
                 emit ""
@@ -716,6 +720,7 @@ let generate compilerRoot policyRoot packageRoot output =
 
     for event in sharedEvents do
         let eventType = typeName declarations event.Value
+        shared.Add ("    " + listenerDoc)
 
         shared.Add
             $"    let on{moduleName event.Key}<'native when 'native :> Dom.HTMLElement> (handler: {eventType} -> unit) : Typed.Modifier<'native> ="
@@ -1014,6 +1019,7 @@ let generate compilerRoot policyRoot packageRoot output =
                         "branch"
                         "each"
                         "render"
+                        "boundary"
                     ]
                 "AttributeBuilder", set [ "attribute"; "data"; "aria" ]
                 "PropertyBuilder", set [ "propertyStatic"; "propertyWith"; "propertyFrom" ]
@@ -1246,6 +1252,8 @@ let generate compilerRoot policyRoot packageRoot output =
                     propertyMembers memberName ownerName valueType)
 
     let eventMember (eventName: string) (native: string) (eventType: string) =
+        tEmit ("    " + listenerDoc)
+
         tEmit
             $"    member _.on{moduleName eventName}<'native when 'native :> {native}>(handler: 'inst -> {eventType} -> unit) : Part<'native, 'inst> ="
 

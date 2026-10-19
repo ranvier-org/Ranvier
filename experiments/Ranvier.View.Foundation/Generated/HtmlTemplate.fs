@@ -4814,331 +4814,439 @@ type Groups.VideoProperties<'inst> with
         TemplateParts.sourceProperty (fun (node: 'native) (value: float) -> (node :> Dom.HTMLVideoElement).``width`` <- value) source
 
 type EventBuilder<'inst> with
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onAbort<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.UIEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "abort" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onAnimationcancel<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.AnimationEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "animationcancel" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onAnimationend<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.AnimationEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "animationend" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onAnimationiteration<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.AnimationEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "animationiteration" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onAnimationstart<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.AnimationEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "animationstart" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onAuxclick<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.PointerEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "auxclick" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onBeforeinput<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.InputEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "beforeinput" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onBeforematch<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "beforematch" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onBeforetoggle<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.ToggleEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "beforetoggle" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onBlur<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.FocusEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "blur" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onCancel<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "cancel" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onCanplay<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "canplay" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onCanplaythrough<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "canplaythrough" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onChange<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "change" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onClick<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.PointerEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "click" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onClose<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "close" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onCommand<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "command" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onCompositionend<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.CompositionEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "compositionend" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onCompositionstart<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.CompositionEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "compositionstart" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onCompositionupdate<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.CompositionEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "compositionupdate" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onContextlost<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "contextlost" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onContextmenu<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.PointerEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "contextmenu" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onContextrestored<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "contextrestored" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onCopy<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.ClipboardEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "copy" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onCuechange<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "cuechange" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onCut<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.ClipboardEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "cut" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onDblclick<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.MouseEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "dblclick" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onDrag<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.DragEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "drag" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onDragend<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.DragEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "dragend" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onDragenter<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.DragEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "dragenter" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onDragleave<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.DragEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "dragleave" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onDragover<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.DragEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "dragover" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onDragstart<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.DragEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "dragstart" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onDrop<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.DragEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "drop" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onDurationchange<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "durationchange" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onEmptied<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "emptied" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onEnded<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "ended" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onError<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.ErrorEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "error" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onFocus<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.FocusEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "focus" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onFocusin<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.FocusEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "focusin" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onFocusout<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.FocusEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "focusout" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onFormdata<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.FormDataEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "formdata" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onFullscreenchange<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "fullscreenchange" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onFullscreenerror<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "fullscreenerror" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onGotpointercapture<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.PointerEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "gotpointercapture" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onInput<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.InputEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "input" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onInvalid<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "invalid" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onKeydown<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.KeyboardEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "keydown" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onKeypress<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.KeyboardEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "keypress" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onKeyup<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.KeyboardEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "keyup" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onLoad<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "load" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onLoadeddata<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "loadeddata" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onLoadedmetadata<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "loadedmetadata" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onLoadstart<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "loadstart" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onLostpointercapture<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.PointerEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "lostpointercapture" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onMousedown<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.MouseEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "mousedown" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onMouseenter<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.MouseEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "mouseenter" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onMouseleave<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.MouseEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "mouseleave" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onMousemove<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.MouseEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "mousemove" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onMouseout<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.MouseEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "mouseout" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onMouseover<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.MouseEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "mouseover" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onMouseup<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.MouseEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "mouseup" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onPaste<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.ClipboardEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "paste" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onPause<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "pause" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onPlay<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "play" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onPlaying<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "playing" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onPointercancel<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.PointerEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "pointercancel" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onPointerdown<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.PointerEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "pointerdown" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onPointerenter<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.PointerEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "pointerenter" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onPointerleave<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.PointerEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "pointerleave" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onPointermove<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.PointerEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "pointermove" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onPointerout<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.PointerEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "pointerout" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onPointerover<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.PointerEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "pointerover" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onPointerrawupdate<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "pointerrawupdate" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onPointerup<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.PointerEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "pointerup" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onProgress<'native when 'native :> Dom.HTMLElement>
         (handler: 'inst -> Dom.ProgressEvent<Dom.EventTarget> -> unit)
         : Part<'native, 'inst> =
         TemplateParts.event "progress" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onRatechange<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "ratechange" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onReset<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "reset" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onResize<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.UIEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "resize" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onScroll<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "scroll" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onScrollend<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "scrollend" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onSecuritypolicyviolation<'native when 'native :> Dom.HTMLElement>
         (handler: 'inst -> Dom.SecurityPolicyViolationEvent -> unit)
         : Part<'native, 'inst> =
         TemplateParts.event "securitypolicyviolation" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onSeeked<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "seeked" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onSeeking<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "seeking" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onSelect<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "select" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onSelectionchange<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "selectionchange" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onSelectstart<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "selectstart" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onSlotchange<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "slotchange" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onStalled<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "stalled" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onSubmit<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.SubmitEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "submit" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onSuspend<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "suspend" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onTimeupdate<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "timeupdate" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onToggle<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.ToggleEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "toggle" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onTouchcancel<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.TouchEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "touchcancel" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onTouchend<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.TouchEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "touchend" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onTouchmove<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.TouchEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "touchmove" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onTouchstart<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.TouchEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "touchstart" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onTransitioncancel<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.TransitionEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "transitioncancel" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onTransitionend<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.TransitionEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "transitionend" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onTransitionrun<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.TransitionEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "transitionrun" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onTransitionstart<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.TransitionEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "transitionstart" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onVolumechange<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "volumechange" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onWaiting<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "waiting" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onWebkitanimationend<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "webkitanimationend" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onWebkitanimationiteration<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "webkitanimationiteration" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onWebkitanimationstart<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "webkitanimationstart" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onWebkittransitionend<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "webkittransitionend" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onWheel<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.WheelEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "wheel" handler
 
@@ -5147,84 +5255,108 @@ type EventBuilder<'inst> with
     member _.Video: Groups.VideoEvents<'inst> = Groups.VideoEvents ()
 
 type Groups.AudioEvents<'inst> with
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onEncrypted<'native when 'native :> Dom.HTMLAudioElement>(handler: 'inst -> Dom.MediaEncryptedEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "encrypted" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onWaitingforkey<'native when 'native :> Dom.HTMLAudioElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "waitingforkey" handler
 
 type Groups.BodyEvents<'inst> with
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onAfterprint<'native when 'native :> Dom.HTMLBodyElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "afterprint" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onBeforeprint<'native when 'native :> Dom.HTMLBodyElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "beforeprint" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onBeforeunload<'native when 'native :> Dom.HTMLBodyElement>(handler: 'inst -> Dom.BeforeUnloadEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "beforeunload" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onGamepadconnected<'native when 'native :> Dom.HTMLBodyElement>(handler: 'inst -> Dom.GamepadEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "gamepadconnected" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onGamepaddisconnected<'native when 'native :> Dom.HTMLBodyElement>(handler: 'inst -> Dom.GamepadEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "gamepaddisconnected" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onHashchange<'native when 'native :> Dom.HTMLBodyElement>(handler: 'inst -> Dom.HashChangeEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "hashchange" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onLanguagechange<'native when 'native :> Dom.HTMLBodyElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "languagechange" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onOffline<'native when 'native :> Dom.HTMLBodyElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "offline" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onOnline<'native when 'native :> Dom.HTMLBodyElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "online" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onPagehide<'native when 'native :> Dom.HTMLBodyElement>(handler: 'inst -> Dom.PageTransitionEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "pagehide" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onPagereveal<'native when 'native :> Dom.HTMLBodyElement>(handler: 'inst -> Dom.PageRevealEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "pagereveal" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onPageshow<'native when 'native :> Dom.HTMLBodyElement>(handler: 'inst -> Dom.PageTransitionEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "pageshow" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onPageswap<'native when 'native :> Dom.HTMLBodyElement>(handler: 'inst -> Dom.PageSwapEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "pageswap" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onPopstate<'native when 'native :> Dom.HTMLBodyElement>(handler: 'inst -> Dom.PopStateEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "popstate" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onRejectionhandled<'native when 'native :> Dom.HTMLBodyElement>
         (handler: 'inst -> Dom.PromiseRejectionEvent -> unit)
         : Part<'native, 'inst> =
         TemplateParts.event "rejectionhandled" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onStorage<'native when 'native :> Dom.HTMLBodyElement>(handler: 'inst -> Dom.StorageEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "storage" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onUnhandledrejection<'native when 'native :> Dom.HTMLBodyElement>
         (handler: 'inst -> Dom.PromiseRejectionEvent -> unit)
         : Part<'native, 'inst> =
         TemplateParts.event "unhandledrejection" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onUnload<'native when 'native :> Dom.HTMLBodyElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "unload" handler
 
 type Groups.VideoEvents<'inst> with
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onEncrypted<'native when 'native :> Dom.HTMLVideoElement>(handler: 'inst -> Dom.MediaEncryptedEvent -> unit) : Part<'native, 'inst> =
         TemplateParts.event "encrypted" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onEnterpictureinpicture<'native when 'native :> Dom.HTMLVideoElement>
         (handler: 'inst -> Dom.PictureInPictureEvent -> unit)
         : Part<'native, 'inst> =
         TemplateParts.event "enterpictureinpicture" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onLeavepictureinpicture<'native when 'native :> Dom.HTMLVideoElement>
         (handler: 'inst -> Dom.PictureInPictureEvent -> unit)
         : Part<'native, 'inst> =
         TemplateParts.event "leavepictureinpicture" handler
 
+    /// <summary>Handles the event unbatched; a handler that groups several writes wraps them in <c>Api.batch</c>, and effects then run once, after the outermost batch.</summary>
     member _.onWaitingforkey<'native when 'native :> Dom.HTMLVideoElement>(handler: 'inst -> Dom.Event -> unit) : Part<'native, 'inst> =
         TemplateParts.event "waitingforkey" handler
