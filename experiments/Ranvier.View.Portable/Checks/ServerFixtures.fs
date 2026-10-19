@@ -201,7 +201,7 @@ let guarded =
 let emptyText =
     Component.define (fun _ (value: string) -> value) (fun t -> t.span [||] [| t.text (fun value -> value) |])
 
-/// <summary>A row whose one root is a text slot.</summary>
+/// <summary>A row whose only root is a text slot.</summary>
 let textRow =
     Component.define (fun _ (item: unit -> string) -> item) (fun t -> t.text (fun item -> item ()))
 

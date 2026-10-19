@@ -496,7 +496,7 @@ let fnv1a (value: string) : string =
     let digits = "0123456789abcdef"
     let hex = StringBuilder 8
 
-    for shift in [ 28; 24; 20; 16; 12; 8; 4; 0 ] do
+    for shift in 28..-4..0 do
         hex.Append digits[int ((hash >>> shift) &&& 15u)]
         |> ignore
 
@@ -528,7 +528,7 @@ type internal ServerOp =
     | TextOp of Slot * leadingLineFeed: bool * marksEmpty: bool
     /// <summary>An attribute slot: <c> name="value"</c> for <c>Some</c>; the attribute is omitted for <c>None</c>.</summary>
     | AttributeOp of string * Slot
-    /// <summary>A raw-HTML slot's markup, written verbatim; with <c>leadingLineFeed</c>, non-empty markup is written after a line feed, dropped on parsing.</summary>
+    /// <summary>A raw-HTML slot's markup, written verbatim; with <c>leadingLineFeed</c>, non-empty markup is written after a line feed, which the HTML parser drops.</summary>
     | ContentOp of Slot * leadingLineFeed: bool
     /// <summary>A document head entry: collected under <c>Server.renderPage</c>; otherwise raises under <c>Reject</c> and is dropped under <c>Omit</c>.</summary>
     | HeadOp of HeadPlan
@@ -1268,6 +1268,14 @@ type internal ServerWriter(backend: HtmlBackend) =
 
             backend.Append "<!--]-->"
         | ArmRow ->
+            if items.Length <> 1 then
+                raise (
+                    InvalidOperationException (
+                        "An arm region writes exactly one arm; it read "
+                        + string items.Length
+                    )
+                )
+
             let value = KeyedItems.value items[0]
             let arm = unbox<Arm> value
             let plan = serverPlan arm.Definition

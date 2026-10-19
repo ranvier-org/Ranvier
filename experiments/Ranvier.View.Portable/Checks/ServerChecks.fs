@@ -1235,6 +1235,30 @@ let private hashVectors () =
     let x = Component.define (fun _ () -> ()) (fun t -> t.span [||] [| t.text "x" |])
     let y = Component.define (fun _ () -> ()) (fun t -> t.span [||] [| t.text "y" |])
     equal ("25dbbe5a", "6a39ec02", false) (structuralHash x, structuralHash workingArm, structuralHash x = structuralHash y)
+    equal "ac3cc9fa" (fnv1a "é\U0001F600￿")
+
+let private unarmed =
+    Component.define (fun _ () -> ()) (fun t ->
+        t.div
+            [||]
+            [|
+                TemplateView (
+                    RegionNode
+                        {
+                            Items = Func<obj, obj array>(fun _ -> [||])
+                            Key = KeyedItems.pairKey
+                            Row = ArmRow
+                        }
+                )
+            |])
+
+let private armRegionArity () =
+    let error =
+        failure (fun () ->
+            Server.render Server.Options.defaults unarmed ()
+            |> ignore)
+
+    equal (true, "An arm region writes exactly one arm; it read 0") (error :? InvalidOperationException, error.Message)
 
 let private armedList =
     Component.define (fun _ (items: Listed array) -> items) (fun t -> t.ul [||] [| t.matchWith id (fun items -> t.arm listedRow items[0]) |])
@@ -1413,6 +1437,7 @@ let cases: (string * (unit -> unit)) array =
         "a textarea value escapes its closing tag and ampersand; an empty or null value writes no text", textareaValues
         "the structural hash is FNV-1a over the canonical skeleton, equal on .NET and Fable", hashVectors
         "the structural hash names each region's kind", regionHashes
+        "an arm region reading no arm fails with a named error", armRegionArity
         "server HTML carries arm, empty-text, separator and zero-root markers", markers
         "rows are separated only between a trailing and a leading text, and a zero-root arm writes the row marker", rowMarkers
         "an empty text slot in a textarea or title writes nothing, and more than one text child fails at plan compile", rcdataText
