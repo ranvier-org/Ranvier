@@ -70,3 +70,22 @@ node benchmarks/frameworks/template-profile.mjs "$PWD" <dir2>/cpu 128 300
 node benchmarks/frameworks/keyed-profile-buckets.mjs <dir2>/cpu generated-keyed-profile/assets/<bundle>.js.map --out=<dir2>/buckets.json
 node benchmarks/frameworks/run.mjs --build --template-comparison   # writes investigation/template-framework-results.json
 ```
+
+## After indexed edge handles (#98)
+
+[#98](https://github.com/shayanhabibi/Ranvier/pull/98) removes edges by handle: each end of an edge stores its position in the other, and `ObserverSet` has no hash index. Master `168f44e`, merged into `poc/fable-ranvier-dom` as `e102216`. Two runs of `run.mjs --template-comparison` (`template-after-98-1.json`, `template-after-98-2.json`), the template component's median µs per root and its ratio to Solid 2:
+
+| Phase, rows | Run 1 | Run 2 | Before #98 |
+|---|---|---|---|
+| Mount, 1 | 5.74 (1.09) | 5.62 (1.10) | 1.16 |
+| Mount, 16 | 43.83 (1.15) | 43.52 (1.15) | 1.11 |
+| Mount, 128 | 307.81 (1.09) | 326.56 (1.13) | 1.12 |
+| Update, 1 | 1.05 (0.77) | 1.07 (0.81) | 0.73 |
+| Update, 16 | 14.72 (1.02) | 15.03 (1.04) | 1.05 |
+| Update, 128 | 117.20 (1.06) | 118.53 (1.07) | 1.08 |
+| Dispose, 1 | 1.45 (1.35) | 1.39 (1.39) | 1.32 |
+| Dispose, 16 | 6.02 (1.22) | 5.23 (1.17) | 1.32 |
+| Dispose, 128 | 29.22 (1.14) | 28.13 (1.03) | 1.43 |
+
+- Dispose at 128 rows falls from 1.43× to 1.03–1.14× Solid 2, and at 16 rows from 1.32× to 1.17–1.22×. Mount and update stay within their earlier ranges.
+- A one-row root's dispose is unchanged at 1.35–1.39× (0.4 µs per root): its sources have one observer each, so there was no hash to remove.
