@@ -1,17 +1,20 @@
 # Fable.Ranvier playground
 
-A small browser playground for the [DOM PoC](../../src/Fable.Ranvier/README.md). The UI is created
-in F# using Xantham DOM types. Ranvier updates text, attributes and DOM properties without
-rebuilding the tree. Try the counter, editable name field and unmount/remount button. Select
-**Use microtasks**, then **Burst +100** to exercise coalescing. **Flush DOM** commits queued work
-explicitly. Changing scheduling mode remounts the demo while preserving its state.
-Events batch state writes in both modes. The default synchronous mode commits the final values
-before the handler returns; the microtask mode defers subsequent DOM commits.
+A small browser playground for the experimental `Ranvier.View.Foundation` renderer. The shell and the
+demo are component templates; the shell embeds the demo and the Foundation panels through widget
+elements, each one a mount with its own commit mode and graph. Ranvier updates text, attributes and
+DOM properties without rebuilding the tree. Try the counter, editable name field and unmount/remount
+button. Select **Use microtasks**, then **Burst +100** to exercise coalescing. **Flush DOM** commits
+queued work explicitly. Changing scheduling mode remounts the demo while preserving its state.
+**Burst +100** groups its writes with `Api.batch`; every other listener runs unbatched. The default
+synchronous mode commits the final values before the handler returns; the microtask mode defers
+subsequent DOM commits.
 
-The Playground project also compiles the experimental `Ranvier.View.Foundation` sources from
-`experiments/` directly into the app. Its keyed-row panel is mounted with the Foundation
-representation and range-mounting APIs; add and reverse rows to exercise reconciliation in the
-browser. This is an app-level consumer of the experiment, not a separately packaged library.
+The Playground project compiles the experimental `Ranvier.View.Foundation` sources from `experiments/`
+directly into the app. Its keyed-row panel is mounted with the Foundation representation and
+range-mounting APIs; add and reverse rows to exercise reconciliation in the browser. This is an
+app-level consumer of the experiment, not a separately packaged library. The project keeps its
+`src/Fable.Ranvier` reference for the fixtures under `tests/` that check that library.
 
 ## Run
 
@@ -72,7 +75,7 @@ See [the benchmark method and results](../../docs/.ai/benchmarks/dom-scheduling/
 
 ## Layout
 
-- `App.fs`: the DOM PoC, plus a Foundation keyed-list example.
+- `App.fs`: the shell and demo templates and the Foundation keyed-row, component and load-result panels.
 - `Playground.fsproj`: links Foundation source files before `App.fs` so the app can use them.
 - `main.js`: imports the compiled app and registers disposal with Vite.
 - `style.css`: responsive layout and styling.
@@ -87,10 +90,9 @@ the local `src/Fable.Ranvier` project, so library edits are part of the Fable wa
 
 ## PoC limits
 
-The Fable.Ranvier DOM PoC covers HTML with a static child structure, synchronous state and optional
-microtask DOM writes. The Foundation panel separately exercises keyed collection reconciliation.
+The fixtures under tests/ that exercise src/Fable.Ranvier (DomChecks.fs, ScheduledChecks.fs, scheduled.html) cover that library: HTML with a static child structure, synchronous state and optional microtask DOM writes.
 The queue adds overhead; reduced mutation counts are not a measured overall speedup. There is no
-JSX, SSR, hydration, SVG or event delegation.
+JSX, SSR, hydration or SVG.
 The runtime is Ranvier, not Solid; Solid 2's split effects inspired the binding approach.
 Pending/error values retain the last successful binding output rather than automatically creating
 a loading/error view. See the library README for its ownership and property-setter contracts.

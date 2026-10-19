@@ -3,10 +3,9 @@ module App
 open System
 open Fable.Core
 open Fable.Core.TS.Dom
-open Fable.Ranvier
 open global.Ranvier
-open Ranvier.View.Foundation.Representation
 open Ranvier.View.Foundation
+open Ranvier.View.Foundation.Representation
 open Ranvier.View.Foundation.Template
 
 module FoundationMounting = Ranvier.View.Foundation.Mounting
@@ -18,14 +17,8 @@ module GeneratedAttrs = GeneratedHtml.Attrs
 module FoundationMicrotask = Ranvier.View.Foundation.Microtask
 module FoundationScheduling = Ranvier.View.Foundation.Scheduling
 
-let private node tag modifiers children : Node =
-    Dom.element tag modifiers children
-
-let private css value =
-    Dom.attribute "class" value
-
-let private testId value =
-    Dom.attribute "data-testid" value
+[<Global "document">]
+let private document: Document = jsNative
 
 /// <summary>The demo's state, kept on the app's graph so a remount keeps it.</summary>
 type DemoState =
@@ -141,21 +134,175 @@ let private demoView =
                         |]
                 |])
 
+/// <summary>The shell's state and the operations its controls and widget elements run.</summary>
+type ShellProps =
+    {
+        Mounted: Signal<bool>
+        Queued: Signal<bool>
+        Toggle: unit -> unit
+        ToggleScheduling: unit -> unit
+        Flush: unit -> unit
+        /// <summary>Mounts the demo into its widget element; the returned cleanup disposes it.</summary>
+        AttachDemo: HTMLElement -> (unit -> unit)
+        /// <summary>Mounts the Foundation panels into their widget element; the returned cleanup disposes them.</summary>
+        AttachFoundation: HTMLElement -> (unit -> unit)
+    }
+
+let private shellView =
+    Component.define (fun _ (props: ShellProps) -> props) (fun t ->
+        t.div
+            [| t.Attrs.className "playground" |]
+            [|
+                t.header
+                    [| t.Attrs.className "page-heading" |]
+                    [|
+                        t.div
+                            [| t.Attrs.className "brand" |]
+                            [|
+                                t.span [| t.Attrs.className "brand-mark" |] [| t.text "r" |]
+                                t.span [||] [| t.text "Fable.Ranvier" |]
+                            |]
+                        t.span [| t.Attrs.className "preview" |] [| t.text "DOM PoC" |]
+                    |]
+                t.section
+                    [| t.Attrs.className "intro" |]
+                    [|
+                        t.p [| t.Attrs.className "eyebrow" |] [| t.text "F# · Fable · Browser DOM" |]
+                        t.h1
+                            [||]
+                            [|
+                                t.text "Create once."
+                                t.br [||]
+                                t.span [||] [| t.text "Update what changes." |]
+                            |]
+                        t.p
+                            [| t.Attrs.className "lead" |]
+                            [|
+                                t.text "A small playground for reactive text, properties and events. No component tree rebuild on each edit."
+                            |]
+                    |]
+                t.div
+                    [| t.Attrs.className "mount-bar" |]
+                    [|
+                        t.span
+                            [| t.Attrs.data ("testid", "scheduling-status") |]
+                            [|
+                                t.text (fun (shell: ShellProps) ->
+                                    if shell.Queued.Value then
+                                        "Microtask DOM commits · batched events"
+                                    else
+                                        "Synchronous DOM commits · batched events")
+                            |]
+                        t.button
+                            [|
+                                t.Attrs.className "secondary"
+                                t.Attrs.data ("testid", "scheduling-toggle")
+                                t.Attrs.attribute ("type", "button")
+                                t.Events.onClick (fun (shell: ShellProps) _ -> shell.ToggleScheduling ())
+                            |]
+                            [|
+                                t.text (fun (shell: ShellProps) ->
+                                    if shell.Queued.Value then
+                                        "Use synchronous"
+                                    else
+                                        "Use microtasks")
+                            |]
+                        t.button
+                            [|
+                                t.Attrs.className "secondary"
+                                t.Attrs.data ("testid", "flush-dom")
+                                t.Attrs.attribute ("type", "button")
+                                t.Events.onClick (fun (shell: ShellProps) _ -> shell.Flush ())
+                            |]
+                            [| t.text "Flush DOM" |]
+                    |]
+                t.div
+                    [| t.Attrs.className "mount-bar" |]
+                    [|
+                        t.div
+                            [| t.Attrs.className "mount-state" |]
+                            [|
+                                t.span
+                                    [|
+                                        t.Attrs.className "status-dot"
+                                        t.Attrs.data ("active", (fun (shell: ShellProps) -> if shell.Mounted.Value then Some "true" else None))
+                                    |]
+                                    [||]
+                                t.span
+                                    [| t.Attrs.data ("testid", "mount-status") |]
+                                    [|
+                                        t.text (fun (shell: ShellProps) ->
+                                            if shell.Mounted.Value then
+                                                "Demo mounted"
+                                            else
+                                                "Demo unmounted")
+                                    |]
+                            |]
+                        t.button
+                            [|
+                                t.Attrs.className "secondary toggle"
+                                t.Attrs.data ("testid", "mount-toggle")
+                                t.Attrs.attribute ("type", "button")
+                                t.Events.onClick (fun (shell: ShellProps) _ -> shell.Toggle ())
+                            |]
+                            [|
+                                t.text (fun (shell: ShellProps) ->
+                                    if shell.Mounted.Value then
+                                        "Unmount demo"
+                                    else
+                                        "Remount demo")
+                            |]
+                    |]
+                t.div
+                    [|
+                        t.Hooks.widget (fun (shell: ShellProps) (host: HTMLDivElement) -> shell.AttachDemo (host :> HTMLElement))
+                    |]
+                    [||]
+                t.section
+                    [|
+                        t.Hooks.widget (fun (shell: ShellProps) (host: HTMLElement) -> shell.AttachFoundation host)
+                    |]
+                    [||]
+                t.section
+                    [|
+                        t.Attrs.className "empty-state"
+                        t.Attrs.hidden (fun (shell: ShellProps) -> shell.Mounted.Value)
+                    |]
+                    [|
+                        t.h2 [||] [| t.text "The mount is disposed." |]
+                        t.p
+                            [||]
+                            [|
+                                t.text "Its nodes, bindings and event listeners have been removed. Remount to continue with the same state."
+                            |]
+                    |]
+                t.footer
+                    [||]
+                    [|
+                        t.text "Built with Xantham DOM bindings and Ranvier scopes. Experimental API; DOM scheduling is opt-in."
+                    |]
+            |])
+
 let start () : unit -> unit =
     let graph = new Graph ()
     let foundationGraph = new Graph ()
 
     try
         let host =
-            Global.document.getElementById ("app")
+            document.getElementById ("app")
             |> Option.defaultWith (fun () -> invalidOp "The playground needs an #app host.")
 
         let count, name, mounted, queued =
             graph.Run (fun () -> createSignal 0, createSignal "world", createSignal true, createSignal false)
 
-        let demoHost = Dom.createElement "div"
-        let foundationHost = Dom.createElement "section"
+        let mutable demoHost: HTMLElement = Unchecked.defaultof<_>
         let mutable demo: FoundationMounting.Mounted option = None
+
+        let disposeDemo () =
+            demo
+            |> Option.iter (fun current -> current.Dispose ())
+
+            demo <- None
 
         let mountDemo () =
             let mode =
@@ -172,9 +319,8 @@ let start () : unit -> unit =
 
         let toggle () =
             match demo with
-            | Some current ->
-                current.Dispose ()
-                demo <- None
+            | Some _ ->
+                disposeDemo ()
                 mounted.Value <- false
             | None ->
                 mountDemo ()
@@ -183,151 +329,19 @@ let start () : unit -> unit =
         let toggleScheduling () =
             queued.Value <- not queued.Value
 
-            match demo with
-            | Some current ->
-                current.Dispose ()
-                demo <- None
+            if demo.IsSome then
+                disposeDemo ()
                 mountDemo ()
-            | None -> ()
 
-        let shell =
-            Mount.mount graph host (fun () ->
-                node
-                    "div"
-                    [ css "playground" ]
-                    [
-                        node
-                            "header"
-                            [ css "page-heading" ]
-                            [
-                                node
-                                    "div"
-                                    [ css "brand" ]
-                                    [
-                                        node "span" [ css "brand-mark" ] [ Dom.text "r" ]
-                                        node "span" [] [ Dom.text "Fable.Ranvier" ]
-                                    ]
-                                node "span" [ css "preview" ] [ Dom.text "DOM PoC" ]
-                            ]
-                        node
-                            "section"
-                            [ css "intro" ]
-                            [
-                                node "p" [ css "eyebrow" ] [ Dom.text "F# · Fable · Browser DOM" ]
-                                node
-                                    "h1"
-                                    []
-                                    [
-                                        Dom.text "Create once."
-                                        node "br" [] []
-                                        node "span" [] [ Dom.text "Update what changes." ]
-                                    ]
-                                node
-                                    "p"
-                                    [ css "lead" ]
-                                    [
-                                        Dom.text
-                                            "A small playground for reactive text, properties and events. No component tree rebuild on each edit."
-                                    ]
-                            ]
-                        node
-                            "div"
-                            [ css "mount-bar" ]
-                            [
-                                node
-                                    "span"
-                                    [ testId "scheduling-status" ]
-                                    [
-                                        Dom.reactiveText (fun () ->
-                                            if queued.Value then
-                                                "Microtask DOM commits · batched events"
-                                            else
-                                                "Synchronous DOM commits · batched events")
-                                    ]
-                                node
-                                    "button"
-                                    [
-                                        css "secondary"
-                                        testId "scheduling-toggle"
-                                        Dom.attribute "type" "button"
-                                        Dom.on "click" (fun _ -> toggleScheduling ())
-                                    ]
-                                    [
-                                        Dom.reactiveText (fun () -> if queued.Value then "Use synchronous" else "Use microtasks")
-                                    ]
-                                node
-                                    "button"
-                                    [
-                                        css "secondary"
-                                        testId "flush-dom"
-                                        Dom.attribute "type" "button"
-                                        Dom.on "click" (fun _ ->
-                                            demo
-                                            |> Option.iter (fun current -> current.Flush ()))
-                                    ]
-                                    [ Dom.text "Flush DOM" ]
-                            ]
-                        node
-                            "div"
-                            [ css "mount-bar" ]
-                            [
-                                node
-                                    "div"
-                                    [ css "mount-state" ]
-                                    [
-                                        node
-                                            "span"
-                                            [
-                                                css "status-dot"
-                                                Dom.bindAttribute "data-active" (fun () -> if mounted.Value then Some "true" else None)
-                                            ]
-                                            []
-                                        node
-                                            "span"
-                                            [ testId "mount-status" ]
-                                            [
-                                                Dom.reactiveText (fun () -> if mounted.Value then "Demo mounted" else "Demo unmounted")
-                                            ]
-                                    ]
-                                node
-                                    "button"
-                                    [
-                                        css "secondary toggle"
-                                        testId "mount-toggle"
-                                        Dom.attribute "type" "button"
-                                        Dom.on "click" (fun _ -> toggle ())
-                                    ]
-                                    [
-                                        Dom.reactiveText (fun () -> if mounted.Value then "Unmount demo" else "Remount demo")
-                                    ]
-                            ]
-                        demoHost
-                        foundationHost
-                        node
-                            "section"
-                            [
-                                css "empty-state"
-                                Dom.bindAttribute "hidden" (fun () -> if mounted.Value then Some "" else None)
-                            ]
-                            [
-                                node "h2" [] [ Dom.text "The mount is disposed." ]
-                                node
-                                    "p"
-                                    []
-                                    [
-                                        Dom.text
-                                            "Its nodes, bindings and event listeners have been removed. Remount to continue with the same state."
-                                    ]
-                            ]
-                        node
-                            "footer"
-                            []
-                            [
-                                Dom.text "Built with Xantham DOM bindings and Ranvier scopes. Experimental API; DOM scheduling is opt-in."
-                            ]
-                    ])
+        let attachDemo (element: HTMLElement) =
+            demoHost <- element
 
-        mountDemo ()
+            if mounted.Value then
+                mountDemo ()
+
+            fun () ->
+                disposeDemo ()
+                demoHost <- Unchecked.defaultof<_>
 
         let foundationRows =
             foundationGraph.Run (fun () -> createSignal [| 1, "Alpha"; 2, "Beta" |])
@@ -378,84 +392,99 @@ let start () : unit -> unit =
                     foundationRowsView
                 |]
 
-        let foundation =
-            FoundationMounting.mountWith
-                (FoundationMicrotask.mode FoundationScheduling.CollectAndContinue)
-                foundationGraph
-                None
-                ignore
-                foundationHost
-                None
-                (fun context ->
-                    FoundationProgram.run foundationView context.Backend
-                    FoundationProgram.run (ComponentsExample.view ()) context.Backend
+        let attachFoundation (element: HTMLElement) =
+            let foundation =
+                FoundationMounting.mountWith
+                    (FoundationMicrotask.mode FoundationScheduling.CollectAndContinue)
+                    foundationGraph
+                    None
+                    ignore
+                    element
+                    None
+                    (fun context ->
+                        FoundationProgram.run foundationView context.Backend
+                        FoundationProgram.run (ComponentsExample.view ()) context.Backend
 
-                    let action id label update =
-                        Elements.button
-                            [|
-                                GeneratedAttrs.idStatic id
-                                GeneratedHtml.Button.onClick (fun _ -> update ())
-                            |]
-                            [| View.text label |]
+                        let action id label update =
+                            Elements.button
+                                [|
+                                    GeneratedAttrs.idStatic id
+                                    GeneratedHtml.Button.onClick (fun _ -> update ())
+                                |]
+                                [| View.text label |]
 
-                    let statusPanel =
-                        Elements.div
-                            [|
-                                GeneratedAttrs.idStatic "foundation-load"
-                                GeneratedAttrs.roleStatic "region"
-                                GeneratedAttrs.ariaLabelStatic "Load result"
-                                GeneratedAttrs.ariaBusyReactive (fun () ->
-                                    loadResult.Value |> ignore
-                                    Some loadResult.IsWaiting)
-                            |]
-                            [|
-                                View.text "Load result"
-                                Elements.div
-                                    [| GeneratedAttrs.idStatic "foundation-load-status" |]
-                                    [|
-                                        View.reactiveText (fun () ->
-                                            loadResult.Value |> ignore
+                        let statusPanel =
+                            Elements.div
+                                [|
+                                    GeneratedAttrs.idStatic "foundation-load"
+                                    GeneratedAttrs.roleStatic "region"
+                                    GeneratedAttrs.ariaLabelStatic "Load result"
+                                    GeneratedAttrs.ariaBusyReactive (fun () ->
+                                        loadResult.Value |> ignore
+                                        Some loadResult.IsWaiting)
+                                |]
+                                [|
+                                    View.text "Load result"
+                                    Elements.div
+                                        [| GeneratedAttrs.idStatic "foundation-load-status" |]
+                                        [|
+                                            View.reactiveText (fun () ->
+                                                loadResult.Value |> ignore
 
-                                            if loadResult.IsWaiting then "Pending"
-                                            elif not (isNull loadResult.Caught) then "Failed"
-                                            else "Ready")
-                                    |]
-                                Elements.div
-                                    [| GeneratedAttrs.idStatic "foundation-load-result" |]
-                                    [| View.reactiveText (fun () -> loadResult.Value) |]
-                                Elements.div
-                                    [| GeneratedAttrs.idStatic "foundation-load-error" |]
-                                    [|
-                                        View.reactiveText (fun () ->
-                                            loadResult.Value |> ignore
+                                                if loadResult.IsWaiting then "Pending"
+                                                elif not (isNull loadResult.Caught) then "Failed"
+                                                else "Ready")
+                                        |]
+                                    Elements.div
+                                        [| GeneratedAttrs.idStatic "foundation-load-result" |]
+                                        [| View.reactiveText (fun () -> loadResult.Value) |]
+                                    Elements.div
+                                        [| GeneratedAttrs.idStatic "foundation-load-error" |]
+                                        [|
+                                            View.reactiveText (fun () ->
+                                                loadResult.Value |> ignore
 
-                                            if isNull loadResult.Caught then
-                                                ""
-                                            else
-                                                loadResult.Caught.Message)
-                                    |]
-                                action "foundation-pending" "Start loading" (fun () ->
-                                    foundationGraph.Run (fun () -> loadSource.Value <- createAsyncSource<string>()))
-                                action "foundation-fail" "Simulate failure" (fun () -> loadSource.Value.Fail (Exception "Connection unavailable"))
-                                action "foundation-recover" "Recover" (fun () -> loadSource.Value.Settle "Recovered result")
-                            |]
+                                                if isNull loadResult.Caught then
+                                                    ""
+                                                else
+                                                    loadResult.Caught.Message)
+                                        |]
+                                    action "foundation-pending" "Start loading" (fun () ->
+                                        foundationGraph.Run (fun () -> loadSource.Value <- createAsyncSource<string>()))
+                                    action "foundation-fail" "Simulate failure" (fun () ->
+                                        loadSource.Value.Fail (Exception "Connection unavailable"))
+                                    action "foundation-recover" "Recover" (fun () -> loadSource.Value.Settle "Recovered result")
+                                |]
 
-                    FoundationProgram.run statusPanel context.Backend)
+                        FoundationProgram.run statusPanel context.Backend)
+
+            fun () -> foundation.Dispose ()
+
+        let shellProps =
+            {
+                Mounted = mounted
+                Queued = queued
+                Toggle = toggle
+                ToggleScheduling = toggleScheduling
+                Flush =
+                    fun () ->
+                        demo
+                        |> Option.iter (fun current -> current.Flush ())
+                AttachDemo = attachDemo
+                AttachFoundation = attachFoundation
+            }
+
+        let shell =
+            FoundationMounting.mountWith FoundationScheduling.SynchronousCommits graph None ignore host None (fun context ->
+                FoundationProgram.run (Component.render shellView shellProps) context.Backend)
 
         let mutable stopped = false
 
         fun () ->
             if not stopped then
                 stopped <- true
-
-                foundation.Dispose ()
-                foundationGraph.Dispose ()
-
-                demo
-                |> Option.iter (fun scope -> scope.Dispose ())
-
-                demo <- None
                 shell.Dispose ()
+                foundationGraph.Dispose ()
                 graph.Dispose ()
     with _ ->
         foundationGraph.Dispose ()

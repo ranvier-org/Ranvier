@@ -234,7 +234,7 @@ test("Fable watch replaces the app through Vite cleanup without reloading the pa
   test.setTimeout(45_000);
   const source = new URL("../App.fs", import.meta.url);
   const original = await readFile(source, "utf8");
-  const modified = original.replace('Dom.text "Create once."', 'Dom.text "Create once, live."');
+  const modified = original.replace('t.text "Create once."', 't.text "Create once, live."');
   expect(modified).not.toBe(original);
   await expect(page.getByTestId("count")).toHaveText("0");
   const oldRoot = await page.getByTestId("demo-root").elementHandle();
@@ -251,4 +251,16 @@ test("Fable watch replaces the app through Vite cleanup without reloading the pa
     await writeFile(source, original);
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Create once.", { timeout: 20_000 });
   }
+});
+
+test("disposing the app disposes the shell and the demo widget's mount", async ({ page }) => {
+  await expect(page.getByTestId("count")).toHaveText("0");
+  expect(await page.evaluate(() => {
+    const root = document.querySelector('[data-testid="demo-root"]');
+    const count = document.querySelector('[data-testid="count"]');
+    const increment = document.querySelector('[data-testid="increment"]');
+    window.playground.dispose();
+    increment.click();
+    return [root.isConnected, document.querySelector("#app").childNodes.length, count.textContent];
+  })).toEqual([false, 0, "0"]);
 });
