@@ -4,7 +4,7 @@ Date: 2026-10-19. Branch `poc/fable-ranvier-dom`. Task 7 of the [framework plan]
 
 ## Mutation checks
 
-Each mutation was applied alone to the commit named (`78ea5b9`; the owner-cleanup row to the commit that adds the owner cleanup, the next three rows to the commit that adds `widget` and `lend`, and the last row to its first fix round), compiled, run against the named test file, and reverted.
+Each mutation was applied alone to the commit named (`78ea5b9`; the owner-cleanup row to the commit that adds the owner cleanup, the next three rows to the commit that adds `widget` and `lend`, the root-exemption row to its first fix round, and the two raw-HTML rows to the commit that adds raw HTML), compiled, run against the named test file, and reverted.
 
 | Mutation | Location | Test file | Killed by |
 |---|---|---|---|
@@ -20,5 +20,7 @@ Each mutation was applied alone to the commit named (`78ea5b9`; the owner-cleanu
 | Release check removed | `PlacedHook.register` | `integration.test.mjs` | tree synchronous: an integration that moves its element is reported after its cleanup |
 | Attach at setup | `MountState.Placed` | `integration.test.mjs` | tree synchronous: a widget renders into its element once placed and its destroy runs while the element is attached |
 | Root exemption removed | `PlacedHook.register` | `integration.test.mjs` | tree synchronous: a lent mount root moved with its mount to another host is not reported |
+| Raw-HTML equality skip removed | `Template.contentSame` | `unsafe-html.test.mjs` | template synchronous: raw HTML replaces the element's content and is re-parsed only when the markup changes |
+| Raw-HTML no-children check removed | `Template.elementNode` | `unsafe-html.test.mjs` | an element with raw HTML and template children fails at definition time; void, raw-text, template, textarea and title elements reject raw HTML |
 
 Dropping either `contentContainer.Discard ()` call alone changes no hook's behaviour: a torn-down or disposed content's container is never placed again, and the core disposes an effect created under a disposed owner as it attaches. `Discard` releases the held closures, which the held-hook count (`PlacementCounters.held`, defined under `RANVIER_VIEW_COUNTERS`) observes.

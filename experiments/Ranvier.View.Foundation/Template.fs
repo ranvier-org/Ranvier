@@ -7,6 +7,21 @@ open Fable.Core.TS.Dom
 open Ranvier
 open Ranvier.View.Foundation.Representation
 
+/// <summary>
+/// Markup inserted into an element without escaping. Create it only from trusted or sanitised content: scripts in it
+/// stay inert, while inline event handler attributes and <c>javascript:</c> URLs run.
+/// </summary>
+/// <remarks>The markup must be a well-formed fragment for the element that receives it.</remarks>
+[<Sealed>]
+type UnsafeHtml private (markup: string) =
+    member _.Markup = markup
+
+    static member Trust(markup: string) =
+        if isNull markup then
+            raise (ArgumentException ("Markup cannot be null", "markup"))
+
+        UnsafeHtml markup
+
 /// <summary>Where a dynamic slot writes on its node.</summary>
 [<NoEquality; NoComparison>]
 type SlotTarget =
@@ -16,6 +31,8 @@ type SlotTarget =
     | PropertyTarget of Func<obj, obj, unit>
     /// <summary>The data of a text node.</summary>
     | TextTarget
+    /// <summary>The element's children, parsed from an <c>UnsafeHtml</c> value.</summary>
+    | ContentTarget
 
 /// <summary>How a dynamic slot is re-evaluated.</summary>
 type SlotMode =
@@ -106,6 +123,20 @@ let private strictEquals (left: obj) (right: obj) =
 
 /// <summary>Compares primitive slot values: strings, booleans, numbers and options of them.</summary>
 let primitiveSame = Func<obj, obj, bool>(fun left right -> strictEquals left right)
+
+/// <summary>Compares raw-HTML slot values by their markup.</summary>
+let private contentSame =
+    Func<obj, obj, bool>(fun left right -> (unbox<UnsafeHtml> left).Markup = (unbox<UnsafeHtml> right).Markup)
+
+let private innerHtml =
+    Func<obj, obj, unit>(fun node markup -> (unbox<HTMLElement> node).innerHTML <- unbox<string> markup)
+
+let private contentSlot (slots: Slot array) =
+    slots
+    |> Array.tryFind (fun slot ->
+        match slot.Target with
+        | ContentTarget -> true
+        | _ -> false)
 
 [<NoEquality; NoComparison>]
 type private Flat =
@@ -343,7 +374,10 @@ let private writeMarkup (append: string -> unit) (mode: MarkupMode) (state: Writ
             append ">"
 
             if not (isVoid tag) then
-                writeChildren children path |> ignore
+                match mode, contentSlot slots with
+                | Server _, Some content -> append (unbox<UnsafeHtml>(content.Read.Invoke state.Instance)).Markup
+                | _ -> writeChildren children path |> ignore
+
                 append ("</" + name tag + ">")
         | RegionNode region ->
             match mode with
@@ -411,6 +445,9 @@ let rec private expandNode (ops: Operations<'view>) (instance: obj) (node: Templ
                     match slot.Target with
                     | AttributeTarget key -> ReactiveAttribute (key, fun () -> unbox<string option>(slot.Read.Invoke instance))
                     | PropertyTarget write -> fun (backend: Backend) -> backend.ReactiveProperty ((fun () -> slot.Read.Invoke instance), write)
+                    | ContentTarget ->
+                        fun (backend: Backend) ->
+                            backend.ReactiveProperty ((fun () -> box (unbox<UnsafeHtml>(slot.Read.Invoke instance)).Markup), innerHtml)
                     | TextTarget -> invalidOp "A text slot is a child node"
                 for eventName, handler in events -> listenModifier eventName (fun event -> handler.Invoke (instance, event))
                 for kind, hook in placed -> fun (backend: Backend) -> backend.Placed (kind, (fun node -> hook.Invoke (instance, node)))
@@ -516,16 +553,37 @@ let private elementNode tag (parts: Part<'native, 'inst> array) (children: Templ
         | PlacedPart (kind, hook) -> placed.Add (kind, hook)
         | NoPart -> ()
 
-    let contents =
-        placed
-        |> Seq.filter (fun (kind, _) -> kind = PlacedKind.Widget)
+    let rawContents =
+        slots
+        |> Seq.filter (fun slot ->
+            match slot.Target with
+            | ContentTarget -> true
+            | _ -> false)
         |> Seq.length
+
+    let contents =
+        rawContents
+        + (placed
+           |> Seq.filter (fun (kind, _) -> kind = PlacedKind.Widget)
+           |> Seq.length)
 
     if contents > 1 then
         raise (ArgumentException ("An element takes at most one content part", "parts"))
 
     if contents = 1 && children.Length > 0 then
         raise (ArgumentException ("An element with a content part has no template children", "children"))
+
+    if
+        rawContents = 1
+        && (isVoid tag
+            || rawText tag
+            || (match name tag with
+                | "template"
+                | "textarea"
+                | "title" -> true
+                | _ -> false))
+    then
+        raise (ArgumentException ("Raw HTML requires an element whose children the HTML parser builds from markup", "parts"))
 
     TemplateView (
         ElementNode (
@@ -655,6 +713,23 @@ type HookBuilder<'inst> internal () =
     member _.lend(attach: 'inst -> 'native -> (unit -> unit)) : Part<'native, 'inst> =
         PlacedPart (PlacedKind.Lent, placedHook attach)
 
+/// <summary>Raw-HTML parts: the element's whole content, parsed without escaping.</summary>
+[<Sealed>]
+type UnsafeBuilder<'inst> internal () =
+    /// <summary>The element's content, parsed as HTML without escaping. The template declares the element empty.</summary>
+    member _.html(content: UnsafeHtml) : Part<'native, 'inst> =
+        DynamicPart
+            {
+                Slot.Target = ContentTarget
+                Mode = RenderMode
+                Read = Func<obj, obj>(fun _ -> box content)
+                Same = contentSame
+            }
+
+    /// <summary>The element's content, parsed as HTML without escaping and parsed again when the reader returns different markup.</summary>
+    member _.html(read: 'inst -> UnsafeHtml) : Part<'native, 'inst> =
+        DynamicPart (slot ContentTarget RenderMode read contentSame)
+
 /// <summary>Builds a template for instances of type <c>'inst</c>; dynamic parts receive the instance as their argument.</summary>
 [<Sealed>]
 type TemplateBuilder<'inst> internal () =
@@ -662,11 +737,13 @@ type TemplateBuilder<'inst> internal () =
     let props = PropertyBuilder<'inst>()
     let events = EventBuilder<'inst>()
     let hooks = HookBuilder<'inst>()
+    let unsafe = UnsafeBuilder<'inst>()
 
     member _.Attrs = attrs
     member _.Props = props
     member _.Events = events
     member _.Hooks = hooks
+    member _.Unsafe = unsafe
 
     member _.element (tag: Tag) (parts: Part<'native, 'inst> array) (children: TemplateView<'inst> array) : TemplateView<'inst> =
         elementNode tag parts children

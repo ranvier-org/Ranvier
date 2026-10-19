@@ -442,6 +442,7 @@ let private write (slot: Slot) (node: obj) (value: obj) =
     | AttributeTarget name -> setAttribute node value name
     | PropertyTarget writer -> writer.Invoke (node, value)
     | TextTarget -> setData node value
+    | ContentTarget -> (unbox<HTMLElement> node).innerHTML <- (unbox<UnsafeHtml> value).Markup
 
 // A failed write keeps the slot's previous value. During setup the failure aborts the mount; afterwards it is reported.
 let private commit (services: MountServices) (state: obj array) (slot: Slot) (nodeIndex: int) (previousIndex: int) (value: obj) =

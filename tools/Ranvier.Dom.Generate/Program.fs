@@ -1009,6 +1009,7 @@ let generate compilerRoot policyRoot packageRoot output =
                         "Props"
                         "Events"
                         "Hooks"
+                        "Unsafe"
                         "element"
                         "fragment"
                         "text"

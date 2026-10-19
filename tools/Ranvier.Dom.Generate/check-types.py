@@ -26,6 +26,26 @@ examples = [
     ("void element rejects children", "let view = H.br Tree.ops [||] [| Tree.ops.Text \"child\" |]", "FS0001"),
     ("wrong expanded property value", "let modifier = H.Textarea.rowsStatic \"3\"", "FS0001"),
     ("DOM replacement setter excluded", "let modifier = H.Div.innerHTMLStatic \"markup\"", "FS0039"),
+    ("outerHTML setter excluded", "let modifier = H.Div.outerHTMLStatic \"markup\"", "FS0039"),
+    ("textContent setter excluded", "let modifier = H.Div.textContentStatic \"text\"", "FS0039"),
+    ("innerText setter excluded", "let modifier = H.Div.innerTextStatic \"text\"", "FS0039"),
+    ("outerText setter excluded", "let modifier = H.Div.outerTextStatic \"text\"", "FS0039"),
+    ("srcdoc setter excluded", "let modifier = H.Iframe.srcdocStatic \"markup\"", "FS0039"),
+    ("template raw HTML takes UnsafeHtml only", '''
+let view = Component.define (fun _ () -> ()) (fun t -> t.div [| t.Unsafe.html "<b>x</b>" |] [||])
+''', "FS0041"),
+    ("excluded setters' getters and sibling setters exist in their declaring modules", '''
+let readers: (Dom.HTMLIFrameElement -> string) list =
+    [ H.Properties.Element.innerHTML; H.Properties.Element.outerHTML; H.Properties.Element.textContent; H.Properties.HTMLElement.innerText; H.Properties.HTMLElement.outerText; H.Properties.HTMLIFrameElement.srcdoc; H.Iframe.srcdoc ]
+let modifiers: Typed.Modifier<Dom.HTMLIFrameElement> list =
+    [ H.Properties.Element.idStatic "x"; H.Properties.HTMLElement.titleStatic "x"; H.Properties.HTMLIFrameElement.srcStatic "x"; H.Iframe.srcStatic "x" ]
+''', None),
+    ("Element innerHTML setter excluded", "let modifier = H.Properties.Element.innerHTMLStatic \"markup\"", "FS0039"),
+    ("Element outerHTML setter excluded", "let modifier = H.Properties.Element.outerHTMLStatic \"markup\"", "FS0039"),
+    ("Element textContent setter excluded", "let modifier = H.Properties.Element.textContentStatic \"text\"", "FS0039"),
+    ("HTMLElement innerText setter excluded", "let modifier = H.Properties.HTMLElement.innerTextStatic \"text\"", "FS0039"),
+    ("HTMLElement outerText setter excluded", "let modifier = H.Properties.HTMLElement.outerTextStatic \"text\"", "FS0039"),
+    ("HTMLIFrameElement srcdoc setter excluded", "let modifier = H.Properties.HTMLIFrameElement.srcdocStatic \"markup\"", "FS0039"),
     ("shared input property rejects div", "let view = H.div Tree.ops [| H.Properties.HTMLInputElement.checkedStatic true |] [||]", "FS0001"),
     ("wrong mapped event type", "let modifier = H.Events.onClick (fun (_: Dom.KeyboardEvent) -> ())", "FS0001"),
     ("attribute helper rejects incompatible element", "let view = H.div Tree.ops [| H.Attrs.Input.checkedStatic true |] [||]", "FS0001"),

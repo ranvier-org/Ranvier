@@ -9,11 +9,13 @@ import { cases as attributes } from "../generated-tests/AttributeChecks.js";
 import { cases as boundaries } from "../generated-tests/BoundaryChecks.js";
 import { cases as placement, browserCases as placementBrowser } from "../generated-tests/PlacementChecks.js";
 import { cases as integrationChecks, browserCases as integrationBrowser } from "../generated-tests/IntegrationChecks.js";
+import { cases as unsafeHtml, unsafeMarkup } from "../generated-tests/UnsafeHtmlChecks.js";
 import { browserCases as templateBrowser } from "../generated-tests/TemplateChecks.js";
-window.rangeCases = [...cases, ...bindings, ...integration, ...generated, ...attributes, ...boundaries, ...placement, ...integrationChecks];
+window.rangeCases = [...cases, ...bindings, ...integration, ...generated, ...attributes, ...boundaries, ...placement, ...integrationChecks, ...unsafeHtml];
 window.bindingMicrotaskFixture = microtaskFixture;
 window.templateBrowserCases = templateBrowser;
 window.placementBrowserCases = placementBrowser;
 window.integrationBrowserCases = integrationBrowser;
+window.unsafeMarkup = unsafeMarkup;
 </script>
 </body></html>

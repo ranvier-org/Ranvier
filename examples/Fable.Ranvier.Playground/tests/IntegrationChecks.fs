@@ -362,35 +362,36 @@ let private lentRowRoots (ops: Operations<'view>) (run: 'view -> Backend -> unit
         Keyed.list ops id (fun () -> rows.Value) (fun current ->
             span ops [| Typed.lend (fun (_: HTMLSpanElement) -> ignore) |] [| ops.Text (string (current ())) |])
 
+    let elsewhere = host ()
     let mounted = mountView ops run queued graph strict target view
     graph.Run (fun () -> rows.Value <- [ 2; 1 ])
     mounted.Flush ()
-    equal "21" target.textContent
+    mounted.MoveBefore (elsewhere, None)
+    equal ("21", "") (elsewhere.textContent, target.textContent)
     mounted.Dispose ()
 
 let private lentRow =
     Component.define (fun _ (item: unit -> int) -> item) (fun t ->
         t.span [| t.Hooks.lend (fun _ (_: HTMLSpanElement) -> ignore) |] [| t.text (fun item -> string (item ())) |])
 
-let private lentRows =
+let private lentRowList =
     Component.define (fun _ (items: Signal<int list>) -> items) (fun t ->
-        t.div
-            [||]
-            [|
-                t.each id (fun (items: Signal<int list>) -> Array.ofList items.Value) lentRow
-            |])
+        t.each id (fun (items: Signal<int list>) -> Array.ofList items.Value) lentRow)
 
 let private templateLentRowRoots queued () =
     use graph = new Graph ()
     let rows = graph.Run (fun () -> Api.createSignal [ 1; 2 ])
     let target = host ()
 
+    let elsewhere = host ()
+
     let mounted =
-        mountTemplate queued graph strict target (Component.render lentRows rows)
+        mountTemplate queued graph strict target (Component.render lentRowList rows)
 
     graph.Run (fun () -> rows.Value <- [ 2; 1 ])
     mounted.Flush ()
-    equal "21" target.textContent
+    mounted.MoveBefore (elsewhere, None)
+    equal ("21", "") (elsewhere.textContent, target.textContent)
     mounted.Dispose ()
 
 let private widgetUnderBoundary (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
@@ -567,7 +568,8 @@ let private focusInsideWidget () =
 
 
 let cases: (string * (unit -> unit)) array =
-    Array.concat
+    strictCases
+    <| Array.concat
         [
             both
                 "a widget renders into its element once placed and its destroy runs while the element is attached"
@@ -609,8 +611,11 @@ let cases: (string * (unit -> unit)) array =
                 "a lent mount root moved with its mount to another host is not reported"
                 (lentMountRootMoved Tree.ops Tree.run)
                 (lentMountRootMoved Program.ops Program.run)
-            both "a lent row root moved by a keyed reorder is not reported" (lentRowRoots Tree.ops Tree.run) (lentRowRoots Program.ops Program.run)
-            templated "a lent row root moved by a keyed reorder is not reported" templateLentRowRoots
+            both
+                "a lent row root moved by a keyed reorder and with its mount to another host is not reported"
+                (lentRowRoots Tree.ops Tree.run)
+                (lentRowRoots Program.ops Program.run)
+            templated "a lent row root moved by a keyed reorder and with its mount to another host is not reported" templateLentRowRoots
             both
                 "a widget under hidden content attaches at reveal and is destroyed on teardown"
                 (widgetUnderBoundary Tree.ops Tree.run)
@@ -623,7 +628,8 @@ let cases: (string * (unit -> unit)) array =
         ]
 
 let browserCases: (string * (unit -> unit)) array =
-    [|
-        "a widget measuring its element on attach sees layout", measuredWidget
-        "focus inside a widget survives an unrelated list update", focusInsideWidget
-    |]
+    strictCases
+        [|
+            "a widget measuring its element on attach sees layout", measuredWidget
+            "focus inside a widget survives an unrelated list update", focusInsideWidget
+        |]

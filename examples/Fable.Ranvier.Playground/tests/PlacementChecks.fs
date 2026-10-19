@@ -1137,7 +1137,8 @@ let private focusAndMeasure () =
     equal (true, true) (focused, width.Value > 0.)
 
 let cases: (string * (unit -> unit)) array =
-    Array.concat
+    strictCases
+    <| Array.concat
         [
             both
                 "a mounted hook runs after the element is in the host and its cleanup runs before the element leaves"
@@ -1238,4 +1239,4 @@ let cases: (string * (unit -> unit)) array =
         ]
 
 let browserCases: (string * (unit -> unit)) array =
-    [| "a mounted hook can focus and measure its element", focusAndMeasure |]
+    strictCases [| "a mounted hook can focus and measure its element", focusAndMeasure |]

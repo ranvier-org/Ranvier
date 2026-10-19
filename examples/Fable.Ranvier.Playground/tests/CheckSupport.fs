@@ -22,9 +22,31 @@ let modeOf queued =
     else
         SynchronousCommits
 
-/// <summary>A report callback that raises on every report.</summary>
+let private strictReports = ResizeArray<string list>()
+
+/// <summary>
+/// A report callback that raises on every report. Under <c>strictCases</c>, the report also fails its test when the
+/// mount absorbs the raise, as it does for a report made during <c>Mounted.Dispose</c>.
+/// </summary>
 let strict (errors: exn list) =
-    failwithf "Unexpected report %A" [ for error in errors -> error.Message ]
+    let reported = [ for error in errors -> error.Message ]
+    strictReports.Add reported
+    failwithf "Unexpected report %A" reported
+
+/// <summary>The cases, each failing when its run passes any report to <c>strict</c>.</summary>
+let strictCases (cases: (string * (unit -> unit)) array) =
+    [|
+        for name, check in cases ->
+            name,
+            fun () ->
+                strictReports.Clear ()
+                check ()
+
+                if strictReports.Count > 0 then
+                    let reported = List.ofSeq strictReports
+                    strictReports.Clear ()
+                    failwithf "Unexpected report %A" reported
+    |]
 
 /// <summary>The messages of each recorded report, in report order.</summary>
 let messages (reports: ResizeArray<exn list>) =
