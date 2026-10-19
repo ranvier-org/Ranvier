@@ -20,6 +20,9 @@ let private detach (node: Element) : unit = jsNative
 [<Emit("$0.isConnected")>]
 let private isConnected (node: Element) : bool = jsNative
 
+[<Emit("$0.getAttribute('data-ranvier-head')")>]
+let private markOf (node: Element) : string = jsNative
+
 [<Emit("$0.head.appendChild($1)")>]
 let private appendToHead (document: Document) (node: Element) : unit = jsNative
 
@@ -33,11 +36,11 @@ let private titleOf (document: Document) : string = jsNative
 [<Emit("$0.title = $1")>]
 let private setTitleOf (document: Document) (value: string) : unit = jsNative
 
-/// <summary>The document owning the node; the global document for a node without one.</summary>
+/// <summary>The document owning the node; the global document when the node is itself a document.</summary>
 [<Emit("($0.ownerDocument ?? document)")>]
 let documentOf (node: Node) : Document = jsNative
 
-/// <summary>A mount's head entry: its key, its element for a meta or link entry, and its latest title for a title entry.</summary>
+/// <summary>A head entry of a document, shown by <c>activate</c> and removed by <c>withdraw</c>.</summary>
 [<Sealed; AllowNullLiteral>]
 type Record internal (registry: Registry, kind: HeadKind, key: string, element: Element) =
     member _.Registry = registry
@@ -101,6 +104,23 @@ let private indexOf (items: ResizeArray<'T>) (item: 'T) =
 
     found
 
+/// <summary>The connected element of the key adopted by a record other than the owner of <c>own</c>; null when there is none.</summary>
+let private heldFor (registry: Registry) (key: string) (own: Element) : Element =
+    let mutable found: Element = Unchecked.defaultof<_>
+
+    for index in 0 .. registry.Claimed.Count - 1 do
+        let element = registry.Claimed[index]
+
+        if
+            isNull (box found)
+            && not (obj.ReferenceEquals (element, own))
+            && isConnected element
+            && markOf element = key
+        then
+            found <- element
+
+    found
+
 /// <summary>
 /// A record for an entry of the document. A meta or link record owns the document's marked head element of the same
 /// key when one is unclaimed, and otherwise a new element marked with its key.
@@ -131,7 +151,8 @@ let create (document: Document) (kind: HeadKind) (key: string) : Record =
 
 /// <summary>
 /// Shows the record above the key's other live records. The first title record of a key keeps the document's title for
-/// <c>withdraw</c>.
+/// <c>withdraw</c>. The first shown meta or link record of a key takes the place of a marked element adopted by a record
+/// not yet shown.
 /// </summary>
 let activate (record: Record) =
     let registry = record.Registry
@@ -153,7 +174,12 @@ let activate (record: Record) =
         elif record.Kind = HeadKind.Title then
             registry.Original <- titleOf registry.Document
         elif not (isConnected record.Element) then
-            appendToHead registry.Document record.Element
+            let held = heldFor registry record.Key record.Element
+
+            if isNull (box held) then
+                appendToHead registry.Document record.Element
+            else
+                replaceWith held record.Element
 
         entries.Add record
         record.Shown <- true
@@ -163,8 +189,7 @@ let activate (record: Record) =
 
 /// <summary>
 /// Withdraws the record, once. When it was shown, the key's most recent remaining record is shown; the last title record
-/// restores the document's title from before the first. An adopted element of a record that was never shown stays in
-/// the head.
+/// restores the document's title from before the first. The element of a meta or link record leaves the head.
 /// </summary>
 let withdraw (record: Record) =
     if not record.Withdrawn then
@@ -207,6 +232,12 @@ let withdraw (record: Record) =
                             else
                                 detach record.Element
             | _ -> ()
+
+            if
+                record.Kind <> HeadKind.Title
+                && isConnected record.Element
+            then
+                detach record.Element
 
         registry.Records <- registry.Records - 1
 

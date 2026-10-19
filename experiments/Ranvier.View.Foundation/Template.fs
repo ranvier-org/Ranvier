@@ -473,7 +473,9 @@ let internal headEntry (head: HeadTemplate) (instance: obj) : HeadEntry =
             if isNull head.Title then
                 Unchecked.defaultof<_>
             else
-                fun () -> unbox<string>(head.Title.Invoke instance)
+                fun () ->
+                    let value = unbox<string>(head.Title.Invoke instance)
+                    if isNull value then "" else value
     }
 
 let rec private expandNode (ops: Operations<'view>) (instance: obj) (node: TemplateNode) : 'view =
@@ -784,8 +786,10 @@ type UnsafeBuilder<'inst> internal () =
 
 let private metaKeys = [| "name"; "property"; "http-equiv"; "charset" |]
 
-/// <summary>The static attributes and attribute slots of a head entry's parts.</summary>
-let private headParts (parts: Part<'native, 'inst> array) =
+let private linkKeys = [| "rel" |]
+
+/// <summary>The static attributes and attribute slots of a head entry's parts; the attributes in <c>keys</c> are static.</summary>
+let private headParts (keys: string array) (parts: Part<'native, 'inst> array) =
     let attributes = ResizeArray<string * string>()
     let slots = ResizeArray<string * Func<obj, obj>>()
 
@@ -795,7 +799,7 @@ let private headParts (parts: Part<'native, 'inst> array) =
         | DynamicPart slot ->
             match slot.Target with
             | AttributeTarget name ->
-                if Array.contains name metaKeys then
+                if Array.contains name keys then
                     raise (ArgumentException ("A document entry's key attribute must be static", "parts"))
 
                 slots.Add ((name, slot.Read))
@@ -842,7 +846,7 @@ type DocumentBuilder<'inst> internal () =
 
     /// <summary>A meta element, keyed by its static name, property, http-equiv or charset attribute.</summary>
     member _.meta(parts: Part<HTMLMetaElement, 'inst> array) : TemplateView<'inst> =
-        let attributes, slots = headParts parts
+        let attributes, slots = headParts metaKeys parts
 
         let key =
             metaKeys
@@ -860,7 +864,7 @@ type DocumentBuilder<'inst> internal () =
 
     /// <summary>A link element, keyed by its <c>rel</c> when that is <c>canonical</c> and unkeyed otherwise.</summary>
     member _.link(parts: Part<HTMLLinkElement, 'inst> array) : TemplateView<'inst> =
-        let attributes, slots = headParts parts
+        let attributes, slots = headParts linkKeys parts
         headView HeadKind.Link (linkKey attributes null) (attributes, slots) null
 
     /// <summary>A link element, keyed by its <c>rel</c> when that is <c>canonical</c> and by <c>key</c> otherwise.</summary>
@@ -868,7 +872,7 @@ type DocumentBuilder<'inst> internal () =
         if String.IsNullOrEmpty key then
             raise (ArgumentException ("A link key cannot be empty", "key"))
 
-        let attributes, slots = headParts parts
+        let attributes, slots = headParts linkKeys parts
         headView HeadKind.Link (linkKey attributes key) (attributes, slots) null
 
 /// <summary>Builds a template for instances of type <c>'inst</c>; dynamic parts receive the instance as their argument.</summary>

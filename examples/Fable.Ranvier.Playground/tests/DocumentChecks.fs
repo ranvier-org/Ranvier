@@ -38,6 +38,22 @@ let private isConnected (node: Node) : bool = jsNative
 [<Emit("(document.head.querySelector($0) === $1)")>]
 let private headHolds (selector: string) (node: Node) : bool = jsNative
 
+[<Emit("document")>]
+let private currentDocument () : Document = jsNative
+
+[<Emit("document.implementation.createHTMLDocument($0)")>]
+let private otherDocument (documentTitle: string) : Document = jsNative
+
+[<Emit("$0.title")>]
+let private titleOf (document: Document) : string = jsNative
+
+[<Emit("$0.head.querySelectorAll($1).length")>]
+let private headCountOf (document: Document) (selector: string) : int = jsNative
+
+/// <summary>Adds a marked meta description to the document's head and returns it.</summary>
+[<Emit("(() => { const meta = $0.createElement('meta'); meta.setAttribute('name', 'description'); meta.setAttribute('data-ranvier-head', 'meta:name=description'); $0.head.append(meta); return meta; })()")>]
+let private markedDescriptionIn (document: Document) : Element = jsNative
+
 let private description (content: string) (t: TemplateBuilder<'inst>) =
     t.Document.meta
         [|
@@ -256,12 +272,146 @@ let private crossGraphTitles queued () =
     b.Dispose ()
     equal ("B · Shop", "B · Shop", "Before") (both, afterFirst, title ())
 
+let mutable private siblingSource: Signal<AsyncSource<string>> =
+    Unchecked.defaultof<_>
+
+let private pendingSibling =
+    Component.define (fun _ (_: BoundaryStatus) -> ()) (fun t ->
+        t.fragment
+            [|
+                description "content" t
+                t.span [||] [| t.text (fun () -> siblingSource.Value.Value) |]
+            |])
+
+let private siblingRegions =
+    Component.define (fun _ (second: Signal<bool>) -> second) (fun t ->
+        t.div
+            [||]
+            [|
+                t.boundary titlePending titleFailed pendingSibling
+                t.branch (fun (second: Signal<bool>) -> second.Value) (fun second -> if second then t.arm innerMeta () else t.arm noMeta ())
+            |])
+
+/// <summary>
+/// A pending boundary's entry adopts the marked element, and a sibling region's entry of the same key activates first.
+/// The head holds one element of the key throughout.
+/// </summary>
+let private siblingAdoption (fails: bool) queued () =
+    use graph = new Graph ()
+    let server = serverDescription ()
+    siblingSource <- graph.Run (fun () -> Api.createSignal (Api.createAsyncSource<string>()))
+    let second = graph.Run (fun () -> Api.createSignal false)
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        mountTemplate queued graph reports.Add (host ()) (Component.render siblingRegions second)
+
+    let read () =
+        headCount "meta[name=description]", headAttribute "meta[name=description]" "content"
+
+    let pending = read ()
+    graph.Run (fun () -> second.Value <- true)
+    mounted.Flush ()
+    let sibling = read ()
+
+    graph.Run (fun () ->
+        if fails then
+            siblingSource.Value.Fail (Exception "gone")
+        else
+            siblingSource.Value.Settle "ready")
+
+    mounted.Flush ()
+    let settled = read ()
+    graph.Run (fun () -> second.Value <- false)
+    mounted.Flush ()
+    let closed = read (), isConnected server
+    mounted.Dispose ()
+
+    let expectedSettled, expectedClosed, expectedReports =
+        if fails then
+            (1, "inner"), ((0, null), false), [ [ "gone" ] ]
+        else
+            (1, "content"), ((1, "content"), true), []
+
+    equal
+        ((1, "content"), (1, "inner"), expectedSettled, expectedClosed, 0, expectedReports)
+        (pending, sibling, settled, closed, headCount "meta[name=description]", messages reports)
+
+/// <summary>A pending boundary's entry adopts the marked element; the element leaves the head when the boundary fails.</summary>
+let private pendingAdopterFails queued () =
+    use graph = new Graph ()
+    let server = serverDescription ()
+    siblingSource <- graph.Run (fun () -> Api.createSignal (Api.createAsyncSource<string>()))
+    let second = graph.Run (fun () -> Api.createSignal false)
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        mountTemplate queued graph reports.Add (host ()) (Component.render siblingRegions second)
+
+    let pending = headCount "meta[name=description]", isConnected server
+    graph.Run (fun () -> siblingSource.Value.Fail (Exception "gone"))
+    mounted.Flush ()
+    let failed = headCount "meta[name=description]", isConnected server
+    mounted.Dispose ()
+    equal ((1, true), (0, false), [ [ "gone" ] ]) (pending, failed, messages reports)
+
+let private nullTitle =
+    Component.define (fun _ () -> ()) (fun t -> t.fragment [| t.Document.title (fun () -> (null: string)) |])
+
+let private nullTitleEmpty queued () =
+    use graph = new Graph ()
+    setTitle "Before"
+
+    let mounted =
+        mountTemplate queued graph strict (host ()) (Component.render nullTitle ())
+
+    let shown = title ()
+    mounted.Dispose ()
+    equal ("", "Before") (shown, title ())
+
+/// <summary>Title and meta records of the global document and of a second document.</summary>
+let private perDocument () =
+    setTitle "Before"
+    let other = otherDocument "Other"
+    let marked = markedDescriptionIn other
+    let here = DocumentHead.create (currentDocument ()) HeadKind.Title "title"
+    let there = DocumentHead.create other HeadKind.Title "title"
+    DocumentHead.setTitle here "Here"
+    DocumentHead.setTitle there "There"
+    DocumentHead.activate here
+    DocumentHead.activate there
+    let titles = title (), titleOf other
+    DocumentHead.withdraw here
+    let afterHere = title (), titleOf other
+    DocumentHead.withdraw there
+    let restored = title (), titleOf other
+
+    let hereMeta =
+        DocumentHead.create (currentDocument ()) HeadKind.Meta "meta:name=description"
+
+    let thereMeta = DocumentHead.create other HeadKind.Meta "meta:name=description"
+    DocumentHead.activate hereMeta
+    DocumentHead.activate thereMeta
+
+    let adopted =
+        obj.ReferenceEquals (thereMeta.Element, marked),
+        obj.ReferenceEquals (hereMeta.Element, marked),
+        headCount "meta[data-ranvier-head]",
+        headCountOf other "meta[name=description]"
+
+    DocumentHead.withdraw hereMeta
+    DocumentHead.withdraw thereMeta
+
+    equal
+        (("Here", "There"), ("Before", "There"), ("Before", "Other"), (true, false, 1, 1), (0, 0))
+        (titles, afterHere, restored, adopted, (headCount "meta[data-ranvier-head]", headCountOf other "meta[name=description]"))
+
 let private definitionChecks () =
     let defines (build: TemplateBuilder<unit> -> TemplateView<unit>) =
         raisesArgument (fun () -> Component.define (fun _ () -> ()) build |> ignore)
 
     equal
-        [ true; true; true; true; true ]
+        [ true; true; true; true; true; true; true; false ]
         [
             defines (fun t -> t.Document.meta [| t.Attrs.attribute ("name", "x"); t.Events.onClick (fun _ _ -> ()) |])
             defines (fun t ->
@@ -278,6 +428,15 @@ let private definitionChecks () =
                         t.Attrs.attribute ("name", (fun () -> Some "x"))
                     |])
             defines (fun t -> t.Document.meta [| t.Attrs.attribute ("content", "x") |])
+            defines (fun t -> t.Document.link ("theme", [| t.Attrs.attribute ("rel", (fun () -> Some "stylesheet")) |]))
+            defines (fun t -> t.Document.link [| t.Attrs.attribute ("rel", (fun () -> Some "canonical")) |])
+            defines (fun t ->
+                t.Document.link
+                    [|
+                        t.Attrs.attribute ("rel", "alternate")
+                        t.Attrs.attribute ("name", (fun () -> Some "x"))
+                        t.Attrs.attribute ("property", (fun () -> Some "x"))
+                    |])
         ]
 
 /// <summary>The template rendered by <c>Html.render</c> as compiled and as expanded into a Program view.</summary>
@@ -308,10 +467,17 @@ let cases: (string * (unit -> unit)) array =
                 templated "entries under hidden content activate at reveal and withdraw on teardown" hiddenEntries
                 templated "a client mount adopts marked head elements without hydrate" adoptsMarked
                 templated "a marked head element is adopted by one entry of its key" adoptsOnce
+                templated
+                    "a pending entry's adopted element gives way to a sibling entry of its key and leaves when the boundary fails"
+                    (siblingAdoption true)
+                templated "a pending entry's adopted element gives way to a sibling entry of its key and returns at reveal" (siblingAdoption false)
+                templated "a pending entry's adopted element leaves the head when the boundary fails" pendingAdopterFails
+                templated "a title reader returning null sets an empty document.title" nullTitleEmpty
                 templated "title entries from two graphs withdrawn out of order keep the shown title and restore the original" crossGraphTitles
                 [|
                     "event and property parts on a document entry fail at definition time; a dynamic key attribute fails", definitionChecks
                     "Html.render writes no document entry under Omit and raises under Reject", serverEntries
+                    "each document keeps its own title and adopts only its own marked elements", perDocument
                 |]
             ]
     )
