@@ -96,6 +96,27 @@ module NodeRef =
     let create () : NodeRef<'native> =
         NodeRef<'native>()
 
+/// <summary>The element a document head entry stands for.</summary>
+[<RequireQualifiedAccess>]
+type HeadKind =
+    | Title
+    | Meta
+    | Link
+
+/// <summary>A document head entry bound to one instance.</summary>
+[<NoEquality; NoComparison>]
+type HeadEntry =
+    {
+        Kind: HeadKind
+        /// <summary>The entry's key; null for an unkeyed link.</summary>
+        Key: string
+        Attributes: (string * string) array
+        /// <summary>The entry's dynamic attributes; <c>None</c> removes one.</summary>
+        Readers: (string * (unit -> string option)) array
+        /// <summary>The reader of a title entry; null for a meta or link entry.</summary>
+        Title: unit -> string
+    }
+
 [<AbstractClass>]
 type Backend() =
     abstract Text: string -> unit
@@ -131,6 +152,12 @@ type Backend() =
 
     default _.Placed(_, _) =
         raise (System.NotSupportedException "Placed hooks require a DOM mount")
+
+    /// <summary>Adds a document head entry for the current instance: shown once the instance is placed, withdrawn when it is disposed.</summary>
+    abstract Head: HeadEntry -> unit
+
+    default _.Head _ =
+        raise (System.NotSupportedException "Document entries require a DOM mount")
 
     /// <summary>Handles a named DOM event on the element currently receiving modifiers.</summary>
     /// <remarks>The handler receives the event object. A backend may dispatch it through a listener on an ancestor.</remarks>
@@ -594,6 +621,10 @@ module Html =
 
                 member _.Placed(_, _) =
                     browserCapability ()
+
+                member _.Head _ =
+                    if policy = Reject then
+                        raise (System.InvalidOperationException "Document metadata requires Server.renderPage")
 
                 member _.Listen(_, _) =
                     browserCapability ()

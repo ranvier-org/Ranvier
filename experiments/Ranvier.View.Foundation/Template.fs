@@ -73,6 +73,8 @@ type TemplateNode =
     | RegionNode of Region
     /// <summary>A child template inlined into this template's skeleton, with the reader of its props from the inlining instance.</summary>
     | ChildNode of TemplateComponent * Func<obj, obj>
+    /// <summary>A document head entry; it occupies zero skeleton width.</summary>
+    | HeadNode of HeadTemplate
 
 /// <summary>Dynamic structure of a template: keyed items read from an instance, rendered one row per item.</summary>
 and [<NoEquality; NoComparison>] Region =
@@ -93,6 +95,19 @@ and [<NoEquality; NoComparison>] RegionRow =
     | ItemRow of TemplateComponent * Func<(unit -> obj), obj>
     /// <summary>The item is the region's <c>BoundaryViews</c>, read once per instance.</summary>
     | BoundaryRow
+
+/// <summary>A document head entry of a template; its readers receive the instance.</summary>
+and [<NoEquality; NoComparison>] HeadTemplate =
+    {
+        Kind: HeadKind
+        /// <summary>The entry's key; null for an unkeyed link.</summary>
+        Key: string
+        Attributes: (string * string) array
+        /// <summary>Dynamic attributes: the name and a reader returning <c>string option</c>.</summary>
+        Slots: (string * Func<obj, obj>) array
+        /// <summary>The reader of a title entry, returning <c>string</c>; null for a meta or link entry.</summary>
+        Title: Func<obj, obj>
+    }
 
 /// <summary>A template component definition without its props type.</summary>
 and [<AbstractClass>] TemplateComponent internal (setup: Func<Setup, obj, obj>, root: TemplateNode) =
@@ -249,6 +264,8 @@ type SkeletonLayout =
         RootCount: int
         /// <summary>The inlined children, at every depth, in document order.</summary>
         Children: InlinedChild array
+        /// <summary>The document head entries, at every depth, with their owning part.</summary>
+        Heads: (HeadTemplate * int) array
     }
 
 type private WriterState(instance: obj) =
@@ -257,6 +274,7 @@ type private WriterState(instance: obj) =
     member val Targets = ResizeArray<TemplateNode * int array>()
     member val Owners = ResizeArray<int>()
     member val Children = ResizeArray<InlinedChild>()
+    member val Heads = ResizeArray<HeadTemplate * int>()
     member val Parts = ResizeArray<int>()
     member val Part = 0 with get, set
 
@@ -300,6 +318,13 @@ let private writeMarkup (append: string -> unit) (mode: MarkupMode) (state: Writ
             state.Instance <- state.Instances[state.Instances.Count - 1]
             state.Instances.RemoveAt (state.Instances.Count - 1)
 
+    let writeHead (head: HeadTemplate) =
+        match mode with
+        | Skeleton -> state.Heads.Add ((head, state.Part))
+        | Server (_, rejectBrowser, _) ->
+            if rejectBrowser then
+                raise (InvalidOperationException "Document metadata requires Server.renderPage")
+
     let rec writeChildren (children: TemplateNode array) (path: int list) =
         let mutable index = 0
         let mutable previousText = false
@@ -308,6 +333,7 @@ let private writeMarkup (append: string -> unit) (mode: MarkupMode) (state: Writ
             match flat with
             | Enter (definition, props) -> enter definition props
             | Leave -> leave ()
+            | Item (HeadNode head) -> writeHead head
             | Item child ->
                 let text = isText child
 
@@ -333,7 +359,8 @@ let private writeMarkup (append: string -> unit) (mode: MarkupMode) (state: Writ
                 let value = unbox<string>(slot.Read.Invoke state.Instance)
                 append (Html.escape false (if isNull value then "" else value))
         | FragmentNode _
-        | ChildNode _ -> invalidOp "Fragments and inlined children are flattened before writing"
+        | ChildNode _
+        | HeadNode _ -> invalidOp "Fragments, inlined children and head entries are flattened before writing"
         | ElementNode (tag, attributes, properties, slots, events, placed, children) ->
             if rawText tag then
                 match mode with
@@ -416,6 +443,7 @@ let skeletonLayout (root: TemplateNode) : SkeletonLayout =
         Owners = state.Owners.ToArray ()
         RootCount = rootCount
         Children = state.Children.ToArray ()
+        Heads = state.Heads.ToArray ()
     }
 
 /// <summary>The skeleton markup of a template, the path of every dynamic node in document order, and the number of root nodes.</summary>
@@ -431,6 +459,22 @@ let renderHtml (definition: TemplateComponent) (backend: Backend) (setup: Setup)
 
     writeMarkup append (Server (setup, rejectBrowser, backend)) (WriterState instance) definition.Root
     |> ignore
+
+/// <summary>The head entry of <c>head</c> for <c>instance</c>.</summary>
+let internal headEntry (head: HeadTemplate) (instance: obj) : HeadEntry =
+    {
+        HeadEntry.Kind = head.Kind
+        Key = head.Key
+        Attributes = head.Attributes
+        Readers =
+            head.Slots
+            |> Array.map (fun (name, read) -> name, (fun () -> unbox<string option>(read.Invoke instance)))
+        Title =
+            if isNull head.Title then
+                Unchecked.defaultof<_>
+            else
+                fun () -> unbox<string>(head.Title.Invoke instance)
+    }
 
 let rec private expandNode (ops: Operations<'view>) (instance: obj) (node: TemplateNode) : 'view =
     match node with
@@ -470,6 +514,7 @@ let rec private expandNode (ops: Operations<'view>) (instance: obj) (node: Templ
                 }
                 (expandRow ops region.Row)
     | ChildNode (definition, props) -> expandWith ops definition (props.Invoke instance)
+    | HeadNode head -> ops.Embed (fun backend -> backend.Head (headEntry head instance))
 
 /// <summary>Expands a region row through the operations; the reader returns the row's current item.</summary>
 and private expandRow (ops: Operations<'view>) (row: RegionRow) (current: unit -> obj) : 'view =
@@ -737,6 +782,95 @@ type UnsafeBuilder<'inst> internal () =
     member _.html(read: 'inst -> UnsafeHtml) : Part<'native, 'inst> =
         DynamicPart (slot ContentTarget RenderMode read contentSame)
 
+let private metaKeys = [| "name"; "property"; "http-equiv"; "charset" |]
+
+/// <summary>The static attributes and attribute slots of a head entry's parts.</summary>
+let private headParts (parts: Part<'native, 'inst> array) =
+    let attributes = ResizeArray<string * string>()
+    let slots = ResizeArray<string * Func<obj, obj>>()
+
+    for part in parts do
+        match part with
+        | StaticAttribute (name, value) -> attributes.Add ((name, value))
+        | DynamicPart slot ->
+            match slot.Target with
+            | AttributeTarget name ->
+                if Array.contains name metaKeys then
+                    raise (ArgumentException ("A document entry's key attribute must be static", "parts"))
+
+                slots.Add ((name, slot.Read))
+            | _ -> raise (ArgumentException ("Document entries take attribute parts only", "parts"))
+        | NoPart -> ()
+        | _ -> raise (ArgumentException ("Document entries take attribute parts only", "parts"))
+
+    attributes.ToArray (), slots.ToArray ()
+
+let private staticValue (name: string) (attributes: (string * string) array) =
+    attributes
+    |> Array.tryFind (fun (key, _) -> key = name)
+    |> Option.map snd
+
+let private headView kind key (attributes, slots) title : TemplateView<'inst> =
+    TemplateView (
+        HeadNode
+            {
+                HeadTemplate.Kind = kind
+                Key = key
+                Attributes = attributes
+                Slots = slots
+                Title = title
+            }
+    )
+
+let private linkKey (attributes: (string * string) array) (explicit: string) =
+    if staticValue "rel" attributes = Some "canonical" then
+        "link:canonical"
+    elif isNull explicit then
+        null
+    else
+        "link:" + explicit
+
+/// <summary>Entries for the document's head: shown once the instance is placed, withdrawn when it is disposed.</summary>
+/// <remarks>Per key, the most recently shown live entry is in the head; unkeyed links are each in the head while live.</remarks>
+[<Sealed>]
+type DocumentBuilder<'inst> internal () =
+    member _.title(value: string) : TemplateView<'inst> =
+        headView HeadKind.Title "title" ([||], [||]) (Func<obj, obj>(fun _ -> box value))
+
+    member _.title(read: 'inst -> string) : TemplateView<'inst> =
+        headView HeadKind.Title "title" ([||], [||]) (Func<obj, obj>(fun instance -> box (read (unbox instance))))
+
+    /// <summary>A meta element, keyed by its static name, property, http-equiv or charset attribute.</summary>
+    member _.meta(parts: Part<HTMLMetaElement, 'inst> array) : TemplateView<'inst> =
+        let attributes, slots = headParts parts
+
+        let key =
+            metaKeys
+            |> Array.tryPick (fun name ->
+                staticValue name attributes
+                |> Option.map (fun value ->
+                    if name = "charset" then
+                        "meta:charset"
+                    else
+                        "meta:" + name + "=" + value))
+            |> Option.defaultWith (fun () ->
+                raise (ArgumentException ("A meta entry needs a static name, property, http-equiv or charset attribute", "parts")))
+
+        headView HeadKind.Meta key (attributes, slots) null
+
+    /// <summary>A link element, keyed by its <c>rel</c> when that is <c>canonical</c> and unkeyed otherwise.</summary>
+    member _.link(parts: Part<HTMLLinkElement, 'inst> array) : TemplateView<'inst> =
+        let attributes, slots = headParts parts
+        headView HeadKind.Link (linkKey attributes null) (attributes, slots) null
+
+    /// <summary>A link element, keyed by its <c>rel</c> when that is <c>canonical</c> and by <c>key</c> otherwise.</summary>
+    member _.link(key: string, parts: Part<HTMLLinkElement, 'inst> array) : TemplateView<'inst> =
+        if String.IsNullOrEmpty key then
+            raise (ArgumentException ("A link key cannot be empty", "key"))
+
+        let attributes, slots = headParts parts
+        headView HeadKind.Link (linkKey attributes key) (attributes, slots) null
+
 /// <summary>Builds a template for instances of type <c>'inst</c>; dynamic parts receive the instance as their argument.</summary>
 [<Sealed>]
 type TemplateBuilder<'inst> internal () =
@@ -745,12 +879,14 @@ type TemplateBuilder<'inst> internal () =
     let events = EventBuilder<'inst>()
     let hooks = HookBuilder<'inst>()
     let unsafe = UnsafeBuilder<'inst>()
+    let documentEntries = DocumentBuilder<'inst>()
 
     member _.Attrs = attrs
     member _.Props = props
     member _.Events = events
     member _.Hooks = hooks
     member _.Unsafe = unsafe
+    member _.Document = documentEntries
 
     member _.element (tag: Tag) (parts: Part<'native, 'inst> array) (children: TemplateView<'inst> array) : TemplateView<'inst> =
         elementNode tag parts children

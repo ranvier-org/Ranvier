@@ -80,6 +80,8 @@ type Compiled =
         Events: (int * string * Func<obj, obj, unit>) array
         /// <summary>The placed hooks of the part's nodes: node index, kind and hook.</summary>
         Placed: (int * PlacedKind * Func<obj, obj, (unit -> unit)>) array
+        /// <summary>The document head entries of the part.</summary>
+        Heads: HeadTemplate array
         EventNames: string array
         Dispatch: Func<obj array, Node, obj, unit>
         Regions: CompiledRegion array
@@ -225,7 +227,8 @@ let private validateParsed (content: DocumentFragment) (walk: int array) (target
                 | RegionNode _ -> "a region marker pair", isRegionStart cursor
                 | TextNode _
                 | FragmentNode _
-                | ChildNode _ -> invalidOp "Static nodes are not dynamic targets"
+                | ChildNode _
+                | HeadNode _ -> invalidOp "Static nodes are not dynamic targets"
 
             if not matches then
                 let found =
@@ -280,7 +283,8 @@ let private tables (targets: (TemplateNode * int array) array) (owners: int arra
             | RegionNode _ -> ()
             | TextNode _
             | FragmentNode _
-            | ChildNode _ -> invalidOp "Static nodes are not dynamic targets"
+            | ChildNode _
+            | HeadNode _ -> invalidOp "Static nodes are not dynamic targets"
 
     renderSlots.ToArray (), isolatedSlots.ToArray (), properties.ToArray (), events.ToArray (), placed.ToArray ()
 
@@ -313,6 +317,10 @@ let private compilePart
         Properties = properties
         Events = events
         Placed = placed
+        Heads =
+            layout.Heads
+            |> Array.filter (fun (_, owner) -> owner = part)
+            |> Array.map fst
         EventNames = eventNames
         Dispatch = dispatchFor count events eventNames
         Regions = regions
@@ -407,6 +415,8 @@ type internal MountServices =
     abstract Scope: ViewScope
     /// <summary>The container that holds the instance's hooks until its nodes are placed.</summary>
     abstract Placement: Placement
+    /// <summary>Binds a document head entry for the instance being materialised.</summary>
+    abstract Head: HeadEntry -> unit
 
     /// <summary>Mounts a region between its start and end markers. The flag marks markers that are roots of the appended
     /// clone; the materialiser is null for a view hole.</summary>
@@ -731,6 +741,9 @@ let rec internal materialise (definition: TemplateDefinition) (props: obj) (serv
     collect clone compiled.Walk state
     bind services compiled state
 
+    for i in 0 .. compiled.Heads.Length - 1 do
+        services.Head (headEntry (at compiled.Heads i) instance)
+
     let childBase =
         StateNodes
         + compiled.NodeCount
@@ -751,6 +764,9 @@ let rec internal materialise (definition: TemplateDefinition) (props: obj) (serv
 
         store state (childBase + k) (box childState)
         bind services tables childState
+
+        for h in 0 .. tables.Heads.Length - 1 do
+            services.Head (headEntry (at tables.Heads h) childInstance)
 
     if compiled.RootCount = 1 then
         services.Append clone

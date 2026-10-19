@@ -1167,6 +1167,9 @@ and private RowBuilder(state: MountState) =
 
         member _.Placement = container
 
+        member _.Head(entry) =
+            state.HeadIn (container, entry)
+
         member _.Region(start, finish, _, kind, items, render, rows) =
             state.NestedRegion (start, finish, kind, items, render, rows, container)
 
@@ -2165,6 +2168,35 @@ and internal MountState
 
         PlacedHook.register container this.Scope (Api.getOwner ()) kind (node :> Node) (fun () -> hook (box node))
 
+    override this.Head(entry) =
+        this.HeadIn (container, entry)
+
+    /// <summary>The document receiving the mount's head entries: the root mount host's document.</summary>
+    member val internal HeadDocument = DocumentHead.documentOf host with get, set
+
+    /// <summary>
+    /// Binds a document head entry for the current owner. Its readers are bindings of this mount; it is shown once
+    /// <c>target</c> is placed and withdrawn when the owner is disposed.
+    /// </summary>
+    member internal this.HeadIn(target: Placement, entry: HeadEntry) =
+        let owner = Api.getOwner ()
+        let record = DocumentHead.create this.HeadDocument entry.Kind entry.Key
+        let scope = this.Scope
+        ownedCleanup owner (fun () -> DocumentHead.withdraw record)
+
+        if entry.Kind = HeadKind.Title then
+            startBinding scope (Func<string, string, bool>(fun left right -> left = right)) entry.Title (DocumentHead.setTitle record)
+        else
+            let element = record.Element
+
+            for name, value in entry.Attributes do
+                element.setAttribute (name, value)
+
+            for name, read in entry.Readers do
+                startBinding scope attributeEquals read (attributeValue element name)
+
+        target.Add (owner, (fun () -> DocumentHead.activate record))
+
     override this.Listen(eventName, handler) =
         let node = currentElement ()
         let scope = this.Scope
@@ -2297,12 +2329,15 @@ and internal MountState
         site
 
     /// <summary>Mounts an authored row or a boundary's view as a nested mount under <c>scope</c> and returns its nodes.</summary>
-    member private _.MountRow(current: unit -> obj, render: (unit -> obj) -> Backend -> unit, scope: ViewScope, target: Placement) : Row =
+    member private this.MountRow(current: unit -> obj, render: (unit -> obj) -> Backend -> unit, scope: ViewScope, target: Placement) : Row =
         let rowHost = fragment ()
 
-        let mounted =
-            MountState(scheduling, graph, root, Unchecked.defaultof<_>, report, rowHost, scope, target)
-                .Run(None, (fun context -> render current context.Backend))
+        let nested =
+            MountState (scheduling, graph, root, Unchecked.defaultof<_>, report, rowHost, scope, target)
+
+        nested.HeadDocument <- this.HeadDocument
+
+        let mounted = nested.Run (None, (fun context -> render current context.Backend))
 
         let first =
             rowHost.firstChild
@@ -2946,6 +2981,9 @@ and internal MountState
         member this.Scope = this.Scope
 
         member _.Placement = container
+
+        member this.Head(entry) =
+            this.HeadIn (container, entry)
 
         member this.Region(start, finish, rootLevel, kind, items, render, rows) =
             ensureSetup ()
