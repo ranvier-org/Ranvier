@@ -32,7 +32,7 @@ dispatch runs inline, affinity checks are omitted, `IsOnGraphThread` is true, an
 | `signal.Value <- v` | Owning | Raises `InvalidOperationException` before the equality check. The value stays unchanged, and an equal write raises too. | Runs on any thread on the construction context while no other thread is inside the graph. Raises otherwise, before the equality check. |
 | `graph.Pump ()` | Owning | Raises `InvalidOperationException`. | As a write. |
 | `graph.Dispatch work` | Any | Queues `work` in the graph's inbox. On the owning thread, `work` runs inline. | Runs `work` inline on the thread inside the graph. Queues it from every other thread, including one on the construction context. |
-| `AsyncSource.Settle` and `Fail`, flight completions | Any | Queued in the inbox, as `Dispatch` is. On the owning thread, they apply inline. | As `Dispatch`. |
+| `AsyncSource.Settle` and `Fail`, flight completions, stream items | Any | Queued in the inbox, as `Dispatch` is. On the owning thread, they apply inline. | As `Dispatch`. |
 | Stale reads, node creation, `batch`, `flush`, `untrack`, `createRoot`, `onCleanup`, `Dispose` | Owning | Raise `InvalidOperationException`. A read of a current value is unchecked. | As a write. |
 
 Under `Guarded`, the affinity check compares the calling thread with the thread that constructed the graph.
@@ -71,12 +71,15 @@ waits in the inbox and applies at the next drain on the owning thread.
 
 ### Internal locks
 
-User code runs outside every internal lock. This covers memo, effect and boundary bodies, cleanups,
-equality comparers, `fallback` and `recover`, dispatched work and `IGraphDispatcher.Post`.
+User code runs outside every internal lock, with one exception: a stream memo's `fold`. This covers memo,
+effect and boundary bodies, cleanups, equality comparers, `fallback` and `recover`, a stream's `start`,
+dispatched work and `IGraphDispatcher.Post`.
 
 - The inbox is a lock-free queue, so `Dispatch`, `Settle` and `Fail` return at once.
 - Each async memo holds one lock, around its published value and its `Previous.Settled` waiters. The tasks
   it completes resume their awaiters asynchronously.
+- Each running stream holds one lock around its state. `fold` runs inside it for an item delivered off the
+  graph thread, and without it on the graph thread.
 - A build with tracing compiled in adds a lock around the trace log's bookkeeping.
 
 ### Serialised hosts
@@ -142,6 +145,7 @@ Recovery happens through re-runs alone.
 | --- | --- |
 | A memo body | The memo fails. |
 | An async body, or its task faulting or being cancelled | The async value fails. Under `CancelPrevious` and `KeepLatest`, a superseded flight's outcome is discarded. Under `FinishCurrent`, a failure that settles while a trailing run is owed is discarded. Under `DropWhilePending`, a failure that settles after the flight discarded a change is discarded. |
+| A stream's source faulting, its `fold` or `start` | The stream memo fails, and the stream is cancelled. A `createStream` stream that completes without an item fails with `InvalidOperationException`. |
 | An effect body | Recorded on the effect's `Status` and `Error`. Every effect queued behind it in the flush still runs. |
 | A boundary's `fallback` or `recover` | The boundary fails with that exception. |
 | A cleanup | Recorded, and the remaining cleanups and disposals still run. A `createRoot` scope keeps the error in its own `Errors`; a computation's scope records it in `graph.Root.Errors`. |
@@ -167,6 +171,7 @@ of `Caught` as `CaughtFrom`. Both are null while the node holds no failure. `Err
 | `Memo`, `Boundary`, `Effect` | The node itself when its body, comparer or purity check raised the exception; otherwise the origin of the failed read it rethrew. |
 | `AsyncMemo` | The async memo for a faulted or cancelled flight, a throwing body or disposal while pending; the origin of a failed read rethrown before the first `await` that suspends. A failure read after that `await` can report the async memo instead. |
 | `AsyncSource` | The source, after `Fail`. |
+| `StreamMemo` | The stream memo for a faulted or cancelled stream, a throwing `fold` or `start`, an empty `createStream` completion or disposal while pending; the origin of a failed read rethrown by `start`. |
 | `Projection` | The projection when its source, `keyOf` or a duplicate key failed the pass; otherwise the origin of the failed read the source rethrew. |
 
 A reader that rethrows a failed read keeps its origin, through any number of memos, effects, boundaries and
@@ -206,7 +211,7 @@ owner**:
 | Inside `createRoot body` | The new scope |
 | Inside `runWithOwner owner body` | `owner` |
 | Inside the body of an effect, `createMemoWith`, boundary or `createEffectOn`'s `act` | The current run of that computation |
-| Inside `createAsyncWith`'s body, before its first `await` that suspends | The current flight |
+| Inside the body of `createAsyncWith` or `createOwningAsyncWithPolicy`, before its first `await` that suspends | The current flight |
 | Inside a projection's factory | The key's scope |
 | Inside a projection's `source` or `keyOf`, or a lookup's `source` | The current pass |
 
@@ -221,8 +226,9 @@ run: an owning memo first read by an effect keeps its nodes when the effect re-r
 | API | Owner | Disposed |
 | --- | --- | --- |
 | `createSignal`, `createAsyncSource` | Unowned | Collected like any object once unreferenced. A reader drops its edge when it is disposed, or re-runs without reading the source. |
-| `createMemo`, `createMemoWith`, `createAsync`, `createAsyncWith`, `createOptionMemo` | Current owner | With the owner, or by `Dispose`. |
+| `createMemo`, `createMemoWith`, `createAsync`, `createAsyncWith`, `createAsyncWithPolicy`, `createOwningAsyncWithPolicy`, `createOptionMemo` | Current owner | With the owner, or by `Dispose`. |
 | `createEffect`, `createEffectOn` | Current owner | With the owner. Construct `Effect` directly for a handle. |
+| `createStream`, `createStreamFold` | Current owner | With the owner, or by `Dispose`, cancelling the stream. |
 | `bindSignal`, `bindMemo` | Current owner | With the owner. The source is the only dependency; `write` runs untracked in the flush and must not create reactive nodes. |
 | `createSuspense`, `createErrorBoundary`, `createBoundary` | Current owner | With the owner, or by `Dispose`. |
 | `createProjection`, `createProjectionWith`, `createProjectionWithOptions`, `createProjectionOnce`, the index forms, and the views built on a projection | Current owner | With the owner, or by `Dispose`. Each key's scope is disposed when the key leaves. |
@@ -242,8 +248,8 @@ run: an owning memo first read by an effect keeps its nodes when the effect re-r
 | A `createMemo` body | The run fails with `InvalidOperationException`: *A memo created by createMemo created an owned node in its body*. The run fails even when the body catches the exception, and `untrack` blocks are included. Use `createMemoWith`. |
 | A `createMemoWith` body | Owned by the run. Disposed before the next run and with the memo. |
 | An effect or boundary body | Owned by the run. Disposed before the next run and with the effect or boundary. |
-| A `createAsync` body | The run fails, and the message names `createAsyncWith`. |
-| A `createAsyncWith` body, before the first `await` that suspends | Owned by the flight. Disposed before the next flight starts and with the async value. |
+| A `createAsync` or `createAsyncWithPolicy` body | The run fails, and the message names `createAsyncWith`. |
+| A `createAsyncWith` or `createOwningAsyncWithPolicy` body, before the first `await` that suspends | Owned by the flight. Disposed before the next flight starts and with the async value. |
 | An async body, after that `await` | On the owning thread, owned by `graph.Root`. To keep it in the flight, capture `getOwner ()` before the `await` and create it inside `runWithOwner`. |
 | A projection factory | Owned by the key. Disposed when the key leaves or the projection is disposed. |
 | A projection row reader, or `createProjection`'s `map` | The row fails with `InvalidOperationException`. Create the node in the factory. |
@@ -264,8 +270,8 @@ registration is still live. Each child scope is torn down the same way. Cleanups
 idempotent.
 
 - A disposed memo keeps its last value and stops recomputing.
-- Disposing an async value cancels its flight's token.
-- A pending async value that is disposed fails with `ObjectDisposedException`.
+- Disposing an async value cancels its flight's token, and disposing a stream memo cancels its stream.
+- A pending async value or stream memo that is disposed fails with `ObjectDisposedException`.
 
 ### Deterministic lifetimes
 
@@ -274,5 +280,5 @@ point: the end of its owner's run, or a `Dispose` call. The graph behaves identi
 collector runs. A build with tracing holds weak references in its trace log, which affects diagnostics
 only.
 
-[Scopes and disposal](../guide/roots.md) and
+[Roots and owners](../guide/roots.md) and
 [Pure and owning memos](../guide/memos.md#pure-and-owning-memos) show these rules in code.

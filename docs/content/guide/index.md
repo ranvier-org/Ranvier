@@ -84,6 +84,7 @@ Dispatchers move work from other threads onto the graph thread.
 
 - [Installation](installation.md): preview packages, supported targets and Native AOT.
 - [Getting started](getting-started.md): a short walkthrough of a reactive graph.
+- [Examples](examples.md): complete F# and C# console and Avalonia applications for real workflows.
 - [Ranvier or Adaptive for a desktop app?](../blog/desktop-adaptive.md): a blog walkthrough with a complete F# window and comparisons of state, bindings, collections, async work and lifetime.
 - [Graphs](graph.fsx), [Signals](signals.fsx), [Memos](memos.md) and [Effects](effects.md): the core primitives.
 - [Fixed-dependency bindings](bindings.md): copy one signal or memo into a target, with batching and owner disposal.
@@ -92,6 +93,7 @@ Dispatchers move work from other threads onto the graph thread.
 - [Editable values](editable.md) and [Drafts](drafts.md): local edits over upstream state.
 - [Async and pending](async-and-pending.md): in-flight values, async memos, boundaries, and threading.
 - [Debounce and throttle](timing.md): control admission before downstream or async work starts.
+- [Streams](streams.md): fold a stream's items into a node that restarts when its inputs change.
 - [Testing async state](testing.md): deterministic tests that decide when each flight lands.
 - [Blazor Server](blazor-server.md): one graph per circuit, with `ThreadAffinity.Serialised`.
 - [Collections](collections.fsx): projections, editable keyed sources, change readers, lookups and collection views.
@@ -116,6 +118,8 @@ Dispatchers move work from other threads onto the graph thread.
 | Per-node typed comparers | Implemented for signals, memos, split effects and boundaries; see [Equality](equality.md). |
 | Editable keyed collections and value readers | Implemented, with direct row edits and bounded change cursors; see [Direct edits](collection-updates.fsx#direct-edits) and [Reading changes](projections.fsx#reading-changes). |
 | Async and boundaries | Implemented. A pending `.Value` read throws `NotReadyException`; `TryValue` reads without throwing. |
+| Per-node flight policies | Implemented: `createAsyncWithPolicy` and `createOwningAsyncWithPolicy` override the graph's policy for one async memo; see [Async memos](async-memos.md#flight-policy). |
+| Stream memos (`createStream`, `createStreamFold`) | Implemented and tested; see [Streams](streams.md). |
 | Projections, lookups and selectors | Implemented, including memo-free factory rows, opt-in create-first passes and trimmed reconciliation; see [Projections](projections.fsx). |
 | Fable/JavaScript | Implemented; package builds contain standalone Fable source projects. CI checks repository tests and packed consumers. See [Fable (JavaScript) target](../fable/index.md). |
 | Collection combinators (`Projection.filter`, `choose`, `map`, `mapWith`, `sortBy`, `groupBy`) | Implemented and tested, including pending and error behaviour; see [Collections](collection-views.fsx). |

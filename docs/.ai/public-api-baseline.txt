@@ -32,6 +32,7 @@ member Ranvier.Api static bindSignal<2>(Ranvier.Signal`1<!!0>,!!1,Microsoft.FSha
 member Ranvier.Api static createAsync<1>(Microsoft.FSharp.Core.FSharpFunc`2<Ranvier.Previous`1<!!0>,Microsoft.FSharp.Core.FSharpFunc`2<System.Threading.CancellationToken,System.Threading.Tasks.Task`1<!!0>>>) : Ranvier.AsyncMemo`1<!!0>
 member Ranvier.Api static createAsyncSource<1>() : Ranvier.AsyncSource`1<!!0>
 member Ranvier.Api static createAsyncWith<1>(Microsoft.FSharp.Core.FSharpFunc`2<Ranvier.Previous`1<!!0>,Microsoft.FSharp.Core.FSharpFunc`2<System.Threading.CancellationToken,System.Threading.Tasks.Task`1<!!0>>>) : Ranvier.AsyncMemo`1<!!0>
+member Ranvier.Api static createAsyncWithPolicy<1>(Ranvier.FlightPolicy,Microsoft.FSharp.Core.FSharpFunc`2<Ranvier.Previous`1<!!0>,Microsoft.FSharp.Core.FSharpFunc`2<System.Threading.CancellationToken,System.Threading.Tasks.Task`1<!!0>>>) : Ranvier.AsyncMemo`1<!!0>
 member Ranvier.Api static createBoundary<1>(Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.FSharpValueOption`1<!!0>,!!0>,Microsoft.FSharp.Core.FSharpFunc`2<System.Exception,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.FSharpValueOption`1<!!0>,!!0>>,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,!!0>) : Ranvier.Boundary`1<!!0>
 member Ranvier.Api static createBoundaryWithComparer<1>(System.Collections.Generic.IEqualityComparer`1<!!0>,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.FSharpValueOption`1<!!0>,!!0>,Microsoft.FSharp.Core.FSharpFunc`2<System.Exception,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.FSharpValueOption`1<!!0>,!!0>>,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,!!0>) : Ranvier.Boundary`1<!!0>
 member Ranvier.Api static createDraft<1>(Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.FSharpValueOption`1<!!0>,!!0>) : Ranvier.Editable`1<!!0>
@@ -49,6 +50,7 @@ member Ranvier.Api static createMemo<1>(Microsoft.FSharp.Core.FSharpFunc`2<Micro
 member Ranvier.Api static createMemoWith<1>(Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.FSharpValueOption`1<!!0>,!!0>) : Ranvier.Memo`1<!!0>
 member Ranvier.Api static createMemoWithComparer<1>(System.Collections.Generic.IEqualityComparer`1<!!0>,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.FSharpValueOption`1<!!0>,!!0>) : Ranvier.Memo`1<!!0>
 member Ranvier.Api static createOptionMemo<1>(Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,Microsoft.FSharp.Core.FSharpOption`1<!!0>>) : Ranvier.Memo`1<Microsoft.FSharp.Core.FSharpOption`1<!!0>>
+member Ranvier.Api static createOwningAsyncWithPolicy<1>(Ranvier.FlightPolicy,Microsoft.FSharp.Core.FSharpFunc`2<Ranvier.Previous`1<!!0>,Microsoft.FSharp.Core.FSharpFunc`2<System.Threading.CancellationToken,System.Threading.Tasks.Task`1<!!0>>>) : Ranvier.AsyncMemo`1<!!0>
 member Ranvier.Api static createOwningMemoWithComparer<1>(System.Collections.Generic.IEqualityComparer`1<!!0>,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.FSharpValueOption`1<!!0>,!!0>) : Ranvier.Memo`1<!!0>
 member Ranvier.Api static createProjection<3>(Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!2>,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,System.Collections.Generic.IEnumerable`1<!!0>>) : Ranvier.Projection`2<!!1,!!2>
 member Ranvier.Api static createProjectionOnce<3>(Ranvier.ProjectionOptions,Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,!!0>,!!2>,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,System.Collections.Generic.IEnumerable`1<!!0>>) : Ranvier.Projection`2<!!1,!!2>
@@ -58,6 +60,8 @@ member Ranvier.Api static createRoot<1>(Microsoft.FSharp.Core.FSharpFunc`2<Ranvi
 member Ranvier.Api static createSelector<1>(Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,!!0>) : Ranvier.Lookup`2<!!0,Boolean>
 member Ranvier.Api static createSignal<1>(!!0) : Ranvier.Signal`1<!!0>
 member Ranvier.Api static createSignalWithComparer<1>(System.Collections.Generic.IEqualityComparer`1<!!0>,!!0) : Ranvier.Signal`1<!!0>
+member Ranvier.Api static createStream<1>(Microsoft.FSharp.Core.FSharpFunc`2<System.Threading.CancellationToken,Ranvier.StreamSource`1<!!0>>) : Ranvier.StreamMemo`1<!!0>
+member Ranvier.Api static createStreamFold<2>(!!0,Microsoft.FSharp.Core.FSharpFunc`2<!!0,Microsoft.FSharp.Core.FSharpFunc`2<!!1,!!0>>,Microsoft.FSharp.Core.FSharpFunc`2<System.Threading.CancellationToken,Ranvier.StreamSource`1<!!1>>) : Ranvier.StreamMemo`1<!!0>
 member Ranvier.Api static createSuspense<1>(Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.FSharpValueOption`1<!!0>,!!0>,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,!!0>) : Ranvier.Boundary`1<!!0>
 member Ranvier.Api static createSuspenseWithComparer<1>(System.Collections.Generic.IEqualityComparer`1<!!0>,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.FSharpValueOption`1<!!0>,!!0>,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,!!0>) : Ranvier.Boundary`1<!!0>
 member Ranvier.Api static flush() : Void
@@ -320,6 +324,21 @@ member Ranvier.Signal`1 get_Peek() : !0
 member Ranvier.Signal`1 get_TryValue() : Ranvier.Reading`1<!0>
 member Ranvier.Signal`1 get_Value() : !0
 member Ranvier.Signal`1 set_Value(!0) : Void
+member Ranvier.StreamMemo`1 Dispose() : Void
+member Ranvier.StreamMemo`1 get_ErrorOrigin() : Ranvier.INode
+member Ranvier.StreamMemo`1 get_Graph() : Ranvier.Graph
+member Ranvier.StreamMemo`1 get_Peek() : !0
+member Ranvier.StreamMemo`1 get_Runs() : Int32
+member Ranvier.StreamMemo`1 get_Status() : Ranvier.Status
+member Ranvier.StreamMemo`1 get_TryValue() : Ranvier.Reading`1<!0>
+member Ranvier.StreamMemo`1 get_Value() : !0
+member Ranvier.StreamSink`1 Next(!0) : Void
+member Ranvier.StreamSourceModule static create<1>(Microsoft.FSharp.Core.FSharpFunc`2<Ranvier.StreamSink`1<!!0>,Microsoft.FSharp.Core.FSharpFunc`2<System.Threading.CancellationToken,System.Threading.Tasks.Task>>) : Ranvier.StreamSource`1<!!0>
+member Ranvier.StreamSourceModule static ofAsyncEnumerable<1>(System.Collections.Generic.IAsyncEnumerable`1<!!0>) : Ranvier.StreamSource`1<!!0>
+member Ranvier.StreamSourceModule static ofChannel<1>(System.Threading.Channels.ChannelReader`1<!!0>) : Ranvier.StreamSource`1<!!0>
+member Ranvier.StreamSourceModule static ofObservable<1>(System.IObservable`1<!!0>) : Ranvier.StreamSource`1<!!0>
+member Ranvier.StreamSource`1 .ctor() : Void
+member Ranvier.StreamSource`1 Run(Ranvier.StreamSink`1<!0>,System.Threading.CancellationToken) : System.Threading.Tasks.Task
 member Ranvier.StructuralPolicy .ctor() : Void
 member Ranvier.SynchronizationContextDispatcher .ctor(System.Threading.SynchronizationContext) : Void
 member Ranvier.SynchronizationContextDispatcher get_Context() : System.Threading.SynchronizationContext
@@ -483,6 +502,17 @@ type Ranvier.Signal`1 : System.Object
 type Ranvier.Signal`1 implements Ranvier.INode
 type Ranvier.Signal`1 implements Ranvier.ISource
 type Ranvier.Status : System.Enum
+type Ranvier.StreamMemo`1 : System.Object
+type Ranvier.StreamMemo`1 implements Ranvier.IComputation
+type Ranvier.StreamMemo`1 implements Ranvier.INode
+type Ranvier.StreamMemo`1 implements Ranvier.IOwned
+type Ranvier.StreamMemo`1 implements Ranvier.IScheduled
+type Ranvier.StreamMemo`1 implements Ranvier.IScopeHost
+type Ranvier.StreamMemo`1 implements Ranvier.ISource
+type Ranvier.StreamMemo`1 implements System.IDisposable
+type Ranvier.StreamSink`1 : System.Object
+type Ranvier.StreamSourceModule : System.Object
+type Ranvier.StreamSource`1 : System.Object
 type Ranvier.StructuralPolicy : System.Object
 type Ranvier.StructuralPolicy implements Ranvier.IEqualityPolicy
 type Ranvier.SynchronizationContextDispatcher : System.Object

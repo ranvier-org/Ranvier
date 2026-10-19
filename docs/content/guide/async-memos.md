@@ -7,10 +7,13 @@ The memo stays pending until the task completes. A tracked input change starts a
 the next read.
 
 `Peek` returns the last settled value without starting a flight. The compute function takes
-`Previous<'T>` and a `CancellationToken`, and returns `Task<'T>`.
+`Previous<'T>` and a `CancellationToken`, and returns `Task<'T>`. For a producer of many items, use a
+[stream memo](streams.md).
 
 `createAsync` is pure; `createAsyncWith` owns the nodes and cleanups created before its first
 suspending await. Their scopes follow the same rules as [pure and owning memos](memos.md#pure-and-owning-memos).
+`createAsyncWithPolicy` and `createOwningAsyncWithPolicy` are the same pair with their own
+[flight policy](#flight-policy).
 
 Examples using tasks import the .NET types and construct a graph with a manual dispatcher:
 
@@ -144,7 +147,8 @@ show refused.TryValue, show faulted.TryValue
 Under Fable, `Queue` applies each outcome on a later microtask even when it and the flights before
 it have already settled. On .NET, settled queued outcomes can apply inline.
 
-`GraphOptions.FlightPolicy` sets what a change does while a flight is in progress:
+`GraphOptions.FlightPolicy` sets what a change does while a flight is in progress, for every async memo in the graph
+that does not set its own:
 
 | Policy | New flight at once | Old token cancelled | Superseded result discarded | Every result applied |
 |--------|--------------------|---------------------|-----------------------------|----------------------|
@@ -154,6 +158,14 @@ it have already settled. On .NET, settled queued outcomes can apply inline.
 | `FinishCurrent` | No, one trailing flight after it settles | No | No flight is superseded | No |
 | `Drop` | No, the change is discarded | No | No flight is superseded | No |
 | `DropWhilePending` | No, the change is discarded; one replacing flight if the flight fails | No | No flight is superseded | No |
+
+`createAsyncWithPolicy` and `createOwningAsyncWithPolicy` set the policy for one async memo. Its flights follow that
+policy whatever the graph's, and async memos with different policies in one graph run independently:
+
+```fsharp
+let results = createAsyncWithPolicy CancelPrevious (fun _ token -> search query.Value token)
+let history = createAsyncWithPolicy FlightPolicy.Queue (fun _ token -> save draft.Value token)
+```
 
 `CancelPrevious` and `KeepLatest` publish the same values. They differ only in whether the
 superseded flight's `CancellationToken` is cancelled. Pass the token to the IO the flight performs,

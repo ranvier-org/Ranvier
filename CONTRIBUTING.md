@@ -55,23 +55,25 @@ squash commit message.
 |----------|-----|------------|
 | CI | .NET tests | a test fails in `Ranvier.Tests` (untraced and traced) or `Ranvier.CSharp.Tests`, or the package compatibility check fails |
 | CI | NativeAOT smoke | the AOT publish or the smoke executable fails |
+| CI | Packages | `build.fsx -- publish --dry-publish --skip-tests` fails, or a package it would push is missing, unexpected, untraced under a `.Traced` id (traced otherwise), or differs from its project in id, version or lib frameworks |
 | CI | Formatting | `fantomas --check` reports an unformatted `.fs` file |
-| CI | Fable | the Fable suites fail under Node.js, or the Fable package compatibility check fails |
+| CI | Fable tests | the Fable suites fail under Node.js, or the Fable package compatibility check fails |
 | CI | Workflow scripts | a `node --test` suite under `.github/scripts` fails |
 | CI | **CI result** | any CI job above failed or was cancelled |
 | Perf | verdict | a scenario's instruction count regresses on arm64 and the regression is not accepted |
 | Perf | **Perf result** | measuring or the verdict failed or was cancelled |
-| Contribution | **Conventional commits** | the title or a commit is not a conventional commit header |
+| Contribution | **Conventional commits** | the pull-request title is not a conventional commit header |
 
 The branch rules require the three checks in bold. The Contribution check runs the scripts of the
 target branch, not those of the pull request.
 
 ### Documentation-only changes
 
-A change is documentation only when every changed path is under `docs/`, `brand/` or `.claude/`,
-is a Markdown file, a `LICENSE` file, or `.github/FUNDING.yml`
-([`changes.cjs`](.github/scripts/changes.cjs)). CI then runs only Formatting, and Perf measures
-nothing; the required checks pass. A documentation-only push to `master` gets no history record, and
+A change is documentation only when every changed path is under `docs/` (outside `docs/maps/`, the
+signal map model and its tests), `brand/` or `.claude/`, is a Markdown file, a `LICENSE` file, or
+`.github/FUNDING.yml` ([`changes.cjs`](.github/scripts/changes.cjs)). CI then runs only Formatting,
+and Perf measures nothing; the required checks pass. A change under `docs/maps/` runs every CI job
+and Perf measures it. A documentation-only push to `master` gets no history record, and
 the docs are still redeployed for it.
 
 ## Performance checks

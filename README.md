@@ -62,10 +62,24 @@ Read the full documentation at **https://shayanhabibi.github.io/Ranvier/**.
 
 - [Owners and cleanup](docs/content/guide/roots.md) release child computations and cleanups together in reverse acquisition order.
 - [Fixed-dependency bindings](docs/content/guide/bindings.md) copy one signal or memo into a target without dynamic dependency tracking.
+- [Stream memos](docs/content/guide/streams.md) fold the items of a running stream into one node and restart the stream when its inputs change.
 - [Debounce and throttle](docs/content/guide/timing.md) control when captured values reach downstream readers and async requests.
 - [Collections](docs/content/guide/collections.fsx) provide editable keyed sources, per-row projections, change readers, views and aggregates.
 - [Queries and mutations](docs/content/guide/queries.md) share acquired remote data, retain accepted data during refresh, and reconcile loaded queries in one batch.
 - [Fable](docs/content/fable/index.md) compiles the same model to JavaScript. Package builds include standalone Fable source projects, and CI checks package consumers. The guide documents target differences.
+
+## Examples
+
+[Ranvier.Examples](https://github.com/shayanhabibi/Ranvier.Examples) holds complete F# and C# applications
+built on Ranvier, each as a console scenario and as a tab of an Avalonia desktop workbench:
+
+- **Support workbench** (F#): a local HTTP ticket service with drafts, version conflicts, reconnection and saves that outlive the editor.
+- **File processing** (C#): SHA-256 hashing of real files with bounded concurrency, keyed lists, cancellation, retry and throttled progress.
+- **Data quality** (F#): CSV import, repair of malformed measurements, unit conversion, drafts across reloads and export.
+- **Elmish expense review** (F#, `Ranvier.Elmish`): an immutable model with commands, selectors, validation and undo/redo.
+
+The repository references Ranvier through a git submodule, so clone it with `git clone --recurse-submodules`.
+See [Examples](docs/content/guide/examples.md) in the guide for each workflow and how to run it.
 
 ## Origin
 
@@ -87,7 +101,7 @@ dotnet fsi build.fsx -- --help
 | `test-fable` | Compiles and runs traced and untraced Fable suites, then writes the compatibility report |
 | `format` | Formats every source file with Fantomas (`--dry-format` checks instead) |
 | `compile` | Compiles the Fable projects to JavaScript (`--watch` to stay resident) |
-| `publish` | Builds, tests, packs and pushes to NuGet (`--api-key`, or the `NUGET_API_KEY` env var) |
+| `publish` | Builds, tests, packs and pushes to NuGet (`--api-key`, or the `NUGET_API_KEY` env var; `--dry-publish` lists the packages instead of pushing) |
 | `bump` | Bumps the version of a project |
 | `docs` | Builds the Nacara site from `docs/docs.fsproj` (`--watch` to serve it) |
 

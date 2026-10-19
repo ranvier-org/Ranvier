@@ -215,9 +215,29 @@ type Reactive =
     static member OwningAsync<'T>(compute: Func<CancellationToken, Task<'T>>) : AsyncMemo<'T> =
         Api.createAsyncWith (fun _ token -> compute.Invoke token)
 
+    /// <summary>An async memo whose flights follow <c>policy</c> instead of the graph's flight policy.</summary>
+    static member Async<'T>(compute: Func<CancellationToken, Task<'T>>, policy: FlightPolicy) : AsyncMemo<'T> =
+        Api.createAsyncWithPolicy policy (fun _ token -> compute.Invoke token)
+
+    /// <summary>An async memo receiving the value last published, whose flights follow <c>policy</c>.</summary>
+    static member Async<'T>(compute: Func<Previous<'T>, CancellationToken, Task<'T>>, policy: FlightPolicy) : AsyncMemo<'T> =
+        Api.createAsyncWithPolicy policy (fun previous token -> compute.Invoke (previous, token))
+
+    /// <summary>An owning async memo whose flights follow <c>policy</c> instead of the graph's flight policy.</summary>
+    static member OwningAsync<'T>(compute: Func<CancellationToken, Task<'T>>, policy: FlightPolicy) : AsyncMemo<'T> =
+        Api.createOwningAsyncWithPolicy policy (fun _ token -> compute.Invoke token)
+
     /// <summary>A source that stays pending until <c>Settle</c> or <c>Fail</c> is called on it.</summary>
     static member AsyncSource<'T>() : AsyncSource<'T> =
         Api.createAsyncSource<'T>()
+
+    /// <summary>The latest item of the stream <c>start</c> returns; a change to a value read by <c>start</c> restarts it.</summary>
+    static member Stream<'T>(start: Func<CancellationToken, StreamSource<'T>>) : StreamMemo<'T> =
+        Api.createStream start.Invoke
+
+    /// <summary>The fold of the stream's items into <c>seed</c>; a restart begins again from <c>seed</c>.</summary>
+    static member StreamFold<'S, 'T>(seed: 'S, fold: Func<'S, 'T, 'S>, start: Func<CancellationToken, StreamSource<'T>>) : StreamMemo<'S> =
+        Api.createStreamFold seed (fun state item -> fold.Invoke (state, item)) start.Invoke
 
     /// <summary>A value that shows <c>fallback ()</c> while <c>body</c> reads a pending source.</summary>
     /// <remarks>An error in <c>body</c> propagates to the boundary's readers.</remarks>

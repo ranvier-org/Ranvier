@@ -22,7 +22,10 @@ both inline and promise delivery. It exercises these APIs and records the target
 - scope disposal and error boundaries;
 - the equality cutoff;
 - keyed projections, selectors and index projections;
-- `AsyncSource`, and `AsyncMemo` through `createAsync` and `createAsyncWith`, under all four flight policies.
+- `AsyncSource`, and `AsyncMemo` through `createAsync`, `createAsyncWith`, `createAsyncWithPolicy` and `createOwningAsyncWithPolicy`, under all six flight policies, set for the graph or for one async memo;
+- debounce and throttle through timed values;
+- the Elmish bridge (`Mvu`) and the query layer;
+- stream memos through `createStream` and `createStreamFold`, with `StreamSource.create`, `ofObservable` and `ofAsyncIterable`. `ofAsyncEnumerable` and `ofChannel` are .NET only; `ofAsyncIterable` is Fable only. See [Streams](../guide/streams.md).
 
 Ranvier's engine compiles under Fable in this repository, and the .NET test suite runs against it under Node.js (`dotnet fsi build.fsx test-fable`), once untraced and once with the trace log compiled in. Tests that exercise a .NET-only facility, such as threads, garbage collection or `ObservableCollection`, are compiled out. The run writes `docs/.ai/fable-compat.md`: the tests that pass, fail and are excluded, in each file. Every failure listed there is one of the differences below.
 
@@ -62,6 +65,8 @@ new capability.
 
 **Async results arrive on a later microtask.** Under Fable an async flight is a promise. A flight that has already completed when its body returns still reads as Pending on the first read and becomes ready once the microtask queue drains. On .NET the continuation runs inline and the first read is ready. Synchronous rendering, such as server-side rendering, sees the Pending state.
 
+**A stream's end applies on a later microtask.** A stream memo observes the completion or failure of its source's `Run` task one microtask after the task settles. Until then the memo keeps its published state, and an item the source delivers in that window is still folded and published. On .NET a task completed on the graph thread, with continuations run synchronously, ends the stream before `SetResult` or `SetException` returns.
+
 **A `Queue` flight applies on a later microtask.** Under `FlightPolicy.Queue` each result waits on a promise chain, so a flight applies on a later microtask even when it and every earlier flight have settled. On .NET a settled queue applies inline.
 
 **Every `await` suspends.** A Fable `task` continues on a later microtask, outside every computation, so a read after an `await` is untracked even when the awaited promise had already resolved. On .NET a read after awaiting a completed task is tracked.
@@ -88,7 +93,7 @@ new capability.
 
 - A node's creation site is not captured: `Trace.origin` gives a null `Site`, and a path falls back to the node's kind.
 - A failure is recorded by its message alone, without the exception's type name.
-- A value is rendered with Fable's `%A`, so an anonymous record reads `{ Qty = 2 }` rather than `{| Qty = 2 |}`.
+- A value is rendered with Fable's `%A` in place of the .NET build's `ToString`, so an anonymous record reads `{ Qty = 2 }` rather than `{| Qty = 2 |}`.
 
 **Loop bounds.** Fable re-evaluates the upper bound of `for i in a .. b` on every iteration. A bound that reads a signal, or anything else that can change inside the loop, iterates a different number of times under Fable. Bind the bound first.
 
@@ -112,6 +117,7 @@ The snippet uses only functions that exist on both targets, which is the style t
 
 - `Projection.AsObservableCollection`, since `ObservableCollection` is a .NET collection type.
 - `Trace.dump`, which writes a file, and `TraceModel.parseDump`. `Trace.dumpText` gives the same text.
+- `TimedClock.ofTimeProvider`, which adapts the .NET `TimeProvider`.
 - `SynchronizationContextDispatcher`. There is no synchronisation context to capture and no other thread to marshal to.
 
 ## UI integration

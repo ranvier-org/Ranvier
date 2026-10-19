@@ -1,4 +1,4 @@
-﻿#r "nuget: Partas.Build, 0.8.1"
+﻿#r "nuget: Partas.Build, 0.8.2"
 #r "nuget: Partas.Build.Baked, 0.3.0"
 #r "nuget: Partas.TypeProvider.BuildHelper, 0.2.5"
 #r "nuget: Fake.IO.FileSystem"
@@ -33,6 +33,9 @@ module Spec =
     let testProjects =
         projects
         |> List.filter _.RelativePath.StartsWith("tests")
+
+    /// The signal map model reads the trace log, so its tests compile only in a traced build.
+    let mapsTests = "docs/maps/tests"
 
     let sourceProjectsMap =
         sourceProjects
@@ -70,6 +73,10 @@ module Options =
         Input.option<bool> "--clean-install"
         |> Input.alias "--ci"
         |> Input.description "Runs npm install with --ci"
+
+    let dryPublish =
+        Input.option<bool> "--dry-publish"
+        |> Input.description "Lists the packages publish would push, and pushes none"
 
     let apiKey =
         Baked.NuGet.apiKey.option
@@ -118,7 +125,7 @@ module Stage =
 
                     run (
                         async {
-                            !!"**/**/bin" ++ "temp" -- "bin"
+                            !!"**/**/bin" ++ "temp" -- "bin" -- "**/node_modules/**"
                             |> Shell.cleanDirs
                         }
                     )
@@ -235,6 +242,10 @@ module Stage =
 
                         for { Name = name; Path = path } in Spec.testProjects do
                             stage $"test traced {name}" { run (cmd $"dotnet test {path} -c {config} -p:RanvierTrace=true -v q") }
+
+                        stage "test traced Ranvier.Docs.Maps.Tests" {
+                            run (cmd $"dotnet test {Spec.mapsTests} -c {config} -p:RanvierTrace=true -v q")
+                        }
                     }
 
                     projects
@@ -248,19 +259,44 @@ module Stage =
                 }
         }
 
+    /// Pushes every package in the output directory to NuGet, with the key masked in every printed form of the step.
+    /// `--dry-publish` lists them instead, fails when there are none, and pushes nothing, whatever key is set. Without
+    /// a key or `--dry-publish`, the stage is inactive and fails the pipeline.
     let publish =
         input {
             let! apiKey = Options.apiKey
+            and! dryPublish = Options.dryPublish
 
-            let packages =
-                System.IO.Path.Combine (Repo.VirtualFileSystem.bin.ToString (), "*.nupkg")
+            let directory = Repo.VirtualFileSystem.bin.ToString ()
+            let packages = System.IO.Path.Combine (directory, "*.nupkg")
 
             return
                 stage "publish" {
                     quiet
                     failIfIgnored
-                    when' apiKey.IsSome
-                    run (cmd $"dotnet nuget push {packages} -k {apiKey.Value} -s https://api.nuget.org/v3/index.json --skip-duplicate")
+                    when' (dryPublish || apiKey.IsSome)
+
+                    if dryPublish then
+                        stage "dry publish" {
+                            run (fun _ ->
+                                let files =
+                                    System.IO.Directory.GetFiles (directory, "*.nupkg")
+                                    |> Array.sort
+
+                                if Array.isEmpty files then
+                                    failwith $"No package matches {packages}."
+
+                                for file in files do
+                                    printfn $"Would push {System.IO.Path.GetFileName file}")
+                        }
+                    else
+                        whenSome apiKey (fun key ->
+                            stage "push" {
+                                run (
+                                    cmd $"dotnet nuget push {packages} -s https://api.nuget.org/v3/index.json --skip-duplicate"
+                                    |> Cmd.secretOption "-k" key
+                                )
+                            })
                 }
         }
 
@@ -276,6 +312,20 @@ module Stage =
 
                     for { Name = name; Path = path } in Spec.testProjects do
                         stage $"run {name}" { run (cmd $"dotnet test {path} -c {config} -v q") }
+                }
+        }
+
+    /// Rebuilds Ranvier traced into the output directory the untraced pack reads; it must not run between `build` and `pack`.
+    let runMapsTests =
+        input {
+            let! config = Options.config
+            and! skipTests = Options.skipTests
+
+            return
+                stage "run Ranvier.Docs.Maps.Tests" {
+                    quiet
+                    when' (not skipTests)
+                    run (cmd $"dotnet test {Spec.mapsTests} -c {config} -p:RanvierTrace=true -v q")
                 }
         }
 
@@ -852,6 +902,7 @@ exit
         Stage.fableClean
         Stage.format (InputSpec.ofInput Options.format) (InputSpec.ofInput Options.dryFormat)
         Stage.runTests
+        Stage.runMapsTests
     }
 
     command "test-fable" {

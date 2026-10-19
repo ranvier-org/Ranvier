@@ -47,6 +47,7 @@ let theme =
                         Menu.page "guide/getting-started.md"
                         Menu.page "guide/csharp.md"
                         Menu.page "guide/blazor-server.md"
+                        Menu.page "guide/examples.md"
                     ]
                 Menu.section
                     "Core"
@@ -75,6 +76,7 @@ let theme =
                                 Menu.page "guide/pending.md"
                                 Menu.page "guide/async-sources.md"
                                 Menu.page "guide/async-memos.md"
+                                Menu.page "guide/streams.md"
                                 Menu.page "guide/boundaries.md"
                                 Menu.page "guide/threading.md"
                                 Menu.page "guide/testing.md"
@@ -133,6 +135,7 @@ let theme =
                         Menu.page "benchmarks/lifetimes.md"
                         Menu.page "benchmarks/projections.md"
                         Menu.page "benchmarks/suspension.md"
+                        Menu.page "benchmarks/streams.md"
                         Menu.page "benchmarks/counters.md"
                     ]
                 Menu.section "Ranvier.Query" [ Menu.page "benchmarks/queries.md" ]

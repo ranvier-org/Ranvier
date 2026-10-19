@@ -19,9 +19,11 @@ boundaries. Ranvier adopts that pending-channel idea, without claiming identical
 
 - Any memo, effect or boundary becomes Pending when it reads a pending value. It needs no special
   constructor to do so.
-- Values that genuinely arrive later come from two constructors, both *implemented*:
+- Values that genuinely arrive later come from three kinds of node, all *implemented*:
   - `createAsync` computes the value from a task.
   - `createAsyncSource` is settled by hand.
+  - `createStream` and `createStreamFold` publish the latest item of a stream, or a fold of its items,
+    and restart the stream when `start`'s reads change; see [Streams](../guide/streams.md).
 
 ## Tasks enter at the edge of a body
 
@@ -57,8 +59,10 @@ flight starts until the source settles.
 
 *Implemented.*
 
-A new flight supersedes one that is still in progress. `GraphOptions.FlightPolicy` controls what happens to
-the older flight:
+A new flight supersedes one that is still in progress. The async memo's flight policy controls what happens to
+the older flight. `GraphOptions.FlightPolicy` sets it for the graph; `createAsyncWithPolicy` and
+`createOwningAsyncWithPolicy` set it for one async memo, and memos with different policies in one graph fly
+independently:
 
 | Policy | Old token cancelled | Superseded result discarded | Every result applied |
 | --- | --- | --- | --- |
@@ -88,17 +92,12 @@ SignalsDotnet and CommunityToolkit.Mvvm.
 *Exploratory.* The following ideas from the design research have not been built:
 
 - an `Async<'T>` adapter for cold, restartable F# async workflows
-- a streaming memo over `IAsyncEnumerable<'T>`, inspired by async-iterable reactive results
 - a coalescing policy that publishes the finished flight's result before the trailing run (SignalsDotnet
   `ScheduleNext`, R3 `ThrottleFirstLast`); `FinishCurrent` keeps the memo pending until the trailing run settles
 
 Debounce and throttle are implemented as [timed values](../guide/timing.md), with eager capture and delayed
 publication. Read a timed value from an async memo to control when requests start, and choose its flight
 policy separately. They are no longer exploratory flight-policy proposals.
-
-Streaming lifetime, restart policies and empty-stream behavior remain design questions. No streaming API
-or contract is shipped. In particular, applying start-order `Queue` semantics to infinite streams would
-prevent later streams from publishing until earlier streams completed.
 
 ## Threads and dispatch
 

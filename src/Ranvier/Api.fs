@@ -381,10 +381,42 @@ module Api =
         AsyncMemo<'T>.Create(Graph.Current, compute, ScopeMode.Owning)
 
     /// <summary>
+    /// <c>createAsync</c>, with flights under <c>policy</c> instead of the graph's <c>GraphOptions.FlightPolicy</c>.
+    /// </summary>
+    let createAsyncWithPolicy (policy: FlightPolicy) (compute: Previous<'T> -> CancellationToken -> Task<'T>) =
+        AsyncMemo<'T>.Create(Graph.Current, compute, ScopeMode.PureAsync, policy)
+
+    /// <summary>
+    /// <c>createAsyncWith</c>, with flights under <c>policy</c> instead of the graph's <c>GraphOptions.FlightPolicy</c>.
+    /// </summary>
+    let createOwningAsyncWithPolicy (policy: FlightPolicy) (compute: Previous<'T> -> CancellationToken -> Task<'T>) =
+        AsyncMemo<'T>.Create(Graph.Current, compute, ScopeMode.Owning, policy)
+
+    /// <summary>
     /// A source whose value arrives later, settled by hand rather than computed.
     /// </summary>
     let createAsyncSource<'T> () =
         AsyncSource<'T>(Graph.Current)
+
+    /// <summary>
+    /// The latest item of the stream <c>start</c> returns. Pending until the first item; a change to a value read by
+    /// <c>start</c> cancels the stream and starts a new one.
+    /// </summary>
+    /// <remarks>
+    /// Starts on its first read. A stream that completes without an item fails with <c>InvalidOperationException</c>.
+    /// Items delivered off the graph thread publish once per inbox drain; items on the graph thread publish each,
+    /// or once per <c>batch</c>.
+    /// </remarks>
+    let createStream (start: CancellationToken -> StreamSource<'T>) =
+        StreamMemo<'T>.Create(Graph.Current, Unchecked.defaultof<'T>, (fun _ item -> item), start, true)
+
+    /// <summary>The fold of the stream's items into <c>seed</c>. Pending until the first item or the stream's completion.</summary>
+    /// <remarks>
+    /// <c>fold</c> runs on the delivering thread and must be pure. A stream that completes without an item publishes
+    /// <c>seed</c>. A restart begins again from <c>seed</c>.
+    /// </remarks>
+    let createStreamFold (seed: 'S) (fold: 'S -> 'T -> 'S) (start: CancellationToken -> StreamSource<'T>) =
+        StreamMemo<'S>.Create(Graph.Current, seed, fold, start, false)
 
     /// <summary>
     /// Substitutes <c>fallback</c> for as long as <c>body</c> is suspended, so the suspension stops here instead of

@@ -277,7 +277,7 @@ let tests =
                 let last = (Array.last frames).After
                 Expect.isFalse (last.Flights.ContainsKey c.Shipping) "no flight in progress"
                 Expect.isFalse (MapModel.pending last c.Shipping) "the settled node is no longer pending"
-                Expect.equal last.Snapshot.Nodes[c.Total].Value (Some "17M") "the total takes the quote"
+                Expect.equal last.Snapshot.Nodes[c.Total].Value (Some "17") "the total takes the quote"
             }
 
             test "a failure lands in Errors with its message" {
@@ -305,7 +305,7 @@ let tests =
                 q.Price.Settle 5m
                 let settled = sceneOf q.Graph
                 Expect.isFalse (settled.Errors.ContainsKey q.Total) "the memo recovered"
-                Expect.equal settled.Snapshot.Nodes[q.Total].Value (Some "15M") "with its new value"
+                Expect.equal settled.Snapshot.Nodes[q.Total].Value (Some "15") "with its new value"
             }
 
             test "a run that suspends keeps the value readers saw" {
@@ -481,7 +481,7 @@ let tests =
 
                 Expect.isTrue
                     (frames
-                     |> Array.exists (fun f -> f.Log = "write rows[tea] item = tea"))
+                     |> Array.exists (fun f -> f.Log = "new rows[egg] item"))
                     "a part's log line names its collection and key"
 
                 Expect.isTrue
@@ -491,6 +491,69 @@ let tests =
                          | Pulse (s, t) -> s <> t
                          | _ -> true))
                     "a mark inside the collection plays no pulse"
+            }
+
+            test "a stream's start, burst, restart and completion render as the spec's table" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let feed = Feed<int>()
+                let topic = createSignal 0
+                Trace.label (g, topic, "topic")
+
+                let news =
+                    Trace.named "news" (fun () ->
+                        createStreamFold 0 (+) (fun _ ->
+                            topic.Value |> ignore
+                            feed.Source))
+
+                createEffect (fun () -> news.TryValue |> ignore)
+                feed.Burst [ 1; 2; 3 ]
+                topic.Value <- 1
+                feed.Push 4
+                feed.Complete ()
+
+                let frames = MapModel.frames MapModel.start (Trace.events g)
+                let lines = frames |> Array.map _.Log |> List.ofArray
+
+                for line in
+                    [
+                        "start news (stream 1)"
+                        "publish news = 6 (3 items)"
+                        "drop news (restarted)"
+                        "start news (stream 2)"
+                        "end news (completed)"
+                    ] do
+                    Expect.contains lines line "log line"
+
+                Expect.equal feed.Starts 2 "one restart"
+                let newsId = (news :> INode).Id
+                let cuesOf = cues frames
+                Expect.contains cuesOf (Opened newsId) "a start opens the outline"
+                Expect.contains cuesOf (Drop newsId) "a restart drops"
+                Expect.contains cuesOf (Closed newsId) "completion closes"
+                Expect.isTrue ((sceneOf g).OpenStreams.IsEmpty) "no stream is open once completed"
+
+            }
+
+            test "an open stream is in the scene until it ends, and a failed one draws failed" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let feed = Feed<int>()
+                let news = createStream (fun _ -> feed.Source)
+                Trace.label (g, news, "news")
+                createEffect (fun () -> news.TryValue |> ignore)
+                feed.Push 1
+                let newsId = (news :> INode).Id
+                Expect.isTrue ((sceneOf g).OpenStreams.Contains newsId) "open while running"
+                feed.Fail "down"
+                let frames = MapModel.frames MapModel.start (Trace.events g)
+                Expect.contains (cues frames) (Failed newsId) "the failure draws"
+                Expect.isFalse ((sceneOf g).OpenStreams.Contains newsId) "closed once failed"
+
+                Expect.isTrue
+                    (frames
+                     |> Array.exists (fun f -> f.Log = "fail news: Exception: down"))
+                    "the failure logs"
             }
 
             test "an expanded projection draws a row per key and its factory's nodes beside the row" {

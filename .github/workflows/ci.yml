@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 # These steps run the operations provided by the build CLI directly.
-# Partas.Build 0.8.1 also supports redirected output and automatic GitHub stage summaries.
+# Partas.Build 0.8.2 also supports redirected output and automatic GitHub stage summaries.
 
 jobs:
   # Documentation-only changes (see .github/scripts/changes.cjs) skip the build and test jobs; formatting always runs.
@@ -67,6 +67,9 @@ jobs:
       # The trace log and its queries compile in only with RanvierTrace, and their tests with them.
       - name: Test Ranvier.Tests, traced
         run: dotnet test tests/Ranvier.Tests -c Release -p:RanvierTrace=true
+      # The signal map model reads the trace log, so its tests compile only in a traced build.
+      - name: Test Ranvier.Docs.Maps.Tests, traced
+        run: dotnet test docs/maps/tests -c Release -p:RanvierTrace=true
       - name: Check package compatibility
         shell: pwsh
         run: ./tests/check-package-compatibility.ps1
@@ -90,6 +93,27 @@ jobs:
         run: dotnet publish tests/Ranvier.AotSmoke -c Release -r linux-x64 -p:RanvierTrace=${{ matrix.trace }} -o artifacts/aot
       - name: Run
         run: ./artifacts/aot/Ranvier.AotSmoke
+
+  # The publish command's release pipeline with the push replaced by a listing: builds, packs every source project
+  # untraced and traced, then checks each package's id, version, lib frameworks and trace build. The .NET tests job
+  # runs the suites, so --skip-tests leaves them out here.
+  packages:
+    name: Packages
+    needs: changes
+    if: needs.changes.outputs.docs != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Pack and dry-publish
+        run: dotnet fsi build.fsx -- publish --dry-publish --skip-tests
+      - name: Check the packages
+        run: node .github/scripts/packages.cjs bin src
 
   format:
     name: Formatting
@@ -138,7 +162,7 @@ jobs:
   # build and test jobs were skipped for a documentation-only change.
   result:
     name: CI result
-    needs: [changes, scripts, dotnet, aot, format, fable]
+    needs: [changes, scripts, dotnet, aot, packages, format, fable]
     if: always()
     runs-on: ubuntu-latest
     steps:
