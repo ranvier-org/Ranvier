@@ -811,6 +811,10 @@ and Mounted internal (state: MountState) =
     member _.Dispose() =
         state.Root.Dispose ()
 
+    /// <summary>Tears the mount down; inside a teardown window serving its reporter, its errors join that window.</summary>
+    member internal _.Abandon() =
+        state.Root.Abandon ()
+
     member _.MoveBefore(parent, before) =
         if state.Root.Phase <> Attached then
             invalid "Only an attached mount can move"
@@ -1320,13 +1324,15 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
             | None -> settle recorded
 
 /// <summary>
-/// A boundary between region markers: its content, mounted detached until every binding under it has read a value, and
-/// its pending view, shown between the markers meanwhile.
+/// A boundary between region markers: its content, mounted detached until no binding under it waits for a pending read;
+/// its pending view, shown between the markers meanwhile; and its error view, which replaces both after a failure under
+/// the content.
 /// </summary>
 /// <remarks>
-/// The pending view is mounted under <c>outer</c>, the scope enclosing the boundary's region, or null at the top level.
-/// Its setup failures go to <c>enclosing</c>; while <c>unwinds</c> is true they raise instead. The reveal runs in the
-/// boundary's effect, after the binding or pass whose read or disposal released the last pending read.
+/// The pending and error views are mounted under <c>outer</c>, the scope enclosing the boundary's region, or null at the
+/// top level. Their failures go to <c>enclosing</c>; while <c>unwinds</c> is true they raise instead. A failure during
+/// the content's setup or reveal replaces the content at once; after them, the reveal and the teardown run in the
+/// boundary's effect, after the binding, handler or pass that requested them. Each exception object is reported once.
 /// </remarks>
 and [<Sealed>] private ViewBoundary
     (
@@ -1347,10 +1353,29 @@ and [<Sealed>] private ViewBoundary
     let mutable waiting = 0
     let mutable settingUp = false
     let mutable revealed = false
+    let mutable failed = false
+    // Advances on each failure; a retry of an earlier failure is ignored.
+    let mutable generation = 0
+    // Failures received while the content sets up.
+    let held = ResizeArray<exn>()
+    // Failures received after setup, waiting for the boundary's effect.
+    let mutable received: exn list = []
+    // The exception objects reported so far.
+    let reported = System.Collections.Generic.HashSet<exn>(HashIdentity.Reference)
     let mutable wake: Signal<int> = Unchecked.defaultof<_>
     let mutable status: BoundaryStatus = Unchecked.defaultof<_>
 
     let noItem () : obj = null
+
+    // Reports the exception objects of `errors` not reported before, in order, in one untracked call.
+    let reportAll (errors: exn list) =
+        let fresh = errors |> List.filter reported.Add
+
+        if not fresh.IsEmpty then
+            try
+                Api.untrack (fun () -> report fresh)
+            with reporterError ->
+                raise (AggregateException ("Boundary failure and reporter failed", List.toArray (fresh @ [ reporterError ])))
 
     // Moves the row's nodes before the end marker, in one insertion when they fill their fragment.
     let place (row: Row) =
@@ -1388,14 +1413,77 @@ and [<Sealed>] private ViewBoundary
 
             enclosing.Fail [ error ]
 
-    member private _.Reveal() =
+    member private this.Reveal() =
         revealed <- true
-        retire ()
-        place content
+
+        try
+            retire ()
+            place content
+        with error ->
+            this.TearDown [ error ]
+
+    /// <summary>
+    /// Disposes the content and the pending view in one teardown window, mounts the error view, and reports
+    /// <c>errors</c> followed by the teardown's errors.
+    /// </summary>
+    member private this.TearDown(errors: exn list) =
+        failed <- true
+        generation <- generation + 1
+        let current = generation
+
+        let teardown, raised =
+            MountLifetime.Capture (
+                graph,
+                report,
+                fun () ->
+                    if not (isNull content) then
+                        content.Mount.Abandon ()
+
+                    if not (isNull shown) then
+                        shown.Mount.Abandon ()
+            )
+
+        content <- null
+        shown <- null
+        site.LaidOut.Clear ()
+        waiting <- 0
+        revealed <- false
+
+        let failure =
+            {
+                Error = List.head errors
+                Retry = fun () -> this.Retry current
+            }
+
+        let mutable unwound = None
+
+        try
+            this.Show (views.Failed failure)
+        with error ->
+            unwound <- Some error
+
+        reportAll (errors @ teardown @ Option.toList raised)
+        unwound |> Option.iter raise
+
+    member private this.Retry(expected: int) =
+        if failed && generation = expected && site.Live () then
+            graph.Run (fun () ->
+                retire ()
+                failed <- false
+                this.MountContent ())
 
     member private this.Settle() =
-        if
+        if not received.IsEmpty then
+            let errors = received
+            received <- []
+
+            if not failed && site.Live () then
+                this.TearDown errors
+            else
+                reportAll errors
+        elif
             not revealed
+            && not failed
             && not settingUp
             && not (isNull content)
             && site.Live ()
@@ -1405,16 +1493,23 @@ and [<Sealed>] private ViewBoundary
     member private this.MountContent() =
         settingUp <- true
         waiting <- 0
+        held.Clear ()
+        let mutable failure = None
 
         try
-            content <- Api.runWithOwner site.Owner (fun () -> mountView noItem (fun _ backend -> views.Content status backend) (this :> ViewScope))
+            try
+                content <-
+                    Api.runWithOwner site.Owner (fun () -> mountView noItem (fun _ backend -> views.Content status backend) (this :> ViewScope))
+            with error ->
+                failure <- Some error
         finally
             settingUp <- false
 
-        if waiting = 0 then
-            this.Reveal ()
-        else
-            this.Show views.Pending
+        match failure with
+        | Some error -> this.TearDown (error :: List.ofSeq held)
+        | None when held.Count > 0 -> this.TearDown (List.ofSeq held)
+        | None when waiting = 0 -> this.Reveal ()
+        | None -> this.Show views.Pending
 
     /// <summary>Creates the boundary's effect and mounts its content. Call once, inside the region's owner.</summary>
     member this.Start() =
@@ -1441,7 +1536,21 @@ and [<Sealed>] private ViewBoundary
                     Api.untrack (fun () -> wake.Value <- wake.Value + 1)
 
         member _.Fail(errors) =
-            enclosing.Fail errors
+            let errors =
+                errors
+                |> List.filter (fun error ->
+                    match error with
+                    | NotReadyException _ -> false
+                    | _ -> true)
+
+            if not errors.IsEmpty then
+                if settingUp then
+                    held.AddRange errors
+                elif failed || not (site.Live ()) then
+                    reportAll errors
+                else
+                    received <- received @ errors
+                    graph.Run (fun () -> Api.untrack (fun () -> wake.Value <- wake.Value + 1))
 
 /// <summary>The state of a mounted view and the backend that builds it.</summary>
 /// <remarks><c>boundary</c> is the boundary enclosing the mount, or null outside every boundary.</remarks>
@@ -2045,8 +2154,15 @@ and internal MountState
         | RootRegion -> range.SpanRegion (regionStart, regionEnd, validate, relocate)
 
     /// <summary>The site of a region between <c>regionStart</c> and <c>regionEnd</c>, placed in the mount's range.</summary>
+    /// <remarks>Under a boundary the region's reports go to the boundary.</remarks>
     member private this.Site(regionStart: Node, regionEnd: Node, placement: RegionPlacement) : RegionSite =
-        let site = RegionSite (this, regionStart, regionEnd, report, releaseNodes)
+        let regionReport =
+            if isNull (box boundary) then
+                report
+            else
+                fun errors -> boundary.Fail errors
+
+        let site = RegionSite (this, regionStart, regionEnd, regionReport, releaseNodes)
 
         this.PlaceRegion (regionStart, regionEnd, placement, (fun () -> site.Validate ()), (fun () -> Row.Relocate site.LaidOut))
 

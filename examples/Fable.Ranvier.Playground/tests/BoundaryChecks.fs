@@ -225,6 +225,273 @@ let private removedPendingRow (ops: Operations<'view>) (run: 'view -> Backend ->
     equal "x" host.textContent
     mounted.Dispose ()
 
+let private messages (reports: ResizeArray<exn list>) =
+    [ for errors in reports -> errors |> List.map _.Message ]
+
+/// <summary>
+/// Mounts <c>content</c> under a boundary whose error view shows the failure's message. The content and error views log
+/// their setup and cleanup.
+/// </summary>
+let private underBoundary
+    (ops: Operations<'view>)
+    (run: 'view -> Backend -> unit)
+    queued
+    (graph: Graph)
+    (host: HTMLElement)
+    (log: ResizeArray<string>)
+    (reports: ResizeArray<exn list>)
+    (content: unit -> 'view)
+    =
+    let view =
+        ops.Boundary (
+            ops.Text "loading",
+            (fun failure ->
+                ops.Component (fun setup ->
+                    log.Add ("error " + failure.Error.Message)
+                    setup.OnCleanup (fun () -> log.Add "error cleanup")
+                    ops.Text ("failed: " + failure.Error.Message))),
+            fun _ ->
+                ops.Component (fun setup ->
+                    log.Add "content"
+                    setup.OnCleanup (fun () -> log.Add "content cleanup")
+                    content ())
+        )
+
+    mountWith (modeOf queued) graph None reports.Add host None (fun context -> run view context.Backend)
+
+let private readerFailure (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal "ok")
+    let host, log, reports = host (), ResizeArray<string>(), ResizeArray<exn list>()
+
+    let mounted =
+        underBoundary ops run queued graph host log reports (fun () ->
+            Typed.reactiveText ops (fun () ->
+                if source.Value = "bad" then
+                    failwith "reader"
+                else
+                    source.Value))
+
+    equal "ok" host.textContent
+    graph.Run (fun () -> source.Value <- "bad")
+    mounted.Flush ()
+
+    let expected =
+        "failed: reader", [ "content"; "content cleanup"; "error reader" ], [ [ "reader" ] ]
+
+    equal expected (host.textContent, List.ofSeq log, messages reports)
+    graph.Run (fun () -> source.Value <- "bad again")
+    mounted.Flush ()
+    equal expected (host.textContent, List.ofSeq log, messages reports)
+    mounted.Dispose ()
+
+let private setterFailure (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal "ok")
+    let host, log, reports = host (), ResizeArray<string>(), ResizeArray<exn list>()
+
+    let mounted =
+        underBoundary ops run queued graph host log reports (fun () ->
+            Typed.div
+                ops
+                [|
+                    Typed.reactiveProperty
+                        (fun (node: HTMLDivElement) (value: string) ->
+                            if value = "bad" then
+                                failwith "setter"
+
+                            node.title <- value)
+                        (fun () -> source.Value)
+                |]
+                [| Typed.reactiveText ops (fun () -> source.Value) |])
+
+    graph.Run (fun () -> source.Value <- "bad")
+    mounted.Flush ()
+
+    equal
+        ("failed: setter", [ "content"; "content cleanup"; "error setter" ], [ [ "setter" ] ], (if queued then 1 else 0))
+        (host.textContent, List.ofSeq log, messages reports, mounted.CommitErrors.Length)
+
+    mounted.Dispose ()
+
+let private rowSetupFailure (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+    let rows = graph.Run (fun () -> Api.createSignal [ 1; 2 ])
+    let host, log, reports = host (), ResizeArray<string>(), ResizeArray<exn list>()
+
+    let mounted =
+        underBoundary ops run queued graph host log reports (fun () ->
+            Keyed.list ops id (fun () -> rows.Value) (fun current ->
+                ops.Component (fun _ ->
+                    if current () = 3 then
+                        failwith "row setup"
+
+                    Typed.reactiveText ops (fun () -> string (current ())))))
+
+    equal "12" host.textContent
+    graph.Run (fun () -> rows.Value <- [ 1; 2; 3 ])
+    mounted.Flush ()
+
+    equal
+        ("failed: row setup", [ "content"; "content cleanup"; "error row setup" ], [ [ "row setup" ] ])
+        (host.textContent, List.ofSeq log, messages reports)
+
+    mounted.Dispose ()
+
+let private armSetupFailure (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+    let selected = graph.Run (fun () -> Api.createSignal 0)
+    let host, log, reports = host (), ResizeArray<string>(), ResizeArray<exn list>()
+
+    let mounted =
+        underBoundary ops run queued graph host log reports (fun () ->
+            Branch.select ops id (fun () -> selected.Value) (fun current ->
+                ops.Component (fun _ ->
+                    if current () = 1 then
+                        failwith "arm setup"
+
+                    ops.Text "arm")))
+
+    equal "arm" host.textContent
+    graph.Run (fun () -> selected.Value <- 1)
+    mounted.Flush ()
+
+    equal
+        ("failed: arm setup", [ "content"; "content cleanup"; "error arm setup" ], [ [ "arm setup" ] ])
+        (host.textContent, List.ofSeq log, messages reports)
+
+    mounted.Dispose ()
+
+/// <summary>
+/// Two setters under one boundary fail in the same queued flush. The error view shows the first failure in commit
+/// order, which the core's effect order sets.
+/// </summary>
+let private twoQueuedFailures (ops: Operations<'view>) (run: 'view -> Backend -> unit) =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal "ok")
+    let host, log, reports = host (), ResizeArray<string>(), ResizeArray<exn list>()
+
+    let failing (message: string) =
+        Typed.reactiveProperty
+            (fun (node: HTMLDivElement) (value: string) ->
+                if value = "bad" then
+                    failwith message
+
+                node.title <- value)
+            (fun () -> source.Value)
+
+    let mounted =
+        underBoundary ops run true graph host log reports (fun () -> Typed.div ops [| failing "first"; failing "second" |] [||])
+
+    graph.Run (fun () -> source.Value <- "bad")
+    mounted.Flush ()
+
+    let committedFirst =
+        reports
+        |> Seq.tryHead
+        |> Option.bind List.tryHead
+        |> Option.map _.Message
+        |> Option.defaultValue ""
+
+    equal
+        ("failed: " + committedFirst, [ "content"; "content cleanup"; "error " + committedFirst ], [ [ "first"; "second" ] ])
+        (host.textContent, List.ofSeq log, [ for errors in reports -> errors |> List.map _.Message |> List.sort ])
+
+    mounted.Dispose ()
+
+/// <summary>A content whose setup fails while <c>broken</c>; the error view's button retries it.</summary>
+let private retry (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+    let mutable broken = true
+
+    let flight =
+        graph.Run (fun () -> Api.createSignal (Api.createAsyncSource<string>()))
+
+    let setups = ResizeArray<string>()
+    let reports = ResizeArray<exn list>()
+    let host = host ()
+
+    let view =
+        ops.Boundary (
+            ops.Text "loading",
+            (fun failure ->
+                Typed.button ops [| Typed.listener "click" (fun _ -> failure.Retry ()) |] [| ops.Text ("retry " + failure.Error.Message) |]),
+            fun _ ->
+                ops.Component (fun _ ->
+                    setups.Add "content"
+
+                    if broken then
+                        failwith "setup"
+
+                    Typed.reactiveText ops (fun () -> flight.Value.Value))
+        )
+
+    let mounted =
+        mountWith (modeOf queued) graph None reports.Add host None (fun context -> run view context.Backend)
+
+    let click () =
+        (host.querySelector "button"
+         |> unbox<HTMLButtonElement>)
+            .click()
+
+    equal ("retry setup", 1) (host.textContent, setups.Count)
+    click ()
+    equal ("retry setup", 2, 2) (host.textContent, setups.Count, reports.Count)
+    broken <- false
+    click ()
+    equal ("loading", 3) (host.textContent, setups.Count)
+    graph.Run (fun () -> flight.Value.Settle "ready")
+    mounted.Flush ()
+    equal ("ready", 2) (host.textContent, reports.Count)
+    mounted.Dispose ()
+
+/// <summary>An inner boundary's pending view fails; the outer boundary shows its error view.</summary>
+let private pendingViewFailure (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createAsyncSource<string>())
+    let reports = ResizeArray<exn list>()
+    let host = host ()
+
+    let failed prefix (failure: BoundaryFailure) =
+        ops.Text (prefix + failure.Error.Message)
+
+    let inner =
+        ops.Boundary (ops.Component (fun _ -> failwith "pending view"), failed "inner: ", fun _ -> Typed.reactiveText ops (fun () -> source.Value))
+
+    let view =
+        ops.Boundary (ops.Text "outer loading", failed "outer: ", (fun _ -> inner))
+
+    let mounted =
+        mountWith (modeOf queued) graph None reports.Add host None (fun context -> run view context.Backend)
+
+    equal ("outer: pending view", [ [ "pending view" ] ]) (host.textContent, messages reports)
+    mounted.Dispose ()
+
+/// <summary>An inner boundary's content and error view both fail; the outer boundary shows its error view.</summary>
+let private errorViewFailure (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+    let reports = ResizeArray<exn list>()
+    let host = host ()
+
+    let failed prefix (failure: BoundaryFailure) =
+        ops.Text (prefix + failure.Error.Message)
+
+    let inner =
+        ops.Boundary (
+            ops.Text "inner loading",
+            (fun _ -> ops.Component (fun _ -> failwith "error view")),
+            fun _ -> ops.Component (fun _ -> failwith "content")
+        )
+
+    let view =
+        ops.Boundary (ops.Text "outer loading", failed "outer: ", (fun _ -> inner))
+
+    let mounted =
+        mountWith (modeOf queued) graph None reports.Add host None (fun context -> run view context.Backend)
+
+    equal ("outer: error view", [ [ "content" ]; [ "error view" ] ]) (host.textContent, messages reports)
+    mounted.Dispose ()
+
 let cases: (string * (unit -> unit)) array =
     [|
         "tree HTML renders a boundary's pending, content or error view between markers", fun () -> server Tree.ops Tree.run
@@ -252,4 +519,27 @@ let cases: (string * (unit -> unit)) array =
         fun () -> movedWhilePending Program.ops Program.run false
         "tree synchronous: removing the last pending row reveals the boundary", fun () -> removedPendingRow Tree.ops Tree.run false
         "program queued: removing the last pending row reveals the boundary", fun () -> removedPendingRow Program.ops Program.run true
+        "tree synchronous: a failed reader under a boundary shows the error view, cleans up once and reports once",
+        fun () -> readerFailure Tree.ops Tree.run false
+        "program queued: a failed reader under a boundary shows the error view, cleans up once and reports once",
+        fun () -> readerFailure Program.ops Program.run true
+        "tree synchronous: a live setter failure under a boundary replaces the content with the error view",
+        fun () -> setterFailure Tree.ops Tree.run false
+        "program synchronous: a live setter failure under a boundary replaces the content with the error view",
+        fun () -> setterFailure Program.ops Program.run false
+        "tree queued: a queued setter failure under a boundary replaces the content after the flush", fun () -> setterFailure Tree.ops Tree.run true
+        "program queued: a queued setter failure under a boundary replaces the content after the flush",
+        fun () -> setterFailure Program.ops Program.run true
+        "tree queued: a row setup failure under a boundary shows the error view", fun () -> rowSetupFailure Tree.ops Tree.run true
+        "program synchronous: a row setup failure under a boundary shows the error view", fun () -> rowSetupFailure Program.ops Program.run false
+        "tree synchronous: an arm setup failure under a boundary shows the error view", fun () -> armSetupFailure Tree.ops Tree.run false
+        "program queued: an arm setup failure under a boundary shows the error view", fun () -> armSetupFailure Program.ops Program.run true
+        "tree: two setters failing in one queued flush tear the content down once", fun () -> twoQueuedFailures Tree.ops Tree.run
+        "program: two setters failing in one queued flush tear the content down once", fun () -> twoQueuedFailures Program.ops Program.run
+        "tree synchronous: retry remounts the content with a new setup and pending phase", fun () -> retry Tree.ops Tree.run false
+        "program queued: retry remounts the content with a new setup and pending phase", fun () -> retry Program.ops Program.run true
+        "tree queued: a failing pending view goes to the enclosing boundary", fun () -> pendingViewFailure Tree.ops Tree.run true
+        "program synchronous: a failing pending view goes to the enclosing boundary", fun () -> pendingViewFailure Program.ops Program.run false
+        "tree synchronous: a failing error view goes to the enclosing boundary", fun () -> errorViewFailure Tree.ops Tree.run false
+        "program queued: a failing error view goes to the enclosing boundary", fun () -> errorViewFailure Program.ops Program.run true
     |]
