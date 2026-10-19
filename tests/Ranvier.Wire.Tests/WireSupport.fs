@@ -76,6 +76,7 @@ let person: Codec<Person> =
 let instant (milliseconds: int64) (offsetMinutes: float) =
     DateTimeOffset.FromUnixTimeMilliseconds(milliseconds).ToOffset(TimeSpan.FromMinutes offsetMinutes)
 
-/// <summary>Equal instants with equal offsets; F# equality on DateTimeOffset compares instants only.</summary>
+/// <summary>Whether the values hold the same instant and the same offset.</summary>
+/// <remarks>Unlike <c>=</c>, also compares the offset.</remarks>
 let sameInstantAndOffset (a: DateTimeOffset) (b: DateTimeOffset) =
     a.UtcTicks = b.UtcTicks && a.Offset = b.Offset

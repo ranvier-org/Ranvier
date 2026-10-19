@@ -135,11 +135,26 @@ module Codecs =
 
         result
 
+    /// <summary>The text without its trailing spaces, tabs, carriage returns and line feeds.</summary>
+    let private trimTrailingWhitespace (text: string) =
+        let mutable length = text.Length
+
+        while length > 0
+              && (text[length - 1] = ' '
+                  || text[length - 1] = '\t'
+                  || text[length - 1] = '\r'
+                  || text[length - 1] = '\n') do
+            length <- length - 1
+
+        text.Substring (0, length)
+
     /// <summary>
-    /// The UTC Unix milliseconds and the offset in minutes of a <c>yyyy-MM-ddTHH:mm:ss[.f{1,7}](Z|±HH:mm)</c> text,
-    /// or <c>None</c>. Fraction digits after the third are dropped.
+    /// The UTC Unix milliseconds and the offset in minutes of a <c>yyyy-MM-dd(T|t)HH:mm:ss[.f{1,7}](Z|z|±HH:mm)</c>
+    /// text followed by optional trailing whitespace, or <c>None</c>. Fraction digits after the third are dropped.
     /// </summary>
-    let private parseDateTimeOffset (text: string) : (int64 * int64) option =
+    let private parseDateTimeOffset (wire: string) : (int64 * int64) option =
+        let text = trimTrailingWhitespace wire
+
         let at (i: int) (c: char) =
             text.Length > i && text[i] = c
 
@@ -148,7 +163,7 @@ module Codecs =
             || not (
                 at 4 '-'
                 && at 7 '-'
-                && at 10 'T'
+                && (at 10 'T' || at 10 't')
                 && at 13 ':'
                 && at 16 ':'
             )
@@ -188,7 +203,10 @@ module Codecs =
             let offset =
                 if not fractionValid then
                     None
-                elif text.Length = i + 1 && text[i] = 'Z' then
+                elif
+                    text.Length = i + 1
+                    && (text[i] = 'Z' || text[i] = 'z')
+                then
                     Some 0L
                 elif
                     text.Length = i + 6
@@ -255,12 +273,15 @@ module Codecs =
 
                 match parsed with
                 | Some (utc, offset) -> Ok (DateTimeOffset.FromUnixTimeMilliseconds(utc).ToOffset(TimeSpan.FromMinutes (float offset)))
-                | None -> Error ("", BadPrimitive ("a datetimeoffset written yyyy-MM-ddTHH:mm:ss.fff+HH:mm", value))
+                | None -> Error ("", BadPrimitive ("a datetimeoffset written yyyy-MM-dd(T|t)HH:mm:ss[.fffffff](Z|z|+HH:mm|-HH:mm)", value))
         }
 
     /// <summary>
     /// A DateTimeOffset as the string <c>yyyy-MM-ddTHH:mm:ss.fff±HH:mm</c> of its clock time in its own offset.
-    /// Encoding truncates to the millisecond; decoding also reads <c>Z</c> and 0 to 7 fraction digits.
+    /// Encoding truncates to the millisecond. Decoding reads an optional fraction of 1 to 7 digits, <c>Z</c> and
+    /// <c>-00:00</c> as well, reads <c>t</c> and <c>z</c> as <c>T</c> and <c>Z</c>, ignores trailing spaces, tabs,
+    /// carriage returns and line feeds, and rejects instants outside 0001-01-01T00:00:00Z to
+    /// 9999-12-31T23:59:59.999Z.
     /// </summary>
     let dateTimeOffset: Codec<DateTimeOffset> =
         Codec.create (fun value -> Encode.string (formatDateTimeOffset value)) dateTimeOffsetDecoder
