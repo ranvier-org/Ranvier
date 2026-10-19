@@ -20,16 +20,27 @@ dotnet run -c Release --project experiments/Ranvier.View.Portable/ServerBench/Se
 
 `--bytes` prints one JSON object per line: `{"fixture":"component"|"keyed","rows":N,"bytes":B,"bytesPerRow":B/N}`, with `bytes` the UTF-8 length of the rendered page. The timing tables read `Mean`, `Error`, `StdDev` and `Allocated` from `$OUT/dotnet/results/*-report-github.md`.
 
-Raw artifacts for `before S1` were written to `server-html/before-s1/` under the local benchmark output directory (local, not committed).
+Raw artifacts for each phase were written to `server-html/<phase>/` under the local benchmark output directory (`before-s1`, `after-s1`; local, not committed).
+
+BenchmarkDotNet's environment block tags `[Host]` with `DEBUG`: the tag describes the F# host assembly that launches the run, while the timed child process is built with `-c Release` and `Optimize=true`.
 
 Any "before S1 / after Sx" comparison in this note is cross-session, not a gate.
 
 ### Results
 
-| Phase | Fixture | Rows | Mean | Error | StdDev | Allocated | HTML bytes | HTML bytes per row |
+Mean, Error and StdDev are in µs.
+
+| Phase | Fixture | Rows | Mean (µs) | Error (µs) | StdDev (µs) | Allocated | HTML bytes | HTML bytes per row |
 |---|---|---|---|---|---|---|---|---|
-| before S1 | component | 1 | 1.019 µs | 0.0203 µs | 0.0579 µs | 5.62 KB | 110 | 110.0 |
-| before S1 | component | 16 | 8.405 µs | 0.1638 µs | 0.2243 µs | 41.43 KB | 1249 | 78.1 |
-| before S1 | component | 128 | 60.464 µs | 0.4580 µs | 0.4060 µs | 310.13 KB | 9931 | 77.6 |
-| before S1 | keyed | 1000 | 1115 µs | 7.8 µs | 6.9 µs | 3.86 MB | 203846 | 203.8 |
-| before S1 | keyed | 10000 | 16749 µs | 332.7 µs | 771.1 µs | 38.72 MB | 2057848 | 205.8 |
+| before S1 | component | 1 | 1.019 | 0.0203 | 0.0579 | 5.62 KB | 110 | 110.0 |
+| before S1 | component | 16 | 8.405 | 0.1638 | 0.2243 | 41.43 KB | 1249 | 78.1 |
+| before S1 | component | 128 | 60.464 | 0.4580 | 0.4060 | 310.13 KB | 9931 | 77.6 |
+| before S1 | keyed | 1000 | 1115 | 7.8 | 6.9 | 3.86 MB | 203846 | 203.8 |
+| before S1 | keyed | 10000 | 16749 | 332.7 | 771.1 | 38.72 MB | 2057848 | 205.8 |
+| after S1 | component | 1 | 0.652 | 0.0128 | 0.0120 | 4.02 KB | 110 | 110.0 |
+| after S1 | component | 16 | 5.521 | 0.2269 | 0.6689 | 25.66 KB | 1249 | 78.1 |
+| after S1 | component | 128 | 40.765 | 0.8082 | 1.1591 | 188.48 KB | 9931 | 77.6 |
+| after S1 | keyed | 1000 | 395.0 | 9.1 | 26.4 | 1.38 MB | 203846 | 203.8 |
+| after S1 | keyed | 10000 | 14635 | 281.5 | 276.5 | 13.92 MB | 2057848 | 205.8 |
+
+Every row is cross-session, not a gate. The keyed 10000 rows are noisy: each render writes a 2 MB page, nearly every operation triggers a Gen2 collection (984 per 1000 after S1), and the before-S1 StdDev is 771 µs. After S1, the .NET escape scan is `SearchValues<char>` with `IndexOfAny`; the HTML bytes are identical to before S1.
