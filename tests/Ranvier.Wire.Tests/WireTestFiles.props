@@ -7,5 +7,6 @@
         <Compile Include="$(MSBuildThisFileDirectory)NumericDecoding.fs" Link="NumericDecoding.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)DateTimeOffsetCodec.fs" Link="DateTimeOffsetCodec.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)NumberText.fs" Link="NumberText.fs" />
+        <Compile Include="$(MSBuildThisFileDirectory)Conformance.fs" Link="Conformance.fs" />
     </ItemGroup>
 </Project>
