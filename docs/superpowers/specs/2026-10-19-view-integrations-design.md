@@ -170,7 +170,7 @@ let search =
 
 ### Lifecycle and disposal
 
-- Order: hooks of one instance in document order of their elements; an instance's hooks before its inlined children's (setup order); a region's rows after the instance that holds the region, including the instance's elements declared after the region (Decision 7). The region rule holds in template, Program and Tree authoring under both commit modes: a container runs its own hooks, then the hooks its regions' containers released into it, in release order.
+- Order (Decision 7), the same in template, Program and Tree authoring under both commit modes: an instance's own hooks and head entries in document order of their elements, including elements declared after an inlined child or a region; then its inlined children's, each child's own before its children's, in setup order; then its regions' rows. An authored component (`ops.Component`) and an authored row are instances. A nested instance's head entry therefore activates after its parent's and is shown for a shared key (Decision 14).
 - The hook sees every binding's first settled value: synchronous bindings commit during setup, and a queued binding writes its first settled value at once (`Binding.startQueuedIn`). A binding whose first read was pending has written nothing.
 - Cleanup runs once, when the instance's owner is disposed, before its nodes leave the host (`MountLifetime`'s child-first teardown). A hook that never ran has no cleanup.
 - An instance disposed between registration and placement never runs its hook: its pending effect is disposed with its owner, and a hidden boundary content is discarded.
@@ -192,7 +192,7 @@ Each in template, Program and Tree authoring, under `SynchronousCommits` and `Qu
 
 1. "a mounted hook runs after the element is in the host and its cleanup runs before the element leaves" (`parentNode` checks inside the hook and the cleanup).
 2. "setup-time browser hooks run on an unplaced element" (pins today's `Typed.browser`).
-3. "hooks run in setup order: an instance, its inlined children, then region rows"; "hooks run in setup order: an instance's elements, including those after a region, then the region's rows" (an element after the list, and an inner list in each row).
+3. "hooks run in setup order: an instance, its inlined children, then region rows"; "hooks run in setup order: an instance's elements, including those after a region, then the region's rows" (an element after the list, and an inner list in each row); "hooks run in setup order: an instance's elements, including those after an inlined child, then the child's"; "hooks run in setup order: each instance before its inlined children, two levels deep".
 4. "a row added by a list pass runs its hook after the pass lays it out"; "a row created and removed in one batch never runs its hook".
 5. "an arm's hook runs after the arm is moved in; a replaced arm's cleanup runs before the next arm's hook".
 6. "hooks under a hidden boundary content run at reveal"; "content torn down before reveal runs no hook and no hook cleanup"; "a retried content runs its hooks again at its reveal".
@@ -433,7 +433,7 @@ Entries under hidden content activate at reveal, so a loading page keeps the pre
 ### Tests (`DocumentChecks.fs`, `document.test.mjs`; .NET and Fable server tests in the companion design's `ServerChecks.fs`)
 
 1. "a title entry sets document.title once placed and restores the previous title when disposed".
-2. "the most recent entry for a key is shown and the previous one returns when it withdraws" (two nested components, meta by name).
+2. "the most recent entry for a key is shown and the previous one returns when it withdraws" (two nested components, meta by name); "an inlined child's title entry is shown over its parent's later title entry" (template, Program and Tree, both commit modes).
 3. "unkeyed links are each present while live; a canonical link is keyed"; "a link with the explicit key canonical and a canonical link are both shown".
 4. "a reactive title updates document.title and its pending read waits under a boundary".
 5. "entries under hidden content activate at reveal and withdraw on teardown".

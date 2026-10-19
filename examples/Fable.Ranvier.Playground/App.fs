@@ -20,6 +20,11 @@ module FoundationScheduling = Ranvier.View.Foundation.Scheduling
 [<Global "document">]
 let private document: Document = jsNative
 
+/// <summary>A mount's report: writes each failure to the browser console.</summary>
+let private reportToConsole (errors: exn list) =
+    for error in errors do
+        JS.console.error ("Ranvier mount failure", error)
+
 /// <summary>The demo's state, kept on the app's graph so a remount keeps it.</summary>
 type DemoState =
     {
@@ -313,7 +318,7 @@ let start () : unit -> unit =
 
             demo <-
                 Some (
-                    FoundationMounting.mountWith mode graph None ignore demoHost None (fun context ->
+                    FoundationMounting.mountWith mode graph None reportToConsole demoHost None (fun context ->
                         FoundationProgram.run (Component.render demoView { Count = count; Name = name }) context.Backend)
                 )
 
@@ -398,7 +403,7 @@ let start () : unit -> unit =
                     (FoundationMicrotask.mode FoundationScheduling.CollectAndContinue)
                     foundationGraph
                     None
-                    ignore
+                    reportToConsole
                     element
                     None
                     (fun context ->
@@ -475,7 +480,7 @@ let start () : unit -> unit =
             }
 
         let shell =
-            FoundationMounting.mountWith FoundationScheduling.SynchronousCommits graph None ignore host None (fun context ->
+            FoundationMounting.mountWith FoundationScheduling.SynchronousCommits graph None reportToConsole host None (fun context ->
                 FoundationProgram.run (Component.render shellView shellProps) context.Backend)
 
         let mutable stopped = false

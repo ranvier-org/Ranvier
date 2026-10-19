@@ -146,6 +146,53 @@ let private linkKeys queued () =
     mounted.Dispose ()
     equal ((2, 1, "/2"), (0, 0)) (live, (headCount "link[rel=stylesheet]", headCount "link[rel=canonical]"))
 
+let private childTitle =
+    Component.define (fun _ () -> ()) (fun t -> t.fragment [| t.Document.title "Child"; t.span [||] [||] |])
+
+let private layoutTitle =
+    Component.define (fun _ () -> ()) (fun t -> t.fragment [| t.div [||] [| t.render childTitle id |]; t.Document.title "Layout" |])
+
+let private templateNestedTitle queued () =
+    use graph = new Graph ()
+    setTitle "Before"
+
+    let mounted =
+        mountTemplate queued graph strict (host ()) (Component.render layoutTitle ())
+
+    let shown = title ()
+    mounted.Dispose ()
+    equal ("Child", "Before") (shown, title ())
+
+let private titleEntry (value: string) : HeadEntry =
+    {
+        Kind = HeadKind.Title
+        Key = "title"
+        Attributes = [||]
+        Readers = [||]
+        Title = fun () -> value
+    }
+
+/// <summary>A layout component whose title entry follows a div holding a child component's title entry.</summary>
+let private nestedTitle (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+    setTitle "Before"
+
+    let entry value =
+        ops.Embed (fun backend -> backend.Head (titleEntry value))
+
+    let view =
+        ops.Component (fun _ ->
+            ops.Fragment
+                [|
+                    Typed.div ops [||] [| ops.Component (fun _ -> entry "Child") |]
+                    entry "Layout"
+                |])
+
+    let mounted = mountView ops run queued graph strict (host ()) view
+    let shown = title ()
+    mounted.Dispose ()
+    equal ("Child", "Before") (shown, title ())
+
 let private canonicalAndExplicit =
     Component.define (fun _ () -> ()) (fun t ->
         t.fragment
@@ -506,6 +553,11 @@ let cases: (string * (unit -> unit)) array =
                 templated "the most recent entry for a key is shown and the previous one returns when it withdraws" latestShown
                 templated "unkeyed links are each present while live; a canonical link is keyed" linkKeys
                 templated "a link with the explicit key canonical and a canonical link are both shown" explicitKeyDistinct
+                templated "an inlined child's title entry is shown over its parent's later title entry" templateNestedTitle
+                both
+                    "an inlined child's title entry is shown over its parent's later title entry"
+                    (nestedTitle Tree.ops Tree.run)
+                    (nestedTitle Program.ops Program.run)
                 templated "a reactive title updates document.title and its pending read waits under a boundary" reactiveTitle
                 templated "entries under hidden content activate at reveal and withdraw on teardown" hiddenEntries
                 templated "a client mount adopts marked head elements without hydrate" adoptsMarked

@@ -15,27 +15,42 @@ module internal PlacementCounters =
 
 /// <summary>
 /// The hooks of instances whose nodes are not yet placed in their mount's host. A container is placed once its own
-/// <c>Place</c> has run and its parent is placed; hooks added before then are held. The held hooks run in the order
-/// added, followed by the hooks that child containers released into the container while it was unplaced, in the order
-/// released: an instance's hooks run before its regions' rows.
+/// <c>Place</c> has run and its parent is placed; hooks added before then are held.
 /// </summary>
 /// <remarks>
+/// <para>
+/// The held hooks run grouped by instance, in the order the instances were entered (<c>Enter</c>), each group in the
+/// order added; then the hooks that child containers released into the container while it was unplaced, in the order
+/// released. An instance's hooks run before its inlined children's, and both before its regions' rows.
+/// </para>
+/// <para>
 /// A hook runs as an untracked core effect created under its instance's owner: a batch or an enclosing computation body
 /// defers it.
+/// </para>
 /// </remarks>
 [<Sealed; AllowNullLiteral>]
 type internal Placement(parent: Placement) =
     let mutable laidOut = false
     let mutable discarded = false
-    // The container's own hooks; null until the first is held.
-    let mutable held: ResizeArray<Owner * (unit -> unit)> = null
+    // The container's own hooks with the instance group each was added under; null until the first is held.
+    let mutable held: ResizeArray<int * Owner * (unit -> unit)> = null
+    // Whether `held` is in group order.
+    let mutable ordered = true
+    // The group of the hook added last.
+    let mutable lastGroup = 0
+    // The group receiving own hooks, and the number of groups entered.
+    let mutable group = 0
+    let mutable entered = 0
     // The hooks released by child containers, run after `held`; null until the first is held.
     let mutable forwarded: ResizeArray<Owner * (unit -> unit)> = null
     let mutable failure: exn = null
 
 #if RANVIER_VIEW_COUNTERS
-    let count (hooks: ResizeArray<Owner * (unit -> unit)>) =
-        if isNull hooks then 0 else hooks.Count
+    let countHeld () =
+        if isNull held then 0 else held.Count
+
+    let countForwarded () =
+        if isNull forwarded then 0 else forwarded.Count
 #endif
 
     /// <summary>True while a root mount's first placement runs inside <c>mountWith</c>.</summary>
@@ -73,7 +88,11 @@ type internal Placement(parent: Placement) =
                 if isNull held then
                     held <- ResizeArray ()
 
-                held.Add ((owner, hook))
+                if group < lastGroup then
+                    ordered <- false
+
+                lastGroup <- group
+                held.Add ((group, owner, hook))
 #if RANVIER_VIEW_COUNTERS
             PlacementCounters.held.Value <- PlacementCounters.held.Value + 1
 #endif
@@ -88,26 +107,45 @@ type internal Placement(parent: Placement) =
         this.Enqueue (owner, hook, false)
 
     /// <summary>
+    /// Starts the group of an instance whose setup begins: hooks added until <c>Leave</c> run after the groups entered
+    /// before it. Returns the group to restore.
+    /// </summary>
+    member _.Enter() : int =
+        let previous = group
+        entered <- entered + 1
+        group <- entered
+        previous
+
+    /// <summary>Ends an instance's group: later hooks join <c>previous</c>, the group returned by its <c>Enter</c>.</summary>
+    member _.Leave(previous: int) =
+        group <- previous
+
+    /// <summary>
     /// Marks the container's nodes laid out, then starts its own held hooks followed by the hooks released into it. While
     /// the parent is unplaced, the hooks are released to the parent instead, which runs them after its own.
     /// </summary>
     member this.Place() =
         if not laidOut && not discarded then
             laidOut <- true
+#if RANVIER_VIEW_COUNTERS
+            PlacementCounters.held.Value <-
+                PlacementCounters.held.Value
+                - countHeld ()
+                - countForwarded ()
+#endif
             let own = held
             let rows = forwarded
             held <- null
             forwarded <- null
-#if RANVIER_VIEW_COUNTERS
-            PlacementCounters.held.Value <-
-                PlacementCounters.held.Value
-                - count own
-                - count rows
-#endif
 
             if not (isNull own) then
-                for owner, hook in own do
-                    this.Enqueue (owner, hook, false)
+                if ordered then
+                    for _, owner, hook in own do
+                        this.Enqueue (owner, hook, false)
+                else
+                    // A stable sort keeps each group's hooks in the order added.
+                    for _, owner, hook in List.sortBy (fun (index, _, _) -> index) (List.ofSeq own) do
+                        this.Enqueue (owner, hook, false)
 
             if not (isNull rows) then
                 for owner, hook in rows do
@@ -119,8 +157,8 @@ type internal Placement(parent: Placement) =
 #if RANVIER_VIEW_COUNTERS
         PlacementCounters.held.Value <-
             PlacementCounters.held.Value
-            - count held
-            - count forwarded
+            - countHeld ()
+            - countForwarded ()
 #endif
         held <- null
         forwarded <- null

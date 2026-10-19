@@ -2046,7 +2046,13 @@ and internal MountState
                 let create () =
                     Api.createRoot (fun owner ->
                         root <- MountLifetime.Create (graph, owner, report, release, parent)
-                        Api.untrack (fun () -> build context))
+                        // A row or view shares its container with its siblings; its hooks form its own group.
+                        let previous = container.Enter ()
+
+                        try
+                            Api.untrack (fun () -> build context)
+                        finally
+                            container.Leave previous)
 
                 if isNull (box parentOwner) then
                     create ()
@@ -2917,31 +2923,41 @@ and internal MountState
 
     override _.Component(setup) =
         ensureSetup ()
+        // The component's hooks run after its parent's, as an inlined child's do.
+        let previous = container.Enter ()
+
+        try
 #if LADDER_NAIVE_COMPONENTS
-        setup
-            {
-                OnCleanup = ownedCleanup (Api.getOwner ())
-            }
+            setup
+                {
+                    OnCleanup = ownedCleanup (Api.getOwner ())
+                }
 #else
-        Api.createRoot (fun owner ->
-            root.Adopt owner
+            Api.createRoot (fun owner ->
+                root.Adopt owner
 
-            Api.untrack (fun () ->
-                setup
-                    {
-                        OnCleanup = fun callback -> ownedCleanup owner callback
-                    })
+                Api.untrack (fun () ->
+                    setup
+                        {
+                            OnCleanup = fun callback -> ownedCleanup owner callback
+                        })
 
-            if owner.IsDisposed then
-                invalid "View construction is only valid during live setup")
+                if owner.IsDisposed then
+                    invalid "View construction is only valid during live setup")
 #endif
+        finally
+            container.Leave previous
 
     override this.Template(definition, props) =
         ensureSetup ()
+        let previous = container.Enter ()
 
-        match scheduling with
-        | Synchronous -> TemplateDom.materialise definition props (this :> TemplateDom.MountServices)
-        | Queued _ -> definition.Expand (this, props)
+        try
+            match scheduling with
+            | Synchronous -> TemplateDom.materialise definition props (this :> TemplateDom.MountServices)
+            | Queued _ -> definition.Expand (this, props)
+        finally
+            container.Leave previous
 
     interface TemplateDom.MountServices with
         member _.Append(node) =

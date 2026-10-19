@@ -78,6 +78,61 @@ let private setupOrder (ops: Operations<'view>) (run: 'view -> Backend -> unit) 
     equal [ "parent"; "child"; "row 1"; "row 2" ] (List.ofSeq log)
     mounted.Dispose ()
 
+/// <summary>A component's div holding an inlined child component's span followed by its own span, each logging its name from a hook.</summary>
+let private inlinedThenSibling (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+    let log = ResizeArray<string>()
+    let target = host ()
+
+    let hook (name: string) : Typed.Modifier<'native> =
+        Typed.mounted (fun _ ->
+            log.Add name
+            ignore)
+
+    let view =
+        ops.Component (fun _ ->
+            Typed.div
+                ops
+                [| hook "parent" |]
+                [|
+                    ops.Component (fun _ -> span ops [| hook "child" |] [||])
+                    span ops [| hook "after" |] [||]
+                |])
+
+    let mounted = mountView ops run queued graph strict target view
+    equal [ "parent"; "after"; "child" ] (List.ofSeq log)
+    mounted.Dispose ()
+
+/// <summary>
+/// Inlined children two levels deep, each followed by a span of its parent: every instance's hooks run before its inlined
+/// children's, in setup order.
+/// </summary>
+let private inlinedNested (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+    let log = ResizeArray<string>()
+    let target = host ()
+
+    let hook (name: string) : Typed.Modifier<'native> =
+        Typed.mounted (fun _ ->
+            log.Add name
+            ignore)
+
+    let grandchild = ops.Component (fun _ -> span ops [| hook "grandchild" |] [||])
+
+    let child =
+        ops.Component (fun _ -> Typed.div ops [| hook "child" |] [| grandchild; span ops [| hook "child after" |] [||] |])
+
+    let second = ops.Component (fun _ -> span ops [| hook "second" |] [||])
+
+    let view =
+        ops.Component (fun _ -> Typed.div ops [| hook "parent" |] [| child; second; span ops [| hook "after" |] [||] |])
+
+    let mounted = mountView ops run queued graph strict target view
+
+    equal [ "parent"; "after"; "child"; "child after"; "grandchild"; "second" ] (List.ofSeq log)
+
+    mounted.Dispose ()
+
 /// <summary>
 /// A div holding a list followed by a span, each row holding an inner list followed by a span; every element logs its
 /// name from a hook. The rows of a pass run their own hooks before the inner lists' rows.
@@ -744,6 +799,56 @@ let private templateSetupOrder queued () =
     equal [ "parent"; "child"; "row 1"; "row 2" ] (List.ofSeq orderLog)
     mounted.Dispose ()
 
+/// <summary>A span whose mounted hook logs <c>name</c>.</summary>
+let private orderMark (name: string) =
+    Component.define (fun _ () -> ()) (fun t ->
+        t.span
+            [|
+                t.Hooks.mounted (fun _ (_: HTMLSpanElement) ->
+                    orderLog.Add name
+                    ignore)
+            |]
+            [||])
+
+/// <summary>A div whose mounted hook logs <c>name</c>, holding <c>children</c> followed by a span logging <c>after</c>.</summary>
+let private orderHolder (name: string) (after: string) (children: TemplateBuilder<unit> -> TemplateView<unit> array) =
+    Component.define (fun _ () -> ()) (fun t ->
+        t.div
+            [|
+                t.Hooks.mounted (fun _ (_: HTMLDivElement) ->
+                    orderLog.Add name
+                    ignore)
+            |]
+            [|
+                yield! children t
+                t.span
+                    [|
+                        t.Hooks.mounted (fun _ (_: HTMLSpanElement) ->
+                            orderLog.Add after
+                            ignore)
+                    |]
+                    [||]
+            |])
+
+let private orderInlinedThenSibling =
+    orderHolder "parent" "after" (fun t -> [| t.render (orderMark "child") id |])
+
+let private orderNestedChild =
+    orderHolder "child" "child after" (fun t -> [| t.render (orderMark "grandchild") id |])
+
+let private orderNested =
+    orderHolder "parent" "after" (fun t -> [| t.render orderNestedChild id; t.render (orderMark "second") id |])
+
+let private templateOrder (view: Component<unit>) (expected: string list) queued () =
+    use graph = new Graph ()
+    orderLog.Clear ()
+
+    let mounted = mountTemplate queued graph strict (host ()) (Component.render view ())
+
+    let seen = List.ofSeq orderLog
+    mounted.Dispose ()
+    equal expected seen
+
 let private orderInner =
     Component.define (fun _ (item: unit -> int) -> item) (fun t ->
         t.span
@@ -1314,6 +1419,14 @@ let cases: (string * (unit -> unit)) array =
                 (setupOrder Tree.ops Tree.run)
                 (setupOrder Program.ops Program.run)
             both
+                "hooks run in setup order: an instance's elements, including those after an inlined child, then the child's"
+                (inlinedThenSibling Tree.ops Tree.run)
+                (inlinedThenSibling Program.ops Program.run)
+            both
+                "hooks run in setup order: each instance before its inlined children, two levels deep"
+                (inlinedNested Tree.ops Tree.run)
+                (inlinedNested Program.ops Program.run)
+            both
                 "hooks run in setup order: an instance's elements, including those after a region, then the region's rows"
                 (rowsAfterSiblings Tree.ops Tree.run)
                 (rowsAfterSiblings Program.ops Program.run)
@@ -1391,6 +1504,12 @@ let cases: (string * (unit -> unit)) array =
             templated
                 "hooks run in setup order: an instance's elements, including those after a region, then the region's rows"
                 templateRowsAfterSiblings
+            templated
+                "hooks run in setup order: an instance's elements, including those after an inlined child, then the child's"
+                (templateOrder orderInlinedThenSibling [ "parent"; "after"; "child" ])
+            templated
+                "hooks run in setup order: each instance before its inlined children, two levels deep"
+                (templateOrder orderNested [ "parent"; "after"; "child"; "child after"; "grandchild"; "second" ])
             templated
                 "a row added by a list pass runs its hook after the pass lays it out, and a batch that adds and removes a row creates none"
                 templateRowsAfterLayout
