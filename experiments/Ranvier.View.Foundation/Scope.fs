@@ -1,5 +1,7 @@
 namespace Ranvier.View.Foundation
 
+open Ranvier
+
 /// <summary>The receiver of the pending reads and failures of the bindings, rows and handlers mounted under it.</summary>
 type internal ViewScope =
     /// <summary>True for a boundary: its bindings report pending reads through <c>Wait</c> and <c>Ready</c>.</summary>
@@ -11,8 +13,52 @@ type internal ViewScope =
     /// <summary>Takes failures in the order they occurred.</summary>
     abstract Fail: exn list -> unit
 
-/// <summary>The bits of a binding's state word.</summary>
+/// <summary>The bits of a binding's state word, and its transitions.</summary>
 module internal BindingState =
     /// <summary>The binding's last read raised an exception other than a pending read.</summary>
     [<Literal>]
     let ReadFailed = 1
+
+    /// <summary>The binding's last read was pending and the binding is registered with its scope.</summary>
+    [<Literal>]
+    let Waiting = 2
+
+    /// <summary>
+    /// The state word after a read raised <c>error</c>. A pending read sets <c>Waiting</c> and registers the binding
+    /// with a tracking scope, once until <c>released</c>; any other error sets <c>ReadFailed</c>. Store the word, then
+    /// call <c>report</c>.
+    /// </summary>
+    let rejected (scope: ViewScope) (state: int) (error: exn) : int =
+        match error with
+        | NotReadyException _ ->
+            if state &&& Waiting = 0 && scope.Tracks then
+                scope.Wait ()
+                state ||| Waiting
+            else
+                state
+        | _ -> state ||| ReadFailed
+
+    /// <summary>Sends a read error to the scope; a pending read is dropped.</summary>
+    let report (scope: ViewScope) (error: exn) =
+        match error with
+        | NotReadyException _ -> ()
+        | _ -> scope.Fail [ error ]
+
+    /// <summary>The state word after a successful read, with <c>ReadFailed</c> cleared; <c>clear</c> runs when it was set.</summary>
+    let recovered (clear: unit -> unit) (state: int) : int =
+        if state &&& ReadFailed <> 0 then
+            clear ()
+            state &&& ~~~ReadFailed
+        else
+            state
+
+    /// <summary>
+    /// The state word with <c>Waiting</c> cleared; a waiting binding is released from its scope. Call after the value
+    /// read is committed, and when the binding's owner is disposed.
+    /// </summary>
+    let released (scope: ViewScope) (state: int) : int =
+        if state &&& Waiting <> 0 then
+            scope.Ready ()
+            state &&& ~~~Waiting
+        else
+            state

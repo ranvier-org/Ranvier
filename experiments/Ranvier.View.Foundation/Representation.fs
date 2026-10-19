@@ -115,8 +115,7 @@ type Backend() =
     default this.Template(definition, props) =
         definition.Expand (this, props)
 
-    /// <summary>Renders content under a boundary with its pending and error views.</summary>
-    /// <remarks>The default renders the content only.</remarks>
+    /// <summary>Renders content under a boundary with its pending and error views; the default renders the content only.</summary>
     abstract Boundary: BoundaryViews -> unit
 
     default this.Boundary(views) =

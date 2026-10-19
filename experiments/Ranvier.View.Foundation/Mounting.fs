@@ -164,6 +164,13 @@ let private clearChildren (parent: Node) : unit = jsNative
 [<Emit("(() => { const range = $0.ownerDocument.createRange(); range.setStartAfter($0); range.setEndBefore($1); range.deleteContents(); })()")>]
 let private deleteBetween (first: Node) (last: Node) : unit = jsNative
 
+/// <summary>Whether <c>first</c> and <c>last</c> are the first and last children of a document fragment.</summary>
+[<Emit("$0.parentNode != null && $0.parentNode.nodeType === 11 && $0.parentNode.firstChild === $0 && $0.parentNode.lastChild === $1")>]
+let private fillsFragment (first: Node) (last: Node) : bool = jsNative
+
+[<Emit("$0.parentNode")>]
+let private parentOrNull (node: Node) : Node = jsNative
+
 /// <summary>Reads an element without a bounds check.</summary>
 [<Emit("$0[$1]")>]
 let private at (items: ResizeArray<'T>) (index: int) : 'T = jsNative
@@ -1312,8 +1319,135 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
             | Some error -> errors.Fail (error, error :: recorded)
             | None -> settle recorded
 
+/// <summary>
+/// A boundary between region markers: its content, mounted detached until every binding under it has read a value, and
+/// its pending view, shown between the markers meanwhile.
+/// </summary>
+/// <remarks>
+/// The pending view is mounted under <c>outer</c>, the scope enclosing the boundary's region, or null at the top level.
+/// Its setup failures go to <c>enclosing</c>; while <c>unwinds</c> is true they raise instead. The reveal runs in the
+/// boundary's effect, after the binding or pass whose read or disposal released the last pending read.
+/// </remarks>
+and [<Sealed>] private ViewBoundary
+    (
+        graph: Graph,
+        report: exn list -> unit,
+        site: RegionSite,
+        regionEnd: Node,
+        views: BoundaryViews,
+        enclosing: ViewScope,
+        outer: ViewScope,
+        unwinds: unit -> bool,
+        mountView: (unit -> obj) -> ((unit -> obj) -> Backend -> unit) -> ViewScope -> Row
+    ) =
+    // The content's nested mount; null until its setup returns.
+    let mutable content: Row = null
+    // The view between the markers while the content is hidden; null otherwise.
+    let mutable shown: Row = null
+    let mutable waiting = 0
+    let mutable settingUp = false
+    let mutable revealed = false
+    let mutable wake: Signal<int> = Unchecked.defaultof<_>
+    let mutable status: BoundaryStatus = Unchecked.defaultof<_>
+
+    let noItem () : obj = null
+
+    // Moves the row's nodes before the end marker, in one insertion when they fill their fragment.
+    let place (row: Row) =
+        let parent = site.Parent ()
+
+        if fillsFragment row.First row.Last then
+            parent.insertBefore (parentOrNull row.First, regionEnd)
+            |> ignore
+        else
+            Row.MoveBefore (row, parent, regionEnd)
+
+        row.Mount.Relocate ()
+        site.LaidOut.Add row
+
+    let retire () =
+        if not (isNull shown) then
+            let row = shown
+            shown <- null
+            site.LaidOut.Clear ()
+            row.Mount.Dispose ()
+
+    member private _.Show(render: Backend -> unit) =
+        let mutable row: Row = null
+
+        try
+            row <- Api.runWithOwner site.Owner (fun () -> mountView noItem (fun _ backend -> render backend) outer)
+            place row
+            shown <- row
+        with error ->
+            if not (isNull row) then
+                row.Mount.Dispose ()
+
+            if unwinds () then
+                reraise ()
+
+            enclosing.Fail [ error ]
+
+    member private _.Reveal() =
+        revealed <- true
+        retire ()
+        place content
+
+    member private this.Settle() =
+        if
+            not revealed
+            && not settingUp
+            && waiting = 0
+            && not (isNull content)
+            && site.Live ()
+        then
+            this.Reveal ()
+
+    member private this.MountContent() =
+        settingUp <- true
+        waiting <- 0
+
+        try
+            content <- Api.runWithOwner site.Owner (fun () -> mountView noItem (fun _ backend -> views.Content status backend) (this :> ViewScope))
+        finally
+            settingUp <- false
+
+        if waiting = 0 then
+            this.Reveal ()
+        else
+            this.Show views.Pending
+
+    /// <summary>Creates the boundary's effect and mounts its content. Call once, inside the region's owner.</summary>
+    member this.Start() =
+        wake <- Api.createSignal 0
+        status <- { IsPending = fun () -> false }
+
+        Api.createEffect (fun () ->
+            wake.Value |> ignore
+            Api.untrack (fun () -> this.Settle ()))
+
+        this.MountContent ()
+
+    interface ViewScope with
+        member _.Tracks = true
+
+        member _.Wait() =
+            waiting <- waiting + 1
+
+        member _.Ready() =
+            if waiting > 0 then
+                waiting <- waiting - 1
+
+                if waiting = 0 && not revealed then
+                    Api.untrack (fun () -> wake.Value <- wake.Value + 1)
+
+        member _.Fail(errors) =
+            enclosing.Fail errors
+
 /// <summary>The state of a mounted view and the backend that builds it.</summary>
-and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifetime, parentOwner: Owner, report: exn list -> unit, host: Node) =
+/// <remarks><c>boundary</c> is the boundary enclosing the mount, or null outside every boundary.</remarks>
+and internal MountState
+    (scheduling: Scheduling, graph: Graph, parent: MountLifetime, parentOwner: Owner, report: exn list -> unit, host: Node, boundary: ViewScope) =
     inherit Prepared.Backend()
 
     let range = OwnedRange host
@@ -1475,6 +1609,11 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
 #if LADDER_NAIVE_BINDINGS
         Api.createEffect (fun () -> write (read ()))
 #else
+        let mutable state = 0
+
+        if scope.Tracks then
+            Api.onCleanup (fun () -> state <- BindingState.released scope state)
+
         match scheduling with
         | Synchronous ->
             let mutable hasCommitted = false
@@ -1497,28 +1636,24 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                         reraise ()
                     | error -> scope.Fail [ error ]
 
-            let mutable state = 0
-
             Api.createEffect (fun () ->
                 let value =
                     try
                         read ()
                     with error ->
-                        match error with
-                        | NotReadyException _ -> ()
-                        | _ ->
-                            state <- state ||| BindingState.ReadFailed
-                            scope.Fail [ error ]
-
+                        state <- BindingState.rejected scope state error
+                        BindingState.report scope error
                         reraise ()
 
-                if state &&& BindingState.ReadFailed <> 0 then
-                    state <- state &&& ~~~BindingState.ReadFailed
-                    clearReported ()
+                if state <> 0 then
+                    state <- BindingState.recovered clearReported state
 
                 if not root.IsDisposed then
                     pending <- value
-                    Api.untrack commit)
+                    Api.untrack commit
+
+                if state <> 0 then
+                    state <- BindingState.released scope state)
         | Queued queue ->
             let live () =
                 not root.IsDisposed
@@ -1530,26 +1665,27 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                     bindingSetupFailure <- Some error
                     reraise ()
 
-            let mutable state = 0
-
             let reportingRead () =
                 let value =
                     try
                         read ()
                     with error ->
-                        match error with
-                        | NotReadyException _ -> ()
-                        | _ ->
-                            state <- state ||| BindingState.ReadFailed
-                            scope.Fail [ error ]
-
+                        state <- BindingState.rejected scope state error
+                        BindingState.report scope error
                         reraise ()
 
-                if state &&& BindingState.ReadFailed <> 0 then
-                    state <- state &&& ~~~BindingState.ReadFailed
-                    clearReported ()
+                if state <> 0 then
+                    state <- BindingState.recovered clearReported state
 
                 value
+
+            let afterCommit =
+                if scope.Tracks then
+                    fun () ->
+                        if state <> 0 then
+                            state <- BindingState.released scope state
+                else
+                    Unchecked.defaultof<_>
 
             Binding.startQueuedIn
                 scope
@@ -1560,6 +1696,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
                 (fun left right -> equals.Invoke (left, right))
                 reportingRead
                 guardedWrite
+                afterCommit
 
         bindingSetupFailure |> Option.iter raise
 #endif
@@ -1648,8 +1785,12 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
     member internal _.ListenDirect(node: Node, eventName: string, invoke: obj -> unit) =
         listenDirect node eventName invoke
 
-    /// <summary>The receiver of the pending reads and failures of the bindings this mount creates.</summary>
-    member internal this.Scope: ViewScope = this :> ViewScope
+    /// <summary>The receiver of the pending reads and failures of the bindings this mount creates: its boundary, or the mount itself.</summary>
+    member internal this.Scope: ViewScope =
+        if isNull (box boundary) then
+            this :> ViewScope
+        else
+            boundary
 
     member internal _.ClearReported() =
         clearReported ()
@@ -1860,6 +2001,9 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
     override this.Switch(read, render) =
         this.AuthoredRegion (TemplateDom.SelectedArm, KeyedItems.ofPairs read, render)
 
+    override this.Boundary(views) =
+        this.AuthoredRegion (TemplateDom.BoundaryContent, KeyedItems.ofPairs (fun () -> [| null, box views |]), (fun _ _ -> ()))
+
     /// <summary>Adds boundary nodes at the current position and mounts a region of <c>kind</c> between them.</summary>
     member private this.AuthoredRegion(kind, items, render) =
         ensureSetup ()
@@ -1902,12 +2046,13 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
 
         site
 
-    /// <summary>Mounts an authored row as a nested mount and returns its nodes.</summary>
-    member private _.MountRow(current: unit -> obj, render: (unit -> obj) -> Backend -> unit) : Row =
+    /// <summary>Mounts an authored row or a boundary's view as a nested mount under <c>scope</c> and returns its nodes.</summary>
+    member private _.MountRow(current: unit -> obj, render: (unit -> obj) -> Backend -> unit, scope: ViewScope) : Row =
         let rowHost = fragment ()
 
         let mounted =
-            MountState(scheduling, graph, root, Unchecked.defaultof<_>, report, rowHost).Run(None, (fun context -> render current context.Backend))
+            MountState(scheduling, graph, root, Unchecked.defaultof<_>, report, rowHost, scope)
+                .Run(None, (fun context -> render current context.Backend))
 
         let first =
             rowHost.firstChild
@@ -2000,7 +2145,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
 
             row <-
                 if isNull rows then
-                    this.MountRow (current, render)
+                    this.MountRow (current, render, boundary)
                 else
                     site.Builder.Build (rows, current)
 
@@ -2353,7 +2498,7 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
 
                             row <-
                                 if isNull rows then
-                                    this.MountRow (current, render)
+                                    this.MountRow (current, render, boundary)
                                 else
                                     site.Builder.Build (rows, current)))
 
@@ -2420,10 +2565,29 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
         let site = this.Site (regionStart, regionEnd, placement)
         let items = read ()
         let view = KeyedItems.value (items[0])
-        let row = this.MountRow ((fun () -> view), render)
+        let row = this.MountRow ((fun () -> view), render, boundary)
         Row.MoveBefore (row, site.Parent (), regionEnd)
         row.Mount.Relocate ()
         site.LaidOut.Add row
+
+    /// <summary>Mounts a boundary between the markers. Its content's bindings report to the boundary, and its pending view's bindings to this mount's boundary, or to the view's own mount outside every boundary.</summary>
+    member private this.BoundaryRegion(regionStart: Node, regionEnd: Node, placement: RegionPlacement, views: BoundaryViews) =
+        let site = this.Site (regionStart, regionEnd, placement)
+
+        let created =
+            ViewBoundary (
+                graph,
+                report,
+                site,
+                regionEnd,
+                views,
+                this.Scope,
+                boundary,
+                (fun () -> isNull (box boundary) && root.Phase = SettingUp),
+                fun current render scope -> this.MountRow (current, render, scope)
+            )
+
+        site.Own (fun () -> created.Start ())
 
     member private this.RegionOf
         (
@@ -2439,6 +2603,9 @@ and internal MountState(scheduling: Scheduling, graph: Graph, parent: MountLifet
         | TemplateDom.ListRows -> this.ListRegion (start, finish, placement, items, render, rows)
         | TemplateDom.SelectedArm -> this.ArmRegion (start, finish, placement, items.Read, render, rows)
         | TemplateDom.ViewHole -> this.HoleRegion (start, finish, placement, items.Read, render)
+        | TemplateDom.BoundaryContent ->
+            let pairs = items.Read ()
+            this.BoundaryRegion (start, finish, placement, unbox<BoundaryViews>(KeyedItems.value (pairs[0])))
 
     override _.Component(setup) =
         ensureSetup ()
@@ -2533,12 +2700,14 @@ let mountWith mode graph (parentOwner: Owner option) report host before build =
         | None -> Unchecked.defaultof<_>
 
     match mode with
-    | SynchronousCommits -> MountState(Synchronous, graph, null, parentOwner, report, host).Run(before, build)
+    | SynchronousCommits -> MountState(Synchronous, graph, null, parentOwner, report, host, Unchecked.defaultof<_>).Run(before, build)
     | QueuedCommits (failure, post) ->
         let queue = Queue (graph, failure, post)
 
         try
-            let state = MountState (Queued queue, graph, null, parentOwner, report, host)
+            let state =
+                MountState (Queued queue, graph, null, parentOwner, report, host, Unchecked.defaultof<_>)
+
             let mounted = state.Run (before, build)
             state.Root.OnCleanup queue.Dispose
             mounted

@@ -46,6 +46,8 @@ type RegionKind =
     | SelectedArm
     /// <summary>One view, read and mounted once.</summary>
     | ViewHole
+    /// <summary>A boundary: the region's single item's value is its <c>BoundaryViews</c>, read once.</summary>
+    | BoundaryContent
 
 [<NoEquality; NoComparison>]
 type CompiledRegion =
@@ -684,7 +686,8 @@ let rec internal materialise (definition: TemplateDefinition) (props: obj) (serv
 
         let read =
             match region.Kind with
-            | ViewHole ->
+            | ViewHole
+            | BoundaryContent ->
                 let snapshot = items.Invoke owner
                 fun () -> snapshot
             | ListRows

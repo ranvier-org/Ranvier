@@ -6,8 +6,19 @@ open Ranvier.View.Foundation.Scheduling
 /// <summary>Creates an owned text effect whose updates are committed through the supplied queue.</summary>
 /// <remarks>The first settled value is written immediately. A suspended or failed read cancels any older queued write.
 /// A failed immediate write after setup goes to <c>scope</c>; a failed queued write goes to the queue, which reports it
-/// to <c>scope</c> after the flush. The enclosing owner disposes the effect.</remarks>
-let internal startQueuedIn (scope: ViewScope) (settingUp: unit -> bool) registerCleanup isLive (queue: Queue) equals read write =
+/// to <c>scope</c> after the flush. <c>afterCommit</c>, when not null, runs after each commit of a current value, written
+/// or equal to the committed one. The enclosing owner disposes the effect.</remarks>
+let internal startQueuedIn
+    (scope: ViewScope)
+    (settingUp: unit -> bool)
+    registerCleanup
+    isLive
+    (queue: Queue)
+    equals
+    read
+    write
+    (afterCommit: unit -> unit)
+    =
     let slot = queue.Reserve scope
     let mutable first = true
     let mutable version = 0
@@ -45,6 +56,9 @@ let internal startQueuedIn (scope: ViewScope) (settingUp: unit -> bool) register
                                 committed <- value
                                 hasCommitted <- true))
 
+                if not (isNull (box afterCommit)) then
+                    afterCommit ()
+
         if first then
             first <- false
 
@@ -60,4 +74,4 @@ let internal startQueuedIn (scope: ViewScope) (settingUp: unit -> bool) register
 
 /// <summary>Creates an owned text effect whose updates are committed through the supplied queue, with no scope.</summary>
 let internal startQueued registerCleanup isLive (queue: Queue) equals read write =
-    startQueuedIn Unchecked.defaultof<_> (fun () -> false) registerCleanup isLive queue equals read write
+    startQueuedIn Unchecked.defaultof<_> (fun () -> false) registerCleanup isLive queue equals read write Unchecked.defaultof<_>
