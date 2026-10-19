@@ -521,6 +521,27 @@ let private fire (eventName: string) (button: HTMLButtonElement) =
     else
         button.click ()
 
+/// <summary>A button whose <c>eventName</c> handler throws <c>NotReadyException</c>, under a boundary; the error view shows and the exception is reported once.</summary>
+let private handlerNotReady (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued (eventName: string) =
+    use graph = new Graph ()
+    let pending = graph.Run (fun () -> Api.createAsyncSource<string>())
+    let host, log, reports = host (), ResizeArray<string>(), ResizeArray<exn list>()
+
+    let mounted =
+        underBoundary ops run queued graph host log reports (fun () ->
+            Typed.button ops [| Typed.listener eventName (fun _ -> pending.Value |> ignore) |] [| ops.Text "press" |])
+
+    let button =
+        host.querySelector "button"
+        |> unbox<HTMLButtonElement>
+
+    let escaped = windowErrors (fun () -> fire eventName button)
+
+    equal (1, [ "content"; "content cleanup" ], [||]) (reports.Count, List.ofSeq log |> List.truncate 2, escaped)
+
+    equal true (host.textContent.StartsWith "failed: ")
+    mounted.Dispose ()
+
 /// <summary>A button whose <c>eventName</c> handler throws, under a boundary; click is delegated, focus is direct.</summary>
 let private handlerFailure (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued (eventName: string) =
     use graph = new Graph ()
@@ -563,9 +584,8 @@ let private handlerOutsideBoundary (ops: Operations<'view>) (run: 'view -> Backe
     mounted.Dispose ()
 
 /// <summary>
-/// A click handler sets a signal that fails a content setter, then throws. Synchronously, the setter failure tears the
-/// content down before the handler throws, so the handler's error reaches a failed boundary; queued, the handler's error
-/// tears the content down before the setter commits. With <c>sameObject</c> both failures are one exception object.
+/// A click handler sets a signal that fails a content setter, then throws. Synchronously, both errors are reported, in one
+/// teardown. Queued, only the handler's error is reported. With <c>sameObject</c> both are one exception object, reported once.
 /// </summary>
 let private handlerAfterFailure (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued sameObject =
     use graph = new Graph ()
@@ -798,6 +818,14 @@ let cases: (string * (unit -> unit)) array =
         "tree queued: a throwing direct handler under a boundary shows the error view", fun () -> handlerFailure Tree.ops Tree.run true "focus"
         "program synchronous: a throwing direct handler under a boundary shows the error view",
         fun () -> handlerFailure Program.ops Program.run false "focus"
+        "tree synchronous: a delegated handler throwing NotReadyException under a boundary shows the error view",
+        fun () -> handlerNotReady Tree.ops Tree.run false "click"
+        "program queued: a delegated handler throwing NotReadyException under a boundary shows the error view",
+        fun () -> handlerNotReady Program.ops Program.run true "click"
+        "tree queued: a direct handler throwing NotReadyException under a boundary shows the error view",
+        fun () -> handlerNotReady Tree.ops Tree.run true "focus"
+        "program synchronous: a direct handler throwing NotReadyException under a boundary shows the error view",
+        fun () -> handlerNotReady Program.ops Program.run false "focus"
         "tree synchronous: a throwing delegated handler outside every boundary throws out of its dispatch",
         fun () -> handlerOutsideBoundary Tree.ops Tree.run false "click"
         "program queued: a throwing direct handler outside every boundary throws out of its dispatch",

@@ -1478,11 +1478,7 @@ and [<Sealed>] private ViewBoundary
         if not received.IsEmpty then
             let errors = received
             received <- []
-
-            if not failed && site.Live () then
-                this.TearDown errors
-            else
-                reportAll errors
+            this.TearDown errors
         elif
             not revealed
             && not failed
@@ -1524,6 +1520,17 @@ and [<Sealed>] private ViewBoundary
 
         this.MountContent ()
 
+    /// <summary>Takes failures of the content, every one of them a failure including a pending read.</summary>
+    member this.FailAll(errors: exn list) =
+        if not errors.IsEmpty then
+            if settingUp then
+                held.AddRange errors
+            elif failed || not (site.Live ()) then
+                graph.Run (fun () -> reportAll errors)
+            else
+                received <- received @ errors
+                graph.Run (fun () -> Api.untrack (fun () -> wake.Value <- wake.Value + 1))
+
     interface ViewScope with
         member _.Tracks = true
 
@@ -1537,22 +1544,14 @@ and [<Sealed>] private ViewBoundary
                 if waiting = 0 && not revealed then
                     Api.untrack (fun () -> wake.Value <- wake.Value + 1)
 
-        member _.Fail(errors) =
-            let errors =
+        member this.Fail(errors) =
+            this.FailAll (
                 errors
                 |> List.filter (fun error ->
                     match error with
                     | NotReadyException _ -> false
                     | _ -> true)
-
-            if not errors.IsEmpty then
-                if settingUp then
-                    held.AddRange errors
-                elif failed || not (site.Live ()) then
-                    reportAll errors
-                else
-                    received <- received @ errors
-                    graph.Run (fun () -> Api.untrack (fun () -> wake.Value <- wake.Value + 1))
+            )
 
 /// <summary>The state of a mounted view and the backend that builds it.</summary>
 /// <remarks><c>boundary</c> is the boundary enclosing the mount, or null outside every boundary.</remarks>
@@ -2070,7 +2069,9 @@ and internal MountState
                     try
                         owned event
                     with error ->
-                        graph.Run (fun () -> scope.Fail [ error ])
+                        match scope with
+                        | :? ViewBoundary as boundary -> boundary.FailAll [ error ]
+                        | _ -> scope.Fail [ error ]
             else
                 Typed.ownedHandler handler
 
