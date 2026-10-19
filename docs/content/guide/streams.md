@@ -155,7 +155,7 @@ let lines = createStream (fun token -> StreamSource.ofAsyncEnumerable (readLines
 
 Here `readLines` is the application's function returning an `IAsyncEnumerable<string>`.
 
-`StreamSource.ofChannel` reads a `ChannelReader<'T>`. It is available on .NET 8 and later, and not
+`StreamSource.ofChannel` reads a `ChannelReader<'T>`. It is available in the net10.0 build, and not
 on netstandard2.1 or under Fable. The stream completes when the channel completes, and fails with
 the exception passed to the writer's `Complete`:
 
@@ -178,7 +178,7 @@ let chunks = createStreamFold "" (+) (fun _ -> StreamSource.ofAsyncIterable (rea
 ```
 
 From C#, `Reactive.Stream` and `Reactive.StreamFold` create the nodes, and `StreamSources` builds
-the sources: `Create`, `FromObservable`, `FromAsyncEnumerable` and, on .NET 8 and later,
+the sources: `Create`, `FromObservable`, `FromAsyncEnumerable` and, in the net10.0 build,
 `FromChannel`.
 
 ```csharp
@@ -220,7 +220,7 @@ item and returns the next state.
 | Start | On the first read. `start` runs with its reads tracked. |
 | Restart | A change to a value read by `start` restarts the stream on the next read, from the seed. |
 | Pending | From each start until the first item or completion. |
-| Cancellation | A restart, a failure and disposal cancel the token. |
+| Cancellation | A restart, completion, a failure and disposal cancel the token. |
 | Latest item | `createStream` publishes each item as the state. |
 | Fold | `createStreamFold` publishes `fold state item`, beginning from the seed. |
 | Publication | At most once per graph pass. The trace and the map report the items folded since the previous publication. |
@@ -228,5 +228,5 @@ item and returns the next state.
 | Completion | The last state stays published. Without an item, `createStream` fails and `createStreamFold` publishes the seed. |
 | Failure | A faulted source, a throwing `fold` or `start`, and a null source fail the node. |
 | Disposal | Cancels the stream; a pending node fails with `ObjectDisposedException`. |
-| `Peek` | The last published state; never starts the stream or raises. |
+| `Peek` | The last published state, read without starting the stream. |
 | `Runs` | The number of stream starts. |
