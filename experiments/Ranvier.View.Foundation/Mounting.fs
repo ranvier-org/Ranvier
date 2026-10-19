@@ -153,6 +153,12 @@ let private isChildOf (node: Node) (parent: Node) : bool = jsNative
 [<Emit("$0.parentNode == null")>]
 let private isDetached (node: Node) : bool = jsNative
 
+[<Emit("$0.$$ranvierWidget === true")>]
+let private isWidget (node: Node) : bool = jsNative
+
+[<Emit("$0.$$ranvierWidget = true")>]
+let private markWidget (node: Node) : unit = jsNative
+
 /// <summary>The node's next sibling, or <c>null</c> after the last child.</summary>
 [<Emit("$0.nextSibling")>]
 let private nextOrNull (node: Node) : Node = jsNative
@@ -2147,6 +2153,16 @@ and internal MountState
 
     override this.Placed(kind, hook) =
         let node = currentElement ()
+
+        if kind = PlacedKind.Widget then
+            if isWidget node then
+                raise (ArgumentException ("An element takes at most one content part", "modifiers"))
+
+            if node.hasChildNodes () then
+                raise (ArgumentException ("A widget element has no children", "children"))
+
+            markWidget node
+
         PlacedHook.register container this.Scope (Api.getOwner ()) kind (node :> Node) (fun () -> hook (box node))
 
     override this.Listen(eventName, handler) =
@@ -2190,6 +2206,9 @@ and internal MountState
             finally
                 target <- previous
 
+        if isWidget node && node.hasChildNodes () then
+            raise (ArgumentException ("A widget element has no children", "children"))
+
         if tag = Select then
             applyModifiers this tag node modifiers
 
@@ -2205,6 +2224,9 @@ and internal MountState
                     children[index] this
             finally
                 target <- previous
+
+        if isWidget node && node.hasChildNodes () then
+            raise (ArgumentException ("A widget element has no children", "children"))
 
         if tag = Select then
             applyModifiers this tag node modifiers

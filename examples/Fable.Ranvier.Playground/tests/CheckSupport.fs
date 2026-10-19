@@ -34,6 +34,10 @@ let messages (reports: ResizeArray<exn list>) =
 let mountView (_: Operations<'view>) (run: 'view -> Backend -> unit) queued graph report (target: HTMLElement) (view: 'view) =
     mountWith (modeOf queued) graph None report target None (fun context -> run view context.Backend)
 
+/// <summary>Mounts the template view <c>view</c> as a root mount at the end of <c>target</c>.</summary>
+let mountTemplate queued graph report (target: HTMLElement) (view: Program.View) =
+    mountView Program.ops Program.run queued graph report target view
+
 let span (ops: Operations<'view>) (modifiers: Typed.Modifier<HTMLSpanElement> array) children =
     Typed.element ops (HtmlTag "span") modifiers children
 
@@ -42,6 +46,13 @@ let attachToBody (node: Node) : unit = jsNative
 
 [<Emit("document.activeElement")>]
 let activeElement () : obj = jsNative
+
+/// <summary>The template variant of a check, under synchronous and queued commits.</summary>
+let templated (name: string) (check: bool -> unit -> unit) =
+    [|
+        for queued in [ false; true ] do
+            yield sprintf "template %s: %s" (if queued then "queued" else "synchronous") name, check queued
+    |]
 
 /// <summary>The tree and program variants of a check, under synchronous and queued commits.</summary>
 let both (name: string) (tree: bool -> unit) (program: bool -> unit) =

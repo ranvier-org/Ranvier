@@ -516,6 +516,17 @@ let private elementNode tag (parts: Part<'native, 'inst> array) (children: Templ
         | PlacedPart (kind, hook) -> placed.Add (kind, hook)
         | NoPart -> ()
 
+    let contents =
+        placed
+        |> Seq.filter (fun (kind, _) -> kind = PlacedKind.Widget)
+        |> Seq.length
+
+    if contents > 1 then
+        raise (ArgumentException ("An element takes at most one content part", "parts"))
+
+    if contents = 1 && children.Length > 0 then
+        raise (ArgumentException ("An element with a content part has no template children", "children"))
+
     TemplateView (
         ElementNode (
             tag,
@@ -635,6 +646,14 @@ type HookBuilder<'inst> internal () =
     /// </summary>
     member _.ref(select: 'inst -> NodeRef<'native>) : Part<'native, 'inst> =
         PlacedPart (PlacedKind.Mounted, Func<obj, obj, (unit -> unit)>(fun instance node -> (select (unbox instance)).Place node))
+
+    /// <summary>The widget owns the element's content once placed, and the template declares the element empty. The cleanup destroys the widget.</summary>
+    member _.widget(attach: 'inst -> 'native -> (unit -> unit)) : Part<'native, 'inst> =
+        PlacedPart (PlacedKind.Widget, placedHook attach)
+
+    /// <summary>The integration borrows the element once placed; the cleanup removes what it added. The element keeps its parent.</summary>
+    member _.lend(attach: 'inst -> 'native -> (unit -> unit)) : Part<'native, 'inst> =
+        PlacedPart (PlacedKind.Lent, placedHook attach)
 
 /// <summary>Builds a template for instances of type <c>'inst</c>; dynamic parts receive the instance as their argument.</summary>
 [<Sealed>]

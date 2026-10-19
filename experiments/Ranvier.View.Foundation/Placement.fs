@@ -1,6 +1,8 @@
 namespace Ranvier.View.Foundation
 
+open System
 open Ranvier
+open Fable.Core
 open Fable.Core.TS.Dom
 open Ranvier.View.Foundation.Representation
 
@@ -92,15 +94,26 @@ type internal Placement(parent: Placement) =
 
 /// <summary>Element hooks registered with a placement container.</summary>
 module internal PlacedHook =
+    [<Emit("$0.parentNode")>]
+    let private parentOf (node: Node) : Node = jsNative
+
+    /// <summary>Whether the node is a root of its row or mount: detached, or a child of a document fragment.</summary>
+    [<Emit("($0.parentNode == null || $0.parentNode.nodeType === 11)")>]
+    let private atRoot (node: Node) : bool = jsNative
+
     /// <summary>
     /// Adds <c>hook</c> for <c>node</c> to <c>container</c>; its returned cleanup runs when <c>owner</c> is disposed. A
     /// failure during the root's first placement, outside every boundary, unwinds <c>mountWith</c>; every other failure
-    /// goes to <c>scope</c>.
+    /// goes to <c>scope</c>. After the cleanup of a lent or widget hook on an element that is not a row or mount root,
+    /// a parent different from the one the hook ran under raises "An integration moved its element".
     /// </summary>
     let register (container: Placement) (scope: ViewScope) (owner: Owner) (kind: PlacedKind) (node: Node) (hook: unit -> (unit -> unit)) =
+        let checksParent = kind <> PlacedKind.Mounted && not (atRoot node)
+
         container.Add (
             owner,
             fun () ->
+                let parent = parentOf node
                 let mutable failed = false
 
                 let cleanup =
@@ -117,6 +130,17 @@ module internal PlacedHook =
 
                         Unchecked.defaultof<_>
 
-                if not failed && not (isNull (box cleanup)) then
-                    Api.onCleanup cleanup
+                if
+                    not failed
+                    && (checksParent || not (isNull (box cleanup)))
+                then
+                    Api.onCleanup (fun () ->
+                        if not (isNull (box cleanup)) then
+                            cleanup ()
+
+                        if
+                            checksParent
+                            && not (obj.ReferenceEquals (parentOf node, parent))
+                        then
+                            raise (InvalidOperationException "An integration moved its element"))
         )

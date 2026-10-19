@@ -58,6 +58,7 @@
     <Compile Include="BoundaryChecks.fs" />
     <Compile Include="CheckSupport.fs" />
     <Compile Include="PlacementChecks.fs" />
+    <Compile Include="IntegrationChecks.fs" />
     <Compile Include="OwnedAsyncChecks.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/ComponentBench.fs" Link="ComponentBench.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Fixtures.fs" Link="Fixtures.fs" />

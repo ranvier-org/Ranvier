@@ -78,6 +78,14 @@ let mounted (hook: 'native -> (unit -> unit)) : Modifier<'native> =
 let ref (target: NodeRef<'native>) : Modifier<'native> =
     Modifier (fun backend -> backend.Placed (PlacedKind.Mounted, target.Place))
 
+/// <summary>The widget owns the element's content once the element is placed, and the element's children are the widget's alone. The cleanup destroys the widget.</summary>
+let widget (attach: 'native -> (unit -> unit)) : Modifier<'native> =
+    Modifier (fun backend -> backend.Placed (PlacedKind.Widget, (fun node -> attach (unbox node))))
+
+/// <summary>The integration borrows the element once it is placed; the cleanup removes what it added. The element keeps its parent.</summary>
+let lend (attach: 'native -> (unit -> unit)) : Modifier<'native> =
+    Modifier (fun backend -> backend.Placed (PlacedKind.Lent, (fun node -> attach (unbox node))))
+
 /// <summary>Applies a fixed property value during element construction.</summary>
 let staticProperty (setter: 'native -> 'value -> unit) value : Modifier<'native> =
     Modifier (fun backend -> backend.Property (fun node -> setter (unbox node) value))

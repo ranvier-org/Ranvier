@@ -610,9 +610,6 @@ type Probe =
         Host: HTMLElement
     }
 
-let private mountTemplate queued graph report (target: HTMLElement) (view: Program.View) =
-    mountView Program.ops Program.run queued graph report target view
-
 let private placedDiv =
     Component.define (fun _ (probe: Probe) -> probe) (fun t ->
         t.div
@@ -1111,13 +1108,6 @@ let private templateHiddenNodeRef queued () =
     mounted.Dispose ()
 
     equal (false, [ true ], true, false) (hidden, List.ofSeq hiddenField.Seen, shown, hiddenField.Field.Current.IsSome)
-
-/// <summary>The template variant of a check, under synchronous and queued commits.</summary>
-let private templated (name: string) (check: bool -> unit -> unit) =
-    [|
-        for queued in [ false; true ] do
-            yield sprintf "template %s: %s" (if queued then "queued" else "synchronous") name, check queued
-    |]
 
 /// <summary>An input in a host attached to the document; its mounted hook focuses and measures it.</summary>
 let private focusAndMeasure () =
