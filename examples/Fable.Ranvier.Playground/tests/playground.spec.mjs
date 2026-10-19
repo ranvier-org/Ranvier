@@ -193,7 +193,7 @@ test("Foundation core boundary shows pending failure and recovery on retained no
 });
 
 test("default synchronous mode batches a burst before click returns", async ({ page }) => {
-  await expect(page.getByTestId("scheduling-status")).toHaveText("Synchronous DOM commits · batched events");
+  await expect(page.getByTestId("scheduling-status")).toHaveText("Synchronous DOM commits");
   expect(await page.evaluate(() => {
     const text = document.querySelector('[data-testid="count"]').firstChild;
     const observer = new MutationObserver(() => {});

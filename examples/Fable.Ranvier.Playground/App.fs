@@ -134,7 +134,7 @@ let private demoView =
                         |]
                 |])
 
-/// <summary>The shell's state and the operations its controls and widget elements run.</summary>
+/// <summary>The shell's state, and the operations invoked by its controls and widget elements.</summary>
 type ShellProps =
     {
         Mounted: Signal<bool>
@@ -189,9 +189,9 @@ let private shellView =
                             [|
                                 t.text (fun (shell: ShellProps) ->
                                     if shell.Queued.Value then
-                                        "Microtask DOM commits · batched events"
+                                        "Microtask DOM commits"
                                     else
-                                        "Synchronous DOM commits · batched events")
+                                        "Synchronous DOM commits")
                             |]
                         t.button
                             [|

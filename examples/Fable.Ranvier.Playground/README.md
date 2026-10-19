@@ -2,10 +2,10 @@
 
 A small browser playground for the experimental `Ranvier.View.Foundation` renderer. The shell and the
 demo are component templates; the shell embeds the demo and the Foundation panels through widget
-elements, each one a mount with its own commit mode and graph. Ranvier updates text, attributes and
-DOM properties without rebuilding the tree. Try the counter, editable name field and unmount/remount
-button. Select **Use microtasks**, then **Burst +100** to exercise coalescing. **Flush DOM** commits
-queued work explicitly. Changing scheduling mode remounts the demo while preserving its state.
+elements, each one a mount with its own commit mode; the Foundation panels also have their own graph.
+Ranvier updates text, attributes and DOM properties without rebuilding the tree. Try the counter,
+editable name field and unmount/remount button. Select **Use microtasks**, then **Burst +100** to
+exercise coalescing. **Flush DOM** commits queued work explicitly. Changing scheduling mode remounts the demo while preserving its state.
 **Burst +100** groups its writes with `Api.batch`; every other listener runs unbatched. The default
 synchronous mode commits the final values before the handler returns; the microtask mode defers
 subsequent DOM commits.
@@ -75,9 +75,11 @@ See [the benchmark method and results](../../docs/.ai/benchmarks/dom-scheduling/
 
 ## Layout
 
-- `App.fs`: the shell and demo templates and the Foundation keyed-row, component and load-result panels.
+- `App.fs`: the shell and demo templates and the Foundation keyed-row, component and load-result
+  panels.
 - `Playground.fsproj`: links Foundation source files before `App.fs` so the app can use them.
-- `main.js`: imports the compiled app and registers disposal with Vite.
+- `main.js`: imports the compiled app, registers disposal with Vite and exposes
+  `window.playground.dispose`.
 - `style.css`: responsive layout and styling.
 - `tests/DomChecks.fs`: compiled F# checks of library behaviour.
 - `tests/dom.test.mjs`: Node/jsdom setup and test invocation.
@@ -90,9 +92,10 @@ the local `src/Fable.Ranvier` project, so library edits are part of the Fable wa
 
 ## PoC limits
 
-The fixtures under tests/ that exercise src/Fable.Ranvier (DomChecks.fs, ScheduledChecks.fs, scheduled.html) cover that library: HTML with a static child structure, synchronous state and optional microtask DOM writes.
-The queue adds overhead; reduced mutation counts are not a measured overall speedup. There is no
-JSX, SSR, hydration or SVG.
+The fixtures under tests/ that exercise src/Fable.Ranvier (DomChecks.fs, ScheduledChecks.fs,
+scheduled.html) cover that library: HTML with a static child structure, synchronous state and
+optional microtask DOM writes. The queue adds overhead; reduced mutation counts are not a measured
+overall speedup. There is no JSX, SSR, hydration or SVG.
 The runtime is Ranvier, not Solid; Solid 2's split effects inspired the binding approach.
 Pending/error values retain the last successful binding output rather than automatically creating
 a loading/error view. See the library README for its ownership and property-setter contracts.
