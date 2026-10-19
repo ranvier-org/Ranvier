@@ -24,6 +24,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 101,662 | 140,620 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 84,053 | 125,352 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 84,053 | 125,324 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 84,051 | 125,351 |
 
 ## app-table
 
@@ -49,6 +50,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 9,228,152 | 9,630,607 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 9,120,258 | 9,782,395 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 9,120,251 | 9,605,263 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 9,120,290 | 9,716,121 |
 
 ## async-recover
 
@@ -74,6 +76,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 138,826 | 37,104 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 138,968 | 37,303 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 138,968 | 37,305 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 138,968 | 37,306 |
 
 ## async-resolve
 
@@ -99,6 +102,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 2,796,740 | 1,066,673 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 2,791,003 | 1,073,813 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 2,791,002 | 1,073,817 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 2,791,002 | 1,074,343 |
 
 ## chain
 
@@ -124,6 +128,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 13,042 | 318 | 2,470 | 4,491 | 3,180 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 13,035 | 318 | 2,450 | 4,491 | 3,180 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 13,355 | 318 | 2,450 | 4,491 | 3,180 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 13,035 | 318 | 2,450 | 4,491 | 3,180 |
 
 ## chain-affinity
 
@@ -149,6 +154,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 2,569 | 3,087 | 2,516 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 2,549 | 3,067 | 2,496 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 2,549 | 3,067 | 2,496 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 2,549 | 3,067 | 2,496 |
 
 ## control
 
@@ -174,6 +180,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 74,720 | 834,910 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 74,719 | 826,138 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 74,719 | 832,961 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 74,719 | 826,177 |
 
 ## create
 
@@ -199,6 +206,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 13,461,435 | 2,861,678 | 3,035,210 | 2,132,010 | 4,179,898 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 13,531,174 | 2,859,679 | 2,528,399 | 2,132,031 | 3,988,931 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 13,451,365 | 2,859,678 | 2,528,380 | 2,131,543 | 3,989,083 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 13,451,300 | 2,875,680 | 2,528,385 | 2,131,328 | 3,988,938 |
 
 ## create-on
 
@@ -224,6 +232,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 3,423,905 | 4,354,534 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 2,911,490 | 4,366,645 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 2,927,488 | 4,366,998 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 2,911,520 | 4,366,997 |
 
 ## cutoff
 
@@ -249,6 +258,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 1,181 | 50 | 111 | 65 | 35 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 1,182 | 50 | 111 | 65 | 35 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 1,182 | 50 | 111 | 65 | 35 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 1,182 | 50 | 111 | 65 | 35 |
 
 ## derive-effect
 
@@ -274,6 +284,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 765 | 716 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 760 | 680 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 760 | 680 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 760 | 680 |
 
 ## derive-on
 
@@ -299,6 +310,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 740 | 684 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 735 | 684 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 751 | 684 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 735 | 684 |
 
 ## dispose
 
@@ -324,6 +336,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 2,706,184 | 806,290 | 501,497 | 466,110 | 704,570 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 2,706,750 | 806,290 | 367,497 | 466,306 | 434,416 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 2,706,242 | 806,291 | 367,497 | 466,002 | 434,253 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 2,706,248 | 806,291 | 367,497 | 466,242 | 434,019 |
 
 ## dispose-on
 
@@ -349,6 +362,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 480,497 | 698,438 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 346,497 | 430,156 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 346,497 | 430,446 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 346,497 | 430,305 |
 
 ## editable-edit
 
@@ -374,6 +388,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 181,106 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 179,606 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 179,606 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 179,606 |
 
 ## editable-upstream
 
@@ -399,6 +414,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 232,755 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 230,755 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 230,755 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 230,755 |
 
 ## fail-recompute
 
@@ -424,6 +440,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 64,924 | 1,376 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 64,914 | 1,366 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 64,914 | 1,366 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 64,914 | 1,366 |
 
 ## flight
 
@@ -449,6 +466,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 11,051 | 6,245 | 6,246 | 11,374 | 10,819 | 22,383 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 11,041 | 6,240 | 6,241 | 11,365 | 10,809 | 22,373 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 11,041 | 6,240 | 6,241 | 11,365 | 10,809 | 22,373 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 11,041 | 6,240 | 6,241 | 11,364 | 10,809 | 22,373 |
 
 ## keyed-insert
 
@@ -474,6 +492,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 1,921,766 | 53,941 | 54,668 | 3,092,947 | 163,151 | 172,662 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 1,918,543 | 53,948 | 54,624 | 3,114,971 | 164,122 | 167,165 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 1,918,527 | 53,948 | 54,610 | 3,115,059 | 164,083 | 167,374 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 1,918,527 | 53,980 | 54,609 | 3,115,019 | 164,104 | 166,925 |
 
 ## keyed-remove
 
@@ -499,6 +518,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 1,920,716 | 43,632 | 45,046 | 3,092,992 | 134,114 | 143,433 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 1,917,460 | 43,626 | 45,002 | 3,114,557 | 131,766 | 140,540 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 1,917,458 | 43,626 | 44,988 | 3,114,556 | 131,915 | 140,265 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 1,917,448 | 43,659 | 44,987 | 3,114,552 | 131,804 | 140,487 |
 
 ## keyed-swap
 
@@ -524,6 +544,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 1,973,379 | 46,183 | 46,699 | 3,215,874 | 79,374 | 84,887 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 1,970,160 | 46,161 | 46,638 | 3,264,730 | 79,254 | 84,519 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 1,970,144 | 46,160 | 46,622 | 3,264,638 | 79,189 | 84,515 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 1,970,144 | 46,192 | 46,623 | 3,264,757 | 79,143 | 84,492 |
 
 ## mvu-dispatch
 
@@ -549,6 +570,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 58,391 | 772 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 58,066 | 767 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 58,066 | 767 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 58,066 | 767 |
 
 ## project-chain
 
@@ -574,6 +596,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 3,837,432 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 3,834,759 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 3,834,745 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 3,834,824 |
 
 ## project-churn
 
@@ -599,6 +622,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 36,252 | 34,083 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 36,206 | 34,048 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 36,206 | 34,048 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 36,206 | 34,048 |
 
 ## project-edit
 
@@ -624,6 +648,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 50,185 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 50,181 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 50,165 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 50,165 |
 
 ## project-reorder
 
@@ -649,6 +674,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 778,907 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 778,916 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 778,899 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 778,901 |
 
 ## shape-diamond
 
@@ -674,6 +700,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 60,899 | 88,455 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 59,894 | 88,455 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 59,894 | 88,455 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 59,894 | 88,455 |
 
 ## shape-dynamic
 
@@ -699,6 +726,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 82,420 | 98,000 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 82,520 | 95,378 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 82,520 | 95,381 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 82,520 | 95,381 |
 
 ## timed-admit-both
 
@@ -724,6 +752,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 118,909 | 133,655 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 118,269 | 133,685 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 120,317 | 133,684 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 120,317 | 133,688 |
 
 ## timed-admit-debounce
 
@@ -749,6 +778,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 117,818 | 132,160 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 117,174 | 132,327 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 119,222 | 132,300 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 119,222 | 132,316 |
 
 ## timed-admit-first
 
@@ -774,6 +804,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 69,925 | 81,964 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 69,285 | 82,092 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 71,333 | 82,091 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 70,309 | 82,092 |
 
 ## timed-admit-last
 
@@ -799,6 +830,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 118,076 | 132,480 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 117,436 | 132,611 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 119,484 | 132,618 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 119,484 | 132,627 |
 
 ## timed-capture-both
 
@@ -824,6 +856,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 36,044 | 44,978 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 35,724 | 45,028 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 36,748 | 45,029 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 36,748 | 45,029 |
 
 ## timed-capture-debounce
 
@@ -849,6 +882,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 35,916 | 43,583 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 35,596 | 43,646 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 36,620 | 43,647 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 36,620 | 43,646 |
 
 ## timed-capture-first
 
@@ -874,6 +908,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 32,396 | 38,804 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 32,076 | 38,868 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 33,100 | 38,868 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 33,100 | 38,868 |
 
 ## timed-capture-last
 
@@ -899,6 +934,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 35,852 | 43,519 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 35,532 | 43,583 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 36,556 | 43,583 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 36,556 | 43,583 |
 
 ## update
 
@@ -924,6 +960,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 1,088,673 | 38,805 | 83,005 | 262,809 | 207,798 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 1,087,690 | 38,805 | 82,005 | 262,586 | 207,601 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 1,094,083 | 38,805 | 82,005 | 262,564 | 207,605 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 1,087,683 | 38,805 | 82,005 | 262,714 | 207,579 |
 
 ## update-on
 
@@ -949,6 +986,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 93,805 | 222,064 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 92,805 | 221,283 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 94,405 | 221,303 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 92,805 | 221,301 |
 
 ## work-form
 
@@ -974,6 +1012,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 174,678 | 168,161 | 288,750 | 287,109 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 169,672 | 163,139 | 288,752 | 287,018 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 169,672 | 163,139 | 288,718 | 287,090 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 169,672 | 163,139 | 288,772 | 287,114 |
 
 ## work-status
 
@@ -999,6 +1038,7 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 100,445 | 79,116 | 315,849 | 155,384 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 99,945 | 78,615 | 320,915 | 155,412 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 99,945 | 80,215 | 320,892 | 155,412 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 99,945 | 78,615 | 320,911 | 155,426 |
 
 ## work-value
 
@@ -1024,4 +1064,5 @@
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 107,569 | 119,769 | 316,141 | 283,721 |
 | `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 107,071 | 119,269 | 321,107 | 283,844 |
 | `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | 107,069 | 120,869 | 321,228 | 283,833 |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | 107,069 | 119,269 | 321,142 | 283,789 |
 
