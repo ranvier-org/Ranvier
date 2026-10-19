@@ -99,12 +99,27 @@ let private widgetChildrenAtMount (ops: Operations<'view>) (run: 'view -> Backen
     let view =
         Typed.div ops [| Typed.widget (fun (_: HTMLDivElement) -> ignore) |] [| ops.Text "child" |]
 
+    let doubled =
+        Typed.div
+            ops
+            [|
+                Typed.widget (fun (_: HTMLDivElement) -> ignore)
+                Typed.widget (fun (_: HTMLDivElement) -> ignore)
+            |]
+            [||]
+
+    let doubledTarget = host ()
+
     equal
-        (true, 0.)
+        (true, 0., true, 0.)
         (raisesArgument (fun () ->
             mountView ops run queued graph strict target view
             |> ignore),
-         target.childNodes.length)
+         target.childNodes.length,
+         raisesArgument (fun () ->
+             mountView ops run queued graph strict doubledTarget doubled
+             |> ignore),
+         doubledTarget.childNodes.length)
 
 let private foreignRow =
     Component.define (fun _ (item: unit -> int) -> item) (fun t ->
@@ -294,6 +309,49 @@ let private movedIntegration (ops: Operations<'view>) (run: 'view -> Backend -> 
     let mounted = mountView ops run queued graph reports.Add target view
     mounted.Dispose ()
     equal ([ "cleanup" ], [ [ "An integration moved its element" ] ]) (List.ofSeq log, messages reports)
+
+/// <summary>A lent span inside a div, moved by its integration, whose cleanup fails.</summary>
+let private movedIntegrationFailingCleanup (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+    let elsewhere = host ()
+    let reports = ResizeArray<exn list>()
+    let target = host ()
+
+    let view =
+        Typed.div
+            ops
+            [||]
+            [|
+                span
+                    ops
+                    [|
+                        Typed.lend (fun (node: HTMLSpanElement) ->
+                            elsewhere.appendChild node |> ignore
+                            fun () -> failwith "cleanup failed")
+                    |]
+                    [||]
+            |]
+
+    let mounted = mountView ops run queued graph reports.Add target view
+    mounted.Dispose ()
+    equal [ [ "cleanup failed"; "An integration moved its element" ] ] (messages reports)
+
+/// <summary>A lent mount root whose mount moves to another host before its disposal.</summary>
+let private lentMountRootMoved (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+    let elsewhere = host ()
+    let log = ResizeArray<string>()
+    let reports = ResizeArray<exn list>()
+    let target = host ()
+
+    let view =
+        span ops [| Typed.lend (fun (_: HTMLSpanElement) -> fun () -> log.Add "cleanup") |] [||]
+
+    let mounted = mountView ops run queued graph reports.Add target view
+    mounted.MoveBefore (elsewhere, None)
+    let moved = (elsewhere.querySelector "span").IsSome
+    mounted.Dispose ()
+    equal (true, [ "cleanup" ], [], 0.) (moved, List.ofSeq log, messages reports, elsewhere.childNodes.length)
 
 let private lentRowRoots (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
     use graph = new Graph ()
@@ -543,6 +601,14 @@ let cases: (string * (unit -> unit)) array =
                 "an integration that moves its element is reported after its cleanup"
                 (movedIntegration Tree.ops Tree.run)
                 (movedIntegration Program.ops Program.run)
+            both
+                "a moved element is reported alongside a failing cleanup"
+                (movedIntegrationFailingCleanup Tree.ops Tree.run)
+                (movedIntegrationFailingCleanup Program.ops Program.run)
+            both
+                "a lent mount root moved with its mount to another host is not reported"
+                (lentMountRootMoved Tree.ops Tree.run)
+                (lentMountRootMoved Program.ops Program.run)
             both "a lent row root moved by a keyed reorder is not reported" (lentRowRoots Tree.ops Tree.run) (lentRowRoots Program.ops Program.run)
             templated "a lent row root moved by a keyed reorder is not reported" templateLentRowRoots
             both

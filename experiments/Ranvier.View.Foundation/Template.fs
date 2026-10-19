@@ -651,7 +651,7 @@ type HookBuilder<'inst> internal () =
     member _.widget(attach: 'inst -> 'native -> (unit -> unit)) : Part<'native, 'inst> =
         PlacedPart (PlacedKind.Widget, placedHook attach)
 
-    /// <summary>The integration borrows the element once placed; the cleanup removes what it added. The element keeps its parent.</summary>
+    /// <summary>The integration borrows the element once placed; the cleanup removes what it added. The integration keeps the element under its parent; moving it is reported after the cleanup.</summary>
     member _.lend(attach: 'inst -> 'native -> (unit -> unit)) : Part<'native, 'inst> =
         PlacedPart (PlacedKind.Lent, placedHook attach)
 

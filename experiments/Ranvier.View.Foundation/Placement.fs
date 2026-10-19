@@ -105,7 +105,8 @@ module internal PlacedHook =
     /// Adds <c>hook</c> for <c>node</c> to <c>container</c>; its returned cleanup runs when <c>owner</c> is disposed. A
     /// failure during the root's first placement, outside every boundary, unwinds <c>mountWith</c>; every other failure
     /// goes to <c>scope</c>. After the cleanup of a lent or widget hook on an element that is not a row or mount root,
-    /// a parent different from the one the hook ran under raises "An integration moved its element".
+    /// a parent different from the one the hook ran under raises "An integration moved its element", also when the cleanup
+    /// fails.
     /// </summary>
     let register (container: Placement) (scope: ViewScope) (owner: Owner) (kind: PlacedKind) (node: Node) (hook: unit -> (unit -> unit)) =
         let checksParent = kind <> PlacedKind.Mounted && not (atRoot node)
@@ -130,17 +131,13 @@ module internal PlacedHook =
 
                         Unchecked.defaultof<_>
 
-                if
-                    not failed
-                    && (checksParent || not (isNull (box cleanup)))
-                then
-                    Api.onCleanup (fun () ->
-                        if not (isNull (box cleanup)) then
-                            cleanup ()
+                if not failed then
+                    // The check runs after the cleanup, and also when the cleanup fails.
+                    if checksParent then
+                        Api.onCleanup (fun () ->
+                            if not (obj.ReferenceEquals (parentOf node, parent)) then
+                                raise (InvalidOperationException "An integration moved its element"))
 
-                        if
-                            checksParent
-                            && not (obj.ReferenceEquals (parentOf node, parent))
-                        then
-                            raise (InvalidOperationException "An integration moved its element"))
+                    if not (isNull (box cleanup)) then
+                        Api.onCleanup cleanup
         )

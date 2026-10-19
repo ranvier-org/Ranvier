@@ -82,7 +82,7 @@ let ref (target: NodeRef<'native>) : Modifier<'native> =
 let widget (attach: 'native -> (unit -> unit)) : Modifier<'native> =
     Modifier (fun backend -> backend.Placed (PlacedKind.Widget, (fun node -> attach (unbox node))))
 
-/// <summary>The integration borrows the element once it is placed; the cleanup removes what it added. The element keeps its parent.</summary>
+/// <summary>The integration borrows the element once it is placed; the cleanup removes what it added. The integration keeps the element under its parent; moving it is reported after the cleanup.</summary>
 let lend (attach: 'native -> (unit -> unit)) : Modifier<'native> =
     Modifier (fun backend -> backend.Placed (PlacedKind.Lent, (fun node -> attach (unbox node))))
 
