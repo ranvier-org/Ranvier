@@ -19,7 +19,7 @@ let private writes (name: string) (value: DateTimeOffset) (text: string) =
         Expect.isTrue (sameInstantAndOffset decoded value) ("decoded " + text)
 
 let private reads (text: string) (expected: DateTimeOffset) =
-    testCase ("reads " + text)
+    testCase ("reads " + quote + text + quote)
     <| fun () ->
         let decoded =
             codec.Decode (quote + text + quote)
@@ -28,7 +28,7 @@ let private reads (text: string) (expected: DateTimeOffset) =
         Expect.isTrue (sameInstantAndOffset decoded expected) text
 
 let private rejects (text: string) =
-    testCase ("rejects " + text)
+    testCase ("rejects " + quote + text + quote)
     <| fun () ->
         Expect.isTrue
             (codec.Decode (quote + text + quote)

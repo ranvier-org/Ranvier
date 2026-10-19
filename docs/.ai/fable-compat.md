@@ -2043,44 +2043,44 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - the first instant at +14:00 writes 0001-01-01T14:00:00.000+14:00
 - the first day at -14:00 writes 0001-01-01T00:00:00.000-14:00
 - the last day at +14:00 writes 9999-12-31T23:59:59.999+14:00
-- reads 2024-03-05T06:07:08Z
-- reads 2024-03-05T06:07:08-00:00
-- reads 2024-03-05T06:07:08.7891234+05:30
-- reads 2024-03-05T06:07:08.7+05:30
-- reads 2024-03-05T06:07:08.78+05:30
-- reads 2024-02-29T00:00:00+00:00
-- reads 2000-02-29T00:00:00+00:00
-- reads 2024-03-05t06:07:08+00:00
-- reads 2024-03-05T06:07:08z
-- reads 2024-03-05t06:07:08.789z
-- reads 2024-03-05T06:07:08+05:30 
-- reads 2024-03-05T06:07:08Z\u0009\u000d\u000a 
+- reads "2024-03-05T06:07:08Z"
+- reads "2024-03-05T06:07:08-00:00"
+- reads "2024-03-05T06:07:08.7891234+05:30"
+- reads "2024-03-05T06:07:08.7+05:30"
+- reads "2024-03-05T06:07:08.78+05:30"
+- reads "2024-02-29T00:00:00+00:00"
+- reads "2000-02-29T00:00:00+00:00"
+- reads "2024-03-05t06:07:08+00:00"
+- reads "2024-03-05T06:07:08z"
+- reads "2024-03-05t06:07:08.789z"
+- reads "2024-03-05T06:07:08+05:30 "
+- reads "2024-03-05T06:07:08Z\u0009\u000d\u000a "
 - decoding keeps the wire offset
-- rejects 2024-02-30T00:00:00.000+00:00
-- rejects 2023-02-29T00:00:00+00:00
-- rejects 1900-02-29T00:00:00+00:00
-- rejects 2024-04-31T00:00:00+00:00
-- rejects 2024-13-01T00:00:00+00:00
-- rejects 2024-00-01T00:00:00+00:00
-- rejects 2024-03-05T24:00:00+00:00
-- rejects 2024-03-05T06:60:00+00:00
-- rejects 2024-03-05T06:07:60+00:00
-- rejects 2024-03-05T06:07:08+15:00
-- rejects 2024-03-05T06:07:08+14:01
-- rejects 2024-03-05T06:07:08+05:60
-- rejects 2024-03-05T06:07:08
-- rejects 2024-03-05 06:07:08+00:00
-- rejects 2024-03-05T06:07:08.+00:00
-- rejects 2024-03-05T06:07:08.12345678+00:00
-- rejects 2024-03-05T06:07:08+0530
-- rejects  2024-03-05T06:07:08+05:30
-- rejects \u00092024-03-05T06:07:08Z
-- rejects 2024-03-05T06:07:08 
-- rejects 0000-01-01T00:00:00+00:00
-- rejects 0001-01-01T00:00:00+00:01
-- rejects 9999-12-31T23:59:59.999-00:01
-- rejects 03/05/2024
-- rejects 
+- rejects "2024-02-30T00:00:00.000+00:00"
+- rejects "2023-02-29T00:00:00+00:00"
+- rejects "1900-02-29T00:00:00+00:00"
+- rejects "2024-04-31T00:00:00+00:00"
+- rejects "2024-13-01T00:00:00+00:00"
+- rejects "2024-00-01T00:00:00+00:00"
+- rejects "2024-03-05T24:00:00+00:00"
+- rejects "2024-03-05T06:60:00+00:00"
+- rejects "2024-03-05T06:07:60+00:00"
+- rejects "2024-03-05T06:07:08+15:00"
+- rejects "2024-03-05T06:07:08+14:01"
+- rejects "2024-03-05T06:07:08+05:60"
+- rejects "2024-03-05T06:07:08"
+- rejects "2024-03-05 06:07:08+00:00"
+- rejects "2024-03-05T06:07:08.+00:00"
+- rejects "2024-03-05T06:07:08.12345678+00:00"
+- rejects "2024-03-05T06:07:08+0530"
+- rejects " 2024-03-05T06:07:08+05:30"
+- rejects "\u00092024-03-05T06:07:08Z"
+- rejects "2024-03-05T06:07:08 "
+- rejects "0000-01-01T00:00:00+00:00"
+- rejects "0001-01-01T00:00:00+00:01"
+- rejects "9999-12-31T23:59:59.999-00:01"
+- rejects "03/05/2024"
+- rejects ""
 - a rejected text names the accepted form
 - a number or null is a shape error
 
@@ -2122,13 +2122,13 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - writes "NaN"
 - writes "Infinity"
 - writes "-Infinity"
-- reads 1E+21
-- reads 1.5E-07
-- reads 5E-324
-- reads 4.0
-- reads  	 4 
-- reads -0
-- reads "Infinity"
+- reads "1E+21"
+- reads "1.5E-07"
+- reads "5E-324"
+- reads "4.0"
+- reads " 	 4 "
+- reads "-0"
+- reads ""Infinity""
 - a number past the double range is a shape error
 - a pretty-printed payload from the old .NET writer decodes
 

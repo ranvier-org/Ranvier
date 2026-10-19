@@ -17,7 +17,7 @@ let private writes (value: float) (text: string) =
         Expect.isTrue (sameFloat (floats.Decode text |> expectOk text) expected) ("decoded " + text)
 
 let private reads (text: string) (expected: float) (canonical: string) =
-    testCase ("reads " + text)
+    testCase ("reads " + quote + text + quote)
     <| fun () ->
         let decoded = floats.Decode text |> expectOk text
         Expect.isTrue (sameFloat decoded expected) ("decoded " + text)
