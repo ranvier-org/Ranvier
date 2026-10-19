@@ -430,4 +430,25 @@ let tests =
                 Expect.isLessThan (aliveOf refs) 20 "a disposed aggregate leaves no fold behind"
             }
 #endif
+
+#if !FABLE_COMPILER
+            // .NET only: JavaScript exposes no forced collection.
+            test "a tryFind memo disposed with its root is not retained" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal [ 1; 2; 3 ]
+                let up = createProjection id id (fun () -> source.Value)
+                let refs = ResizeArray<WeakReference>()
+
+                for _ in 1..200 do
+                    let owner, found =
+                        createRoot (fun owner -> owner, up |> Projection.tryFind (fun n -> n > 1))
+
+                    found.Value |> ignore
+                    owner.Dispose ()
+                    refs.Add (WeakReference found)
+
+                Expect.isLessThan (aliveOf refs) 20 "a disposed search leaves no view behind"
+            }
+#endif
         ]

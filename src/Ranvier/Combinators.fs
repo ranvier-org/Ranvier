@@ -1552,3 +1552,96 @@ module Projection =
     /// <remarks>Fails and recovers as <c>head</c> does.</remarks>
     let item (index: unit -> int) (upstream: Projection<'K, 'V>) : Memo<'K * 'V> =
         positional upstream (fun _ -> index ()) (orRaise "Projection.item: the projection has no key at the index.")
+
+    /// <summary>
+    /// A memo of <c>finish</c> applied to the first key of the view returned by <c>build</c>, with its value. The memo owns
+    /// the view.
+    /// </summary>
+    /// <remarks>A pass producing an entry equal to the last one returns the last result instance, leaving readers unwoken.</remarks>
+    let private firstOf (graph: Graph) (build: unit -> Projection<'K, 'U>) (finish: ('K * 'U) option -> 'R) : Memo<'R> =
+        let owner = ownedScope graph
+        let view = graph.RunOwned (owner, build)
+        let equalKeys = System.Collections.Generic.EqualityComparer<'K>.Default
+        let equalValues = graph.Options.Equality.Comparer<'U>()
+        let lastEntry: ('K * 'U) option ref = ref None
+        let lastResult = ref Unchecked.defaultof<'R>
+
+        let compute (_: 'R voption) =
+            let entry = entryAt view (fun _ -> 0)
+
+            match entry, lastEntry.Value with
+            | Some (key, value), Some (lastKey, lastValue) when
+                equalKeys.Equals (key, lastKey)
+                && equalValues.Equals (value, lastValue)
+                ->
+                lastResult.Value
+            | Some _, _ ->
+                let result = finish entry
+                lastEntry.Value <- entry
+                lastResult.Value <- result
+                result
+            | None, _ -> finish entry
+
+        let memo = Memo<'R>.Create(graph, compute, ScopeMode.Pure)
+        memo.Adopt owner
+        memo
+
+    /// <summary>A memo of the first value of <c>upstream</c>, in upstream order, that satisfies <c>predicate</c>.</summary>
+    /// <remarks>
+    /// The memo owns a <c>filter</c> view: <c>predicate</c> re-runs for a key when its upstream row changes, and a
+    /// membership flip costs the filter's O(N) pass. A match whose predicate is pending makes the memo pending.
+    /// </remarks>
+    /// <example>
+    /// <code lang="fsharp">
+    /// let rows = createProjection (fun t -> t.Id) id (fun () -> todos.Value)
+    /// let firstOpen = rows |> Projection.tryFind (fun t -> not t.Done)
+    /// </code>
+    /// </example>
+    let tryFind (predicate: 'V -> bool) (upstream: Projection<'K, 'V>) : Memo<'V option> =
+        upstream.RequireRowMemos "Projection.tryFind"
+        firstOf upstream.Graph (fun () -> filter predicate upstream) (Option.map snd)
+
+    /// <summary>A memo of the first key of <c>upstream</c>, in upstream order, whose value satisfies <c>predicate</c>.</summary>
+    /// <remarks>Follows <c>tryFind</c>.</remarks>
+    let tryFindKey (predicate: 'V -> bool) (upstream: Projection<'K, 'V>) : Memo<'K option> =
+        upstream.RequireRowMemos "Projection.tryFindKey"
+        firstOf upstream.Graph (fun () -> filter predicate upstream) (Option.map fst)
+
+    /// <summary>A memo of the first <c>Some</c> that <c>chooser</c> returns over the values of <c>upstream</c>, in upstream order.</summary>
+    /// <remarks>The memo owns a <c>choose</c> view; costs, pending and failure follow <c>tryFind</c>.</remarks>
+    let tryPick (chooser: 'V -> 'U option) (upstream: Projection<'K, 'V>) : Memo<'U option> =
+        upstream.RequireRowMemos "Projection.tryPick"
+        firstOf upstream.Graph (fun () -> choose chooser upstream) (Option.map snd)
+
+    /// <summary><c>tryFind</c>, raising <c>KeyNotFoundException</c> while no value satisfies <c>predicate</c>.</summary>
+    /// <remarks>Fails and recovers as <c>head</c> does.</remarks>
+    let find (predicate: 'V -> bool) (upstream: Projection<'K, 'V>) : Memo<'V> =
+        upstream.RequireRowMemos "Projection.find"
+
+        firstOf
+            upstream.Graph
+            (fun () -> filter predicate upstream)
+            (Option.map snd
+             >> orRaise "Projection.find: no value satisfies the predicate.")
+
+    /// <summary><c>tryFindKey</c>, raising <c>KeyNotFoundException</c> while no value satisfies <c>predicate</c>.</summary>
+    /// <remarks>Fails and recovers as <c>head</c> does.</remarks>
+    let findKey (predicate: 'V -> bool) (upstream: Projection<'K, 'V>) : Memo<'K> =
+        upstream.RequireRowMemos "Projection.findKey"
+
+        firstOf
+            upstream.Graph
+            (fun () -> filter predicate upstream)
+            (Option.map fst
+             >> orRaise "Projection.findKey: no value satisfies the predicate.")
+
+    /// <summary><c>tryPick</c>, raising <c>KeyNotFoundException</c> while <c>chooser</c> returns <c>None</c> for every value.</summary>
+    /// <remarks>Fails and recovers as <c>head</c> does.</remarks>
+    let pick (chooser: 'V -> 'U option) (upstream: Projection<'K, 'V>) : Memo<'U> =
+        upstream.RequireRowMemos "Projection.pick"
+
+        firstOf
+            upstream.Graph
+            (fun () -> choose chooser upstream)
+            (Option.map snd
+             >> orRaise "Projection.pick: the chooser returns None for every value.")

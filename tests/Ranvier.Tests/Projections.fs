@@ -2794,6 +2794,8 @@ let rowOptionTests =
                 Expect.throwsT<NotSupportedException> (fun () -> Projection.map id proj |> ignore) "map"
                 Expect.throwsT<NotSupportedException> (fun () -> Projection.sortBy id proj |> ignore) "sortBy"
                 Expect.throwsT<NotSupportedException> (fun () -> Projection.fold (+) 0 proj |> ignore) "fold"
+                Expect.throwsT<NotSupportedException> (fun () -> Projection.tryFind (fun _ -> true) proj |> ignore) "tryFind"
+                Expect.throwsT<NotSupportedException> (fun () -> Projection.pick Some proj |> ignore) "pick"
             }
 
             test "size and position memos read a projection from createProjectionOnce" {

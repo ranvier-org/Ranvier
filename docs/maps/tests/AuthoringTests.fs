@@ -239,6 +239,12 @@ let tests =
                         "last"
                         "tryItem (fun () -> 0)"
                         "item (fun () -> 0)"
+                        "tryFind (fun _ -> true)"
+                        "find (fun _ -> true)"
+                        "tryFindKey (fun _ -> true)"
+                        "findKey (fun _ -> true)"
+                        "tryPick Some"
+                        "pick Some"
                     ] do
                     let _, _, bindings =
                         scenario ($"let total =\n    rows\n    |> Projection.{aggregate} // aggregate\ncontrols []")

@@ -58,6 +58,7 @@ let rows = createProjection _.Id id (fun () -> tasks.Value)
 | `Projection.forall predicate` | whether `countBy` of the misses is zero | as `foldGroup` |
 | `Projection.length`, `Projection.isEmpty` | the key count; whether it is zero | no work: a row edit wakes neither |
 | `Projection.tryHead`, `tryLast`, `tryItem index` (`head`, `last`, `item` raise) | the key at a position with its value | O(1); an edit off the position wakes no reader |
+| `Projection.tryFind`, `tryFindKey`, `tryPick` (`find`, `findKey`, `pick` raise) | the first match in upstream order | one predicate call; a membership flip costs an O(N) filter pass |
 
 :::
 
@@ -249,6 +250,28 @@ Pinned by the `Projection.tryHead, tryLast and tryItem` tests, including `an edi
 no reader`, `appending a key after the head wakes no tryHead reader`, `a pending head row makes tryHead pending, and a
 failed head row raises its error` and `head raises one exception instance per memo, and a reader runs once per
 transition`
+([Combinators.fs](https://github.com/shayanhabibi/Ranvier/blob/master/tests/Ranvier.Tests/Combinators.fs)).
+:::
+*)
+
+(**
+## Search
+
+`Projection.tryFind`, `tryFindKey` and `tryPick` return the first match in upstream order. Each owns a `filter` (or
+`choose`) view, so the function re-runs only for changed rows, and the filter's rules decide the candidates: a
+throwing predicate skips its key, and a pending one keeps the key's last membership. `find`, `findKey` and `pick`
+raise `KeyNotFoundException` while nothing matches.
+*)
+
+let firstPass = scoreRows |> Projection.tryFindKey (fun score -> score >= 50)
+
+firstPass.Value // Some 2
+
+(**
+:::details Tests covering this behaviour
+
+Pinned by the `Projection.tryFind, tryFindKey and tryPick` tests, including `200 single edits at N=1000 make 200
+predicate calls` and `a pending predicate on the head makes the search pending; elsewhere it keeps membership`
 ([Combinators.fs](https://github.com/shayanhabibi/Ranvier/blob/master/tests/Ranvier.Tests/Combinators.fs)).
 :::
 *)

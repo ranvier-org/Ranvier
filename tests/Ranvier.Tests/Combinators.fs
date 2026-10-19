@@ -2778,3 +2778,187 @@ let positionTests =
                 Expect.equal first.Value (Some (1, 10)) "the memo reads its last value"
             }
         ]
+
+[<Tests>]
+let findTests =
+    let even (n: int) = n % 2 = 0
+
+    testList
+        "Projection.tryFind, tryFindKey and tryPick"
+        [
+            test "the first match in upstream order" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1; 2, 4; 3, 6 ])
+                let up = rows source
+                let value = Projection.tryFind even up
+                let key = Projection.tryFindKey even up
+
+                Expect.equal (value.Value, key.Value) (Some 4, Some 2) "key 2 is the first even"
+                source.Value <- setN 1 2 source.Value
+                Expect.equal (value.Value, key.Value) (Some 2, Some 1) "key 1 turns even"
+                source.Value <- setN 1 3 source.Value
+                Expect.equal (value.Value, key.Value) (Some 4, Some 2) "key 1 turns odd"
+                source.Value <- items [ 1, 1; 2, 3 ]
+                Expect.equal (value.Value, key.Value) (None, None) "no even value"
+            }
+
+            test "200 single edits at N=1000 make 200 predicate calls" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ for i in 1..1000 -> i, 2 * i ])
+                let calls = ref 0
+
+                let value =
+                    rows source
+                    |> Projection.tryFind (fun n ->
+                        calls.Value <- calls.Value + 1
+                        n % 4 = 0)
+
+                createEffect (fun () -> value.Value |> ignore)
+                calls.Value <- 0
+
+                for i in 1..200 do
+                    source.Value <- setN i (2 * i + 2) source.Value
+
+                Expect.equal calls.Value 200 "one predicate call per edit"
+            }
+
+            test "tryPick returns the first chosen value" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1; 2, 4; 3, 6 ])
+
+                let picked =
+                    rows source
+                    |> Projection.tryPick (fun n -> if n > 3 then Some (n * 10) else None)
+
+                Expect.equal picked.Value (Some 40) "key 2"
+                source.Value <- source.Value |> List.filter (fun x -> x.Id <> 2)
+                Expect.equal picked.Value (Some 60) "key 3"
+            }
+
+            test "an edit outside the first match wakes no tryFind reader" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1; 2, 4; 3, 6 ])
+                let value = rows source |> Projection.tryFind even
+                let key = rows source |> Projection.tryFindKey even
+                let runs = ref 0
+
+                createEffect (fun () ->
+                    runs.Value <- runs.Value + 1
+                    value.Value |> ignore
+                    key.Value |> ignore)
+
+                Expect.equal runs.Value 1 "precondition"
+                source.Value <- source.Value @ items [ 4, 8 ]
+                Expect.equal runs.Value 1 "a match appended after the first"
+                source.Value <- setN 3 10 source.Value
+                Expect.equal runs.Value 1 "a later match edited"
+                source.Value <- source.Value |> List.filter (fun x -> x.Id <> 3)
+                Expect.equal runs.Value 1 "a later match removed"
+                source.Value <- setN 2 6 source.Value
+                Expect.equal runs.Value 2 "the first match changes"
+            }
+
+            test "a throwing predicate excludes its key from the search" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 2; 2, 4 ])
+
+                let value =
+                    rows source
+                    |> Projection.tryFind (fun n -> if n = 13 then invalidOp "boom 13" else n % 2 = 0)
+
+                Expect.equal value.Value (Some 2) "key 1"
+                source.Value <- setN 2 13 source.Value
+                Expect.equal value.Value (Some 2) "a throwing key after the match"
+                source.Value <- setN 2 4 source.Value
+                source.Value <- setN 1 13 source.Value
+                Expect.equal value.Value (Some 4) "the throwing head is skipped"
+                source.Value <- setN 1 2 source.Value
+                Expect.equal value.Value (Some 2) "recovered"
+            }
+
+            test "a pending predicate on the head makes the search pending; elsewhere it keeps membership" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let flights = dict [ for n in [ 10; 11; 20; 21 ] -> n, createAsyncSource<bool>() ]
+                flights[10].Settle true
+                flights[20].Settle true
+                let source = createSignal (items [ 1, 10; 2, 20 ])
+
+                let key =
+                    rows source
+                    |> Projection.tryFindKey (fun n -> flights[n].Value)
+
+                Expect.equal key.Value (Some 1) "key 1"
+                source.Value <- setN 2 21 source.Value
+                Expect.equal key.Value (Some 1) "a pending key after the head"
+                source.Value <- setN 1 11 source.Value
+                Expect.throwsT<NotReadyException> (fun () -> key.Value |> ignore) "the head's predicate is pending"
+                flights[11].Settle false
+                Expect.throwsT<NotReadyException> (fun () -> key.Value |> ignore) "the next head's predicate is pending"
+                flights[21].Settle true
+                Expect.equal key.Value (Some 2) "key 2"
+            }
+
+            test "find, findKey and pick raise KeyNotFoundException while nothing matches and recover" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1 ])
+                let up = rows source
+                let value = Projection.find even up
+                let key = Projection.findKey even up
+                let picked = Projection.pick (fun n -> if n > 3 then Some n else None) up
+
+                expectEmpty value "Projection.find: no value satisfies the predicate."
+                expectEmpty key "Projection.findKey: no value satisfies the predicate."
+                expectEmpty picked "Projection.pick: the chooser returns None for every value."
+
+                source.Value <- setN 1 4 source.Value
+                Expect.equal (value.Value, key.Value, picked.Value) (4, 1, 4) "recovered"
+            }
+
+            test "disposing the calling scope stops the search" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1; 2, 2 ])
+                let up = rows source
+                let calls = ref 0
+                let scope = ref Unchecked.defaultof<Owner>
+
+                let value =
+                    createRoot (fun owner ->
+                        scope.Value <- owner
+
+                        up
+                        |> Projection.tryFind (fun n ->
+                            calls.Value <- calls.Value + 1
+                            even n))
+
+                Expect.equal value.Value (Some 2) "precondition"
+                scope.Value.Dispose ()
+                calls.Value <- 0
+                source.Value <- setN 1 8 source.Value
+                value.Value |> ignore
+
+                Expect.equal calls.Value 0 "no predicate runs after disposal"
+                Expect.equal value.Value (Some 2) "the last value"
+            }
+
+            test "disposing the tryFind memo releases the upstream rows" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1; 2, 2 ])
+                let up = rows source
+                up.Get 1 |> ignore
+                let value = Projection.tryFind even up
+
+                value.Value |> ignore
+                Expect.isGreaterThan (readersOf up 1) 0 "the filter reads row 1"
+                value.Dispose ()
+                Expect.equal (readersOf up 1) 0 "disposing the memo disposed the filter"
+            }
+        ]

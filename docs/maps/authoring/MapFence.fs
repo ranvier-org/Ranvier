@@ -259,7 +259,7 @@ module MapFence =
 
     let private aggregate =
         Regex (
-            @"^Projection\.(?:sumBy|countBy|exists|forall|fold|foldGroup|foldGroupBy|length|isEmpty|tryHead|head|tryLast|last|tryItem|item)\b",
+            @"^Projection\.(?:sumBy|countBy|exists|forall|fold|foldGroup|foldGroupBy|length|isEmpty|tryHead|head|tryLast|last|tryItem|item|tryFind|find|tryFindKey|findKey|tryPick|pick)\b",
             RegexOptions.Compiled
         )
 

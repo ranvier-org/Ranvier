@@ -88,6 +88,7 @@ let all =
                     Ranvier.Tests.Combinators.ownershipTests
                     Ranvier.Tests.Combinators.sizeTests
                     Ranvier.Tests.Combinators.positionTests
+                    Ranvier.Tests.Combinators.findTests
                 ]
             testList "PreviousValues.fs" [ Ranvier.Tests.PreviousValues.tests; Ranvier.Tests.PreviousValues.asyncTests ]
             testList
