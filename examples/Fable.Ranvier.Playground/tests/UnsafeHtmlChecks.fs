@@ -181,6 +181,57 @@ let private nullReader queued () =
 
     equal ([ true ], true) ([ for error in raised @ List.concat reports -> namesNull error ], server)
 
+/// <summary>The data of every comment the HTML parser produces for <c>markup</c> as a div's content, in document order.</summary>
+[<Emit("(() => { const div = document.createElement('div'); div.innerHTML = $0; const walker = document.createTreeWalker(div, 128); const data = []; while (walker.nextNode()) data.push(walker.currentNode.data); return data; })()")>]
+let private parsedComments (markup: string) : string array = jsNative
+
+/// <summary>Raw markup the parser turns into hydration-marker comments is rejected on the server; markup whose comments are plain is written.</summary>
+let private markerParity () =
+    let markerShaped (data: string) =
+        data.StartsWith ("[", StringComparison.Ordinal)
+        || data = "]"
+
+    let observed markup =
+        let server =
+            try
+                Html.render Omit (Program.run (Component.render article (fun () -> UnsafeHtml.Trust markup)))
+                |> ignore
+
+                false
+            with error ->
+                error.Message = "Raw HTML cannot contain a comment that starts with [ or equals ]"
+
+        Array.exists markerShaped (parsedComments markup), server
+
+    let markers =
+        [
+            "<!--[-->y"
+            "<!--]-->"
+            "<![>y"
+            "</[>y"
+            "<!]>y"
+            "<!--x--!><!--[-->y"
+            "<!--]--!>"
+            "<!--]-"
+            "<!--]--!"
+            "</]"
+            "<![CDATA[x]]>"
+        ]
+
+    let plain =
+        [
+            "<!-- [-->"
+            "<!--]x-->"
+            "<!--]--x-->"
+            "<!doctype html>"
+            "<?xml?>"
+            "<!x>"
+            "</ x>"
+        ]
+
+    equal (List.map (fun _ -> true, true) markers) (List.map observed markers)
+    equal (List.map (fun _ -> false, false) plain) (List.map observed plain)
+
 /// <summary>Mounts trusted markup in a div appended to the document body; returns the div and the disposal.</summary>
 let unsafeMarkup (markup: string) : HTMLElement * (unit -> unit) =
     let graph = new Graph ()
@@ -206,6 +257,7 @@ let cases: (string * (unit -> unit)) array =
                     "an element with raw HTML and template children fails at definition time; void, raw-text, template, textarea and title elements reject raw HTML",
                     definitionChecks
                     "server HTML writes raw content verbatim under Reject and Omit, and text slots beside it stay escaped", serverHtml
+                    "server HTML rejects exactly the raw markup that jsdom parses into marker comments, for these inputs", markerParity
                 |]
                 templated "a pending raw-HTML reader keeps its boundary pending; a failing one shows the error view" pendingReader
                 templated "a raw-HTML reader returning null fails naming the null value, on the client and the server" nullReader

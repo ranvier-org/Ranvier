@@ -132,13 +132,39 @@ let private rawHtmlForgesNoMarker () =
         error :? InvalidOperationException
         && error.Message = "Raw HTML cannot contain a comment that starts with [ or equals ]"
 
-    equal
-        [ true; true; true; true ]
+    let markers =
         [
-            for markup in [ "<!--[-->x"; "a<!--]-->"; "<!--[a:0123abcd-->"; "<!--[ x" ] -> rejected markup
+            "<!--[-->x"
+            "a<!--]-->"
+            "<!--[a:0123abcd-->"
+            "<!--[ x"
+            "<![>"
+            "</[>"
+            "<!]>"
+            "<!--x--!><!--[-->"
+            "<!--]--!>"
+            "<!--]-"
+            "</]"
+            "<![CDATA[x]]>"
         ]
 
-    equal "<div><!-- [--><!--]x--><!-- ]--></div><span>&lt;b&gt;</span>" (renderOmit rawContent "<!-- [--><!--]x--><!-- ]-->")
+    equal (List.map (fun _ -> true) markers) [ for markup in markers -> rejected markup ]
+
+    let accepted =
+        "<!-- [--><!--]x--><!-- ]--><!--]--x--><!doctype html><?xml?><!x></ x>"
+
+    equal
+        ("<div>"
+         + accepted
+         + "</div><span>&lt;b&gt;</span>")
+        (renderOmit rawContent accepted)
+
+let private nullEscape () =
+    equal ("", "") (Html.escape false null, Html.escape true null)
+
+    equal
+        "<div title=\"\"></div>"
+        (Html.render Omit (Program.run (Program.element Div [| Attribute ("title", null) |] [| Program.bind (=) (fun () -> (null: string)) |])))
 
 let private preformatted =
     Component.define (fun _ (value: string) -> value) (fun t ->
@@ -256,6 +282,7 @@ let cases: (string * (unit -> unit)) array =
         "raw HTML containing a marker-shaped comment raises", rawHtmlForgesNoMarker
         "a pre, textarea or listing first child text starting with a line feed gets a second one", leadingLineFeed
         "escape corpus is byte-identical on .NET and Fable", escapeCorpus
+        "null text and attribute values escape as empty strings on .NET and Fable", nullEscape
         "attribute and tag names outside the validated set fail at definition time", namesAtDefinition
         "a definition's server plan is compiled once and merges adjacent static markup", sharedPlan
         "a browser-only part under Reject raises the browser capability error", browserRejection

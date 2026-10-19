@@ -399,7 +399,7 @@ type internal ServerOp =
     /// <summary>Restores the enclosing part.</summary>
     | LeaveOp
 
-/// <summary>A definition's server HTML as operations over its flattened template, with adjacent static markup merged.</summary>
+/// <summary>A definition's server HTML as operations over its flattened template; no two <c>Static</c> operations are adjacent.</summary>
 [<NoEquality; NoComparison>]
 type internal ServerPlan =
     {
@@ -573,39 +573,56 @@ let internal serverPlan (definition: TemplateComponent) : ServerPlan =
 #endif
     | plan -> unbox plan
 
-/// <summary>Whether <c>markup</c> contains a comment whose data starts with <c>[</c> or equals <c>]</c>.</summary>
+/// <summary>
+/// Whether an HTML parser can produce a comment from <c>markup</c> whose data starts with <c>[</c> or equals <c>]</c>,
+/// in any parsing context.
+/// </summary>
+/// <remarks>
+/// Covers <c>&lt;!--</c> comments closed by <c>--&gt;</c>, <c>--!&gt;</c> or the end of input, and the bogus comments
+/// opened by <c>&lt;!</c> (including <c>&lt;![CDATA[</c> in HTML content) and by <c>&lt;/</c> followed by a
+/// non-letter. Markup inside attribute values, raw-text elements and foreign <c>CDATA</c> is also matched.
+/// </remarks>
 let private hasMarkerComment (markup: string) =
-    let find (value: string) (from: int) =
-        markup.IndexOf (value, from, StringComparison.Ordinal)
+    let at (index: int) (value: string) =
+        let mutable same = index + value.Length <= markup.Length
+        let mutable offset = 0
+
+        while same && offset < value.Length do
+            same <- markup[index + offset] = value[offset]
+            offset <- offset + 1
+
+        same
+
+    let rest (index: int) =
+        markup.Substring index
+
+    // The data "]" is complete when the comment closes or the input ends inside the comment's closing sequence.
+    let commentCloses (tail: string) =
+        "--!".StartsWith(tail, StringComparison.Ordinal)
+        || tail.StartsWith ("-->", StringComparison.Ordinal)
+        || tail.StartsWith ("--!>", StringComparison.Ordinal)
+
+    let bogusCloses (tail: string) =
+        tail.Length = 0 || tail[0] = '>'
 
     let mutable found = false
-    let mutable start = find "<!--" 0
+    let mutable index = markup.IndexOf '<'
 
-    while not found && start >= 0 do
-        let data = start + 4
-        let rest = markup.Length - data
+    while not found && index >= 0 do
+        found <-
+            at index "<!--["
+            || at index "<!["
+            || at index "</["
+            || (at index "<!--]"
+                && commentCloses (rest (index + 5)))
+            || ((at index "<!]" || at index "</]")
+                && bogusCloses (rest (index + 3)))
 
-        if rest > 0 && markup[data] = '>' then
-            start <- find "<!--" (data + 1)
-        elif
-            rest > 1
-            && markup[data] = '-'
-            && markup[data + 1] = '>'
-        then
-            start <- find "<!--" (data + 2)
-        else
-            let close = find "-->" data
-            let finish = if close < 0 then markup.Length else close
-
-            found <-
-                (rest > 0 && markup[data] = '[')
-                || (finish - data = 1 && markup[data] = ']')
-
-            start <- if close < 0 then -1 else find "<!--" (close + 3)
+        index <- markup.IndexOf ('<', index + 1)
 
     found
 
-/// <summary>The owners of the instances a server writer sets up.</summary>
+/// <summary>The owners of instances set up by a server writer.</summary>
 [<AbstractClass>]
 type internal ServerScope() =
     /// <summary>Runs the body with the scope and <c>Setup</c> of a new nested instance.</summary>

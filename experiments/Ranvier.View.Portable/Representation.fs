@@ -205,11 +205,7 @@ let private attributeEscapes: System.Buffers.SearchValues<char> =
     System.Buffers.SearchValues.Create (System.MemoryExtensions.AsSpan "&<>\r\"")
 #endif
 
-/// <summary>
-/// Escapes <c>&amp; &lt; &gt; \r</c>, and <c>"</c> when <c>attribute</c> is true; a value free of these characters is
-/// returned as the same string.
-/// </summary>
-let internal escapeHtml (attribute: bool) (value: string) : string =
+let private escapeText (attribute: bool) (value: string) : string =
 #if FABLE_COMPILER
     let escapes c =
         c = '&'
@@ -268,7 +264,14 @@ let internal escapeHtml (attribute: bool) (value: string) : string =
         builder.Append(span.Slice start).ToString()
 #endif
 
-/// <summary>An append-only HTML buffer that can be truncated back to a mark.</summary>
+/// <summary>
+/// Escapes <c>&amp; &lt; &gt; \r</c>, and <c>"</c> when <c>attribute</c> is true; a value free of these characters is
+/// returned as the same string, and null is escaped as the empty string.
+/// </summary>
+let internal escapeHtml (attribute: bool) (value: string) : string =
+    if isNull value then "" else escapeText attribute value
+
+/// <summary>An HTML buffer that can be truncated back to a mark.</summary>
 [<Sealed>]
 type HtmlSink() =
 #if FABLE_COMPILER
@@ -895,7 +898,7 @@ module Program =
 module Html =
     /// <summary>
     /// Escapes text for HTML; a <c>true</c> flag also escapes double quotes for attribute values. A value free of
-    /// escaped characters is returned as the same string.
+    /// escaped characters is returned as the same string, and null is escaped as the empty string.
     /// </summary>
     let escape attribute (value: string) =
         escapeHtml attribute value
