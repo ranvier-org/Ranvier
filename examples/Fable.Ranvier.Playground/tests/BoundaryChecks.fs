@@ -1314,6 +1314,120 @@ let private nestedQueuedFailures (ops: Operations<'view>) (run: 'view -> Backend
 
     mounted.Dispose ()
 
+/// <summary>A setter outside a boundary that fails while <c>trigger</c> is <c>"bad"</c>, ahead of the boundary.</summary>
+let private failingOutside (ops: Operations<'view>) (trigger: Signal<string>) (boundary: 'view) =
+    ops.Fragment
+        [|
+            Typed.div
+                ops
+                [|
+                    Typed.reactiveProperty
+                        (fun (node: HTMLDivElement) (value: string) ->
+                            if value = "bad" then
+                                failwith "setter"
+
+                            node.title <- value)
+                        (fun () -> trigger.Value)
+                |]
+                [||]
+            boundary
+        |]
+
+/// <summary>
+/// Under <c>FailFastCancel</c>, a failure outside a revealed boundary stops the flush ahead of the commit that settles
+/// a refetch: the content keeps its last value and IsPending clears.
+/// </summary>
+let private cancelledAfterReveal (ops: Operations<'view>) (run: 'view -> Backend -> unit) =
+    use graph = new Graph ()
+    let trigger = graph.Run (fun () -> Api.createSignal "ok")
+
+    let flight =
+        graph.Run (fun () -> Api.createSignal (Api.createAsyncSource<string>()))
+
+    let reports = ResizeArray<exn list>()
+    let host = host ()
+
+    let view =
+        failingOutside
+            ops
+            trigger
+            (ops.Boundary (
+                ops.Text "loading",
+                (fun failure -> ops.Text failure.Error.Message),
+                fun status ->
+                    ops.Fragment
+                        [|
+                            Typed.reactiveText ops (fun () -> flight.Value.Value)
+                            Typed.reactiveText ops (fun () -> if status.IsPending () then "*" else ".")
+                        |]
+            ))
+
+    let mounted =
+        mountWith (QueuedCommits (FailFastCancel, ignore)) graph None reports.Add host None (fun context -> run view context.Backend)
+
+    graph.Run (fun () -> flight.Value.Settle "1")
+    mounted.Flush ()
+    equal "1." host.textContent
+    graph.Run (fun () -> flight.Value <- Api.createAsyncSource<string>())
+    mounted.Flush ()
+    equal "1*" host.textContent
+    graph.Run (fun () -> trigger.Value <- "bad")
+    graph.Run (fun () -> flight.Value.Settle "2")
+    mounted.Flush ()
+    // The flush that releases the waiting binding writes IsPending; its text commits in the next flush.
+    mounted.Flush ()
+    equal ("1.", [ [ "setter" ] ]) (host.textContent, messages reports)
+    mounted.Dispose ()
+
+/// <summary>
+/// Under <c>FailFastCancel</c>, a failure outside a hidden boundary stops the flush ahead of the commit that settles its
+/// last waiting binding: the boundary reveals the content with that binding's last value.
+/// </summary>
+let private cancelledBeforeReveal (ops: Operations<'view>) (run: 'view -> Backend -> unit) =
+    use graph = new Graph ()
+    let trigger = graph.Run (fun () -> Api.createSignal "ok")
+    let first = graph.Run (fun () -> Api.createAsyncSource<string>())
+
+    let flight =
+        graph.Run (fun () ->
+            let source = Api.createAsyncSource<string>()
+            source.Settle "1"
+            Api.createSignal source)
+
+    let reports = ResizeArray<exn list>()
+    let host = host ()
+
+    let view =
+        failingOutside
+            ops
+            trigger
+            (ops.Boundary (
+                ops.Text "loading",
+                (fun failure -> ops.Text failure.Error.Message),
+                fun _ ->
+                    ops.Fragment
+                        [|
+                            Typed.reactiveText ops (fun () -> first.Value)
+                            Typed.reactiveText ops (fun () -> flight.Value.Value)
+                        |]
+            ))
+
+    let mounted =
+        mountWith (QueuedCommits (FailFastCancel, ignore)) graph None reports.Add host None (fun context -> run view context.Backend)
+
+    equal "loading" host.textContent
+    graph.Run (fun () -> flight.Value <- Api.createAsyncSource<string>())
+    graph.Run (fun () -> first.Settle "A")
+    mounted.Flush ()
+    equal "loading" host.textContent
+    graph.Run (fun () -> trigger.Value <- "bad")
+    graph.Run (fun () -> flight.Value.Settle "2")
+    mounted.Flush ()
+    mounted.Flush ()
+    equal ("A1", [ [ "setter" ] ]) (host.textContent, messages reports)
+    mounted.Dispose ()
+
+
 let cases: (string * (unit -> unit)) array =
     [|
         "tree HTML renders a boundary's pending, content or error view between markers", fun () -> server Tree.ops Tree.run
@@ -1414,6 +1528,10 @@ let cases: (string * (unit -> unit)) array =
         fun () -> pendingAfterReveal Program.ops Program.run false
         "program queued: a pending read after the reveal keeps the content and sets IsPending",
         fun () -> pendingAfterReveal Program.ops Program.run true
+        "program queued: a fail-fast flush stopped outside a revealed boundary clears IsPending after a refetch settles",
+        fun () -> cancelledAfterReveal Program.ops Program.run
+        "program queued: a fail-fast flush stopped outside a hidden boundary still reveals it once every source settles",
+        fun () -> cancelledBeforeReveal Program.ops Program.run
         "tree synchronous: a delegated handler throwing NotReadyException under a boundary shows the error view",
         fun () -> handlerNotReady Tree.ops Tree.run false "click"
         "program queued: a delegated handler throwing NotReadyException under a boundary shows the error view",

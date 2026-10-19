@@ -17,6 +17,8 @@ type Slot internal (owner: obj, scope: ViewScope) =
     member val internal Version = 0 with get, set
     member val internal Listed = false with get, set
     member val internal Action: (unit -> unit) option = None with get, set
+    /// <summary>Runs, when not null, after a flush stopped by <c>FailFastCancel</c> cancels the slot's current commit.</summary>
+    member val internal Dropped: unit -> unit = Unchecked.defaultof<_> with get, set
 
 #if FABLE_COMPILER
 [<Fable.Core.Emit("$0.map($1)")>]
@@ -119,7 +121,11 @@ type Queue(graph: Graph, failure: CommitFailure, post: (unit -> unit) -> unit) a
 
                     for slot, version, action in work do
                         if stopped then
+                            let dropped = action.IsSome && slot.Version = version
                             this.Cancel slot
+
+                            if dropped && not (isNull (box slot.Dropped)) then
+                                slot.Dropped ()
                         elif not disposed && slot.Version = version then
                             match action with
                             | None -> ()

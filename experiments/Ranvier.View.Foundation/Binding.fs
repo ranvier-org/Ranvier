@@ -7,7 +7,8 @@ open Ranvier.View.Foundation.Scheduling
 /// <remarks>The first settled value is written immediately. A suspended or failed read cancels any older queued write.
 /// A failed immediate write after setup goes to <c>scope</c>; a failed queued write goes to the queue, which reports it
 /// to <c>scope</c> after the flush. <c>afterCommit</c>, when not null, runs after each commit of a current value, written
-/// or equal to the committed one. The enclosing owner disposes the effect.</remarks>
+/// or equal to the committed one, and when a flush stopped by <c>FailFastCancel</c> cancels that commit. The enclosing
+/// owner disposes the effect.</remarks>
 let internal startQueuedIn
     (scope: ViewScope)
     (settingUp: unit -> bool)
@@ -20,6 +21,7 @@ let internal startQueuedIn
     (afterCommit: unit -> unit)
     =
     let slot = queue.Reserve scope
+    slot.Dropped <- afterCommit
     let mutable first = true
     let mutable version = 0
     let mutable hasCommitted = false
