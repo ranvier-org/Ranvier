@@ -259,8 +259,9 @@ module Stage =
                 }
         }
 
-    /// Pushes every package in the output directory to NuGet. `--dry-publish` lists them instead, fails when there
-    /// are none, and pushes nothing, whatever key is set.
+    /// Pushes every package in the output directory to NuGet, with the key masked in every printed form of the step.
+    /// `--dry-publish` lists them instead, fails when there are none, and pushes nothing, whatever key is set. Without
+    /// a key or `--dry-publish`, the stage is inactive and fails the pipeline.
     let publish =
         input {
             let! apiKey = Options.apiKey
@@ -289,9 +290,13 @@ module Stage =
                                     printfn $"Would push {System.IO.Path.GetFileName file}")
                         }
                     else
-                        stage "push" {
-                            run (cmd $"dotnet nuget push {packages} -k {apiKey.Value} -s https://api.nuget.org/v3/index.json --skip-duplicate")
-                        }
+                        whenSome apiKey (fun key ->
+                            stage "push" {
+                                run (
+                                    cmd $"dotnet nuget push {packages} -s https://api.nuget.org/v3/index.json --skip-duplicate"
+                                    |> Cmd.secretOption "-k" key
+                                )
+                            })
                 }
         }
 
