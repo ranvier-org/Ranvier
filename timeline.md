@@ -29,6 +29,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 84,044 | 126,437 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 84,045 | 126,319 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 84,043 | 126,340 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 84,043 | 126,334 |
 
 ## app-table
 
@@ -59,6 +60,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 9,120,416 | 9,753,433 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 9,120,343 | 9,608,947 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 9,120,295 | 9,711,135 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 9,120,311 | 9,716,978 |
 
 ## async-recover
 
@@ -89,6 +91,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 138,884 | 37,319 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 138,884 | 37,315 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 138,884 | 37,323 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 138,884 | 37,316 |
 
 ## async-resolve
 
@@ -119,6 +122,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 2,788,201 | 1,074,533 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 2,788,200 | 1,074,848 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 2,788,201 | 1,074,446 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 2,788,200 | 1,074,517 |
 
 ## chain
 
@@ -149,6 +153,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 13,107 | 318 | 2,450 | 4,492 | 3,180 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 13,043 | 318 | 2,450 | 4,492 | 3,180 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 13,075 | 318 | 2,450 | 4,491 | 3,180 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 13,043 | 318 | 2,450 | 4,491 | 3,180 |
 
 ## chain-affinity
 
@@ -179,6 +184,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 2,549 | 3,067 | 2,496 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 2,549 | 3,067 | 2,496 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 2,549 | 3,067 | 2,496 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 2,549 | 3,067 | 2,496 |
 
 ## control
 
@@ -209,6 +215,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 74,720 | 826,788 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 74,720 | 826,863 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 74,720 | 836,174 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 74,720 | 843,978 |
 
 ## create
 
@@ -239,6 +246,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 13,589,022 | 2,865,678 | 2,528,378 | 2,131,533 | 3,984,654 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 13,714,524 | 2,865,678 | 2,528,410 | 2,131,816 | 3,984,556 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 13,589,068 | 2,881,678 | 2,528,362 | 2,131,083 | 3,984,508 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 13,621,031 | 2,865,678 | 2,528,362 | 2,131,910 | 3,985,016 |
 
 ## create-on
 
@@ -269,6 +277,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 2,910,485 | 4,366,970 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 2,910,484 | 4,366,886 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 2,910,484 | 4,367,023 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 2,910,484 | 4,366,671 |
 
 ## cutoff
 
@@ -299,6 +308,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 1,182 | 50 | 111 | 65 | 35 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 1,182 | 50 | 111 | 65 | 35 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 1,182 | 50 | 111 | 65 | 35 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 1,182 | 50 | 111 | 65 | 35 |
 
 ## derive-effect
 
@@ -329,6 +339,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 760 | 680 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 760 | 680 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 760 | 680 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 760 | 680 |
 
 ## derive-on
 
@@ -359,6 +370,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 735 | 684 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 735 | 684 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 735 | 684 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 735 | 684 |
 
 ## dispose
 
@@ -389,6 +401,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 2,706,235 | 806,291 | 367,497 | 466,120 | 434,101 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 2,707,642 | 806,291 | 367,497 | 466,150 | 434,399 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 2,706,245 | 806,291 | 367,497 | 466,179 | 434,221 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 2,706,255 | 806,290 | 367,497 | 466,078 | 434,233 |
 
 ## dispose-on
 
@@ -419,6 +432,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 346,497 | 430,205 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 346,497 | 430,425 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 346,497 | 430,458 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 346,497 | 430,207 |
 
 ## editable-edit
 
@@ -449,6 +463,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 179,606 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 179,606 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 179,606 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 179,606 |
 
 ## editable-upstream
 
@@ -479,6 +494,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 230,755 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 230,755 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 230,755 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 230,755 |
 
 ## fail-recompute
 
@@ -509,6 +525,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 64,926 | 1,366 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 64,926 | 1,366 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 64,950 | 1,366 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 64,974 | 1,366 |
 
 ## flight
 
@@ -539,6 +556,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 11,017 | 6,228 | 6,229 | 11,340 | 10,785 | 22,371 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 11,017 | 6,228 | 6,229 | 11,340 | 10,785 | 22,371 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 11,017 | 6,228 | 6,229 | 11,340 | 10,785 | 22,371 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 10,999 | 6,217 | 6,218 | 11,320 | 10,766 | 22,345 |
 
 ## keyed-insert
 
@@ -569,6 +587,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 1,918,536 | 53,948 | 54,611 | 3,115,088 | 164,098 | 167,471 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 1,918,536 | 53,948 | 54,610 | 3,115,027 | 163,853 | 167,236 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 1,918,536 | 53,948 | 54,610 | 3,115,210 | 164,120 | 167,409 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 1,918,536 | 53,948 | 54,610 | 3,115,145 | 164,071 | 167,354 |
 
 ## keyed-remove
 
@@ -599,6 +618,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 1,917,459 | 43,618 | 44,972 | 3,114,491 | 131,586 | 139,989 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 1,917,458 | 43,617 | 44,971 | 3,114,439 | 131,414 | 139,928 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 1,917,454 | 43,617 | 44,971 | 3,114,459 | 131,648 | 139,888 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 1,917,455 | 43,618 | 44,972 | 3,114,492 | 131,716 | 139,915 |
 
 ## keyed-swap
 
@@ -629,6 +649,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 1,970,154 | 46,161 | 46,624 | 3,264,892 | 79,137 | 84,571 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 1,970,154 | 46,161 | 46,624 | 3,264,879 | 79,228 | 84,527 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 1,970,154 | 46,161 | 46,624 | 3,264,823 | 79,109 | 84,534 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 1,970,154 | 46,160 | 46,623 | 3,264,936 | 79,083 | 84,571 |
 
 ## mvu-dispatch
 
@@ -659,6 +680,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 58,066 | 767 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 58,066 | 767 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 58,066 | 767 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 58,066 | 767 |
 
 ## project-chain
 
@@ -689,6 +711,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 3,834,809 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 3,834,823 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 3,834,800 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 3,834,828 |
 
 ## project-churn
 
@@ -719,6 +742,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 36,207 | 34,047 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 36,207 | 34,047 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 36,207 | 34,047 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 36,207 | 34,047 |
 
 ## project-edit
 
@@ -749,6 +773,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 50,166 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 50,166 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 50,182 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 50,166 |
 
 ## project-reorder
 
@@ -779,6 +804,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 778,884 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 778,886 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 778,902 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 778,886 |
 
 ## shape-diamond
 
@@ -809,6 +835,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 59,894 | 88,557 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 59,894 | 88,557 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 59,894 | 88,557 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 59,894 | 88,557 |
 
 ## shape-dynamic
 
@@ -839,6 +866,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 82,520 | 95,583 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 82,520 | 95,581 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 82,520 | 95,583 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 82,520 | 95,582 |
 
 ## stream-burst-1
 
@@ -869,6 +897,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 1,969 | 1,567 | 2,500 | 5,235 | 6,299 | 10,088 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 1,969 | 1,567 | 2,500 | 5,235 | 6,299 | 10,091 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) (accepted) | 1,969 | 1,567 | 2,485 | 5,234 | 6,299 | 10,434 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 1,969 | 1,567 | 2,485 | 5,235 | 6,299 | 10,438 |
 
 ## stream-burst-16
 
@@ -899,6 +928,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 5,626 | 24,937 | 5,710 | 10,353 | 47,730 | 12,744 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 5,626 | 24,937 | 5,710 | 10,350 | 47,734 | 12,742 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) (accepted) | 5,626 | 24,937 | 5,695 | 10,350 | 47,734 | 13,089 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 5,626 | 24,937 | 5,695 | 10,349 | 47,734 | 13,089 |
 
 ## stream-burst-256
 
@@ -929,6 +959,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 64,126 | 398,821 | 57,049 | 119,391 | 792,583 | 70,588 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 64,126 | 398,821 | 57,049 | 119,395 | 792,558 | 70,588 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 64,126 | 398,821 | 57,034 | 119,395 | 792,635 | 70,590 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 64,126 | 398,821 | 57,034 | 119,307 | 792,572 | 70,590 |
 
 ## stream-restart
 
@@ -959,6 +990,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 4,187 | 4,980 | 12,699 | 8,949 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 4,187 | 4,980 | 12,698 | 8,949 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 4,187 | 4,965 | 12,696 | 8,953 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 4,184 | 4,965 | 12,436 | 8,950 |
 
 ## timed-admit-both
 
@@ -989,6 +1021,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 118,269 | 133,827 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 119,293 | 133,819 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 118,269 | 133,815 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 118,269 | 133,820 |
 
 ## timed-admit-debounce
 
@@ -1019,6 +1052,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 117,174 | 132,395 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 118,198 | 132,385 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 117,174 | 132,419 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 117,174 | 132,382 |
 
 ## timed-admit-first
 
@@ -1049,6 +1083,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 69,285 | 82,222 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 70,309 | 82,222 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 69,285 | 82,222 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 69,285 | 82,222 |
 
 ## timed-admit-last
 
@@ -1079,6 +1114,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 117,436 | 132,722 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 118,460 | 132,728 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 117,436 | 132,726 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 117,436 | 132,698 |
 
 ## timed-capture-both
 
@@ -1109,6 +1145,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 35,724 | 45,092 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 35,724 | 45,094 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 35,724 | 45,094 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 35,724 | 45,021 |
 
 ## timed-capture-debounce
 
@@ -1139,6 +1176,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 35,596 | 43,713 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 35,596 | 43,713 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 35,596 | 43,713 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 35,596 | 43,713 |
 
 ## timed-capture-first
 
@@ -1169,6 +1207,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 32,076 | 38,934 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 32,076 | 38,934 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 32,076 | 38,934 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 32,076 | 38,934 |
 
 ## timed-capture-last
 
@@ -1199,6 +1238,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 35,532 | 43,647 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 35,532 | 43,649 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 35,532 | 43,649 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 35,532 | 43,649 |
 
 ## update
 
@@ -1229,6 +1269,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 1,089,983 | 38,805 | 82,005 | 262,790 | 207,577 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 1,089,983 | 38,805 | 82,005 | 262,702 | 207,667 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 1,088,390 | 38,805 | 82,005 | 262,864 | 207,640 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 1,091,583 | 38,805 | 82,005 | 262,810 | 207,589 |
 
 ## update-on
 
@@ -1259,6 +1300,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 92,805 | 221,299 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 92,805 | 221,299 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 92,805 | 221,307 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 92,805 | 221,305 |
 
 ## work-form
 
@@ -1289,6 +1331,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 169,672 | 163,139 | 288,743 | 287,087 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 169,672 | 163,139 | 288,779 | 287,117 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 169,672 | 163,139 | 288,739 | 287,069 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 169,672 | 163,139 | 288,705 | 287,129 |
 
 ## work-status
 
@@ -1319,6 +1362,7 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 99,945 | 78,615 | 320,907 | 155,406 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 99,945 | 78,615 | 320,929 | 155,415 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 99,945 | 78,615 | 320,872 | 155,428 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 99,945 | 78,615 | 320,866 | 155,460 |
 
 ## work-value
 
@@ -1349,4 +1393,5 @@
 | `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | 107,069 | 119,271 | 321,129 | 283,794 |
 | `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | 107,069 | 119,269 | 321,250 | 283,777 |
 | `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | 107,069 | 119,269 | 321,113 | 283,780 |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | 107,069 | 119,269 | 321,119 | 283,814 |
 
