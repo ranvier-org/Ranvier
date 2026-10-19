@@ -611,3 +611,6 @@ let runCases (cases: (string * (unit -> unit)) array) =
         printfn "PASS %s" name
 
 runCases PackagingChecks.cases
+
+runCases ServerChecks.cases
+runCases ServerChecks.dotnetCases
