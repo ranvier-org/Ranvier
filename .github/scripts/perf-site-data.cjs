@@ -43,7 +43,16 @@ function libraryCounters(runs) {
   return counters;
 }
 
-function buildIndex(runsDirectory, outputFile) {
+// Each commit restricted to the medians and counters of scenarios whose names start with one of the prefixes.
+// Commits without matching rows remain, so every file shares the full commit axis.
+function restrict(commits, prefixes) {
+  const matches = row => prefixes.some(prefix => row.Scenario.startsWith(prefix));
+  return commits.map(commit => ({ ...commit, Medians: commit.Medians.filter(matches), Counters: commit.Counters.filter(matches) }));
+}
+
+// Writes every commit to the output file and, for each named group of scenario prefixes, the restricted
+// commits to `<name>.json` in the same directory.
+function buildIndex(runsDirectory, outputFile, groups = {}) {
   const files = fs.readdirSync(runsDirectory).filter(file => file.endsWith('.json')).sort();
   if (files.length === 0) throw new Error(`No performance records found in ${runsDirectory}`);
 
@@ -84,14 +93,24 @@ function buildIndex(runsDirectory, outputFile) {
   });
 
   commits.sort((left, right) => Date.parse(left.Date) - Date.parse(right.Date));
-  fs.mkdirSync(path.dirname(outputFile), { recursive: true });
+  const directory = path.dirname(outputFile);
+  fs.mkdirSync(directory, { recursive: true });
   fs.writeFileSync(outputFile, `${JSON.stringify({ commits })}\n`);
+  for (const [name, prefixes] of Object.entries(groups)) {
+    assert.match(name, /^[a-z0-9-]+$/, `Invalid group name: ${name}`);
+    assert.ok(Array.isArray(prefixes) && prefixes.length > 0 && prefixes.every(prefix => typeof prefix === 'string' && prefix),
+      `Group ${name} requires scenario prefixes`);
+    const file = path.join(directory, `${name}.json`);
+    assert.notEqual(path.resolve(file), path.resolve(outputFile), `Group ${name} would overwrite ${outputFile}`);
+    fs.writeFileSync(file, `${JSON.stringify({ commits: restrict(commits, prefixes) })}\n`);
+  }
 }
 
 if (require.main === module) {
   const [, , runsDirectory, outputFile] = process.argv;
   if (!runsDirectory || !outputFile) throw new Error('Usage: perf-site-data.cjs <runs-directory> <output-file>');
-  buildIndex(runsDirectory, outputFile);
+  const groups = JSON.parse(fs.readFileSync(path.join(__dirname, 'perf-groups.json'), 'utf8'));
+  buildIndex(runsDirectory, outputFile, groups);
 }
 
 module.exports = { buildIndex };

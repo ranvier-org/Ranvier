@@ -13,7 +13,7 @@ The trend panels follow each scenario across every recorded commit, one panel pe
 By default each line shows its change since its first record; libraries other than Ranvier are pinned
 versions, so their lines mark the run-to-run noise floor. A change since the first record of 5 % or more is set in bold. The Metric control switches between instructions, cycles, allocated bytes, branch misses and CPU time on x64. The shaded band spans the lowest and highest of the five processes behind each median, and a ▲ under the axis marks a commit at which the Ranvier variant’s library counters changed; the readout lists those counters.
 
-<div data-perf-tabs data-perf-group="create,dispose"><p role="status">Loading recorded measurements…</p></div>
+<div data-perf-tabs data-perf-data="lifetimes"><p role="status">Loading recorded measurements…</p></div>
 <link rel="stylesheet" href="/Ranvier/benchmarks/perf-charts.css">
 <script src="/Ranvier/benchmarks/perf-charts.js"></script>
 

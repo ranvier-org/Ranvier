@@ -542,18 +542,27 @@
   }
   window.addEventListener('hashchange', () => { const key = hashTab(); if (key) for (const group of tabGroups) group(key, false); });
 
-  const source = new URL('../perf-data/index.json', document.currentScript.src);
-  fetch(source).then(response => {
-    if (!response.ok) throw new Error(`History request failed (${response.status})`);
-    return response.json();
-  }).then(history => {
-    if (!Array.isArray(history.commits) || !history.commits.length) throw new Error('No recorded measurements yet.');
-    const commits = [...history.commits].sort((a, b) => Date.parse(a.Date) - Date.parse(b.Date) || a.Commit.localeCompare(b.Commit));
-    for (const root of roots) {
+  // A root reads `perf-data/<data-perf-data>.json`, a scenario group written by perf-site-data.cjs, or else the
+  // full `perf-data/index.json`. Each file is requested once per page.
+  const script = document.currentScript.src;
+  const requests = new Map();
+  const history = name => {
+    if (!requests.has(name)) requests.set(name, fetch(new URL(`../perf-data/${name}.json`, script)).then(response => {
+      if (!response.ok) throw new Error(`History request failed (${response.status})`);
+      return response.json();
+    }).then(data => {
+      if (!Array.isArray(data.commits) || !data.commits.length) throw new Error('No recorded measurements yet.');
+      return [...data.commits].sort((a, b) => Date.parse(a.Date) - Date.parse(b.Date) || a.Commit.localeCompare(b.Commit));
+    }));
+    return requests.get(name);
+  };
+  for (const root of roots) {
+    const name = /^[a-z0-9-]+$/.test(root.dataset.perfData || '') ? root.dataset.perfData : 'index';
+    history(name).then(commits => {
       try { root.hasAttribute('data-perf-tabs') ? mountTabs(root, commits) : root.hasAttribute('data-perf-trends') ? mountTrends(root, commits) : mount(root, commits); }
       catch (error) { root.replaceChildren(element('p', { role: 'status', class: 'rv-perf-empty' }, error.message)); }
-    }
-  }).catch(error => {
-    for (const root of roots) root.replaceChildren(element('p', { role: 'status', class: 'rv-perf-empty' }, `Performance history unavailable. ${error.message}`));
-  });
+    }).catch(error => {
+      root.replaceChildren(element('p', { role: 'status', class: 'rv-perf-empty' }, `Performance history unavailable. ${error.message}`));
+    });
+  }
 })();
