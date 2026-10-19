@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const roots = [...document.querySelectorAll('[data-perf-compare], [data-perf-history], [data-perf-trends]')].filter(root => !root.dataset.perfReady);
+  const roots = [...document.querySelectorAll('[data-perf-tabs], [data-perf-compare], [data-perf-history], [data-perf-trends]')].filter(root => !root.dataset.perfReady);
   if (!roots.length) return;
   roots.forEach(root => { root.dataset.perfReady = 'true'; });
   const NS = 'http://www.w3.org/2000/svg';
@@ -112,7 +112,7 @@
     return panel;
   }
 
-  function mount(root, commits) {
+  function mount(root, commits, shared) {
     const isHistory = root.hasAttribute('data-perf-history');
     const group = (root.dataset.perfGroup || '').split(',').filter(Boolean);
     const hidden = new Set();
@@ -126,9 +126,9 @@
     const controls = element('div', { class: 'rv-perf-controls' });
     const runtimes = [...new Set(commits.flatMap(commit => commit.Medians.filter(row => row.Leg === 'arm64-counters' && row.Metric === 'instructions').map(row => row.Runtime)))].sort();
     if (!runtimes.length) throw new Error('No instruction measurements are available yet.');
-    const runtime = selectControl('Runtime', runtimes.map(key => [key, names[key] || key]), runtimes.includes('dotnet') ? 'dotnet' : runtimes[0]);
+    const runtime = selectControl('Runtime', runtimes.map(key => [key, names[key] || key]), runtimes.includes(shared?.runtime) ? shared.runtime : runtimes.includes('dotnet') ? 'dotnet' : runtimes[0]);
     const commit = selectControl('Commit', commits.map((item, index) => [String(index), `${short(item)} · ${item.Subject}`]), String(selectedCommit));
-    let metric = metricControl(commits, runtime.select.value, 'instructions');
+    let metric = metricControl(commits, runtime.select.value, shared?.metric || 'instructions');
     const mode = selectControl('Values', [['absolute', 'Per operation'], ['relative', 'Relative to Ranvier']], 'absolute');
     controls.append(runtime.wrapper, metric.wrapper, commit.wrapper, mode.wrapper);
     const search = element('input', { type: 'search', placeholder: 'Find a scenario…', 'aria-label': 'Find a scenario', class: 'rv-perf-search' });
@@ -190,10 +190,25 @@
       if (!body.children.length) body.append(element('p', { class: 'rv-perf-empty' }, 'No matching measurements. Adjust the filters or show a library.'));
       detail.textContent = 'Hover or focus a mark for exact values. Each comparison panel scales from zero to its largest value.';
       if (focusedKey) [...root.querySelectorAll('[data-focus-key]')].find(node => node.getAttribute('data-focus-key') === focusedKey)?.focus({ preventScroll: true });
+      if (shared) Object.assign(shared, { runtime: runtime.select.value, metric: metric.select.value });
     }
     for (const control of [runtime.select, metric.select, commit.select, mode.select, scenario.select]) control.addEventListener('change', update);
     search.addEventListener('input', update);
     update();
+    return {
+      // Adopts the shared runtime and metric when either differs from the current selection.
+      sync() {
+        if (!shared || (shared.runtime === runtime.select.value && shared.metric === metric.select.value)) return;
+        if (shared.runtime !== runtime.select.value) hidden.clear();
+        runtime.select.value = shared.runtime;
+        previousRuntime = runtime.select.value;
+        const next = metricControl(commits, runtime.select.value, shared.metric);
+        metric.wrapper.replaceWith(next.wrapper);
+        metric = next;
+        metric.select.addEventListener('change', update);
+        update();
+      },
+    };
   }
 
   function renderTrend(body, commits, runtime, metric, scenario, engines, relative, detail, selected, onSelect) {
@@ -250,7 +265,7 @@
     if (!values.some(series => series.values.some(value => value !== null))) body.append(element('p', { class: 'rv-perf-empty' }, 'No visible measurements for this scenario.'));
   }
 
-  function mountTrends(root, commits) {
+  function mountTrends(root, commits, shared) {
     const group = (root.dataset.perfGroup || '').split(',').filter(Boolean);
     const hidden = new Set();
     root.className = 'rv-perf';
@@ -261,8 +276,8 @@
     const controls = element('div', { class: 'rv-perf-controls' });
     const runtimes = [...new Set(commits.flatMap(commit => commit.Medians.filter(row => row.Leg === 'arm64-counters' && row.Metric === 'instructions').map(row => row.Runtime)))].sort();
     if (!runtimes.length) throw new Error('No instruction measurements are available yet.');
-    const runtime = selectControl('Runtime', runtimes.map(key => [key, names[key] || key]), runtimes.includes('dotnet') ? 'dotnet' : runtimes[0]);
-    let metric = metricControl(commits, runtime.select.value, 'instructions');
+    const runtime = selectControl('Runtime', runtimes.map(key => [key, names[key] || key]), runtimes.includes(shared?.runtime) ? shared.runtime : runtimes.includes('dotnet') ? 'dotnet' : runtimes[0]);
+    let metric = metricControl(commits, runtime.select.value, shared?.metric || 'instructions');
     const mode = selectControl('Values', [['change', 'Change since first record'], ['absolute', 'Per operation']], 'change');
     controls.append(runtime.wrapper, metric.wrapper, mode.wrapper);
     const legend = element('div', { class: 'rv-perf-legend', 'aria-label': 'Reference libraries' });
@@ -305,9 +320,24 @@
       }
       if (!body.children.length) body.append(element('p', { class: 'rv-perf-empty' }, 'No recorded measurements for these scenarios on this runtime.'));
       detail.textContent = 'Hover a panel, or focus it and use the arrow keys, to read each commit. Each panel scales to its own range.';
+      if (shared) Object.assign(shared, { runtime: runtime.select.value, metric: metric.select.value });
     }
     for (const control of [runtime.select, metric.select, mode.select]) control.addEventListener('change', update);
     update();
+    return {
+      // Adopts the shared runtime and metric when either differs from the current selection.
+      sync() {
+        if (!shared || (shared.runtime === runtime.select.value && shared.metric === metric.select.value)) return;
+        if (shared.runtime !== runtime.select.value) hidden.clear();
+        runtime.select.value = shared.runtime;
+        previousRuntime = runtime.select.value;
+        const next = metricControl(commits, runtime.select.value, shared.metric);
+        metric.wrapper.replaceWith(next.wrapper);
+        metric = next;
+        metric.select.addEventListener('change', update);
+        update();
+      },
+    };
   }
 
   function trendPanel(scenario, subject, others, commits, perCommit, changeRequested, output, runtime, metric) {
@@ -450,6 +480,68 @@
     return panel;
   }
 
+
+  const views = [['compare', 'Library comparison', mount], ['trends', 'Trends', mountTrends]];
+  const tabKey = 'ranvier.perf.tab';
+  const tabGroups = [];
+  const storedTab = () => { try { return localStorage.getItem(tabKey); } catch { return null; } };
+  const storeTab = key => { try { localStorage.setItem(tabKey, key); } catch { } };
+  const hashTab = () => views.find(([key]) => location.hash === `#perf-${key}`)?.[0];
+  // Comparison and trend views of one scenario group under a tablist. A view mounts when first shown and
+  // adopts the runtime and metric last chosen in the other. The URL hash `#perf-compare` or `#perf-trends`
+  // selects the opening view, otherwise the view last chosen on any page, otherwise the comparison.
+  function mountTabs(root, commits) {
+    const shared = {};
+    const anchored = !tabGroups.length;
+    const prefix = `rv-perf-${tabGroups.length}`;
+    root.className = 'rv-perf-tabs';
+    root.replaceChildren();
+    const list = element('div', { role: 'tablist', class: 'rv-perf-tablist', 'aria-label': 'Measurement view' });
+    const items = views.map(([key, label, mountView]) => {
+      const tab = element('button', { type: 'button', role: 'tab', class: 'rv-perf-tab', id: anchored ? `perf-${key}` : `${prefix}-${key}`, 'aria-controls': `${prefix}-${key}-panel` }, label);
+      const pane = element('div', { role: 'tabpanel', id: `${prefix}-${key}-panel`, 'aria-labelledby': tab.id });
+      if (root.dataset.perfGroup) pane.dataset.perfGroup = root.dataset.perfGroup;
+      tab.addEventListener('click', () => choose(key, false));
+      list.append(tab);
+      return { key, tab, pane, mountView, view: null };
+    });
+    root.append(list, ...items.map(item => item.pane));
+    function select(key, focus) {
+      for (const item of items) {
+        const active = item.key === key;
+        item.tab.setAttribute('aria-selected', String(active));
+        item.tab.tabIndex = active ? 0 : -1;
+        item.pane.hidden = !active;
+        if (!active) continue;
+        if (item.view) item.view.sync();
+        else {
+          try { item.view = item.mountView(item.pane, commits, shared); }
+          catch (error) {
+            item.pane.replaceChildren(element('p', { role: 'status', class: 'rv-perf-empty' }, error.message));
+            item.view = { sync() { } };
+          }
+        }
+        if (focus) item.tab.focus();
+      }
+    }
+    function choose(key, focus) {
+      storeTab(key);
+      for (const group of tabGroups) group === select ? select(key, focus) : group(key, false);
+    }
+    list.addEventListener('keydown', event => {
+      const index = items.findIndex(item => item.tab === document.activeElement);
+      const target = { ArrowLeft: index - 1, ArrowRight: index + 1, Home: 0, End: items.length - 1 }[event.key];
+      if (index < 0 || target === undefined) return;
+      event.preventDefault();
+      choose(items[(target + items.length) % items.length].key, true);
+    });
+    tabGroups.push(select);
+    const stored = storedTab();
+    select(hashTab() || (views.some(([key]) => key === stored) ? stored : 'compare'), false);
+    if (anchored && hashTab()) items.find(item => item.key === hashTab()).tab.scrollIntoView();
+  }
+  window.addEventListener('hashchange', () => { const key = hashTab(); if (key) for (const group of tabGroups) group(key, false); });
+
   const source = new URL('../perf-data/index.json', document.currentScript.src);
   fetch(source).then(response => {
     if (!response.ok) throw new Error(`History request failed (${response.status})`);
@@ -458,7 +550,7 @@
     if (!Array.isArray(history.commits) || !history.commits.length) throw new Error('No recorded measurements yet.');
     const commits = [...history.commits].sort((a, b) => Date.parse(a.Date) - Date.parse(b.Date) || a.Commit.localeCompare(b.Commit));
     for (const root of roots) {
-      try { root.hasAttribute('data-perf-trends') ? mountTrends(root, commits) : mount(root, commits); }
+      try { root.hasAttribute('data-perf-tabs') ? mountTabs(root, commits) : root.hasAttribute('data-perf-trends') ? mountTrends(root, commits) : mount(root, commits); }
       catch (error) { root.replaceChildren(element('p', { role: 'status', class: 'rv-perf-empty' }, error.message)); }
     }
   }).catch(error => {
