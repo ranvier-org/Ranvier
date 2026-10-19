@@ -472,7 +472,11 @@ let private serverWidget () =
         with error ->
             Some error.Message
 
-    equal ("<div class=\"chart\"></div>", Some "Browser capability requires explicit Omit policy") (render Omit, rejected)
+    equal
+        ("<div class=\"chart\"></div>", Some true)
+        (render Omit,
+         rejected
+         |> Option.map (fun message -> message.StartsWith "Browser capability requires explicit Omit policy"))
 
 /// <summary>Authored widget elements rendered on the server under Omit: with a text child, an empty list child, or two widget hooks.</summary>
 let private serverWidgetChildren (ops: Operations<'view>) (run: 'view -> Backend -> unit) =

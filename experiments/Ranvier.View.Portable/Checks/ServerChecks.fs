@@ -217,7 +217,7 @@ let private browserRejection () =
             Html.render Reject (Program.run (Component.render clicking greetingProps))
             |> ignore)
 
-    equal (true, "Browser capability requires explicit Omit policy") (error :? InvalidOperationException, error.Message)
+    equal (true, true) (error :? InvalidOperationException, error.Message.Contains "<button> listener click")
 
 /// <summary>An owner whose cleanups run when it is disposed, after its children's.</summary>
 type private StandInOwner() =
@@ -754,6 +754,169 @@ let private createIdInLaterSetup () =
 
     equal (true, "CreateId is valid only while a component's setup runs") (error :? InvalidOperationException, error.Message)
 
+let private serialised =
+    Component.define (fun _ () -> ()) (fun t ->
+        t.div
+            [|
+                t.Props.className (fun _ -> "a<b")
+                t.Props.tabIndex (fun _ -> 2.0)
+                t.Props.ariaBusy (fun _ -> Some "true")
+            |]
+            [|
+                t.input
+                    [|
+                        t.Props.Input.value (fun _ -> "v\"")
+                        t.Props.Input.``checked`` (fun _ -> true)
+                        t.Props.Input.disabled (fun _ -> false)
+                    |]
+                t.button [| t.Props.Button.disabled true |] [||]
+            |])
+
+let private browserOnlyProperty =
+    Component.define (fun _ () -> ()) (fun t -> t.div [| t.Props.accessKey (fun _ -> "k") |] [| t.text "x" |])
+
+let private serialisedProperties () =
+    equal
+        """<!--[r--><div class="a&lt;b" tabindex="2" aria-busy="true"><input value="v&quot;" checked=""><button disabled=""></button></div><!--]-->"""
+        (Server.render Server.Options.defaults serialised ())
+
+    equal
+        "<!--[r--><div>x</div><!--]-->"
+        (Server.render
+            { Server.Options.defaults with
+                Policy = Omit
+            }
+            browserOnlyProperty
+            ())
+
+    let error =
+        failure (fun () ->
+            Server.render Server.Options.defaults browserOnlyProperty ()
+            |> ignore)
+
+    equal (true, true) (error :? InvalidOperationException, error.Message.Contains "<div> property")
+
+let private browserPartsUninvoked () =
+    let mutable invoked = 0
+
+    let hook =
+        Program.element
+            Div
+            [|
+                browserModifier (fun _ ->
+                    invoked <- invoked + 1
+                    ignore)
+            |]
+            [||]
+
+    let parts =
+        Component.define (fun _ () -> ()) (fun t ->
+            t.div
+                [||]
+                [|
+                    t.button [| t.Events.onClick (fun _ _ -> invoked <- invoked + 1) |] [||]
+                    t.view (fun _ -> hook)
+                |])
+
+    equal
+        "<!--[r--><div><button></button><!--[--><div></div><!--]--></div><!--]-->"
+        (Server.render
+            { Server.Options.defaults with
+                Policy = Omit
+            }
+            parts
+            ())
+
+    failure (fun () ->
+        Server.render Server.Options.defaults parts ()
+        |> ignore)
+    |> ignore
+
+    equal 0 invoked
+
+let private duplicateAttributeSource () =
+    let both =
+        Component.define (fun _ () -> ()) (fun t -> t.div [| t.Attrs.className "x"; t.Props.className (fun _ -> "y") |] [||])
+
+    let error =
+        failure (fun () ->
+            Server.render Server.Options.defaults both ()
+            |> ignore)
+
+    equal (true, true) (error :? InvalidOperationException, error.Message.Contains "class")
+
+let private childText =
+    Component.define (fun _ (value: string) -> value) (fun t ->
+        t.fragment
+            [|
+                t.textarea [| t.Props.TextArea.value (fun (value: string) -> value) |] [||]
+                t.textarea [| t.Props.TextArea.value "<static>" |] [||]
+            |])
+
+let private textareaChildText () =
+    equal
+        "<!--[r--><textarea>a&lt;b&amp;</textarea><textarea>&lt;static&gt;</textarea><!--]-->"
+        (Server.render Server.Options.defaults childText "a<b&")
+
+    let withChildren =
+        Component.define (fun _ () -> ()) (fun t -> t.textarea [| t.Props.TextArea.value (fun _ -> "v") |] [| t.text "child" |])
+
+    let error =
+        failure (fun () ->
+            Server.render Server.Options.defaults withChildren ()
+            |> ignore)
+
+    equal (true, true) (error :? InvalidOperationException, error.Message.Contains "<textarea>")
+
+let private placedRejection () =
+    let placed =
+        Component.define (fun _ () -> ()) (fun t -> t.div [| t.Hooks.mounted (fun _ _ -> ignore) |] [||])
+
+    let authored =
+        Program.element (HtmlTag "span") [| browserModifier (fun _ -> ignore) |] [||]
+
+    let messages =
+        [
+            (failure (fun () ->
+                Server.render Server.Options.defaults placed ()
+                |> ignore))
+                .Message
+            (failure (fun () ->
+                Html.render Reject (Program.run authored)
+                |> ignore))
+                .Message
+        ]
+
+    equal
+        [
+            "Browser capability requires explicit Omit policy: <div> mounted hook"
+            "Browser capability requires explicit Omit policy: <span> browser hook"
+        ]
+        messages
+
+let private holeTitle =
+    Component.define (fun _ () -> ()) (fun t -> t.Document.title "Hole")
+
+let private childTitle =
+    Component.define (fun _ () -> ()) (fun t -> t.Document.title "Child")
+
+let private holeThenChild =
+    Component.define (fun _ () -> Component.render holeTitle ()) (fun t -> t.div [||] [| t.view id; t.render childTitle ignore |])
+
+let private holeAfterChildren () =
+    let hole = """<title data-ranvier-head="title">Hole</title>"""
+
+    let expanded =
+        Server.renderPage
+            Server.Options.defaults
+            holed
+            {
+                Caption = "C"
+                Body = Component.renderWith Program.ops holeThenChild ()
+            }
+
+    equal (hole, hole) ((Server.renderPage Server.Options.defaults holeThenChild ()).Head, expanded.Head)
+
 let cases: (string * (unit -> unit)) array =
     [|
         "CreateId numbers inlined children in pre-order and puts an inlined child's rows under its path", nestedIdentity
@@ -784,7 +947,14 @@ let cases: (string * (unit -> unit)) array =
         "null text and attribute values escape as empty strings on .NET and Fable", nullEscape
         "attribute and tag names outside the validated set fail at definition time", namesAtDefinition
         "a definition's server plan is compiled once and merges adjacent static markup", sharedPlan
-        "a browser-only part under Reject raises the browser capability error", browserRejection
+        "a browser-only part under Reject names the element and the part", browserRejection
+        "serialised properties write their attributes; browser-only properties raise under Reject and write nothing under Omit", serialisedProperties
+        "listeners and browser hooks are never invoked on the server", browserPartsUninvoked
+        "a property and a static attribute writing the same attribute fail at plan compile", duplicateAttributeSource
+        "a textarea's value property writes its escaped child text, and a textarea with children and that property fails at plan compile",
+        textareaChildText
+        "a placed hook and an authored browser hook under Reject name the element and the part", placedRejection
+        "renderPage activates a view hole's entries after a later inlined child's, compiled and expanded", holeAfterChildren
         "a template in a view hole is owned by the backend's active scope", holeTemplateOwnedByRequest
         "a template in a view hole is owned by the request and cleaned up child-first after the render", holeTemplateOwnedByRequestScope
         "a request owns every instance and disposes them child-first after the render", requestRoot

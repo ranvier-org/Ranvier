@@ -78,7 +78,7 @@ type Compiled =
         NodeCount: int
         RenderSlots: (int * Slot) array
         IsolatedSlots: (int * Slot) array
-        Properties: (int * Func<obj, obj, unit> * obj) array
+        Properties: (int * PortableProperty * obj) array
         Events: (int * string * Func<obj, obj, unit>) array
         /// <summary>The placed hooks of the part's nodes: node index, kind and hook.</summary>
         Placed: (int * PlacedKind * Func<obj, obj, (unit -> unit)>) array
@@ -254,7 +254,7 @@ let private validateParsed (content: DocumentFragment) (walk: int array) (target
 let private tables (targets: (TemplateNode * int array) array) (owners: int array) (part: int) (first: int) (count: int) =
     let renderSlots = ResizeArray<int * Slot>()
     let isolatedSlots = ResizeArray<int * Slot>()
-    let properties = ResizeArray<int * Func<obj, obj, unit> * obj>()
+    let properties = ResizeArray<int * PortableProperty * obj>()
     let events = ResizeArray<int * string * Func<obj, obj, unit>>()
     let placed = ResizeArray<int * PlacedKind * Func<obj, obj, (unit -> unit)>>()
 
@@ -271,8 +271,8 @@ let private tables (targets: (TemplateNode * int array) array) (owners: int arra
             match fst (targets[absolute]) with
             | TextSlotNode slot -> add index slot
             | ElementNode (_, _, elementProperties, slots, elementEvents, elementPlaced, _) ->
-                for write, value in elementProperties do
-                    properties.Add (index, write, value)
+                for property, value in elementProperties do
+                    properties.Add (index, property, value)
 
                 for slot in slots do
                     add index slot
@@ -474,7 +474,7 @@ let attachState (node: obj) (state: obj array) : unit = jsNative
 let private write (slot: Slot) (node: obj) (value: obj) =
     match slot.Target with
     | AttributeTarget name -> setAttribute node value name
-    | PropertyTarget writer -> writer.Invoke (node, value)
+    | PropertyTarget property -> property.Write.Invoke (node, value)
     | TextTarget -> setData node value
     | ContentTarget -> (unbox<HTMLElement> node).innerHTML <- markupOf value
 
@@ -683,10 +683,10 @@ let private bind (services: MountServices) (compiled: Compiled) (state: obj arra
     let properties = compiled.Properties
 
     for i in 0 .. properties.Length - 1 do
-        let nodeIndex, writer, value = at properties i
+        let nodeIndex, property, value = at properties i
 
         try
-            writer.Invoke (at state (StateNodes + nodeIndex), value)
+            property.Write.Invoke (at state (StateNodes + nodeIndex), value)
         with error when services.SettingUp () ->
             services.SetupFailed error
             reraise ()

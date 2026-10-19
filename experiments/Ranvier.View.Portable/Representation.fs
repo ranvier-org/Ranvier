@@ -108,6 +108,22 @@ type PlacedKind =
     /// <summary>Owns the element's content.</summary>
     | Widget
 
+/// <summary>The part name of a placed hook in a browser-capability error.</summary>
+let internal placedPart kind =
+    match kind with
+    | PlacedKind.Mounted -> "mounted hook"
+    | PlacedKind.Lent -> "lent hook"
+    | PlacedKind.Widget -> "widget"
+
+/// <summary>The browser-capability error under <c>Reject</c> for <c>part</c> of an element <c>tag</c>.</summary>
+let internal browserRejected (tag: string) (part: string) =
+    System.InvalidOperationException (
+        "Browser capability requires explicit Omit policy: <"
+        + tag
+        + "> "
+        + part
+    )
+
 /// <summary>
 /// The element of a placed instance: <c>Some</c> while the element is placed, <c>None</c> during setup, before its
 /// boundary reveals it and after disposal.
@@ -651,6 +667,15 @@ type Backend() =
     default this.Boundary(views) =
         views.Content { IsPending = fun () -> false } this
 
+    /// <summary>
+    /// Renders the view of a template's view hole. Its hooks and head entries activate after those of the enclosing
+    /// instance and its inlined children, as a region's rows do.
+    /// </summary>
+    abstract Hole: (Backend -> unit) -> unit
+
+    default this.Hole(render) =
+        render this
+
 /// <summary>A component definition whose template is built once and compiled lazily per backend.</summary>
 and [<AbstractClass>] TemplateDefinition internal () =
     /// <summary>Renders the definition through ordinary backend operations.</summary>
@@ -728,11 +753,11 @@ and [<Sealed>] HtmlBackend(policy: BrowserPolicy, sink: HtmlSink) =
             attributeKeys <- previousKeys
             attributeTag <- previousTag
 
-    let browserCapability () =
+    let browserCapability (part: string) =
         ensureAttributes ()
 
         if policy = Reject then
-            invalidOp "Browser capability requires explicit Omit policy"
+            raise (browserRejected (name attributeTag) part)
 
     let append (value: string) =
         if leadingLineFeed && value.Length > 0 then
@@ -818,10 +843,10 @@ and [<Sealed>] HtmlBackend(policy: BrowserPolicy, sink: HtmlSink) =
         set "value" value
 
     override _.Browser _ =
-        browserCapability ()
+        browserCapability "browser hook"
 
     override _.Placed(kind, _) =
-        browserCapability ()
+        browserCapability (placedPart kind)
 
         if kind = PlacedKind.Widget then
             if widget then
@@ -836,14 +861,25 @@ and [<Sealed>] HtmlBackend(policy: BrowserPolicy, sink: HtmlSink) =
                 raise (System.InvalidOperationException "Document metadata requires Server.renderPage")
         | heads -> heads.Add (entry.Key, HeadMarkup.entry entry)
 
-    override _.Listen(_, _) =
-        browserCapability ()
+    override _.Listen(eventName, _) =
+        browserCapability ("listener " + eventName)
 
     override _.Property _ =
-        browserCapability ()
+        browserCapability "property"
 
     override _.ReactiveProperty(_, _) =
-        browserCapability ()
+        browserCapability "property"
+
+    override this.Hole(render) =
+        match this.Heads with
+        | null -> render this
+        | heads ->
+            heads.Open ()
+
+            try
+                render this
+            finally
+                heads.Close ()
 
     override this.Element(tag, modifiers, children) =
         if

@@ -434,7 +434,11 @@ let private serverHook (ops: Operations<'view>) (run: 'view -> Backend -> unit) 
         with error ->
             Some error.Message
 
-    equal ("<div>x</div>", Some "Browser capability requires explicit Omit policy") (Html.render Omit (run view), rejected)
+    equal
+        ("<div>x</div>", Some true)
+        (Html.render Omit (run view),
+         rejected
+         |> Option.map (fun message -> message.StartsWith "Browser capability requires explicit Omit policy"))
 
 let private hiddenReveal (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
     use graph = new Graph ()
@@ -839,6 +843,15 @@ let private orderNestedChild =
 let private orderNested =
     orderHolder "parent" "after" (fun t -> [| t.render orderNestedChild id; t.render (orderMark "second") id |])
 
+let private holeMark = orderMark "hole"
+
+let private orderHoleThenChild =
+    orderHolder "parent" "after" (fun t ->
+        [|
+            t.view (fun _ -> Component.render holeMark ())
+            t.render (orderMark "child") id
+        |])
+
 let private templateOrder (view: Component<unit>) (expected: string list) queued () =
     use graph = new Graph ()
     orderLog.Clear ()
@@ -1221,7 +1234,11 @@ let private templateServerHook () =
         with error ->
             Some error.Message
 
-    equal ("<div>x</div>", Some "Browser capability requires explicit Omit policy") (render Omit, rejected)
+    equal
+        ("<div>x</div>", Some true)
+        (render Omit,
+         rejected
+         |> Option.map (fun message -> message.StartsWith "Browser capability requires explicit Omit policy"))
 
 let mutable private hiddenSource: Signal<AsyncSource<string>> =
     Unchecked.defaultof<_>
@@ -1510,6 +1527,9 @@ let cases: (string * (unit -> unit)) array =
             templated
                 "hooks run in setup order: each instance before its inlined children, two levels deep"
                 (templateOrder orderNested [ "parent"; "after"; "child"; "child after"; "grandchild"; "second" ])
+            templated
+                "hooks run in setup order: an instance's elements and its later inlined child, then its view hole's view"
+                (templateOrder orderHoleThenChild [ "parent"; "after"; "child"; "hole" ])
             templated
                 "a row added by a list pass runs its hook after the pass lays it out, and a batch that adds and removes a row creates none"
                 templateRowsAfterLayout

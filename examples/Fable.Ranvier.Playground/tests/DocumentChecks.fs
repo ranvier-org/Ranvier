@@ -639,6 +639,22 @@ let private containerShown queued () =
     equal expected [ for definition in definitions -> clientShown definition ]
     equal expected [ for definition in definitions -> serverShown definition ]
 
+let private holeTitle =
+    Component.define (fun _ () -> ()) (fun t -> t.Document.title "Hole")
+
+let private holeThenChild =
+    Component.define (fun _ () -> Component.render holeTitle ()) (fun t -> t.div [||] [| t.view id; t.render earlyChild ignore |])
+
+let private holeShown queued () =
+    use graph = new Graph ()
+
+    let mounted =
+        mountTemplate queued graph strict (host ()) (Component.render holeThenChild ())
+
+    let shown = title (), headAttribute "meta[name=description]" "content"
+    mounted.Dispose ()
+    equal [ ("Hole", "child"); ("Hole", "child") ] [ shown; serverShown holeThenChild ]
+
 let cases: (string * (unit -> unit)) array =
     strictCases (
         Array.concat
@@ -658,6 +674,7 @@ let cases: (string * (unit -> unit)) array =
                 templated
                     "renderPage's head shows the title and meta a client mount shows for nested lists and for rows and a child expanded in a view hole"
                     containerShown
+                templated "renderPage's head shows the title a client mount shows for a view hole before a later inlined child" holeShown
                 templated "a reactive title updates document.title and its pending read waits under a boundary" reactiveTitle
                 templated "entries under hidden content activate at reveal and withdraw on teardown" hiddenEntries
                 templated "a client mount adopts marked head elements without hydrate" adoptsMarked

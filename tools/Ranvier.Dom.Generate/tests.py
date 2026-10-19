@@ -120,10 +120,14 @@ with tempfile.TemporaryDirectory() as folder:
     assert "type Groups.InputProperties<'inst> with" in ttext
     assert "member _.onClick<'native when 'native :> Dom.HTMLElement>(handler: 'inst -> Dom.PointerEvent -> unit)" in ttext
     assert "TemplateParts.readAttribute \"aria-expanded\" (fun instance -> Some (TemplateParts.ariaText (read instance)))" in ttext
+    # The formatter wraps a property call over 150 columns onto one line per argument.
+    flat = re.sub(r"\s+", " ", ttext)
+    assert "TemplateParts.readProperty (PropertyHtml.text \"class\")" in flat
+    assert "TemplateParts.readProperty PropertyHtml.childText (fun (node: 'native) (value: string) -> (node :> Dom.HTMLTextAreaElement).``value`` <- value) read" in flat
     handwritten = (root / "../../experiments/Ranvier.View.Portable/Template.fs").read_text(encoding="utf-8")
     builder_members = {}
     for builder in ("TemplateBuilder", "AttributeBuilder", "PropertyBuilder", "EventBuilder"):
-        body = re.search(r"^type " + builder + r"<'inst>.*?(?=^\S)", handwritten, re.M | re.S)
+        body = re.search(r"^type " + builder + r"<'inst>.*?(?=^[^\s#])", handwritten, re.M | re.S)
         assert body, builder + " must be declared in Template.fs"
         builder_members[builder] = set(re.findall(r"^    member (?:_|this)\.(\w+)", body.group(0), re.M))
     generator = (root / "Program.fs").read_text(encoding="utf-8")

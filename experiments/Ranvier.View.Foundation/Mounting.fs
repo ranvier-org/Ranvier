@@ -1694,7 +1694,8 @@ and internal MountState
 
     // The container of the mount's hooks: a root mount's own, or the container of the pass, arm, hole or boundary view
     // that created the mount.
-    let container = if isNull inherited then Placement null else inherited
+    // A view hole expanded under queued commits holds the hole's container while its view renders.
+    let mutable container = if isNull inherited then Placement null else inherited
 
     // Template rows retired while the mount tears down, before its release; their nodes leave in the release, before
     // the range's. A row retired after the release removes its nodes at once. A row held for a region's flush leaves
@@ -2333,6 +2334,19 @@ and internal MountState
 
     override this.Boundary(views) =
         this.AuthoredRegion (TemplateDom.BoundaryContent, KeyedItems.ofPairs (fun () -> [| null, box views |]), (fun _ _ -> ()))
+
+    /// <summary>Renders the view in a child container of the mount's current one, as a compiled view hole does.</summary>
+    override this.Hole(render) =
+        let outer = container
+        let hole = Placement outer
+        container <- hole
+
+        try
+            render this
+        finally
+            container <- outer
+
+        hole.Place ()
 
     /// <summary>Adds boundary nodes at the current position and mounts a region of <c>kind</c> between them.</summary>
     member private this.AuthoredRegion(kind, items, render) =

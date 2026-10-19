@@ -30,13 +30,65 @@ let internal markupOf (value: obj) : string =
 
     (unbox<UnsafeHtml> value).Markup
 
+/// <summary>How a property part appears in server HTML.</summary>
+[<NoEquality; NoComparison>]
+type PropertySerialization =
+    /// <summary>The attribute the property reflects; the writer turns a value into the attribute value, <c>None</c> omits it.</summary>
+    | AsAttribute of name: string * write: Func<obj, string option>
+    /// <summary>The element's escaped child text: a textarea's value.</summary>
+    | AsChildText
+    /// <summary>A property that exists in the browser only.</summary>
+    | BrowserOnly
+
+/// <summary>A property writer with its server serialisation.</summary>
+[<NoEquality; NoComparison>]
+type PortableProperty =
+    {
+        Write: Func<obj, obj, unit>
+        Html: PropertySerialization
+    }
+
+/// <summary>Server serialisations of reflected properties.</summary>
+module PropertyHtml =
+    /// <summary>A <c>string</c> written as the attribute <c>name</c>; <c>null</c> omits it.</summary>
+    let text (name: string) : PropertySerialization =
+        AsAttribute (name, Func<obj, string option>(fun value -> if isNull value then None else Some (unbox<string> value)))
+
+    /// <summary>A <c>float</c> written as the attribute <c>name</c>: an integral value without a fraction.</summary>
+    let number (name: string) : PropertySerialization =
+        AsAttribute (
+            name,
+            Func<obj, string option>(fun value ->
+                let number = unbox<float> value
+
+                if
+                    Math.Floor number = number
+                    && abs number < 9007199254740992.0
+                then
+                    Some (string (int64 number))
+                else
+                    Some (string number))
+        )
+
+    /// <summary>A <c>bool</c> written as the attribute <c>name</c> with an empty value when true, omitted when false.</summary>
+    let presence (name: string) : PropertySerialization =
+        AsAttribute (name, Func<obj, string option>(fun value -> if unbox<bool> value then Some "" else None))
+
+    /// <summary>A <c>string option</c> written as the attribute <c>name</c>; <c>None</c> omits it.</summary>
+    let optional (name: string) : PropertySerialization =
+        AsAttribute (name, Func<obj, string option>(fun value -> unbox<string option> value))
+
+    let childText = AsChildText
+
+    let browserOnly = BrowserOnly
+
 /// <summary>Where a dynamic slot writes on its node.</summary>
 [<NoEquality; NoComparison>]
 type SlotTarget =
     /// <summary>An attribute written from a <c>string option</c>; <c>None</c> removes it.</summary>
     | AttributeTarget of string
     /// <summary>A property written by a shared writer.</summary>
-    | PropertyTarget of Func<obj, obj, unit>
+    | PropertyTarget of PortableProperty
     /// <summary>The data of a text node.</summary>
     | TextTarget
     /// <summary>The element's children, parsed from an <c>UnsafeHtml</c> value.</summary>
@@ -68,7 +120,7 @@ type TemplateNode =
     | ElementNode of
         Tag *
         (string * string) array *
-        (Func<obj, obj, unit> * obj) array *
+        (PortableProperty * obj) array *
         Slot array *
         (string * Func<obj, obj, unit>) array *
         (PlacedKind * Func<obj, obj, (unit -> unit)>) array *
@@ -404,8 +456,16 @@ type internal ServerOp =
     | ContentOp of Slot
     /// <summary>A document head entry: collected under <c>Server.renderPage</c>; otherwise raises under <c>Reject</c> and is dropped under <c>Omit</c>.</summary>
     | HeadOp of HeadPlan
-    /// <summary>A browser-only part: raises under <c>Reject</c>, dropped under <c>Omit</c>; the description names the element and the part.</summary>
-    | BrowserOp of description: string
+    /// <summary>A serialised property slot: <c> name="value"</c>, or nothing when the serialisation returns <c>None</c>.</summary>
+    | PropertyOp of PortableProperty * Slot
+    /// <summary>A serialised static property: <c> name="value"</c>, or nothing when the serialisation returns <c>None</c>.</summary>
+    | StaticPropertyOp of PortableProperty * obj
+    /// <summary>A child-text property slot's escaped value, written after the open tag.</summary>
+    | ChildTextOp of PortableProperty * Slot * leadingLineFeed: bool
+    /// <summary>A static child-text property's escaped value, written after the open tag.</summary>
+    | StaticChildTextOp of PortableProperty * obj * leadingLineFeed: bool
+    /// <summary>A browser-only part of the element <c>tag</c>: raises under <c>Reject</c>, dropped under <c>Omit</c>.</summary>
+    | BrowserOp of tag: string * part: string
     /// <summary>A region, with its position among the regions of its owning part.</summary>
     | RegionOp of index: int * Region
     /// <summary>Sets up the inlined child <c>child</c>, which becomes the current part.</summary>
@@ -424,17 +484,64 @@ type internal ServerPlan =
         Positioned: bool
     }
 
-let private placedPart kind =
-    match kind with
-    | PlacedKind.Mounted -> "mounted hook"
-    | PlacedKind.Lent -> "lent hook"
-    | PlacedKind.Widget -> "widget"
-
 /// <summary>Elements whose first child text loses one leading line feed when parsed.</summary>
 let private dropsLeadingLineFeed tagName =
     tagName = "pre"
     || tagName = "textarea"
     || tagName = "listing"
+
+let private isBrowserOnly (property: PortableProperty) =
+    match property.Html with
+    | BrowserOnly -> true
+    | AsAttribute _
+    | AsChildText -> false
+
+let private isChildText (property: PortableProperty) =
+    match property.Html with
+    | AsChildText -> true
+    | AsAttribute _
+    | BrowserOnly -> false
+
+/// <summary>Raises when a serialised property of the element <c>tagName</c> writes an attribute that another of its parts also writes.</summary>
+let private checkAttributeSources tagName (attributes: (string * string) array) (properties: (PortableProperty * obj) array) (slots: Slot array) =
+    let written = Collections.Generic.HashSet<string>()
+
+    let add (attribute: string) =
+        written.Add attribute |> ignore
+
+    let serialised (property: PortableProperty) =
+        match property.Html with
+        | AsAttribute (attribute, _) ->
+            validateAttribute attribute
+
+            if not (written.Add attribute) then
+                raise (
+                    InvalidOperationException (
+                        "<"
+                        + tagName
+                        + "> writes the attribute "
+                        + attribute
+                        + " from more than one part"
+                    )
+                )
+        | AsChildText
+        | BrowserOnly -> ()
+
+    for attribute, _ in attributes do
+        add attribute
+
+    for slot in slots do
+        match slot.Target with
+        | AttributeTarget attribute -> add attribute
+        | _ -> ()
+
+    for property, _ in properties do
+        serialised property
+
+    for slot in slots do
+        match slot.Target with
+        | PropertyTarget property -> serialised property
+        | _ -> ()
 
 let private compilePlan (root: TemplateNode) : ServerPlan =
     let ops = ResizeArray<ServerOp>()
@@ -536,35 +643,80 @@ let private compilePlan (root: TemplateNode) : ServerPlan =
             then
                 targets <- targets + 1
 
-            for _ in properties do
-                emit (BrowserOp ("<" + tagName + "> property"))
+            checkAttributeSources tagName attributes properties slots
+
+            for property, _ in properties do
+                if isBrowserOnly property then
+                    emit (BrowserOp (tagName, "property"))
 
             for slot in slots do
                 match slot.Target with
-                | PropertyTarget _ -> emit (BrowserOp ("<" + tagName + "> property"))
+                | PropertyTarget property when isBrowserOnly property -> emit (BrowserOp (tagName, "property"))
                 | _ -> ()
 
             for eventName, _ in events do
-                emit (BrowserOp ("<" + tagName + "> listener " + eventName))
+                emit (BrowserOp (tagName, "listener " + eventName))
 
             for kind, _ in placed do
-                emit (BrowserOp ("<" + tagName + "> " + placedPart kind))
+                emit (BrowserOp (tagName, placedPart kind))
 
             write ("<" + tagName)
 
             for key, value in attributes do
                 write (" " + key + "=\"" + Html.escape true value + "\"")
 
+            for property, value in properties do
+                match property.Html with
+                | AsAttribute _ -> emit (StaticPropertyOp (property, value))
+                | AsChildText
+                | BrowserOnly -> ()
+
             for slot in slots do
                 match slot.Target with
                 | AttributeTarget key -> emit (AttributeOp (key, slot))
-                | _ -> ()
+                | PropertyTarget property ->
+                    match property.Html with
+                    | AsAttribute _ -> emit (PropertyOp (property, slot))
+                    | AsChildText
+                    | BrowserOnly -> ()
+                | TextTarget
+                | ContentTarget -> ()
 
             write ">"
+
+            let childText =
+                [|
+                    for property, value in properties do
+                        if isChildText property then
+                            StaticChildTextOp (property, value, false)
+                    for slot in slots do
+                        match slot.Target with
+                        | PropertyTarget property when isChildText property -> ChildTextOp (property, slot, false)
+                        | _ -> ()
+                |]
+
+            if childText.Length > 1 then
+                raise (
+                    InvalidOperationException (
+                        "<"
+                        + tagName
+                        + "> takes at most one child-text property"
+                    )
+                )
+
+            if childText.Length = 1 && nodes.Length > 0 then
+                raise (
+                    InvalidOperationException (
+                        "<"
+                        + tagName
+                        + "> with a child-text property has no template children"
+                    )
+                )
 
             if not (isVoid tag) then
                 match contentSlot slots with
                 | Some content -> emit (ContentOp content)
+                | None when childText.Length = 1 -> emit childText[0]
                 | None -> compileChildren nodes (dropsLeadingLineFeed tagName)
 
                 write ("</" + tagName + ">")
@@ -715,6 +867,29 @@ type internal ServerWriter(backend: HtmlBackend) =
         finally
             backend.Scope <- outer
 
+    let writeSerialised (property: PortableProperty) (value: obj) =
+        match property.Html with
+        | AsAttribute (name, serialise) ->
+            match serialise.Invoke value with
+            | Some text -> backend.Append (" " + name + "=\"" + Html.escape true text + "\"")
+            | None -> ()
+        | AsChildText
+        | BrowserOnly -> invalidOp "Only an attribute serialisation is written as an attribute"
+
+    /// <summary>Writes an escaped text value; with <c>leadingLineFeed</c>, a value starting with a line feed gets a second one.</summary>
+    let writeText (value: obj) (leadingLineFeed: bool) =
+        let value = unbox<string> value
+
+        if not (isNull value) then
+            if
+                leadingLineFeed
+                && value.Length > 0
+                && value[0] = '\n'
+            then
+                backend.Append "\n"
+
+            backend.Append (Html.escape false value)
+
     /// <summary>Sets the position the next template reached from authored content takes.</summary>
     member _.Pend(parent: InstancePath, kind: int, a: int, b: int) =
         pending <- true
@@ -825,18 +1000,7 @@ type internal ServerWriter(backend: HtmlBackend) =
                 backend.Append markup
                 index <- index + 1
             | TextOp (slot, leadingLineFeed) ->
-                let value = unbox<string>(slot.Read.Invoke instance)
-
-                if not (isNull value) then
-                    if
-                        leadingLineFeed
-                        && value.Length > 0
-                        && value[0] = '\n'
-                    then
-                        backend.Append "\n"
-
-                    backend.Append (Html.escape false value)
-
+                writeText (slot.Read.Invoke instance) leadingLineFeed
                 index <- index + 1
             | AttributeOp (key, slot) ->
                 match unbox<string option>(slot.Read.Invoke instance) with
@@ -875,9 +1039,21 @@ type internal ServerWriter(backend: HtmlBackend) =
                     heads.Add (head.Key, markup)
 
                 index <- index + 1
-            | BrowserOp _ ->
+            | PropertyOp (property, slot) ->
+                writeSerialised property (slot.Read.Invoke instance)
+                index <- index + 1
+            | StaticPropertyOp (property, value) ->
+                writeSerialised property value
+                index <- index + 1
+            | ChildTextOp (_, slot, leadingLineFeed) ->
+                writeText (slot.Read.Invoke instance) leadingLineFeed
+                index <- index + 1
+            | StaticChildTextOp (_, value, leadingLineFeed) ->
+                writeText value leadingLineFeed
+                index <- index + 1
+            | BrowserOp (tag, part) ->
                 if reject then
-                    raise (InvalidOperationException "Browser capability requires explicit Omit policy")
+                    raise (browserRejected tag part)
 
                 index <- index + 1
             | RegionOp (regionIndex, region) ->
@@ -993,11 +1169,12 @@ let rec private expandNode (ops: Operations<'view>) (instance: obj) (node: Templ
         let modifiers: ModifierAction array =
             [|
                 for key, value in attributes -> Attribute (key, value)
-                for write, value in properties -> fun (backend: Backend) -> backend.Property (fun target -> write.Invoke (target, value))
+                for property, value in properties -> fun (backend: Backend) -> backend.Property (fun target -> property.Write.Invoke (target, value))
                 for slot in slots ->
                     match slot.Target with
                     | AttributeTarget key -> ReactiveAttribute (key, fun () -> unbox<string option>(slot.Read.Invoke instance))
-                    | PropertyTarget write -> fun (backend: Backend) -> backend.ReactiveProperty ((fun () -> slot.Read.Invoke instance), write)
+                    | PropertyTarget property ->
+                        fun (backend: Backend) -> backend.ReactiveProperty ((fun () -> slot.Read.Invoke instance), property.Write)
                     | ContentTarget ->
                         fun (backend: Backend) -> backend.ReactiveProperty ((fun () -> box (markupOf (slot.Read.Invoke instance))), innerHtml)
                     | TextTarget -> invalidOp "A text slot is a child node"
@@ -1026,7 +1203,7 @@ let rec private expandNode (ops: Operations<'view>) (instance: obj) (node: Templ
 /// <summary>Expands a region row through the operations; the reader returns the row's current item.</summary>
 and private expandRow (ops: Operations<'view>) (row: RegionRow) (current: unit -> obj) : 'view =
     match row with
-    | ViewRow
+    | ViewRow -> ops.Embed (fun backend -> backend.Hole (rowRenderer row current))
     | BoundaryRow -> ops.Embed (rowRenderer row current)
     | ArmRow ->
         let arm = unbox<Arm>(current ())
@@ -1071,7 +1248,7 @@ type Component<'props> internal (setup: Func<Setup, obj, obj>, root: TemplateNod
 type Part<'native, 'inst> =
     internal
     | StaticAttribute of string * string
-    | StaticProperty of Func<obj, obj, unit> * obj
+    | StaticProperty of PortableProperty * obj
     | DynamicPart of Slot
     | EventPart of string * Func<obj, obj, unit>
     | PlacedPart of PlacedKind * Func<obj, obj, (unit -> unit)>
@@ -1101,8 +1278,11 @@ let private sourceSlot target (Source read: Source<'inst, 'value>) same =
         Same = same
     }
 
-let private writer (write: 'native -> 'value -> unit) =
-    Func<obj, obj, unit>(fun node value -> write (unbox node) (unbox value))
+let private portable (html: PropertySerialization) (write: 'native -> 'value -> unit) =
+    {
+        Write = Func<obj, obj, unit>(fun node value -> write (unbox node) (unbox value))
+        Html = html
+    }
 
 let private nodeOf (TemplateView node) = node
 
@@ -1119,7 +1299,7 @@ let private elementNode tag (parts: Part<'native, 'inst> array) (children: Templ
         | StaticAttribute (name, value) ->
             validateAttribute name
             attributes.Add (name, value)
-        | StaticProperty (write, value) -> properties.Add (write, value)
+        | StaticProperty (property, value) -> properties.Add (property, value)
         | DynamicPart slot -> slots.Add slot
         | EventPart (name, handler) -> events.Add (name, handler)
         | PlacedPart (kind, hook) -> placed.Add (kind, hook)
@@ -1209,14 +1389,14 @@ module internal TemplateParts =
     let ariaOption (value: bool option) =
         Option.map ariaText value
 
-    let property (write: 'native -> 'value -> unit) (value: 'value) : Part<'native, 'inst> =
-        StaticProperty (writer write, box value)
+    let property (html: PropertySerialization) (write: 'native -> 'value -> unit) (value: 'value) : Part<'native, 'inst> =
+        StaticProperty (portable html write, box value)
 
-    let readProperty (write: 'native -> 'value -> unit) (read: 'inst -> 'value) : Part<'native, 'inst> =
-        DynamicPart (slot (PropertyTarget (writer write)) RenderMode read primitiveSame)
+    let readProperty (html: PropertySerialization) (write: 'native -> 'value -> unit) (read: 'inst -> 'value) : Part<'native, 'inst> =
+        DynamicPart (slot (PropertyTarget (portable html write)) RenderMode read primitiveSame)
 
-    let sourceProperty (write: 'native -> 'value -> unit) (source: Source<'inst, 'value>) : Part<'native, 'inst> =
-        DynamicPart (sourceSlot (PropertyTarget (writer write)) source primitiveSame)
+    let sourceProperty (html: PropertySerialization) (write: 'native -> 'value -> unit) (source: Source<'inst, 'value>) : Part<'native, 'inst> =
+        DynamicPart (sourceSlot (PropertyTarget (portable html write)) source primitiveSame)
 
     /// <summary>
     /// An event part. The handler runs unbatched: a handler that groups several writes wraps them in <c>Api.batch</c>,
@@ -1238,17 +1418,33 @@ type AttributeBuilder<'inst> internal () =
         TemplateParts.sourceAttribute name source
 
 /// <summary>Property parts: a value is written once per instance, a reader or source is dynamic.</summary>
-/// <remarks>A writer sets properties and leaves the element's child nodes intact: nodes moved into a template clone by a writer bypass the mount's ownership checks.</remarks>
+/// <remarks>
+/// A writer sets properties and leaves the element's child nodes intact: nodes moved into a template clone by a writer
+/// bypass the mount's ownership checks. A part without a <c>PropertySerialization</c> is browser-only.
+/// </remarks>
 [<Sealed>]
 type PropertyBuilder<'inst> internal () =
     member _.propertyStatic(write: 'native -> 'value -> unit, value: 'value) : Part<'native, 'inst> =
-        TemplateParts.property write value
+        TemplateParts.property BrowserOnly write value
 
     member _.propertyWith(write: 'native -> 'value -> unit, read: 'inst -> 'value, same: Func<obj, obj, bool>) : Part<'native, 'inst> =
-        DynamicPart (slot (PropertyTarget (writer write)) RenderMode read same)
+        DynamicPart (slot (PropertyTarget (portable BrowserOnly write)) RenderMode read same)
 
     member _.propertyFrom(write: 'native -> 'value -> unit, source: Source<'inst, 'value>, same: Func<obj, obj, bool>) : Part<'native, 'inst> =
-        DynamicPart (sourceSlot (PropertyTarget (writer write)) source same)
+        DynamicPart (sourceSlot (PropertyTarget (portable BrowserOnly write)) source same)
+
+    member _.propertyStatic(write: 'native -> 'value -> unit, value: 'value, html: PropertySerialization) : Part<'native, 'inst> =
+        TemplateParts.property html write value
+
+    member _.propertyWith
+        (write: 'native -> 'value -> unit, read: 'inst -> 'value, same: Func<obj, obj, bool>, html: PropertySerialization)
+        : Part<'native, 'inst> =
+        DynamicPart (slot (PropertyTarget (portable html write)) RenderMode read same)
+
+    member _.propertyFrom
+        (write: 'native -> 'value -> unit, source: Source<'inst, 'value>, same: Func<obj, obj, bool>, html: PropertySerialization)
+        : Part<'native, 'inst> =
+        DynamicPart (sourceSlot (PropertyTarget (portable html write)) source same)
 
 /// <summary>Event parts: one shared handler per template, given the instance and the event.</summary>
 [<Sealed>]

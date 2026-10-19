@@ -1207,6 +1207,79 @@ let generate compilerRoot policyRoot packageRoot output (templateOutput: string 
             for policyGroup, _, native, helper, attribute, kind in entries do
                 attributeMembers "    " (templateName policyGroup helper) native attribute kind)
 
+    // The server serialisation of each reflected property: (member, owner, F# expression).
+    let portableProperties: (string * string * string) list =
+        let text attribute =
+            $"PropertyHtml.text \"{attribute}\""
+
+        let number attribute =
+            $"PropertyHtml.number \"{attribute}\""
+
+        let presence attribute =
+            $"PropertyHtml.presence \"{attribute}\""
+
+        let each memberName owners serialisation =
+            [ for owner in owners -> memberName, "Dom." + owner, serialisation ]
+
+        [
+            yield "className", "Dom.Element", text "class"
+            yield "id", "Dom.Element", text "id"
+            yield "title", "Dom.HTMLElement", text "title"
+            yield "tabIndex", "Dom.HTMLOrSVGElement", number "tabindex"
+            yield "htmlFor", "Dom.HTMLLabelElement", text "for"
+            yield!
+                each
+                    "disabled"
+                    [
+                        "HTMLButtonElement"
+                        "HTMLFieldSetElement"
+                        "HTMLInputElement"
+                        "HTMLOptGroupElement"
+                        "HTMLOptionElement"
+                        "HTMLSelectElement"
+                        "HTMLTextAreaElement"
+                    ]
+                    (presence "disabled")
+            yield! each "required" [ "HTMLInputElement"; "HTMLSelectElement"; "HTMLTextAreaElement" ] (presence "required")
+            yield! each "readOnly" [ "HTMLInputElement"; "HTMLTextAreaElement" ] (presence "readonly")
+            yield! each "multiple" [ "HTMLInputElement"; "HTMLSelectElement" ] (presence "multiple")
+            yield "checked", "Dom.HTMLInputElement", presence "checked"
+            yield "selected", "Dom.HTMLOptionElement", presence "selected"
+            yield!
+                each
+                    "value"
+                    [
+                        "HTMLButtonElement"
+                        "HTMLDataElement"
+                        "HTMLInputElement"
+                        "HTMLOptionElement"
+                    ]
+                    (text "value")
+            yield! each "value" [ "HTMLLIElement"; "HTMLMeterElement"; "HTMLProgressElement" ] (number "value")
+            yield "value", "Dom.HTMLTextAreaElement", "PropertyHtml.childText"
+            yield!
+                templateProperties.Values
+                |> Seq.concat
+                |> Seq.filter (fun (memberName: string, ownerName, _) ->
+                    ownerName = "Dom.ARIAMixin"
+                    && memberName.StartsWith "aria")
+                |> Seq.map (fun (memberName, ownerName, _) ->
+                    memberName, ownerName, $"PropertyHtml.optional \"aria-{memberName.Substring(4).ToLowerInvariant()}\"")
+                |> Seq.distinct
+        ]
+
+    require
+        (portableProperties
+         |> List.exists (fun (_, ownerName, _) -> ownerName = "Dom.ARIAMixin"))
+        "Unused portable property entry: aria*/Dom.ARIAMixin"
+
+    let portableLookup =
+        portableProperties
+        |> List.map (fun (memberName, ownerName, serialisation) -> (memberName, ownerName), serialisation)
+        |> dict
+
+    let usedPortable = Collections.Generic.HashSet<string * string>()
+
     let propertyMembers (memberName: string) (ownerName: string) (valueType: string) =
         let signature argument =
             $"    member _.``{memberName}``<'native when 'native :> {ownerName}>({argument}) : Part<'native, 'inst> ="
@@ -1214,12 +1287,24 @@ let generate compilerRoot policyRoot packageRoot output (templateOutput: string 
         let write =
             $"(fun (node: 'native) (value: {valueType}) -> (node :> {ownerName}).``{memberName}`` <- value)"
 
+        let html =
+            match portableLookup.TryGetValue ((memberName, ownerName)) with
+            | true, serialisation ->
+                usedPortable.Add ((memberName, ownerName))
+                |> ignore
+
+                if serialisation.Contains ' ' then
+                    $"({serialisation})"
+                else
+                    serialisation
+            | false, _ -> "PropertyHtml.browserOnly"
+
         tEmit (signature $"value: {valueType}")
-        tEmit $"        TemplateParts.property {write} value"
+        tEmit $"        TemplateParts.property {html} {write} value"
         tEmit (signature $"read: 'inst -> {valueType}")
-        tEmit $"        TemplateParts.readProperty {write} read"
+        tEmit $"        TemplateParts.readProperty {html} {write} read"
         tEmit (signature $"source: Source<'inst, {valueType}>")
-        tEmit $"        TemplateParts.sourceProperty {write} source"
+        tEmit $"        TemplateParts.sourceProperty {html} {write} source"
         tEmit ""
 
     let flatProperties =
@@ -1253,6 +1338,10 @@ let generate compilerRoot policyRoot packageRoot output (templateOutput: string 
             (fun () ->
                 for memberName, ownerName, valueType in entries do
                     propertyMembers memberName ownerName valueType)
+
+    for memberName, ownerName, _ in portableProperties do
+        if not (usedPortable.Contains ((memberName, ownerName))) then
+            fail $"Unused portable property entry: {memberName}/{ownerName}"
 
     let eventMember (eventName: string) (native: string) (eventType: string) =
         tEmit ("    " + listenerDoc)
