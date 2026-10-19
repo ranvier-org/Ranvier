@@ -1111,3 +1111,59 @@ let converterTests =
             }
 #endif
         ]
+
+#if RANVIER_TRACE
+[<Tests>]
+let traceTests =
+    testList
+        "Stream memo traces"
+        [
+            testCaseAsync "a start, a burst, a restart and a completion are traced"
+            <| async {
+                use graph = new Graph ()
+                let feed = ManualStream<int>()
+                let topic = Signal (graph, 0)
+
+                let memo =
+                    graph.Run (fun () ->
+                        Api.createStreamFold 0 (+) (fun _ ->
+                            topic.Value |> ignore
+                            feed.Source))
+
+                graph.Run (fun () -> memo.TryValue) |> ignore
+
+                graph.Run (fun () ->
+                    Api.batch (fun () ->
+                        feed.Push 1
+                        feed.Push 2
+                        feed.Push 3))
+
+                topic.Value <- 1
+                graph.Run (fun () -> memo.TryValue) |> ignore
+                feed.Push 5
+                feed.Complete ()
+                do! Async.Sleep 0
+
+                let summary =
+                    Trace.events graph
+                    |> Array.filter (fun e -> int e.Kind >= 60 && int e.Kind <= 62)
+                    |> Array.map (fun e -> e.Kind, e.Arg, e.Flag)
+                    |> Array.toList
+
+                Expect.equal
+                    summary
+                    [
+                        TraceEventKind.StreamStarted, 1, 0
+                        TraceEventKind.StreamPublished, 0, 3
+                        TraceEventKind.StreamEnded, int TraceStreamEnd.Restarted, 0
+                        TraceEventKind.StreamStarted, 2, 0
+                        TraceEventKind.StreamPublished, 0, 1
+                        TraceEventKind.StreamEnded, int TraceStreamEnd.Completed, 0
+                        TraceEventKind.StreamPublished, 0, 0
+                    ]
+                    "events in order"
+            }
+        ]
+#else
+let traceTests = testList "Stream memo traces" []
+#endif

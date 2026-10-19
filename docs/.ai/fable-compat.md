@@ -73,7 +73,8 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | QueryErgonomics.fs | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | QueryNavigationTests.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
 | Streams.fs (sources) | 7 | 7 | 7 | 7 | 7 | 7 | 0 | 0 |
-| **Total** | 1034 | 1016 | 948 | 1171 | 1148 | 1070 | 91 | 1 |
+| Streams.fs (traces) | 0 | 0 | 0 | 1 | 1 | 1 | 0 | 0 |
+| **Total** | 1034 | 1016 | 948 | 1172 | 1149 | 1071 | 91 | 1 |
 
 ## Tests.fs
 
@@ -1895,5 +1896,13 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - ofAsyncIterable: items fold and done completes
 - ofAsyncIterable: a rejected next fails the stream
 - ofAsyncIterable: disposing while next is pending calls return once and ignores the later value
+
+</details>
+
+## Streams.fs (traces)
+
+<details><summary>1 passed in every build and delivery that runs them</summary>
+
+- a start, a burst, a restart and a completion are traced (traced only)
 
 </details>

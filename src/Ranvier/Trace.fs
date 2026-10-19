@@ -449,6 +449,7 @@ type internal TraceLog(locked: bool) =
                             | TraceNodeKind.LookupCell -> "lookup cell"
                             | TraceNodeKind.Timed -> "timed node"
                             | TraceNodeKind.Binding -> "binding"
+                            | TraceNodeKind.Stream -> "stream memo"
                             | _ -> "node"
                     elif
                         e.Kind = TraceEventKind.Label
@@ -1200,16 +1201,45 @@ type internal Tracer =
 #endif
 
     [<Conditional("RANVIER_TRACE")>]
-    static member StreamNew(graph: obj, id: int, owner: obj) = ()
+    static member StreamNew(graph: obj, id: int, owner: obj) =
+#if RANVIER_TRACE
+        Tracer.Node (graph, id, TraceNodeKind.Stream, owner)
+#else
+        ()
+#endif
 
     [<Conditional("RANVIER_TRACE")>]
-    static member StreamStarted(graph: obj, id: int, generation: int) = ()
+    static member StreamStarted(graph: obj, id: int, generation: int) =
+#if RANVIER_TRACE
+        let log = Tracer.LogOf graph
+
+        log.Append (TraceEventKind.StreamStarted, id, 0, generation, 0, log.OpenRun id, null)
+        |> ignore
+#else
+        ()
+#endif
 
     [<Conditional("RANVIER_TRACE")>]
-    static member StreamPublished(graph: obj, id: int, status: int, count: int, payload: obj) = ()
+    static member StreamPublished(graph: obj, id: int, status: int, count: int, payload: obj) =
+#if RANVIER_TRACE
+        let log = Tracer.LogOf graph
+
+        log.Append (TraceEventKind.StreamPublished, id, 0, status, count, log.OpenRun id, payload)
+        |> ignore
+#else
+        ()
+#endif
 
     [<Conditional("RANVIER_TRACE")>]
-    static member StreamEnded(graph: obj, id: int, reason: int) = ()
+    static member StreamEnded(graph: obj, id: int, reason: int) =
+#if RANVIER_TRACE
+        let log = Tracer.LogOf graph
+
+        log.Append (TraceEventKind.StreamEnded, id, 0, reason, 0, log.OpenRun id, null)
+        |> ignore
+#else
+        ()
+#endif
 
     [<Conditional("RANVIER_TRACE")>]
     static member TimedEvent(graph: obj, id: int, kind: int, arg: int, flag: int, payload: obj) =
