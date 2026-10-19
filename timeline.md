@@ -22,6 +22,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 101,860 | 139,716 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 101,598 | 140,609 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 101,662 | 140,620 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 84,053 | 125,352 |
 
 ## app-table
 
@@ -45,6 +46,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 9,233,689 | 9,691,748 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 9,229,983 | 9,629,653 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 9,228,152 | 9,630,607 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 9,120,258 | 9,782,395 |
 
 ## async-recover
 
@@ -68,6 +70,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 138,829 | 37,457 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 138,826 | 37,112 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 138,826 | 37,104 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 138,968 | 37,303 |
 
 ## async-resolve
 
@@ -91,6 +94,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 2,797,419 | 1,076,841 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 2,796,739 | 1,066,675 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 2,796,740 | 1,066,673 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 2,791,003 | 1,073,813 |
 
 ## chain
 
@@ -114,6 +118,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 13,042 | 318 | 2,470 | 4,491 | 3,180 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 13,042 | 318 | 2,470 | 4,491 | 3,180 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 13,042 | 318 | 2,470 | 4,491 | 3,180 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 13,035 | 318 | 2,450 | 4,491 | 3,180 |
 
 ## chain-affinity
 
@@ -137,6 +142,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 2,569 | 3,087 | 2,516 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 2,569 | 3,087 | 2,516 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 2,569 | 3,087 | 2,516 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 2,549 | 3,067 | 2,496 |
 
 ## control
 
@@ -160,6 +166,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 74,719 | 834,846 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 74,720 | 834,925 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 74,720 | 834,910 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 74,719 | 826,138 |
 
 ## create
 
@@ -183,6 +190,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 13,602,860 | 2,861,678 | 3,041,257 | 2,185,680 | 4,214,317 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 13,461,452 | 2,893,677 | 3,035,209 | 2,131,279 | 4,184,451 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 13,461,435 | 2,861,678 | 3,035,210 | 2,132,010 | 4,179,898 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 13,531,174 | 2,859,679 | 2,528,399 | 2,132,031 | 3,988,931 |
 
 ## create-on
 
@@ -206,6 +214,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 3,429,878 | 4,626,474 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 3,439,904 | 4,348,490 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 3,423,905 | 4,354,534 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 2,911,490 | 4,366,645 |
 
 ## cutoff
 
@@ -229,6 +238,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 1,181 | 50 | 111 | 65 | 35 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 1,181 | 50 | 111 | 65 | 35 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 1,181 | 50 | 111 | 65 | 35 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 1,182 | 50 | 111 | 65 | 35 |
 
 ## derive-effect
 
@@ -252,6 +262,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 765 | 716 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 765 | 716 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 765 | 716 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 760 | 680 |
 
 ## derive-on
 
@@ -275,6 +286,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 740 | 684 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 740 | 684 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 740 | 684 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 735 | 684 |
 
 ## dispose
 
@@ -298,6 +310,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 2,707,580 | 806,291 | 501,497 | 466,038 | 702,173 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 2,707,579 | 806,291 | 501,497 | 466,263 | 704,526 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 2,706,184 | 806,290 | 501,497 | 466,110 | 704,570 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 2,706,750 | 806,290 | 367,497 | 466,306 | 434,416 |
 
 ## dispose-on
 
@@ -321,6 +334,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 480,497 | 700,132 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 480,497 | 698,094 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 480,497 | 698,438 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 346,497 | 430,156 |
 
 ## editable-edit
 
@@ -344,6 +358,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 181,106 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 181,106 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 181,106 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 179,606 |
 
 ## editable-upstream
 
@@ -367,6 +382,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 232,756 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 232,755 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 232,755 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 230,755 |
 
 ## fail-recompute
 
@@ -390,6 +406,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 64,852 | 1,376 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 64,924 | 1,376 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 64,924 | 1,376 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 64,914 | 1,366 |
 
 ## flight
 
@@ -413,6 +430,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 11,051 | 6,245 | 6,246 | 11,374 | 10,819 | 22,383 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 11,051 | 6,245 | 6,246 | 11,375 | 10,819 | 22,383 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 11,051 | 6,245 | 6,246 | 11,374 | 10,819 | 22,383 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 11,041 | 6,240 | 6,241 | 11,365 | 10,809 | 22,373 |
 
 ## keyed-insert
 
@@ -436,6 +454,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 1,921,573 | 53,966 | 54,665 | 3,092,872 | 162,911 | 172,991 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 1,921,568 | 53,934 | 54,623 | 3,092,994 | 163,085 | 172,557 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 1,921,766 | 53,941 | 54,668 | 3,092,947 | 163,151 | 172,662 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 1,918,543 | 53,948 | 54,624 | 3,114,971 | 164,122 | 167,165 |
 
 ## keyed-remove
 
@@ -459,6 +478,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 1,920,533 | 43,626 | 45,039 | 3,092,718 | 132,010 | 143,311 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 1,920,519 | 43,626 | 45,007 | 3,092,959 | 134,022 | 143,253 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 1,920,716 | 43,632 | 45,046 | 3,092,992 | 134,114 | 143,433 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 1,917,460 | 43,626 | 45,002 | 3,114,557 | 131,766 | 140,540 |
 
 ## keyed-swap
 
@@ -482,6 +502,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 1,973,184 | 46,167 | 46,649 | 3,215,502 | 79,183 | 85,189 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 1,973,171 | 46,168 | 46,649 | 3,215,847 | 79,219 | 84,875 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 1,973,379 | 46,183 | 46,699 | 3,215,874 | 79,374 | 84,887 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 1,970,160 | 46,161 | 46,638 | 3,264,730 | 79,254 | 84,519 |
 
 ## mvu-dispatch
 
@@ -505,6 +526,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 58,391 | 772 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 58,391 | 772 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 58,391 | 772 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 58,066 | 767 |
 
 ## project-chain
 
@@ -528,6 +550,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 3,837,389 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 3,837,400 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 3,837,432 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 3,834,759 |
 
 ## project-churn
 
@@ -551,6 +574,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 36,290 | 34,121 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 36,252 | 34,083 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 36,252 | 34,083 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 36,206 | 34,048 |
 
 ## project-edit
 
@@ -574,6 +598,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 50,186 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 50,185 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 50,185 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 50,181 |
 
 ## project-reorder
 
@@ -597,6 +622,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 778,895 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 778,907 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 778,907 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 778,916 |
 
 ## shape-diamond
 
@@ -620,6 +646,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 60,899 | 88,455 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 60,899 | 88,455 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 60,899 | 88,455 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 59,894 | 88,455 |
 
 ## shape-dynamic
 
@@ -643,6 +670,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 82,420 | 98,001 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 82,420 | 98,000 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 82,420 | 98,000 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 82,520 | 95,378 |
 
 ## timed-admit-both
 
@@ -666,6 +694,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 118,909 | 133,569 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 118,909 | 133,650 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 118,909 | 133,655 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 118,269 | 133,685 |
 
 ## timed-admit-debounce
 
@@ -689,6 +718,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 117,814 | 132,162 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 117,814 | 132,158 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 117,818 | 132,160 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 117,174 | 132,327 |
 
 ## timed-admit-first
 
@@ -712,6 +742,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 69,925 | 81,964 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 69,925 | 81,964 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 69,925 | 81,964 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 69,285 | 82,092 |
 
 ## timed-admit-last
 
@@ -735,6 +766,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 118,076 | 132,470 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 118,076 | 132,470 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 118,076 | 132,480 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 117,436 | 132,611 |
 
 ## timed-capture-both
 
@@ -758,6 +790,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 36,044 | 44,965 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 36,044 | 44,981 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 36,044 | 44,978 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 35,724 | 45,028 |
 
 ## timed-capture-debounce
 
@@ -781,6 +814,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 35,916 | 43,583 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 35,916 | 43,583 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 35,916 | 43,583 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 35,596 | 43,646 |
 
 ## timed-capture-first
 
@@ -804,6 +838,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 32,396 | 38,804 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 32,396 | 38,804 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 32,396 | 38,804 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 32,076 | 38,868 |
 
 ## timed-capture-last
 
@@ -827,6 +862,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 35,852 | 43,519 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 35,852 | 43,519 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 35,852 | 43,519 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 35,532 | 43,583 |
 
 ## update
 
@@ -850,6 +886,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 1,088,680 | 38,805 | 83,005 | 263,113 | 207,770 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 1,090,280 | 38,805 | 83,005 | 262,840 | 207,848 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 1,088,673 | 38,805 | 83,005 | 262,809 | 207,798 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 1,087,690 | 38,805 | 82,005 | 262,586 | 207,601 |
 
 ## update-on
 
@@ -873,6 +910,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 93,805 | 222,065 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 93,805 | 222,097 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 93,805 | 222,064 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 92,805 | 221,283 |
 
 ## work-form
 
@@ -896,6 +934,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 174,678 | 168,177 | 288,722 | 287,066 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 174,678 | 172,144 | 288,766 | 287,118 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 174,678 | 168,161 | 288,750 | 287,109 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 169,672 | 163,139 | 288,752 | 287,018 |
 
 ## work-status
 
@@ -919,6 +958,7 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 100,445 | 79,115 | 315,910 | 155,356 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 100,445 | 79,116 | 315,892 | 155,398 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 100,445 | 79,116 | 315,849 | 155,384 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 99,945 | 78,615 | 320,915 | 155,412 |
 
 ## work-value
 
@@ -942,4 +982,5 @@
 | `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | 107,571 | 119,770 | 316,149 | 283,694 |
 | `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | 107,569 | 119,770 | 316,130 | 283,716 |
 | `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | 107,569 | 119,769 | 316,141 | 283,721 |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | 107,071 | 119,269 | 321,107 | 283,844 |
 
