@@ -285,6 +285,22 @@ let private readerFailure (ops: Operations<'view>) (run: 'view -> Backend -> uni
     equal expected (host.textContent, List.ofSeq log, messages reports)
     mounted.Dispose ()
 
+/// <summary>A content binding whose reader raises on its first read, during the content's setup.</summary>
+let private initialReaderFailure (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+    let host, log, reports = host (), ResizeArray<string>(), ResizeArray<exn list>()
+
+    let mounted =
+        underBoundary ops run queued graph host log reports (fun () -> Typed.reactiveText ops (fun () -> failwith "initial"))
+
+    mounted.Flush ()
+
+    equal
+        ("failed: initial", [ "content"; "content cleanup"; "error initial" ], [ [ "initial" ] ])
+        (host.textContent, List.ofSeq log, messages reports)
+
+    mounted.Dispose ()
+
 let private setterFailure (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
     use graph = new Graph ()
     let source = graph.Run (fun () -> Api.createSignal "ok")
@@ -364,7 +380,7 @@ let private armSetupFailure (ops: Operations<'view>) (run: 'view -> Backend -> u
 
 /// <summary>
 /// Two setters under one boundary fail in the same queued flush. The error view shows the first failure in commit
-/// order, which the core's effect order sets.
+/// order, set by the core's effect order.
 /// </summary>
 let private twoQueuedFailures (ops: Operations<'view>) (run: 'view -> Backend -> unit) =
     use graph = new Graph ()
@@ -654,4 +670,10 @@ let cases: (string * (unit -> unit)) array =
         fun () -> sharedReaderFailure Program.ops Program.run false
         "tree: an inner and an outer failure in one queued flush are each reported once", fun () -> nestedQueuedFailures Tree.ops Tree.run
         "program: an inner and an outer failure in one queued flush are each reported once", fun () -> nestedQueuedFailures Program.ops Program.run
+        "tree synchronous: a content binding failing on its first read shows the error view", fun () -> initialReaderFailure Tree.ops Tree.run false
+        "tree queued: a content binding failing on its first read shows the error view", fun () -> initialReaderFailure Tree.ops Tree.run true
+        "program synchronous: a content binding failing on its first read shows the error view",
+        fun () -> initialReaderFailure Program.ops Program.run false
+        "program queued: a content binding failing on its first read shows the error view",
+        fun () -> initialReaderFailure Program.ops Program.run true
     |]
