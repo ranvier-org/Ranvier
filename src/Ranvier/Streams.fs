@@ -343,11 +343,14 @@ type StreamMemo<'S>
         member _.Status = status
 
     interface ISource with
-        member _.AddObserver observer =
-            observers.Add observer
+        member _.AddObserver(observer, slot) =
+            observers.Add (observer, slot)
 
-        member _.RemoveObserver observer =
-            observers.Remove observer
+        member _.TryAddObserver(observer, slot) =
+            observers.TryAdd (observer, slot)
+
+        member _.RemoveObserverAt(observer, handle) =
+            observers.RemoveAt (observer, handle)
 
         member this.UpdateIfNecessary() =
             this.EnsureCurrent ()
@@ -355,6 +358,9 @@ type StreamMemo<'S>
     interface IComputation with
         member this.AddSource source =
             sources.Add (this :> IComputation, source)
+
+        member _.MovedIn(slot, handle) =
+            sources.MovedIn (slot, handle)
 
         member _.MarkDirty() =
             if freshness <> Freshness.Dirty then
