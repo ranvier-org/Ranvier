@@ -557,6 +557,55 @@ let private componentCleanupFailures () =
     equal (2, 1) (ran.Count, reports.Count)
     equal [ "first"; "second" ] (reports[0] |> List.map _.Message |> List.sort)
 
+/// <summary>
+/// Mounts a div whose title is written by a setter that throws on its first "bad" write. Writing <c>tick</c> re-runs
+/// the reader with the same value.
+/// </summary>
+let private liveSetterFailure (ops: Operations<'view>) (run: 'view -> Backend -> unit) queued =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createSignal "a")
+    let tick = graph.Run (fun () -> Api.createSignal 0)
+    let reported = ResizeArray<exn>()
+    let mutable attempts = 0
+    let host = host ()
+
+    let mode =
+        if queued then
+            QueuedCommits (CollectAndContinue, ignore)
+        else
+            SynchronousCommits
+
+    let view =
+        Typed.div
+            ops
+            [|
+                Typed.reactiveProperty
+                    (fun (node: HTMLDivElement) (value: string) ->
+                        if value = "bad" then
+                            attempts <- attempts + 1
+
+                            if attempts = 1 then
+                                failwith "setter"
+
+                        node.title <- value)
+                    (fun () ->
+                        tick.Value |> ignore
+                        source.Value)
+            |]
+            [||]
+
+    let mounted =
+        mountWith mode graph None reported.AddRange host None (fun context -> run view context.Backend)
+
+    let div = host.querySelector "div" |> unbox<HTMLDivElement>
+    graph.Run (fun () -> source.Value <- "bad")
+    mounted.Flush ()
+    equal ("a", 0, (if queued then 1 else 0)) (div.title, reported.Count, mounted.CommitErrors.Length)
+    graph.Run (fun () -> tick.Value <- 1)
+    mounted.Flush ()
+    equal ("bad", 0, 2) (div.title, reported.Count, attempts)
+    mounted.Dispose ()
+
 let cases =
     Array.append
         portableCases
@@ -582,4 +631,10 @@ let cases =
             "a recurring failure object is reported again after its binding recovers", recoveredFailureRecurs
             "a keyed row reading a failed memo reports the failure", keyedRowReaderFailure
             "two throwing component cleanups are reported together on disposal", componentCleanupFailures
+            "tree: a live synchronous setter failure is not reported and an equal later value retries the write",
+            fun () -> liveSetterFailure Tree.ops Tree.run false
+            "program: a live synchronous setter failure is not reported and an equal later value retries the write",
+            fun () -> liveSetterFailure Program.ops Program.run false
+            "tree: a live queued setter failure reaches only the queue's errors", fun () -> liveSetterFailure Tree.ops Tree.run true
+            "program: a live queued setter failure reaches only the queue's errors", fun () -> liveSetterFailure Program.ops Program.run true
         |]
