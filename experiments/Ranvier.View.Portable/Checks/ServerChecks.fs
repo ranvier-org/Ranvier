@@ -381,6 +381,42 @@ let private renderToSegments () =
 
     equal 0 failed.Count
 
+let private aggregateFailures () =
+    let cleanupFails =
+        Component.define
+            (fun setup (fails: bool) ->
+                setup.OnCleanup (fun () -> failwith "cleanup failed")
+
+                if fails then
+                    failwith "setup failed")
+            (fun t -> t.span [||] [||])
+
+    let shape (error: exn) (inner: string list) =
+#if FABLE_COMPILER
+        // Fable's exception stores the inner array as its inner exception.
+        let count = (unbox<exn array>(box error.InnerException)).Length
+#else
+        let count = (error :?> AggregateException).InnerExceptions.Count
+#endif
+        count,
+        inner
+        |> List.forall (fun (part: string) -> error.Message.Contains part)
+
+    let setupAndCleanup =
+        failure (fun () ->
+            Server.render Server.Options.defaults cleanupFails true
+            |> ignore)
+
+    let cleanupOnly =
+        failure (fun () ->
+            Server.render Server.Options.defaults cleanupFails false
+            |> ignore)
+
+    equal
+        ((2, true), (1, true))
+        (shape setupAndCleanup [ "Server render failed: "; "setup failed"; "cleanup failed" ],
+         shape cleanupOnly [ "Server render cleanup failed: "; "cleanup failed" ])
+
 let cases: (string * (unit -> unit)) array =
     [|
         "server plan matches the current writer for every template fixture", templatePins
@@ -403,6 +439,7 @@ let cases: (string * (unit -> unit)) array =
         "OnCleanup after setup raises on the server", cleanupAfterSetupRejected
         "duplicate keys fail the server render with the core's exception", duplicateKeys
         "renderTo writes the rendered segments after success and nothing after failure", renderToSegments
+        "a render whose cleanups fail raises an aggregate holding and naming every error", aggregateFailures
     |]
 
 #if !FABLE_COMPILER
@@ -501,7 +538,8 @@ let private messages (error: exn) : string list =
     | error -> [ error.Message ]
 
 let private concurrentTeardown () =
-    use barrier = new System.Threading.Barrier (2)
+    let parties = 8
+    use barrier = new System.Threading.Barrier (parties)
 
     let throwing =
         Component.define
@@ -521,11 +559,19 @@ let private concurrentTeardown () =
                 Server.render Server.Options.defaults throwing name
                 |> ignore))
 
-    let left, right = request "left", request "right"
+    let outcome (error: exn) =
+        error.Message.StartsWith "Server render cleanup failed: ", messages error
 
-    equal
-        (("Server render cleanup failed", [ "cleanup left" ]), ("Server render cleanup failed", [ "cleanup right" ]))
-        ((left.Result.Message.Split(" (")[0], messages left.Result), (right.Result.Message.Split(" (")[0], messages right.Result))
+    let names = [ for party in 1..parties -> "r" + string party ]
+
+    let rounds =
+        [
+            for _ in 1..50 ->
+                let requests = [ for name in names -> request name ]
+                [ for request in requests -> outcome request.Result ]
+        ]
+
+    equal (List.replicate 50 [ for name in names -> true, [ "cleanup " + name ] ]) rounds
 
 let dotnetCases: (string * (unit -> unit)) array =
     [|

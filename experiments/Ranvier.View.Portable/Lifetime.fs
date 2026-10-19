@@ -84,7 +84,7 @@ type MountLifetime private (graph: Graph, owner: Owner, report: exn list -> unit
     static member val private Windows = ResizeArray<TeardownWindow>()
     static member val private Frames = ResizeArray<MountLifetime>()
 #else
-    // Per thread, so that concurrent requests tear down independently.
+    // Each thread has its own teardown windows and frames.
     [<ThreadStatic; DefaultValue>]
     static val mutable private windows: ResizeArray<TeardownWindow>
 

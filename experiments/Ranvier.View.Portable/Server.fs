@@ -106,11 +106,24 @@ let internal renderOn (graph: Graph) (options: Options) (definition: Component<'
 
                 failure))
 
+    let aggregate (summary: string) (errors: exn list) =
+        AggregateException (
+            summary
+            + ": "
+            + String.concat "; " (errors |> List.map _.Message),
+            List.toArray errors
+        )
+
     match failure, List.ofSeq cleanupErrors with
     | None, [] -> ()
-    | Some error, [] -> raise error
-    | Some error, errors -> raise (AggregateException (error :: errors))
-    | None, errors -> raise (AggregateException ("Server render cleanup failed", errors))
+    | Some error, [] ->
+#if FABLE_COMPILER
+        raise error
+#else
+        System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw error
+#endif
+    | Some error, errors -> raise (aggregate "Server render failed" (error :: errors))
+    | None, errors -> raise (aggregate "Server render cleanup failed" errors)
 
 /// <summary>Renders a template component as one hydratable root; raises when a read outside every boundary is pending or fails.</summary>
 /// <remarks>
