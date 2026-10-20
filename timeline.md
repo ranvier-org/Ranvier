@@ -43,6 +43,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 83,006 | 125,908 | 1,732,908 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 83,048 | 127,105 | 1,734,142 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 83,432 | 127,121 | 1,734,404 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 83,052 | 127,148 | 1,734,165 |
 
 ## app-table
 
@@ -87,6 +88,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 4,416,056 | 9,769,936 | 107,687,281 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 4,416,352 | 9,203,562 | 107,430,896 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 4,416,157 | 9,491,867 | 107,302,102 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 4,416,202 | 9,203,775 | 107,301,567 |
 
 ## async-recover
 
@@ -131,6 +133,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 139,047 | 37,452 | 440,318 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 139,048 | 39,725 | 440,644 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 139,040 | 39,650 | 440,652 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 139,040 | 39,723 | 440,649 |
 
 ## async-resolve
 
@@ -175,6 +178,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 2,793,109 | 1,079,567 | 12,301,104 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 2,793,110 | 1,085,386 | 12,317,049 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 2,792,310 | 1,085,329 | 12,314,001 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 2,792,309 | 1,085,796 | 12,314,132 |
 
 ## chain
 
@@ -219,6 +223,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 
 ## chain-affinity
 
@@ -263,6 +268,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 2,549 | 3,067 | 2,496 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 2,549 | 3,067 | 2,496 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 2,549 | 3,067 | 2,496 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 2,549 | 3,067 | 2,496 |
 
 ## control
 
@@ -307,6 +313,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 74,709 | 834,030 | 2,605,052 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 74,709 | 833,999 | 2,605,091 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 74,709 | 834,956 | 2,605,086 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 74,709 | 833,937 | 2,605,105 |
 
 ## create
 
@@ -351,6 +358,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 13,449,960 | 2,875,677 | 2,548,361 | 2,131,894 | 3,998,782 | 34,065,187 | 49,618,972 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 13,575,594 | 2,859,678 | 2,532,361 | 2,131,334 | 4,003,678 | 34,063,391 | 49,723,780 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 13,450,133 | 2,875,677 | 2,532,361 | 2,131,946 | 4,004,114 | 34,063,566 | 49,723,544 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 13,450,071 | 2,859,678 | 2,532,361 | 2,131,458 | 4,004,154 | 34,066,730 | 49,723,845 |
 
 ## create-on
 
@@ -395,6 +403,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 2,926,532 | 4,375,792 | 54,330,721 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 2,910,483 | 4,147,726 | 54,424,662 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 2,910,483 | 4,147,556 | 54,424,689 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 2,926,484 | 4,147,505 | 54,424,688 |
 
 ## cutoff
 
@@ -439,6 +448,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 
 ## derive-effect
 
@@ -483,6 +493,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 765 | 699 | 15,940 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 765 | 768 | 16,102 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 765 | 768 | 16,102 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 765 | 768 | 16,102 |
 
 ## derive-on
 
@@ -527,6 +538,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 753 | 694 | 16,099 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 737 | 775 | 16,261 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 737 | 775 | 16,261 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 737 | 775 | 16,261 |
 
 ## dispose
 
@@ -571,6 +583,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 2,706,241 | 806,290 | 367,497 | 466,249 | 434,395 | 13,195,661 | 9,112,722 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 2,707,644 | 806,291 | 367,497 | 466,067 | 485,210 | 13,195,163 | 9,105,961 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 2,707,643 | 806,291 | 367,497 | 465,931 | 485,220 | 13,195,546 | 9,106,491 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 2,707,643 | 806,290 | 367,497 | 466,202 | 485,089 | 13,194,030 | 9,106,150 |
 
 ## dispose-on
 
@@ -615,6 +628,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 346,497 | 430,507 | 8,908,961 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 346,497 | 478,468 | 8,902,248 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 346,497 | 478,492 | 8,902,693 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 346,497 | 478,608 | 8,902,307 |
 
 ## editable-edit
 
@@ -659,6 +673,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 180,106 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 180,106 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 180,106 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 180,106 |
 
 ## editable-upstream
 
@@ -703,6 +718,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 231,255 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 231,255 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 231,255 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 231,255 |
 
 ## fail-recompute
 
@@ -747,6 +763,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 65,098 | 1,366 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 65,098 | 1,366 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 65,082 | 1,366 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 65,082 | 1,366 |
 
 ## flight
 
@@ -791,6 +808,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 10,995 | 6,215 | 6,216 | 11,316 | 10,763 | 22,343 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 10,995 | 6,215 | 6,216 | 11,316 | 10,763 | 22,343 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 10,995 | 6,215 | 6,216 | 11,316 | 10,763 | 22,343 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 10,995 | 6,215 | 6,216 | 11,316 | 10,763 | 22,343 |
 
 ## keyed-insert
 
@@ -835,6 +853,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 1,921,905 | 53,951 | 55,044 | 3,164,391 | 167,252 | 167,625 | 44,661,301 | 2,639,507 | 2,657,596 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 1,921,809 | 53,951 | 54,949 | 3,218,687 | 661,692 | 176,576 | 44,849,813 | 2,634,960 | 2,654,184 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 1,921,809 | 53,971 | 54,948 | 3,218,737 | 661,695 | 176,469 | 44,849,847 | 2,634,939 | 2,654,314 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 1,921,801 | 53,951 | 54,942 | 3,218,668 | 661,900 | 176,563 | 44,849,844 | 2,634,980 | 2,654,193 |
 
 ## keyed-remove
 
@@ -879,6 +898,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 1,920,844 | 43,628 | 45,381 | 3,163,763 | 133,188 | 140,934 | 44,623,063 | 1,929,588 | 1,962,426 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 1,920,755 | 43,628 | 45,284 | 3,245,043 | 593,156 | 605,276 | 44,798,164 | 1,924,878 | 1,958,567 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 1,920,742 | 43,648 | 45,284 | 3,245,029 | 593,013 | 605,193 | 44,798,627 | 1,924,937 | 1,958,580 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 1,920,734 | 43,628 | 45,276 | 3,244,996 | 593,198 | 605,050 | 44,798,159 | 1,924,898 | 1,958,578 |
 
 ## keyed-swap
 
@@ -923,6 +943,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 1,973,524 | 46,161 | 47,011 | 3,282,982 | 80,381 | 85,111 | 45,819,080 | 919,448 | 935,758 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 1,973,428 | 46,161 | 46,916 | 3,566,419 | 148,779 | 511,233 | 45,980,315 | 916,555 | 932,783 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 1,973,428 | 46,177 | 46,916 | 3,565,260 | 148,814 | 511,392 | 45,980,289 | 916,542 | 932,942 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 1,973,412 | 46,162 | 46,900 | 3,560,289 | 148,782 | 511,268 | 45,980,332 | 916,504 | 932,917 |
 
 ## mvu-dispatch
 
@@ -967,6 +988,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 58,261 | 772 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 58,261 | 772 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 58,261 | 772 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 58,261 | 772 |
 
 ## project-chain
 
@@ -1011,6 +1033,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 1,070,194 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 1,070,368 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 1,070,317 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 1,070,385 |
 
 ## project-churn
 
@@ -1055,6 +1078,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 36,473 | 34,310 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 36,473 | 34,310 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 36,489 | 34,326 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 36,473 | 34,310 |
 
 ## project-edit
 
@@ -1099,6 +1123,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 50,431 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 50,415 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 50,431 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 50,415 |
 
 ## project-reorder
 
@@ -1143,6 +1168,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 779,170 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 779,155 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 779,172 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 779,156 |
 
 ## server-render
 
@@ -1187,6 +1213,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 676,396 | 1,131,282 | 9,832,906 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 677,932 | 1,131,263 | 9,832,850 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 676,364 | 1,131,339 | 9,833,276 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 676,332 | 1,131,490 | 9,832,897 |
 
 ## shape-diamond
 
@@ -1231,6 +1258,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 59,899 | 88,772 | 1,763,207 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 59,899 | 79,968 | 1,763,357 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 59,899 | 79,968 | 1,763,357 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 59,899 | 79,968 | 1,763,357 |
 
 ## shape-dynamic
 
@@ -1275,6 +1303,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 82,921 | 96,577 | 1,992,771 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 82,921 | 107,033 | 2,006,140 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 82,921 | 107,033 | 2,006,140 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 82,921 | 107,033 | 2,006,140 |
 
 ## stream-burst-1
 
@@ -1319,6 +1348,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 1,974 | 1,572 | 2,491 | 5,260 | 6,373 | 10,446 | 47,094 | 45,312 | 54,896 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 1,974 | 1,572 | 2,491 | 4,672 | 3,644 | 13,372 | 47,201 | 45,417 | 55,171 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 1,974 | 1,572 | 2,491 | 4,670 | 3,644 | 13,366 | 47,201 | 45,417 | 55,168 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 1,974 | 1,572 | 2,491 | 4,672 | 3,644 | 13,369 | 47,201 | 45,417 | 55,169 |
 
 ## stream-burst-16
 
@@ -1363,6 +1393,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 5,631 | 25,017 | 5,701 | 10,632 | 48,403 | 13,097 | 120,864 | 712,439 | 113,248 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 5,631 | 25,017 | 5,701 | 9,499 | 49,601 | 8,050 | 120,973 | 714,180 | 113,522 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 5,631 | 25,017 | 5,701 | 9,502 | 49,601 | 8,051 | 120,973 | 714,180 | 113,519 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 5,631 | 25,017 | 5,701 | 9,503 | 49,601 | 8,051 | 120,973 | 714,180 | 113,519 |
 
 ## stream-burst-256
 
@@ -1407,6 +1438,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 64,131 | 400,101 | 57,040 | 122,983 | 795,712 | 70,598 | 1,301,559 | 11,385,440 | 1,046,210 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 64,131 | 400,101 | 57,040 | 127,472 | 787,260 | 74,603 | 1,301,576 | 11,413,287 | 1,046,550 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 64,131 | 400,101 | 57,040 | 127,421 | 787,259 | 74,595 | 1,301,529 | 11,413,287 | 1,046,482 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 64,131 | 400,101 | 57,040 | 127,474 | 787,200 | 74,605 | 1,301,576 | 11,413,287 | 1,046,550 |
 
 ## stream-restart
 
@@ -1451,6 +1483,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 4,188 | 4,976 | 12,497 | 8,974 | 41,396 | 70,017 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 4,188 | 4,976 | 6,106 | 16,355 | 41,497 | 70,403 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 4,188 | 4,996 | 6,102 | 16,358 | 41,495 | 70,406 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 4,188 | 4,976 | 6,106 | 16,360 | 41,498 | 70,402 |
 
 ## timed-admit-both
 
@@ -1495,6 +1528,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 119,615 | 135,166 | 2,653,179 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 118,591 | 134,967 | 2,679,929 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 118,591 | 134,965 | 2,679,929 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 118,591 | 134,965 | 2,679,929 |
 
 ## timed-admit-debounce
 
@@ -1539,6 +1573,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 118,520 | 133,743 | 2,613,535 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 117,496 | 133,558 | 2,640,272 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 117,496 | 133,558 | 2,640,273 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 117,496 | 133,558 | 2,640,285 |
 
 ## timed-admit-first
 
@@ -1583,6 +1618,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 70,503 | 82,868 | 1,594,156 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 69,479 | 79,052 | 1,611,692 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 69,479 | 79,053 | 1,611,692 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 69,479 | 79,053 | 1,611,692 |
 
 ## timed-admit-last
 
@@ -1627,6 +1663,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 118,782 | 134,089 | 2,623,379 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 117,758 | 133,852 | 2,650,128 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 117,758 | 133,852 | 2,650,141 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 117,758 | 133,877 | 2,650,128 |
 
 ## timed-capture-both
 
@@ -1671,6 +1708,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 35,726 | 45,098 | 837,335 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 35,726 | 44,805 | 846,997 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 35,726 | 44,808 | 846,997 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 35,726 | 44,808 | 846,997 |
 
 ## timed-capture-debounce
 
@@ -1715,6 +1753,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 35,598 | 43,719 | 838,606 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 35,598 | 44,103 | 847,375 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 35,598 | 44,104 | 847,375 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 35,598 | 44,104 | 847,375 |
 
 ## timed-capture-first
 
@@ -1759,6 +1798,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 32,078 | 39,003 | 736,153 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 32,078 | 36,612 | 745,370 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 32,078 | 36,612 | 745,370 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 32,078 | 36,612 | 745,372 |
 
 ## timed-capture-last
 
@@ -1803,6 +1843,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 35,534 | 43,655 | 830,736 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 35,534 | 44,040 | 839,503 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 35,534 | 44,040 | 839,503 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 35,534 | 44,040 | 839,503 |
 
 ## update
 
@@ -1847,6 +1888,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 1,087,690 | 38,805 | 82,505 | 262,360 | 209,567 | 3,350,233 | 2,489,232 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 1,089,283 | 38,805 | 82,505 | 262,529 | 151,711 | 3,350,289 | 2,502,802 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 1,087,683 | 38,805 | 82,505 | 262,474 | 151,703 | 3,350,265 | 2,502,833 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 1,089,283 | 38,805 | 82,505 | 262,483 | 151,715 | 3,350,266 | 2,502,844 |
 
 ## update-on
 
@@ -1891,6 +1933,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 94,605 | 222,303 | 2,816,807 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 93,005 | 165,229 | 2,830,393 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 93,005 | 165,185 | 2,830,404 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 93,005 | 165,259 | 2,830,433 |
 
 ## work-form
 
@@ -1935,6 +1978,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 170,300 | 165,392 | 290,646 | 293,110 | 5,332,104 | 5,269,666 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 170,300 | 163,392 | 295,967 | 291,422 | 5,349,177 | 5,295,441 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 170,300 | 163,392 | 295,912 | 291,395 | 5,349,284 | 5,295,446 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 170,300 | 163,392 | 295,948 | 291,398 | 5,349,284 | 5,295,444 |
 
 ## work-status
 
@@ -1979,6 +2023,7 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 100,445 | 80,415 | 322,818 | 156,135 | 2,597,373 | 2,351,545 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 100,445 | 78,815 | 264,842 | 152,911 | 2,611,017 | 2,360,847 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 100,445 | 78,815 | 264,821 | 152,964 | 2,611,057 | 2,360,877 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 100,445 | 78,815 | 264,843 | 152,965 | 2,611,046 | 2,360,873 |
 
 ## work-value
 
@@ -2023,4 +2068,5 @@
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 107,571 | 121,069 | 323,040 | 284,460 | 2,582,023 | 2,910,903 |
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 107,569 | 119,469 | 265,090 | 279,879 | 2,595,670 | 2,920,217 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 107,569 | 119,469 | 265,067 | 279,896 | 2,595,694 | 2,920,213 |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 107,569 | 119,469 | 265,072 | 279,903 | 2,595,717 | 2,920,193 |
 
