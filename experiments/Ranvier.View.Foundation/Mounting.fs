@@ -1257,7 +1257,7 @@ and private RowBuilder(state: MountState, hydration: unit -> TemplateDom.Hydrati
             roots.Add marker
 
         let built = Row (roots[0], roots[roots.Count - 1], Adopted = adopted)
-        // Cleared once the row is built, so the builder holds no removed row's nodes.
+        // Cleared once the row is built, so a removed row's nodes become collectable.
         roots.Clear ()
         built
 

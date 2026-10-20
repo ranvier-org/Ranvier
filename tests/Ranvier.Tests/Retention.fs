@@ -218,6 +218,27 @@ let tests =
                 Expect.isLessThan (aliveOf refs) 20 "a drained queue holds none of the effects it ran"
                 s.Value <- 3
             }
+
+            test "projections disposed after a flush ran their passes are not retained by the graph's pass queue" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal [ 1; 2; 3 ]
+                let refs = ResizeArray<WeakReference>()
+
+                let owner =
+                    createRoot (fun owner ->
+                        for _ in 1..200 do
+                            let projection = createProjection id id (fun () -> source.Value)
+                            createEffect (fun () -> projection.Keys |> ignore)
+                            refs.Add (WeakReference projection)
+
+                        owner)
+
+                source.Value <- [ 4; 5 ]
+                owner.Dispose ()
+                Expect.isLessThan (aliveOf refs) 20 "a drained pass queue holds none of the passes it ran"
+                source.Value <- [ 6 ]
+            }
 #endif
 
 #if !FABLE_COMPILER

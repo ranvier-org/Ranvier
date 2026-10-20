@@ -3715,6 +3715,44 @@ let private emptiedRowsCollected (hydrated: bool) : unit -> unit =
         equal (0, 2, "") (alive, rows.Length, shown)
 
 /// <summary>
+/// Creates <c>retentionCycles</c> projections of a list signal under a root, each read by an effect, writes the list so a
+/// flush runs their passes, and disposes the root. The check requires every projection collected while the graph and
+/// the signal stay alive.
+/// </summary>
+let private passedProjectionsCollected () : unit -> unit =
+    let graph = new Graph ()
+
+    let source, held =
+        graph.Run (fun () ->
+            let source = Api.createSignal [| a; b |]
+            let held = ResizeArray<obj>()
+
+            let owner =
+                Api.createRoot (fun owner ->
+                    for _ in 1..retentionCycles do
+                        let projection =
+                            Api.createProjection (fun (item: Listed) -> item.Id) id (fun () -> source.Value :> seq<_>)
+
+                        Api.createEffect (fun () -> projection.Keys |> ignore)
+                        held.Add (weakRef projection)
+
+                    owner)
+
+            source.Value <- [| c |]
+            owner.Dispose ()
+            source, held.ToArray ())
+
+    fun () ->
+        let alive =
+            held
+            |> Array.filter (collected >> not)
+            |> Array.length
+
+        graph.Run (fun () -> source.Value <- [| a |])
+        graph.Dispose ()
+        equal (0, retentionCycles) (alive, held.Length)
+
+/// <summary>
 /// Retention checks for Chromium: each case mounts or hydrates and returns the check that tests/hydration.spec.mjs runs
 /// after a forced garbage collection.
 /// </summary>
@@ -3734,6 +3772,7 @@ let retentionCases: (string * (unit -> (unit -> unit))) array =
         fun () -> disposedMountsCollected true (hydratedCycle "div")
         "the detached server nodes of disposed hydrations with pending content are collected while their graph and source live",
         fun () -> disposedMountsCollected false (hydratedCycle "span")
+        "projections disposed after a flush ran their passes are collected while their graph and source live", passedProjectionsCollected
         "a client mount's removed rows are collected while the mount is live", fun () -> emptiedRowsCollected false
         "a hydrated mount's removed server rows are collected while the mount is live", fun () -> emptiedRowsCollected true
     |]
