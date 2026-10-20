@@ -1,4 +1,4 @@
-/// <summary>The keyed-list and arm benchmark fixtures of <c>KeyedRowsPerf</c>, written with the template sugar. The operations duplicate <c>KeyedRowsPerf</c>'s, which stays unchanged.</summary>
+/// <summary>The keyed-list and arm benchmark fixtures of <c>KeyedRowsPerf</c>, written with the template sugar. The operations duplicate those of <c>KeyedRowsPerf</c>.</summary>
 module KeyedRowsSugarPerf
 
 open global.Ranvier

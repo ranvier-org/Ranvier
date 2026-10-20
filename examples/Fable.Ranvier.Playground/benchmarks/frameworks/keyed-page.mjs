@@ -3,7 +3,7 @@ import { mountKeyed as sugarKeyed, mountArms as sugarArmsMount } from "../../gen
 import { mountKeyed as solidKeyed, mountArms as solidArms } from "./keyed-solid.jsx";
 
 // MEASUREMENT (measure/poc-rerun-2026-10-15): production rows and the production arm adapter against Solid 2.
-// Ranvier's operations record exposes F# field names; both adapters present the same shape.
+// Ranvier's operations record exposes F# field names; the Ranvier, sugared Ranvier and Solid adapters present the same shape.
 const ranvierRows = host => {
   const ops = ranvierKeyed(host);
   return { create: n => ops.Create(n), append: n => ops.Append(n), updateEvery10th: () => ops.UpdateEvery10th(), swap: () => ops.Swap(), remove: i => ops.Remove(i), clear: () => ops.Clear(), dispose: () => ops.Dispose() };

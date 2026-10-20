@@ -398,7 +398,11 @@ let private hydration () =
             Adopted.nested
             graph
 
-/// <summary>The production keyed fixture and its sugared rewrite, driven by the same operations.</summary>
+/// <summary>The elements under <c>root</c> that carry event handlers, as one <c>position:handler keys</c> entry each.</summary>
+[<Emit("Array.from($0.querySelectorAll('*')).map((node, index) => [index, Object.getOwnPropertyNames(node).filter(name => name.startsWith('$$ranvier')).join(',')]).filter(([, keys]) => keys !== '').map(([index, keys]) => index + ':' + keys).join(' ')")>]
+let private handlerSites (root: HTMLElement) : string = jsNative
+
+/// <summary>The production keyed fixture and its sugared rewrite, driven by the same operations; markup and handler sites agree after each.</summary>
 let private keyedFixtures () =
     let left, right = host (), host ()
     let explicitOps = KeyedRowsPerf.mountKeyed left
@@ -408,6 +412,7 @@ let private keyedFixtures () =
         step explicitOps
         step sugarOps
         equal left.innerHTML right.innerHTML
+        equal (handlerSites left) (handlerSites right)
 
     both (fun ops -> ops.Create 20)
     both (fun ops -> ops.Append 5)
@@ -419,6 +424,7 @@ let private keyedFixtures () =
     explicitOps.Dispose ()
     sugarOps.Dispose ()
 
+/// <summary>The production arm fixture and its sugared rewrite, driven by the same operations; markup and handler sites agree after each.</summary>
 let private armFixtures () =
     let left, right = host (), host ()
     let explicitOps = KeyedRowsPerf.mountArms left
@@ -428,6 +434,7 @@ let private armFixtures () =
         step explicitOps
         step sugarOps
         equal left.innerHTML right.innerHTML
+        equal (handlerSites left) (handlerSites right)
 
     both (fun ops -> ops.Create 12)
     both (fun ops -> ops.Switch ())
