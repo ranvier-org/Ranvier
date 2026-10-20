@@ -2424,7 +2424,7 @@ let private boundaryRestoresAndRecovers () =
     mounted.Dispose ()
     equal ([ [ mismatch ] ], "client", 1, 0) shown
 
-    // Content pending on the client is detached behind its copy; Strict puts the server's nodes back.
+    // With content pending on the client, the build raises the trailing root's mismatch before the content is detached.
     let target = trailingHost ()
     case.Outcome <- Pends
 
@@ -2459,6 +2459,33 @@ let private boundaryRestoresAndRecovers () =
                 Hydration.hydrate graph None report strictOptions target nested ()
                 |> ignore)
             mismatch
+            []
+
+/// <summary>A <c>bounded</c> boundary followed by a <c>b</c> element whose <c>mounted</c> hook raises "hook".</summary>
+let private boundedThenFailingHook (case: BoundaryCase) =
+    let inner = bounded case
+
+    Component.define (fun _ () -> ()) (fun t ->
+        t.fragment
+            [|
+                t.render inner (fun _ -> ())
+                t.b [| t.Hooks.mounted (fun _ _ -> raise (Exception "hook")) |] [||]
+            |])
+
+let private hookFailureRestoresDetachedContent () =
+    for options in [ strictOptions; lenientOptions ] do
+        use graph = new Graph ()
+        let case = boundaryCase ()
+        let definition = boundedThenFailingHook case
+        let host = serveCase case definition (Settles "server") Pends
+
+        // The content is held detached behind its copy when the hook raises; the host gets the server's nodes back.
+        failsAsServed
+            host
+            (fun report ->
+                Hydration.hydrate graph None report options host definition ()
+                |> ignore)
+            "hook"
             []
 
 /// <summary>A list whose rows each hold a <c>bounded</c> boundary.</summary>
@@ -3435,6 +3462,8 @@ let cases: (string * (unit -> unit)) array =
             "boundaries: a structural mismatch in a hydrating view re-renders that view and reports once; Strict raises", boundaryMismatches
             "boundaries: a mismatch after hydrated content restores the host under Strict and re-renders the root otherwise",
             boundaryRestoresAndRecovers
+            "boundaries: a hook failure after pending content was detached restores the host's served nodes in both modes",
+            hookFailureRestoresDetachedContent
             "boundaries in hydrated rows adopt their content, show copies of the server rows while pending; Strict restores the host",
             boundariesInRows
             "boundaries in hydrated rows whose content is ready by the end of hydrate keep their nodes and focus in place", rowBoundariesKeepFocus

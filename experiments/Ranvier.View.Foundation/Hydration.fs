@@ -168,8 +168,8 @@ let private adoptHost
 /// </para>
 /// <para>
 /// A boundary's content and its pending view hydrate between <c>ranvier:start</c> and <c>ranvier:end</c> comments,
-/// inserted around their adopted nodes. Server content (<c>&lt;!--[c--&gt;</c>) hydrates in place, and content that
-/// is ready by the end of the build keeps its bound nodes in place. When one of its reads is still pending then, its
+/// inserted around their adopted nodes. Server content (<c>&lt;!--[c--&gt;</c>) hydrates in place and keeps its bound
+/// nodes when it is ready by the end of the build. When one of its reads is still pending at the end of the build, its
 /// bound nodes are held detached, and a copy of the server nodes, taken before the content's first commits, stays
 /// between the markers as the inert pending view; the reveal replaces the copy with the bound nodes. Under a server
 /// pending view (<c>&lt;!--[p--&gt;</c>), the content mounts detached, and the pending view hydrates while the content

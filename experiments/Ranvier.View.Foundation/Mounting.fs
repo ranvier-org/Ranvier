@@ -1801,7 +1801,6 @@ and [<Sealed>] private ViewBoundary
             && waiting > 0
             && not (isNull content)
             && content.Adopted
-            && site.Live ()
         then
             this.Detach ()
 
@@ -2873,7 +2872,8 @@ and internal MountState
             hydration.Restore ()
 
     /// <summary>
-    /// Runs <c>action</c> once the root mount's build returns, before its cursor is dropped; a failed build runs none.
+    /// Runs <c>action</c> once the root mount's build returns, before its cursor is dropped; a failed build discards
+    /// the queued actions.
     /// </summary>
     member internal _.AtBuildEnd(action: unit -> unit) =
         if isNull (box enclosing) then
