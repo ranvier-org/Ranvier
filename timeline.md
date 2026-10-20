@@ -35,6 +35,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 84,130 | 127,478 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 84,129 | 127,464 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 84,133 | 127,465 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 84,134 | 127,505 |
 
 ## app-table
 
@@ -71,6 +72,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 9,135,649 | 9,838,145 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 9,135,632 | 9,661,994 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 9,135,840 | 9,661,584 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 9,135,842 | 9,669,436 |
 
 ## async-recover
 
@@ -107,6 +109,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 139,024 | 37,319 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 139,024 | 37,325 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 139,024 | 37,318 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 138,971 | 37,321 |
 
 ## async-resolve
 
@@ -143,6 +146,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 2,791,802 | 1,074,391 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 2,791,802 | 1,081,668 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 2,791,801 | 1,074,462 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 2,790,985 | 1,074,472 |
 
 ## chain
 
@@ -179,6 +183,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 13,107 | 318 | 2,450 | 4,491 | 3,180 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 13,043 | 318 | 2,450 | 4,491 | 3,180 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 13,043 | 318 | 2,450 | 4,491 | 3,180 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 13,043 | 318 | 2,450 | 4,491 | 3,180 |
 
 ## chain-affinity
 
@@ -215,6 +220,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 2,549 | 3,067 | 2,496 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 2,549 | 3,067 | 2,496 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 2,549 | 3,067 | 2,496 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 2,549 | 3,067 | 2,496 |
 
 ## control
 
@@ -251,6 +257,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 74,719 | 833,977 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 74,719 | 833,959 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 74,719 | 833,925 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 74,719 | 833,959 |
 
 ## create
 
@@ -287,6 +294,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 13,589,016 | 2,865,678 | 2,528,377 | 2,131,888 | 3,984,728 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 13,463,453 | 2,865,679 | 2,528,361 | 2,131,887 | 3,984,560 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 13,463,470 | 2,897,741 | 2,528,376 | 2,131,010 | 3,984,540 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 13,463,416 | 2,865,677 | 2,528,360 | 2,132,018 | 3,984,596 |
 
 ## create-on
 
@@ -323,6 +331,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 2,942,484 | 4,367,066 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 2,926,484 | 4,366,959 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 2,926,484 | 4,367,202 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 2,910,486 | 4,367,118 |
 
 ## cutoff
 
@@ -359,6 +368,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 1,182 | 50 | 111 | 65 | 35 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 1,182 | 50 | 111 | 65 | 35 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 1,182 | 50 | 111 | 65 | 35 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 1,182 | 50 | 111 | 65 | 35 |
 
 ## derive-effect
 
@@ -395,6 +405,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 760 | 680 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 760 | 680 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 760 | 680 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 760 | 680 |
 
 ## derive-on
 
@@ -431,6 +442,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 767 | 684 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 751 | 684 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 735 | 684 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 735 | 684 |
 
 ## dispose
 
@@ -467,6 +479,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 2,706,244 | 806,290 | 367,497 | 466,182 | 434,518 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 2,706,242 | 806,291 | 367,497 | 466,205 | 434,132 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 2,707,640 | 806,291 | 367,497 | 466,421 | 434,170 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 2,707,647 | 806,291 | 367,497 | 466,419 | 434,178 |
 
 ## dispose-on
 
@@ -503,6 +516,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 346,497 | 430,169 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 346,497 | 430,463 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 346,497 | 430,362 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 346,497 | 430,305 |
 
 ## editable-edit
 
@@ -539,6 +553,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 179,606 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 179,606 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 179,606 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 179,606 |
 
 ## editable-upstream
 
@@ -575,6 +590,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 230,755 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 230,755 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 230,755 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 230,755 |
 
 ## fail-recompute
 
@@ -611,6 +627,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 64,990 | 1,366 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 64,990 | 1,366 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 64,990 | 1,366 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 64,930 | 1,366 |
 
 ## flight
 
@@ -647,6 +664,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 10,993 | 6,216 | 6,217 | 11,318 | 10,765 | 22,349 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 10,993 | 6,216 | 6,217 | 11,318 | 10,765 | 22,349 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 10,993 | 6,216 | 6,217 | 11,318 | 10,765 | 22,349 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 10,995 | 6,215 | 6,216 | 11,316 | 10,763 | 22,341 |
 
 ## keyed-insert
 
@@ -683,6 +701,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 1,918,533 | 53,949 | 54,613 | 3,115,365 | 164,077 | 167,439 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 1,918,533 | 53,949 | 54,614 | 3,115,302 | 164,107 | 167,393 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 1,918,534 | 53,949 | 54,613 | 3,115,265 | 164,106 | 167,361 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 1,918,525 | 53,950 | 54,613 | 3,115,354 | 164,055 | 167,126 |
 
 ## keyed-remove
 
@@ -719,6 +738,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 1,917,459 | 43,619 | 44,974 | 3,115,016 | 131,917 | 140,743 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 1,917,466 | 43,619 | 44,975 | 3,115,030 | 131,871 | 140,793 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 1,917,462 | 43,619 | 44,974 | 3,115,023 | 131,915 | 140,812 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 1,917,458 | 43,625 | 44,990 | 3,114,969 | 131,923 | 140,729 |
 
 ## keyed-swap
 
@@ -755,6 +775,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 1,970,155 | 46,162 | 46,624 | 3,264,841 | 79,090 | 84,442 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 1,970,155 | 46,161 | 46,624 | 3,264,869 | 79,079 | 84,420 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 1,970,156 | 46,161 | 46,624 | 3,264,836 | 79,032 | 84,334 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 1,970,143 | 46,161 | 46,624 | 3,264,831 | 79,023 | 84,420 |
 
 ## mvu-dispatch
 
@@ -791,6 +812,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 58,066 | 767 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 58,067 | 767 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 58,067 | 767 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 58,067 | 767 |
 
 ## project-chain
 
@@ -827,6 +849,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 3,843,198 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 3,843,167 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 3,843,182 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 3,843,463 |
 
 ## project-churn
 
@@ -863,6 +886,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 36,213 | 34,051 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 36,213 | 34,051 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 36,213 | 34,051 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 36,212 | 34,069 |
 
 ## project-edit
 
@@ -899,6 +923,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 50,168 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 50,168 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 50,168 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 50,167 |
 
 ## project-reorder
 
@@ -935,6 +960,44 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 778,887 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 778,886 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 778,886 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 778,899 |
+
+## server-render
+
+| Commit | Date | Subject | dotnet Ranvier | node Ranvier |
+|---|---|---|---:|---:|
+| `878e5bd` | 2026-10-16 | feat(ci): CI performance/benchmark automation (#64) | — | — |
+| `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | — | — |
+| `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | — | — |
+| `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | — | — |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | — | — |
+| `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | — | — |
+| `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | — | — |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | — | — |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | — | — |
+| `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | — | — |
+| `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | — | — |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | — | — |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | — | — |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | — | — |
+| `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | — | — |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | — | — |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | — | — |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | — | — |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | — | — |
+| `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | — | — |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | — | — |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | — | — |
+| `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | — | — |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | — | — |
+| `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | — | — |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | — | — |
+| `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | — | — |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | — | — |
+| `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | — | — |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | — | — |
+| `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | — | — |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 677,749 | 1,130,753 |
 
 ## shape-diamond
 
@@ -971,6 +1034,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 59,894 | 88,557 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 59,894 | 88,557 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 59,894 | 88,557 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 59,894 | 88,557 |
 
 ## shape-dynamic
 
@@ -1007,6 +1071,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 82,520 | 95,580 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 82,520 | 95,575 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 82,520 | 95,572 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 82,520 | 95,577 |
 
 ## stream-burst-1
 
@@ -1043,6 +1108,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 1,969 | 1,567 | 2,486 | 5,232 | 6,299 | 10,434 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 1,969 | 1,567 | 2,486 | 5,235 | 6,299 | 10,436 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 1,969 | 1,567 | 2,486 | 5,233 | 6,299 | 10,438 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 1,969 | 1,567 | 2,486 | 5,235 | 6,299 | 10,438 |
 
 ## stream-burst-16
 
@@ -1079,6 +1145,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 5,626 | 24,937 | 5,696 | 10,347 | 47,734 | 13,087 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 5,626 | 24,937 | 5,696 | 10,351 | 47,732 | 13,089 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 5,626 | 24,937 | 5,696 | 10,350 | 47,732 | 13,092 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 5,626 | 24,937 | 5,696 | 10,350 | 47,734 | 13,089 |
 
 ## stream-burst-256
 
@@ -1115,6 +1182,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 64,126 | 398,821 | 57,035 | 119,306 | 792,637 | 70,590 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 64,126 | 398,821 | 57,035 | 119,391 | 792,627 | 70,590 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 64,126 | 398,821 | 57,035 | 119,319 | 792,639 | 70,590 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 64,126 | 398,821 | 57,035 | 119,372 | 792,642 | 70,590 |
 
 ## stream-restart
 
@@ -1151,6 +1219,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 4,181 | 4,978 | 12,437 | 8,950 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 4,181 | 4,962 | 12,433 | 8,952 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 4,181 | 4,962 | 12,435 | 8,952 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 4,183 | 4,982 | 12,433 | 8,951 |
 
 ## timed-admit-both
 
@@ -1187,6 +1256,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 120,317 | 133,817 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 118,269 | 133,819 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 118,269 | 133,817 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 118,269 | 133,821 |
 
 ## timed-admit-debounce
 
@@ -1223,6 +1293,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 119,222 | 132,420 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 117,174 | 132,415 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 117,174 | 132,418 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 117,174 | 132,412 |
 
 ## timed-admit-first
 
@@ -1259,6 +1330,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 70,309 | 82,222 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 69,285 | 82,222 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 69,285 | 82,221 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 69,285 | 82,222 |
 
 ## timed-admit-last
 
@@ -1295,6 +1367,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 119,484 | 132,712 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 117,436 | 132,738 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 117,436 | 132,736 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 117,436 | 132,738 |
 
 ## timed-capture-both
 
@@ -1331,6 +1404,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 35,724 | 45,095 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 35,724 | 45,095 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 35,724 | 45,092 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 35,724 | 45,095 |
 
 ## timed-capture-debounce
 
@@ -1367,6 +1441,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 35,596 | 43,712 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 35,596 | 43,712 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 35,596 | 43,712 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 35,596 | 43,713 |
 
 ## timed-capture-first
 
@@ -1403,6 +1478,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 32,076 | 38,934 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 32,076 | 38,934 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 32,076 | 38,934 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 32,076 | 38,934 |
 
 ## timed-capture-last
 
@@ -1439,6 +1515,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 35,532 | 43,648 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 35,532 | 43,648 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 35,532 | 43,649 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 35,532 | 43,648 |
 
 ## update
 
@@ -1475,6 +1552,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 1,089,983 | 38,805 | 82,005 | 262,549 | 207,612 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 1,088,390 | 38,805 | 82,005 | 262,517 | 207,660 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 1,088,390 | 38,805 | 82,005 | 262,630 | 207,629 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 1,088,390 | 38,805 | 82,005 | 262,514 | 207,638 |
 
 ## update-on
 
@@ -1511,6 +1589,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 96,005 | 221,313 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 94,405 | 221,334 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 92,805 | 221,297 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 92,805 | 221,275 |
 
 ## work-form
 
@@ -1547,6 +1626,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 169,672 | 163,139 | 288,761 | 287,093 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 169,672 | 163,139 | 288,739 | 287,121 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 169,672 | 163,139 | 288,716 | 287,084 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 169,672 | 163,139 | 288,778 | 287,115 |
 
 ## work-status
 
@@ -1583,6 +1663,7 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 99,945 | 81,815 | 320,867 | 155,443 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 99,945 | 80,215 | 320,903 | 155,394 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 99,945 | 78,615 | 320,874 | 155,391 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 99,945 | 78,615 | 320,931 | 155,426 |
 
 ## work-value
 
@@ -1619,4 +1700,5 @@
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 107,069 | 122,469 | 321,138 | 283,817 |
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 107,069 | 120,869 | 321,107 | 283,810 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 107,069 | 119,269 | 321,122 | 283,739 |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 107,069 | 119,269 | 321,148 | 283,819 |
 
