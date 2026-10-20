@@ -791,7 +791,7 @@ let private servePage () =
     let page = Server.renderPage omitted (shopPage true) (shop "Lamp")
     setHead page.Head
     let target = host ()
-    target.innerHTML <- page.Body
+    loadServed target page.Body
     target
 
 /// <summary>The head written by <c>servePage</c>, as the document serialises it.</summary>
@@ -858,7 +858,7 @@ let private spacedTitleKept () =
         setHead "<title data-ranvier-head=\"title\">  Lamp  · Shop</title>"
         let text = titleText ()
         let target = host ()
-        target.innerHTML <- Server.render omitted (shopPage false) (shop "  Lamp ")
+        loadServed target (Server.render omitted (shopPage false) (shop "  Lamp "))
         let writes = recordWrites ()
 
         let mounted =
@@ -915,7 +915,7 @@ let private unkeyedLinkReplaced () =
         setHead "<link data-ranvier-head=\"\" rel=\"preload\" href=\"/font.woff2\">"
         let server = inHead "link[rel=preload]"
         let target = host ()
-        target.innerHTML <- Server.render omitted preloadOnly ()
+        loadServed target (Server.render omitted preloadOnly ())
 
         let mounted =
             Hydration.hydrate graph None strict (hydrationOptions true) target preloadOnly ()
@@ -973,7 +973,7 @@ let private pendingHeadAdopted () =
             }
 
         let guarded = guardedHead content
-        target.innerHTML <- Server.render omitted guarded ()
+        loadServed target (Server.render omitted guarded ())
         content.Ready <- false
         content.Sources.Clear ()
 
@@ -1011,7 +1011,7 @@ let private headRestoredOnFailure () =
             use graph = new Graph ()
             setHead head
             let target = host ()
-            target.innerHTML <- body
+            loadServed target body
             let served = headElements ()
             let text = titleText ()
 
@@ -1047,9 +1047,10 @@ let private headRecovered () =
         let target = host ()
         let page = Server.render omitted (shopPage false) (shop "Lamp")
 
-        target.innerHTML <-
-            page.Substring (0, page.Length - 8)
-            + "<b></b><!--]-->"
+        loadServed
+            target
+            (page.Substring (0, page.Length - 8)
+             + "<b></b><!--]-->")
 
         let reports = ResizeArray<exn list>()
 
@@ -1130,7 +1131,7 @@ let private servePageWithRobots (definition: Component<'props>) (props: 'props) 
     )
 
     let target = host ()
-    target.innerHTML <- page.Body
+    loadServed target page.Body
     target
 
 let private nestedStrictRestoresHead () =

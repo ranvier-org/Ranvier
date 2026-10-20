@@ -23,13 +23,6 @@ let private domIds (root: HTMLElement) : string list =
 let private mount graph (target: HTMLElement) view =
     Mounting.mount graph None strict target None (fun context -> Program.run view context.Backend)
 
-/// <summary>
-/// Replaces the children of <c>target</c> with <c>html</c> parsed by <c>Range.createContextualFragment</c> in the
-/// context of <c>target</c>, as a document parse of a served page places it.
-/// </summary>
-[<Emit("(() => { const r = $0.ownerDocument.createRange(); r.selectNodeContents($0); $0.replaceChildren(r.createContextualFragment($1)); })()")>]
-let private loadServed (target: HTMLElement) (html: string) : unit = jsNative
-
 /// <summary>The element ids of the server HTML of <c>definition</c>, parsed under a detached element.</summary>
 let private servedIds (definition: Component<'props>) (props: 'props) =
     let parsed = host ()
@@ -1117,7 +1110,7 @@ type private Outcome =
     | Pends
     | Fails
 
-/// <summary>The state of one case's boundary instances.</summary>
+/// <summary>The state of a case's boundary instances.</summary>
 type private BoundaryCase =
     {
         /// <summary>What the next content setup does with its source.</summary>
@@ -1349,7 +1342,7 @@ type private IssuedItems =
         Live: Signal<int array>
     }
 
-/// <summary>The structure of <c>identified</c> over a live item signal, which its setup stores in <c>holder</c>.</summary>
+/// <summary>The structure of <c>identified</c> over a live item signal stored in <c>holder</c> by its setup.</summary>
 let private liveIdentified (holder: Signal<int array> ref) =
     Component.define
         (fun setup (items: int array) ->
@@ -2785,7 +2778,7 @@ let private dispatch (node: Node) (name: string) : unit = jsNative
 [<Emit("$0.isConnected")>]
 let private connected (node: Node) : bool = jsNative
 
-/// <summary>Every node under <c>root</c> in document order, the descendants of <c>region</c> excluded.</summary>
+/// <summary>Every node under <c>root</c>, in document order, that is <c>region</c> or lies outside it.</summary>
 let private nodesBesides (region: Node) (root: Node) =
     nodesOf root
     |> Array.filter (fun node ->
@@ -2808,7 +2801,7 @@ type private JourneyProps =
         Wide: bool
     }
 
-/// <summary>The state of one journey's page instances.</summary>
+/// <summary>The state of a journey's page instances.</summary>
 type private Journey =
     {
         /// <summary>The signals of the latest root instance.</summary>
@@ -2920,7 +2913,17 @@ let private logOf (journey: Journey) (action: unit -> unit) =
     action ()
     List.ofSeq journey.Log
 
-let private hydrationJourney () =
+/// <summary>Runs <c>journey</c> on a new host attached to the document body, and detaches the host when it ends.</summary>
+let private onAttachedHost (journey: HTMLElement -> unit) () =
+    let host = host ()
+    attachToBody host
+
+    try
+        journey host
+    finally
+        detach host
+
+let private hydrationJourney (host: HTMLElement) =
     use graph = new Graph ()
 
     let journey =
@@ -2930,8 +2933,6 @@ let private hydrationJourney () =
         }
 
     let page, wideHash, narrowHash = journeyPage journey
-    let host = host ()
-    attachToBody host
 
     // Round 1: the server checked the box and selected the wide arm; the client selects the narrow arm.
     let first =
@@ -2992,24 +2993,24 @@ let private hydrationJourney () =
 
     atStep
         "round 1 append"
-        ([ "setup row c" ], [ "r-0.r0.0-0", "a"; "r-0.r0.1-0", "b"; "r-0.r0.2-0", "c" ], true)
-        (appended, rowsShown host, sameNodes rows appendedRows[0..1])
+        ([ "setup row c" ], [ "r-0.r0.0-0", "a"; "r-0.r0.1-0", "b"; "r-0.r0.2-0", "c" ], true, [ [ mismatch ] ])
+        (appended, rowsShown host, sameNodes rows appendedRows[0..1], messages reports)
 
     let reordered =
         logOf journey (fun () -> graph.Run (fun () -> journey.Live.Items.Value <- [| c; a; b |]))
 
     atStep
         "round 1 reorder"
-        ([], [ "r-0.r0.2-0", "c"; "r-0.r0.0-0", "a"; "r-0.r0.1-0", "b" ], true)
-        (reordered, rowsShown host, sameNodes [| appendedRows[2]; rows[0]; rows[1] |] (all host "li"))
+        ([], [ "r-0.r0.2-0", "c"; "r-0.r0.0-0", "a"; "r-0.r0.1-0", "b" ], true, [ [ mismatch ] ])
+        (reordered, rowsShown host, sameNodes [| appendedRows[2]; rows[0]; rows[1] |] (all host "li"), messages reports)
 
     let removed =
         logOf journey (fun () -> graph.Run (fun () -> journey.Live.Items.Value <- [| c; a |]))
 
     atStep
         "round 1 remove"
-        ([ "cleanup row b" ], [ "r-0.r0.2-0", "c"; "r-0.r0.0-0", "a" ], true, false)
-        (removed, rowsShown host, sameNodes [| appendedRows[2]; rows[0] |] (all host "li"), connected rows[1])
+        ([ "cleanup row b" ], [ "r-0.r0.2-0", "c"; "r-0.r0.0-0", "a" ], true, false, [ [ mismatch ] ])
+        (removed, rowsShown host, sameNodes [| appendedRows[2]; rows[0] |] (all host "li"), connected rows[1], messages reports)
 
     // Checking the box selects the arm the server wrote.
     let recovered =
@@ -3062,7 +3063,6 @@ let private hydrationJourney () =
     atStep "round 2 continue" ([ "setup row c" ], [ "r-0.r0.0-0", "b"; "r-0.r0.1-0", "c" ]) (continued, rowsShown host)
 
     let disposed = logOf journey (fun () -> mounted.Value.Dispose ())
-    detach host
 
     atStep
         "round 2 dispose"
@@ -3092,19 +3092,26 @@ let private retryJourney () =
         ("failed", [], false, [ "content setup" ], [ [ "failed" ] ])
         ((element host "div").textContent, domIds host, connected served, List.ofSeq case.Log, messages reports)
 
-    case.Outcome <- Settles "ok"
+    case.Outcome <- Pends
     (element host "button").click()
+
+    atStep
+        "retry"
+        ("loading", 0, [ "content setup"; "content setup" ], [ [ "failed" ] ])
+        ((element host "div").textContent, (all host "button").Length, List.ofSeq case.Log, messages reports)
+
+    graph.Run (fun () -> case.Sources[1].Settle "ok")
 
     // The content took row 0 and the error view row 1; the retried content takes row 2.
     atStep
-        "retry"
+        "settle"
         ("ok", [ "r-0.r0.2-0" ], [ "content setup"; "content setup" ], [ [ "failed" ] ])
         ((element host "div").textContent, domIds host, List.ofSeq case.Log, messages reports)
 
     mounted.Dispose ()
     atStep "dispose" (0., [ [ "failed" ] ]) (host.childNodes.length, messages reports)
 
-/// <summary>A list of the items of the signal its setup stores in <c>holder</c>, before a <c>bounded</c> boundary.</summary>
+/// <summary>A list of the items of the signal stored in <c>holder</c> by its setup, before a <c>bounded</c> boundary.</summary>
 let private listBesideBoundary (case: BoundaryCase) (holder: Signal<Listed array> ref) =
     let inner = bounded case
 
@@ -3182,9 +3189,9 @@ let private pendingListJourney () =
          messages reports)
 
     mounted.Dispose ()
-    atStep "dispose" 0. host.childNodes.length
+    atStep "dispose" (0., [ "content setup" ], []) (host.childNodes.length, List.ofSeq case.Log, messages reports)
 
-let private recoveryJourney () =
+let private recoveryJourney (host: HTMLElement) =
     use graph = new Graph ()
 
     let journey =
@@ -3194,8 +3201,6 @@ let private recoveryJourney () =
         }
 
     let page, _, _ = journeyPage journey
-    let host = host ()
-    attachToBody host
 
     let props =
         {
@@ -3235,13 +3240,17 @@ let private recoveryJourney () =
          0)
         (hydrated, messages reports, journeyShown host, connected servedRoot, (all host "b").Length)
 
-    (element host "button").click()
-    graph.Run (fun () -> journey.Live.Items.Value <- [| b; c |])
+    let interacted =
+        logOf journey (fun () ->
+            (element host "button").click()
+            graph.Run (fun () -> journey.Live.Items.Value <- [| b; c |]))
 
     atStep
         "round 1 interact"
-        (("r-0-0", Some "a", "1", "a", false, "a", [ "r-0.r0.1-0", "b"; "r-0.r0.2-0", "c" ], "narrow"), 1)
-        (journeyShown host, reports.Count)
+        ([ "setup row c"; "cleanup row a" ],
+         ("r-0-0", Some "a", "1", "a", false, "a", [ "r-0.r0.1-0", "b"; "r-0.r0.2-0", "c" ], "narrow"),
+         [ [ "Hydration mismatch at #1: expected <!--]-->, found b" ] ])
+        (interacted, journeyShown host, messages reports)
 
     let disposed = logOf journey (fun () -> mounted.Value.Dispose ())
 
@@ -3268,7 +3277,6 @@ let private recoveryJourney () =
         (hydrated, messages secondReports, sameNodes served (nodesOf host), journeyShown host, reports.Count)
 
     mounted.Value.Dispose ()
-    detach host
     atStep "round 2 dispose" (0., [], 1) (host.childNodes.length, messages secondReports, reports.Count)
 
 [<Emit("document.head.insertAdjacentHTML('beforeend', $0)")>]
@@ -3286,7 +3294,7 @@ let private clearMarkedHead () : unit = jsNative
 let private outerHtml (nodes: Node array) =
     [ for node in nodes -> (unbox<Element> node).outerHTML ]
 
-/// <summary>A meta description showing the text of the signal its setup stores in <c>holder</c>, a canonical link, and a paragraph.</summary>
+/// <summary>A meta description showing the text of the signal stored in <c>holder</c> by its setup, a canonical link, and a paragraph.</summary>
 let private headPage (holder: Signal<string> ref) =
     Component.define
         (fun _ (text: string) ->
@@ -3461,12 +3469,13 @@ let cases: (string * (unit -> unit)) array =
             "state script round-trips JSON containing </script> and U+2028", stateRoundTrip
             "CreateId is equal on server and hydrated client, and rows created after hydration continue their region's counter", identityContinues
             "journey: a hydrated page takes events and two-way input, moves its adopted rows, reports a region mismatch once, recovers by an update, disposes, and hydrates a second render on the same host and graph",
-            hydrationJourney
-            "journey: hydrated content pending on the client fails into its error view, and a retry continues the region's row counter", retryJourney
+            onAttachedHost hydrationJourney
+            "journey: hydrated content pending on the client fails into its error view, and a retry that pends and then settles continues the region's row counter",
+            retryJourney
             "journey: a list update while a boundary's content is pending leaves its inert copy untouched, and the reveal shows the content of the one setup",
             pendingListJourney
             "journey: a re-rendered root takes events and updates and disposes, and a second render on the same host hydrates without a report",
-            recoveryJourney
+            onAttachedHost recoveryJourney
             "journey: the head entries adopted in one round are withdrawn at disposal, and the next round adopts the newly served elements",
             headJourney
         |]
