@@ -18,8 +18,6 @@ New-Item -ItemType Directory -Path $feed, $consumer | Out-Null
     <clear />
     <add key="local" value="$feed" />
     <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
-    <!-- Fable.Ranvier.Anime depends on Xantham.Fable.Core.TS 0.2.1, published on this feed only. -->
-    <add key="xantham-cloudsmith" value="https://nuget.cloudsmith.io/shayanhabibi/xantham/v3/index.json" />
   </packageSources>
 </configuration>
 "@ | Set-Content -LiteralPath (Join-Path $consumer 'NuGet.Config')
@@ -27,7 +25,7 @@ try {
     $fableEntries = @()
     foreach ($traced in @($false, $true)) {
         $references = @()
-        foreach ($name in @('Ranvier', 'Ranvier.Elmish', 'Ranvier.CSharp', 'Ranvier.Query', 'Ranvier.Wire', 'Fable.Ranvier.Anime')) {
+        foreach ($name in @('Ranvier', 'Ranvier.Elmish', 'Ranvier.CSharp', 'Ranvier.Query', 'Ranvier.Wire')) {
             $project = Join-Path $repo "src/$name/$name.fsproj"
             Invoke-DotNet pack $project -c Release "-p:RanvierTrace=$($traced.ToString().ToLowerInvariant())" -o $feed
             $id = if ($traced) { "$name.Traced" } else { $name }
@@ -91,7 +89,6 @@ var numbers = client.Define(System.Collections.Generic.EqualityComparer<int>.Def
     FuncConvert.FromFunc<int, System.Threading.CancellationToken, System.Threading.Tasks.Task<int>>((key, token) => System.Threading.Tasks.Task.FromResult(key)));
 using var query = numbers.Acquire(7);
 if (query.Value != 7) throw new System.Exception("Query package failed");
-if (typeof(Ranvier.Anime.Anim).Assembly.GetName().Name != "Fable.Ranvier.Anime") throw new System.Exception("Anime package failed");
 System.Console.WriteLine("Package consumer runs with FSharp.Core 8.0.100");
 '@ | Set-Content -LiteralPath (Join-Path $consumer 'Program.cs')
         Invoke-DotNet restore (Join-Path $consumer 'Consumer.csproj') --configfile (Join-Path $consumer 'NuGet.Config')
