@@ -593,6 +593,18 @@ type internal HeadCollector() =
 
         System.String.Join ("", written)
 
+/// <summary>The operations of a server scope that authored content written through an <c>HtmlBackend</c> uses.</summary>
+[<AbstractClass>]
+type internal ServerScopeBase() =
+    /// <summary>Runs the body in a new nested scope; when it raises, that scope's cleanups run before the exception propagates.</summary>
+    abstract AttemptWith: (ServerScopeBase -> unit) -> unit
+
+    /// <summary>
+    /// Takes the cleanup failures of an authored component that ran under the scope and returns true, or returns false
+    /// and leaves them to the component.
+    /// </summary>
+    abstract TakeCleanupFailures: exn list -> bool
+
 [<AbstractClass>]
 type Backend() =
     abstract Text: string -> unit
@@ -950,8 +962,11 @@ and [<Sealed>] HtmlBackend(policy: BrowserPolicy, sink: HtmlSink) =
             finally
                 heads.LeaveGroup outer
 
-    /// <summary>Runs a component's setup, then its cleanups; a failure of either raises after every cleanup has run.</summary>
-    member private _.RunComponent(setup: Setup -> unit, createId: unit -> string) =
+    /// <summary>
+    /// Runs a component's setup, then its cleanups; a failure of either raises after every cleanup has run. Under an
+    /// active scope that takes cleanup failures, the scope receives them and only the setup failure raises.
+    /// </summary>
+    member private this.RunComponent(setup: Setup -> unit, createId: unit -> string) =
         let cleanups = ResizeArray<unit -> unit>()
         let mutable completed = false
 
@@ -981,6 +996,13 @@ and [<Sealed>] HtmlBackend(policy: BrowserPolicy, sink: HtmlSink) =
             with error ->
                 errors.Add error
 
+        if
+            errors.Count > 0
+            && not (isNull this.Scope)
+            && (unbox<ServerScopeBase> this.Scope).TakeCleanupFailures(List.ofSeq errors)
+        then
+            errors.Clear ()
+
         match setupFailure, errors.Count with
         | None, 0 -> ()
         | Some error, 0 -> raise error
@@ -994,8 +1016,9 @@ and [<Sealed>] HtmlBackend(policy: BrowserPolicy, sink: HtmlSink) =
         definition.RenderHtml (this, props)
 
     /// <summary>
-    /// Writes the content; when it raises, the content's output and head entries are dropped and the pending or error
-    /// view is written instead.
+    /// Writes the content, in an attempt of the active scope when one is set; when it raises, the attempt's cleanups
+    /// have run, the content's output and head entries are dropped and the pending or error view is written instead.
+    /// The start marker is <c>&lt;!--[--&gt;</c> whichever view is written.
     /// </summary>
     override this.Boundary(views) =
         childNodes <- childNodes + 1
@@ -1008,10 +1031,25 @@ and [<Sealed>] HtmlBackend(policy: BrowserPolicy, sink: HtmlSink) =
         if not (isNull heads) then
             heads.Open ()
 
+        let content () =
+            views.Content { IsPending = fun () -> false } this
+
         let outcome =
             try
                 try
-                    views.Content { IsPending = fun () -> false } this
+                    match this.Scope with
+                    | null -> content ()
+                    | scope ->
+                        (unbox<ServerScopeBase> scope)
+                            .AttemptWith(fun attempt ->
+                                let outer = this.Scope
+                                this.Scope <- box attempt
+
+                                try
+                                    content ()
+                                finally
+                                    this.Scope <- outer)
+
                     None
                 with error ->
                     Some error

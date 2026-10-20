@@ -42,7 +42,8 @@ let private serverPending (pending: exn) : exn =
 /// The owners of a request: each nested instance runs under its own owner, a root under <c>owner</c>; <c>lifetime</c>
 /// reports its teardown errors. The instance's <c>Setup</c> registers cleanups on that owner until the instance is
 /// written. <c>lifetime</c> is the request root or the innermost boundary attempt, and <c>owner</c> is its owner or an
-/// owner it adopted. A failure to dispose an abandoned attempt goes to <c>report</c>.
+/// owner it adopted. A failure to dispose an abandoned attempt, and each cleanup failure of an authored component under
+/// the scope, goes to <c>report</c>.
 /// </summary>
 /// <remarks>
 /// <c>Nest</c> and <c>Attempt</c> run only while the request graph is ambient, inside the <c>graph.Run</c> of
@@ -109,6 +110,12 @@ type internal RequestScope(lifetime: MountLifetime, owner: Owner, identity: Iden
                     report disposal
 
             reraise ()
+
+    override _.TakeCleanupFailures errors =
+        for error in errors do
+            report error
+
+        true
 
 /// <summary>
 /// Renders <c>definition</c> into <c>sink</c> inside <c>graph</c> under a new request root, and disposes the root before

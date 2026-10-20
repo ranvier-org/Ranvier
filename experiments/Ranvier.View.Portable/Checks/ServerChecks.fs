@@ -1117,6 +1117,52 @@ let private textareaValues () =
         ]
         [ render "</textarea>&"; render ""; render null ]
 
+/// <summary>The server HTML of <c>holed</c> with an empty caption and <c>body</c> in its view hole.</summary>
+let private inHole (options: Server.Options) (body: Program.View) =
+    Server.render options holed { Caption = ""; Body = body }
+
+let private expandedProperties () =
+    let omit =
+        { Server.Options.defaults with
+            Policy = Omit
+        }
+
+    let hole (inner: string) =
+        "<!--[r--><div class=\"card\"><!--_--><!--[-->"
+        + inner
+        + "<!--]--></div><!--]-->"
+
+    let state =
+        {
+            Text = "\nline <1>"
+            On = true
+            Choice = "b"
+        }
+
+    equal
+        [
+            hole """<div class="a&lt;b" tabindex="2" aria-busy="true"><input value="v&quot;" checked=""><button disabled=""></button></div>"""
+            hole
+                "<form><textarea>\n\nline &lt;1&gt;</textarea><input type=\"checkbox\" checked=\"\"><select><option value=\"a\">A</option><option value=\"b\" selected=\"\">B</option></select><pre>\n\nline &lt;1&gt;</pre><pre>\n\nstatic</pre></form>"
+            hole "<textarea>a&lt;b&amp;</textarea><textarea>&lt;static&gt;</textarea>"
+            hole "<textarea></textarea><textarea>&lt;static&gt;</textarea>"
+            hole "<textarea>\n\nstatic</textarea>"
+        ]
+        [
+            inHole Server.Options.defaults (Component.renderWith Program.ops serialised ())
+            inHole omit (Component.renderWith Program.ops formFixture state)
+            inHole Server.Options.defaults (Component.renderWith Program.ops childText "a<b&")
+            inHole Server.Options.defaults (Component.renderWith Program.ops childText null)
+            inHole Server.Options.defaults (Component.renderWith Program.ops staticTextarea ())
+        ]
+
+    let rejected =
+        failure (fun () ->
+            inHole Server.Options.defaults (Component.renderWith Program.ops formFixture state)
+            |> ignore)
+
+    equal true (rejected.Message.Contains "<select> property")
+
 type private ContentOutcome =
     | ContentPends
     | ContentFails
@@ -1170,6 +1216,75 @@ let private boundaryAttempts () =
         (render ContentFails)
 
     equal ("<!--[r--><div><!--[c--><span>ready</span><!--]--></div><!--]-->", [ "content setup"; "content cleanup" ]) (render ContentReads)
+
+let private expandedBoundaryAttempts () =
+    let render outcome (body: Program.View) =
+        contentOutcome <- outcome
+        attemptLog.Clear ()
+        let html = inHole Server.Options.defaults body
+        html, List.ofSeq attemptLog
+
+    let authored =
+        Program.ops.Boundary (
+            Component.render attemptPending (),
+            (fun failure -> Component.render attemptFailed failure),
+            fun status -> Component.render attemptContent status
+        )
+
+    let expanded = Component.renderWith Program.ops attempted ()
+
+    let hole (inner: string) =
+        "<!--[r--><div class=\"card\"><!--_--><!--[-->"
+        + inner
+        + "<!--]--></div><!--]-->"
+
+    equal
+        [
+            hole "<!--[--><span>loading</span><!--]-->", [ "content setup"; "content cleanup"; "pending setup" ]
+            hole "<!--[--><span>&lt;failed&gt;</span><!--]-->", [ "content setup"; "content cleanup"; "error setup" ]
+            hole "<!--[--><span>ready</span><!--]-->", [ "content setup"; "content cleanup" ]
+            hole "<div><!--[--><span>loading</span><!--]--></div>", [ "content setup"; "content cleanup"; "pending setup" ]
+            hole "<div><!--[--><span>&lt;failed&gt;</span><!--]--></div>", [ "content setup"; "content cleanup"; "error setup" ]
+            hole "<div><!--[--><span>ready</span><!--]--></div>", [ "content setup"; "content cleanup" ]
+        ]
+        [
+            for body in [ authored; expanded ] do
+                for outcome in [ ContentPends; ContentFails; ContentReads ] -> render outcome body
+        ]
+
+/// <summary>An authored component whose setup reads a pending source after registering a failing cleanup.</summary>
+let private authoredPendingCleanup =
+    Program.ops.Component (fun setup ->
+        setup.OnCleanup (fun () -> failwith "authored cleanup failed")
+        Program.text (Api.createAsyncSource<string>().Value))
+
+let private authoredPendingContent =
+    Component.define (fun _ (_: BoundaryStatus) -> ()) (fun t -> t.span [||] [| t.view (fun _ -> authoredPendingCleanup) |])
+
+let private authoredPendingGuarded =
+    Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.boundary attemptPending attemptFailed authoredPendingContent |])
+
+let private authoredPendingWithCleanupFailure () =
+    let outside =
+        failure (fun () ->
+            inHole Server.Options.defaults authoredPendingCleanup
+            |> ignore)
+
+    attemptLog.Clear ()
+
+    let inside =
+        failure (fun () ->
+            Server.render Server.Options.defaults authoredPendingGuarded ()
+            |> ignore)
+
+    equal
+        (true, true, [ "pending setup" ])
+        (outside.Message.StartsWith (
+            "Server render failed: A read outside every boundary is pending; authored cleanup failed",
+            StringComparison.Ordinal
+         ),
+         inside.Message.StartsWith ("Server render cleanup failed: authored cleanup failed", StringComparison.Ordinal),
+         List.ofSeq attemptLog)
 
 let private failingPending =
     Component.define (fun _ () -> failwith "pending failed") (fun t -> t.span [||] [||])
@@ -1447,6 +1562,30 @@ let private contentLeadingLineFeed () =
             for markup in [ "\nx"; "\r\nx"; "&#10;x"; "<b>x</b>"; "" ] -> renderOmit preformattedContent markup
         ]
 
+let private expandedContent () =
+    let hole (inner: string) =
+        "<!--[r--><div class=\"card\"><!--_--><!--[-->"
+        + inner
+        + "<!--]--></div><!--]-->"
+
+    let expanded definition (markup: string) =
+        inHole Server.Options.defaults (Component.renderWith Program.ops definition markup)
+
+    equal
+        [
+            hole "<div><b>raw</b> &amp; <!--note--></div><span>&lt;b&gt;</span>"
+            hole "<pre>\n\nx</pre><listing>\n\nx</listing><div>\nx</div>"
+            hole "<pre></pre><listing></listing><div></div>"
+        ]
+        [
+            expanded rawContent "<b>raw</b> &amp; <!--note-->"
+            expanded preformattedContent "\nx"
+            expanded preformattedContent ""
+        ]
+
+    let forged = failure (fun () -> expanded rawContent "<!--[-->x" |> ignore)
+    equal "Raw HTML cannot contain a comment that starts with [ or equals ]" forged.Message
+
 let private restructures (rule: string) (path: string) =
     true,
     "The HTML parser restructures this markup ("
@@ -1703,6 +1842,9 @@ let cases: (string * (unit -> unit)) array =
         "render keeps the document entry policy and renderPage collects whatever the policy", headPolicy
         "renderPage collects the entries of a compiled and an expanded template in a view hole", holedHeads
         "a boundary's abandoned content attempt runs its cleanups before the pending or error view is written", boundaryAttempts
+        "an authored or expanded boundary in a view hole runs its content in an attempt and writes <!--[--> for every view", expandedBoundaryAttempts
+        "an authored component's pending read is pending and its cleanup failure fails the render", authoredPendingWithCleanupFailure
+        "a template expanded through Program.ops writes the serialised properties the compiled plan writes", expandedProperties
         "boundary markers record content, pending and error views; a failure inside the pending view goes to the enclosing boundary",
         pendingViewFailure
         "a pending read outside every boundary raises ServerPendingException after disposal", pendingOutsideBoundaries
@@ -1755,6 +1897,7 @@ let cases: (string * (unit -> unit)) array =
         "rows are separated only between a trailing and a leading text, and a zero-root arm writes the row marker", rowMarkers
         "an empty text slot in a textarea or title writes nothing, and more than one text child fails at plan compile", rcdataText
         "non-empty raw HTML in a pre or listing is written after a line feed, dropped on parsing", contentLeadingLineFeed
+        "a template expanded through Program.ops writes raw content as the compiled plan does, under Reject", expandedContent
         "content-model violations fail at plan compile with the rule and the element path", contentModel
         "a row definition with tr roots inside a table region fails on first render", dynamicContentModel
         "a row whose descendant closes an open a, form, button, li, dd or heading fails on first render", scopedRows

@@ -1456,6 +1456,8 @@ let private hasMarkerComment (markup: string) =
 /// <summary>The owners of instances set up by a server writer.</summary>
 [<AbstractClass>]
 type internal ServerScope() =
+    inherit ServerScopeBase()
+
     /// <summary>Runs the body with the scope and <c>Setup</c> of a new nested instance.</summary>
     abstract Nest: (ServerScope -> Setup -> unit) -> unit
 
@@ -1467,6 +1469,11 @@ type internal ServerScope() =
 
     default this.Inline(_, body) =
         this.Nest body
+
+    override this.AttemptWith body =
+        this.Attempt (fun attempt -> body (attempt :> ServerScopeBase))
+
+    override _.TakeCleanupFailures _ = false
 
 /// <summary>
 /// The scope of <c>Html.render</c>: an instance's cleanups run after its markup is written, and an inlined child's run
@@ -1896,6 +1903,48 @@ let internal headEntry (head: HeadTemplate) (instance: obj) : HeadEntry =
                     if isNull value then "" else value
     }
 
+/// <summary>
+/// The modifier of a property part whose value <c>read</c> returns. On an <c>HtmlBackend</c> an attribute serialisation
+/// writes its attribute, a browser-only property is a browser part, and a child-text property is left to
+/// <c>childTextView</c>; on any other backend the writer receives the value, once when <c>dynamic</c> is false.
+/// </summary>
+let private propertyModifier (property: PortableProperty) (dynamic: bool) (read: unit -> obj) : ModifierAction =
+    fun backend ->
+        match backend, property.Html with
+        | :? HtmlBackend, AsAttribute (attribute, serialise) -> backend.OptionalAttribute (attribute, serialise.Invoke (read ()))
+        | :? HtmlBackend, AsChildText -> ()
+        | _ when dynamic -> backend.ReactiveProperty (read, property.Write)
+        | _ -> backend.Property (fun target -> property.Write.Invoke (target, read ()))
+
+/// <summary>The view of a child-text property: its value as escaped child text on an <c>HtmlBackend</c>, and empty on any other backend.</summary>
+let private childTextView (ops: Operations<'view>) (read: unit -> obj) : 'view =
+    ops.Embed (fun backend ->
+        match backend with
+        | :? HtmlBackend ->
+            match unbox<string>(read ()) with
+            | null -> ()
+            | value -> backend.Text value
+        | _ -> ())
+
+/// <summary>
+/// The view of a raw-HTML part: its markup written verbatim on an <c>HtmlBackend</c>, after a line feed when
+/// <c>leadingLineFeed</c> is set and the markup is not empty, and empty on any other backend.
+/// </summary>
+let private contentView (ops: Operations<'view>) (leadingLineFeed: bool) (read: unit -> obj) : 'view =
+    ops.Embed (fun backend ->
+        match backend with
+        | :? HtmlBackend as html ->
+            let markup = markupOf (read ())
+
+            if hasMarkerComment markup then
+                raise (InvalidOperationException "Raw HTML cannot contain a comment that starts with [ or equals ]")
+
+            if leadingLineFeed && markup.Length > 0 then
+                html.Sink.Append "\n"
+
+            html.Sink.Append markup
+        | _ -> ())
+
 let rec private expandNode (ops: Operations<'view>) (instance: obj) (node: TemplateNode) : 'view =
     match node with
     | TextNode value -> ops.Text value
@@ -1905,20 +1954,35 @@ let rec private expandNode (ops: Operations<'view>) (instance: obj) (node: Templ
         let modifiers: ModifierAction array =
             [|
                 for key, value in attributes -> Attribute (key, value)
-                for property, value in properties -> fun (backend: Backend) -> backend.Property (fun target -> property.Write.Invoke (target, value))
+                for property, value in properties -> propertyModifier property false (fun () -> value)
                 for slot in slots ->
                     match slot.Target with
                     | AttributeTarget key -> ReactiveAttribute (key, fun () -> unbox<string option>(slot.Read.Invoke instance))
-                    | PropertyTarget property ->
-                        fun (backend: Backend) -> backend.ReactiveProperty ((fun () -> slot.Read.Invoke instance), property.Write)
+                    | PropertyTarget property -> propertyModifier property true (fun () -> slot.Read.Invoke instance)
                     | ContentTarget ->
-                        fun (backend: Backend) -> backend.ReactiveProperty ((fun () -> box (markupOf (slot.Read.Invoke instance))), innerHtml)
+                        fun (backend: Backend) ->
+                            match backend with
+                            | :? HtmlBackend -> ()
+                            | _ -> backend.ReactiveProperty ((fun () -> box (markupOf (slot.Read.Invoke instance))), innerHtml)
                     | TextTarget -> invalidOp "A text slot is a child node"
                 for eventName, handler in events -> listenModifier eventName (fun event -> handler.Invoke (instance, event))
                 for kind, hook in placed -> fun (backend: Backend) -> backend.Placed (kind, (fun node -> hook.Invoke (instance, node)))
             |]
 
-        ops.Element tag modifiers (Array.map (expandNode ops instance) children)
+        // The content the server plan writes from properties and raw-HTML parts.
+        let partContent =
+            [|
+                for property, value in properties do
+                    if isChildText property then
+                        childTextView ops (fun () -> value)
+                for slot in slots do
+                    match slot.Target with
+                    | PropertyTarget property when isChildText property -> childTextView ops (fun () -> slot.Read.Invoke instance)
+                    | ContentTarget -> contentView ops (dropsLeadingLineFeed (name tag)) (fun () -> slot.Read.Invoke instance)
+                    | _ -> ()
+            |]
+
+        ops.Element tag modifiers (Array.append partContent (Array.map (expandNode ops instance) children))
     | RegionNode region ->
         match region.Row with
         | ViewRow
