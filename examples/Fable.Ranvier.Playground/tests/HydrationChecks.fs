@@ -23,10 +23,17 @@ let private domIds (root: HTMLElement) : string list =
 let private mount graph (target: HTMLElement) view =
     Mounting.mount graph None strict target None (fun context -> Program.run view context.Backend)
 
+/// <summary>
+/// Replaces the children of <c>target</c> with <c>html</c> parsed by <c>Range.createContextualFragment</c> in the
+/// context of <c>target</c>, as a document parse of a served page places it.
+/// </summary>
+[<Emit("(() => { const r = $0.ownerDocument.createRange(); r.selectNodeContents($0); $0.replaceChildren(r.createContextualFragment($1)); })()")>]
+let private loadServed (target: HTMLElement) (html: string) : unit = jsNative
+
 /// <summary>The element ids of the server HTML of <c>definition</c>, parsed under a detached element.</summary>
 let private servedIds (definition: Component<'props>) (props: 'props) =
     let parsed = host ()
-    parsed.innerHTML <- Server.render Server.Options.defaults definition props
+    loadServed parsed (Server.render Server.Options.defaults definition props)
     domIds parsed
 
 let private clientIdentity () =
@@ -74,7 +81,7 @@ let private omit =
 /// <summary>A detached host holding the server HTML of <c>definition</c> for <c>props</c>.</summary>
 let private serve (definition: Component<'props>) (props: 'props) : HTMLElement =
     let host = host ()
-    host.innerHTML <- Server.render omit definition props
+    loadServed host (Server.render omit definition props)
     host
 
 let private hydrate graph options (host: HTMLElement) (definition: Component<'props>) (props: 'props) =
@@ -285,10 +292,11 @@ let private foreignSiblings () =
     use graph = new Graph ()
     let host = host ()
 
-    host.innerHTML <-
-        "\n  <p>before</p>"
-        + Server.render omit card "a"
-        + "<script type=\"application/json\">{}</script>\n"
+    loadServed
+        host
+        ("\n  <p>before</p>"
+         + Server.render omit card "a"
+         + "<script type=\"application/json\">{}</script>\n")
 
     let paragraph, script = host.querySelector "p", host.querySelector "script"
     let mounted = hydrate graph strictOptions host card "a"
@@ -1324,7 +1332,7 @@ let private stateRoundTrip () =
 
     let container = host ()
     attachToBody container
-    container.innerHTML <- Server.stateScript "state" json + "<p>after</p>"
+    loadServed container (Server.stateScript "state" json + "<p>after</p>")
     let read = Hydration.readState "state"
 
     let same =
@@ -1366,7 +1374,7 @@ let private identityContinues () =
     let target = host ()
     identityLog.Clear ()
 
-    target.innerHTML <- Server.render { omit with IdPrefix = "a" } definition [| 7; 8 |]
+    loadServed target (Server.render { omit with IdPrefix = "a" } definition [| 7; 8 |])
 
     let served = List.sort (List.ofSeq identityLog), domIds target
     let elements = all target "[id]"
@@ -1957,7 +1965,7 @@ let private unclosedRegions () =
     let check (served: string) (client: Component<'props>) (props: 'props) =
         use graph = new Graph ()
         let host = host ()
-        host.innerHTML <- served
+        loadServed host served
         let html = host.innerHTML
         let before = nodesOf host
 
@@ -1987,7 +1995,7 @@ let private unclosedRegions () =
 
     use graph = new Graph ()
     let host = host ()
-    host.innerHTML <- truncated
+    loadServed host truncated
     let reports = ResizeArray<exn list>()
 
     let mounted =
@@ -2184,7 +2192,7 @@ let private mismatchRestores () =
     let check (served: string) (client: Component<'props>) (props: 'props) =
         use graph = new Graph ()
         let host = host ()
-        host.innerHTML <- served
+        loadServed host served
         let before = nodesOf host
 
         let outcome =
@@ -2248,7 +2256,7 @@ let private sabotaged =
 let private rollbackFailureReported () =
     use graph = new Graph ()
     let host = host ()
-    host.innerHTML <- withTrailingRoot sabotaged ""
+    loadServed host (withTrailingRoot sabotaged "")
     // Detaching the text node that replaced the empty-text placeholder makes the placeholder's restore fail.
     sabotageOnce <- fun () -> detach (element host "span").firstChild.Value
     let reports = ResizeArray<exn list>()
@@ -2354,7 +2362,7 @@ let private strictRestoresValues () =
     let check (definition: Component<'props>) (served: 'props) (client: 'props) (shown: HTMLElement -> 'shown) =
         use graph = new Graph ()
         let host = host ()
-        host.innerHTML <- withTrailingRoot definition served
+        loadServed host (withTrailingRoot definition served)
         // The parsed form of the served HTML: a pre's leading line feed is dropped by parsing.
         let html = host.innerHTML
         let before = nodesOf host
@@ -2396,7 +2404,7 @@ let private boundaryRestoresAndRecovers () =
         case.Log.Clear ()
         case.Sources.Clear ()
         let target = host ()
-        target.innerHTML <- html
+        loadServed target html
         target
 
     let mismatch = "Hydration mismatch at #1: expected <!--]-->, found b"
@@ -2450,7 +2458,7 @@ let private boundaryRestoresAndRecovers () =
         let html = withTrailingRoot nested ()
         case.Outcome <- client
         let target = host ()
-        target.innerHTML <- html
+        loadServed target html
 
         failsAsServed
             target
@@ -2502,7 +2510,7 @@ let private boundariesInRows () =
     let html = withTrailingRoot definition [| a; b |]
     case.Outcome <- Settles "y"
     let target = CheckSupport.host ()
-    target.innerHTML <- html
+    loadServed target html
 
     failsAsServed
         target
@@ -2851,7 +2859,6 @@ let private leadingLineFeeds () =
     equal "\nline" (fst (parsed html "pre"))
     equal "\nstatic" (fst (parsed html "pre + pre"))
 
-/// <summary>A hand-built DOM tree: an element with its tag and children, or a text node.</summary>
 type private Shape =
     | El of string * Shape list
     | Tx of string

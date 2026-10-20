@@ -1841,8 +1841,8 @@ let private templateElement () =
 
 let private stateScriptEscapes () =
     equal
-        "<script type=\"application/json\" id=\"s&quot;\">{\"a\":\"\\u003c/script>\\u2028\"}</script>"
-        (Server.stateScript "s\"" "{\"a\":\"</script>\u2028\"}")
+        "<script type=\"application/json\" id=\"s&quot;\">{\"a\":\"\\u003c/script>\\u2028\\u003c/script>\\u2028\"}</script>"
+        (Server.stateScript "s\"" "{\"a\":\"</script>\u2028</script>\u2028\"}")
 
     equal "<script type=\"application/json\" id=\"s\">[\"\\u2029\\u003c!--&amp;>\"]</script>" (Server.stateScript "s" "[\"\u2029<!--&amp;>\"]")
 

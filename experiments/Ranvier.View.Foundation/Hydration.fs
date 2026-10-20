@@ -232,7 +232,7 @@ let private textOf (element: Element) : string = jsNative
 
 /// <summary>
 /// The <c>textContent</c> of the document's element with id <c>id</c>, such as the JSON a <c>Server.stateScript</c>
-/// element holds; <c>None</c> when the document has no such element.
+/// element holds; <c>None</c> when the id is absent from the document.
 /// </summary>
 let readState (id: string) : string option =
     let element = elementById id

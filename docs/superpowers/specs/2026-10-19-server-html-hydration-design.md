@@ -251,7 +251,7 @@ Server and client select different arms when their state differs (time, locale, 
 
 State transfer is explicit and application-owned.
 
-- The server writes application state with `Server.stateScript id json`: `<script type="application/json" id="…">`, with `<` written as `<`, and U+2028/U+2029 as ` `/` `. The application chooses the serialiser.
+- The server writes application state with `Server.stateScript id json`: `<script type="application/json" id="…">`, with `<` written as `\u003c`, and U+2028/U+2029 as `\u2028`/`\u2029`. The application chooses the serialiser.
 - The client reads it with `Hydration.readState id` (the element's `textContent`) and passes the decoded value as the root's props, or writes it into sources before `hydrate`.
 - An async value the server resolved before rendering is seeded on the client by the application: a `createAsyncSource` settled with the transferred value, or a prop. A seeding option on `createAsync`, if one is wanted, belongs in the core.
 - Exceptions are not transferred; an `[e` boundary re-runs on the client.
@@ -326,6 +326,8 @@ Hydration (jsdom unless noted; each with `Strict = true` for the matching case):
 30. "queued-commit hydration raises NotSupportedException"; "an authored root raises".
 31. "state script round-trips JSON containing </script> and U+2028".
 32. Forms (Chromium): "an input edited before hydration keeps its value when the server and client values agree"; "checkbox, textarea and select hydrate their server state"; "focus inside a hydrated input survives hydration".
+    - The first and third names are `editedInputsKept` ("inputs edited before hydration keep their values, focus and selection when the server and client values agree"), and the second is `formsHydrate` ("forms hydrate a leading line feed, checked and selectedIndex without writes, and write the client's differing values"). Both run in Chromium through `hydrationCases`.
+    - The empty text slot in an RCDATA element (preflight ruling C14, test name `textareaEmptySlot`) is `emptyRcdataText` ("an empty text slot in a textarea the server left empty hydrates into a created text node"), in Chromium through `hydrationCases`.
 33. Normalisation (Chromium): for each content-model rule, the rejected markup parses differently from the client DOM, and every accepted fixture's server HTML parses to the client DOM's serialisation.
 
 Mutation checks before review: removing the logical-sibling skip, the arm hash check, the empty-text placeholder, the row separator, the region-level mismatch catch, the attempt-owner disposal and the escape fast path must each fail a test.
