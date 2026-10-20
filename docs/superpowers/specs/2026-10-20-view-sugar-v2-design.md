@@ -1,6 +1,6 @@
 # View sugar v2 design: free tags and component declarations
 
-> **Status 2026-10-20:** design. The user answered the first draft's open questions on the same day; §0 records the answers, and the sections below carry them. It amends the [view sugar design](2026-10-19-view-sugar-design.md) (v1). Every v1 rule this spec does not change stays binding: the lowering contract (§2 of v1), the twin-equality criteria, the definition-in-read check, the `forEach`/`forEachFixed` split and the `show` lowering.
+> **Status 2026-10-20:** approved. The user answered the first draft's open questions on the same day; §0 records the answers, and the sections below carry them. It amends the [view sugar design](2026-10-19-view-sugar-design.md) (v1). Every v1 rule this spec does not change stays binding: the lowering contract (§2 of v1), the twin-equality criteria, the definition-in-read check, the `forEach`/`forEachFixed` split and the `show` lowering.
 >
 > **Decisions taken by the user on 2026-10-20** (binding; §0 quotes them):
 >
@@ -36,6 +36,7 @@ The user then answered the first draft's open questions (2026-10-20):
 13. **The bundle budget is 1 kB gzip over explicit, including the component helpers** (criterion 4).
 14. **`Component.ofType` over `IComponent` is deferred.** It is recorded in this spec only, with no upstream Fable issue, and is added once a pinned Fable compiles static interface calls (§3.3, §7).
 15. **`ComponentTag` ships** (§4.6).
+16. **`Generated.Html.Authoring` stays openable.** It does not require qualified access; a file that opens the sugar does not open `Authoring`, and a `check-types.py` case covers the rule (§4, §5, §8).
 
 ## 1. Purpose
 
@@ -509,11 +510,11 @@ v1's sugar layer is the PascalCase `t.Div` extension members (112 generated in `
 - Fable: report the ParamArray primary-constructor and missing-primary-constructor miscompilations upstream; the generator keeps the workaround until a fixed Fable is pinned.
 - `Component.ofType`: re-test static interface calls on each Fable upgrade and add `ofType` once they compile (decision 14). This is tracked here only.
 
-## 8. Open questions (recommended answers)
+## 8. Open questions
 
-The first draft's ten questions are settled (§0, decisions 6–15). One question remains:
+None. The first draft's ten questions and the second draft's question on `Generated.Html.Authoring` are settled (§0, decisions 6–16).
 
-1. **Should `Generated.Html.Authoring` also require qualified access?** Qualified access on `Generated.Html` leaves its nested `Authoring` module openable (subject to the check of §7 step 4), and `Authoring`'s `Attrs` and `Props` collide with the sugar's when both are opened in one file (§4). Recommended: no. `open ...Generated.Html.Authoring` followed by `Attrs.title source` is the authored path's documented spelling (the Foundation README), and the collision is covered by the scope rule of §4 and its `check-types.py` case. Qualified access on `Authoring` would turn every authored `Attrs.x` into `Authoring.Attrs.x` or a per-file alias.
+**`Generated.Html.Authoring` (decision 16).** `Authoring` keeps ordinary access: `open ...Generated.Html.Authoring` followed by `Attrs.title source` stays the authored path's documented spelling (the Foundation README). Its `Attrs` and `Props` collide with the sugar's when both are opened in one file; the scope rule of §4 and its `check-types.py` case (§5) cover that collision. Whether the compiler accepts the nested open under the parent's qualified access is checked in §7 step 4.
 
 ## 9. Measurements
 
