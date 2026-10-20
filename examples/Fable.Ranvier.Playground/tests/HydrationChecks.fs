@@ -3442,6 +3442,161 @@ let private prefixedElementsMismatch () =
          "Hydration mismatch at 0/1: expected <i>, found x:i")
         (raised boldRoot "b", raised titledItalic "i", raised boldThenItalic "i")
 
+/// <summary>A marked meta element appended to the document's head, whose <c>remove</c> raises <c>"stray removal"</c>.</summary>
+[<Emit("(() => { const m = document.createElement('meta'); m.setAttribute('data-ranvier-head', 'stray'); m.remove = () => { throw new Error('stray removal'); }; document.head.appendChild(m); return m; })()")>]
+let private strayHeadElement () : Element = jsNative
+
+[<Emit("(delete $0.remove, $0.remove())")>]
+let private removeStray (element: Element) : unit = jsNative
+
+let private headRemovalFailureDisposes () =
+    use graph = new Graph ()
+    let host = serve card "a"
+    let stray = strayHeadElement ()
+
+    try
+        failsAsServed
+            host
+            (fun report ->
+                Hydration.hydrate graph None report strictOptions host card "a"
+                |> ignore)
+            "stray removal"
+            []
+
+        (element host "button").click()
+        equal ("0", true) ((element host "button").textContent, connected (unbox<Node> stray))
+    finally
+        removeStray stray
+
+let private servedEm =
+    {
+        Caption = "A"
+        Body = Program.element (HtmlTag "em") [||] [| Program.text "server" |]
+    }
+
+let private clientEm =
+    {
+        Caption = "A"
+        Body = Program.element (HtmlTag "em") [||] [| Program.text "client" |]
+    }
+
+#if RANVIER_VIEW_COUNTERS
+/// <summary>A view hole followed by a live list of <c>Listed</c> items.</summary>
+let private holedThenListed =
+    Component.define (fun _ (items: Listed array) -> live items) (fun t ->
+        t.div
+            [||]
+            [|
+                t.view (fun (_: Signal<Listed array>) -> Program.text "hole")
+                t.ul
+                    [||]
+                    [|
+                        t.each (fun (item: Listed) -> item.Id) (fun (items: Signal<Listed array>) -> items.Value) listedRow
+                    |]
+            |])
+
+/// <summary>
+/// Whether hydrating <c>definition</c> for <c>props</c> over <c>host</c> recorded an inverse, the recorded inverses
+/// still held once <c>hydrate</c> returns or raises, and whether it returned.
+/// </summary>
+let private heldInverses options (host: HTMLElement) (definition: Component<'props>) (props: 'props) =
+    use graph = new Graph ()
+    TemplateDom.HydrationCounters.recorded.Value <- 0
+    TemplateDom.HydrationCounters.held.Value <- 0
+
+    let mounted =
+        try
+            Some (Hydration.hydrate graph None ignore options host definition props)
+        with _ ->
+            None
+
+    let counts =
+        TemplateDom.HydrationCounters.recorded.Value > 0, TemplateDom.HydrationCounters.held.Value
+
+    mounted |> Option.iter _.Dispose()
+    counts, mounted.IsSome
+
+let private rollbackLogsDiscarded () =
+    let case = boundaryCase ()
+    let boundedPage = bounded case
+
+    let succeeded =
+        [
+            heldInverses strictOptions (serve holed servedEm) holed clientEm
+            heldInverses lenientOptions (serve liveList [| a; b |]) liveList [| a; b; c |]
+            heldInverses strictOptions (serveCase case boundedPage (Settles "server") (Settles "client")) boundedPage ()
+            heldInverses strictOptions (serve rawCard "<b>x</b>") rawCard "<b>x</b>"
+        ]
+
+    let host = serve holedThenListed [| a; b |]
+    let served = host.innerHTML
+    let failed = heldInverses strictOptions host holedThenListed [| a |]
+
+    equal ([ for _ in succeeded -> (true, 0), true ], ((true, 0), false), served) (succeeded, failed, host.innerHTML)
+#endif
+
+[<Emit("new WeakRef($0)")>]
+let private weakRef (target: obj) : obj = jsNative
+
+[<Emit("$0.deref() === undefined")>]
+let private collected (reference: obj) : bool = jsNative
+
+/// <summary>
+/// Runs one flush of 64 effects in <c>graph</c>. Under Fable a spent slot of the graph's queue keeps its last effect
+/// until a flush of the same length overwrites it.
+/// </summary>
+let private overwriteSpentSlots (graph: Graph) =
+    graph.Run (fun () ->
+        let signal = Api.createSignal 0
+
+        let owner =
+            Api.createRoot (fun owner ->
+                for _ in 1..64 do
+                    Api.createEffect (fun () -> signal.Value |> ignore)
+
+                owner)
+
+        signal.Value <- 1
+        owner.Dispose ())
+
+/// <summary>
+/// Hydrates <c>definition</c> for <c>client</c> over its server HTML for <c>served</c>, and returns the check to run
+/// after a garbage collection: the first server node matching <c>selector</c>, removed by the hydration, is collected
+/// while the mount is live, and <c>shown host</c> is <c>expected</c>.
+/// </summary>
+let private removedNodeCollected
+    options
+    (definition: Component<'props>)
+    (served: 'props)
+    (client: 'props)
+    (selector: string)
+    (shown: HTMLElement -> string)
+    (expected: string)
+    : unit -> unit =
+    let graph = new Graph ()
+    let host = serve definition served
+    let removed = weakRef (host.querySelector selector)
+    let mounted = Hydration.hydrate graph None ignore options host definition client
+    overwriteSpentSlots graph
+
+    fun () ->
+        let result = collected removed, shown host
+        mounted.Dispose ()
+        graph.Dispose ()
+        equal (true, expected) result
+
+/// <summary>
+/// Retention checks for Chromium: each case hydrates and returns the check that tests/hydration.spec.mjs runs after a
+/// forced garbage collection.
+/// </summary>
+let retentionCases: (string * (unit -> (unit -> unit))) array =
+    [|
+        "a view hole's removed server nodes are collected while the hydrated mount is live",
+        fun () -> removedNodeCollected strictOptions holed servedEm clientEm "em" (fun host -> (element host "div").textContent) "Aclient"
+        "a recovered list's removed server rows are collected while the hydrated mount is live",
+        fun () -> removedNodeCollected lenientOptions liveList [| a; b |] [| a; b; c |] "li" (fun host -> (element host "ul").textContent) "abc"
+    |]
+
 let cases: (string * (unit -> unit)) array =
     strictCases
         [|
@@ -3547,6 +3702,10 @@ let cases: (string * (unit -> unit)) array =
             onAttachedHost recoveryJourney
             "journey: the head entries adopted in one round are withdrawn at disposal, and the next round adopts the newly served elements",
             headJourney
+            "a failure removing the unadopted head elements disposes the mount and leaves the host and the head as served", headRemovalFailureDisposes
+#if RANVIER_VIEW_COUNTERS
+            "a returned hydrate holds no inverse of its edits, nested cursors included, and a raised one has run them all", rollbackLogsDiscarded
+#endif
         |]
 
 /// <summary>The text and value of the first element matching <c>selector</c> after the browser parses <c>html</c>.</summary>

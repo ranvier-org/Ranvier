@@ -79,10 +79,29 @@ let internal mismatch (path: string) (expected: string) (found: string) : exn =
 #endif
     error
 
+#if RANVIER_VIEW_COUNTERS
+/// <summary>Counts of hydration rollback work, defined only in the DOM test build.</summary>
+module internal HydrationCounters =
+    /// <summary>Inverses recorded with any hydration cursor.</summary>
+    let recorded = ref 0
+
+    /// <summary>Recorded inverses neither run by a <c>Restore</c> nor discarded by a <c>Commit</c>.</summary>
+    let held = ref 0
+#endif
+
 /// <summary>The next server node a hydrating mount adopts, and the inverses of the edits made to the server nodes so far.</summary>
 [<Sealed; AllowNullLiteral>]
 type internal HydrationCursor(next: Node, strict: bool) =
     let undo = ResizeArray<unit -> unit>()
+    // The cursors of nested mounts recorded by `Nest`; null until the first.
+    let mutable nested: ResizeArray<HydrationCursor> = null
+
+    let discard () =
+#if RANVIER_VIEW_COUNTERS
+        HydrationCounters.held.Value <- HydrationCounters.held.Value - undo.Count
+#endif
+        undo.Clear ()
+        nested <- null
 
     /// <summary>The next server node to adopt; null past the last.</summary>
     member val Next: Node = next with get, set
@@ -91,7 +110,19 @@ type internal HydrationCursor(next: Node, strict: bool) =
 
     /// <summary>Records the inverse of an edit to the server nodes.</summary>
     member _.Undo(inverse: unit -> unit) =
+#if RANVIER_VIEW_COUNTERS
+        HydrationCounters.recorded.Value <- HydrationCounters.recorded.Value + 1
+        HydrationCounters.held.Value <- HydrationCounters.held.Value + 1
+#endif
         undo.Add inverse
+
+    /// <summary>Records a nested mount's cursor: <c>Restore</c> restores it in its place among the inverses, and <c>Commit</c> commits it.</summary>
+    member this.Nest(child: HydrationCursor) =
+        if isNull nested then
+            nested <- ResizeArray ()
+
+        nested.Add child
+        this.Undo (fun () -> child.Restore ())
 
     /// <summary>Runs the recorded inverses, most recent first; raises after all have run when any raised.</summary>
     member _.Restore() =
@@ -103,12 +134,22 @@ type internal HydrationCursor(next: Node, strict: bool) =
             with error ->
                 errors.Add error
 
-        undo.Clear ()
+        discard ()
 
         if errors.Count = 1 then
             raise errors[0]
         elif errors.Count > 1 then
             raise (AggregateException ("Hydration restore failed", errors))
+
+    /// <summary>Discards the recorded inverses of the cursor and of every nested cursor, and sets <c>Next</c> to null.</summary>
+    member this.Commit() =
+        let children = nested
+        discard ()
+        this.Next <- Unchecked.defaultof<_>
+
+        if not (isNull children) then
+            for child in children do
+                child.Commit ()
 
 let private noNode: Node = Unchecked.defaultof<_>
 

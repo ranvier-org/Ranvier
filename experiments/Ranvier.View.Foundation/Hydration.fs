@@ -19,6 +19,10 @@ type HydrationOptions =
         Strict: bool
     }
 
+module HydrationOptions =
+    /// <summary>The prefix of <c>Server.Options.defaults</c>, with mismatches re-rendered and reported.</summary>
+    let defaults = { IdPrefix = "r"; Strict = false }
+
 [<Emit("$0.firstChild")>]
 let private firstChildOf (node: Node) : Node = jsNative
 
@@ -86,12 +90,16 @@ let private rootState
         rootEnd
     )
 
-/// <summary>Mounts <c>definition</c> fresh in <c>host</c> before <c>before</c>; disposing the mount also removes <c>markers</c>.</summary>
+/// <summary>
+/// Mounts <c>definition</c> fresh in <c>host</c> before <c>before</c>, running <c>atEnd</c> at the end of its build;
+/// disposing the mount also removes <c>markers</c>.
+/// </summary>
 let private freshRoot
     (graph: Graph)
     (owner: Owner)
     (report: exn list -> unit)
     (options: HydrationOptions)
+    (atEnd: unit -> unit)
     (host: Node)
     (definition: Component<'props>)
     (props: 'props)
@@ -102,7 +110,12 @@ let private freshRoot
         rootState graph owner report options host null Unchecked.defaultof<_> Unchecked.defaultof<_>
 
     let mounted =
-        created.Run (before, (fun context -> context.Backend.Template (definition, box props)))
+        created.Run (
+            before,
+            fun context ->
+                context.Backend.Template (definition, box props)
+                created.AtBuildEnd atEnd
+        )
 
     if not markers.IsEmpty then
         created.Root.OnCleanup (fun () -> List.iter removeNode markers)
@@ -111,10 +124,12 @@ let private freshRoot
 
 /// <summary>
 /// Hydrates the root of <c>host</c> as <c>hydrateWith</c> does, the document's head aside; before a re-rendered root
-/// mounts fresh, <c>served</c> sets the head back as the server wrote it.
+/// mounts fresh, <c>served</c> sets the head back as the server wrote it. The mount that <c>adoptHost</c> returns runs
+/// <c>atEnd</c> at the end of its build, and a failure of <c>atEnd</c> is a failure of that mount.
 /// </summary>
 let private adoptHost
     (served: unit -> unit)
+    (atEnd: unit -> unit)
     (mode: CommitMode)
     (graph: Graph)
     (parentOwner: Owner option)
@@ -141,7 +156,7 @@ let private adoptHost
                 raise error
 
             report [ error ]
-            freshRoot graph owner report options host definition props None []
+            freshRoot graph owner report options atEnd host definition props None []
         else
             let rootEnd =
                 try
@@ -152,28 +167,30 @@ let private adoptHost
                     Unchecked.defaultof<_>
 
             if absent rootEnd then
-                freshRoot graph owner report options host definition props None [ rootStart ]
+                freshRoot graph owner report options atEnd host definition props None [ rootStart ]
             else
                 let first = following rootStart
                 let cursor = TemplateDom.HydrationCursor (first, options.Strict)
+                let adopting = rootState graph owner report options host cursor rootStart rootEnd
 
                 try
-                    (rootState graph owner report options host cursor rootStart rootEnd)
-                        .Run(
-                            None,
-                            fun context ->
-                                context.Backend.Template (definition, box props)
+                    adopting.Run (
+                        None,
+                        fun context ->
+                            context.Backend.Template (definition, box props)
 
-                                if not (obj.ReferenceEquals (cursor.Next, rootEnd)) then
-                                    let mutable position = 0
-                                    let mutable node = first
+                            if not (obj.ReferenceEquals (cursor.Next, rootEnd)) then
+                                let mutable position = 0
+                                let mutable node = first
 
-                                    while not (obj.ReferenceEquals (node, cursor.Next)) do
-                                        node <- TemplateDom.logicalNext node
-                                        position <- position + 1
+                                while not (obj.ReferenceEquals (node, cursor.Next)) do
+                                    node <- TemplateDom.logicalNext node
+                                    position <- position + 1
 
-                                    raise (TemplateDom.mismatch ("#" + string position) "<!--]-->" (TemplateDom.describe cursor.Next))
-                        )
+                                raise (TemplateDom.mismatch ("#" + string position) "<!--]-->" (TemplateDom.describe cursor.Next))
+
+                            adopting.AtBuildEnd atEnd
+                    )
                 with error when not options.Strict ->
                     match TemplateDom.findMismatch error with
                     | Some found ->
@@ -185,7 +202,7 @@ let private adoptHost
                         )
 
                         clearAfter rootStart rootEnd
-                        freshRoot graph owner report options host definition props (Some rootEnd) [ rootStart; rootEnd ]
+                        freshRoot graph owner report options atEnd host definition props (Some rootEnd) [ rootStart; rootEnd ]
                     | None -> reraise ()
 
 /// <summary>
@@ -260,11 +277,17 @@ let hydrateWith
 
     try
         try
-            let mounted =
-                adoptHost (fun () -> served.Restore ()) mode graph parentOwner report options host definition props
-
-            DocumentHead.removeUnadopted document
-            mounted
+            adoptHost
+                (fun () -> served.Restore ())
+                (fun () -> DocumentHead.removeUnadopted document)
+                mode
+                graph
+                parentOwner
+                report
+                options
+                host
+                definition
+                props
         with _ ->
             served.Restore ()
             reraise ()
@@ -278,8 +301,8 @@ let private elementById (id: string) : Element = jsNative
 let private textOf (element: Element) : string = jsNative
 
 /// <summary>
-/// The <c>textContent</c> of the document's element with id <c>id</c>, such as the JSON a <c>Server.stateScript</c>
-/// element holds; <c>None</c> when the id is absent from the document.
+/// The <c>textContent</c> of the global <c>document</c>'s element with id <c>id</c>, such as the JSON a
+/// <c>Server.stateScript</c> element holds; <c>None</c> when the id is absent from that document.
 /// </summary>
 let readState (id: string) : string option =
     let element = elementById id

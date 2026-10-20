@@ -1335,7 +1335,7 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
 
     /// <summary>
     /// Re-renders the region after a structural mismatch of its hydrating pass and reports the errors it receives, the
-    /// mismatch first; null when a mismatch fails the hydration.
+    /// mismatch first; null when a mismatch fails the hydration, and once <c>Settle</c> ends the hydrating pass.
     /// </summary>
     member val Recover: exn list -> unit = Unchecked.defaultof<_> with get, set
 
@@ -1513,6 +1513,10 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
     member this.Settle(recorded: exn list, failure: exn option, hydrating: bool, settle: exn list -> unit) =
         let recovering = this.Recovering
         this.Recovering <- false
+        let recover = this.Recover
+
+        if hydrating then
+            this.Recover <- Unchecked.defaultof<_>
 
         if not (this.Live ()) then
             errors.Report recorded
@@ -1524,8 +1528,6 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
                 if errors.Initializing then
                     errors.Fail (error, error :: recorded)
             | Some error when hydrating ->
-                let recover = this.Recover
-
                 match TemplateDom.findMismatch error with
                 | Some found when not (isNull (box recover)) ->
                     try
@@ -1597,6 +1599,9 @@ and [<Sealed>] private ViewBoundary
         failHydration: exn -> unit,
         atBuildEnd: (unit -> unit) -> unit
     ) =
+    // Whether the boundary starts from the server nodes between the markers.
+    let hydrates = not (isNull hydration)
+    let strict = hydrates && hydration.Strict
     // The content's nested mount; null until its setup returns.
     let mutable content: Row = null
     // The container of the content's hooks, placed at the reveal; null after a teardown.
@@ -1930,7 +1935,7 @@ and [<Sealed>] private ViewBoundary
         | None when held.Count > 0 -> this.TearDown (List.ofSeq held)
         | None when waiting = 0 -> this.Reveal ()
         | None when content.Adopted -> atBuildEnd (fun () -> this.DetachPending ())
-        | None when served -> this.Show (views.Pending, TemplateDom.HydrationCursor (nextOrNull regionStart, hydration.Strict))
+        | None when served -> this.Show (views.Pending, TemplateDom.HydrationCursor (nextOrNull regionStart, strict))
         | None -> this.Show (views.Pending, null)
 
     member private this.MountContent() =
@@ -1939,7 +1944,7 @@ and [<Sealed>] private ViewBoundary
     /// <summary>Hydrates the content of a <c>[c</c> boundary in place.</summary>
     member private this.HydrateContent() =
         copy <- copyServed ()
-        let attempt = TemplateDom.HydrationCursor (nextOrNull regionStart, hydration.Strict)
+        let attempt = TemplateDom.HydrationCursor (nextOrNull regionStart, strict)
 
         let failure =
             match this.SetUpContent (site.NextRow (), attempt) with
@@ -1954,7 +1959,7 @@ and [<Sealed>] private ViewBoundary
 
         match failure |> Option.bind TemplateDom.findMismatch with
         | Some found ->
-            // `content` is null before the abandon, so a wake during the teardown reveals nothing.
+            // A wake during the abandon leaves the boundary unrevealed.
             let attempted = content
             content <- null
             copy <- Unchecked.defaultof<_>
@@ -1965,7 +1970,7 @@ and [<Sealed>] private ViewBoundary
             contentContainer.Discard ()
             contentContainer <- null
 
-            if hydration.Strict then
+            if strict then
                 failHydration failure.Value
             else
                 reportMismatch found failure.Value
@@ -1991,7 +1996,7 @@ and [<Sealed>] private ViewBoundary
                 contentContainer.Discard ()
                 contentContainer <- null)
 
-        if isNull hydration then
+        if not hydrates then
             this.MountContent ()
         else
             served <- true
@@ -2093,6 +2098,11 @@ and internal MountState
 
     // The cursor of the server nodes the mount adopts; null outside hydration and once `Run` returns.
     let mutable cursor = hydration
+    // Whether the mount adopts server nodes.
+    let adopts = not (isNull hydration)
+    // The cursor whose inverses a failed `Run` and `AbandonAdopted` run; null outside hydration and once a root mount's
+    // `Run` succeeds.
+    let mutable rollback = hydration
     // Whether the release leaves the range's nodes and adopted rows in place: set when a hydrating `Run` fails.
     let mutable keepNodes = false
     // The mount whose `MountRow` created this one; null for a root mount.
@@ -2143,7 +2153,7 @@ and internal MountState
     // enclosing mount keeps its own.
     let keeps () =
         keepNodes
-        || not (isNull hydration)
+        || adopts
            && not (isNull (box enclosing))
            && enclosing.KeepsNodes
 
@@ -2589,9 +2599,13 @@ and internal MountState
 
                 container.RaiseFailure ()
 
+            if adopts && isNull (box enclosing) then
+                rollback.Commit ()
+                rollback <- null
+
             Mounted this
         with original ->
-            if isNull hydration then
+            if not adopts then
                 if not (isNull root) then
                     root.Abandon ()
 
@@ -2605,7 +2619,7 @@ and internal MountState
                         if not (isNull root) then
                             root.Abandon ()
                     finally
-                        hydration.Restore ()
+                        rollback.Restore ()
                 with cleanup ->
                     raise (AggregateException ("Hydration and its rollback failed", [| original; cleanup |]))
 
@@ -2869,7 +2883,8 @@ and internal MountState
         try
             root.Abandon ()
         finally
-            hydration.Restore ()
+            if not (isNull rollback) then
+                rollback.Restore ()
 
     /// <summary>
     /// Runs <c>action</c> once the root mount's build returns, before its cursor is dropped; a failed build discards
@@ -2933,8 +2948,8 @@ and internal MountState
     /// <remarks>
     /// With a <c>cursor</c>, the nested mount adopts the server nodes from <c>cursor.Next</c> to the node at which its
     /// build leaves the cursor, and they stay in place between its <c>ranvier:start</c> and <c>ranvier:end</c>
-    /// comments, inserted around them. The insertions are recorded with the cursor, and the cursor's edits with this
-    /// mount's cursor once the nested mount is built. A failure of the nested mount leaves the server nodes as they were.
+    /// comments, inserted around them. The insertions are recorded with the cursor, which is nested in this mount's
+    /// cursor once the nested mount is built. A failure of the nested mount leaves the server nodes as they were.
     /// </remarks>
     member private this.MountRow
         (
@@ -3003,7 +3018,7 @@ and internal MountState
             let enclosingCursor = this.HydrationCursor
 
             if not (isNull enclosingCursor) then
-                enclosingCursor.Undo (fun () -> cursor.Restore ())
+                enclosingCursor.Nest cursor
 
             Row (first, last, Mount = mounted, Adopted = true)
         else
@@ -3235,7 +3250,7 @@ and internal MountState
                                                 first <- windowStart
                                                 last0 <- windowEnd0
                                                 last1 <- windowEnd1
-                                            // Without the projection's window, the common ends of the two key arrays are found here.
+                                            // Without the projection's window, the common ends of the two key arrays bound the window.
                                             | ValueNone ->
                                                 while first <= last0
                                                       && first <= last1
