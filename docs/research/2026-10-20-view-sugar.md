@@ -82,13 +82,13 @@ With 2 processes one sugared process retained 795.3 B/row, 61 B/row less than ev
 | 1,000 | 856.1, 856.1, 856.1, 856.1 | 795.3, 856.1, 795.3, 795.3 |
 | 10,000 | 860.0, 839.3, 839.3, 843.6 | 839.3, 839.3, 839.3, 839.3 |
 
-The comparer reports `same` at 10,000 rows and `DIFFER` at 1,000 rows. At 1,000 rows three of four sugared processes retain 795.3 B/row, 7.1 % below the explicit 856.1; no sugared sample retains more than the explicit adapter.
+The comparer reports `same` at 10,000 rows and `LOWER` at 1,000 rows (exit 0; it reports `DIFFER` and exits 1 only when a sugared sample retains more). At 1,000 rows three of four sugared processes retain 795.3 B/row, 7.1 % below the explicit 856.1; no sugared sample retains more than the explicit adapter.
 
-The gap is confined to one category of the retained-object breakdown: `string` is 34,416 B in a 795.3 process and 95,248 B in an 856.1 process (a difference of 60,832 B) with 18,311 and 18,251 strings. Every other JS category is identical. A constant 60.8 KB is 61 B/row at 1,000 rows and about 6 B/row at 10,000 rows, where the two adapters agree, so the difference is a fixed-size string present in some processes and not a per-row cost. Its origin is not identified. The spec's 994 B at 1k is superseded by 856 B in the current build. `keyed-heap.mjs` with the `ranvier-sugar` bundle addition ran to completion.
+The gap is confined to one category of the retained-object breakdown: `string` is 34,416 B in a 795.3 process and 95,248 B in an 856.1 process (a difference of 60,832 B) with 18,311 and 18,251 strings. Every other JS category is identical. A constant 60.8 KB is 61 B/row at 1,000 rows and about 6 B/row at 10,000 rows, where the two adapters agree, so the difference is a fixed-size string present in some processes and not a per-row cost. Its origin is not identified. The spec's 994 B at 1k is superseded by 856 B in the current build.
 
 ## Allocation sample (criterion 3, fourth bullet)
 
-Two samples, each over the whole profile: every allocating function is kept and searched by name for `ElementBuilder`, `Builders_`, `Sugar`, `TemplateBuilder$1_*` and `Delay`, not only the largest 60.
+Two samples, each over the whole profile: every allocating function is kept and searched by name for `ElementBuilder`, `Builders_`, `Sugar`, `TemplateBuilder$1_*` and `Delay`.
 
 **128-row mount of the template row** (the sample the spec names). `sugar-alloc.mjs` mounts 10 hosts of 128 `perfRowSugar` rows (`ranvier-template-sugar`) and of the explicit `perfRow` (`ranvier-template`) through the same adapters as the template comparison, after one warm-up mount, with V8 sampling at 64 B in 4 Chromium processes (`alloc-template-row.json`, unminified build). The mode sampled first alternates by process (explicit first in processes 1 and 3, sugared first in 2 and 4).
 

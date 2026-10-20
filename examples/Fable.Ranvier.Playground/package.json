@@ -15,7 +15,7 @@
     "test:sugar-counters": "node tests/sugar-counters-build.mjs && node --test tests/sugar-counters.test.mjs",
     "test:sugar-debug": "npm run compile:tests && dotnet fable tests/DomTests.fsproj --outDir generated-tests-debug --configuration Debug && node --test tests/sugar-debug.test.mjs",
     "test:browser": "npm run compile:tests && npm run compile && playwright test",
-    "test": "npm run test:dom && npm run test:browser",
+    "test": "npm run test:dom && npm run test:sugar-debug && npm run test:sugar-counters && npm run test:browser",
     "bench:dom": "npm run compile:tests && node benchmarks/dom-scheduling.mjs",
     "bench:view": "npm run compile:tests && node benchmarks/view-representation.mjs",
     "bench:binding": "npm run compile:tests && node benchmarks/binding-minimal.mjs",

@@ -66,7 +66,7 @@ type private Trace =
 
 /// <summary>
 /// Mounts <c>view</c> on a graph and state of its own, runs <c>steps</c> and disposes. Counters are read around the
-/// mount, each step and the disposal, so every difference between twins belongs to one twin.
+/// mount, each step and the disposal.
 /// </summary>
 let private run queued (make: Graph -> 'state) (view: 'state -> Program.View) (steps: 'state -> Step list) =
     use graph = new Graph ()
@@ -300,7 +300,7 @@ let private strictOptions: Hydration.HydrationOptions =
 
 /// <summary>
 /// Hydrates the explicit and the sugared definition from the server HTML of <c>served</c>. Both adopt exactly
-/// <c>adopts</c> server nodes, keep the same nodes after each write, and show the same markup after hydration, each write and disposal.
+/// <c>adopts</c> server nodes. After each write both retain equal numbers of the server nodes, and they show the same markup after hydration, each write and disposal.
 /// </summary>
 let private hydratedTwins
     (served: Component<'props>)
@@ -328,6 +328,7 @@ let private hydratedTwins
         |> Array.filter (fun node -> within node root)
         |> Array.length
 
+    equal adopts leftNodes.Length
     equal adopts (adopted leftNodes left)
     equal adopts (adopted rightNodes right)
     equal left.innerHTML right.innerHTML
@@ -351,6 +352,8 @@ module private Adopted =
     let arms = 22
     /// <summary>All 8 server nodes.</summary>
     let show = 8
+    /// <summary>All 7 server nodes.</summary>
+    let showElse = 7
     /// <summary>All 19 server nodes.</summary>
     let nested = 19
 
@@ -385,6 +388,20 @@ let private hydration () =
             state
             [ (fun () -> state.On.Value <- true); (fun () -> state.On.Value <- false) ]
             Adopted.show
+            graph
+
+        let elseState = graph.Run (fun () -> toggle false)
+
+        hydratedTwins
+            (pick showElseExplicit showElseSugar)
+            showElseExplicit
+            showElseSugar
+            elseState
+            [
+                (fun () -> elseState.On.Value <- true)
+                (fun () -> elseState.On.Value <- false)
+            ]
+            Adopted.showElse
             graph
 
         let listed = graph.Run board

@@ -1,6 +1,6 @@
 // Allocation sample of the mount of the 128-row template benchmark row, explicit and sugared.
 // Usage: node benchmarks/frameworks/sugar-alloc.mjs [--build] [--processes=3] [--mounts=10] [--width=128] [--label=alloc-template-row] [--out=<dir>]
-// Writes <out>/<label>.json with every allocating function of each sample, not only the largest.
+// Writes <out>/<label>.json with every allocating function of each sample.
 import { chromium } from "@playwright/test";
 import { spawn, execFileSync } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -67,7 +67,7 @@ try {
     await page.goto(`http://127.0.0.1:${port}/benchmarks/frameworks/index.html`);
     await page.waitForFunction(() => window.frameworkPerf);
     const cdp = await page.context().newCDPSession(page);
-    // Odd processes sample the sugared mode first, so the order of the modes does not favour either.
+    // Odd processes sample the sugared mode first.
     for (const mode of replicate % 2 ? [...modes].reverse() : modes) {
       // One mount first, so one-time definition compilation is outside the sample.
       await page.evaluate(({ mode, width }) => { const warm = window.frameworkPerf.prepare(mode, width, "mount", 1); warm.run(); warm.cleanup(); }, { mode, width });

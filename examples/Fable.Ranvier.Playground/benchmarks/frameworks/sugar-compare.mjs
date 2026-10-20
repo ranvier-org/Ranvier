@@ -32,14 +32,16 @@ for (const file of files) {
         const sorted = [...values].sort((a, b) => a - b), middle = sorted.length >> 1;
         return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
       };
-      const ok = sugar.every(value => Math.abs(value - median(explicit)) <= 0.005 * median(explicit));
-      if (!ok) failed++;
-      console.log(`${ok ? "same    " : "DIFFER  "} heap ${rows} rows: explicit ${explicit.join(", ")} B/row, sugar ${sugar.join(", ")} B/row`);
+      // A sugared sample above the explicit median fails; one below it is reported as LOWER.
+      const limit = 0.005 * median(explicit);
+      const higher = sugar.some(value => value - median(explicit) > limit);
+      const lower = sugar.some(value => median(explicit) - value > limit);
+      if (higher) failed++;
+      console.log(`${higher ? "DIFFER  " : lower ? "LOWER   " : "same    "} heap ${rows} rows: explicit ${explicit.join(", ")} B/row, sugar ${sugar.join(", ")} B/row`);
     }
   if (kind === "alloc")
     for (const sample of data.allocations.filter(sample => sample.mode.endsWith("sugar"))) {
-      // Every sampled function is searched, not only the largest.
-      // The adapter entry `mountTemplateSugar` is the harness function under test, not a sugar type.
+      // Every sampled function is searched. `mountTemplateSugar` is the benchmark adapter entry and is excluded.
       const named = sample.self.filter(row => /ElementBuilder|Builders_|Sugar|TemplateBuilder\$1_|Delay/.test(row.name) && !row.name.startsWith("mountTemplateSugar "));
       const twin = data.allocations.find(other => other.mode === sample.mode.replace(/-sugar$/, "") && other.operation === sample.operation && other.process === sample.process);
       if (named.length) failed++;

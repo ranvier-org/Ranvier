@@ -123,7 +123,7 @@ let demoExplicit =
                         |]
                 |])
 
-/// <summary>The setup of <c>demoExplicit</c>, which both screens share.</summary>
+/// <summary>The setup of <c>demoSugar</c>, equal to the setup of <c>demoExplicit</c>.</summary>
 let private demoSetup =
     fun (_: Setup) (state: DemoState) ->
         {

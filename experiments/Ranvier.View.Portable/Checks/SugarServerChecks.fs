@@ -184,5 +184,5 @@ let cases: (string * (unit -> unit)) array =
         "control-flow sugar shares its explicit twins' layouts and hashes", sameLayouts flowPairs
         "control-flow sugar renders its explicit twins' server HTML", sameServerHtml flowServerPairs
         "a hidden show writes a zero-root arm marked with the shared empty arm's hash", showOffMarkup
-        "show, showElse and forEachFixed build their definitions once per call", definitionsBuiltOncePerCall
+        "show, showElse, forEach and forEachFixed build their definitions once per call", definitionsBuiltOncePerCall
     |]

@@ -1,6 +1,8 @@
 # View sugar design (plan Task 10)
 
-> **Approved 2026-10-19** with every recommended answer to its open questions. Nothing below is implemented, compiled or measured. API names and signatures are design sketches. The plan requires the CE shapes to be proved with the F# compiler before they are accepted.
+> **Status 2026-10-20:** implemented on `feat/view-sugar`; section 9 records the measurements. The text below is the approved design and its amendments.
+>
+> **Approved 2026-10-19** with every recommended answer to its open questions. The sections below were written before the implementation as design sketches; the CE shapes were then proved with the F# compiler.
 >
 > **Amended 2026-10-20 after the compiler probe** (delivery step 1, run at `ca03e98`):
 >

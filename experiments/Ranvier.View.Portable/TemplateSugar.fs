@@ -1,13 +1,12 @@
 namespace Ranvier.View.Foundation.Sugar
 
-open System
 open Ranvier.View.Foundation.Representation
 open Ranvier.View.Foundation.Template
 
 /// <summary>Opt-in template sugar: element computation expressions and control flow with inline definitions.</summary>
 [<AutoOpen>]
 module Builders =
-    /// <summary>The children of one element, built while its template is built; <c>Run</c> returns the element.</summary>
+    /// <summary>An element's children, built with its template; <c>Run</c> returns the element.</summary>
     /// <remarks>
     /// A string yields static text, an <c>'inst -> string</c> a text slot and a <c>Source</c> a direct text slot, as the
     /// three <c>t.text</c> overloads do. A yielded lambda infers its parameter type from its own body; write

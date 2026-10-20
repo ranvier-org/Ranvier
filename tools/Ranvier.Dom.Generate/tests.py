@@ -156,6 +156,10 @@ with tempfile.TemporaryDirectory() as folder:
         body = re.search(r"^type " + builder + r"<'inst>.*?(?=^[^\s#])", handwritten, re.M | re.S)
         assert body, builder + " must be declared in Template.fs"
         builder_members[builder] = set(re.findall(r"^    member (?:_|this)\.(\w+)", body.group(0), re.M))
+    sugar_names = set(re.findall(r"member _\.``(\w+)`` ?\(\[<ParamArray>\]", sflat))
+    assert len(sugar_names) == 112
+    clashes = sugar_names & builder_members["TemplateBuilder"]
+    assert not clashes, "an intrinsic TemplateBuilder member would shadow the sugar members " + repr(sorted(clashes))
     generator = (root / "Program.fs").read_text(encoding="utf-8")
     reserved_block = generator.split("    let reserved =", 1)[1].split("    let authoringRenames", 1)[0]
     reserved = {builder: set(re.findall(r'"(\w+)"', names)) for builder, names in re.findall(r'"(\w+Builder)",\s*set\s*\[(.*?)\]', reserved_block, re.S)}

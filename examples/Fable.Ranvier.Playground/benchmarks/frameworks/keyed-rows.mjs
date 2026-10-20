@@ -1,4 +1,4 @@
-// Keyed-list benchmark: js-framework-benchmark operations for ranvier (t.each), ranvier-sugar (forEachFixed) and Solid 2 (<For>). The default modes are all three.
+// Keyed-list benchmark: js-framework-benchmark operations for ranvier (t.each), ranvier-sugar (forEachFixed) and Solid 2 (<For>). The default modes are all three. `--profile` result files list every sampled allocating function.
 // Usage: node benchmarks/frameworks/keyed-rows.mjs [--build|--bundle] [--profile [--repeats=10]] [--ops=a,b] [--modes=a,b] [--pairs=a:b,c:d] [--shuffle] [--pin] [--label=<name>] [--processes=3] [--rounds=15]
 import { chromium } from "@playwright/test";
 import { spawn, execFileSync } from "node:child_process";
