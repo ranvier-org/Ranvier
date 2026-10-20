@@ -203,11 +203,41 @@ jobs:
       - name: Run the playground tests
         run: npm test
 
+  # The Fable.Ranvier.Anime bindings compiled with Fable: the jsdom value checks on a mocked clock, the emit checks of the
+  # bindings and their call sites, and the bindings bundle-size budget (fable/Ranvier.Anime.Tests/size.mjs).
+  anime:
+    name: Anime bindings
+    needs: changes
+    if: needs.changes.outputs.docs != 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: fable/Ranvier.Anime.Tests
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      # The suite requires Node 26 or newer (package.json engines).
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '26'
+          cache: npm
+          cache-dependency-path: fable/Ranvier.Anime.Tests/package-lock.json
+      - name: Install npm packages
+        run: npm ci
+      - name: Restore tools
+        run: dotnet tool restore
+        working-directory: .
+      # npm test compiles the suite, runs the value and emit checks, then the bundle-size check.
+      - name: Run the bindings tests
+        run: npm test
+
   # The one CI check that branch rules require: it fails when any job failed or was cancelled, and passes when the
   # build and test jobs were skipped for a documentation-only change.
   result:
     name: CI result
-    needs: [changes, scripts, dotnet, aot, packages, format, fable, playground]
+    needs: [changes, scripts, dotnet, aot, packages, format, fable, playground, anime]
     if: always()
     runs-on: ubuntu-latest
     steps:
