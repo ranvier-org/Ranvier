@@ -1,0 +1,150 @@
+{
+  "glue": {
+    "presence": {
+      "motion": {
+        "raw": 242232,
+        "gzip": 72894
+      },
+      "handWritten": {
+        "raw": 240972,
+        "gzip": 72405
+      },
+      "deltaGzip": 489,
+      "budgetGzip": 900,
+      "withinBudget": true
+    },
+    "flip": {
+      "motion": {
+        "raw": 269534,
+        "gzip": 80707
+      },
+      "handWritten": {
+        "raw": 268597,
+        "gzip": 80371
+      },
+      "deltaGzip": 336,
+      "budgetGzip": 600,
+      "withinBudget": true
+    }
+  },
+  "isolation": {
+    "on": {
+      "own": [],
+      "found": [],
+      "foreign": []
+    },
+    "appear": {
+      "own": [],
+      "found": [],
+      "foreign": []
+    },
+    "enter": {
+      "own": [],
+      "found": [],
+      "foreign": []
+    },
+    "exit": {
+      "own": [],
+      "found": [],
+      "foreign": []
+    },
+    "presence": {
+      "own": [],
+      "found": [],
+      "foreign": []
+    },
+    "fade": {
+      "own": [],
+      "found": [],
+      "foreign": []
+    },
+    "collapse": {
+      "own": [],
+      "found": [],
+      "foreign": []
+    },
+    "flip": {
+      "own": [
+        "AutoLayout",
+        "WAAPIAnimation",
+        "Timeline"
+      ],
+      "found": [
+        "AutoLayout",
+        "WAAPIAnimation",
+        "Timeline"
+      ],
+      "foreign": []
+    },
+    "follow": {
+      "own": [],
+      "found": [],
+      "foreign": []
+    },
+    "animateOn": {
+      "own": [],
+      "found": [],
+      "foreign": []
+    },
+    "draw": {
+      "own": [],
+      "found": [],
+      "foreign": []
+    },
+    "morph": {
+      "own": [],
+      "found": [],
+      "foreign": []
+    },
+    "scroll": {
+      "own": [
+        "ScrollObserver"
+      ],
+      "found": [
+        "ScrollObserver"
+      ],
+      "foreign": []
+    },
+    "drag": {
+      "own": [
+        "Draggable"
+      ],
+      "found": [
+        "Draggable"
+      ],
+      "foreign": []
+    },
+    "split": {
+      "own": [
+        "TextSplitter"
+      ],
+      "found": [
+        "TextSplitter"
+      ],
+      "foreign": []
+    }
+  },
+  "helpers": {
+    "experiments/Ranvier.View.Anime/Motion.js": {
+      "helpers": 3,
+      "seamAdapters": 2,
+      "other": 0
+    },
+    "src/Fable.Ranvier.Anime/Params.js": {
+      "helpers": 0,
+      "seamAdapters": 0,
+      "other": 0
+    },
+    "src/Fable.Ranvier.Anime/Reactive.js": {
+      "helpers": 0,
+      "seamAdapters": 0,
+      "other": 0
+    },
+    "src/Fable.Ranvier.Anime/Testing.js": {
+      "helpers": 0,
+      "seamAdapters": 0,
+      "other": 0
+    }
+  },
+  "withinBudget": true
+}
