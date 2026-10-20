@@ -1509,6 +1509,14 @@ and [<Sealed; AllowNullLiteral>] internal AmbientCell() =
     val mutable Hosting: obj
 
 /// <summary>
+/// The queue item that runs a graph's queued projection passes. Carries no id, so a trace records no node for it.
+/// </summary>
+[<Sealed>]
+type internal PassDrain(run: unit -> unit) =
+    interface IScheduled with
+        member _.Execute() = run ()
+
+/// <summary>
 /// Owns the tracking context and the construction-time policy. One graph is a
 /// single consistency domain; on .NET that also means a single thread of
 /// mutation, which is what <c>GraphOptions.Dispatcher</c> exists to enforce.
@@ -1583,18 +1591,23 @@ type Graph(options: GraphOptions) =
     /// <c>queue</c> is. A flush runs every queued pass before the next <c>queue</c> item.
     /// </summary>
     /// <remarks>
-    /// A reader run ahead of a queued pass reads the previous keys, rows or lookup values.
+    /// <para>A reader run ahead of a queued pass reads the previous keys, rows or lookup values.</para>
+    /// <para>
+    /// While a pass is queued, <c>queue</c> holds <c>passDrain</c> at or after <c>queueHead</c>, so a non-empty
+    /// <c>queue</c> is the one test for queued work. A pass queued inside a flush puts <c>passDrain</c> at the head
+    /// of <c>queue</c>. A flush runs the passes queued before it starts ahead of its first item.
+    /// </para>
     /// </remarks>
     let passes = ResizeArray<IScheduled>()
 
-    /// <summary>
-    /// Entries written to <c>passes</c>. Reset to 0 only when <c>RunPasses</c> drains the buffer, so after a pass
-    /// throws it can be nonzero with nothing left to run.
-    /// </summary>
+    /// <summary>Entries written to <c>passes</c>. Reset to 0 when <c>RunPasses</c> drains the buffer.</summary>
     let mutable passCount = 0
 
     /// <summary>Next entry of <c>passes</c> to run.</summary>
     let mutable passHead = 0
+
+    /// <summary>The <c>queue</c> item that runs <c>RunPasses</c>. Created by the first queued pass.</summary>
+    let mutable passDrain: IScheduled = Unchecked.defaultof<IScheduled>
 
 #if !FABLE_COMPILER
     /// <summary>
@@ -2242,6 +2255,9 @@ type Graph(options: GraphOptions) =
     member internal this.SchedulePass(item: IScheduled) =
         Tracer.Schedule (this, item, passCount - passHead)
 
+        if passHead = passCount then
+            this.QueueDrain ()
+
         if passCount < passes.Count then
 #if FABLE_COMPILER
             Platform.setEntryAt passCount passes item
@@ -2253,20 +2269,49 @@ type Graph(options: GraphOptions) =
 
         passCount <- passCount + 1
 
-    /// <summary>True while a pass or an item is queued.</summary>
-    member private _.HasQueued = queueHead < queueCount || passHead < passCount
+    /// <summary>
+    /// Queues <c>passDrain</c> for a pass queued while none is pending: at the head of <c>queue</c> when a spent slot
+    /// precedes it, as inside a flush, and at the tail otherwise.
+    /// </summary>
+    member private this.QueueDrain() =
+        if Platform.isNull (box passDrain) then
+            passDrain <- PassDrain (fun () -> this.RunPasses ())
+
+        if queueHead > 0 then
+            queueHead <- queueHead - 1
+#if FABLE_COMPILER
+            Platform.setEntryAt queueHead queue passDrain
+#else
+            queue[queueHead] <- passDrain
+#endif
+        else
+            if queueCount < queue.Count then
+#if FABLE_COMPILER
+                Platform.setEntryAt queueCount queue passDrain
+#else
+                queue[queueCount] <- passDrain
+#endif
+            else
+                queue.Add passDrain
+
+            queueCount <- queueCount + 1
 
     /// <summary>Runs the queued passes, including those queued by a pass, and empties the pass buffer.</summary>
+    /// <remarks>A pass that throws leaves the passes after it queued, with <c>passDrain</c> queued to run them.</remarks>
     member private this.RunPasses() =
-        while passHead < passCount do
-            let item = Platform.entryAt passHead passes
-            Tracer.Dequeue (this, item)
-            Platform.releaseSlot passes passHead
-            passHead <- passHead + 1
-            item.Execute ()
-
-        passHead <- 0
-        passCount <- 0
+        try
+            while passHead < passCount do
+                let item = Platform.entryAt passHead passes
+                Tracer.Dequeue (this, item)
+                Platform.releaseSlot passes passHead
+                passHead <- passHead + 1
+                item.Execute ()
+        finally
+            if passHead < passCount then
+                this.QueueDrain ()
+            else
+                passHead <- 0
+                passCount <- 0
 
     /// <summary>
     /// Runs every queued effect. Re-entrant calls are absorbed: an effect that
@@ -2291,21 +2336,21 @@ type Graph(options: GraphOptions) =
             let previousAmbient = this.EnterAmbient ()
 
             try
-                // `passCount` is 0 after every drained `RunPasses`. A nonzero count with nothing queued runs an empty
-                // `RunPasses`, which resets it.
-                while queueHead < queueCount || passCount <> 0 do
-                    if passCount <> 0 then
-                        this.RunPasses ()
-                    else
-                        let item = Platform.entryAt queueHead queue
-                        Tracer.Dequeue (this, item)
+                // Passes queued before the flush run ahead of the effects queued with them. A pass queued during the
+                // flush puts `passDrain` at the head of the queue.
+                if passCount <> 0 then
+                    this.RunPasses ()
 
-                        // Released as it is consumed, so a disposed effect is not
-                        // kept alive by a spent slot until a later turn overwrites
-                        // it. A no-op under Fable; see `Platform.releaseSlot`.
-                        Platform.releaseSlot queue queueHead
-                        queueHead <- queueHead + 1
-                        item.Execute ()
+                while queueHead < queueCount do
+                    let item = Platform.entryAt queueHead queue
+                    Tracer.Dequeue (this, item)
+
+                    // Released as it is consumed, so a disposed effect is not
+                    // kept alive by a spent slot until a later turn overwrites
+                    // it. A no-op under Fable; see `Platform.releaseSlot`.
+                    Platform.releaseSlot queue queueHead
+                    queueHead <- queueHead + 1
+                    item.Execute ()
 
                 // Reached only on a clean drain. An effect that throws leaves
                 // the cursor where it stopped and the rest still queued, for
@@ -2327,7 +2372,7 @@ type Graph(options: GraphOptions) =
     /// stale read, they run once the outermost body or read has finished.
     /// </summary>
     member internal this.RequestFlush() =
-        if this.HasQueued && batchDepth = 0 then
+        if queueHead < queueCount && batchDepth = 0 then
             if
                 pullDepth = 0
                 && Platform.isNull (box current)
@@ -2490,7 +2535,11 @@ type Graph(options: GraphOptions) =
         this.Detached (owner, owner.DisposeScope)
         Tracer.DischargeEnd owner
 
-        if batchDepth = 0 && not flushing && this.HasQueued then
+        if
+            batchDepth = 0
+            && not flushing
+            && queueHead < queueCount
+        then
             flushOwed <- true
 
     /// <summary>
@@ -2500,7 +2549,7 @@ type Graph(options: GraphOptions) =
     member internal this.Retire(owner: Owner) =
         this.Detached (owner, owner.Dispose)
 
-        if this.HasQueued then
+        if queueHead < queueCount then
             this.RequestFlush ()
 
     interface ILateRunner with
@@ -2520,7 +2569,7 @@ type Graph(options: GraphOptions) =
                             owner.RecordError ex
                 )
 
-                if this.HasQueued then
+                if queueHead < queueCount then
                     this.RequestFlush ()
             finally
 #if !FABLE_COMPILER
