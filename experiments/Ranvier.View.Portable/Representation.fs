@@ -325,25 +325,24 @@ let internal escapeHtml (attribute: bool) (value: string) : string =
 [<Sealed>]
 type HtmlSink() =
 #if FABLE_COMPILER
-    let parts = ResizeArray<string>()
+    let mutable text = ""
 
     member _.Append(value: string) =
-        parts.Add value
+        text <- text + value
 
     member _.Mark() =
-        parts.Count
+        text.Length
 
     /// <summary>Drops everything appended after <c>mark</c>.</summary>
     member _.Truncate(mark: int) =
-        parts.RemoveRange (mark, parts.Count - mark)
+        text <- text.Substring (0, mark)
 
-    /// <summary>Writes the buffer in order.</summary>
+    /// <summary>Writes the buffer in order, as one segment under Fable.</summary>
     member _.Segments(write: string -> unit) =
-        for part in parts do
-            write part
+        if text.Length > 0 then
+            write text
 
-    override _.ToString() =
-        System.String.Join ("", parts)
+    override _.ToString() = text
 #else
     let builder = System.Text.StringBuilder ()
 
