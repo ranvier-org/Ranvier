@@ -1,6 +1,6 @@
 /// <summary>
-/// The server render of the lifecycle fixtures equals the render of its twin without Motion parts, under the default
-/// <c>Reject</c> policy. Run on .NET with <c>dotnet run</c>.
+/// The server render of every README sample and of the presets equals the render of its twin without Motion parts,
+/// under the default <c>Reject</c> policy. Run on .NET with <c>dotnet run</c>.
 /// </summary>
 module ServerChecks
 
@@ -11,6 +11,55 @@ open Ranvier.View.Foundation.Representation
 open Ranvier.View.Foundation.Template
 open Ranvier.View.Foundation.Sugar
 open Ranvier.View.Anime
+open Fixtures
+
+let private boardTwinOf (selected: bool) =
+    Component.template
+        (fun _ (cards: Card array) ->
+            {
+                Cards = Api.createSignal cards
+                Selected = Api.createSignal selected
+            })
+        (section () {
+            ul (Attrs.className "cards") { forEach (fun card -> card.Id) (fun b -> b.Cards.Value) (li () { fun current -> (current ()).Title }) }
+            show (fun b -> b.Selected.Value) (p () { "Selected" })
+        })
+
+let private selectedBoard =
+    Component.template
+        (fun _ (cards: Card array) ->
+            {
+                Cards = Api.createSignal cards
+                Selected = Api.createSignal true
+            })
+        (section () {
+            ul (Attrs.className "cards", Motion.flip (LayoutParams (duration = 350, ease = Ease.outQuart))) {
+                forEach
+                    (fun card -> card.Id)
+                    (fun b -> b.Cards.Value)
+                    (li (
+                        Motion.presence (fun _ el -> Anime.animate (el, Anim (opacity = Value.fromTo (0, 1), duration = 240))) (fun _ el ->
+                            Anime.animate (el, Anim (opacity = 0, duration = 180)))
+                    ) {
+                        fun current -> (current ()).Title
+                    })
+            }
+
+            show (fun b -> b.Selected.Value) (p (Motion.fade) { "Selected" })
+        })
+
+let private bannerTwin =
+    Component.template
+        (fun _ (text: string) -> { Text = text })
+        (header () {
+            h1 () { fun b -> b.Text }
+            span () { "*" }
+        })
+
+let private toastsTwin =
+    Component.template
+        (fun _ () -> { Messages = Api.createSignal [||] })
+        (ol () { forEach id (fun (t: Toast) -> t.Messages.Value) (li () { fun message -> message () }) })
 
 type Notes = { Notes: string array }
 
@@ -33,6 +82,41 @@ let private notesTwin =
     Component.template
         (fun _ () -> { Notes = [| "a"; "b" |] })
         (ol () { forEachFixed id (fun (n: Notes) -> n.Notes) (li () { fun (note: string) -> note }) })
+
+let private gaugeTwin =
+    Component.template
+        (fun _ (load: float) ->
+            {
+                Load = Api.createSignal load
+                Label = Api.createSignal "idle"
+            })
+        (div () {
+            div (Attrs.className "bar") { () }
+            span () { fun g -> g.Label.Value }
+        })
+
+let private storyTwin =
+    Component.template
+        (fun _ () ->
+            {
+                Progress = Api.createSignal 0.
+                Seen = Api.createSignal false
+                Puck = Api.createSignal (struct (0., 0.))
+            })
+        (article () {
+            h2 () { "Ranvier" }
+            section () { fun s -> sprintf "%.0f %%" (s.Progress.Value * 100.) }
+            div (Attrs.className "puck") { "drag" }
+        })
+
+let private chartTwin =
+    Component.define
+        (fun _ () ->
+            {
+                Fraction = Api.createSignal 0.
+                Line = Api.createSignal "M0 0 L100 0"
+            })
+        (fun t -> t.element (HtmlTag "svg") [||] [| t.element (HtmlTag "path") [||] [||]; t.element (HtmlTag "path") [||] [||] |])
 
 type Shelf = { Books: string array }
 
@@ -57,13 +141,22 @@ let private presetsTwin =
             ul () { forEachFixed id (fun (s: Shelf) -> s.Books) (li () { fun (book: string) -> book }) }
         })
 
+let private cards = [| { Id = 1; Title = "One" }; { Id = 2; Title = "Two" } |]
+
 let private render (definition: Component<'props>) (props: 'props) =
     Server.render Server.Options.defaults definition props
 
 /// <summary>Each comparison by name: the render with Motion parts and the render of its twin.</summary>
 let comparisons: (string * (unit -> string * string)) array =
     [|
+        "board", (fun () -> render board cards, render (boardTwinOf false) cards)
+        "selected board", (fun () -> render selectedBoard cards, render (boardTwinOf true) cards)
+        "banner", (fun () -> render banner "Hello", render bannerTwin "Hello")
+        "toasts", (fun () -> render toasts (), render toastsTwin ())
         "notes", (fun () -> render notes (), render notesTwin ())
+        "gauge", (fun () -> render gauge 0.5, render gaugeTwin 0.5)
+        "story", (fun () -> render story (), render storyTwin ())
+        "chart", (fun () -> render chart (), render chartTwin ())
         "presets", (fun () -> render presets (), render presetsTwin ())
     |]
 

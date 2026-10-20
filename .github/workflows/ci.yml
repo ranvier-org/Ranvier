@@ -275,9 +275,9 @@ jobs:
         run: git diff --exit-code -- docs/research/motion/bindings-bundle.json
         working-directory: .
 
-  # The Ranvier.View.Anime template parts compiled with Fable: the jsdom checks of every Motion part on a mocked clock
-  # and the bundle budget (fable/Ranvier.View.Anime.Tests/motion-size.mjs); then, on .NET, the server renders of the
-  # fixtures against their twins without Motion parts.
+  # The Ranvier.View.Anime template parts compiled with Fable: the jsdom checks of every Motion part on a mocked clock,
+  # the README sample check, and the bundle budget (fable/Ranvier.View.Anime.Tests/motion-size.mjs); then, on .NET, the
+  # server renders of the README samples against their twins without Motion parts.
   motion-view:
     name: Motion view parts
     needs: changes
@@ -302,7 +302,7 @@ jobs:
       - name: Restore tools
         run: dotnet tool restore
         working-directory: .
-      # npm test compiles the suite, runs the jsdom checks, then the bundle-size check.
+      # npm test compiles the suite, runs the jsdom and README checks, then the bundle-size check.
       - name: Run the Motion part tests
         run: npm test
       # motion-size.mjs rewrites the committed bundle numbers; a difference means they are stale.

@@ -13,6 +13,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <Compile Include="Fixtures.fs" />
         <Compile Include="SizeEntries.fs" />
         <Compile Include="MotionChecks.fs" />
         <Compile Include="ServerChecks.fs" />
