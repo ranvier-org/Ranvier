@@ -181,22 +181,37 @@ let internal rootEnd (start: Node) : Node =
 
 #if FABLE_COMPILER
 /// <summary>The inner exceptions of an <c>AggregateException</c>, held under Fable as an <c>innerException</c> array; empty for any other exception.</summary>
-[<Emit("Array.isArray($0.innerException) ? $0.innerException : []")>]
+[<Emit("$0 != null && Array.isArray($0.innerException) ? $0.innerException : []")>]
 let private aggregated (error: exn) : exn array = jsNative
+#else
+/// <summary>The inner exceptions of an <c>AggregateException</c>; empty for any other exception.</summary>
+let private aggregated (error: exn) : exn array =
+    match error with
+    | :? AggregateException as aggregate -> Seq.toArray aggregate.InnerExceptions
+    | _ -> [||]
 #endif
 
 /// <summary>The first <c>HydrationMismatchException</c> in <c>error</c> or, at any depth, its aggregated inner exceptions.</summary>
 let rec internal findMismatch (error: exn) : HydrationMismatchException option =
     match error with
     | :? HydrationMismatchException as found -> Some found
-#if FABLE_COMPILER
     | _ -> aggregated error |> Array.tryPick findMismatch
-#else
-    | :? AggregateException as aggregate ->
-        aggregate.InnerExceptions
-        |> Seq.tryPick findMismatch
-    | _ -> None
-#endif
+
+/// <summary>
+/// The exceptions of <c>error</c> other than <c>excluded</c>, with every <c>AggregateException</c> at any depth replaced
+/// by its inner exceptions, in depth-first order.
+/// </summary>
+let rec internal failuresBesides (excluded: exn) (error: exn) : exn list =
+    let inner = aggregated error
+
+    if inner.Length > 0 then
+        inner
+        |> Seq.collect (failuresBesides excluded)
+        |> List.ofSeq
+    elif obj.ReferenceEquals (error, excluded) then
+        []
+    else
+        [ error ]
 
 /// <summary>The server node a collected node of a template adopts.</summary>
 type Expectation =
@@ -621,7 +636,10 @@ type internal MountServices =
     /// <summary>The ids of the mount; an instance's setup runs in its window.</summary>
     abstract Identity: IdentityScope
 
-    /// <summary>The cursor of the server nodes an instance adopts; null outside hydration.</summary>
+    /// <summary>
+    /// The cursor of the server nodes an instance adopts, which also records the edits of the instance's first
+    /// commits; null outside hydration.
+    /// </summary>
     abstract Hydration: HydrationCursor
 
     /// <summary>
@@ -743,7 +761,8 @@ let private writeHydrating (cursor: HydrationCursor) (slot: Slot) (node: obj) (v
         cursor.Undo inverse
 
 // A failed write keeps the slot's previous value. During setup the failure aborts the mount; afterwards it is reported.
-// During hydration the first value is compared with the server node before it is written.
+// During hydration the first value is written when it differs from the node's current value, raw content always, and
+// the write is recorded with the hydration cursor.
 let private commit (services: MountServices) (state: obj array) (slot: Slot) (nodeIndex: int) (previousIndex: int) (value: obj) =
     let previous = at state previousIndex
 
@@ -751,7 +770,6 @@ let private commit (services: MountServices) (state: obj array) (slot: Slot) (no
         match slot.Target with
         | TextTarget when obj.ReferenceEquals (previous, unset) ->
             let node = at state (StateNodes + nodeIndex)
-
             let cursor = services.Hydration
 
             if isNull cursor then
@@ -1291,6 +1309,13 @@ let private collectAdopted (roots: Node array) (compiled: Compiled) (state: obj 
             store state (StateNodes + count) (box node)
             count <- count + 1
 
+/// <summary>The definition's compiled form, compiling it on first use.</summary>
+let internal compiledOf (definition: TemplateDefinition) : Compiled =
+    if isNull definition.Compiled then
+        definition.Compiled <- box (compile (definition :?> TemplateComponent))
+
+    definition.Compiled :?> Compiled
+
 /// <summary>
 /// Materialises one instance at the position one step of <c>kind</c> below <c>parent</c>: runs setup, clones the
 /// skeleton or, during hydration, adopts the server nodes at the cursor, binds its slots, events, head entries and
@@ -1306,11 +1331,7 @@ let rec internal materialise
     (b: int)
     =
     let template = definition :?> TemplateComponent
-
-    if isNull definition.Compiled then
-        definition.Compiled <- box (compile template)
-
-    let compiled = definition.Compiled :?> Compiled
+    let compiled = compiledOf definition
     let children = compiled.Children
     let identity = services.Identity
     // The instance's path, taken only when a region or an inlined child sits under it.

@@ -77,6 +77,13 @@ let attachToBody (node: Node) : unit = jsNative
 [<Emit("document.activeElement")>]
 let activeElement () : obj = jsNative
 
+/// <summary>
+/// Replaces the children of <c>target</c> with <c>html</c> parsed by <c>Range.createContextualFragment</c> in the
+/// context of <c>target</c>, with the nodes a document parse of the served page gives.
+/// </summary>
+[<Emit("(() => { const r = $0.ownerDocument.createRange(); r.selectNodeContents($0); $0.replaceChildren(r.createContextualFragment($1)); })()")>]
+let loadServed (target: HTMLElement) (html: string) : unit = jsNative
+
 /// <summary>The template variant of a check, under synchronous and queued commits.</summary>
 let templated (name: string) (check: bool -> unit -> unit) =
     [|

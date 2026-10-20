@@ -70,7 +70,7 @@ The core alone, with no DOM ([trimmed pass](../../research/2026-10-14-core-trimm
 4. Investigated: the queued commit `Queue` (`Scheduling.fs`) stays in the view ([note](../../research/2026-10-19-queued-commits-on-core.md)). Queued bindings are already core effects. Under Fable a dispatcher never sees the graph's own writes, and a write flushes its effects before it returns, so deferring DOM writes would need a core deferred-flush mode. Queued mounts expand templates through `definition.Expand`.
 5. Done: structural view boundaries and live setter-failure handling ([plan](2026-10-19-view-boundaries.md)).
 6. Done: the playground screen migration (Task 7), on mounted hooks, widget integrations and the explicit-batch contract ([notes](../../research/2026-10-19-view-integrations.md)). Owned async cancellation is covered by OwnedAsyncChecks.fs.
-7. Server HTML: precomputed static segments in `renderHtml`, escaping, request isolation; then hydration (Task 9).
+7. Done: server HTML and hydration ([plan](2026-10-19-server-html-hydration.md), [measurements](../../research/2026-10-19-server-html-hydration.md)).
 8. Performance and release acceptance, then sugar (Tasks 8 and 10).
 
 Indexed edges ([#54](https://github.com/shayanhabibi/Ranvier/pull/54)) stay deferred; the core projection pass is 10–26% of remove and swap in the loop profile.
@@ -268,11 +268,16 @@ Contracts: all first-release contracts. Variants: V01–V05. No predetermined pa
 
 Contracts: C09. Risks: G02, G09, G11–G13. Depends on portable proof and stable identity semantics.
 
-- [ ] Extract portable contracts only if the chosen representation requires a separate project; keep browser dependencies out of the server package.
-- [ ] Implement escaped text/attributes, portable property serialization, deterministic identity and request-local scopes; define explicit server pending/error behavior.
-- [ ] Test two concurrent requests for accidental shared state, scope release on failure, and absence of browser lifecycle callbacks.
-- [ ] Define hydration markers, state transfer, escaping and mismatch policy. Test empty/fragment/keyed regions, forms, malformed HTML normalization and server/client differing selections.
-- [ ] Add first-content and hydration benchmarks. Treat streaming, event replay and selective hydration as separate later proposals.
+- [x] Extract portable contracts only if the chosen representation requires a separate project; keep browser dependencies out of the server package.
+  Evidence: server HTML plan Task 1 (the portable project and its packaging check).
+- [x] Implement escaped text/attributes, portable property serialization, deterministic identity and request-local scopes; define explicit server pending/error behavior.
+  Evidence: server HTML plan Tasks 4 (writer and escaping), 5 (request scopes), 6 (positional identity), 7 (property serialisation) and 9 (boundary attempts and `ServerPendingException`).
+- [x] Test two concurrent requests for accidental shared state, scope release on failure, and absence of browser lifecycle callbacks.
+  Evidence: server HTML plan Task 5 (concurrent teardown, attempt and request disposal) and Task 7 (the browser-only Reject/Omit policy).
+- [x] Define hydration markers, state transfer, escaping and mismatch policy. Test empty/fragment/keyed regions, forms, malformed HTML normalization and server/client differing selections.
+  Evidence: server HTML plan Tasks 10–11 (markers and rejected markup) and 13–18 (hydration, mismatch policy, regions, arms, boundaries, state transfer, forms and Chromium normalisation).
+- [x] Add first-content and hydration benchmarks. Treat streaming, event replay and selective hydration as separate later proposals.
+  Evidence: server HTML plan Tasks 3 and 12 (first content on .NET and under Node) and 20 (hydration in Chromium).
 
 **Exit:** real server HTML plus tested hydration; client-only rendering is no longer relied on for initial indexable content.
 

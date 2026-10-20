@@ -1839,6 +1839,13 @@ let private templateElement () =
 
     equal (true, "A void element has children at p/br") (restructured (fun t -> t.p [||] [| t.element (HtmlTag "br") [||] [| t.span [||] [||] |] |]))
 
+let private stateScriptEscapes () =
+    equal
+        "<script type=\"application/json\" id=\"s&quot;\">{\"a\":\"\\u003c/script>\\u2028\\u003c/script>\\u2028\"}</script>"
+        (Server.stateScript "s\"" "{\"a\":\"</script>\u2028</script>\u2028\"}")
+
+    equal "<script type=\"application/json\" id=\"s\">[\"\\u2029\\u003c!--&amp;>\"]</script>" (Server.stateScript "s" "[\"\u2029<!--&amp;>\"]")
+
 let cases: (string * (unit -> unit)) array =
     [|
         "CreateId numbers inlined children in pre-order and puts an inlined child's rows under its path", nestedIdentity
@@ -1917,6 +1924,7 @@ let cases: (string * (unit -> unit)) array =
         "a template in a view hole is checked against the template and authored elements enclosing it", authoredContext
         "a region inside a textarea or title fails at plan compile", rcdataRegion
         "void elements with children and template elements fail at plan compile", templateElement
+        "stateScript escapes the script end and line separators", stateScriptEscapes
     |]
 
 #if !FABLE_COMPILER

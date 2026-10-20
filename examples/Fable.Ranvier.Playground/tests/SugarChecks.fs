@@ -341,18 +341,18 @@ let private hydratedTwins
     sugarMount.Dispose ()
     equal left.innerHTML right.innerHTML
 
-/// <summary>Adoption counts with lists and arms mounting fresh; update this block when list and arm hydration is merged in.</summary>
+/// <summary>The number of server nodes each hydrated pair adopts.</summary>
 module private Adopted =
     /// <summary>All 6 server nodes.</summary>
     let bench = 6
-    /// <summary>6 of 21 server nodes.</summary>
-    let keyed = 6
-    /// <summary>6 of 22 server nodes.</summary>
-    let arms = 6
-    /// <summary>7 of 8 server nodes.</summary>
-    let show = 7
-    /// <summary>5 of 19 server nodes.</summary>
-    let nested = 5
+    /// <summary>All 21 server nodes.</summary>
+    let keyed = 21
+    /// <summary>All 22 server nodes.</summary>
+    let arms = 22
+    /// <summary>All 8 server nodes.</summary>
+    let show = 8
+    /// <summary>All 19 server nodes.</summary>
+    let nested = 19
 
 /// <summary>Each pair hydrated from the explicit twin's HTML and from the sugared twin's HTML.</summary>
 let private hydration () =

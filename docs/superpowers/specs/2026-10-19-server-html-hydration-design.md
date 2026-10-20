@@ -228,8 +228,8 @@ Hydration runs the template path with a cursor instead of a clone:
 - **Arms.** The arm memo selects as in a mount. The start marker's hash must equal the selected definition's hash, then the arm adopts its rows.
 - **View holes.** The content between the markers is removed and the view mounted fresh. Authored `Program`/`Tree` views are not hydrated.
 - **Boundaries.**
-  - `[c` and the content's reads are ready on the client: the content hydrates in place; no pending phase.
-  - `[c` and a content read is pending on the client: the server nodes stay between the markers as the boundary's pending view; the content mounts detached as usual and replaces them at reveal.
+  - `[c` and the content's reads are ready on the client by the end of the root mount's build: the content hydrates in place and keeps its nodes; no pending phase.
+  - `[c` and a content read is still pending on the client at the end of the root mount's build: the content's one setup binds the server nodes, which are then held detached; a copy of the server nodes, taken before the content's first commits, stays between the markers as the boundary's inert pending view; the reveal replaces the copy with the bound nodes. Content whose read is settled by a `mounted` hook is detached at the end of the build and revealed within the same `hydrate`.
   - `[p`: the pending view hydrates in place; the content mounts detached and reveals as usual.
   - `[e`: the nodes between the markers are removed and the boundary mounts fresh, with a new content setup.
 
@@ -239,6 +239,7 @@ Hydration runs the template path with a cursor instead of a clone:
 
 - **Value differences** (text, attribute and serialised property values, list items with equal row shape) are corrected by the first commit and not reported.
 - **Structural differences** (a missing or different element, a wrong region kind, a different arm hash, extra or missing rows, a missing root marker) raise a `HydrationMismatchException` carrying the logical path, the expected node and the found node. It is caught at the nearest enclosing region, reported once through `report`, the region's server nodes between its markers are removed, and the region mounts fresh. A mismatch outside every region clears the root marker pair's content and mounts the root fresh.
+- A root start marker without a matching end marker is a structural mismatch at `#k` (the first unclosed start marker among the root's logical positions) or at `root`. Every node after the root start marker is the root's content: it is removed, and the root mounts fresh at the end of the host. Foreign siblings after an unclosed root marker are removed with it. A host without a root marker mounts the root fresh at the end of the host, after its children.
 - `Strict = true` raises the exception from `hydrate` instead, after disposing what was created. Tests use it.
 - Structure is replaced by region, not patched node by node.
 
@@ -250,7 +251,7 @@ Server and client select different arms when their state differs (time, locale, 
 
 State transfer is explicit and application-owned.
 
-- The server writes application state with `Server.stateScript id json`: `<script type="application/json" id="…">`, with `<` written as `<`, and U+2028/U+2029 as ` `/` `. The application chooses the serialiser.
+- The server writes application state with `Server.stateScript id json`: `<script type="application/json" id="…">`, with `<` written as `\u003c`, and U+2028/U+2029 as `\u2028`/`\u2029`. The application chooses the serialiser.
 - The client reads it with `Hydration.readState id` (the element's `textContent`) and passes the decoded value as the root's props, or writes it into sources before `hydrate`.
 - An async value the server resolved before rendering is seeded on the client by the application: a `createAsyncSource` settled with the transferred value, or a prop. A seeding option on `createAsync`, if one is wanted, belongs in the core.
 - Exceptions are not transferred; an `[e` boundary re-runs on the client.
@@ -264,7 +265,7 @@ State transfer is explicit and application-owned.
 5. Decision: during hydration a serialised property is written only when the server-written attribute differs from the client's serialisation, so a control the user edited before hydration keeps the edit — fewer writes, and no lost typing without event replay — if wrong, the application's state and the control disagree until the next write or input event, where overwriting would have shown the application's value. **(review)**
 6. Decision: hydration markers are always written; no non-hydratable output mode — one output format to test, and the added bytes are small — if wrong, static-only pages carry comments they never need.
 7. Decision: arm start markers carry an FNV-1a structural hash of the selected definition — definitions have no identity shared across .NET and Fable, and shape checks alone accept two arms with equal shape and different static text — if wrong, hash collisions hydrate a wrong arm (bounded by also checking shape), or hash computation adds plan-compile cost.
-8. Decision: boundary start markers record the chosen view; server content with a pending client keeps the server nodes as the pending view; a server error view re-renders on the client — the error object cannot be transferred, and keeping server content avoids a flash of the loading view — if wrong, content shows server values until reveal with no interactivity, and is then replaced, losing focus inside it.
+8. Decision: boundary start markers record the chosen view; server content with a pending client shows a copy of the server nodes as the pending view; a server error view re-renders on the client — the error object cannot be transferred, and keeping server content avoids a flash of the loading view — if wrong, content shows server values until reveal with no interactivity, and is then replaced; focus inside it is lost when hydration detaches the bound nodes; each `[c` boundary's server nodes are cloned once per hydration.
 9. Decision: an empty text slot writes `<!--_-->` — the parser creates no node for empty text, and the walk needs one node at that position — if wrong, one comment per empty slot in output.
 10. Decision: a separator `<!--!-->` between rows whose boundary is text-to-text, removed during hydration — the parser merges adjacent text — if wrong, a removal per such boundary during hydration.
 11. Decision: zero-root rows emit `<!--ranvier:row-->` on the server — the client already uses that comment, so adoption is uniform — if wrong, none beyond a fixed comment string becoming protocol.
@@ -325,7 +326,10 @@ Hydration (jsdom unless noted; each with `Strict = true` for the matching case):
 30. "queued-commit hydration raises NotSupportedException"; "an authored root raises".
 31. "state script round-trips JSON containing </script> and U+2028".
 32. Forms (Chromium): "an input edited before hydration keeps its value when the server and client values agree"; "checkbox, textarea and select hydrate their server state"; "focus inside a hydrated input survives hydration".
+    - The first and third names are `editedInputsKept` ("inputs edited before hydration keep their values, focus and selection when the server and client values agree"), and the second is `formsHydrate` ("forms hydrate a leading line feed, checked and selectedIndex without writes, and write the client's differing values"). Both run in Chromium through `hydrationCases`.
+    - The empty text slot in an RCDATA element (preflight ruling C14, test name `textareaEmptySlot`) is `emptyRcdataText` ("an empty text slot in a textarea the server left empty hydrates into a created text node"), in Chromium through `hydrationCases`.
 33. Normalisation (Chromium): for each content-model rule, the rejected markup parses differently from the client DOM, and every accepted fixture's server HTML parses to the client DOM's serialisation.
+34. Journeys (jsdom, and Chromium through `hydrationCases`), each on one host and one graph, with the visible DOM and the exact reports asserted at every step: `hydrationJourney` (events and two-way input, row moves, a region mismatch reported once and recovered by an update, disposal, then a second render hydrated cleanly with its own row counter), `retryJourney` (pending content fails into its error view, and a retry continues the row counter), `pendingListJourney` (a list update while `[c` content is pending leaves the inert copy untouched), `recoveryJourney` (a re-rendered root takes interaction and disposes, then a second render hydrates cleanly) and `headJourney` (head entries adopted, withdrawn at disposal, and adopted afresh in the next round).
 
 Mutation checks before review: removing the logical-sibling skip, the arm hash check, the empty-text placeholder, the row separator, the region-level mismatch catch, the attempt-owner disposal and the escape fast path must each fail a test.
 

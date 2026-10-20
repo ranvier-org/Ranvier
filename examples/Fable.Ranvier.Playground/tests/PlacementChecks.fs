@@ -1007,6 +1007,68 @@ let private templateArmsReplace queued () =
     equal [ "arm 0 true"; "arm cleanup 0"; "arm 1 true" ] (List.ofSeq armProbe.Log)
     mounted.Dispose ()
 
+let mutable private reselect: Signal<int> = Unchecked.defaultof<_>
+
+let private reselectingSpan =
+    Component.define
+        (fun _ (payload: unit -> int) ->
+            if payload () = 1 then
+                reselect.Value <- 2
+
+            payload)
+        (fun t ->
+            t.span
+                [|
+                    t.Hooks.mounted (fun payload (node: HTMLSpanElement) ->
+                        let key = payload ()
+                        armProbe.Log.Add (sprintf "arm %d %b" key (armProbe.Host.contains node))
+                        fun () -> armProbe.Log.Add (sprintf "arm cleanup %d" key))
+                |]
+                [| t.text (fun payload -> string (payload ())) |])
+
+let private reselectingHost =
+    Component.define (fun _ (arm: Signal<int>) -> arm) (fun t ->
+        t.div
+            [||]
+            [|
+                t.branch (fun (arm: Signal<int>) -> arm.Value) (fun key -> t.arm reselectingSpan key)
+            |])
+
+let private reentrantArmSelection queued () =
+    use graph = new Graph ()
+    reselect <- graph.Run (fun () -> Api.createSignal 1)
+    armProbe <- { Log = ResizeArray (); Host = host () }
+
+    let mounted =
+        mountTemplate queued graph strict armProbe.Host (Component.render reselectingHost reselect)
+
+    let first = List.ofSeq armProbe.Log, armProbe.Host.textContent
+    graph.Run (fun () -> reselect.Value <- 0)
+    mounted.Flush ()
+    graph.Run (fun () -> reselect.Value <- 1)
+    mounted.Flush ()
+    let second = List.ofSeq armProbe.Log, armProbe.Host.textContent
+    graph.Run (fun () -> reselect.Value <- 3)
+    mounted.Flush ()
+
+    equal
+        (([ "arm 2 true" ], "2"),
+         ([ "arm 2 true"; "arm cleanup 2"; "arm 0 true"; "arm cleanup 0"; "arm 2 true" ], "2"),
+         [
+             "arm 2 true"
+             "arm cleanup 2"
+             "arm 0 true"
+             "arm cleanup 0"
+             "arm 2 true"
+             "arm cleanup 2"
+             "arm 3 true"
+         ],
+         "3",
+         1.)
+        (first, second, List.ofSeq armProbe.Log, armProbe.Host.textContent, (armProbe.Host.querySelectorAll "span").length)
+
+    mounted.Dispose ()
+
 let private failingDiv =
     Component.define (fun _ (log: ResizeArray<string>) -> log) (fun t ->
         t.div
@@ -1534,6 +1596,9 @@ let cases: (string * (unit -> unit)) array =
                 "a row added by a list pass runs its hook after the pass lays it out, and a batch that adds and removes a row creates none"
                 templateRowsAfterLayout
             templated "an arm's hook runs after the arm is moved in; a replaced arm's cleanup runs before the next arm's hook" templateArmsReplace
+            templated
+                "an arm whose setup selects another arm is replaced before its hooks run, and each placed arm's hook runs once, in selection order"
+                reentrantArmSelection
             templated "a hook failure during mountWith unwinds the mount and rethrows" templateInitialHookFailure
             templated "a later hook failure goes to report once and the instance stays" templateLaterHookFailure
             templated "a mount inside Api.batch runs its hooks after the batch and reports their failures" templateMountInBatch

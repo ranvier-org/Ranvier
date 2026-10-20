@@ -1,6 +1,7 @@
 import "./keyed-page.mjs";
 import "./boundary-page.mjs";
 import "./placement-page.mjs";
+import "./hydration-page.mjs";
 import { mount as ranvierMount, mountPrepared, mountTemplate } from "../../generated-tests/FrameworkPerf.js";
 import { mountTemplateSugar } from "../../generated-tests/FrameworkSugarPerf.js";
 import { parts, scopes, core, coreOwners, mountVariant, mountDirect, mountReactiveNative } from "../../generated-tests/FrameworkDiagnostics.js";

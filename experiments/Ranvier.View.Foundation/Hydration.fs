@@ -40,29 +40,11 @@ let private clearAfter (start: Node) (finish: Node) =
         node <- next
 
 /// <summary>
-/// Mounts <c>definition</c> for <c>props</c> over the server HTML between the first <c>&lt;!--[r--&gt;</c> child of
-/// <c>host</c> and its matching end marker, adopting the server's nodes. The result behaves as a mount by
-/// <c>mountWith SynchronousCommits</c>: its slots compare their first value with the server's nodes and write only a
-/// difference, and its regions mount their rows fresh between the server's region markers.
+/// Hydrates the root of <c>host</c> as <c>hydrateWith</c> does, the document's head aside; before a re-rendered root
+/// mounts fresh, <c>served</c> sets the head back as the server wrote it.
 /// </summary>
-/// <remarks>
-/// <para>Nodes outside the root marker pair stay in place and outside the mount's range.</para>
-/// <para>
-/// A structural mismatch is passed to <c>report</c> once, as a one-element list. The server nodes between the root
-/// markers are then removed and the root mounts fresh before the end marker. Without a root marker, the root mounts
-/// fresh at the end of <c>host</c>, after its children; without the end marker, the nodes after the root marker are
-/// removed first. Ids issued by the fresh mount start again under <c>options.IdPrefix</c>.
-/// </para>
-/// <para>
-/// Under <c>options.Strict</c>, and for every other failure, the call disposes what it created and raises; the host is
-/// then as the server wrote it. A failure of <c>report</c> also propagates with the host as the server wrote it.
-/// </para>
-/// </remarks>
-/// <exception cref="T:System.NotSupportedException"><c>mode</c> is <c>QueuedCommits</c>.</exception>
-/// <exception cref="T:Ranvier.View.Foundation.TemplateDom.HydrationMismatchException">
-/// <c>options.Strict</c> is set, and the host has no root marker or the server HTML differs from the template's structure.
-/// </exception>
-let hydrateWith
+let private adoptHost
+    (served: unit -> unit)
     (mode: CommitMode)
     (graph: Graph)
     (parentOwner: Owner option)
@@ -103,8 +85,15 @@ let hydrateWith
                 rootEnd
             )
 
-        let fresh (before: Node option) =
-            (state null Unchecked.defaultof<_> Unchecked.defaultof<_>).Run(before, build)
+        // Mounts the root fresh before `before`; disposing the mount also removes `markers`.
+        let fresh (before: Node option) (markers: Node list) =
+            let created = state null Unchecked.defaultof<_> Unchecked.defaultof<_>
+            let mounted = created.Run (before, build)
+
+            if not markers.IsEmpty then
+                created.Root.OnCleanup (fun () -> List.iter removeNode markers)
+
+            mounted
 
         let rootStart = rootMarker host
 
@@ -115,7 +104,7 @@ let hydrateWith
                 raise error
 
             report [ error ]
-            fresh None
+            fresh None []
         else
             let rootEnd =
                 try
@@ -126,7 +115,7 @@ let hydrateWith
                     Unchecked.defaultof<_>
 
             if isNull (box rootEnd) then
-                fresh None
+                fresh None [ rootStart ]
             else
                 let first = following rootStart
                 let cursor = TemplateDom.HydrationCursor (first, options.Strict)
@@ -151,10 +140,111 @@ let hydrateWith
                 with error when not options.Strict ->
                     match TemplateDom.findMismatch error with
                     | Some found ->
-                        report [ found :> exn ]
+                        served ()
+
+                        report (
+                            (found :> exn)
+                            :: TemplateDom.failuresBesides found error
+                        )
+
                         clearAfter rootStart rootEnd
-                        fresh (Some rootEnd)
+                        fresh (Some rootEnd) [ rootStart; rootEnd ]
                     | None -> reraise ()
+
+/// <summary>
+/// Mounts <c>definition</c> for <c>props</c> over the server HTML between the first <c>&lt;!--[r--&gt;</c> child of
+/// <c>host</c> and its matching end marker, adopting the server's nodes. The result behaves as a mount by
+/// <c>mountWith SynchronousCommits</c>: its slots compare their first value with the server's nodes and write only a
+/// difference; its lists adopt the server's rows in order, its arms adopt theirs when the server's arm hash equals the
+/// selected definition's, its boundaries adopt the view their start marker records, and its view holes mount fresh
+/// between the server's region markers.
+/// </summary>
+/// <remarks>
+/// <para>Nodes outside a closed root marker pair stay in place and outside the mount's range.</para>
+/// <para>
+/// Document entries adopt the head elements marked with their key, as in every mount, and a title entry writes the
+/// document's title only when it differs. Once the mount is built, every unadopted marked element of the document's
+/// head is removed, those served for other roots included; an entry under pending content keeps its adopted element.
+/// </para>
+/// <para>
+/// A boundary's content and its pending view hydrate between <c>ranvier:start</c> and <c>ranvier:end</c> comments,
+/// inserted around their adopted nodes. Server content (<c>&lt;!--[c--&gt;</c>) hydrates in place and keeps its bound
+/// nodes when it is ready by the end of the build. When one of its reads is still pending at the end of the build, its
+/// bound nodes are held detached, and a copy of the server nodes, taken before the content's first commits, stays
+/// between the markers as the inert pending view; the reveal replaces the copy with the bound nodes. Under a server
+/// pending view (<c>&lt;!--[p--&gt;</c>), the content mounts detached, and the pending view hydrates while the content
+/// is pending; ready content replaces the server's nodes at once. A server error view (<c>&lt;!--[e--&gt;</c>) is
+/// removed and the boundary mounts fresh. A failure of the content's setup shows the error view, as in a mount.
+/// </para>
+/// <para>
+/// A structural mismatch inside a list or arm region, or inside a boundary's hydrating view, re-renders the innermost
+/// such region or view containing it, and the rest of the hydration continues. The mismatch is passed to
+/// <c>report</c> once, first in a list with the pass's other failures; the server nodes between the region's markers
+/// are removed and the region or view mounts fresh. The meta and link entries of the region or view then own new head
+/// elements in place of the adopted ones. A failure of a region's fresh mount is a failure of the hydration attempt;
+/// a failure of a boundary view's fresh mount goes to the boundary, as in a mount.
+/// </para>
+/// <para>
+/// A structural mismatch outside every list region, arm region and boundary view sets the head back as the server
+/// wrote it and is passed to <c>report</c> once, first in a list that also holds the failures of the attempt's
+/// rollback. The server nodes between the root markers are then removed and the root mounts fresh before the end
+/// marker. Without a root marker, the root mounts fresh at the end of <c>host</c>, after its children. Without the end
+/// marker, every node after the root marker, foreign siblings included, is removed and the root mounts fresh at the
+/// end of <c>host</c>. Ids issued by the fresh mount start again under <c>options.IdPrefix</c>. Disposing the fresh
+/// mount also removes the root markers.
+/// </para>
+/// <para>
+/// A failure of the fresh mount propagates with the server content already removed: the root markers are left empty
+/// as <c>&lt;!--[r--&gt;&lt;!--]--&gt;</c>, or, without the end marker, <c>&lt;!--[r--&gt;</c> is the host's last child.
+/// The document's head is then as the server wrote it.
+/// </para>
+/// <para>
+/// Under <c>options.Strict</c>, and for every other failure of the hydration attempt, the call disposes what it created
+/// and raises; the host and the document's head are then as the server wrote them. A failure of <c>report</c> also
+/// propagates with the host and the head as the server wrote them.
+/// </para>
+/// </remarks>
+/// <exception cref="T:System.NotSupportedException"><c>mode</c> is <c>QueuedCommits</c>.</exception>
+/// <exception cref="T:Ranvier.View.Foundation.TemplateDom.HydrationMismatchException">
+/// <c>options.Strict</c> is set, and the host has no root marker or the server HTML differs from the template's structure.
+/// </exception>
+let hydrateWith
+    (mode: CommitMode)
+    (graph: Graph)
+    (parentOwner: Owner option)
+    (report: exn list -> unit)
+    (options: HydrationOptions)
+    (host: Node)
+    (definition: Component<'props>)
+    (props: 'props)
+    : Mounted =
+    let document = DocumentHead.documentOf host
+    let served = DocumentHead.keep document
+
+    try
+        let mounted =
+            adoptHost served mode graph parentOwner report options host definition props
+
+        DocumentHead.removeUnadopted document
+        mounted
+    with _ ->
+        served ()
+        reraise ()
+
+[<Emit("document.getElementById($0)")>]
+let private elementById (id: string) : Element = jsNative
+
+[<Emit("$0.textContent")>]
+let private textOf (element: Element) : string = jsNative
+
+/// <summary>
+/// The <c>textContent</c> of the document's element with id <c>id</c>, such as the JSON a <c>Server.stateScript</c>
+/// element holds; <c>None</c> when the id is absent from the document.
+/// </summary>
+let readState (id: string) : string option =
+    let element = elementById id
+
+    if isNull (box element) then None else Some (textOf element)
 
 /// <summary>Hydrates as <c>hydrateWith SynchronousCommits</c> does.</summary>
 let hydrate graph parentOwner report options host (definition: Component<'props>) (props: 'props) : Mounted =

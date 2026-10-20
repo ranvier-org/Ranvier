@@ -20,9 +20,11 @@ export default defineConfig({
           filename: id, babelrc: false, configFile: false, plugins: [sharedBackendProbe]
         });
       }
-      if (!/\/frameworks\/(semantics-|keyed-|boundary-|placement-)?solid\.jsx$/.test(id)) return;
+      // The hydration benchmark's components hydrate server HTML, so they compile with hydration keys.
+      const hydratable = /\/frameworks\/(hydration|server)-solid\.jsx$/.test(id);
+      if (!hydratable && !/\/frameworks\/(semantics-|keyed-|boundary-|placement-)?solid\.jsx$/.test(id)) return;
       // Solid 2's native compiler, released with the runtime it targets.
-      const { code: compiled, map } = solidTransform(code, { filename: id, generate: "dom", hydratable: false, sourceMap: true });
+      const { code: compiled, map } = solidTransform(code, { filename: id, generate: "dom", hydratable, sourceMap: true });
       return { code: compiled, map };
     }
   }],

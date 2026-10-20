@@ -1,0 +1,181 @@
+// Hydration benchmark in Chromium: Ranvier's hydrate of server HTML against Ranvier's client mount of the same page and
+// against Solid 2's hydrate of its own server HTML, for the component page (1/16/128 rows) and the keyed page
+// (1000/10000 rows). Also the time to the first handled click, and the retained heap per row.
+// Usage: node benchmarks/frameworks/hydration-bench.mjs [--build] [--verify-only] [--dist=<dir>] [--label=<name>] [--out=<dir>] [--port=<n>]
+import { chromium } from "@playwright/test";
+import { spawn, execFileSync } from "node:child_process";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import os from "node:os";
+
+const cwd = fileURLToPath(new URL("../../", import.meta.url));
+const argument = (name, fallback) => process.argv.find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
+const output = argument("out") ?? fileURLToPath(new URL("../../../../docs/research/framework-performance/investigation/server-html/", import.meta.url));
+const label = argument("label", "hydration");
+const outDir = argument("dist") ?? "generated-hydration-dist";
+const verifyOnly = process.argv.includes("--verify-only");
+const env = { ...process.env, RanvierCounters: "false", RANVIER_PERF_OUTPUT: outDir };
+const port = Number(argument("port", 5189));
+const modes = ["ranvier-hydrate", "ranvier-mount", "solid-hydrate"], processes = 3, rounds = 15, warmups = 3, retained = 32;
+// `count` calls per sample, each on its own host.
+const fixtures = [
+  { fixture: "component", rows: 1, count: 64 },
+  { fixture: "component", rows: 16, count: 32 },
+  { fixture: "component", rows: 128, count: 8 },
+  { fixture: "keyed", rows: 1000, count: 2 },
+  { fixture: "keyed", rows: 10000, count: 1 }
+];
+
+if (process.argv.includes("--build")) {
+  for (const args of [
+    ["dotnet", "fable", "tests/DomTests.fsproj", "--outDir", "generated-tests", "--configuration", "Release", "--noCache"],
+    ["dotnet", "fable", "benchmarks/ripple/RipplePerf.fsproj", "--outDir", "generated-ripple", "--configuration", "Release", "--noCache"],
+    ["node", "node_modules/vite/bin/vite.js", "build", "--config", "benchmarks/frameworks/vite.config.mjs"]
+  ]) execFileSync("rtk", args, { cwd, stdio: "inherit", windowsHide: true, env });
+}
+
+// Solid 2's server HTML, rendered in Node from server-solid.jsx compiled for the server with hydration keys, and the
+// hydration bootstrap markup of @solidjs/web's server build.
+{
+  const { transform } = await import("@solidjs/compiler");
+  const { generateHydrationScript } = await import("@solidjs/web");
+  const source = fileURLToPath(new URL("./server-solid.jsx", import.meta.url));
+  const compiled = `${cwd}${outDir}/server-solid.mjs`;
+  const { code } = transform(await readFile(source, "utf8"), { filename: source, generate: "ssr", hydratable: true });
+  await mkdir(`${cwd}${outDir}`, { recursive: true });
+  await writeFile(compiled, code);
+  const solid = await import(pathToFileURL(compiled).href);
+  const html = { component: {}, keyed: {} };
+  for (const { fixture, rows } of fixtures) {
+    const rendered = (fixture === "component" ? solid.renderComponentPage : solid.renderKeyedPage)(rows);
+    const found = (rendered.match(fixture === "component" ? /class="panel"/g : /<tr[\s>]/g) ?? []).length;
+    if (found !== rows) throw Error(`Solid ${fixture} at ${rows} rows rendered ${found} rows`);
+    html[fixture][rows] = rendered;
+  }
+  await writeFile(`${cwd}${outDir}/solid-html.json`, JSON.stringify({ bootstrap: generateHydrationScript(), html }));
+}
+
+const server = spawn(process.execPath, ["node_modules/vite/bin/vite.js", "preview", "--config", "benchmarks/frameworks/vite.config.mjs", "--host", "127.0.0.1", "--port", String(port), "--strictPort"], { cwd, env, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
+let serverOutput = "", browser;
+server.stdout.on("data", data => serverOutput += data);
+server.stderr.on("data", data => serverOutput += data);
+const median = values => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
+const url = `http://127.0.0.1:${port}/benchmarks/frameworks/index.html`;
+const samples = [], clicks = [], heaps = [], verified = [];
+let chromiumVersion;
+
+try {
+  let ready = false;
+  for (let attempt = 0; attempt < 100 && !ready; attempt++) {
+    if (server.exitCode !== null) throw Error(serverOutput);
+    try { ready = (await fetch(url)).ok; } catch {}
+    if (!ready) await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  if (!ready) throw Error(serverOutput);
+  for (let replicate = 0; replicate < (verifyOnly ? 1 : processes); replicate++) {
+    browser = await chromium.launch();
+    chromiumVersion = browser.version();
+    const page = await browser.newPage();
+    const errors = [];
+    page.on("pageerror", error => errors.push(String(error)));
+    await page.goto(url);
+    await page.waitForFunction(() => window.hydrationBench);
+    const cdp = await page.context().newCDPSession(page);
+    const collect = () => cdp.send("HeapProfiler.collectGarbage");
+    // Verification before timing.
+    for (const { fixture, rows } of fixtures) for (const mode of modes) {
+      const entry = await page.evaluate(({ mode, fixture, rows }) => window.hydrationBench.verify(mode, fixture, rows), { mode, fixture, rows });
+      verified.push({ ...entry, replicate, passed: true });
+    }
+    if (verifyOnly) {
+      for (const { fixture, rows } of fixtures) for (const mode of modes)
+        console.log(mode, fixture, rows, "first click ms", await page.evaluate(({ mode, fixture, rows }) => window.hydrationBench.firstClick(mode, fixture, rows), { mode, fixture, rows }));
+      if (errors.length) throw Error(errors.join("\n"));
+      break;
+    }
+    for (const { fixture, rows, count } of fixtures) {
+      for (let round = -warmups; round < rounds; round++) for (let offset = 0; offset < modes.length; offset++) {
+        const mode = modes[(round + warmups + offset + replicate) % modes.length];
+        await page.evaluate(({ mode, fixture, rows, count }) => window.hydrationBench.prepare(mode, fixture, rows, count), { mode, fixture, rows, count });
+        await collect();
+        const ms = await page.evaluate(({ mode, fixture, rows, count }) => window.hydrationBench.sample(mode, fixture, rows, count), { mode, fixture, rows, count });
+        if (!Number.isFinite(ms) || ms <= 0) throw Error(`Invalid timing ${fixture}/${mode}/${rows}: ${ms}`);
+        if (round >= 0) samples.push({ fixture, rows, mode, replicate, round, count, ms });
+      }
+      for (let round = -warmups; round < rounds; round++) for (let offset = 0; offset < modes.length; offset++) {
+        const mode = modes[(round + warmups + offset + replicate) % modes.length];
+        await collect();
+        const ms = await page.evaluate(({ mode, fixture, rows }) => window.hydrationBench.firstClick(mode, fixture, rows), { mode, fixture, rows });
+        if (!Number.isFinite(ms) || ms <= 0) throw Error(`Invalid first click ${fixture}/${mode}/${rows}: ${ms}`);
+        if (round >= 0) clicks.push({ fixture, rows, mode, replicate, round, ms });
+      }
+      console.log(`Measured ${fixture} at ${rows} rows, process ${replicate + 1}`);
+    }
+    for (const { fixture, rows } of fixtures) for (const mode of modes) {
+      await collect();
+      const before = await cdp.send("Runtime.getHeapUsage");
+      await page.evaluate(async ({ mode, fixture, rows, count }) => { window.releaseHydration = await window.hydrationBench.retain(mode, fixture, rows, count); }, { mode, fixture, rows, count: retained });
+      await collect();
+      const after = await cdp.send("Runtime.getHeapUsage");
+      await page.evaluate(() => { window.releaseHydration(); delete window.releaseHydration; });
+      heaps.push({ fixture, rows, mode, replicate, count: retained, retainedBytesPerRow: (after.usedSize - before.usedSize) / (retained * rows) });
+    }
+    if (errors.length) throw Error(errors.join("\n"));
+    await browser.close();
+    browser = undefined;
+  }
+  if (!verifyOnly) {
+    const byProcess = (rows, value) => Array.from({ length: processes }, (_, replicate) => median(rows.filter(row => row.replicate === replicate).map(value)));
+    const select = (list, fixture, rows, mode) => list.filter(row => row.fixture === fixture && row.rows === rows && row.mode === mode);
+    const summaries = fixtures.flatMap(({ fixture, rows }) => modes.map(mode => {
+      const selected = select(samples, fixture, rows, mode);
+      return { fixture, rows, mode, medianUs: median(selected.map(row => row.ms)) * 1000, byProcessUs: byProcess(selected, row => row.ms * 1000) };
+    }));
+    const firstClick = fixtures.flatMap(({ fixture, rows }) => modes.map(mode => {
+      const selected = select(clicks, fixture, rows, mode);
+      return { fixture, rows, mode, medianUs: median(selected.map(row => row.ms)) * 1000, byProcessUs: byProcess(selected, row => row.ms * 1000) };
+    }));
+    const heapSummaries = fixtures.flatMap(({ fixture, rows }) => modes.map(mode => {
+      const selected = select(heaps, fixture, rows, mode);
+      return { fixture, rows, mode, medianBytesPerRow: median(selected.map(row => row.retainedBytesPerRow)), byProcessBytesPerRow: selected.map(row => row.retainedBytesPerRow) };
+    }));
+    // Within each process and round, hydrate over mount; the summary is the median of those per-round ratios.
+    const hydrateVersusMount = fixtures.map(({ fixture, rows }) => {
+      const pick = mode => select(samples, fixture, rows, mode);
+      const hydrate = pick("ranvier-hydrate"), mount = pick("ranvier-mount");
+      const ratios = hydrate.map(row => ({ replicate: row.replicate, ratio: row.ms / mount.find(other => other.replicate === row.replicate && other.round === row.round).ms }));
+      const find = mode => summaries.find(s => s.fixture === fixture && s.rows === rows && s.mode === mode);
+      return {
+        fixture, rows,
+        ratio: find("ranvier-hydrate").medianUs / find("ranvier-mount").medianUs,
+        medianRoundRatio: median(ratios.map(row => row.ratio)),
+        byProcessRatio: byProcess(ratios, row => row.ratio),
+        atOrBelowMount: find("ranvier-hydrate").medianUs <= find("ranvier-mount").medianUs
+      };
+    });
+    const result = {
+      measuredAt: new Date().toISOString(),
+      baseCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd, encoding: "utf8" }).trim(),
+      dirty: execFileSync("git", ["status", "--porcelain"], { cwd, encoding: "utf8" }).trim().split("\n").filter(line => line && !line.includes("generated-")),
+      node: process.version, chromium: chromiumVersion, cpu: os.cpus()[0].model, platform: `${os.platform()} ${os.release()}`,
+      unit: "milliseconds per call (samples), microseconds (summaries)",
+      notes: [
+        "Each sample hydrates (or mounts) `count` hosts attached to the body. The hosts are filled with the fixture's server HTML, parsed as a document parse places it, before a forced garbage collection and outside the timed region; `ranvier-mount` hosts are empty.",
+        "Ranvier hydrates its own Server.render output (Omit policy) with { IdPrefix = \"r\"; Strict = true }; Solid 2 hydrates its own renderToString output (hydratable). Each Ranvier call creates and its disposal disposes a new Graph.",
+        "Modes rotate per round and process, so `hydrateVersusMount` compares two modes of the same session; `atOrBelowMount` is the spec's gate.",
+        "firstClick is the time from the call to the end of the first click on the first row's button (component) or link (keyed), including the commit of the click's update (Solid: flush()).",
+        "retainedBytesPerRow is the GC-stabilised retained JavaScript heap of 32 live hydrated (or mounted) hosts divided by their rows, the hosts' server DOM included; it is reported, not gated."
+      ],
+      verified, samples, clicks, summaries, firstClick, heaps, heapSummaries, hydrateVersusMount
+    };
+    await mkdir(output, { recursive: true });
+    await writeFile(`${output}/${label}.json`, JSON.stringify(result, null, 2) + "\n");
+    console.table(summaries.map(({ fixture, rows, mode, medianUs, byProcessUs }) => ({ fixture, rows, mode, medianUs: medianUs.toFixed(1), byProcessUs: byProcessUs.map(value => value.toFixed(1)).join(" / ") })));
+    console.table(firstClick.map(({ fixture, rows, mode, medianUs, byProcessUs }) => ({ fixture, rows, mode, medianUs: medianUs.toFixed(1), byProcessUs: byProcessUs.map(value => value.toFixed(1)).join(" / ") })));
+    console.table(heapSummaries.map(({ fixture, rows, mode, medianBytesPerRow, byProcessBytesPerRow }) => ({ fixture, rows, mode, medianBytesPerRow: medianBytesPerRow.toFixed(0), byProcess: byProcessBytesPerRow.map(value => value.toFixed(0)).join(" / ") })));
+    console.table(hydrateVersusMount.map(({ fixture, rows, ratio, medianRoundRatio, byProcessRatio, atOrBelowMount }) => ({ fixture, rows, ratio: ratio.toFixed(3), medianRoundRatio: medianRoundRatio.toFixed(3), byProcess: byProcessRatio.map(value => value.toFixed(3)).join(" / "), atOrBelowMount })));
+  } else console.table(verified);
+} finally {
+  if (browser) await browser.close();
+  server.kill();
+}

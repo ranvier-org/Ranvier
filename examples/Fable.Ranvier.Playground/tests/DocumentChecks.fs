@@ -688,6 +688,516 @@ let private hookSeesEarlierHead queued () =
 
     equal ([ "T" ], [ "Before" ]) (logged true, logged false)
 
+[<Emit("document.head.innerHTML = $0")>]
+let private setHead (html: string) : unit = jsNative
+
+[<Emit("document.head.innerHTML")>]
+let private headHtml () : string = jsNative
+
+[<Emit("document.head.querySelector($0)")>]
+let private inHead (selector: string) : Node = jsNative
+
+[<Emit("Array.from(document.head.querySelectorAll('*'))")>]
+let private headElements () : Node array = jsNative
+
+[<Emit("document.head.querySelector('title')?.firstChild ?? null")>]
+let private titleText () : Node = jsNative
+
+/// <summary>
+/// Records the head's mutations; the returned function stops and returns the count of attribute and text writes, and
+/// of child list changes inside a <c>title</c> element.
+/// </summary>
+[<Emit("(() => { const o = new document.defaultView.MutationObserver(() => {}); o.observe(document.head, { subtree: true, childList: true, attributes: true, characterData: true }); return () => { const n = o.takeRecords().filter(r => r.type !== 'childList' || r.target.nodeName === 'TITLE').length; o.disconnect(); return n; }; })()")>]
+let private recordWrites () : unit -> int = jsNative
+
+let private sameNodes (before: Node array) (after: Node array) =
+    before.Length = after.Length
+    && Array.forall2 (fun (left: Node) (right: Node) -> obj.ReferenceEquals (left, right)) before after
+
+/// <summary>Runs <c>check</c>, then empties the document's head.</summary>
+let private withHead (check: unit -> unit) =
+    try
+        check ()
+    finally
+        setHead ""
+
+let private hydrationOptions strictly : Hydration.HydrationOptions =
+    { IdPrefix = "r"; Strict = strictly }
+
+/// <summary>The props of <c>shopPage</c>: the product name, and the list receiving each instance's name signal.</summary>
+type private Shop =
+    {
+        Name: string
+        Names: ResizeArray<Signal<string>>
+    }
+
+let private shop name =
+    { Name = name; Names = ResizeArray () }
+
+let private shopSetup _ (props: Shop) =
+    let name = Api.createSignal props.Name
+    props.Names.Add name
+    name
+
+let private shopEntries (t: TemplateBuilder<Signal<string>>) =
+    [|
+        t.Document.title (fun (name: Signal<string>) -> name.Value + " · Shop")
+        description "client" t
+        t.Document.link
+            [|
+                t.Attrs.attribute ("rel", "canonical")
+                t.Attrs.attribute ("href", "/lamp")
+            |]
+        t.Document.link
+            [|
+                t.Attrs.attribute ("rel", "preload")
+                t.Attrs.attribute ("href", "/font.woff2")
+            |]
+    |]
+
+/// <summary>A titled page with a meta description, a canonical link and an unkeyed link; a robots meta too when <c>extra</c>.</summary>
+let private shopPage (extra: bool) =
+    Component.define shopSetup (fun t ->
+        t.fragment
+            [|
+                yield! shopEntries t
+                if extra then
+                    yield
+                        t.Document.meta
+                            [|
+                                t.Attrs.attribute ("name", "robots")
+                                t.Attrs.attribute ("content", "index")
+                            |]
+                yield t.h1 [||] [| t.text (fun (name: Signal<string>) -> name.Value) |]
+            |])
+
+/// <summary><c>shopPage false</c> with a div after the entries whose mounted hook raises.</summary>
+let private failingShop =
+    Component.define shopSetup (fun t ->
+        t.fragment
+            [|
+                yield! shopEntries t
+                yield t.h1 [||] [| t.text (fun (name: Signal<string>) -> name.Value) |]
+                yield t.div [| t.Hooks.mounted (fun _ _ -> raise (InvalidOperationException "hook")) |] [||]
+            |])
+
+let private omitted =
+    { Server.Options.defaults with
+        Policy = Omit
+    }
+
+/// <summary>Writes the head of <c>shopPage true</c> for Lamp into the document and returns a host holding its body.</summary>
+let private servePage () =
+    let page = Server.renderPage omitted (shopPage true) (shop "Lamp")
+    setHead page.Head
+    let target = host ()
+    loadServed target page.Body
+    target
+
+/// <summary>The head written by <c>servePage</c>, as the document serialises it.</summary>
+let private servedHead =
+    "<title data-ranvier-head=\"title\">Lamp · Shop</title>"
+    + "<meta data-ranvier-head=\"meta:name=description\" name=\"description\" content=\"client\">"
+    + "<link data-ranvier-head=\"link:canonical\" rel=\"canonical\" href=\"/lamp\">"
+    + "<link data-ranvier-head=\"\" rel=\"preload\" href=\"/font.woff2\">"
+    + "<meta data-ranvier-head=\"meta:name=robots\" name=\"robots\" content=\"index\">"
+
+/// <summary>The head of <c>servePage</c> once hydrated by <c>shopPage false</c>.</summary>
+let private hydratedHead (title: string) =
+    "<title data-ranvier-head=\"title\">"
+    + title
+    + "</title>"
+    + "<meta data-ranvier-head=\"meta:name=description\" name=\"description\" content=\"client\">"
+    + "<link data-ranvier-head=\"link:canonical\" rel=\"canonical\" href=\"/lamp\">"
+    + "<link data-ranvier-head=\"\" rel=\"preload\" href=\"/font.woff2\">"
+
+/// <summary>The served title, title text, description, canonical link, unkeyed link and robots meta.</summary>
+let private servedElements () =
+    [|
+        inHead "title"
+        titleText ()
+        inHead "meta[name=description]"
+        inHead "link[rel=canonical]"
+        inHead "link[rel=preload]"
+        inHead "meta[name=robots]"
+    |]
+
+let private headHydrated () =
+    withHead (fun () ->
+        use graph = new Graph ()
+        let target = servePage ()
+        let served = servedElements ()
+        let names = ResizeArray<Signal<string>>()
+        let writes = recordWrites ()
+
+        let mounted =
+            Hydration.hydrate graph None strict (hydrationOptions true) target (shopPage false) { Name = "Lamp"; Names = names }
+
+        let written = writes ()
+        let now = servedElements ()
+
+        let adopted =
+            [ for index in 0..3 -> obj.ReferenceEquals (served[index], now[index]) ]
+
+        let unadopted = isConnected served[4], isConnected served[5]
+        let shown = headHtml (), title ()
+        graph.Run (fun () -> names[0].Value <- "Desk")
+
+        let updated =
+            title (), obj.ReferenceEquals (inHead "title", served[0]), headCount "link[rel=preload]"
+
+        mounted.Dispose ()
+
+        equal
+            (0, [ true; true; true; true ], (false, false), (hydratedHead "Lamp · Shop", "Lamp · Shop"), ("Desk · Shop", true, 1))
+            (written, adopted, unadopted, shown, updated))
+
+let private spacedTitleKept () =
+    withHead (fun () ->
+        use graph = new Graph ()
+        setHead "<title data-ranvier-head=\"title\">  Lamp  · Shop</title>"
+        let text = titleText ()
+        let target = host ()
+        loadServed target (Server.render omitted (shopPage false) (shop "  Lamp "))
+        let writes = recordWrites ()
+
+        let mounted =
+            Hydration.hydrate graph None strict (hydrationOptions true) target (shopPage false) (shop "  Lamp ")
+
+        let shown =
+            writes (), obj.ReferenceEquals (titleText (), text), title (), (inHead "title").textContent
+
+        mounted.Dispose ()
+        equal (0, true, "Lamp · Shop", Some "  Lamp  · Shop") shown)
+
+let private mountAdoptsHead queued () =
+    withHead (fun () ->
+        use graph = new Graph ()
+        servePage () |> ignore
+        let served = servedElements ()
+
+        let mounted =
+            mountTemplate queued graph strict (host ()) (Component.render (shopPage false) (shop "Lamp"))
+
+        let now = servedElements ()
+
+        let adopted =
+            [ for index in [ 0; 2; 3 ] -> obj.ReferenceEquals (served[index], now[index]) ]
+
+        let counts =
+            [
+                headCount "title"
+                headCount "meta[name=description]"
+                headCount "link[rel=canonical]"
+                headCount "link[rel=preload]"
+                headCount "meta[name=robots]"
+            ]
+
+        let kept = isConnected served[4], isConnected served[5], title ()
+        mounted.Dispose ()
+        equal ([ true; true; true ], [ 1; 1; 1; 2; 1 ], (true, true, "Lamp · Shop")) (adopted, counts, kept))
+
+let private preloadOnly =
+    Component.define (fun _ () -> ()) (fun t ->
+        t.fragment
+            [|
+                t.Document.link
+                    [|
+                        t.Attrs.attribute ("rel", "preload")
+                        t.Attrs.attribute ("href", "/font.woff2")
+                    |]
+                t.span [||] [| t.text "page" |]
+            |])
+
+let private unkeyedLinkReplaced () =
+    withHead (fun () ->
+        use graph = new Graph ()
+        setHead "<link data-ranvier-head=\"\" rel=\"preload\" href=\"/font.woff2\">"
+        let server = inHead "link[rel=preload]"
+        let target = host ()
+        loadServed target (Server.render omitted preloadOnly ())
+
+        let mounted =
+            Hydration.hydrate graph None strict (hydrationOptions true) target preloadOnly ()
+
+        let shown =
+            headCount "link[rel=preload]", obj.ReferenceEquals (inHead "link[rel=preload]", server), isConnected server, headHtml ()
+
+        mounted.Dispose ()
+
+        equal (1, false, false, "<link data-ranvier-head=\"\" rel=\"preload\" href=\"/font.woff2\">") shown)
+
+/// <summary>The state of one case's <c>pendingHead</c> instances.</summary>
+type private HeadContent =
+    {
+        /// <summary>Whether an instance settles its source during setup.</summary>
+        mutable Ready: bool
+        /// <summary>The sources created by the instances, in setup order.</summary>
+        Sources: ResizeArray<AsyncSource<string>>
+    }
+
+let private pendingHead (content: HeadContent) =
+    Component.define
+        (fun _ (_: BoundaryStatus) ->
+            let source = Api.createAsyncSource<string>()
+
+            if content.Ready then
+                source.Settle "ready"
+
+            content.Sources.Add source
+            source)
+        (fun t ->
+            t.fragment
+                [|
+                    t.Document.title "Client"
+                    t.Document.meta
+                        [|
+                            t.Attrs.attribute ("name", "description")
+                            t.Attrs.attribute ("content", (fun (_: AsyncSource<string>) -> Some "client"))
+                        |]
+                    t.span [||] [| t.text (fun (source: AsyncSource<string>) -> source.Value) |]
+                |])
+
+let private guardedHead (content: HeadContent) =
+    Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.boundary titlePending titleFailed (pendingHead content) |])
+
+let private pendingHeadAdopted () =
+    withHead (fun () ->
+        use graph = new Graph ()
+        let target = host ()
+
+        let content =
+            {
+                Ready = true
+                Sources = ResizeArray ()
+            }
+
+        let guarded = guardedHead content
+        loadServed target (Server.render omitted guarded ())
+        content.Ready <- false
+        content.Sources.Clear ()
+
+        setHead (
+            "<title data-ranvier-head=\"title\">Server</title>"
+            + "<meta data-ranvier-head=\"meta:name=description\" content=\"server\" data-extra=\"x\">"
+            + "<meta data-ranvier-head=\"meta:name=robots\" name=\"robots\" content=\"index\">"
+        )
+
+        let server = inHead "meta[data-ranvier-head]"
+        let robots = inHead "meta[name=robots]"
+
+        let mounted =
+            Hydration.hydrate graph None strict (hydrationOptions true) target guarded ()
+
+        let read () =
+            obj.ReferenceEquals (inHead "meta[data-ranvier-head]", server),
+            isConnected server,
+            (server :?> Element).getAttribute "content",
+            (server :?> Element).getAttribute "data-extra",
+            title ()
+
+        let pending = read (), isConnected robots
+        graph.Run (fun () -> content.Sources[0].Settle "ready")
+        let revealed = read (), target.textContent
+        mounted.Dispose ()
+
+        equal
+            (((true, true, Some "client", Some "x", "Server"), false), ((true, true, Some "client", Some "x", "Client"), "ready"))
+            (pending, revealed))
+
+let private headRestoredOnFailure () =
+    let check (head: string) (definition: Component<Shop>) (body: string) =
+        withHead (fun () ->
+            use graph = new Graph ()
+            setHead head
+            let target = host ()
+            loadServed target body
+            let served = headElements ()
+            let text = titleText ()
+
+            let failed =
+                try
+                    Hydration.hydrate graph None strict (hydrationOptions true) target definition (shop "Desk")
+                    |> ignore
+
+                    false
+                with _ ->
+                    true
+
+            equal
+                (true, head, true, true, "Lamp · Shop")
+                (failed, headHtml (), sameNodes served (headElements ()), obj.ReferenceEquals (titleText (), text), title ()))
+
+    let page = Server.render omitted (shopPage false) (shop "Lamp")
+
+    let trailing =
+        page.Substring (0, page.Length - 8)
+        + "<b></b><!--]-->"
+
+    check servedHead (shopPage false) trailing
+    check servedHead failingShop (Server.render omitted failingShop (shop "Lamp"))
+    // The client writes its description and canonical values over the served ones at bind, before the mismatch.
+    check (servedHead.Replace("content=\"client\"", "content=\"server\"").Replace("href=\"/lamp\"", "href=\"/old\"")) (shopPage false) trailing
+
+let private headRecovered () =
+    withHead (fun () ->
+        use graph = new Graph ()
+        servePage () |> ignore
+        let served = servedElements ()
+        let target = host ()
+        let page = Server.render omitted (shopPage false) (shop "Lamp")
+
+        loadServed
+            target
+            (page.Substring (0, page.Length - 8)
+             + "<b></b><!--]-->")
+
+        let reports = ResizeArray<exn list>()
+
+        let mounted =
+            Hydration.hydrate graph None reports.Add (hydrationOptions false) target (shopPage false) (shop "Desk")
+
+        let now = servedElements ()
+
+        let shown =
+            [ for index in [ 0; 2; 3 ] -> obj.ReferenceEquals (served[index], now[index]) ],
+            (isConnected served[4], isConnected served[5]),
+            headHtml (),
+            title (),
+            reports.Count
+
+        mounted.Dispose ()
+        equal ([ true; true; true ], (false, false), hydratedHead "Desk · Shop", "Desk · Shop", 1) shown)
+
+let private metaRow =
+    Component.define (fun _ (item: unit -> int) -> item) (fun t ->
+        t.fragment
+            [|
+                t.Document.meta
+                    [|
+                        t.Attrs.attribute ("name", "row")
+                        t.Attrs.attribute ("content", fun (item: unit -> int) -> Some ("row " + string (item ())))
+                    |]
+                t.li [||] [| t.text (fun (item: unit -> int) -> string (item ())) |]
+            |])
+
+/// <summary>A titled page with a meta description and a list whose rows each bind a row meta.</summary>
+let private rowsPage =
+    Component.define (fun _ (items: int array) -> items) (fun t ->
+        t.fragment
+            [|
+                t.Document.title "Page"
+                description "client" t
+                t.ul [||] [| t.each id (fun (items: int array) -> items) metaRow |]
+            |])
+
+let private characterCell =
+    Component.define (fun _ (text: unit -> string) -> text) (fun t ->
+        t.element (HtmlTag "b") [||] [| t.text (fun (text: unit -> string) -> text ()) |])
+
+let private characterRow =
+    Component.define (fun _ (item: unit -> string) -> item) (fun t ->
+        t.fragment
+            [|
+                t.Document.meta
+                    [|
+                        t.Attrs.attribute ("name", "row")
+                        t.Attrs.attribute ("content", fun (item: unit -> string) -> Some ("row " + item ()))
+                    |]
+                t.li
+                    [||]
+                    [|
+                        t.each id (fun (item: unit -> string) -> [| for ch in item () -> string ch |]) characterCell
+                    |]
+            |])
+
+/// <summary>A titled page with a meta description and a list whose rows bind a row meta and list their characters.</summary>
+let private charactersPage =
+    Component.define (fun _ (items: string array) -> items) (fun t ->
+        t.fragment
+            [|
+                t.Document.title "Page"
+                description "client" t
+                t.ul [||] [| t.each id (fun (items: string array) -> items) characterRow |]
+            |])
+
+/// <summary>Writes the head of <c>definition</c>'s page for <c>props</c>, with a robots meta, and returns a host holding its body.</summary>
+let private servePageWithRobots (definition: Component<'props>) (props: 'props) =
+    let page = Server.renderPage omitted definition props
+
+    setHead (
+        page.Head
+        + "<meta data-ranvier-head=\"meta:name=robots\" name=\"robots\" content=\"index\">"
+    )
+
+    let target = host ()
+    loadServed target page.Body
+    target
+
+let private nestedStrictRestoresHead () =
+    withHead (fun () ->
+        use graph = new Graph ()
+        let target = servePageWithRobots charactersPage [| "ab" |]
+        let head = headHtml ()
+        let served = headElements ()
+        let body = target.innerHTML
+
+        let failed =
+            try
+                Hydration.hydrate graph None strict (hydrationOptions true) target charactersPage [| "abc" |]
+                |> ignore
+
+                "none"
+            with
+            | TemplateDom.HydrationMismatchException _ as error -> error.Message
+            | error -> "other " + error.Message
+
+        equal
+            ("Hydration mismatch at #0: expected <b>, found <!--]-->", head, true, "row ab", body)
+            (failed, headHtml (), sameNodes served (headElements ()), headAttribute "meta[name=row]" "content", target.innerHTML))
+
+let private regionRecoveryRemovesOnce () =
+    withHead (fun () ->
+        use graph = new Graph ()
+        let target = servePageWithRobots rowsPage [| 1; 2 |]
+        let titleElement = inHead "title"
+        let descriptionElement = inHead "meta[name=description]"
+        let row = inHead "meta[name=row]"
+        let robots = inHead "meta[name=robots]"
+        // Whether the robots meta is in the head at each report, and the report's length.
+        let atReport = ResizeArray<bool * int>()
+
+        let report (errors: exn list) =
+            atReport.Add (isConnected robots, errors.Length)
+
+        let mounted =
+            Hydration.hydrate graph None report (hydrationOptions false) target rowsPage [| 1; 2; 3 |]
+
+        let shown =
+            List.ofSeq atReport,
+            isConnected robots,
+            obj.ReferenceEquals (inHead "title", titleElement),
+            obj.ReferenceEquals (inHead "meta[name=description]", descriptionElement),
+            obj.ReferenceEquals (inHead "meta[name=row]", row),
+            headCount "meta[name=row]",
+            target.textContent,
+            headHtml ()
+
+        mounted.Dispose ()
+
+        equal
+            ([ true, 1 ],
+             false,
+             true,
+             true,
+             false,
+             1,
+             "123",
+             "<title data-ranvier-head=\"title\">Page</title>"
+             + "<meta data-ranvier-head=\"meta:name=description\" name=\"description\" content=\"client\">"
+             + "<meta data-ranvier-head=\"meta:name=row\" name=\"row\" content=\"row 3\">")
+            shown)
+
 let cases: (string * (unit -> unit)) array =
     strictCases (
         Array.concat
@@ -725,6 +1235,18 @@ let cases: (string * (unit -> unit)) array =
                     definitionChecks
                     "Html.render writes no document entry under Omit and raises under Reject", serverEntries
                     "each document keeps its own title and adopts only its own marked elements", perDocument
+                    "hydration adopts marked head elements by key and removes unadopted ones", headHydrated
+                    "hydration replaces a served unkeyed link with the client's own", unkeyedLinkReplaced
+                    "hydration leaves a served title with spacing equal to the entry's text unwritten", spacedTitleKept
+                    "an entry under pending content keeps its adopted element through hydration and shows the client's attributes before and after reveal",
+                    pendingHeadAdopted
+                    "a failed hydration leaves the head as the server wrote it", headRestoredOnFailure
+                    "a hydration that re-renders the root adopts the head as a fresh mount and removes unadopted elements", headRecovered
+                    "a Strict mismatch in a row's nested list leaves the head as the server wrote it, attributes written at bind included",
+                    nestedStrictRestoresHead
+                    "a re-rendered list region recreates its rows' head elements and unadopted elements are removed once, after hydrate returns",
+                    regionRecoveryRemovesOnce
                 |]
+                templated "a client mount adopts marked elements without hydrate and removes none" mountAdoptsHead
             ]
     )

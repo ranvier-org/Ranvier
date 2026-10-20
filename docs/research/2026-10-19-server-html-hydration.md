@@ -155,7 +155,7 @@ Same harness, settings and machine as the Node section above. Ranvier and Solid 
 
 The before session (`e2ab66f`), Ranvier medians against Solid 2's in the same session: component 6.27 against 6.38 (0.98), 33.59 against 11.02 (3.05), 213.1 against 39.93 (5.34); keyed 1231 against 205.5 (5.99), 14082 against 2235 (6.30).
 
-Marginal cost per row, from the medians:
+Marginal cost per row, from the medians; the before and after columns come from separate sessions, cross-session, not a gate:
 
 | Rows | Ranvier before | Solid 2 before | Ratio before | Ranvier after | Solid 2 after | Ratio after |
 |---|---|---|---|---|---|---|
@@ -165,3 +165,73 @@ Marginal cost per row, from the medians:
 Ranvier now renders one component row faster than Solid 2 (4.5 against 6.3 µs); from 16 rows on Solid 2 stays faster, by 1.6 to 2.7 times. Ranvier's keyed samples remain wide (p25–p75 of 298–572 µs at 1000 rows); its per-process medians spread from 350 to 538 µs at 1000 rows and from 4220 to 6220 µs at 10000. Ranvier under Node renders 1000 keyed rows in 464 µs, against 341 µs on .NET; cross-runtime, not a gate.
 
 Raw files: `framework-performance/investigation/server-html/task-12b/` holds `node-before.json`, `node-after.json`, `bytes-before.json`, `bytes-after.json`, and `dotnet-before/` and `dotnet-after/` (BenchmarkDotNet results and log), with local paths replaced by `<repo>` and `<home>`.
+
+## Mutation checks
+
+Base `248c5ff`. Each mutant was applied alone, then `dotnet run --project experiments/Ranvier.View.Foundation/RepresentationChecks.fsproj` (.NET) and `npm run test:dom` (jsdom, 954 tests) ran, and the file was restored with `git checkout`. Unmutated, both pass: 96 of 96 PASS lines and 954 of 954. The .NET runner stops at its first failing case, so its column names that case only; the jsdom column names every failing test. No mutant survived, so no test was added.
+
+| Mutant | Edit | Killed by |
+|---|---|---|
+| Logical-sibling skip removed | `TemplateDom.logicalNext` returns the next sibling for every node | jsdom (4): `a region occupies two logical positions: the nodes and roots after a region's end marker are adopted`; `a row whose first roots are a region's markers hydrates in place`; `a row root's unclosed region raises at the root's position`; `an unclosed region raises at its logical path and an unclosed root re-renders its content`. .NET: none (the walk is DOM-only) |
+| Arm hash check removed | `ArmRegion`'s `checkHash` never raises | jsdom (6): `two arms with equal shape and different static text are distinguished by hash`; `a different selected arm re-renders the region and reports once; Strict raises`; `a client arm the server plan rejects is a hash mismatch: the region re-renders and reports once; Strict raises`; `arms in hydrated rows adopt under an equal hash, and a different arm re-renders only its region; Strict raises`; `a failure of a recovered list's or arm's fresh mount raises from hydrate after the mismatch's one report and restores the host`; the `journey: a hydrated page takes events and two-way input, …` journey. .NET: none |
+| Empty-text placeholder removed | `ServerWriter.writeText` writes `Html.escape false ""` in place of `<!--_-->` | jsdom (8): `server HTML carries arm, empty-text, separator and zero-root markers`; `empty text slots hydrate through their placeholder and update`; `empty text renders as recorded; void children and a tr in a table fail at plan compile`; `a structural mismatch names the path, the expected and the found node, and leaves the server HTML as it was`; `a rollback failure is reported with the mismatch and the root re-renders`; `an authored or expanded boundary in a view hole runs its content in an attempt and writes <!--[--> for every view`; `a template expanded through Program.ops writes the serialised properties the compiled plan writes`; `a template expanded through Program.ops writes raw content as the compiled plan does, under Reject`. .NET: `an authored or expanded boundary in a view hole runs its content in an attempt and writes <!--[--> for every view` |
+| Row separator removed | `ServerWriter`'s list region writes no `<!--!-->` between text rows | jsdom (2): `server HTML carries arm, empty-text, separator and zero-root markers`; `text-adjacent row separators are removed during hydration`. .NET: `server HTML carries arm, empty-text, separator and zero-root markers` |
+| Region-level mismatch catch removed | `RegionOf` installs no `site.Recover`, so every region mismatch fails the hydration | jsdom (8): `a list with fewer or more client items than server rows re-renders the region, reports once and reports a later failure`; `a different selected arm re-renders the region and reports once; Strict raises`; `arms in hydrated rows adopt under an equal hash, and a different arm re-renders only its region; Strict raises`; `rows in a hydrated arm adopt and reorder, and a row-count mismatch re-renders only the list; Strict raises`; `boundaries: a structural mismatch in a hydrating view re-renders that view and reports once; Strict raises`; `a mismatch inside a row's nested region re-renders only that region and reports once per region; Strict raises and restores the host`; `a failure of a recovered list's or arm's fresh mount raises from hydrate after the mismatch's one report and restores the host`; the `journey: a hydrated page takes events and two-way input, …` journey. .NET: none |
+| Attempt-owner disposal removed | `RequestScope.Attempt` rethrows without disposing the attempt's lifetime | jsdom (2): `a boundary's abandoned content attempt runs its cleanups before the pending or error view is written`; `an authored or expanded boundary in a view hole runs its content in an attempt and writes <!--[--> for every view`. .NET: `a boundary's abandoned content attempt runs its cleanups before the pending or error view is written` |
+| Escape fast path removed | the .NET `escapeText` builds a new string when nothing needs escaping | .NET: `escape returns the input string when nothing needs escaping`. jsdom: none (the edit is in the .NET branch) |
+| `PlacementPass.Begin` no-op | `Begin` leaves the container and the placed flag of the previous pass | jsdom (86), each failing with "A pass placement container was requested after its Place" or with a pass's hooks missing; among them `template synchronous: a row added by a list pass runs its hook after the pass lays it out, and a batch that adds and removes a row creates none`, `template queued: an arm whose setup selects another arm is replaced before its hooks run, and each placed arm's hook runs once, in selection order`, `each sets up a replacing row before the replaced row's cleanup`, `CreateId is equal on server and hydrated client, and rows created after hydration continue their region's counter`. .NET: none |
+
+The plan expected `nested list regions hydrate and update` to kill the first mutant; that test passes under it, and the four tests above kill it. The region-level catch now lives in `RegionSite.Settle`, reached through the `Recover` that `RegionOf` installs, so mutant 5 removes that installation.
+
+## Hydration in Chromium
+
+Ranvier's `hydrate` of its own `Server.render` output (Omit policy, `{ IdPrefix = "r"; Strict = true }`) against Ranvier's client mount of the same page and against Solid 2's `hydrate` of its own `renderToString` output. The fixtures are `ServerFixtures.componentPage` (1, 16 and 128 rows) and `ServerFixtures.keyedPage` (1000 and 10000 rows) through `HydrationPerf`, and the same trees in Solid 2 (`server-solid.jsx`, compiled `generate: "ssr", hydratable: true` in Node for the server HTML and `generate: "dom", hydratable: true` in the bundle). Each Ranvier call creates a new `Graph`, and its disposal disposes the graph.
+
+Harness: `hydration-bench.mjs` follows `boundary-reveal.mjs`. Three Chromium processes each verify every fixture and mode, then run 15 rounds after 3 warmups per fixture and row count, the three modes rotated per round and process. Before each sample the page fills its hosts (attached to the body) with the server HTML, parsed as a document parse places it (`Range.createContextualFragment`), and the runner forces a collection (`HeapProfiler.collectGarbage`); the fill is outside the timed region, and `ranvier-mount` hosts stay empty. A sample times 64, 32 or 8 calls at 1, 16 or 128 component rows and 2 or 1 calls at 1000 or 10000 keyed rows, one host per call, and records milliseconds per call. The first-click timing is one call followed by a click on the first row's button (component) or link (keyed) and the commit of its update (`flush()` for Solid 2), 15 rounds after 3 warmups per process with a collection before each. Retained heap is the GC-stabilised JavaScript heap of 32 live hydrated (or mounted) hosts, their server DOM included, divided by their rows.
+
+Verification, before timing in each process: every host holds `rows` rows with the first row's content; after hydration every element and every text node is the server's (Ranvier and Solid 2); a Ranvier host is empty after disposal. All 45 entries passed. Solid 2 hydrates once per document: a macrotask after a hydration ends it sets `_$HY.done`, and a later `hydrate` renders fresh over the server nodes, which the verification caught. `hydration-solid.jsx` clears the flag before each call, so each call is a page's first hydration.
+
+Command, from `examples/Fable.Ranvier.Playground`, under the benchmark lock: `node benchmarks/frameworks/hydration-bench.mjs --build`. The run recorded here was built with the same steps (Fable Release without `RANVIER_VIEW_COUNTERS`, then the Vite bundle into `generated-hydration-dist`) and run without `--build`. Output: `framework-performance/investigation/server-html/hydration.json`, base commit `42d4c30` with this task's benchmark files uncommitted (listed in `dirty`). Machine: AMD Ryzen 9 9900X, Windows 11 25H2, Node v26.7.0, Chromium 153.0.8010.12.
+
+Medians over 45 samples (3 processes × 15 rounds), with per-process medians and the sample range; first click and heap are medians over the same counts (heap: 3 processes).
+
+| Fixture | Rows | Ranvier hydrate (µs) | Ranvier mount (µs) | Solid 2 hydrate (µs) | Hydrate / mount | First click: hydrate / mount / Solid 2 (µs) | Retained bytes per row: hydrate / mount / Solid 2 |
+|---|---|---|---|---|---|---|---|
+| component | 1 | 73.8 (109.8 / 64.8 / 71.2; 54.5–128.6) | 62.3 (104.9 / 57.0 / 61.9; 29.8–116.4) | 21.4 (29.5 / 18.3 / 19.9; 16.0–34.5) | 1.18 | 595 / 585 / 240 | 11206 / 9827 / 1880 |
+| component | 16 | 196.7 (190.9 / 189.7 / 228.8; 164.2–332.3) | 195.8 (186.1 / 180.8 / 230.3; 125.8–364.5) | 91.4 (91.4 / 83.6 / 102.7; 76.9–138.6) | 1.005 | 925 / 820 / 360 | 1809 / 1796 / 1626 |
+| component | 128 | 1055 (1061 / 1034 / 1115; 843–1251) | 1106 (1146 / 1064 / 1180; 849–1394) | 666 (666 / 627 / 695; 461–918) | 0.95 | 2295 / 2015 / 955 | 1201 / 1198 / 1405 |
+| keyed | 1000 | 5613 (5398 / 5765 / 5680; 4678–8440) | 5773 (5530 / 5940 / 5620; 4360–6775) | 5068 (4695 / 5330 / 4870; 4003–6565) | 0.97 | 7360 / 7890 / 5295 | 815 / 806 / 1130 |
+| keyed | 10000 | 37395 (34920 / 37955 / 39020; 32760–48865) | 51410 (49490 / 54290 / 53450; 39425–69665) | 55490 (52485 / 56575 / 58870; 44155–65030) | 0.73 | 38670 / 49315 / 42320 | 809 / 809 / 1094 |
+
+**The spec's target fails at two of five points.** Hydration is at or below mount at 128 component rows (0.95), 1000 keyed rows (0.97) and 10000 keyed rows (0.73). It is above mount at 1 component row (1.18; the median of per-round hydrate/mount ratios is 1.20, and per process 1.00 / 1.26 / 1.23) and at 16 component rows (1.005; per-round median 1.055, per process 1.03 / 1.08 / 1.03). Both modes ran in the same session with the order rotated, so this is a same-session result. Not investigated: a fixed per-call cost that mount does not pay is a candidate, since `hydrateWith` searches the host for its root marker and keeps and then scans the document's head (`DocumentHead.keep`, `removeUnadopted`) on every call.
+
+Other ratios, reported and not gated: Ranvier's hydrate against Solid 2's is 3.45 at 1 component row, 2.15 at 16, 1.58 at 128, 1.11 at 1000 keyed rows and 0.67 at 10000. The first click follows the call times; at 1 component row it is about 0.6 ms for both Ranvier modes against 0.24 ms for Solid 2. Retained heap per row is equal for hydrate and mount from 16 rows on (within 1 %); at one component row the per-host cost dominates (about 11 KB per hydrated host against 9.8 KB per mounted host, the mount varying 9.2–11.3 KB across processes). Solid 2's one-process heap at 16 component rows (146 bytes per row against 1626 in the other two) is an outlier of that process.
+
+### Keyed mount across the positional-id commits
+
+Not a gate, cross-session: the existing keyed `create1k` and `create10k` operations (`keyed-rows.mjs --ops=create1k,create10k --modes=ranvier,solid --no-alloc`, 3 processes × 15 rounds) at `ae691d8` (before positional ids), `ab9e924` (positional id windows, Task 6), `144fb2c` (the `Setup` guard's two allocations per instance, Task 6 fix) and `42d4c30` (this task's base), each built in a temporary worktree in its own session, then `ae691d8` again. The harness files are identical at all four commits. Medians in ms, per-process medians in parentheses; Ranvier / Solid 2 is the ratio of the two medians in the same session.
+
+| Commit | create1k Ranvier | create1k Solid 2 | Ranvier / Solid 2 | create10k Ranvier | create10k Solid 2 | Ranvier / Solid 2 |
+|---|---|---|---|---|---|---|
+| ae691d8 | 5.78 (5.86 / 5.78 / 5.68) | 4.00 | 1.45 | 50.80 (51.43 / 50.68 / 50.81) | 37.05 | 1.37 |
+| ab9e924 | 6.60 (7.34 / 6.45 / 6.53) | 4.43 | 1.49 | 53.89 (53.28 / 53.82 / 54.26) | 38.21 | 1.41 |
+| 144fb2c | 6.95 (7.38 / 6.80 / 6.69) | 4.28 | 1.62 | 54.35 (54.93 / 53.42 / 53.95) | 37.91 | 1.43 |
+| 42d4c30 | 8.18 (8.65 / 8.18 / 7.98) | 4.69 | 1.74 | 59.05 (60.77 / 56.05 / 63.43) | 41.53 | 1.42 |
+| ae691d8, again | 9.42 (14.55 / 9.42 / 7.67) | 6.69 | 1.41 | 64.93 (77.31 / 59.76 / 55.51) | 43.94 | 1.48 |
+
+The second `ae691d8` session ran 63 % slower than the first at create1k and 28 % slower at create10k, and Solid 2 moved with it, so the raw medians across sessions do not separate the commits. Within each session, Ranvier / Solid 2 at create1k rises from 1.45 (`ae691d8`) to 1.49 (`ab9e924`), 1.62 (`144fb2c`) and 1.74 (`42d4c30`), against 1.41 for the second `ae691d8` session; at create10k it stays between 1.37 and 1.48 at every commit. Raw files: `framework-performance/investigation/server-html/keyed-mount/`.
+
+## Status
+
+Server HTML and hydration (plan Tasks 1–20) is complete on `poc/fable-ranvier-dom`:
+
+- Server: a portable project without browser dependencies; one escaping writer with a fast path; `Server.render` and `renderPage` with a request graph, request-owned instances and request-local scopes; positional ids through `Setup.CreateId`; portable property serialisation with a browser-only Reject/Omit policy; forms and the leading line feed; boundary attempts with `[c`/`[p`/`[e` views and `ServerPendingException`; arm hashes, placeholders, separators and zero-root markers; rejection of markup the HTML parser restructures; state transfer through `Server.stateScript`.
+- Hydration: adoption of a template's server nodes, root and region mismatch policies with `Strict`, list rows, arms by structural hash, view holes re-rendered, boundaries (pending server content shown as an inert copy and revealed in place), head adoption, identity continued after hydration, Chromium normalisation checks, the journeys, and the mutation checks above.
+- Measurement: first content on .NET and under Node against Solid 2, and hydration in Chromium (this section).
+
+Open items:
+
+1. Hydration above mount for small component pages: 1.18 at 1 row and 1.005 at 16 rows (above). The spec's target holds from 128 component rows and at both keyed sizes.
+2. O1, disposed-mount retention: a disposed mount stays reachable while its graph, or a settled source it read, is alive. This holds for client mounts, ready hydration and, since design 2a, the detached nodes of pending `[c` content. It predates 2a (present at `2a2d43b`) and needs its own triage.
+3. Server render per row: under Node, Solid 2 renders 1.6 to 2.7 times faster from 16 rows on (after Task 12b, above).
+4. Keyed create against Solid 2 at 1000 rows: the in-session ratio rose from 1.45 to 1.74 between `ae691d8` and `42d4c30` (above); not a gate, and not attributed to a commit.
