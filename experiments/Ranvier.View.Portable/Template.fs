@@ -1612,7 +1612,13 @@ type internal ServerWriter(backend: HtmlBackend) =
 
         scope.Nest (fun scope setup ->
             let identity = backend.Identity
-            let parts = Array.zeroCreate<obj>(plan.Children.Length + 1)
+
+            let parts: obj array =
+                if plan.Children.Length = 0 then
+                    [| null |]
+                else
+                    Array.zeroCreate (plan.Children.Length + 1)
+
             let mutable path: InstancePath = null
             identity.Enter (parent, kind, a, b)
 
