@@ -173,17 +173,135 @@ let view = Component.define (fun _ () -> ()) (fun t -> t.Div() { t.Img() { "x" }
 open Ranvier.View.Foundation.Sugar
 let view = Component.define (fun _ () -> ()) (fun t -> t.Span(t.Props.Input.value "x") { "y" })
 ''', "FS0041"),
+    ("free element bodies", '''
+type FreeRow = { Value: global.Ranvier.Signal<string>; Count: global.Ranvier.Signal<int> }
+let view =
+    Component.template (fun _ (p: FreeRow) -> p) (
+        div (Attrs.className "x", Attrs.title (from (fun r -> r.Value))) {
+            "static"
+            input (Props.Input.value (from (fun r -> r.Value)))
+            span () { fun r -> string r.Count.Value }
+        })
+''', None, True),
+    ("free input part on div", '''
+type FreeRow = { Value: global.Ranvier.Signal<string> }
+let view = Component.template (fun _ (p: FreeRow) -> p) (div (Props.Input.value (from (fun r -> r.Value))) { "x" })
+''', "FS0041", True),
+    ("free generated part of another element", '''
+let view = Component.template (fun _ () -> ()) (span (Props.Input.value "x") { "y" })
+''', "FS0041", True),
+    ("free part of another element", '''
+let part: Part<Dom.HTMLButtonElement, unit> = Props.Button.disabled true
+let view = Component.template (fun _ () -> ()) (span (Attrs.className "x", part) { "y" })
+''', "FS0001", True),
+    ("free void tag with children", '''
+let view = Component.template (fun _ () -> ()) (div () { input () { "x" } })
+''', "FS0708", True),
+    ("free outer instance inside a row through text", '''
+type FreeItem = { Id: int }
+let view =
+    Component.template (fun _ (items: FreeItem array) -> items) (
+        div () { forEachFixed (fun (item: FreeItem) -> item.Id) id (span () { text (fun (items: FreeItem array) -> string items.Length) }) })
+''', "FS0041", True),
+    ("free outer instance inside a row through a part", '''
+type FreeItem = { Id: int }
+let view =
+    Component.template (fun _ (items: FreeItem array) -> items) (
+        div () { forEach (fun (item: FreeItem) -> item.Id) id (span (Attrs.title (fun (items: FreeItem array) -> string items.Length)) { "r" }) })
+''', "FS0193", True),
+    ("free outer instance inside a row through a pre-bound outer part", '''
+type FreeItem = { Id: int }
+let count: Part<Dom.HTMLSpanElement, FreeItem array> = Attrs.title (fun (items: FreeItem array) -> string items.Length)
+let view =
+    Component.template (fun _ (items: FreeItem array) -> items) (
+        div () { forEach (fun (item: FreeItem) -> item.Id) id (span (count) { "r" }) })
+''', "FS0193", True),
+    ("free Program view in a body", '''
+let view = Component.template (fun _ () -> ()) (div () { Program.text "x" })
+''', "FS0041", True),
+    ("free lambda with a label shared by a later record", '''
+type FreeKeyed = { Id: int; Label: string }
+type FreeArm = { Id: int; Mode: int }
+let view = Component.template (fun _ (row: FreeKeyed) -> row) (span () { fun r -> string r.Id })
+''', "FS0001", True),
+    ("free annotated lambda with a shared label", '''
+type FreeKeyed = { Id: int; Label: string }
+type FreeArm = { Id: int; Mode: int }
+let view = Component.template (fun _ (row: FreeKeyed) -> row) (span () { fun (r: FreeKeyed) -> string r.Id })
+''', None, True),
+    ("unannotated class member read with an unrelated record label", '''
+type FreeCountRecord = { Count: global.Ranvier.Signal<int> }
+type FreeCounter(setup: Setup, start: int) =
+    member val Count = global.Ranvier.Api.createSignal start
+    static member View = span () { fun c -> string c.Count.Value }
+let counter = Component.ofClass FreeCounter
+''', "FS0001", True),
+    ("unannotated class member read in an annotated View with an unrelated record label", '''
+type FreeCountRecord = { Count: global.Ranvier.Signal<int> }
+type FreeCounter(setup: Setup, start: int) =
+    member val Count = global.Ranvier.Api.createSignal start
+    static member View: TemplateView<FreeCounter> = span () { fun c -> string c.Count.Value }
+''', "FS0001", True),
+    ("unannotated class member read with no record label", '''
+type FreeTally(setup: Setup, start: int) =
+    member val Tally = global.Ranvier.Api.createSignal start
+    static member View = span () { fun c -> string c.Tally.Value }
+let tally = Component.ofClass FreeTally
+''', "FS0072", True),
+    # Inside brackets or a body, parse recovery adds FS0583/FS0604 to the FS0010; a let binding isolates it.
+    ("base as a tag name", '''
+let tag = base ()
+let view = Component.template (fun _ () -> ()) (head () { tag })
+''', "FS0010", True),
     ("all tag classes", '''
 let view =
-    Component.define (fun _ () -> ()) (fun t ->
-        article (t.Attrs.className "a") {
+    Component.template (fun _ () -> ()) (
+        article (Attrs.className "a") {
 ''' + all_tag_classes + '''
         })
 ''', None, True),
     ("option' leaves FSharp.Core option usable", '''
 let c: string option = Some "x"
 let d = defaultArg (None: int option) 1
-let view = Component.define (fun _ () -> ()) (fun _ -> select () { option' () { "one" } })
+let view = Component.template (fun _ () -> ()) (select () { option' () { "one" } })
+''', None, True),
+    ("a lambda parameter named like a tag shadows it only in its body", '''
+type FreeTitled = { Title: string }
+let view = Component.template (fun _ (t: FreeTitled) -> t) (div () { p () { "note" }; span () { fun p -> p.Title }; p () { "after" } })
+''', None, True),
+    ("a local value named like a tag, used as one", '''
+let view =
+    let p = "note"
+    Component.template (fun _ () -> ()) (div () { p () { "x" } })
+''', "FS0003", True),
+    ("ofMembers on a type without Create", '''
+type NoCreate =
+    { N: int }
+    static member View: TemplateView<NoCreate> = span () { "x" }
+let c = Component.ofMembers<NoCreate, int> ()
+''', "FS0001", True),
+    ("ofClass on a type without View", '''
+type NoView(setup: Setup, n: int) =
+    member _.N = n
+let c = Component.ofClass NoView
+''', "FS0001", True),
+    ("define, template and ofMembers resolve in one file", '''
+type Members =
+    { N: int }
+    static member Create(_: Setup, n: int) = { N = n }
+    static member View = span () { fun m -> string m.N }
+let a = Component.define (fun _ (n: int) -> n) (fun t -> t.span [||] [||])
+let b = Component.template (fun _ (n: int) -> n) (span () { })
+let c = Component.ofMembers<Members, _> ()
+''', None, True),
+    ("a ComponentTag subclass with a private primary constructor", '''
+type Props = { Start: int }
+let child = Component.template (fun _ (p: Props) -> p) (span () { fun p -> string p.Start })
+type childOf<'i> private (props: 'i -> Props, primary: unit) =
+    inherit ComponentTag<Props, 'i>(child, props)
+    new(props: 'i -> Props) = childOf<'i>(props, ())
+    new(props: Props) = childOf<'i>((fun _ -> props), ())
+let view = Component.template (fun _ (p: Props) -> p) (div () { childOf (fun p -> { Start = p.Start + 1 }); childOf { Start = 9 } })
 ''', None, True),
 ]
 
