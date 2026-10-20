@@ -8,9 +8,30 @@ open Ranvier.View.Foundation.Representation
 open Ranvier.View.Foundation.Template
 open Ranvier.View.Foundation.Sugar
 
+/// <summary>The instance signals a scroll-linked element writes; each is written while given.</summary>
+[<NoEquality; NoComparison>]
+type ScrollBinding =
+    {
+        /// <summary>The observer's progress between its enter and leave thresholds, in 0..1.</summary>
+        Progress: Signal<float> voption
+        /// <summary>Whether the element is between its thresholds.</summary>
+        InView: Signal<bool> voption
+    }
+
+/// <summary>The instance signals a draggable element shares with the rest of the instance.</summary>
+[<NoEquality; NoComparison>]
+type DragBinding =
+    {
+        /// <summary>The element's drag position in pixels, written by dragging and read to move the element.</summary>
+        Position: Signal<struct (float * float)>
+        /// <summary>True from grab to release.</summary>
+        Dragging: Signal<bool> voption
+    }
+
 /// <summary>
-/// Template parts that animate elements with anime.js: <c>on</c>, <c>appear</c>, <c>enter</c>, <c>exit</c>,
-/// <c>presence</c> and its presets, and <c>flip</c>.
+/// Template parts that animate elements with anime.js: lifecycle parts (<c>on</c>, <c>appear</c>, <c>enter</c>,
+/// <c>exit</c>, <c>presence</c> and its presets, <c>flip</c>) and reactive parts (<c>follow</c>, <c>animateOn</c>,
+/// <c>draw</c>, <c>morph</c>, <c>scroll</c>, <c>drag</c>, <c>split</c>).
 /// </summary>
 /// <remarks>
 /// Every part creates its anime objects once the element is placed and reverts them when the instance is disposed. On an
@@ -45,6 +66,8 @@ module Motion =
     [<Emit("Object.assign({}, $0, {[$1]: $2})")>]
     let private withKey (parameters: 'p) (key: string) (value: obj) : 'p = jsNative
 
+    [<Emit("Object.assign({[$1]: $2}, $0)")>]
+    let private withDefault (parameters: 'p) (key: string) (value: obj) : 'p = jsNative
 
     [<Emit("(e => { const top = e.offsetTop, left = e.offsetLeft, width = e.offsetWidth, height = e.offsetHeight, s = e.style; s.position = 'absolute'; s.top = top + 'px'; s.left = left + 'px'; s.width = width + 'px'; s.height = height + 'px'; s.margin = '0'; s.boxSizing = 'border-box'; })($0)")>]
     let private pinOutOfFlow (element: obj) : unit = jsNative
@@ -54,6 +77,21 @@ module Motion =
 
     [<Emit("$0.children = $1")>]
     let private measureChildren (layout: AutoLayout) (children: TS.Dom.Element array) : unit = jsNative
+
+    [<Emit("$0.animations[$1].complete()")>]
+    let private completeProperty (animatable: Animatable) (property: string) : unit = jsNative
+
+    [<Emit("((el, f) => ({ get draw() { return f; }, set draw(v) { f = v; el.setAttribute('draw', '0 ' + v); } }))($0, $1)")>]
+    let private strokeTarget (drawable: TS.Dom.Element) (initial: float) : obj = jsNative
+
+    [<Emit("($0.tagName.toLowerCase() === 'path' ? 'd' : 'points')")>]
+    let private shapeAttribute (element: obj) : string = jsNative
+
+    [<Emit("((e, a, v) => { const shape = e.ownerDocument.createElementNS('http://www.w3.org/2000/svg', e.tagName.toLowerCase()); shape.setAttribute(a, v); return shape; })($0, $1, $2)")>]
+    let private shapeLike (element: obj) (attribute: string) (shape: string) : TS.Dom.Element = jsNative
+
+    [<Emit("$0.setAttribute($1, $2)")>]
+    let private setShape (element: obj) (attribute: string) (shape: string) : unit = jsNative
 
     [<Emit("$0.scrollHeight")>]
     let private contentHeight (element: obj) : float = jsNative
@@ -256,3 +294,186 @@ module Motion =
                             measureChildren layout.Value (liveChildren root departing)
                             layout.Value.animate () |> ignore
             })
+
+    /// <summary>
+    /// Animates the element's <c>property</c> to <c>read</c>'s value whenever it changes, from wherever the property is;
+    /// the first value is set at once.
+    /// </summary>
+    /// <remarks><c>parameters</c> without an entry for <c>property</c> give it the shared defaults.</remarks>
+    let follow (property: string) (parameters: AnimatableParams) (read: 'inst -> float) : Part<'native, 'inst> =
+        motionPart (
+            Func<_, _, _, _>(fun inst node context ->
+                let animatable =
+                    Anime.animatable (targetsOf node, withDefault parameters property (AnimatableProp ()))
+
+                let first = ref true
+
+                Api.createEffectOn (fun () -> read inst) (fun value ->
+                    animatable.set (property, value)
+
+                    if first.Value then
+                        first.Value <- false
+                        completeProperty animatable property)
+
+                settle context animatable)
+        )
+
+    /// <summary>
+    /// Replays <c>play</c> with <c>read</c>'s value whenever it changes; anime's default composition replaces the running
+    /// animation's tweens of the same properties. The first value is played to its end at once.
+    /// </summary>
+    /// <remarks>The cleanup reverts the latest animation.</remarks>
+    let animateOn (read: 'inst -> 'v) (play: 'inst -> TS.Dom.Element -> 'v -> #ITickable) : Part<'native, 'inst> =
+        motionPart (
+            Func<_, _, _, _>(fun inst node context ->
+                let current: ITickable ref = ref null
+
+                Api.createEffectOn (fun () -> read inst) (fun value ->
+                    let tickable = play inst (elementOf node) value :> ITickable
+
+                    if isNull current.Value then
+                        tickable.complete ()
+
+                    current.Value <- tickable)
+
+                let release () =
+                    if not (isNull current.Value) then
+                        settle context current.Value ()
+
+                release)
+        )
+
+    /// <summary>
+    /// On an SVG geometry element: draws the stroke from its start to the fraction <c>read</c> returns, in 0..1, animating
+    /// to each new fraction; the first fraction is drawn at once.
+    /// </summary>
+    let draw (parameters: AnimatableParams) (read: 'inst -> float) : Part<'native, 'inst> =
+        motionPart (
+            Func<_, _, _, _>(fun inst node context ->
+                let initial = read inst
+                let drawable = (Svg.drawable (targetsOf node, 0., initial))[0]
+
+                let animatable =
+                    Anime.animatable (Targets.object (strokeTarget drawable initial), withDefault parameters "draw" (AnimatableProp ()))
+
+                Api.createEffectOn (fun () -> read inst) (fun fraction -> animatable.set ("draw", fraction))
+                settle context animatable)
+        )
+
+    /// <summary>
+    /// On a <c>path</c>, <c>polygon</c> or <c>polyline</c>: morphs the shape to the <c>d</c> or <c>points</c> that
+    /// <c>read</c> returns whenever it changes, with <c>parameters</c>' timing. The first shape is set at once, and each
+    /// completed morph leaves exactly the shape read.
+    /// </summary>
+    let morph (parameters: Anim) (read: 'inst -> string) : Part<'native, 'inst> =
+        motionPart (
+            Func<_, _, _, _>(fun inst node context ->
+                let element = box node
+                let attribute = shapeAttribute element
+                let current: JSAnimation ref = ref null
+                let first = ref true
+
+                Api.createEffectOn (fun () -> read inst) (fun shape ->
+                    if first.Value then
+                        first.Value <- false
+                        setShape element attribute shape
+                    else
+                        let morphing =
+                            Anime.animate (
+                                targetsOf node,
+                                withKey parameters attribute (Svg.morphTo (Erased.cast (shapeLike element attribute shape)))
+                            )
+
+                        chain morphing "onComplete" (fun _ -> setShape element attribute shape)
+                        current.Value <- morphing)
+
+                let release () =
+                    if not (isNull current.Value) then
+                        settle context current.Value ()
+
+                release)
+        )
+
+    /// <summary>
+    /// Links <c>play</c>'s tickable to an <c>onScroll</c> observer of the element, or of <c>parameters</c>' target, and
+    /// writes the observer's progress and in-view state into the signals <c>bind</c> returns.
+    /// </summary>
+    /// <remarks>The observer requires <c>ResizeObserver</c>.</remarks>
+    let scroll (parameters: ScrollParams) (bind: 'inst -> ScrollBinding) (play: 'inst -> TS.Dom.Element -> #ITickable) : Part<'native, 'inst> =
+        motionPart (
+            Func<_, _, _, _>(fun inst node context ->
+                let binding = bind inst
+                let graph = Graph.Current
+                let observer = Anime.onScroll (withDefault parameters "target" (box node))
+                let tickable = play inst (elementOf node) :> ITickable
+                observer.link tickable |> ignore
+
+                match binding.Progress with
+                | ValueSome progress -> chain observer "onUpdate" (fun _ -> graph.Batch (fun () -> progress.Value <- observer.progress))
+                | ValueNone -> ()
+
+                match binding.InView with
+                | ValueSome inView ->
+                    chain observer "onEnter" (fun _ -> graph.Batch (fun () -> inView.Value <- true))
+                    chain observer "onLeave" (fun _ -> graph.Batch (fun () -> inView.Value <- false))
+                | ValueNone -> ()
+
+                let stop = settle context tickable
+
+                let release () =
+                    stop ()
+                    observer.revert ()
+
+                release)
+        )
+
+    /// <summary>
+    /// Makes the element draggable, two-way: dragging writes <c>Position</c>, and a write to <c>Position</c> from elsewhere
+    /// moves the element without an update callback, so the write is not echoed back.
+    /// </summary>
+    /// <remarks>The draggable requires <c>DOMPoint</c>, <c>DOMMatrix</c> and <c>ResizeObserver</c>.</remarks>
+    let drag (parameters: DraggableParams) (bind: 'inst -> DragBinding) : Part<'native, 'inst> =
+        motionPart (
+            Func<_, _, _, _>(fun inst node context ->
+                let binding = bind inst
+                let graph = Graph.Current
+                let draggable = Anime.draggable (targetsOf node, parameters)
+
+                chain draggable "onUpdate" (fun _ -> graph.Batch (fun () -> binding.Position.Value <- struct (draggable.x, draggable.y)))
+
+                match binding.Dragging with
+                | ValueSome dragging ->
+                    chain draggable "onGrab" (fun _ -> graph.Batch (fun () -> dragging.Value <- true))
+                    chain draggable "onRelease" (fun _ -> graph.Batch (fun () -> dragging.Value <- false))
+                | ValueNone -> ()
+
+                Api.createEffectOn (fun () -> binding.Position.Value) (fun (struct (x, y)) ->
+                    if x <> draggable.x then
+                        draggable.setX (x, true) |> ignore
+
+                    if y <> draggable.y then
+                        draggable.setY (y, true) |> ignore)
+
+                settle context draggable)
+        )
+
+    /// <summary>
+    /// Splits the element's static text with anime's <c>splitText</c> and plays <c>play</c> over the parts; the cleanup
+    /// reverts the tickable, then the split.
+    /// </summary>
+    /// <remarks>The element's content must be static text: a text slot or region inside it stops updating once split.</remarks>
+    let split (parameters: SplitParams) (play: 'inst -> TextSplitter -> #ITickable) : Part<'native, 'inst> =
+        motionPart (
+            Func<_, _, _, _>(fun inst node context ->
+                let splitter = Anime.splitText (elementOf node, parameters)
+                let tickable = play inst splitter :> ITickable
+
+                let release () =
+                    if context.ExitPending () then
+                        tickable.pause ()
+                    else
+                        tickable.revert ()
+                        splitter.revert ()
+
+                release)
+        )

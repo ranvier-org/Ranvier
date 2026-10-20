@@ -21,17 +21,44 @@ let private document: Document = jsNative
 [<Emit("$0.style.getPropertyValue($1)")>]
 let private styleOf (element: obj) (property: string) : string = jsNative
 
+[<Emit("$0.getAttribute($1)")>]
+let private attributeOf (element: obj) (name: string) : string = jsNative
+
 [<Emit("$0.querySelector($1)")>]
 let private find (root: obj) (selector: string) : HTMLElement = jsNative
 
 [<Emit("Array.from($0.querySelectorAll($1), n => n.textContent)")>]
 let private textsOf (root: obj) (selector: string) : string array = jsNative
 
+[<Emit("$0.querySelectorAll($1).length")>]
+let private countOf (root: obj) (selector: string) : int = jsNative
+
+[<Emit("$0.namespaceURI")>]
+let private namespaceOf (node: obj) : string = jsNative
+
 [<Emit("$0.isConnected")>]
 let private connected (node: obj) : bool = jsNative
 
 [<Emit("globalThis.motionLog.splice(0)")>]
 let private logged () : string array = jsNative
+
+[<Emit("globalThis.motionDraggable")>]
+let private lastDraggable () : Draggable = jsNative
+
+[<Emit("globalThis.motionSets")>]
+let private draggableSets () : int = jsNative
+
+[<Emit("globalThis.motionObserver")>]
+let private lastObserver () : ScrollObserver = jsNative
+
+[<Emit("Object.defineProperty($0, 'progress', { value: $1, configurable: true })")>]
+let private fixProgress (observer: ScrollObserver) (progress: float) : unit = jsNative
+
+[<Emit("$0.onUpdate($0)")>]
+let private fireUpdate (observer: ScrollObserver) : unit = jsNative
+
+[<Emit("$0.onEnter($0)")>]
+let private fireEnter (observer: ScrollObserver) : unit = jsNative
 
 [<Emit("(() => { const r = $0.ownerDocument.createRange(); r.selectNodeContents($0); $0.replaceChildren(r.createContextualFragment($1)); })()")>]
 let private loadServed (target: HTMLElement) (html: string) : unit = jsNative
@@ -301,6 +328,253 @@ let private flipOrder queued (clock: Clock) =
 
     equal ([||], [| "animate 3 1 2" |], [| "record 3 1 2"; "animate 3 1" |], [ "3"; "1"; "2" ], [||]) (mounting, created, removed, held, reduced)
 
+type Level = { Level: Signal<float> }
+
+let private followReaches (clock: Clock) =
+    use graph = new Graph ()
+    let target = host ()
+
+    let state =
+        {
+            Level = graph.Run (fun () -> Api.createSignal 0.2)
+        }
+
+    let view =
+        Component.template
+            (fun _ (s: Level) -> s)
+            (div (Motion.follow "opacity" (AnimatableParams (duration = 1000, ease = Ease.linear)) (fun (s: Level) -> s.Level.Value)) { "level" })
+
+    let mounted = mountIn false graph target (Component.render view state)
+    let element = find target "div"
+    let first = styleOf element "opacity"
+    write graph mounted (fun () -> state.Level.Value <- 1.)
+    advance clock 0.
+    advance clock 488.
+    let half = styleOf element "opacity"
+    advance clock 600.
+    let reached = styleOf element "opacity"
+    mounted.Dispose ()
+    equal ("0.2", "0.6", "1", "") (first, half, reached, styleOf element "opacity")
+
+let private replayed =
+    Component.template
+        (fun _ (s: Level) -> s)
+        (div (
+            Motion.animateOn (fun (s: Level) -> s.Level.Value) (fun _ node level ->
+                Anime.animate (node, Anim (opacity = level, duration = 1000, ease = Ease.linear)))
+        ) {
+            "level"
+        })
+
+let private animateOnReplaces (clock: Clock) =
+    use graph = new Graph ()
+    let target = host ()
+
+    let state =
+        {
+            Level = graph.Run (fun () -> Api.createSignal 0.2)
+        }
+
+    let mounted = mountIn false graph target (Component.render replayed state)
+    let element = find target "div"
+    let first = styleOf element "opacity"
+    write graph mounted (fun () -> state.Level.Value <- 1.)
+    advance clock 0.
+    advance clock 488.
+    let half = styleOf element "opacity"
+    write graph mounted (fun () -> state.Level.Value <- 0.4)
+    advance clock 0.
+    advance clock 488.
+    let replaced = styleOf element "opacity"
+    advance clock 600.
+    let reached = styleOf element "opacity"
+    advance clock 1000.
+    let settled = styleOf element "opacity"
+    mounted.Dispose ()
+    equal ("0.2", "0.6", "0.5", "0.4", "0.4") (first, half, replaced, reached, settled)
+
+let private stroked =
+    Component.define (fun _ (s: Level) -> s) (fun t ->
+        t.element
+            (HtmlTag "svg")
+            [||]
+            [|
+                t.element
+                    (HtmlTag "path")
+                    [|
+                        Motion.draw (AnimatableParams (duration = 1000, ease = Ease.linear)) (fun (s: Level) -> s.Level.Value)
+                    |]
+                    [||]
+            |])
+
+let private drawReaches (clock: Clock) =
+    use graph = new Graph ()
+    let target = host ()
+
+    let state =
+        {
+            Level = graph.Run (fun () -> Api.createSignal 0.25)
+        }
+
+    let mounted = mountIn false graph target (Component.render stroked state)
+    let path = find target "path"
+    let first = attributeOf path "stroke-dasharray", namespaceOf path
+    write graph mounted (fun () -> state.Level.Value <- 0.75)
+    advance clock 0.
+    advance clock 488.
+    let half = attributeOf path "stroke-dasharray"
+    advance clock 600.
+    let reached = attributeOf path "stroke-dasharray"
+    mounted.Dispose ()
+    equal (("250 760", "http://www.w3.org/2000/svg"), "500 510", "750 260") (first, half, reached)
+
+type Outline = { Shape: Signal<string> }
+
+let private morphed =
+    Component.define (fun _ (s: Outline) -> s) (fun t ->
+        t.element
+            (HtmlTag "svg")
+            [||]
+            [|
+                t.element
+                    (HtmlTag "path")
+                    [|
+                        Motion.morph (Anim (duration = 1000, ease = Ease.linear)) (fun (s: Outline) -> s.Shape.Value)
+                    |]
+                    [||]
+            |])
+
+let private morphReaches (clock: Clock) =
+    use graph = new Graph ()
+    let target = host ()
+
+    let state =
+        {
+            Shape = graph.Run (fun () -> Api.createSignal "M0 0 L10 0")
+        }
+
+    let mounted = mountIn false graph target (Component.render morphed state)
+    let path = find target "path"
+    let first = attributeOf path "d"
+    write graph mounted (fun () -> state.Shape.Value <- "M0 10 L10 10")
+    advance clock 0.
+    advance clock 488.
+    let half = attributeOf path "d"
+    advance clock 600.
+    let reached = attributeOf path "d"
+    mounted.Dispose ()
+    equal ("M0 0 L10 0", true, "M0 10 L10 10") (first, half <> first && half <> reached, reached)
+
+type Puck =
+    {
+        Position: Signal<struct (float * float)>
+        Dragging: Signal<bool>
+    }
+
+let private dragged =
+    Component.template
+        (fun _ (p: Puck) -> p)
+        (div (
+            Motion.drag (DraggableParams (onUpdate = fun _ -> ())) (fun (p: Puck) ->
+                {
+                    Position = p.Position
+                    Dragging = ValueSome p.Dragging
+                })
+        ) {
+            "puck"
+        })
+
+let private dragEchoGuard (clock: Clock) =
+    use graph = new Graph ()
+    let target = host ()
+
+    let puck =
+        graph.Run (fun () ->
+            {
+                Position = Api.createSignal (struct (0., 0.))
+                Dragging = Api.createSignal false
+            })
+
+    let mounted = mountIn false graph target (Component.render dragged puck)
+    let draggable = lastDraggable ()
+    let initial = draggableSets ()
+    write graph mounted (fun () -> puck.Position.Value <- struct (100., 50.))
+    advance clock 0.
+    advance clock 16.
+
+    let moved =
+        draggableSets () - initial, struct (draggable.x, draggable.y), graph.Run (fun () -> puck.Position.Value)
+
+    draggable.x <- 30.
+    advance clock 16.
+
+    let afterDrag =
+        draggableSets () - initial, graph.Run (fun () -> puck.Position.Value)
+
+    mounted.Dispose ()
+    equal ((2, struct (100., 50.), struct (100., 50.)), (3, struct (30., 50.))) (moved, afterDrag)
+
+type Scrolled =
+    {
+        Progress: Signal<float>
+        InView: Signal<bool>
+    }
+
+let private scrolled =
+    Component.template
+        (fun _ (s: Scrolled) -> s)
+        (section (
+            Motion.scroll
+                (ScrollParams ())
+                (fun (s: Scrolled) ->
+                    {
+                        Progress = ValueSome s.Progress
+                        InView = ValueSome s.InView
+                    })
+                (fun _ node -> Anime.animate (node, Anim (opacity = Value.fromTo (0, 1), duration = 1000, ease = Ease.linear)))
+        ) {
+            "story"
+        })
+
+let private scrollWrites (clock: Clock) =
+    use graph = new Graph ()
+    let target = host ()
+
+    let state =
+        graph.Run (fun () ->
+            {
+                Progress = Api.createSignal 0.
+                InView = Api.createSignal false
+            })
+
+    let mounted = mountIn false graph target (Component.render scrolled state)
+    let observer = lastObserver ()
+    fixProgress observer 0.25
+    fireUpdate observer
+    fireEnter observer
+    let written = graph.Run (fun () -> state.Progress.Value, state.InView.Value)
+    mounted.Dispose ()
+    equal (0.25, true) written
+
+let private splitted =
+    Component.template
+        (fun _ () -> ())
+        (h1 (
+            Motion.split (SplitParams (chars = true)) (fun _ splitter ->
+                Anime.animate (splitter.chars, Anim (opacity = Value.fromTo (0, 1), duration = 100)))
+        ) {
+            "Hi"
+        })
+
+let private splitReverts (clock: Clock) =
+    use graph = new Graph ()
+    let target = host ()
+    let mounted = mountIn false graph target (Component.render splitted ())
+    let heading = find target "h1"
+    let parts = countOf heading "*"
+    mounted.Dispose ()
+    equal (true, "Hi") (parts >= 2, heading.innerHTML)
+
 let private appeared =
     Component.template
         (fun _ () -> ())
@@ -347,6 +621,13 @@ let cases: (string * (Clock -> unit)) array =
             modes "under Reduced, enter does not play and exit finishes at once" reducedPolicy
             modes "flip records before and animates after each pass, without leaving rows" flipOrder
             [|
+                "follow sets its first value and animates to each write", followReaches
+                "animateOn replaces a running animation and settles on the last value", animateOnReplaces
+                "draw animates the stroke to each fraction", drawReaches
+                "morph animates to each shape and ends on it exactly", morphReaches
+                "drag writes its position and moves on writes without echo", dragEchoGuard
+                "scroll writes the observer's progress and in-view state", scrollWrites
+                "split splits the text and its cleanup restores it", splitReverts
                 "appear skips hydrated elements and plays on created ones", appearSkipsHydrated
             |]
         ]
