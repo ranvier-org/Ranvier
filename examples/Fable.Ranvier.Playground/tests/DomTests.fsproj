@@ -71,6 +71,7 @@
     <Compile Include="../../../experiments/Ranvier.View.Portable/Checks/ServerFixtures.fs" Link="Checks/ServerFixtures.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Portable/Checks/ServerChecks.fs" Link="Checks/ServerChecks.fs" />
     <Compile Include="HydrationChecks.fs" />
+    <Compile Include="HydrationPerf.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/ComponentBench.fs" Link="ComponentBench.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Fixtures.fs" Link="Fixtures.fs" />
     <Compile Include="RepresentationBench.fs" />
