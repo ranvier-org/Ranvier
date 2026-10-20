@@ -71,6 +71,61 @@ let view = Component.define (fun _ (p: R) -> p) (fun t -> t.div [| t.Props.Input
 type R = { Value: string }
 let view = Component.define (fun _ (p: R) -> p) (fun t -> t.br [||] [||])
 ''', "FS0003"),
+    ("sugar element bodies", '''
+open Ranvier.View.Foundation.Sugar
+type SugarRow = { Value: global.Ranvier.Signal<string>; Count: global.Ranvier.Signal<int> }
+let view =
+    Component.define (fun _ (p: SugarRow) -> p) (fun t ->
+        t.Div(t.Attrs.className "x", t.Attrs.title (t.from (fun r -> r.Value))) {
+            "static"
+            t.Input(t.Props.Input.value (t.from (fun r -> r.Value)))
+            t.Span() { fun r -> string r.Count.Value }
+            t.Span() { t.text (fun (r: SugarRow) -> string r.Count.Value) }
+        })
+''', None),
+    ("sugar input part on div", '''
+open Ranvier.View.Foundation.Sugar
+type SugarRow = { Value: global.Ranvier.Signal<string> }
+let view = Component.define (fun _ (p: SugarRow) -> p) (fun t -> t.Div(t.Props.Input.value (t.from (fun r -> r.Value))) { "x" })
+''', "FS0041"),
+    ("sugar void tag with children", '''
+open Ranvier.View.Foundation.Sugar
+let view = Component.define (fun _ () -> ()) (fun t -> t.Div() { t.Input() { "x" } })
+''', "FS0708"),
+    ("sugar part of another element", '''
+open Ranvier.View.Foundation.Sugar
+let view =
+    Component.define (fun _ () -> ()) (fun t ->
+        let part: Part<Dom.HTMLButtonElement, unit> = t.Props.Button.disabled true
+        t.Span(t.Attrs.className "x", part) { "y" })
+''', "FS0001"),
+    ("sugar lambda yield with a label shared by a later record", '''
+open Ranvier.View.Foundation.Sugar
+type SugarItem = { Id: int }
+type SugarOther = { Id: int; Name: string }
+let view =
+    Component.define (fun _ (items: SugarItem array) -> items) (fun t ->
+        t.Div() { t.forEach (fun (item: SugarItem) -> item.Id) id (fun r -> r.Span() { fun row -> string (row ()).Id }) })
+''', "FS0001"),
+    ("sugar t.text with a label shared by a later record", '''
+open Ranvier.View.Foundation.Sugar
+type SugarItem = { Id: int }
+type SugarOther = { Id: int; Name: string }
+let view =
+    Component.define (fun _ (items: SugarItem array) -> items) (fun t ->
+        t.Div() { t.forEach (fun (item: SugarItem) -> item.Id) id (fun r -> r.Span() { r.text (fun row -> string (row ()).Id) }) })
+''', None),
+    ("sugar outer instance inside a row", '''
+open Ranvier.View.Foundation.Sugar
+type SugarItem = { Id: int }
+let view =
+    Component.define (fun _ (items: SugarItem array) -> items) (fun t ->
+        t.Div() { t.forEach (fun (item: SugarItem) -> item.Id) id (fun r -> r.Span() { t.text (fun (items: SugarItem array) -> string items.Length) }) })
+''', "FS0041"),
+    ("sugar Program view in a body", '''
+open Ranvier.View.Foundation.Sugar
+let view = Component.define (fun _ () -> ()) (fun t -> t.Div() { Program.text "x" })
+''', "FS0041"),
 ]
 
 with tempfile.TemporaryDirectory(prefix="ranvier-generated-types-") as directory:
