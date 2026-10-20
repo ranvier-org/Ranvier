@@ -44,32 +44,41 @@ let private serverPending (pending: exn) : exn =
 /// <c>report</c>.
 /// </summary>
 [<Sealed>]
-type internal RequestScope(lifetime: MountLifetime, identity: IdentityScope, report: exn -> unit) =
+type internal RequestScope(lifetime: MountLifetime, identity: IdentityScope, createId: unit -> string, report: exn -> unit) =
     inherit ServerScope()
+    let mutable completed = false
+
+    // The Setup of the instance owned by this scope: OnCleanup registers on the scope's lifetime, and raises after Complete.
+    let setup =
+        {
+            OnCleanup =
+                fun cleanup ->
+                    if completed then
+                        raise (InvalidOperationException "Server component setup is completed")
+
+                    lifetime.OnCleanup cleanup
+            CreateId = createId
+        }
+
+    new(lifetime: MountLifetime, identity: IdentityScope, report: exn -> unit) = RequestScope (lifetime, identity, identity.CreateId, report)
 
     override _.Nest body =
         lifetime.Child (
             ignore,
             fun child ->
-                let completed = ref false
-
-                let setup =
-                    {
-                        OnCleanup =
-                            fun cleanup ->
-                                if completed.Value then
-                                    raise (InvalidOperationException "Server component setup is completed")
-
-                                child.OnCleanup cleanup
-                        CreateId = identity.CreateId
-                    }
+                let scope = RequestScope (child, identity, createId, report)
 
                 try
-                    body (RequestScope (child, identity, report)) setup
+                    body scope scope.InstanceSetup
                 finally
-                    completed.Value <- true
+                    scope.Complete ()
         )
         |> ignore
+
+    member private _.InstanceSetup = setup
+
+    member private _.Complete() =
+        completed <- true
 
     override _.Attempt body =
         let attempt: MountLifetime ref = ref null
@@ -79,7 +88,7 @@ type internal RequestScope(lifetime: MountLifetime, identity: IdentityScope, rep
                 ignore,
                 fun child ->
                     attempt.Value <- child
-                    body (RequestScope (child, identity, report))
+                    body (RequestScope (child, identity, createId, report))
             )
             |> ignore
         with _ ->
