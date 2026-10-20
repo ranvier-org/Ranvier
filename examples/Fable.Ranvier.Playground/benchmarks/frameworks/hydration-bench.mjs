@@ -1,7 +1,7 @@
 // Hydration benchmark in Chromium: Ranvier's hydrate of server HTML against Ranvier's client mount of the same page and
 // against Solid 2's hydrate of its own server HTML, for the component page (1/16/128 rows) and the keyed page
 // (1000/10000 rows). Also the time to the first handled click, and the retained heap per row.
-// Usage: node benchmarks/frameworks/hydration-bench.mjs [--build] [--verify-only] [--dist=<dir>] [--label=<name>] [--out=<dir>] [--port=<n>] [--rotation=balanced|cyclic]
+// Usage: node benchmarks/frameworks/hydration-bench.mjs [--build] [--verify-only] [--dist=<dir>] [--label=<name>] [--out=<dir>] [--port=<n>] [--rotation=balanced|cyclic] [--rounds=<n>]
 import { chromium } from "@playwright/test";
 import { spawn, execFileSync } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -16,9 +16,13 @@ const outDir = argument("dist") ?? "generated-hydration-dist";
 const verifyOnly = process.argv.includes("--verify-only");
 const env = { ...process.env, RanvierCounters: "false", RANVIER_PERF_OUTPUT: outDir };
 const port = Number(argument("port", 5189));
-const modes = ["ranvier-hydrate", "ranvier-mount", "solid-hydrate"], processes = 3, rounds = 15, warmups = 3, retained = 32;
+const modes = ["ranvier-hydrate", "ranvier-mount", "solid-hydrate"], processes = 3, warmups = 3, retained = 32;
 const rotation = argument("rotation", "balanced");
 if (rotation !== "balanced" && rotation !== "cyclic") throw Error(`Unknown rotation ${rotation}`);
+// Measured samples per mode and process: 60 under `balanced` gives each (mode, predecessor) cell 20 samples per process
+// and 60 in all; `cyclic` keeps Task 20's 15.
+const rounds = Number(argument("rounds", rotation === "balanced" ? 60 : 15));
+if (rotation === "balanced" && rounds % 3 !== 0) throw Error("Balanced rounds must be a multiple of 3");
 // The sample order of one process: `rounds` measured samples per mode after `warmups` per mode, each entry carrying its
 // mode, the mode sampled just before it, and its round (the mode's measured occurrence; negative while warming up).
 // `balanced` cycles through a de Bruijn sequence of the three modes, so in every 9 samples each mode follows each mode,
@@ -199,7 +203,7 @@ try {
         "firstClick is the time from the call to the end of the first click on the first row's button (component) or link (keyed), including the commit of the click's update (Solid: flush()).",
         "retainedBytesPerRow is the GC-stabilised retained JavaScript heap of 32 live hydrated (or mounted) hosts divided by their rows, the hosts' server DOM included; it is reported, not gated."
       ],
-      rotation, verified, samples, clicks, summaries, byPrevious, firstClick, heaps, heapSummaries, hydrateVersusMount
+      rotation, rounds, verified, samples, clicks, summaries, byPrevious, firstClick, heaps, heapSummaries, hydrateVersusMount
     };
     await mkdir(output, { recursive: true });
     await writeFile(`${output}/${label}.json`, JSON.stringify(result, null, 2) + "\n");
