@@ -228,22 +228,14 @@ let private regionsMountWithContent () =
     let markers = list.firstChild.Value, list.lastChild.Value
     let served = all host "li"
     let mounted = hydrate graph strictOptions host listed listedItems
-    let rows = all host "li"
-
-    let fresh =
-        rows
-        |> Array.forall (fun row ->
-            served
-            |> Array.forall (fun server -> not (obj.ReferenceEquals (row, server))))
 
     equal
-        (true, true, true, "a<b>", 2, true)
+        (true, true, true, "a<b>", true)
         (obj.ReferenceEquals (list, element host "ul"),
          obj.ReferenceEquals (fst markers, list.firstChild.Value),
          obj.ReferenceEquals (snd markers, list.lastChild.Value),
          list.textContent,
-         rows.Length,
-         fresh)
+         sameNodes served (all host "li"))
 
     mounted.Dispose ()
 
@@ -417,6 +409,359 @@ let private setupThrowsDuringHydration () =
             error.Message
 
     equal ("boom", before) (message, host.innerHTML)
+
+let private a = { Id = 1; Text = "a" }
+let private b = { Id = 2; Text = "b" }
+let private c = { Id = 3; Text = "c" }
+
+let mutable private liveItems: Signal<Listed array> = Unchecked.defaultof<_>
+
+let private live (items: Listed array) =
+    let signal = Api.createSignal items
+    liveItems <- signal
+    signal
+
+let private liveList =
+    Component.define (fun _ (items: Listed array) -> live items) (fun t ->
+        t.ul
+            [||]
+            [|
+                t.each (fun (item: Listed) -> item.Id) (fun (items: Signal<Listed array>) -> items.Value) listedRow
+            |])
+
+let private listsHydrate () =
+    use graph = new Graph ()
+    let host = serve liveList [| a; b |]
+    let before = nodesOf host
+    let mounted = hydrate graph strictOptions host liveList [| a; b |]
+    equal true (sameNodes before (nodesOf host))
+    let first, second = (all host "li")[0], (all host "li")[1]
+    graph.Run (fun () -> liveItems.Value <- [| b; a |])
+    equal ("ba", true) ((element host "ul").textContent, sameNodes [| second; first |] (all host "li"))
+    graph.Run (fun () -> liveItems.Value <- [| b; a; c |])
+    equal "bac" (element host "ul").textContent
+    graph.Run (fun () -> liveItems.Value <- [| b; c |])
+    equal "bc" (element host "ul").textContent
+    graph.Run (fun () -> liveItems.Value <- [||])
+    equal "<!--[--><!--]-->" (element host "ul").innerHTML
+    mounted.Dispose ()
+
+let private innerCell =
+    Component.define (fun _ (text: unit -> string) -> text) (fun t -> t.element (HtmlTag "b") [||] [| t.text (fun text -> text ()) |])
+
+let private nestedRow =
+    Component.define (fun _ (item: unit -> Listed) -> item) (fun t ->
+        t.li
+            [||]
+            [|
+                t.each id (fun (item: unit -> Listed) -> [| (item ()).Text + "1"; (item ()).Text + "2" |]) innerCell
+            |])
+
+let private nestedList =
+    Component.define (fun _ (items: Listed array) -> live items) (fun t ->
+        t.ul
+            [||]
+            [|
+                t.each (fun (item: Listed) -> item.Id) (fun (items: Signal<Listed array>) -> items.Value) nestedRow
+            |])
+
+let private nestedRegions () =
+    use graph = new Graph ()
+    let host = serve nestedList [| a; b |]
+    let before = nodesOf host
+    let mounted = hydrate graph strictOptions host nestedList [| a; b |]
+    equal (true, "a1a2b1b2") (sameNodes before (nodesOf host), (element host "ul").textContent)
+    graph.Run (fun () -> liveItems.Value <- [| { a with Text = "z" }; b |])
+    equal "z1z2b1b2" (element host "ul").textContent
+    mounted.Dispose ()
+
+let mutable private liveTexts: Signal<string array> = Unchecked.defaultof<_>
+
+let private liveStrings (items: string array) =
+    let signal = Api.createSignal items
+    liveTexts <- signal
+    signal
+
+let private textList =
+    Component.define (fun _ (items: string array) -> liveStrings items) (fun t ->
+        t.div [||] [| t.each id (fun (items: Signal<string array>) -> items.Value) textRow |])
+
+[<Emit("$0.childNodes[$1]")>]
+let private childAt (parent: Node) (index: int) : Node = jsNative
+
+let private textRowSeparators () =
+    use graph = new Graph ()
+    let host = serve textList [| "a"; "b" |]
+    equal "<!--[r--><div><!--[-->a<!--!-->b<!--]--></div><!--]-->" host.innerHTML
+    let list = element host "div"
+    let texts = [| childAt list 1; childAt list 3 |]
+    let mounted = hydrate graph strictOptions host textList [| "a"; "b" |]
+
+    equal ("<!--[-->ab<!--]-->", 4., true) (list.innerHTML, list.childNodes.length, sameNodes texts [| childAt list 1; childAt list 2 |])
+
+    graph.Run (fun () -> liveTexts.Value <- [| "b"; "a"; "c" |])
+    equal ("bac", true) (list.textContent, sameNodes [| texts[1]; texts[0] |] [| childAt list 1; childAt list 2 |])
+    mounted.Dispose ()
+
+    use graph = new Graph ()
+    let host = serve textList [| "a"; "b" |]
+    let nodes = nodesOf host
+
+    let error =
+        ServerChecks.failure (fun () ->
+            hydrate graph strictOptions host textList [| "a"; "b"; "c" |]
+            |> ignore)
+
+    equal
+        ("Hydration mismatch at #0: expected a text node, found <!--]-->", "<!--[r--><div><!--[-->a<!--!-->b<!--]--></div><!--]-->", true)
+        (error.Message, host.innerHTML, sameNodes nodes (nodesOf host))
+
+let private emptyList =
+    Component.define (fun _ (items: string array) -> liveStrings items) (fun t ->
+        t.div
+            [||]
+            [|
+                t.each id (fun (items: Signal<string array>) -> items.Value) emptyRow
+                t.span [||] [| t.text "after" |]
+            |])
+
+let private zeroRootRows () =
+    use graph = new Graph ()
+    let host = serve emptyList [| "a"; "b" |]
+    let before = nodesOf host
+    let after = element host "span"
+    let mounted = hydrate graph strictOptions host emptyList [| "a"; "b" |]
+    equal true (sameNodes before (nodesOf host))
+    graph.Run (fun () -> liveTexts.Value <- [| "a"; "b"; "c" |])
+    let list = element host "div"
+    equal (6., "after", true) (list.childNodes.length, list.textContent, obj.ReferenceEquals (after, list.lastChild.Value))
+    graph.Run (fun () -> liveTexts.Value <- [| "b"; "c" |])
+
+    equal
+        (5., true, "after", true)
+        (list.childNodes.length, obj.ReferenceEquals (before[4], childAt list 1), list.textContent, obj.ReferenceEquals (after, list.lastChild.Value))
+
+    mounted.Dispose ()
+
+let private rowCountMismatch () =
+    for serverItems, clientItems in [ [| a; b |], [| a; b; c |]; [| a; b; c |], [| a |] ] do
+        use graph = new Graph ()
+        let host = serve liveList serverItems
+        let list = element host "ul"
+        let start = list.firstChild.Value
+        let reports = ResizeArray<exn list>()
+
+        let mounted =
+            Hydration.hydrate graph None reports.Add lenientOptions host liveList clientItems
+
+        let expected = String.concat "" [ for item in clientItems -> item.Text ]
+
+        equal
+            (true, expected, true, true)
+            (singleMismatch reports,
+             list.textContent,
+             obj.ReferenceEquals (list, element host "ul"),
+             obj.ReferenceEquals (start, list.firstChild.Value))
+
+        graph.Run (fun () -> liveItems.Value <- [| c; a |])
+        equal "ca" list.textContent
+        mounted.Dispose ()
+
+    use graph = new Graph ()
+    let host = serve liveList [| a; b |]
+    let before = host.innerHTML
+    let nodes = nodesOf host
+
+    let raised =
+        try
+            hydrate graph strictOptions host liveList [| a |]
+            |> ignore
+
+            None
+        with TemplateDom.HydrationMismatchException _ as error ->
+            Some error.Message
+
+    equal (Some "Hydration mismatch at #1: expected <!--]-->, found li", before, true) (raised, host.innerHTML, sameNodes nodes (nodesOf host))
+
+let private regionFirstRow =
+    Component.define (fun _ (item: unit -> Listed) -> item) (fun t ->
+        t.fragment
+            [|
+                t.each id (fun (item: unit -> Listed) -> [| (item ()).Text |]) innerCell
+                t.span [||] [| t.text "end" |]
+            |])
+
+let private regionFirstList =
+    Component.define (fun _ (items: Listed array) -> live items) (fun t ->
+        t.div
+            [||]
+            [|
+                t.each (fun (item: Listed) -> item.Id) (fun (items: Signal<Listed array>) -> items.Value) regionFirstRow
+            |])
+
+let private rowStartsWithRegion () =
+    use graph = new Graph ()
+    let host = serve regionFirstList [| a; b |]
+
+    equal
+        "<!--[r--><div><!--[--><!--[--><b>a</b><!--]--><span>end</span><!--[--><b>b</b><!--]--><span>end</span><!--]--></div><!--]-->"
+        host.innerHTML
+
+    let before = nodesOf host
+    let spans = all host "span"
+    let mounted = hydrate graph strictOptions host regionFirstList [| a; b |]
+    equal true (sameNodes before (nodesOf host))
+    graph.Run (fun () -> liveItems.Value <- [| b; a |])
+    equal ("bendaend", true) ((element host "div").textContent, sameNodes [| spans[1]; spans[0] |] (all host "span"))
+    mounted.Dispose ()
+
+let private reorderedItems () =
+    use graph = new Graph ()
+    let host = serve liveList [| a; b |]
+    let serverRows = all host "li"
+    let mounted = hydrate graph strictOptions host liveList [| b; a |]
+    equal ("ba", true) ((element host "ul").textContent, sameNodes serverRows (all host "li"))
+    graph.Run (fun () -> liveItems.Value <- [| a; b |])
+    let rows = all host "li"
+
+    equal
+        ("ab", true, true)
+        ((element host "ul").textContent, obj.ReferenceEquals (rows[0], serverRows[1]), obj.ReferenceEquals (rows[1], serverRows[0]))
+
+    mounted.Dispose ()
+
+let private italicCell =
+    Component.define (fun _ (text: unit -> string) -> text) (fun t -> t.element (HtmlTag "i") [||] [| t.text (fun text -> text ()) |])
+
+let private italicRow =
+    Component.define (fun _ (item: unit -> Listed) -> item) (fun t ->
+        t.li
+            [||]
+            [|
+                t.each id (fun (item: unit -> Listed) -> [| (item ()).Text + "1"; (item ()).Text + "2" |]) italicCell
+            |])
+
+let private italicList =
+    Component.define (fun _ (items: Listed array) -> live items) (fun t ->
+        t.ul
+            [||]
+            [|
+                t.each (fun (item: Listed) -> item.Id) (fun (items: Signal<Listed array>) -> items.Value) italicRow
+            |])
+
+let private nestedRowMismatch () =
+    use graph = new Graph ()
+    let host = serve nestedList [| a; b |]
+    let rows = all host "li"
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        Hydration.hydrate graph None reports.Add lenientOptions host italicList [| a; b |]
+
+    let mismatch = "Hydration mismatch at #0: expected <i>, found b"
+
+    let shown (order: Node array) =
+        (element host "ul").textContent, sameNodes order (all host "li"), (all host "i").Length, (all host "b").Length
+
+    equal ([ [ mismatch ]; [ mismatch ] ], ("a1a2b1b2", true, 4, 0)) (messages reports, shown rows)
+    graph.Run (fun () -> liveItems.Value <- [| b; { a with Text = "z" } |])
+    equal ("b1b2z1z2", true, 4, 0) (shown [| rows[1]; rows[0] |])
+    mounted.Dispose ()
+
+    use graph = new Graph ()
+    let host = serve nestedList [| a; b |]
+    let before = host.innerHTML
+    let nodes = nodesOf host
+
+    let error =
+        ServerChecks.failure (fun () ->
+            hydrate graph strictOptions host italicList [| a; b |]
+            |> ignore)
+
+    equal (mismatch, before, true) (error.Message, host.innerHTML, sameNodes nodes (nodesOf host))
+
+type private TrackedRow = { Item: unit -> Listed; Id: string }
+
+let private rowCleanups = ResizeArray<string>()
+
+let private trackedRow =
+    Component.define
+        (fun setup (item: unit -> Listed) ->
+            let text = (item ()).Text
+            setup.OnCleanup (fun () -> rowCleanups.Add text)
+            { Item = item; Id = setup.CreateId () })
+        (fun t -> t.li [| t.Attrs.id (fun (row: TrackedRow) -> Some row.Id) |] [| t.text (fun row -> (row.Item ()).Text) |])
+
+let private trackedList =
+    Component.define (fun _ (items: Listed array) -> live items) (fun t ->
+        t.ul
+            [||]
+            [|
+                t.each (fun (item: Listed) -> item.Id) (fun (items: Signal<Listed array>) -> items.Value) trackedRow
+            |])
+
+let private adoptedRowsKeepCleanupsAndIds () =
+    let served = servedIds trackedList [| a; b |]
+    use graph = new Graph ()
+    let host = serve trackedList [| a; b |]
+    rowCleanups.Clear ()
+    let rows = all host "li"
+    let mounted = hydrate graph strictOptions host trackedList [| a; b |]
+    let hydrated = domIds host, sameNodes rows (all host "li")
+    graph.Run (fun () -> liveItems.Value <- [| b; c |])
+
+    let updated =
+        domIds host, (element host "ul").textContent, List.ofSeq rowCleanups, obj.ReferenceEquals (rows[1], (all host "li")[0])
+
+    mounted.Dispose ()
+
+    equal
+        ((served, true), ([ "r-0.r0.1-0"; "r-0.r0.2-0" ], "bc", [ "a" ], true), [ "a"; "b"; "c" ])
+        (hydrated, updated, List.sort (List.ofSeq rowCleanups))
+
+let mutable private holeFails = false
+
+let private failingView =
+    Component.define
+        (fun _ () ->
+            if holeFails then
+                failwith "boom")
+        (fun t -> t.span [||] [||])
+
+let private holedRow =
+    Component.define (fun _ (item: unit -> Listed) -> item) (fun t ->
+        t.li
+            [||]
+            [|
+                t.text (fun item -> (item ()).Text)
+                t.view (fun _ -> Component.render failingView ())
+            |])
+
+let private holedList =
+    Component.define (fun _ (items: Listed array) -> live items) (fun t ->
+        t.ul
+            [||]
+            [|
+                t.each (fun (item: Listed) -> item.Id) (fun (items: Signal<Listed array>) -> items.Value) holedRow
+            |])
+
+let private rowFailureRestores () =
+    for options in [ strictOptions; lenientOptions ] do
+        use graph = new Graph ()
+        let host = serve holedList [| a; b |]
+        let before = host.innerHTML
+        let nodes = nodesOf host
+        holeFails <- true
+
+        let error =
+            try
+                ServerChecks.failure (fun () ->
+                    hydrate graph options host holedList [| a; b |]
+                    |> ignore)
+            finally
+                holeFails <- false
+
+        equal ("boom", before, true) (error.Message, host.innerHTML, sameNodes nodes (nodesOf host))
 
 let private recoveredMountsAreLive () =
     use graph = new Graph ()
@@ -818,6 +1163,56 @@ let private rollbackFailureReported () =
          "<!--[r--><!--ranvier:start--><span><b></b></span><!--ranvier:end--><!--]-->")
         (reported, shown)
 
+[<Emit("Array.from($0.childNodes).filter(node => node.nodeType === 8 && node.data === ']')")>]
+let private endMarkers (parent: Node) : Node array = jsNative
+
+let private sabotagedRow =
+    Component.define
+        (fun _ (item: unit -> Listed) ->
+            let run = sabotageOnce
+            sabotageOnce <- ignore
+            run ()
+            item)
+        (fun t ->
+            t.fragment
+                [|
+                    t.each id (fun (item: unit -> Listed) -> [| (item ()).Text |]) innerCell
+                    t.span [||] [| t.text "end" |]
+                |])
+
+let private sabotagedList =
+    Component.define (fun _ (items: Listed array) -> live items) (fun t ->
+        t.div
+            [||]
+            [|
+                t.each (fun (item: Listed) -> item.Id) (fun (items: Signal<Listed array>) -> items.Value) sabotagedRow
+            |])
+
+let private unclosedRowRegion () =
+    use graph = new Graph ()
+    let host = serve sabotagedList [| a; b |]
+    let list = element host "div"
+    let text = host.textContent
+    let ends = endMarkers list
+
+    let kept =
+        nodesOf host
+        |> Array.filter (fun node ->
+            not (
+                ends
+                |> Array.exists (fun marker -> obj.ReferenceEquals (marker, node))
+            ))
+
+    // The first row's setup removes every end marker in the list, so its first root's region has none.
+    sabotageOnce <- fun () -> Array.iter detach ends
+
+    let error =
+        ServerChecks.failure (fun () ->
+            hydrate graph strictOptions host sabotagedList [| a; b |]
+            |> ignore)
+
+    equal ("Hydration mismatch at #0: expected <!--]-->, found absent", text, true) (error.Message, host.textContent, sameNodes kept (nodesOf host))
+
 /// <summary>An element whose <c>title</c> and <c>id</c> are written when the props are true.</summary>
 let private attributed =
     Component.define (fun _ (on: bool) -> on) (fun t ->
@@ -1016,7 +1411,7 @@ let cases: (string * (unit -> unit)) array =
             "hydration corrects differing values without a report", differingValuesCorrected
             "empty text slots hydrate through their placeholder and update", emptyTextHydrates
             "empty, one-node, multi-root and fragment templates hydrate", shapes
-            "a template with regions hydrates its own nodes and mounts the client's rows fresh between the server's markers", regionsMountWithContent
+            "a template with regions hydrates its own nodes and adopts the server's rows between the server's markers", regionsMountWithContent
             "a region occupies two logical positions: the nodes and roots after a region's end marker are adopted", nodesAfterRegions
             "queued-commit hydration raises NotSupportedException", queuedRaises
             "hydration adopts only the root marker pair and leaves foreign siblings in place", foreignSiblings
@@ -1026,6 +1421,19 @@ let cases: (string * (unit -> unit)) array =
             "a mismatch names the expected and the found node", nestedMismatchNamesNodes
             "a host without a root marker raises under Strict and mounts fresh otherwise", missingRootMarker
             "a setup failure during hydration propagates and leaves the server HTML in place", setupThrowsDuringHydration
+            "list regions hydrate, then reorder, append, remove and clear like mounted lists", listsHydrate
+            "nested list regions hydrate and update", nestedRegions
+            "text-adjacent row separators are removed during hydration", textRowSeparators
+            "zero-root rows hydrate and keep their place", zeroRootRows
+            "a list with fewer or more client items than server rows re-renders the region and reports once", rowCountMismatch
+            "a row whose first roots are a region's markers hydrates in place", rowStartsWithRegion
+            "a same-count list with reordered items hydrates positionally and later moves keep keyed identity", reorderedItems
+            "a mismatch inside a row's nested region re-renders only that region and reports once per region; Strict raises and restores the host",
+            nestedRowMismatch
+            "adopted rows keep their positional ids and run their cleanups when removed, and later rows continue the row counter",
+            adoptedRowsKeepCleanupsAndIds
+            "a row root's unclosed region raises at the root's position", unclosedRowRegion
+            "a row setup failure during hydration propagates and leaves the server rows in place", rowFailureRestores
             "a re-rendered root and a fresh mount without a root marker update and dispatch events", recoveredMountsAreLive
             "a re-rendered root issues ids under the hydration's prefix", recoveredIdsUsePrefix
             "a mismatch is found directly and among aggregated inner exceptions at any depth", aggregatedMismatch

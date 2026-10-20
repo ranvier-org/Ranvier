@@ -43,13 +43,19 @@ let private clearAfter (start: Node) (finish: Node) =
 /// Mounts <c>definition</c> for <c>props</c> over the server HTML between the first <c>&lt;!--[r--&gt;</c> child of
 /// <c>host</c> and its matching end marker, adopting the server's nodes. The result behaves as a mount by
 /// <c>mountWith SynchronousCommits</c>: its slots compare their first value with the server's nodes and write only a
-/// difference, and its regions mount their rows fresh between the server's region markers.
+/// difference, its list regions adopt the server's rows in order, and its other regions mount fresh between the
+/// server's region markers.
 /// </summary>
 /// <remarks>
 /// <para>Nodes outside a closed root marker pair stay in place and outside the mount's range.</para>
 /// <para>
-/// A structural mismatch is passed to <c>report</c> once, first in a list that also holds the failures of the
-/// attempt's rollback. The server nodes between the root markers are then removed and the root mounts fresh before the
+/// A structural mismatch inside a list region is passed to <c>report</c> once, first in a list with the pass's other
+/// failures; the server nodes between the list's markers are removed and the list mounts fresh. The nearest enclosing
+/// list handles the mismatch, and the rest of the hydration continues.
+/// </para>
+/// <para>
+/// A structural mismatch outside every list region is passed to <c>report</c> once, first in a list that also holds the
+/// failures of the attempt's rollback. The server nodes between the root markers are then removed and the root mounts fresh before the
 /// end marker. Without a root marker, the root mounts fresh at the end of <c>host</c>, after its children. Without the
 /// end marker, every node after the root marker, foreign siblings included, is removed and the root mounts fresh at the
 /// end of <c>host</c>. Ids issued by the fresh mount start again under <c>options.IdPrefix</c>.

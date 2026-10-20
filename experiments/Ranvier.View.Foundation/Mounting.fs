@@ -238,6 +238,12 @@ let private rowSetHas (set: obj) (value: 'T) : bool = jsNative
 
 let private skip: unit -> unit = ignore
 
+[<Emit("$0 != null && $0.nodeType === 8 && $0.data === '!'")>]
+let private isSeparator (node: Node) : bool = jsNative
+
+[<Emit("$0 != null && $0.nodeType === 8 && $0.data === 'ranvier:row'")>]
+let private isRowMarker (node: Node) : bool = jsNative
+
 /// <summary>Removes the server nodes between a region's markers and records their reinsertion before <c>regionEnd</c>.</summary>
 let private clearAdopted (cursor: TemplateDom.HydrationCursor) (regionStart: Node) (regionEnd: Node) =
     let removed = ResizeArray<Node>()
@@ -888,6 +894,8 @@ and [<Sealed; AllowNullLiteral>] private Row(first: Node, last: Node) =
     member _.First = first
     member _.Last = last
     member val Removed = false with get, set
+    /// <summary>Whether the row's nodes are server nodes adopted by hydration.</summary>
+    member val Adopted = false with get, set
     /// <summary>The nested mount of an authored row, or null for a template row.</summary>
     member val Mount: Mounted = Unchecked.defaultof<_> with get, set
 
@@ -1139,14 +1147,40 @@ and [<Sealed; AllowNullLiteral>] private Row(first: Node, last: Node) =
 
             truncate laidOut next.Length
 
-/// <summary>Materialises the template rows and arms of one region into the region's staging fragment and serves their setup.</summary>
-and private RowBuilder(state: MountState) =
+/// <summary>
+/// Materialises the template rows and arms of one region into the region's staging fragment and serves their setup.
+/// While <c>hydration</c> returns a cursor, a row adopts the server nodes at the cursor instead, and they stay in place.
+/// </summary>
+and private RowBuilder(state: MountState, hydration: unit -> TemplateDom.HydrationCursor) =
     let roots = ResizeArray<Node>()
     let mutable staging: DocumentFragment = Unchecked.defaultof<_>
     let mutable settingUp = false
     let mutable setupFailure: exn option = None
     // The passes of the region whose row is being built; null outside Build.
     let mutable placement: PlacementPass = null
+    // The cursor of the row being built; null outside Build and for a row created fresh.
+    let mutable cursor: TemplateDom.HydrationCursor = null
+
+    // Removes the `<!--!-->` separator at the cursor, recording its reinsertion.
+    let removeSeparator () =
+        let separator = cursor.Next
+
+        if isSeparator separator then
+            let next = nextOrNull separator
+            let parent = parentOrNull separator
+            remove (separator :?> ChildNode)
+            cursor.Next <- next
+            cursor.Undo (fun () -> parent.insertBefore (separator, next) |> ignore)
+
+    // Adopts the `<!--ranvier:row-->` comment of a row with no roots.
+    let adoptRowMarker () =
+        let marker = cursor.Next
+
+        if not (isRowMarker marker) then
+            raise (TemplateDom.mismatch "#0" "<!--ranvier:row-->" (TemplateDom.describe marker))
+
+        cursor.Next <- nextOrNull marker
+        roots.Add marker
 
     let setup: Setup =
         {
@@ -1160,37 +1194,55 @@ and private RowBuilder(state: MountState) =
 
         staging
 
-    /// <summary>Materialises the row created at index <c>row</c> of its region, its hooks held by <c>target</c>.</summary>
+    /// <summary>
+    /// Materialises the row created at index <c>row</c> of its region, its hooks held by <c>target</c>. While hydrating, a
+    /// row after the region's first removes the <c>&lt;!--!--&gt;</c> separator at the cursor before it adopts.
+    /// </summary>
+    /// <exception cref="T:Ranvier.View.Foundation.TemplateDom.HydrationMismatchException">
+    /// While hydrating, the server nodes at the cursor differ from the row's roots.
+    /// </exception>
     member this.Build
         (materialise: Func<(unit -> obj), TemplateDom.MountServices, int, unit>, current: unit -> obj, target: PlacementPass, row: int)
         : Row =
         placement <- target
+        cursor <- hydration ()
+        let adopted = not (isNull cursor)
         roots.Clear ()
         setupFailure <- None
         settingUp <- true
 
         try
             try
+                if not (isNull cursor) && row > 0 then
+                    removeSeparator ()
+
                 materialise.Invoke (current, this :> TemplateDom.MountServices, row)
+
+                if roots.Count = 0 && not (isNull cursor) then
+                    adoptRowMarker ()
             with _ ->
-                for index in 0 .. roots.Count - 1 do
-                    remove (roots[index] :?> ChildNode)
+                if not adopted then
+                    for index in 0 .. roots.Count - 1 do
+                        remove (roots[index] :?> ChildNode)
 
                 reraise ()
         finally
             settingUp <- false
             placement <- null
+            cursor <- null
 
         if roots.Count = 0 then
             let marker = comment "ranvier:row"
             this.Staging.appendChild marker |> ignore
             roots.Add marker
 
-        Row (roots[0], roots[roots.Count - 1])
+        Row (roots[0], roots[roots.Count - 1], Adopted = adopted)
 
     interface TemplateDom.MountServices with
         member this.Append(node) =
-            this.Staging.appendChild node |> ignore
+            if isNull cursor then
+                this.Staging.appendChild node |> ignore
+
             roots.Add node
 
         member _.Setup = setup
@@ -1227,10 +1279,10 @@ and private RowBuilder(state: MountState) =
 
         member _.Identity = state.Identity
 
-        member _.Hydration = null
+        member _.Hydration = cursor
 
         member _.Region(start, finish, _, kind, items, render, rows, parentPath, region) =
-            state.NestedRegion (start, finish, kind, items, render, rows, parentPath, region, placement.Container)
+            state.NestedRegion (start, finish, kind, items, render, rows, parentPath, region, placement.Container, cursor)
 
 /// <summary>
 /// The markers and laid-out rows of one region, with the region's owner, row builder and failure state.
@@ -1256,11 +1308,34 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
     /// <summary>The region's owner, set by <c>Own</c>.</summary>
     member _.Owner = owner
 
-    member _.Builder =
+    /// <summary>Whether the region's first pass adopts the server rows at the mount's hydration cursor.</summary>
+    member val Hydrating = false with get, set
+
+    /// <summary>
+    /// Re-renders the region after a structural mismatch of its hydrating pass and reports the errors it receives, the
+    /// mismatch first; null when a mismatch fails the hydration.
+    /// </summary>
+    member val Recover: exn list -> unit = Unchecked.defaultof<_> with get, set
+
+    /// <summary>The region's row builder; it adopts at the mount's hydration cursor while <c>Hydrating</c> is set.</summary>
+    member this.Builder =
         if isNull (box builder) then
-            builder <- RowBuilder state
+            builder <- RowBuilder (state, (fun () -> if this.Hydrating then state.HydrationCursor else null))
 
         builder
+
+    /// <summary>
+    /// Disposes the region's owner and clears its laid-out and held rows; the region's errors return to the first-pass
+    /// state. The row counter keeps counting.
+    /// </summary>
+    member _.Reset() =
+        if not (isNull (box owner)) then
+            Api.batch (fun () -> owner.Dispose ())
+
+        laidOut.Clear ()
+        pending.Clear ()
+        errors.Initializing <- true
+        errors.SetupFailure <- None
 
     /// <summary>Whether the mount and the region's owner are both live.</summary>
     member _.Live() =
@@ -1403,11 +1478,34 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
     /// Ends a pass. A region disposed during the pass reports <c>recorded</c>; otherwise a failure is recorded or
     /// reported with <c>recorded</c>, and a success runs <c>settle recorded</c>.
     /// </summary>
-    member this.Settle(recorded: exn list, failure: exn option, settle: exn list -> unit) =
+    /// <remarks>
+    /// A failed <c>hydrating</c> pass passes a structural mismatch to <c>Recover</c> when it is set, with the failure's
+    /// other errors and <c>recorded</c>. Any other failure of a hydrating pass fails the mount's hydration; during the
+    /// first pass it is also recorded as the region's setup failure.
+    /// </remarks>
+    member this.Settle(recorded: exn list, failure: exn option, hydrating: bool, settle: exn list -> unit) =
         if not (this.Live ()) then
             errors.Report recorded
         else
             match failure with
+            | Some error when hydrating ->
+                let recover = this.Recover
+
+                match TemplateDom.findMismatch error with
+                | Some found when not (isNull (box recover)) ->
+                    try
+                        recover (
+                            (found :> exn)
+                            :: TemplateDom.failuresBesides found error
+                            @ recorded
+                        )
+                    with recoveryError ->
+                        state.HydrationFailed recoveryError
+                | _ ->
+                    state.HydrationFailed error
+
+                    if errors.Initializing then
+                        errors.Fail (error, error :: recorded)
             | Some error -> errors.Fail (error, error :: recorded)
             | None -> settle recorded
 
@@ -1737,8 +1835,10 @@ and internal MountState
 
     // The cursor of the server nodes the mount adopts; null outside hydration and once `Run` returns.
     let mutable cursor = hydration
-    // Whether the release leaves the range's nodes in place: set when a hydrating `Run` fails.
+    // Whether the release leaves the range's nodes and adopted rows in place: set when a hydrating `Run` fails.
     let mutable keepNodes = false
+    // The first unrecovered failure of a region's hydrating pass; `Run` raises it once the build returns.
+    let mutable hydrationFailure: exn = null
 
     // The mount's path, one step of `kind` below `parentPath`; null until first requested.
     let mutable mountPath: InstancePath = null
@@ -1787,7 +1887,8 @@ and internal MountState
 
             for index in 0 .. rows.Count - 1 do
                 try
-                    removeRow rows[index]
+                    if not (keepNodes && rows[index].Adopted) then
+                        removeRow rows[index]
                 with error ->
                     errors.Add error
 
@@ -2184,6 +2285,9 @@ and internal MountState
 
             ensureSetup ()
 
+            if not (isNull hydrationFailure) then
+                raise hydrationFailure
+
             if isNull cursor then
                 range.Attach (host, before)
             else
@@ -2458,7 +2562,15 @@ and internal MountState
 
         // An authored region's rows sit under an authored step of the mount's own path.
         let regionPath = pathOfMount().Authored(nextAuthored ())
-        this.RegionOf (regionStart, regionEnd, placement, kind, items, render, null, regionPath, 0, container)
+        this.RegionOf (regionStart, regionEnd, placement, kind, items, render, null, regionPath, 0, container, null)
+
+    /// <summary>The cursor of the server nodes the mount adopts; null outside hydration and once <c>Run</c> returns.</summary>
+    member internal _.HydrationCursor: TemplateDom.HydrationCursor = cursor
+
+    /// <summary>Fails the hydrating <c>Run</c> with <c>error</c> once its build returns, unless an earlier failure was recorded.</summary>
+    member internal _.HydrationFailed(error: exn) =
+        if isNull hydrationFailure then
+            hydrationFailure <- error
 
     member internal this.NestedRegion
         (
@@ -2470,9 +2582,10 @@ and internal MountState
             rows: Func<(unit -> obj), TemplateDom.MountServices, int, unit>,
             parentPath: InstancePath,
             region: int,
-            parentContainer: Placement
+            parentContainer: Placement,
+            regionCursor: TemplateDom.HydrationCursor
         ) =
-        this.RegionOf (start, finish, NestedRegion, kind, items, render, rows, parentPath, region, parentContainer)
+        this.RegionOf (start, finish, NestedRegion, kind, items, render, rows, parentPath, region, parentContainer, regionCursor)
 
     member private _.PlaceRegion(regionStart: Node, regionEnd: Node, placement: RegionPlacement, validate: unit -> unit, relocate: unit -> unit) =
         match placement with
@@ -2551,11 +2664,16 @@ and internal MountState
     /// retires removed ones. Template rows (<c>rows</c>) are cloned into the region; authored rows (<c>render</c>) are
     /// nested mounts.
     /// </summary>
+    /// <remarks>
+    /// A first pass with <c>site.Hydrating</c> set adopts the server rows from the node after <c>regionStart</c>, leaves
+    /// them in place, and requires the cursor to end at <c>regionEnd</c>; the mount's cursor position is kept. Its
+    /// failure is settled by <c>RegionSite.Settle</c>.
+    /// </remarks>
     member private this.ListRegion
         (
+            site: RegionSite,
             regionStart: Node,
             regionEnd: Node,
-            placement: RegionPlacement,
             items: KeyedItems,
             render: (unit -> obj) -> Backend -> unit,
             rows: Func<(unit -> obj), TemplateDom.MountServices, int, unit>,
@@ -2563,7 +2681,6 @@ and internal MountState
             region: int,
             parentContainer: Placement
         ) =
-        let site = this.Site (regionStart, regionEnd, placement)
         let mutable projection: Projection<obj, Row> = Unchecked.defaultof<_>
         // The items of the latest reconcile, the projection's only input; each write is followed by a bump of `version`,
         // which marks the projection stale.
@@ -2638,9 +2755,27 @@ and internal MountState
 
             row
 
+        // The logical position of the node at the cursor, counted from the region's first node.
+        let cursorPosition () =
+            let mutable position = 0
+            let mutable node = nextOrNull regionStart
+
+            while not (same node cursor.Next) do
+                node <- TemplateDom.logicalNext node
+                position <- position + 1
+
+            position
+
         let reconcile () =
             if site.Live () then
                 passPlacement.Begin ()
+                // A hydrating pass adopts its rows in place, without window validation or a flush of released rows.
+                let hydrating = site.Hydrating
+                let resumed = if hydrating then cursor.Next else Unchecked.defaultof<_>
+
+                if hydrating then
+                    cursor.Next <- nextOrNull regionStart
+
                 let parent = ref Unchecked.defaultof<Node>
                 let keys = ref Unchecked.defaultof<obj array>
                 let priorKeys = previousKeys
@@ -2669,134 +2804,150 @@ and internal MountState
                         Row.Validate (regionStart, regionEnd, site.LaidOut, parent)
 
                 let recorded, failure =
-                    MountLifetime.Capture (
-                        graph,
-                        report,
-                        fun () ->
-                            let current = items.Read ()
-                            snapshot <- current
-                            Api.untrack (fun () -> version.Value <- version.Value + 1)
-                            parent.Value <- site.Parent ()
+                    try
+                        MountLifetime.Capture (
+                            graph,
+                            report,
+                            fun () ->
+                                let current = items.Read ()
+                                snapshot <- current
+                                Api.untrack (fun () -> version.Value <- version.Value + 1)
+                                parent.Value <- site.Parent ()
 
-                            if authored then
-                                let n0 = priorItems.Length
-                                let n1 = current.Length
-                                let mutable first = 0
+                                if authored then
+                                    let n0 = priorItems.Length
+                                    let n1 = current.Length
+                                    let mutable first = 0
 
-                                while first < n0
-                                      && first < n1
-                                      && obj.ReferenceEquals (item priorItems first, item current first) do
-                                    first <- first + 1
+                                    while first < n0
+                                          && first < n1
+                                          && obj.ReferenceEquals (item priorItems first, item current first) do
+                                        first <- first + 1
 
-                                let mutable last0 = n0 - 1
-                                let mutable last1 = n1 - 1
+                                    let mutable last0 = n0 - 1
+                                    let mutable last1 = n1 - 1
 
-                                while last0 >= first
-                                      && last1 >= first
-                                      && obj.ReferenceEquals (item priorItems last0, item current last1) do
-                                    last0 <- last0 - 1
-                                    last1 <- last1 - 1
+                                    while last0 >= first
+                                          && last1 >= first
+                                          && obj.ReferenceEquals (item priorItems last0, item current last1) do
+                                        last0 <- last0 - 1
+                                        last1 <- last1 - 1
 
-                                start.Value <- first
-                                end0.Value <- last0
-                                end1.Value <- last1
-                                validate parent.Value first last0
+                                    start.Value <- first
+                                    end0.Value <- last0
+                                    end1.Value <- last1
+                                    validate parent.Value first last0
 
-                            // Runs the pass: its row setup, rollback and retirement errors are reported with this update.
-                            // Rows retired by the pass keep their nodes until the flush.
-                            site.Deferring <- true
-                            let errors = ResizeArray<exn>()
+                                // Runs the pass: its row setup, rollback and retirement errors are reported with this update.
+                                // Rows retired by the pass keep their nodes until the flush.
+                                site.Deferring <- true
+                                let errors = ResizeArray<exn>()
 
-                            try
                                 try
-                                    keys.Value <- Api.untrack (fun () -> projection.Keys)
-                                finally
-                                    site.Deferring <- false
-                            with error ->
-                                errors.Add error
+                                    try
+                                        keys.Value <- Api.untrack (fun () -> projection.Keys)
+                                    finally
+                                        site.Deferring <- false
+                                with error ->
+                                    errors.Add error
 
-                            // A pass that empties the list removes every node between the markers in one operation.
-                            let cleared =
-                                not authored
-                                && not (isNull keys.Value)
-                                && keys.Value.Length = 0
-                                && site.Live ()
-                                && site.ReleasedAll ()
+                                // A pass that empties the list removes every node between the markers in one operation.
+                                let cleared =
+                                    not authored
+                                    && not (isNull keys.Value)
+                                    && keys.Value.Length = 0
+                                    && site.Live ()
+                                    && site.ReleasedAll ()
 
-                            // Before the flush removes any node, a pass that keeps rows validates the laid-out rows around the changed window.
-                            let validated =
-                                try
-                                    if authored || cleared || not (site.Live ()) then
-                                        ()
-                                    elif isNull keys.Value then
-                                        Row.Validate (regionStart, regionEnd, site.LaidOut, parent.Value)
-                                    else
-                                        let next = keys.Value
-                                        let mutable first = 0
-
-                                        let mutable last0 =
-                                            (if isNull priorKeys then 0 else priorKeys.Length)
-                                            - 1
-
-                                        let mutable last1 = next.Length - 1
-
-                                        let window =
-                                            if isNull priorKeys then
-                                                ValueNone
-                                            else
-                                                Api.untrack (fun () -> projection.ChangedSince priorVersion)
-
-                                        match window with
-                                        | ValueSome (struct (windowStart, windowEnd0, windowEnd1)) ->
-                                            first <- windowStart
-                                            last0 <- windowEnd0
-                                            last1 <- windowEnd1
-                                        // Without the projection's window, the common ends of the two key arrays are found here.
-                                        | ValueNone ->
-                                            while first <= last0
-                                                  && first <= last1
-                                                  && item priorKeys first = item next first do
-                                                first <- first + 1
-
-                                            while last0 >= first
-                                                  && last1 >= first
-                                                  && item priorKeys last0 = item next last1 do
-                                                last0 <- last0 - 1
-                                                last1 <- last1 - 1
-
-                                        start.Value <- first
-                                        end0.Value <- last0
-                                        end1.Value <- last1
-                                        inPlace.Value <- collectMoved priorKeys next first last0 last1
-
-                                        if
-                                            inPlace.Value
-                                            && priorRows.Length = site.LaidOut.Count
-                                        then
-                                            validateMoved parent.Value
+                                // Before the flush removes any node, a pass that keeps rows validates the laid-out rows around the changed window.
+                                let validated =
+                                    try
+                                        if authored || cleared || not (site.Live ()) then
+                                            ()
+                                        elif isNull keys.Value then
+                                            if not hydrating then
+                                                Row.Validate (regionStart, regionEnd, site.LaidOut, parent.Value)
                                         else
-                                            validate parent.Value first last0
+                                            let next = keys.Value
+                                            let mutable first = 0
 
-                                    true
-                                with error ->
-                                    errors.Add error
-                                    false
+                                            let mutable last0 =
+                                                (if isNull priorKeys then 0 else priorKeys.Length)
+                                                - 1
 
-                            if validated then
-                                try
-                                    site.FlushReleased (cleared && site.Live ())
-                                with error ->
-                                    errors.Add error
+                                            let mutable last1 = next.Length - 1
 
-                            if errors.Count = 1 then
-                                raise errors[0]
-                            elif errors.Count > 1 then
-                                raise (AggregateException ("Keyed update and row release failed", errors))
-                    )
+                                            let window =
+                                                if isNull priorKeys then
+                                                    ValueNone
+                                                else
+                                                    Api.untrack (fun () -> projection.ChangedSince priorVersion)
+
+                                            match window with
+                                            | ValueSome (struct (windowStart, windowEnd0, windowEnd1)) ->
+                                                first <- windowStart
+                                                last0 <- windowEnd0
+                                                last1 <- windowEnd1
+                                            // Without the projection's window, the common ends of the two key arrays are found here.
+                                            | ValueNone ->
+                                                while first <= last0
+                                                      && first <= last1
+                                                      && item priorKeys first = item next first do
+                                                    first <- first + 1
+
+                                                while last0 >= first
+                                                      && last1 >= first
+                                                      && item priorKeys last0 = item next last1 do
+                                                    last0 <- last0 - 1
+                                                    last1 <- last1 - 1
+
+                                            start.Value <- first
+                                            end0.Value <- last0
+                                            end1.Value <- last1
+                                            inPlace.Value <- collectMoved priorKeys next first last0 last1
+
+                                            if hydrating then
+                                                ()
+                                            elif
+                                                inPlace.Value
+                                                && priorRows.Length = site.LaidOut.Count
+                                            then
+                                                validateMoved parent.Value
+                                            else
+                                                validate parent.Value first last0
+
+                                        true
+                                    with error ->
+                                        errors.Add error
+                                        false
+
+                                if validated && not hydrating then
+                                    try
+                                        site.FlushReleased (cleared && site.Live ())
+                                    with error ->
+                                        errors.Add error
+
+                                if
+                                    hydrating
+                                    && errors.Count = 0
+                                    && not (same cursor.Next regionEnd)
+                                then
+                                    errors.Add (TemplateDom.mismatch ("#" + string (cursorPosition ())) "<!--]-->" (TemplateDom.describe cursor.Next))
+
+                                if errors.Count = 1 then
+                                    raise errors[0]
+                                elif errors.Count > 1 then
+                                    raise (AggregateException ("Keyed update and row release failed", errors))
+                        )
+                    finally
+                        if hydrating then
+                            site.Hydrating <- false
+                            cursor.Next <- resumed
 
                 site.Settle (
                     recorded,
                     failure,
+                    hydrating,
                     fun recorded ->
                         let layout =
                             try
@@ -2890,16 +3041,20 @@ and internal MountState
                                         leading <- 0
                                         trailing <- 0
 
-                                    Row.Layout (
-                                        (fun () -> site.Live ()),
-                                        site.LaidOut,
-                                        site.Builder.Staging,
-                                        parent.Value,
-                                        regionEnd,
-                                        next,
-                                        leading,
-                                        trailing
-                                    )
+                                    // Adopted rows are in place and in order.
+                                    if hydrating then
+                                        site.LaidOut.AddRange next
+                                    else
+                                        Row.Layout (
+                                            (fun () -> site.Live ()),
+                                            site.LaidOut,
+                                            site.Builder.Staging,
+                                            parent.Value,
+                                            regionEnd,
+                                            next,
+                                            leading,
+                                            trailing
+                                        )
 
                                     next)
                                 |> Ok
@@ -3031,7 +3186,7 @@ and internal MountState
                                 mountArm selected)
                     )
 
-                site.Settle (recorded, failure, (fun recorded -> site.Errors.Report recorded))
+                site.Settle (recorded, failure, false, (fun recorded -> site.Errors.Report recorded))
 
         let updatePayload () =
             let current = items.Value
@@ -3111,6 +3266,15 @@ and internal MountState
 
         site.Own (fun () -> created.Start ())
 
+    /// <summary>
+    /// Mounts a region of <c>kind</c> between its markers. With <c>regionCursor</c>, a template list adopts the server
+    /// rows between the markers, and every other region replaces the server nodes between them with a fresh mount.
+    /// </summary>
+    /// <remarks>
+    /// A structural mismatch of the list's hydrating pass, unless <c>regionCursor.Strict</c> is set, disposes the rows
+    /// the pass created, removes the server nodes between the markers, reports the mismatch once and mounts the list
+    /// fresh, its rows continuing the region's row counter. Each removal is recorded with the cursor.
+    /// </remarks>
     member private this.RegionOf
         (
             start: Node,
@@ -3122,16 +3286,40 @@ and internal MountState
             rows: Func<(unit -> obj), TemplateDom.MountServices, int, unit>,
             parentPath: InstancePath,
             region: int,
-            parentContainer: Placement
+            parentContainer: Placement,
+            regionCursor: TemplateDom.HydrationCursor
         ) =
         match kind with
-        | TemplateDom.ListRows -> this.ListRegion (start, finish, placement, items, render, rows, parentPath, region, parentContainer)
-        | TemplateDom.SelectedArm -> this.ArmRegion (start, finish, placement, items.Read, render, rows, parentPath, region, parentContainer)
-        | TemplateDom.ViewHole -> this.HoleRegion (start, finish, placement, items.Read, render, parentPath, region, parentContainer)
-        | TemplateDom.BoundaryContent ->
-            let pairs = items.Read ()
+        | TemplateDom.ListRows when not (isNull regionCursor) && not (isNull rows) ->
+            let site = this.Site (start, finish, placement)
+            site.Hydrating <- true
 
-            this.BoundaryRegion (start, finish, placement, unbox<BoundaryViews>(KeyedItems.value (pairs[0])), parentPath, region, parentContainer)
+            if not regionCursor.Strict then
+                let enclosing = Api.getOwner ()
+
+                site.Recover <-
+                    fun errors ->
+                        site.Reset ()
+                        clearAdopted regionCursor start finish
+                        report errors
+
+                        Api.runWithOwner enclosing (fun () ->
+                            this.ListRegion (site, start, finish, items, render, rows, parentPath, region, parentContainer))
+
+            this.ListRegion (site, start, finish, items, render, rows, parentPath, region, parentContainer)
+        | _ ->
+            if not (isNull regionCursor) then
+                clearAdopted regionCursor start finish
+
+            match kind with
+            | TemplateDom.ListRows ->
+                this.ListRegion (this.Site (start, finish, placement), start, finish, items, render, rows, parentPath, region, parentContainer)
+            | TemplateDom.SelectedArm -> this.ArmRegion (start, finish, placement, items.Read, render, rows, parentPath, region, parentContainer)
+            | TemplateDom.ViewHole -> this.HoleRegion (start, finish, placement, items.Read, render, parentPath, region, parentContainer)
+            | TemplateDom.BoundaryContent ->
+                let pairs = items.Read ()
+
+                this.BoundaryRegion (start, finish, placement, unbox<BoundaryViews>(KeyedItems.value (pairs[0])), parentPath, region, parentContainer)
 
     override _.Component(setup) =
         ensureSetup ()
@@ -3246,10 +3434,7 @@ and internal MountState
                 else
                     NestedRegion
 
-            if not (isNull cursor) then
-                clearAdopted cursor start finish
-
-            this.RegionOf (start, finish, placement, kind, items, render, rows, parentPath, region, container)
+            this.RegionOf (start, finish, placement, kind, items, render, rows, parentPath, region, container, cursor)
 
     interface ViewScope with
         member _.Tracks = false
