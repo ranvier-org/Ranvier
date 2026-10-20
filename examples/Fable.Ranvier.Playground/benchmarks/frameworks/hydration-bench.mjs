@@ -1,7 +1,7 @@
 // Hydration benchmark in Chromium: Ranvier's hydrate of server HTML against Ranvier's client mount of the same page and
 // against Solid 2's hydrate of its own server HTML, for the component page (1/16/128 rows) and the keyed page
 // (1000/10000 rows). Also the time to the first handled click, and the retained heap per row.
-// Usage: node benchmarks/frameworks/hydration-bench.mjs [--build] [--verify-only] [--dist=<dir>] [--label=<name>] [--out=<dir>] [--port=<n>]
+// Usage: node benchmarks/frameworks/hydration-bench.mjs [--build] [--verify-only] [--dist=<dir>] [--label=<name>] [--out=<dir>] [--port=<n>] [--rotation=balanced|cyclic]
 import { chromium } from "@playwright/test";
 import { spawn, execFileSync } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -17,6 +17,26 @@ const verifyOnly = process.argv.includes("--verify-only");
 const env = { ...process.env, RanvierCounters: "false", RANVIER_PERF_OUTPUT: outDir };
 const port = Number(argument("port", 5189));
 const modes = ["ranvier-hydrate", "ranvier-mount", "solid-hydrate"], processes = 3, rounds = 15, warmups = 3, retained = 32;
+const rotation = argument("rotation", "balanced");
+if (rotation !== "balanced" && rotation !== "cyclic") throw Error(`Unknown rotation ${rotation}`);
+// The sample order of one process: `rounds` measured samples per mode after `warmups` per mode, each entry carrying its
+// mode, the mode sampled just before it, and its round (the mode's measured occurrence; negative while warming up).
+// `balanced` cycles through a de Bruijn sequence of the three modes, so in every 9 samples each mode follows each mode,
+// itself included, once; each process relabels the modes by its index. `cyclic` is Task 20's order: every round runs the
+// modes in their cyclic order, starting one mode later per round and per process.
+const schedule = replicate => {
+  const order = [];
+  if (rotation === "balanced") {
+    const sequence = [0, 0, 1, 0, 2, 1, 1, 2, 2];
+    for (let index = 0; index < (warmups + rounds) * modes.length; index++)
+      order.push(modes[(sequence[index % sequence.length] + replicate) % modes.length]);
+  } else {
+    for (let round = -warmups; round < rounds; round++) for (let offset = 0; offset < modes.length; offset++)
+      order.push(modes[(round + warmups + offset + replicate) % modes.length]);
+  }
+  const seen = Object.fromEntries(modes.map(mode => [mode, -warmups]));
+  return order.map((mode, index) => ({ mode, previous: index === 0 ? null : order[index - 1], round: seen[mode]++ }));
+};
 // `count` calls per sample, each on its own host.
 const fixtures = [
   { fixture: "component", rows: 1, count: 64 },
@@ -31,7 +51,7 @@ if (process.argv.includes("--build")) {
     ["dotnet", "fable", "tests/DomTests.fsproj", "--outDir", "generated-tests", "--configuration", "Release", "--noCache"],
     ["dotnet", "fable", "benchmarks/ripple/RipplePerf.fsproj", "--outDir", "generated-ripple", "--configuration", "Release", "--noCache"],
     ["node", "node_modules/vite/bin/vite.js", "build", "--config", "benchmarks/frameworks/vite.config.mjs"]
-  ]) execFileSync("rtk", args, { cwd, stdio: "inherit", windowsHide: true, env });
+  ]) execFileSync(args[0] === "node" ? process.execPath : args[0], args.slice(1), { cwd, stdio: "inherit", windowsHide: true, env });
 }
 
 // Solid 2's server HTML, rendered in Node from server-solid.jsx compiled for the server with hydration keys, and the
@@ -82,7 +102,6 @@ try {
     await page.waitForFunction(() => window.hydrationBench);
     const cdp = await page.context().newCDPSession(page);
     const collect = () => cdp.send("HeapProfiler.collectGarbage");
-    // Verification before timing.
     for (const { fixture, rows } of fixtures) for (const mode of modes) {
       const entry = await page.evaluate(({ mode, fixture, rows }) => window.hydrationBench.verify(mode, fixture, rows), { mode, fixture, rows });
       verified.push({ ...entry, replicate, passed: true });
@@ -94,20 +113,18 @@ try {
       break;
     }
     for (const { fixture, rows, count } of fixtures) {
-      for (let round = -warmups; round < rounds; round++) for (let offset = 0; offset < modes.length; offset++) {
-        const mode = modes[(round + warmups + offset + replicate) % modes.length];
+      for (const { mode, previous, round } of schedule(replicate)) {
         await page.evaluate(({ mode, fixture, rows, count }) => window.hydrationBench.prepare(mode, fixture, rows, count), { mode, fixture, rows, count });
         await collect();
         const ms = await page.evaluate(({ mode, fixture, rows, count }) => window.hydrationBench.sample(mode, fixture, rows, count), { mode, fixture, rows, count });
         if (!Number.isFinite(ms) || ms <= 0) throw Error(`Invalid timing ${fixture}/${mode}/${rows}: ${ms}`);
-        if (round >= 0) samples.push({ fixture, rows, mode, replicate, round, count, ms });
+        if (round >= 0) samples.push({ fixture, rows, mode, previous, replicate, round, count, ms });
       }
-      for (let round = -warmups; round < rounds; round++) for (let offset = 0; offset < modes.length; offset++) {
-        const mode = modes[(round + warmups + offset + replicate) % modes.length];
+      for (const { mode, previous, round } of schedule(replicate)) {
         await collect();
         const ms = await page.evaluate(({ mode, fixture, rows }) => window.hydrationBench.firstClick(mode, fixture, rows), { mode, fixture, rows });
         if (!Number.isFinite(ms) || ms <= 0) throw Error(`Invalid first click ${fixture}/${mode}/${rows}: ${ms}`);
-        if (round >= 0) clicks.push({ fixture, rows, mode, replicate, round, ms });
+        if (round >= 0) clicks.push({ fixture, rows, mode, previous, replicate, round, ms });
       }
       console.log(`Measured ${fixture} at ${rows} rows, process ${replicate + 1}`);
     }
@@ -131,6 +148,10 @@ try {
       const selected = select(samples, fixture, rows, mode);
       return { fixture, rows, mode, medianUs: median(selected.map(row => row.ms)) * 1000, byProcessUs: byProcess(selected, row => row.ms * 1000) };
     }));
+    const byPrevious = fixtures.flatMap(({ fixture, rows }) => modes.flatMap(mode => modes.map(previous => {
+      const selected = select(samples, fixture, rows, mode).filter(row => row.previous === previous);
+      return { fixture, rows, mode, previous, samples: selected.length, medianUs: selected.length ? median(selected.map(row => row.ms)) * 1000 : null };
+    })));
     const firstClick = fixtures.flatMap(({ fixture, rows }) => modes.map(mode => {
       const selected = select(clicks, fixture, rows, mode);
       return { fixture, rows, mode, medianUs: median(selected.map(row => row.ms)) * 1000, byProcessUs: byProcess(selected, row => row.ms * 1000) };
@@ -162,17 +183,21 @@ try {
       notes: [
         "Each sample hydrates (or mounts) `count` hosts attached to the body. The hosts are filled with the fixture's server HTML, parsed as a document parse places it, before a forced garbage collection and outside the timed region; `ranvier-mount` hosts are empty.",
         "Ranvier hydrates its own Server.render output (Omit policy) with { IdPrefix = \"r\"; Strict = true }; Solid 2 hydrates its own renderToString output (hydratable). Each Ranvier call creates and its disposal disposes a new Graph.",
-        "Modes rotate per round and process, so `hydrateVersusMount` compares two modes of the same session; `atOrBelowMount` is the spec's gate.",
+        rotation === "balanced"
+          ? "Rotation `balanced`: each process runs a de Bruijn sequence of the three modes, so each mode follows each mode, itself included, equally often; `round` is the mode's occurrence, and `hydrateVersusMount` pairs a process's k-th hydrate with its k-th mount sample. `atOrBelowMount` is the spec's gate."
+          : "Rotation `cyclic` (Task 20's order): modes rotate per round and process in their cyclic order, so mount follows hydrate in two rounds of three and no mode follows itself. `atOrBelowMount` is the spec's gate.",
+        "`byPrevious` gives each mode's median by the mode sampled just before it; a sample's time depends on its predecessor.",
         "firstClick is the time from the call to the end of the first click on the first row's button (component) or link (keyed), including the commit of the click's update (Solid: flush()).",
         "retainedBytesPerRow is the GC-stabilised retained JavaScript heap of 32 live hydrated (or mounted) hosts divided by their rows, the hosts' server DOM included; it is reported, not gated."
       ],
-      verified, samples, clicks, summaries, firstClick, heaps, heapSummaries, hydrateVersusMount
+      rotation, verified, samples, clicks, summaries, byPrevious, firstClick, heaps, heapSummaries, hydrateVersusMount
     };
     await mkdir(output, { recursive: true });
     await writeFile(`${output}/${label}.json`, JSON.stringify(result, null, 2) + "\n");
     console.table(summaries.map(({ fixture, rows, mode, medianUs, byProcessUs }) => ({ fixture, rows, mode, medianUs: medianUs.toFixed(1), byProcessUs: byProcessUs.map(value => value.toFixed(1)).join(" / ") })));
     console.table(firstClick.map(({ fixture, rows, mode, medianUs, byProcessUs }) => ({ fixture, rows, mode, medianUs: medianUs.toFixed(1), byProcessUs: byProcessUs.map(value => value.toFixed(1)).join(" / ") })));
     console.table(heapSummaries.map(({ fixture, rows, mode, medianBytesPerRow, byProcessBytesPerRow }) => ({ fixture, rows, mode, medianBytesPerRow: medianBytesPerRow.toFixed(0), byProcess: byProcessBytesPerRow.map(value => value.toFixed(0)).join(" / ") })));
+    console.table(byPrevious.filter(row => row.samples > 0).map(({ fixture, rows, mode, previous, samples, medianUs }) => ({ fixture, rows, mode, previous, samples, medianUs: medianUs.toFixed(1) })));
     console.table(hydrateVersusMount.map(({ fixture, rows, ratio, medianRoundRatio, byProcessRatio, atOrBelowMount }) => ({ fixture, rows, ratio: ratio.toFixed(3), medianRoundRatio: medianRoundRatio.toFixed(3), byProcess: byProcessRatio.map(value => value.toFixed(3)).join(" / "), atOrBelowMount })));
   } else console.table(verified);
 } finally {
