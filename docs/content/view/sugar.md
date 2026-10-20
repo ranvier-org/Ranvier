@@ -55,7 +55,9 @@ apostrophe, because `base` is an F# keyword and a generic `option` would shadow 
 | `for`, `if` in a body | Static structure, evaluated once while the template is built. |
 
 A tag's parts are typed by its DOM interface: `span (Props.Input.value "x")` fails with FS0041. A void
-element is a child of another element; a template's root is a non-void element or a fragment.
+tag is yielded as it is inside a body; anywhere else that takes a view, such as a template root or the
+content of `show`, write `(img (parts)).View`. A [component tag](components.md#a-component-as-a-tag)
+is used the same way.
 [Templates and bindings](templates.md) walks through each kind of part.
 
 ## The inference rule

@@ -211,11 +211,16 @@ let labels =
             badgeOf (fun count -> string count + " left")
         }
     )
+
+let soldOut = Component.template (fun _ () -> ()) (badgeOf "sold out").View
 ```
 
 Keep the shape exactly: a private primary constructor with a trailing `unit` parameter, and public
 secondary constructors. Fable 5.18.0 compiles this shape, and the generated tags use it too. `render`
 and `renderOf` cover the same cases without a class.
+
+A component tag is a void element: inside a body it is yielded as it is, and anywhere else that takes
+a view it is used through `View`, as `soldOut` above.
 
 ## Definitions are values
 

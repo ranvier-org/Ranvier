@@ -17,6 +17,15 @@ let elements =
         }
     )
 
+type Avatar = { Shown: Signal<bool> }
+
+let avatar =
+    Component.template (fun _ (shown: Signal<bool>) -> { Shown = shown }) (
+        span (Attrs.className "avatar") { show (fun a -> a.Shown.Value) (img (Attrs.attribute ("alt", "avatar"))).View }
+    )
+
+let rule = Component.template (fun _ () -> ()) (hr (Attrs.className "rule")).View
+
 type Greeting = { Name: Signal<string>; Shout: Memo<string> }
 
 let greeting =

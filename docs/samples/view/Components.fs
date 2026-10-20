@@ -107,3 +107,5 @@ let labels =
             badgeOf (fun count -> string count + " left")
         }
     )
+
+let soldOut = Component.template (fun _ () -> ()) (badgeOf "sold out").View

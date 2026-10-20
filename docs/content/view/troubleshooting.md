@@ -18,8 +18,9 @@ type to start from. Annotate it with the class type.
 **FS0041 "No overloads match for method 'Yield'" with a tag type in the message.** A non-void element
 is written without a body: `div (parts)`. Add `{ }`.
 
-**FS0193: an element type is not compatible with `TemplateView`.** A void element, such as `input`, is
-the root of a template. Wrap it in an element.
+**FS0193: an element type is not compatible with `TemplateView`.** A void element or a component tag is
+used outside an element body, for example as a template root or as `show` content. Write its `View`:
+`(input (parts)).View`.
 
 **FS0003 on a tag.** A local value has the tag's name, often `p`, `a` or `b`. Rename the value.
 

@@ -106,6 +106,10 @@ let main _ =
             (StateTransfer.stateElement { Start = 2; Label = "</script>" })
 
 
+        expect "templates rule root" (root """<hr class="rule">""") (Server.render omit Templates.rule ())
+        expect "templates avatar" (root """<span class="avatar"><!--[a:b1b2a8ad--><img alt="avatar"><!--]--></span>""") (Server.render omit Templates.avatar (createSignal true))
+        expect "components soldOut" (root """<span class="badge">sold out</span>""") (Server.render omit Components.soldOut ())
+
         let unread = createAsyncSource<string> ()
 
         let unguarded =

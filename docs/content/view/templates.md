@@ -33,10 +33,23 @@ div (Attrs.className "panel", Attrs.id "main") {
 
 - `()` is an element with no parts. `{ }` is an element with no children; a non-void element needs
   it even when empty.
-- A void element (`input`, `br`, `img`, `meta` and the other HTML void elements) takes parts only.
-  It appears as a child of another element.
+- A void element (`input`, `br`, `img`, `meta` and the other HTML void elements) takes parts and no
+  body. Inside a body it is yielded as it is. In every other position that takes a view (a template
+  root, the content of `show`, an `armOf` view, a `fragment` child, a row view) write its `View`:
+  `(img (parts)).View`.
 - An element's parts are typed by its DOM interface. `Props.Input.value` applies to `input` only, and
   any other tag fails to compile with it.
+
+```fsharp
+type Avatar = { Shown: Signal<bool> }
+
+let avatar =
+    Component.template (fun _ (shown: Signal<bool>) -> { Shown = shown }) (
+        span (Attrs.className "avatar") { show (fun a -> a.Shown.Value) (img (Attrs.attribute ("alt", "avatar"))).View }
+    )
+
+let rule = Component.template (fun _ () -> ()) (hr (Attrs.className "rule")).View
+```
 
 ## Text
 
