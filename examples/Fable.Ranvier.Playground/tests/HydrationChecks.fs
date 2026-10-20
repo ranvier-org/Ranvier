@@ -1899,7 +1899,7 @@ let private recoveredMountsAreLive () =
     equal
         (([ [ "Hydration mismatch at #0: expected <span>, found div" ] ], "<!--[r--><!--ranvier:start--><span>a</span><!--ranvier:end--><!--]-->"),
          "<!--[r--><!--ranvier:start--><span>ax</span><!--ranvier:end--><!--]-->",
-         "<!--[r--><!--]-->")
+         "")
         (recovered, updated, host.innerHTML)
 
     let host = CheckSupport.host ()
@@ -2004,7 +2004,7 @@ let private unclosedRegions () =
     let shown = messages reports, host.textContent, (all host "li").Length
     mounted.Dispose ()
 
-    equal (([ [ "Hydration mismatch at #0: expected <!--]-->, found absent" ] ], "a<b>a<b>last", 5), "<!--[r-->") (shown, host.innerHTML)
+    equal (([ [ "Hydration mismatch at #0: expected <!--]-->, found absent" ] ], "a<b>a<b>last", 5), "") (shown, host.innerHTML)
 
 let private editable =
     Component.define (fun _ (text: string) -> Api.createSignal text) (fun t ->
@@ -2487,10 +2487,8 @@ let private boundariesInRows () =
     let mutations = recordMutations host
     let mounted = hydrate graph strictOptions host definition [| a; b |]
 
-    // A source settled in a row's setup is settled after the row's first commits, so each row's content is pending at
-    // the boundary's decision: per row, two range comments, four moves to detach the content behind its copy, and two
-    // to put it back at the reveal within the same `hydrate`. The content's first commits write nothing.
-    equal (16, true, "xx") (mutations (), sameNodes before (serverNodes host), (element host "ul").textContent)
+    // Each row's content is ready by the end of the build and stays in place: per row, the two range comments only.
+    equal (4, true, "xx") (mutations (), sameNodes before (serverNodes host), (element host "ul").textContent)
     mounted.Dispose ()
 
     // Content pending on the client shows the copies of the server rows until it settles.
@@ -2519,6 +2517,44 @@ let private boundariesInRows () =
             |> ignore)
         "Hydration mismatch at #1: expected <!--]-->, found b"
         []
+
+/// <summary>A list whose rows each hold a boundary over an input showing its source's value.</summary>
+let private inputRows (case: BoundaryCase) =
+    let pending =
+        Component.define (fun _ () -> case.Log.Add "pending setup") (fun t -> t.i [||] [| t.text "loading" |])
+
+    let content =
+        Component.define (fun _ (_: BoundaryStatus) -> contentSource case) (fun t ->
+            t.input [| t.Props.Input.value (fun (source: AsyncSource<string>) -> source.Value) |])
+
+    let inner =
+        Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.boundary pending failedMessage content |])
+
+    let row =
+        Component.define (fun _ (item: unit -> Listed) -> item) (fun t -> t.li [||] [| t.render inner (fun _ -> ()) |])
+
+    Component.define (fun _ (items: Listed array) -> items) (fun t -> t.ul [||] [| t.each (fun (item: Listed) -> item.Id) id row |])
+
+let private rowBoundariesKeepFocus () =
+    use graph = new Graph ()
+    let case = boundaryCase ()
+    let definition = inputRows case
+    case.Outcome <- Settles "x"
+    let host = serve definition [| a; b |]
+    attachToBody host
+    let before = nodesOf host
+    let focused = unbox<HTMLInputElement> (all host "input").[1]
+    focused.focus ()
+    case.Log.Clear ()
+    let mutations = recordMutations host
+    let mounted = hydrate graph strictOptions host definition [| a; b |]
+
+    let shown =
+        mutations (), sameNodes before (serverNodes host), obj.ReferenceEquals (activeElement (), focused), focused.value, List.ofSeq case.Log
+
+    mounted.Dispose ()
+    detach host
+    equal (4, true, true, "x", [ "content setup"; "content setup" ]) shown
 
 type private SourcedItem =
     {
@@ -3209,11 +3245,8 @@ let private recoveryJourney () =
 
     let disposed = logOf journey (fun () -> mounted.Value.Dispose ())
 
-    // The root's markers stay in the host after a re-rendered root is disposed.
-    atStep
-        "round 1 dispose"
-        ([ "cleanup narrow"; "cleanup row c"; "cleanup row b"; "cleanup root" ], "<!--[r--><!--]-->", 1)
-        (disposed, host.innerHTML, reports.Count)
+    // Disposing the re-rendered root also removes the root's markers.
+    atStep "round 1 dispose" ([ "cleanup narrow"; "cleanup row c"; "cleanup row b"; "cleanup root" ], "", 1) (disposed, host.innerHTML, reports.Count)
 
     // Round 2: a fresh server render on the same host hydrates without a report.
     loadServed host (Server.render omit page props)
@@ -3396,6 +3429,7 @@ let cases: (string * (unit -> unit)) array =
             boundaryRestoresAndRecovers
             "boundaries in hydrated rows adopt their content, show copies of the server rows while pending; Strict restores the host",
             boundariesInRows
+            "boundaries in hydrated rows whose content is ready by the end of hydrate keep their nodes and focus in place", rowBoundariesKeepFocus
             "recovered rows whose read is pending show an empty text, as a client mount's rows do", pendingFreshRowsEmpty
             "boundaries: a pending read of a list's items in hydrating content goes to the boundary, which shows its error view as in a mount",
             pendingRowsHydrate

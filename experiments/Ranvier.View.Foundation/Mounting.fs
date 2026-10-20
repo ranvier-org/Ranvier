@@ -1557,14 +1557,15 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
 /// until a retry.
 /// <para>
 /// With <c>hydration</c>, the boundary starts from the server nodes between the markers and the view the start marker
-/// records. Under <c>[c</c>, the content hydrates in place; when one of its reads is pending, its bound nodes are held
-/// detached and a copy of the server nodes, taken before its first commits, stays between the markers as the inert
-/// pending view until the reveal. Under <c>[p</c>, the content mounts
+/// records. Under <c>[c</c>, the content hydrates in place; when one of its reads is still pending at the end of the
+/// hydrating mount's build, its bound nodes are held detached and a copy of the server nodes, taken before its first
+/// commits, stays between the markers as the inert pending view until the reveal. Under <c>[p</c>, the content mounts
 /// detached; while it is pending, the pending view hydrates in place. Under <c>[e</c>, the server nodes are removed and
 /// the boundary mounts as in a mount. A structural mismatch of a hydrating view is reported once through
 /// <c>report</c>, the server nodes are removed and the view mounts fresh; with <c>hydration.Strict</c>, it goes to
 /// <c>failHydration</c> instead. <c>hydrationCursor</c> returns the mount's cursor, which records each removal of server
-/// nodes while the mount hydrates.
+/// nodes while the mount hydrates. <c>atBuildEnd</c> runs an action at the end of the hydrating mount's build, while
+/// that cursor still records.
 /// </para>
 /// </remarks>
 and [<Sealed>] private ViewBoundary
@@ -1593,7 +1594,8 @@ and [<Sealed>] private ViewBoundary
                 -> Row,
         hydration: TemplateDom.HydrationCursor,
         hydrationCursor: unit -> TemplateDom.HydrationCursor,
-        failHydration: exn -> unit
+        failHydration: exn -> unit,
+        atBuildEnd: (unit -> unit) -> unit
     ) =
     // The content's nested mount; null until its setup returns.
     let mutable content: Row = null
@@ -1791,6 +1793,18 @@ and [<Sealed>] private ViewBoundary
 
                 Row.MoveBefore (bound, parentOrNull regionEnd, regionEnd))
 
+    /// <summary>Detaches the adopted content behind its copy when the content is still pending and unrevealed.</summary>
+    member private this.DetachPending() =
+        if
+            not revealed
+            && not failed
+            && waiting > 0
+            && not (isNull content)
+            && content.Adopted
+            && site.Live ()
+        then
+            this.Detach ()
+
     member private this.Reveal() =
         revealed <- true
 
@@ -1907,15 +1921,16 @@ and [<Sealed>] private ViewBoundary
 
     /// <summary>
     /// Ends the content's setup: a failure tears the content down, ready content is revealed, and pending content shows
-    /// the pending view. Pending content adopted in place is detached behind its copy of the server nodes; under server
-    /// nodes left between the markers, the pending view hydrates.
+    /// the pending view. Pending content adopted in place stays in place until the end of the hydrating mount's build,
+    /// and is then detached behind its copy of the server nodes if it is still pending; under server nodes left between
+    /// the markers, the pending view hydrates.
     /// </summary>
     member private this.SetUpEnded(failure: exn option) =
         match failure with
         | Some error -> this.TearDown (error :: List.ofSeq held)
         | None when held.Count > 0 -> this.TearDown (List.ofSeq held)
         | None when waiting = 0 -> this.Reveal ()
-        | None when content.Adopted -> this.Detach ()
+        | None when content.Adopted -> atBuildEnd (fun () -> this.DetachPending ())
         | None when served -> this.Show (views.Pending, TemplateDom.HydrationCursor (nextOrNull regionStart, hydration.Strict))
         | None -> this.Show (views.Pending, null)
 
@@ -2085,6 +2100,8 @@ and internal MountState
     let mutable enclosing: MountState = Unchecked.defaultof<_>
     // The first unrecovered failure of a region's hydrating pass; `Run` raises it once the build returns.
     let mutable hydrationFailure: exn = null
+    // The actions a root mount runs once its build returns, in registration order; null when there are none.
+    let mutable buildEnd: ResizeArray<unit -> unit> = null
 
     // The mount's path, one step of `kind` below `parentPath`; null until first requested.
     let mutable mountPath: InstancePath = null
@@ -2543,6 +2560,13 @@ and internal MountState
             if not (isNull hydrationFailure) then
                 raise hydrationFailure
 
+            if not (isNull buildEnd) then
+                let actions = buildEnd
+                buildEnd <- null
+
+                for action in actions do
+                    action ()
+
             if isNull cursor then
                 range.Attach (host, before)
             else
@@ -2847,6 +2871,18 @@ and internal MountState
             root.Abandon ()
         finally
             hydration.Restore ()
+
+    /// <summary>
+    /// Runs <c>action</c> once the root mount's build returns, before its cursor is dropped; a failed build runs none.
+    /// </summary>
+    member internal _.AtBuildEnd(action: unit -> unit) =
+        if isNull (box enclosing) then
+            if isNull buildEnd then
+                buildEnd <- ResizeArray ()
+
+            buildEnd.Add action
+        else
+            enclosing.AtBuildEnd action
 
     /// <summary>Fails the hydrating <c>Run</c> with <c>error</c> once its build returns, unless an earlier failure was recorded.</summary>
     member internal _.HydrationFailed(error: exn) =
@@ -3642,7 +3678,8 @@ and internal MountState
                     this.MountRow (current, render, scope, target, parentPath, region, row, cursor)),
                 regionCursor,
                 (fun () -> this.HydrationCursor),
-                (fun error -> this.HydrationFailed error)
+                (fun error -> this.HydrationFailed error),
+                (fun action -> this.AtBuildEnd action)
             )
 
         site.Own (fun () -> created.Start ())

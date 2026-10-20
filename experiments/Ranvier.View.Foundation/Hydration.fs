@@ -85,8 +85,15 @@ let private adoptHost
                 rootEnd
             )
 
-        let fresh (before: Node option) =
-            (state null Unchecked.defaultof<_> Unchecked.defaultof<_>).Run(before, build)
+        // Mounts the root fresh before `before`; disposing the mount also removes `markers`.
+        let fresh (before: Node option) (markers: Node list) =
+            let created = state null Unchecked.defaultof<_> Unchecked.defaultof<_>
+            let mounted = created.Run (before, build)
+
+            if not markers.IsEmpty then
+                created.Root.OnCleanup (fun () -> List.iter removeNode markers)
+
+            mounted
 
         let rootStart = rootMarker host
 
@@ -97,7 +104,7 @@ let private adoptHost
                 raise error
 
             report [ error ]
-            fresh None
+            fresh None []
         else
             let rootEnd =
                 try
@@ -108,7 +115,7 @@ let private adoptHost
                     Unchecked.defaultof<_>
 
             if isNull (box rootEnd) then
-                fresh None
+                fresh None [ rootStart ]
             else
                 let first = following rootStart
                 let cursor = TemplateDom.HydrationCursor (first, options.Strict)
@@ -141,7 +148,7 @@ let private adoptHost
                         )
 
                         clearAfter rootStart rootEnd
-                        fresh (Some rootEnd)
+                        fresh (Some rootEnd) [ rootStart; rootEnd ]
                     | None -> reraise ()
 
 /// <summary>
@@ -161,14 +168,13 @@ let private adoptHost
 /// </para>
 /// <para>
 /// A boundary's content and its pending view hydrate between <c>ranvier:start</c> and <c>ranvier:end</c> comments,
-/// inserted around their adopted nodes. Server content (<c>&lt;!--[c--&gt;</c>) hydrates in place. When one of its
-/// reads is pending, its bound nodes are held detached, and a copy of the server nodes, taken before the content's
-/// first commits, stays between the markers as the inert pending view; the reveal replaces the copy with the bound
-/// nodes. Under a
-/// server pending view (<c>&lt;!--[p--&gt;</c>), the content mounts detached, and the pending view hydrates while the
-/// content is pending; ready content replaces the server's nodes at once. A server error view
-/// (<c>&lt;!--[e--&gt;</c>) is removed and the boundary mounts fresh. A failure of the content's setup shows the error
-/// view, as in a mount.
+/// inserted around their adopted nodes. Server content (<c>&lt;!--[c--&gt;</c>) hydrates in place, and content that
+/// is ready by the end of the build keeps its bound nodes in place. When one of its reads is still pending then, its
+/// bound nodes are held detached, and a copy of the server nodes, taken before the content's first commits, stays
+/// between the markers as the inert pending view; the reveal replaces the copy with the bound nodes. Under a server
+/// pending view (<c>&lt;!--[p--&gt;</c>), the content mounts detached, and the pending view hydrates while the content
+/// is pending; ready content replaces the server's nodes at once. A server error view (<c>&lt;!--[e--&gt;</c>) is
+/// removed and the boundary mounts fresh. A failure of the content's setup shows the error view, as in a mount.
 /// </para>
 /// <para>
 /// A structural mismatch inside a list or arm region, or inside a boundary's hydrating view, re-renders the innermost
@@ -184,7 +190,8 @@ let private adoptHost
 /// rollback. The server nodes between the root markers are then removed and the root mounts fresh before the end
 /// marker. Without a root marker, the root mounts fresh at the end of <c>host</c>, after its children. Without the end
 /// marker, every node after the root marker, foreign siblings included, is removed and the root mounts fresh at the
-/// end of <c>host</c>. Ids issued by the fresh mount start again under <c>options.IdPrefix</c>.
+/// end of <c>host</c>. Ids issued by the fresh mount start again under <c>options.IdPrefix</c>. Disposing the fresh
+/// mount also removes the root markers.
 /// </para>
 /// <para>
 /// A failure of the fresh mount propagates with the server content already removed: the root markers are left empty

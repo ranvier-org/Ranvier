@@ -761,7 +761,8 @@ let private writeHydrating (cursor: HydrationCursor) (slot: Slot) (node: obj) (v
         cursor.Undo inverse
 
 // A failed write keeps the slot's previous value. During setup the failure aborts the mount; afterwards it is reported.
-// During hydration the first value is compared with the server node before it is written.
+// During hydration the first value is written when it differs from the node's current value, raw content always, and
+// the write is recorded with the hydration cursor.
 let private commit (services: MountServices) (state: obj array) (slot: Slot) (nodeIndex: int) (previousIndex: int) (value: obj) =
     let previous = at state previousIndex
 
