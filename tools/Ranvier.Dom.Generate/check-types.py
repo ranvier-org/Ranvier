@@ -127,6 +127,27 @@ let view =
 open Ranvier.View.Foundation.Sugar
 let view = Component.define (fun _ () -> ()) (fun t -> t.Div() { Program.text "x" })
 ''', "FS0041"),
+    ("generated sugar tags", '''
+open Ranvier.View.Foundation.Sugar
+let view =
+    Component.define (fun _ () -> ()) (fun t ->
+        t.Article(t.Attrs.className "a") {
+            t.Base()
+            t.Select() { t.Option() { "one" } }
+            t.Object() { }
+            t.Img()
+            t.H1() { "title" }
+            t.Tbody() { t.Tr() { t.Td() { "cell" } } }
+        })
+''', None),
+    ("generated sugar void tag with children", '''
+open Ranvier.View.Foundation.Sugar
+let view = Component.define (fun _ () -> ()) (fun t -> t.Div() { t.Img() { "x" } })
+''', "FS0708"),
+    ("generated sugar part of another element", '''
+open Ranvier.View.Foundation.Sugar
+let view = Component.define (fun _ () -> ()) (fun t -> t.Span(t.Props.Input.value "x") { "y" })
+''', "FS0041"),
 ]
 
 with tempfile.TemporaryDirectory(prefix="ranvier-generated-types-") as directory:
