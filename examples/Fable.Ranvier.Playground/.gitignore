@@ -2,6 +2,7 @@ generated/
 generated-tests/
 generated-authoring-counters/
 generated-tests-counters/
+generated-tests-debug/
 generated-ripple/
 generated-framework-dist/
 generated-framework-shared/
