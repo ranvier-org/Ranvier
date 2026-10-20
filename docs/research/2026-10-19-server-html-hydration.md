@@ -104,11 +104,11 @@ Task 12b lowered the per-row cost of `Server.render` on both targets with the ou
 
 Each change is one commit on `poc/fable-ranvier-dom`, in this order, measured against the run before it:
 
-1. A child `MountLifetime` is created without `graph.Run` and `runWithOwner` when the graph is ambient and the parent owner is current. On .NET, `graph.Run` allocated an activation and wrote an `AsyncLocal` per row.
+1. A child `MountLifetime` is created without `graph.Run` and `runWithOwner` when the graph is ambient and the parent owner is current. On .NET, `graph.Run` allocated an activation and wrote an `AsyncLocal` per child. When it was measured, every server row took this path. Since change 6, only boundary attempts and client mounts take it.
 2. The Fable `HtmlSink` builds one concatenated string; it replaced a list of parts joined at `ToString`. Under Fable `renderTo` writes the page as one segment.
 3. A server instance whose plan has no inlined children gets its part array as a one-element literal. Under Fable, `Array.zeroCreate` compiles to `Array.prototype.fill` over a holey array.
-4. `MountLifetime` reads its parent's phase by pattern match. Under Fable, `=` on the union compiled to structural equality.
-5. A `RequestScope` builds one `Setup` per instance, and every scope of a request shares one `CreateId` closure.
+4. Reverted. `MountLifetime` read its parent's phase by pattern match, because under Fable `=` on the union compiled to structural equality. It was measured before change 6, and since change 6 no server row constructs a `MountLifetime`, so the measured gain no longer applies.
+5. A `RequestScope` builds one `Setup` per instance. At the time, every scope of a request also shared one `CreateId` closure. A later cleanup returned to one `identity.CreateId` closure per scope, because `ownSetup` replaces that field for every instance.
 6. Each server instance runs under its own root owner, created under the enclosing instance's owner and adopted by the request root or the innermost boundary attempt, instead of under a `MountLifetime` of its own. A boundary attempt is still a `MountLifetime`, nested under the enclosing instance's owner.
 7. An attribute slot is written from its precomputed ` name="` opening in three appends instead of one concatenated string.
 
@@ -116,7 +116,7 @@ Tried and dropped (no median moved beyond the spread): an inlined character test
 
 ### .NET
 
-BenchmarkDotNet 0.15.8, Release, default job with `MemoryDiagnoser`; means in µs. "before" is base `e2ab66f` (this session's re-run of after S4) and "after" is `efa4f71`. Every row is cross-session against the tables above, not a gate. Rows 1, 5 and 6 are the runs after those changes; rows 2–4 changed Fable-only or Fable-motivated code and were measured under Node only.
+BenchmarkDotNet 0.15.8, Release, default job with `MemoryDiagnoser`; means in µs. "before" is base `e2ab66f` (this session's re-run of after S4) and "after" is `efa4f71`, which still includes the later-reverted change 4. Every row is cross-session against the tables above, not a gate. The rows after changes 1, 5, 6 and 7 are the runs after those changes. Changes 2–4 changed Fable-only or Fable-motivated code and were measured under Node only.
 
 | Phase | Fixture | Rows | Mean (µs) | StdDev (µs) | Allocated |
 |---|---|---|---|---|---|
@@ -143,7 +143,7 @@ The "after change 7" and "after 12b" runs measure the same code; their component
 
 ### Node, one session after the changes
 
-Same harness, settings and machine as the Node section above. Ranvier and Solid 2 in this table run in one session (`efa4f71`, clean tree); the before table is a separate session (`e2ab66f`, clean tree) and comparisons between the two are cross-session, not a gate.
+Same harness, settings and machine as the Node section above. Ranvier and Solid 2 in this table run in one session (`efa4f71`, clean tree, change 4 still applied); the before table is a separate session (`e2ab66f`, clean tree) and comparisons between the two are cross-session, not a gate.
 
 | Fixture | Rows | Ranvier median (µs) | Ranvier p25–p75 | Ranvier per process | Solid 2 median (µs) | Solid 2 p25–p75 | Solid 2 per process | Ranvier / Solid 2 | Ranvier bytes per row | Solid 2 bytes per row |
 |---|---|---|---|---|---|---|---|---|---|---|

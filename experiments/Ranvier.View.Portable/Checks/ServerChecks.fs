@@ -383,6 +383,76 @@ let private renderToSegments () =
 
     equal 0 failed.Count
 
+let private keptSetupInSiblingRejected () =
+    let captured: Setup option ref = ref None
+    let raised = ResizeArray<string>()
+
+    let keeper =
+        Component.define (fun setup () -> captured.Value <- Some setup) (fun t -> t.span [||] [||])
+
+    let user =
+        Component.define
+            (fun _ () ->
+                try
+                    captured.Value.Value.OnCleanup ignore
+                    raised.Add "accepted"
+                with error ->
+                    raised.Add error.Message)
+            (fun t -> t.i [||] [||])
+
+    let page =
+        Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.render keeper ignore; t.render user ignore |])
+
+    equal "<!--[r--><div><span></span><i></i></div><!--]-->" (Server.render Server.Options.defaults page ())
+    equal [ "Server component setup is completed" ] (List.ofSeq raised)
+
+let private orderLog = ResizeArray<string>()
+
+let private failingLeaf =
+    Component.define
+        (fun setup (name: string) ->
+            setup.OnCleanup (fun () ->
+                orderLog.Add name
+                failwith (name + " failed"))
+
+            name)
+        (fun t -> t.b [||] [| t.text id |])
+
+let private resolvedContent =
+    Component.define
+        (fun setup (_: BoundaryStatus) ->
+            setup.OnCleanup (fun () ->
+                orderLog.Add "content"
+                failwith "content failed"))
+        (fun t -> t.span [||] [| t.render failingLeaf (fun _ -> "inner") |])
+
+let private besideBoundary =
+    Component.define (fun _ () -> ()) (fun t ->
+        t.div
+            [||]
+            [|
+                t.render failingLeaf (fun _ -> "before")
+                t.boundary boundaryPending boundaryFailed resolvedContent
+                t.render failingLeaf (fun _ -> "after")
+            |])
+
+let private resolvedBoundaryCleanupOrder () =
+    orderLog.Clear ()
+
+    let error =
+        failure (fun () ->
+            Server.render Server.Options.defaults besideBoundary ()
+            |> ignore)
+
+    equal [ "after"; "inner"; "content"; "before" ] (List.ofSeq orderLog)
+
+    equal
+        true
+        (error.Message.StartsWith (
+            "Server render cleanup failed: after failed; inner failed; content failed; before failed",
+            StringComparison.Ordinal
+        ))
+
 let private aggregateFailures () =
     let cleanupFails =
         Component.define
@@ -1669,6 +1739,8 @@ let cases: (string * (unit -> unit)) array =
         "a request owns every instance and disposes them child-first after the render", requestRoot
         "setup failure disposes the request", setupFailureDisposes
         "OnCleanup after setup raises on the server", cleanupAfterSetupRejected
+        "a Setup kept from a completed setup raises in a later sibling's setup", keptSetupInSiblingRejected
+        "a resolved boundary's content cleans up between its siblings, in order with their errors", resolvedBoundaryCleanupOrder
         "duplicate keys fail the server render with the core's exception", duplicateKeys
         "renderTo writes the rendered segments after success and nothing after failure", renderToSegments
         "a render whose cleanups fail raises an aggregate holding and naming every error", aggregateFailures

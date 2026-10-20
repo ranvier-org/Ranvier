@@ -39,13 +39,17 @@ let private serverPending (pending: exn) : exn =
     error
 
 /// <summary>
-/// The owners of a request: each nested instance runs under its own owner, a root under the enclosing instance's
-/// <c>owner</c> whose teardown errors <c>lifetime</c> reports, and its <c>Setup</c> registers cleanups on that owner
-/// until the instance is written. <c>lifetime</c> is the request root or the innermost boundary attempt, and
-/// <c>owner</c> is its owner or an owner it adopted. A failure to dispose an abandoned attempt goes to <c>report</c>.
+/// The owners of a request: each nested instance runs under its own owner, a root under <c>owner</c>; <c>lifetime</c>
+/// reports its teardown errors. The instance's <c>Setup</c> registers cleanups on that owner until the instance is
+/// written. <c>lifetime</c> is the request root or the innermost boundary attempt, and <c>owner</c> is its owner or an
+/// owner it adopted. A failure to dispose an abandoned attempt goes to <c>report</c>.
 /// </summary>
+/// <remarks>
+/// <c>Nest</c> and <c>Attempt</c> run only while the request graph is ambient, inside the <c>graph.Run</c> of
+/// <c>renderOn</c>.
+/// </remarks>
 [<Sealed>]
-type internal RequestScope(lifetime: MountLifetime, owner: Owner, identity: IdentityScope, createId: unit -> string, report: exn -> unit) =
+type internal RequestScope(lifetime: MountLifetime, owner: Owner, identity: IdentityScope, report: exn -> unit) =
     inherit ServerScope()
     let mutable completed = false
 
@@ -61,11 +65,10 @@ type internal RequestScope(lifetime: MountLifetime, owner: Owner, identity: Iden
                         raise (InvalidOperationException "Renderer scope is disposed")
 
                     owner.OnCleanup (Action cleanup)
-            CreateId = createId
+            CreateId = identity.CreateId
         }
 
-    new(lifetime: MountLifetime, identity: IdentityScope, report: exn -> unit) =
-        RequestScope (lifetime, lifetime.Owner, identity, identity.CreateId, report)
+    new(lifetime: MountLifetime, identity: IdentityScope, report: exn -> unit) = RequestScope (lifetime, lifetime.Owner, identity, report)
 
     override _.Nest body =
         if owner.IsDisposed then
@@ -74,7 +77,7 @@ type internal RequestScope(lifetime: MountLifetime, owner: Owner, identity: Iden
         Api.runWithOwner owner (fun () ->
             Api.createRoot (fun child ->
                 lifetime.Adopt child
-                let scope = RequestScope (lifetime, child, identity, createId, report)
+                let scope = RequestScope (lifetime, child, identity, report)
 
                 try
                     body scope scope.InstanceSetup
@@ -95,7 +98,7 @@ type internal RequestScope(lifetime: MountLifetime, owner: Owner, identity: Iden
                 ignore,
                 fun child ->
                     attempt.Value <- child
-                    body (RequestScope (child, child.Owner, identity, createId, report))
+                    body (RequestScope (child, child.Owner, identity, report))
             )
             |> ignore
         with _ ->

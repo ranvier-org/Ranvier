@@ -200,10 +200,14 @@ type MountLifetime private (graph: Graph, owner: Owner, report: exn list -> unit
 
     /// <summary>
     /// A lifetime nested in this one, its owner a root under <c>under</c>, with <c>body</c> run inside that root.
-    /// <c>under</c> is this lifetime's owner or an owner it adopted.
+    /// <c>under</c> is this lifetime's owner or an owner it adopted; raises when either is disposed.
     /// </summary>
     member internal this.ChildUnder(under: Owner, childRelease: unit -> unit, body: MountLifetime -> unit) : MountLifetime =
         this.EnsureLive ()
+
+        if under.IsDisposed then
+            raise (InvalidOperationException "Renderer scope is disposed")
+
         let mutable child: MountLifetime = null
 
         let create () =
