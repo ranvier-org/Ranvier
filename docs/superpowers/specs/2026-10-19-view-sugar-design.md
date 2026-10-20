@@ -352,6 +352,16 @@ The plan puts sugar after Tasks 7–9. Steps 1–2 depend only on `Template.fs` 
 10. **Where should the sugar live?** Recommended: `experiments/Ranvier.View.Portable/TemplateSugar.fs` plus generated members in the sibling generated file `Generated/HtmlTemplateSugar.fs`, under the opt-in `namespace Ranvier.View.Foundation.Sugar` with `[<AutoOpen>] module Builders` and `[<AutoOpen>] module Elements`. It needs internal access to the template constructors, so it stays in the assembly that holds `Template.fs` until package extraction. (Amended 2026-10-20; the approved answer named `experiments/Ranvier.View.Foundation`, which held `Template.fs` at the time.)
 11. **Sequencing against Tasks 7–9?** Recommended: run the compiler probe and the handwritten slice (§7 steps 1–2) once the user approves. Generation and measurement wait for the Task 8 API freeze.
 
+## 9. Measurements
+
+Measured on 2026-10-20 (Ryzen 9 9900X, Chromium 153, Solid 2.0.0-rc.14). Tables, ranges and file links are in the [research note](../../research/2026-10-20-view-sugar.md).
+
+**Criterion 3, no per-instance overhead.** Three template-comparison runs: the sugared row's ranges overlap the explicit row's in all 9 phase-and-width rows of each run (one `update@128` row was disjoint by 0.2 us in the first attempt of run 2 and overlapped in the repeat). Keyed rows: 14 of 14 operations overlap in the rerun; 13 of 14 overlapped in the first run, and the exception, `clear10k`, had the sugared range below the explicit one. Retained heap is 856.1 B/row at 1k and 839.3 B/row at 10k for both adapters (one sugared process measured 795.3 B/row at 1k). The `create1k` allocation sample lists no `ElementBuilder`, `Builders_` or `Sugar` function. The sugared keyed fixtures use `forEachFixed`, which expands to a snapshot row like the explicit `keyedRow`.
+
+**Criterion 4, bundle.** The explicit benchmark entry holds no sugar code (checked on an unminified build), and the playground bundle is byte-identical to the base build. The sugared benchmark entry adds 2,807 B raw, 582 B gzip and 394 B Brotli, which is within the 1 kB gzip budget of open question 8.
+
+**Criterion 6, authoring gain.** The keyed-row template shrinks from 39 to 22 lines, the arm template from 31 to 22, and the playground demo from 103 to 83. The benchmark fixtures go from 6 `Component.define` calls to 2; the module-level row and arm definitions are gone.
+
 ## References
 
 - Oxpecker.Solid README: CE children `ul() { li() { ... } }`, attributes as named arguments, the `[<SolidComponent>]` attribute driving `Oxpecker.Solid.FablePlugin`. https://github.com/Lanayx/Oxpecker/blob/main/src/Oxpecker.Solid/README.md

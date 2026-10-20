@@ -1,7 +1,8 @@
 import "./keyed-page.mjs";
 import "./boundary-page.mjs";
 import "./placement-page.mjs";
-import { mount as ranvierMount, mountPrepared, mountTemplate, mountTemplateSugar } from "../../generated-tests/FrameworkPerf.js";
+import { mount as ranvierMount, mountPrepared, mountTemplate } from "../../generated-tests/FrameworkPerf.js";
+import { mountTemplateSugar } from "../../generated-tests/FrameworkSugarPerf.js";
 import { parts, scopes, core, coreOwners, mountVariant, mountDirect, mountReactiveNative } from "../../generated-tests/FrameworkDiagnostics.js";
 import { mount as rippleMount } from "../../generated-ripple/RipplePerf.js";
 import { mount as solidMount } from "./solid.jsx";

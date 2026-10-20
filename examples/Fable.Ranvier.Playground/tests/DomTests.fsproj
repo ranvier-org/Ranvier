@@ -52,6 +52,7 @@
     <Compile Include="../../../experiments/Ranvier.View.Foundation/AuthoringPerfFixtures.fs" Link="AuthoringPerfFixtures.fs" />
     <Compile Include="AuthoringPerf.fs" />
     <Compile Include="FrameworkPerf.fs" />
+    <Compile Include="FrameworkSugarPerf.fs" />
     <Compile Include="KeyedRowsPerf.fs" />
     <Compile Include="KeyedRowsSugarPerf.fs" />
     <Compile Include="BoundaryPerf.fs" />

@@ -19,3 +19,5 @@ generated-keyed-dist/
 generated-keyed-heap/
 generated-keyed-identity/
 generated-keyed-passes/
+generated-sugar-size/
+generated-keyed-profile/
