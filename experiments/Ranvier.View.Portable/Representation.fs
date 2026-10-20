@@ -114,23 +114,16 @@ type PlacedKind =
     /// <summary>Measures the element before and after the region passes under it.</summary>
     | Reflow
 
-/// <summary>The part name of a placed hook in a browser-capability error.</summary>
+/// <summary>
+/// The part name of a placed hook in a browser-capability error; null for a motion, exit or reflow hook, which adds no
+/// markup and is omitted from server HTML under every policy.
+/// </summary>
 let internal placedPart kind =
     match kind with
     | PlacedKind.Mounted -> "mounted hook"
     | PlacedKind.Lent -> "lent hook"
     | PlacedKind.Widget -> "widget"
-    | PlacedKind.Motion -> "motion hook"
-    | PlacedKind.Exit -> "exit hook"
-    | PlacedKind.Reflow -> "reflow hook"
-
-/// <summary>Whether a placed hook adds no markup and is omitted from server HTML under every policy.</summary>
-let internal serverOmitted kind =
-    match kind with
-    | PlacedKind.Motion
-    | PlacedKind.Exit
-    | PlacedKind.Reflow -> true
-    | _ -> false
+    | _ -> null
 
 /// <summary>The browser-capability error under <c>Reject</c> for <c>part</c> of an element <c>tag</c>.</summary>
 let internal browserRejected (tag: string) (part: string) =
@@ -898,10 +891,9 @@ and [<Sealed>] HtmlBackend(policy: BrowserPolicy, sink: HtmlSink) =
         browserCapability "browser hook"
 
     override _.Placed(kind, _) =
-        if serverOmitted kind then
-            ensureAttributes ()
-        else
-            browserCapability (placedPart kind)
+        match placedPart kind with
+        | null -> ensureAttributes ()
+        | part -> browserCapability part
 
         if kind = PlacedKind.Widget then
             if widget then

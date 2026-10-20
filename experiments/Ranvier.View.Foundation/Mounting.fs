@@ -165,8 +165,8 @@ let private nextOrNull (node: Node) : Node = jsNative
 
 /// <summary>The node's next sibling, skipping the nodes held by their exits once an exit is registered.</summary>
 let inline private nextRowNode (node: Node) : Node =
-    if Departures.enabled then
-        Departures.nextLive node
+    if Departures.seam.Enabled then
+        Departures.seam.NextLive.Invoke node
     else
         nextOrNull node
 
@@ -787,7 +787,7 @@ type private OwnedRange(host: Node, first: Node, last: Node) =
                 raise original
 
     /// <summary>Unclaims the range's nodes and removes them, or with <c>keep</c> leaves every node where it is.</summary>
-    member _.Release(keep: bool, forced: bool, held: ResizeArray<Departure>) =
+    member _.Release(keep: bool, held: ResizeArray<unit -> unit>) =
         let errors = ResizeArray<exn>()
 
 #if LADDER_NAIVE_RANGE
@@ -827,7 +827,7 @@ type private OwnedRange(host: Node, first: Node, last: Node) =
                     if
                         spans
                         || isNull held
-                        || not (Departures.retire entry.Node forced held)
+                        || not (Departures.seam.Retire.Invoke (entry.Node, held))
                     then
                         remove (entry.Node :?> ChildNode)
                 with error ->
@@ -945,10 +945,10 @@ and [<Sealed; AllowNullLiteral>] private Row(first: Node, last: Node) =
             cursor <- next
 
     /// <summary>
-    /// Marks the row removed and removes its nodes. With <c>held</c>, a node that <c>Departures.retire</c> holds stays in
-    /// place and joins <c>held</c>; <c>forced</c> removes every node.
+    /// Marks the row removed and removes its nodes. With <c>held</c>, a node that <c>Departures.seam.Retire</c> holds stays in
+    /// place and joins <c>held</c>.
     /// </summary>
-    static member Remove(row: Row, forced: bool, held: ResizeArray<Departure>) =
+    static member Remove(row: Row, held: ResizeArray<unit -> unit>) =
         if not row.Removed then
             row.Removed <- true
             let mutable cursor = row.First
@@ -962,7 +962,7 @@ and [<Sealed; AllowNullLiteral>] private Row(first: Node, last: Node) =
 
                 if
                     isNull held
-                    || not (Departures.retire cursor forced held)
+                    || not (Departures.seam.Retire.Invoke (cursor, held))
                 then
                     remove (cursor :?> ChildNode)
 
@@ -1358,7 +1358,8 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
     member val Hydrating = false with get, set
 
     /// <summary>The commit slot of the region's reflow measurements under queued commits; null until first used.</summary>
-    member val ReflowSlot: Slot = Unchecked.defaultof<_> with get, set
+    [<DefaultValue>]
+    val mutable ReflowSlot: Slot
 
     /// <summary>
     /// Re-renders the region after a structural mismatch of its hydrating pass and reports the errors it receives, the
@@ -1500,7 +1501,7 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
                 cleared
                 && not (isNull (box parent))
                 && not (
-                    Departures.enabled
+                    Departures.seam.Enabled
                     && RegionSite.Departs (rows, regionStart, regionEnd)
                 )
             then
@@ -1524,8 +1525,8 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
 
     /// <summary>Whether a root of <c>rows</c> has an exit, or a node between the markers is leaving.</summary>
     static member private Departs(rows: Row array, regionStart: Node, regionEnd: Node) =
-        Departures.anyLeaving regionStart regionEnd
-        || Array.exists (fun (row: Row) -> Departures.anyExit row.First row.Last) rows
+        Departures.seam.AnyLeaving.Invoke (regionStart, regionEnd)
+        || Array.exists (fun (row: Row) -> Departures.seam.AnyExit.Invoke (row.First, row.Last)) rows
 
     /// <summary>
     /// Runs <c>body</c> in a new root owner of the region, then raises the setup failure recorded during that first pass.
@@ -2186,7 +2187,7 @@ and internal MountState
     let mutable departs = false
 
     // The retired row roots held in place by their exits; null until the first is held.
-    let mutable leaving: ResizeArray<Departure> = null
+    let mutable leaving: ResizeArray<unit -> unit> = null
 
     let ensureLeaving () =
         if isNull leaving then
@@ -2199,10 +2200,14 @@ and internal MountState
     let removeRow (row: Row) (forced: bool) =
         if isDetached row.First then
             row.Removed <- true
-        elif Departures.enabled then
-            Row.Remove (row, forced, ensureLeaving ())
         else
-            Row.Remove (row, true, null)
+            Row.Remove (
+                row,
+                if Departures.seam.Enabled && not forced then
+                    ensureLeaving ()
+                else
+                    null
+            )
 
     // Ends every held exit: cancels it, then removes its node.
     let endLeaving (errors: ResizeArray<exn>) =
@@ -2211,7 +2216,7 @@ and internal MountState
 
             for index in 0 .. departing.Length - 1 do
                 try
-                    departing[index].End()
+                    departing[index]()
                 with error ->
                     errors.Add error
 
@@ -2245,21 +2250,17 @@ and internal MountState
         let held =
             if
                 departs
-                && Departures.enabled
+                && Departures.seam.Enabled
                 && not keep
-                && not (isNull (box enclosing))
+                && not enclosing.Root.IsDisposed
+                && obj.ReferenceEquals (root.Outermost (), root)
             then
                 enclosing.Leaving
             else
                 null
 
-        let forced =
-            isNull held
-            || enclosing.Root.IsDisposed
-            || not (obj.ReferenceEquals (root.Outermost (), root))
-
         try
-            range.Release (keep, forced, held)
+            range.Release (keep, held)
         with error ->
             errors.Add error
 
@@ -2795,14 +2796,14 @@ and internal MountState
 
             markWidget node
 
-        match kind with
-        | PlacedKind.Mounted
-        | PlacedKind.Lent
-        | PlacedKind.Widget ->
-            PlacedHook.register container this.Scope (Api.getOwner ()) kind (node :> Node) false (fun () -> unbox (hook.Invoke (box node, null)))
-        | _ ->
-            Departures.place container this.Scope (Api.getOwner ()) kind (node :> Node) false (not (isNull cursor)) (fun argument ->
-                hook.Invoke (box node, argument))
+        let argument =
+            match kind with
+            | PlacedKind.Mounted
+            | PlacedKind.Lent
+            | PlacedKind.Widget -> null
+            | _ -> PlacedHook.argument kind node false (not (isNull cursor)) container
+
+        PlacedHook.register container this.Scope (Api.getOwner ()) kind (node :> Node) false (fun () -> unbox (hook.Invoke (box node, argument)))
 
     override this.Head(entry) =
         this.HeadIn (container, entry)
@@ -2960,7 +2961,7 @@ and internal MountState
     member internal _.KeepsNodes = keeps ()
 
     /// <summary>The retired row roots this mount holds in place while their exits run.</summary>
-    member internal _.Leaving: ResizeArray<Departure> = ensureLeaving ()
+    member internal _.Leaving: ResizeArray<unit -> unit> = ensureLeaving ()
 
     /// <summary>Whether the mount is a list row or an arm, whose release retires its roots into the enclosing mount.</summary>
     member internal _.Departs
@@ -3144,7 +3145,7 @@ and internal MountState
 
             if not (isNull (box parent)) then
                 try
-                    Departures.before parent
+                    Departures.seam.Before.Invoke parent
                 with error ->
                     site.Errors.Report [ error ]
 
@@ -3156,19 +3157,22 @@ and internal MountState
     /// the commits enqueued before it.
     /// </summary>
     member private this.MeasureAfter(site: RegionSite, parent: Node) =
-        Departures.after parent (fun action ->
-            match scheduling with
-            | Synchronous ->
-                Api.createEffect (fun () ->
-                    try
-                        Api.untrack action
-                    with error ->
-                        site.Errors.Report [ error ])
-            | Queued queue ->
-                if isNull (box site.ReflowSlot) then
-                    site.ReflowSlot <- queue.Reserve this.Scope
+        Departures.seam.After.Invoke (
+            parent,
+            fun action ->
+                match scheduling with
+                | Synchronous ->
+                    Api.createEffect (fun () ->
+                        try
+                            Api.untrack action
+                        with error ->
+                            site.Errors.Report [ error ])
+                | Queued queue ->
+                    if isNull (box site.ReflowSlot) then
+                        site.ReflowSlot <- queue.Reserve this.Scope
 
-                queue.Enqueue (site.ReflowSlot, action))
+                    queue.Enqueue (site.ReflowSlot, action)
+        )
 
     /// <summary>
     /// Mounts one row per keyed item between the region's markers, on a core projection that creates new rows before it
@@ -3277,7 +3281,7 @@ and internal MountState
                 let hydrating = site.Hydrating
 
                 let measured =
-                    if Departures.reflowEnabled then
+                    if Departures.seam.ReflowEnabled then
                         this.MeasureBefore (site, regionStart, hydrating)
                     else
                         Unchecked.defaultof<_>
@@ -3750,7 +3754,7 @@ and internal MountState
                 started <- true
 
                 let measured =
-                    if Departures.reflowEnabled then
+                    if Departures.seam.ReflowEnabled then
                         this.MeasureBefore (site, regionStart, hydrating)
                     else
                         Unchecked.defaultof<_>

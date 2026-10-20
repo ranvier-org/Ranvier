@@ -57,7 +57,8 @@ type internal Placement(parent: Placement) =
     member val Placing = false with get, set
 
     /// <summary>Whether the container holds the hooks of a region pass after the region's first.</summary>
-    member val Inserted = false with get, set
+    [<DefaultValue>]
+    val mutable Inserted: bool
 
     member _.IsPlaced: bool = laidOut && (isNull parent || parent.IsPlaced)
 
@@ -176,7 +177,8 @@ type internal PlacementPass(parent: Placement) =
     let mutable placed = false
 
     /// <summary>Whether the current pass follows the region's first; the pass's container takes the flag.</summary>
-    member val Inserted = false with get, set
+    [<DefaultValue>]
+    val mutable Inserted: bool
 
     /// <summary>Starts a pass: the next request allocates a new container.</summary>
     member _.Begin() =
@@ -211,7 +213,29 @@ module internal PlacedHook =
 
     /// <summary>Whether the node is a root of its row or mount: detached, or a child of a document fragment.</summary>
     [<Emit("($0.parentNode == null || $0.parentNode.nodeType === 11)")>]
-    let private atRoot (node: Node) : bool = jsNative
+    let atRoot (node: Node) : bool = jsNative
+
+    /// <summary>
+    /// The argument a placed hook of <c>kind</c> receives: for a motion hook, the flags of its <c>MotionContext</c>
+    /// (1 hydrated, 2 inserted); null otherwise. A Debug build raises "An exit hook requires a row or arm root element"
+    /// for an exit hook on a node that is not a root.
+    /// </summary>
+    let argument (kind: PlacedKind) (node: Node) (root: bool) (hydrated: bool) (container: Placement) : obj =
+#if DEBUG
+        if
+            kind = PlacedKind.Exit
+            && not root
+            && not (atRoot node)
+        then
+            raise (InvalidOperationException "An exit hook requires a row or arm root element")
+#endif
+        if kind = PlacedKind.Motion then
+            box (
+                (if hydrated then 1 else 0)
+                + (if container.Inserted then 2 else 0)
+            )
+        else
+            null
 
     /// <summary>
     /// Adds <c>hook</c> for <c>node</c> to <c>container</c>; its returned cleanup runs when <c>owner</c> is disposed. A

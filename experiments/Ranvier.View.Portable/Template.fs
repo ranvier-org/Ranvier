@@ -1228,8 +1228,9 @@ let private compilePlan (root: TemplateNode) : ServerPlan =
                 emit (BrowserOp (tagName, "listener " + eventName))
 
             for kind, _ in placed do
-                if not (serverOmitted kind) then
-                    emit (BrowserOp (tagName, placedPart kind))
+                match placedPart kind with
+                | null -> ()
+                | part -> emit (BrowserOp (tagName, part))
 
             write ("<" + tagName)
 
@@ -2323,7 +2324,18 @@ type HookBuilder<'inst> internal () =
     member _.motion(hook: 'inst -> 'native -> MotionContext -> (unit -> unit)) : Part<'native, 'inst> =
         PlacedPart (
             PlacedKind.Motion,
-            Func<obj, obj, obj, obj>(fun instance node context -> box (hook (unbox instance) (unbox node) (unbox context)))
+            Func<obj, obj, obj, obj>(fun instance node flags ->
+                let flags: int = unbox flags
+
+                box (
+                    hook
+                        (unbox instance)
+                        (unbox node)
+                        {
+                            Hydrated = flags &&& 1 <> 0
+                            Inserted = flags &&& 2 <> 0
+                        }
+                ))
         )
 
     /// <summary>
@@ -2332,14 +2344,22 @@ type HookBuilder<'inst> internal () =
     /// is forced. The server omits the hook.
     /// </summary>
     member _.exit(exit: 'inst -> 'native -> (unit -> unit) -> (unit -> unit)) : Part<'native, 'inst> =
-        PlacedPart (PlacedKind.Exit, Func<obj, obj, obj, obj>(fun instance node finish -> box (exit (unbox instance) (unbox node) (unbox finish))))
+        PlacedPart (
+            PlacedKind.Exit,
+            Func<obj, obj, obj, obj>(fun instance node _ ->
+                Departures.register (unbox node) (fun finish -> exit (unbox instance) (unbox node) finish)
+                null)
+        )
 
     /// <summary>
     /// On a region's parent element: <c>Before</c> runs before the first region pass under the element in a flush,
     /// <c>After</c> once the pass's nodes and commits are in place. The server omits the hook.
     /// </summary>
     member _.reflow(measure: 'inst -> 'native -> Reflow) : Part<'native, 'inst> =
-        PlacedPart (PlacedKind.Reflow, Func<obj, obj, obj, obj>(fun instance node _ -> box (measure (unbox instance) (unbox node))))
+        PlacedPart (
+            PlacedKind.Reflow,
+            Func<obj, obj, obj, obj>(fun instance node _ -> box (Departures.registerReflow (unbox node) (measure (unbox instance) (unbox node))))
+        )
 
 /// <summary>Raw-HTML parts: the element's whole content, parsed without escaping.</summary>
 [<Sealed>]

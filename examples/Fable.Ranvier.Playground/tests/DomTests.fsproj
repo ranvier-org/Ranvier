@@ -22,6 +22,7 @@
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Microtask.fs" Link="Microtask.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Portable/Representation.fs" Link="Representation.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Portable/Typed.fs" Link="Typed.fs" />
+    <Compile Include="../../../experiments/Ranvier.View.Portable/Departures.fs" Link="Departures.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/DomEvents.fs" Link="DomEvents.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Portable/Template.fs" Link="Template.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Portable/Generated/HtmlTemplate.fs" Link="Generated/HtmlTemplate.fs" />
@@ -33,7 +34,6 @@
     <Compile Include="RepresentationChecks.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Prepared.fs" Link="Prepared.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Placement.fs" Link="Placement.fs" />
-    <Compile Include="../../../experiments/Ranvier.View.Foundation/Departures.fs" Link="Departures.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/TemplateDom.fs" Link="TemplateDom.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/DocumentHead.fs" Link="DocumentHead.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Mounting.fs" Link="Mounting.fs" />

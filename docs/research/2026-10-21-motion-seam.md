@@ -2,6 +2,12 @@
 
 Date: 2026-10-21. Steps 3–7 of `docs/superpowers/specs/2026-10-21-motion-design.md`: the `Motion`, `Exit` and `Reflow` placed-hook kinds, the placement context, held exits (`Departures.fs`) and reflow measurement in region passes. No anime.js code is involved; the tests drive the hooks with plain callbacks (`examples/Fable.Ranvier.Playground/tests/DepartureChecks.fs`).
 
+## Where the registry lives
+
+`Departures.fs` is in `experiments/Ranvier.View.Portable` (after `Typed.fs`), not in the Foundation as the spec places it. The mount paths reach the registry only through `Departures.seam`, a plain object whose `Enabled` and `ReflowEnabled` flags are unset and whose operations (`Retire`, `NextLive`, `AnyExit`, `AnyLeaving`, `Before`, `After`) are null until the first registration. The registrations are called from the payloads of `HookBuilder.exit` and `HookBuilder.reflow`, so a bundle that never uses either hook holds the seam object and its call sites, and none of the registry. `HookBuilder` is Portable code, so the registry it calls is Portable code too; on .NET the seam is null and never read.
+
+Each placed hook is registered with its container and runs once the container is placed, whatever its kind. The runtime passes a motion hook the flags of its context (1 hydrated, 2 inserted), which `HookBuilder.motion` turns into a `MotionContext`; an exit hook's payload registers its exit and returns no cleanup; a reflow hook's payload registers its measurement and returns the withdrawal as its cleanup.
+
 ## Two paths carry template rows
 
 A sugar template mounts through one of two paths, chosen by the mount's commit mode:
@@ -17,8 +23,8 @@ Every sibling walk, bulk removal and boundary placement in `experiments/Ranvier.
 
 | Site | What it walks | Held nodes | Coverage |
 |---|---|---|---|
-| `Row.ValidateWindow` start cursor and row stepping | region contents from `regionStart` or the previous row | skipped with `Departures.nextLive` once an exit is registered | "reorders and inserts validate while roots are held", "a key re-added while its old root leaves gets a new row", "moving the mount carries its held roots" |
-| `Row.Remove` | a row's roots, `First` to `Last` | the retire point: each root is offered to `Departures.retire` | "an exit holds its row's root until finish" |
+| `Row.ValidateWindow` start cursor and row stepping | region contents from `regionStart` or the previous row | skipped with `Departures.seam.NextLive` once an exit is registered | "reorders and inserts validate while roots are held", "a key re-added while its old root leaves gets a new row", "moving the mount carries its held roots" |
+| `Row.Remove` | a row's roots, `First` to `Last` | the retire point: each root is offered to `Departures.seam.Retire` | "an exit holds its row's root until finish" |
 | `OwnedRange.Release` (nested list-row and arm mounts) | the range's entries | the retire point on the expanded path | queued variants of every exit case |
 | `RegionSite.FlushReleased` cleared path → `Row.ClearBetween` → `deleteBetween` / `clearChildren` | everything between the markers | taken only when no released root has an exit and no node between the markers is leaving | "clearing a list with exits holds every root" |
 | `Row.MoveBefore` | a live row's roots | none: a held node never sits between a live row's `First` and `Last`; rows are inserted before a live row's `First` or `regionEnd` | ruling 1 |
@@ -40,8 +46,10 @@ Rulings:
 ## Rulings
 
 - Ruling: `MotionContext.Hydrated` is read from the services' hydration cursor at bind time (template path) or the mount's cursor (expanded path), not from `root` — a non-root element of an adopted row is also hydrated, and a row created after hydration in a hydrated mount is not — cost if wrong: `Motion.appear` would play or skip on the wrong rows.
-- Ruling: an exit registers when the instance binds, not when its container is placed — the exit must be known when the row retires, and the Debug root check needs the node's parent at build time (the staging fragment) — cost if wrong: an exit on a row retired before placement runs on a node that never showed.
-- Ruling: the Debug root check ("An exit hook requires a row or arm root element") is exact on the template path and permissive on the expanded path, where an element receives its modifiers before it is appended — cost if wrong: a misplaced exit under queued commits is silently inert (non-root exits are never retired).
+- Ruling: an exit registers when its container is placed, like every placed hook — the runtime then needs no exit-specific dispatch, which keeps the registry out of bundles without exits — cost if wrong: a row retired before its hooks run leaves at once, with no exit.
+- Ruling: the Debug root check ("An exit hook requires a row or arm root element") runs when the instance binds, while a template row's roots are still children of the staging fragment; it is exact on the template path and permissive on the expanded path, where an element receives its modifiers before it is appended — cost if wrong: a misplaced exit under queued commits is silently inert (non-root exits are never retired).
+- Ruling: `Departures.fs` lives in the Portable project, beside `HookBuilder`, instead of the Foundation — only a registry reached from the hook payloads stays out of bundles that do not use the hooks — cost if wrong: none at run time; the file moves with the view either way.
+- Ruling: a forced removal (the mount, or an enclosing mount, tears down) passes no held list, and the node's exit entry stays in the `WeakMap` until the node is collected — cost if wrong: none; a removed node is never retired again.
 - Ruling: a root held inside a row that is then removed leaves with that row; its exit keeps running until `finish` or the safety timeout, and `finish` then does nothing visible — tracking nested held roots per row would add state to every row — cost if wrong: an exit callback runs for up to 10 s on a detached node.
 - Ruling: an exit that raises finishes at once (its node leaves) and the error is raised through the row release, which reports it with the pass — cost if wrong: none beyond the report.
-- Ruling: `MountState.leaving` holds `Departure` objects (node and its end action) instead of `Node * cancel` tuples — removal by reference needs an identity, and F# tuples compare structurally under Fable — cost if wrong: none.
+- Ruling: `MountState.leaving` holds each held root's end action (cancel, then remove) instead of `Node * cancel` tuples — removal by reference needs an identity, and F# tuples compare structurally under Fable — cost if wrong: none.
