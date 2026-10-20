@@ -305,7 +305,12 @@ module internal Ranks =
         | true, true -> 0
         | true, false -> 1
         | false, true -> -1
-        | false, false -> compare a b
+        | false, false ->
+#if FABLE_COMPILER
+            compare a b
+#else
+            LanguagePrimitives.FastGenericComparer<'S>.Compare(a, b)
+#endif
 
 /// <summary>
 /// The keys of <c>sortKeys</c> whose sort key has settled, ascending by sort key, or descending when <c>descending</c> is
@@ -348,13 +353,26 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
         | :? float32 as f -> System.Single.IsNaN f
         | _ -> false
 
+#if !FABLE_COMPILER
+    // The order of compare, comparing value types unboxed.
+    let comparer = LanguagePrimitives.FastGenericComparer<'S>
+#endif
+
     /// <summary>The order of <c>sortByDescending</c> when <c>descending</c> is set, of <c>sortBy</c> otherwise.</summary>
     let compareRanks (a: 'S) (b: 'S) =
         match isNaN a, isNaN b with
         | true, true -> 0
         | true, false -> 1
         | false, true -> -1
-        | false, false -> if descending then compare b a else compare a b
+        | false, false ->
+#if FABLE_COMPILER
+            if descending then compare b a else compare a b
+#else
+            if descending then
+                comparer.Compare (b, a)
+            else
+                comparer.Compare (a, b)
+#endif
 
     /// <summary>
     /// Whether <c>order</c> applies to this pass: the last sort completed, and this pass placed the keys and sort keys of the
