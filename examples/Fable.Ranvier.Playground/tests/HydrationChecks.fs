@@ -1092,6 +1092,443 @@ let private viewHolesRerender () =
     equal ("Aclient", 0) ((element host "div").textContent, reports.Count)
     mounted.Dispose ()
 
+/// <summary>
+/// Requires <c>action</c> to raise <c>message</c> after passing <c>reported</c> to its reporter, with the host's HTML
+/// and nodes as served.
+/// </summary>
+let private failsAsServed (host: HTMLElement) (action: (exn list -> unit) -> unit) (message: string) (reported: string list list) =
+    let before = host.innerHTML
+    let nodes = nodesOf host
+    let reports = ResizeArray<exn list>()
+    let error = ServerChecks.failure (fun () -> action reports.Add)
+    equal (message, reported, before, true) (error.Message, messages reports, host.innerHTML, sameNodes nodes (nodesOf host))
+
+/// <summary>What a boundary content's setup does with the source it creates.</summary>
+type private Outcome =
+    | Settles of string
+    | Pends
+    | Fails
+
+/// <summary>The state of one case's boundary instances.</summary>
+type private BoundaryCase =
+    {
+        /// <summary>What the next content setup does with its source.</summary>
+        mutable Outcome: Outcome
+        /// <summary>The items of the next content setup's list.</summary>
+        mutable Items: string array
+        /// <summary>The sources created by the content setups, in setup order.</summary>
+        Sources: ResizeArray<AsyncSource<string>>
+        /// <summary>The setups of the content and pending views, in order.</summary>
+        Log: ResizeArray<string>
+    }
+
+let private boundaryCase () =
+    {
+        Outcome = Pends
+        Items = [||]
+        Sources = ResizeArray ()
+        Log = ResizeArray ()
+    }
+
+/// <summary>A source created and logged by a content setup, given the case's outcome.</summary>
+let private contentSource (case: BoundaryCase) =
+    case.Log.Add "content setup"
+    let source = Api.createAsyncSource<string>()
+    case.Sources.Add source
+
+    match case.Outcome with
+    | Settles text -> source.Settle text
+    | Fails -> source.Fail (Exception "failed")
+    | Pends -> ()
+
+    source
+
+let private failedMessage =
+    Component.define (fun _ (failure: BoundaryFailure) -> failure) (fun t ->
+        t.span [||] [| t.text (fun (failure: BoundaryFailure) -> failure.Error.Message) |])
+
+/// <summary>
+/// A <c>div</c> holding a boundary: the pending view is a <c>pendingTag</c> element showing "loading", and the content a
+/// <c>contentTag</c> element showing its source's value.
+/// </summary>
+let private boundedIn (case: BoundaryCase) (pendingTag: string) (contentTag: string) =
+    let pending =
+        Component.define (fun _ () -> case.Log.Add "pending setup") (fun t -> t.element (HtmlTag pendingTag) [||] [| t.text "loading" |])
+
+    let content =
+        Component.define (fun _ (_: BoundaryStatus) -> contentSource case) (fun t ->
+            t.element (HtmlTag contentTag) [||] [| t.text (fun (source: AsyncSource<string>) -> source.Value) |])
+
+    Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.boundary pending failedMessage content |])
+
+let private bounded (case: BoundaryCase) =
+    boundedIn case "span" "span"
+
+/// <summary>
+/// The server HTML of <c>definition</c> while the case's content setups give <c>server</c>; the case then gives
+/// <c>client</c>, with its log and sources cleared.
+/// </summary>
+let private serveCase (case: BoundaryCase) (definition: Component<unit>) (server: Outcome) (client: Outcome) =
+    case.Outcome <- server
+    let host = serve definition ()
+    case.Outcome <- client
+    case.Log.Clear ()
+    case.Sources.Clear ()
+    host
+
+[<Emit("$0.nodeType === 8 && ($0.data === 'ranvier:start' || $0.data === 'ranvier:end')")>]
+let private isRangeComment (node: Node) : bool = jsNative
+
+/// <summary>Every node under <c>root</c> in document order, without the range comments of nested mounts.</summary>
+let private serverNodes (root: Node) =
+    nodesOf root
+    |> Array.filter (isRangeComment >> not)
+
+let private contentHydratesInPlace () =
+    use graph = new Graph ()
+    let case = boundaryCase ()
+    let definition = bounded case
+    let host = serveCase case definition (Settles "server") (Settles "server")
+    equal "<!--[r--><div><!--[c--><span>server</span><!--]--></div><!--]-->" host.innerHTML
+    let before = nodesOf host
+    let mutations = recordMutations host
+    let mounted = hydrate graph strictOptions host definition ()
+
+    // The content's nested mount inserts its two range comments around the adopted span, and writes nothing else.
+    equal
+        (2, true, "<!--[r--><div><!--[c--><!--ranvier:start--><span>server</span><!--ranvier:end--><!--]--></div><!--]-->", [ "content setup" ])
+        (mutations (), sameNodes before (serverNodes host), host.innerHTML, List.ofSeq case.Log)
+
+    mounted.Dispose ()
+    equal 0. host.childNodes.length
+
+    use graph = new Graph ()
+    let host = serveCase case definition (Settles "server") (Settles "client")
+    let span = host.querySelector "span"
+    let mounted = hydrate graph strictOptions host definition ()
+    equal ("client", true) ((element host "div").textContent, obj.ReferenceEquals (span, host.querySelector "span"))
+    mounted.Dispose ()
+
+let private serverContentStaysPending () =
+    use graph = new Graph ()
+    let case = boundaryCase ()
+    let definition = bounded case
+    let host = serveCase case definition (Settles "server") Pends
+    let span = host.querySelector "span"
+    let mounted = hydrate graph strictOptions host definition ()
+
+    // The content adopted the server's span; it keeps the server's text until its read settles, with no pending view.
+    let pending =
+        (element host "div").innerHTML, obj.ReferenceEquals (span, host.querySelector "span"), List.ofSeq case.Log
+
+    graph.Run (fun () -> case.Sources[0].Settle "client")
+
+    let revealed =
+        (element host "div").textContent, obj.ReferenceEquals (span, host.querySelector "span")
+
+    mounted.Dispose ()
+
+    equal
+        (("<!--[c--><!--ranvier:start--><span>server</span><!--ranvier:end--><!--]-->", true, [ "content setup" ]), ("client", true))
+        (pending, revealed)
+
+let private serverPendingHydrates () =
+    use graph = new Graph ()
+    let case = boundaryCase ()
+    let definition = bounded case
+    let host = serveCase case definition Pends Pends
+    equal "<!--[r--><div><!--[p--><span>loading</span><!--]--></div><!--]-->" host.innerHTML
+    let before = nodesOf host
+    let loading = host.querySelector "span"
+    let mounted = hydrate graph strictOptions host definition ()
+
+    let hydrated =
+        sameNodes before (serverNodes host), (element host "div").textContent, List.ofSeq case.Log
+
+    graph.Run (fun () -> case.Sources[0].Settle "client")
+    let revealed = (element host "div").textContent, host.contains (unbox<Node> loading)
+    mounted.Dispose ()
+
+    equal ((true, "loading", [ "content setup"; "pending setup" ]), ("client", false)) (hydrated, revealed)
+
+    // Content ready on the client replaces the server's pending view at once.
+    use graph = new Graph ()
+    let host = serveCase case definition Pends (Settles "client")
+    let loading = host.querySelector "span"
+    let mounted = hydrate graph strictOptions host definition ()
+
+    equal ("client", false, [ "content setup" ]) ((element host "div").textContent, host.contains (unbox<Node> loading), List.ofSeq case.Log)
+
+    mounted.Dispose ()
+
+let private serverErrorRerenders () =
+    use graph = new Graph ()
+    let case = boundaryCase ()
+    let definition = bounded case
+    let host = serveCase case definition Fails (Settles "client")
+    equal "<!--[r--><div><!--[e--><span>failed</span><!--]--></div><!--]-->" host.innerHTML
+    let failed = host.querySelector "span"
+    let mounted = hydrate graph strictOptions host definition ()
+
+    equal ("client", false, [ "content setup" ]) ((element host "div").textContent, host.contains (unbox<Node> failed), List.ofSeq case.Log)
+
+    mounted.Dispose ()
+
+let private boundaryIdsHydrate () =
+    let check ready fails =
+        idContentReady <- ready
+        idContentFails <- fails
+        let served = servedIds idBoundary ()
+        use graph = new Graph ()
+        let host = serve idBoundary ()
+        let before = serverNodes host
+        let reports = ResizeArray<exn list>()
+
+        let mounted =
+            Hydration.hydrate graph None reports.Add strictOptions host idBoundary ()
+
+        let shown = domIds host, sameNodes before (serverNodes host), messages reports
+        mounted.Dispose ()
+        idContentReady <- true
+        idContentFails <- false
+        served, shown
+
+    let shown = [ "r-0-0"; "r-0.r0.1-0" ]
+
+    equal
+        [
+            boundaryContentIds, (boundaryContentIds, true, [])
+            shown, (shown, true, [])
+            shown, (shown, false, [ [ "failed" ] ])
+        ]
+        [ check true false; check false false; check true true ]
+
+type private IssuedSource =
+    {
+        Id: string
+        Source: AsyncSource<string>
+    }
+
+/// <summary>A boundary whose content shows an id from its setup, and whose error view is a button that retries.</summary>
+let private retrying (case: BoundaryCase) =
+    let failed =
+        Component.define (fun _ (failure: BoundaryFailure) -> failure) (fun t ->
+            t.button
+                [| t.Events.onClick (fun (failure: BoundaryFailure) _ -> failure.Retry ()) |]
+                [| t.text (fun (failure: BoundaryFailure) -> failure.Error.Message) |])
+
+    let pending =
+        Component.define (fun _ () -> ()) (fun t -> t.i [||] [| t.text "loading" |])
+
+    let content =
+        Component.define
+            (fun setup (_: BoundaryStatus) ->
+                {
+                    Id = setup.CreateId ()
+                    Source = contentSource case
+                })
+            (fun t -> t.span [| t.Attrs.id (fun (issued: IssuedSource) -> Some issued.Id) |] [| t.text (fun issued -> issued.Source.Value) |])
+
+    Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.boundary pending failed content |])
+
+/// <summary>
+/// A boundary whose pending view has <c>pendingRoots</c> roots and whose content has <c>contentRoots</c>: none, or a
+/// span and a text. Content without roots reads nothing.
+/// </summary>
+let private rootsBoundary (case: BoundaryCase) (pendingRoots: int) (contentRoots: int) =
+    let pending =
+        Component.define (fun _ () -> case.Log.Add "pending setup") (fun t ->
+            if pendingRoots = 0 then
+                t.fragment [||]
+            else
+                t.fragment [| t.span [||] [| t.text "loading" |]; t.text "." |])
+
+    let content =
+        Component.define (fun _ (_: BoundaryStatus) -> contentSource case) (fun t ->
+            if contentRoots = 0 then
+                t.fragment [||]
+            else
+                t.fragment
+                    [|
+                        t.span [||] [| t.text (fun (source: AsyncSource<string>) -> source.Value) |]
+                        t.text "!"
+                    |])
+
+    Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.boundary pending failedMessage content |])
+
+let private boundaryRootCounts () =
+    let check (pendingRoots: int) (contentRoots: int) (server: Outcome) (client: Outcome) =
+        use graph = new Graph ()
+        let case = boundaryCase ()
+        let definition = rootsBoundary case pendingRoots contentRoots
+        let host = serveCase case definition server client
+        let served = (element host "div").innerHTML
+        let before = nodesOf host
+        let mounted = hydrate graph strictOptions host definition ()
+
+        let shown =
+            served, (element host "div").innerHTML, sameNodes before (serverNodes host), List.ofSeq case.Log
+
+        mounted.Dispose ()
+        shown
+
+    equal
+        [
+            "<!--[c--><!--]-->", "<!--[c--><!--ranvier:start--><!--ranvier:end--><!--]-->", true, [ "content setup" ]
+            "<!--[c--><span>x</span>!<!--]-->", "<!--[c--><!--ranvier:start--><span>x</span>!<!--ranvier:end--><!--]-->", true, [ "content setup" ]
+            "<!--[p--><!--]-->", "<!--[p--><!--ranvier:start--><!--ranvier:end--><!--]-->", true, [ "content setup"; "pending setup" ]
+            "<!--[p--><span>loading</span>.<!--]-->",
+            "<!--[p--><!--ranvier:start--><span>loading</span>.<!--ranvier:end--><!--]-->",
+            true,
+            [ "content setup"; "pending setup" ]
+        ]
+        [
+            check 2 0 (Settles "x") (Settles "x")
+            check 2 2 (Settles "x") (Settles "x")
+            check 0 2 Pends Pends
+            check 2 2 Pends Pends
+        ]
+
+let private retryAfterServedError () =
+    use graph = new Graph ()
+    let case = boundaryCase ()
+    let definition = retrying case
+    let host = serveCase case definition Fails Fails
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        Hydration.hydrate graph None reports.Add lenientOptions host definition ()
+
+    let failed = (element host "div").textContent, domIds host, messages reports
+    case.Outcome <- Settles "ok"
+    (element host "button").click()
+    let retried = (element host "div").textContent, domIds host
+    mounted.Dispose ()
+    // The content takes row 0 and the error view row 1; the retried content takes row 2.
+    equal (("failed", [], [ [ "failed" ] ]), ("ok", [ "r-0.r0.2-0" ])) (failed, retried)
+
+let private listedContent (case: BoundaryCase) =
+    let content =
+        Component.define
+            (fun _ (_: BoundaryStatus) ->
+                case.Log.Add "content setup"
+                Array.copy case.Items)
+            (fun t -> t.ul [||] [| t.each id (fun (items: string array) -> items) innerCell |])
+
+    let pending =
+        Component.define (fun _ () -> ()) (fun t -> t.i [||] [| t.text "loading" |])
+
+    Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.boundary pending failedMessage content |])
+
+let private boundaryMismatches () =
+    use graph = new Graph ()
+    let case = boundaryCase ()
+    let client = boundedIn case "span" "b"
+    let mismatch = "Hydration mismatch at #0: expected <b>, found span"
+
+    let serveContent () =
+        serveCase case (bounded case) (Settles "x") (Settles "y")
+
+    let host = serveContent ()
+    let div = element host "div"
+    let reports = ResizeArray<exn list>()
+
+    let mounted = Hydration.hydrate graph None reports.Add lenientOptions host client ()
+
+    equal
+        ([ [ mismatch ] ], "y", 0, 1, true, [ "content setup"; "content setup" ])
+        (messages reports,
+         div.textContent,
+         (all host "span").Length,
+         (all host "b").Length,
+         obj.ReferenceEquals (div, element host "div"),
+         List.ofSeq case.Log)
+
+    mounted.Dispose ()
+
+    let host = serveContent ()
+
+    failsAsServed
+        host
+        (fun report ->
+            Hydration.hydrate graph None report strictOptions host client ()
+            |> ignore)
+        mismatch
+        []
+
+    // A node after the adopted content raises at the boundary's end.
+    let withExtra () =
+        let host = serveCase case (bounded case) (Settles "x") (Settles "x")
+        let div = element host "div"
+
+        div.insertBefore (globalThis.document.createElement "b", unbox<Node> div.lastChild)
+        |> ignore
+
+        host
+
+    let extra = "Hydration mismatch at #1: expected <!--]-->, found b"
+    let host = withExtra ()
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        Hydration.hydrate graph None reports.Add lenientOptions host (bounded case) ()
+
+    equal ([ [ extra ] ], "x", 0) (messages reports, (element host "div").textContent, (all host "b").Length)
+    mounted.Dispose ()
+
+    let host = withExtra ()
+
+    failsAsServed
+        host
+        (fun report ->
+            Hydration.hydrate graph None report strictOptions host (bounded case) ()
+            |> ignore)
+        extra
+        []
+
+    // A server pending view of another structure is re-rendered.
+    let host = serveCase case (bounded case) Pends Pends
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        Hydration.hydrate graph None reports.Add lenientOptions host (boundedIn case "i" "span") ()
+
+    let shown = messages reports, (element host "div").innerHTML
+    graph.Run (fun () -> case.Sources[0].Settle "z")
+    let revealed = (element host "div").textContent
+    mounted.Dispose ()
+
+    equal
+        (([ [ "Hydration mismatch at #0: expected <i>, found span" ] ], "<!--[p--><!--ranvier:start--><i>loading</i><!--ranvier:end--><!--]-->"), "z")
+        (shown, revealed)
+
+    // A list mismatch inside hydrated content re-renders the list only, and the boundary keeps its content.
+    let listed = listedContent case
+    case.Items <- [| "a"; "b" |]
+    let host = serve listed ()
+    let list = element host "ul"
+    case.Items <- [| "a"; "b"; "c" |]
+    let reports = ResizeArray<exn list>()
+
+    let mounted = Hydration.hydrate graph None reports.Add lenientOptions host listed ()
+
+    equal
+        ([ [ "Hydration mismatch at #0: expected <b>, found <!--]-->" ] ], "abc", true)
+        (messages reports, (element host "div").textContent, obj.ReferenceEquals (list, element host "ul"))
+
+    mounted.Dispose ()
+    case.Items <- [| "a"; "b" |]
+    let host = serve listed ()
+    case.Items <- [| "a"; "b"; "c" |]
+
+    failsAsServed
+        host
+        (fun report ->
+            Hydration.hydrate graph None report strictOptions host listed ()
+            |> ignore)
+        "Hydration mismatch at #0: expected <b>, found <!--]-->"
+        []
+
 let private italicCell =
     Component.define (fun _ (text: unit -> string) -> text) (fun t -> t.element (HtmlTag "i") [||] [| t.text (fun text -> text ()) |])
 
@@ -1234,17 +1671,6 @@ let private characterLists (fails: string -> bool) =
         Component.define (fun _ (items: Listed array) -> items) (fun t -> t.ul [||] [| t.each (fun (item: Listed) -> item.Id) id row |])
 
     flat, nested
-
-/// <summary>
-/// Requires <c>action</c> to raise <c>message</c> after passing <c>reported</c> to its reporter, with the host's HTML
-/// and nodes as served.
-/// </summary>
-let private failsAsServed (host: HTMLElement) (action: (exn list -> unit) -> unit) (message: string) (reported: string list list) =
-    let before = host.innerHTML
-    let nodes = nodesOf host
-    let reports = ResizeArray<exn list>()
-    let error = ServerChecks.failure (fun () -> action reports.Add)
-    equal (message, reported, before, true) (error.Message, messages reports, host.innerHTML, sameNodes nodes (nodesOf host))
 
 let private recoveryFailureFails () =
     // The cell "c" raises at its second setup: the fresh mount after the hydrating pass's mismatch.
@@ -1835,6 +2261,128 @@ let private strictRestoresValues () =
     check attributed true false (fun host -> (element host "span").getAttribute "title")
     check (inlined attributed) true false (fun host -> (element host "span").getAttribute "id")
 
+let private boundaryRestoresAndRecovers () =
+    let case = boundaryCase ()
+    let definition = bounded case
+
+    // The server HTML of `definition` with content "server" and a trailing root; the client's content shows "client".
+    let trailingHost () =
+        case.Outcome <- Settles "server"
+        let html = withTrailingRoot definition ()
+        case.Outcome <- Settles "client"
+        case.Log.Clear ()
+        case.Sources.Clear ()
+        let target = host ()
+        target.innerHTML <- html
+        target
+
+    let mismatch = "Hydration mismatch at #1: expected <!--]-->, found b"
+    use graph = new Graph ()
+    let target = trailingHost ()
+
+    failsAsServed
+        target
+        (fun report ->
+            Hydration.hydrate graph None report strictOptions target definition ()
+            |> ignore)
+        mismatch
+        []
+
+    let target = trailingHost ()
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        Hydration.hydrate graph None reports.Add lenientOptions target definition ()
+
+    let shown =
+        messages reports, target.textContent, (all target "span").Length, (all target "b").Length
+
+    mounted.Dispose ()
+    equal ([ [ mismatch ] ], "client", 1, 0) shown
+
+/// <summary>A list whose rows each hold a <c>bounded</c> boundary.</summary>
+let private boundedRows (case: BoundaryCase) =
+    let inner = bounded case
+
+    let row =
+        Component.define (fun _ (item: unit -> Listed) -> item) (fun t -> t.li [||] [| t.render inner (fun _ -> ()) |])
+
+    Component.define (fun _ (items: Listed array) -> items) (fun t -> t.ul [||] [| t.each (fun (item: Listed) -> item.Id) id row |])
+
+let private boundariesInRows () =
+    use graph = new Graph ()
+    let case = boundaryCase ()
+    let definition = boundedRows case
+    case.Outcome <- Settles "x"
+    let host = serve definition [| a; b |]
+    let before = nodesOf host
+    let mutations = recordMutations host
+    let mounted = hydrate graph strictOptions host definition [| a; b |]
+
+    // Each row's content inserts its two range comments, and the content's first commits write nothing.
+    equal (4, true, "xx") (mutations (), sameNodes before (serverNodes host), (element host "ul").textContent)
+    mounted.Dispose ()
+
+    case.Outcome <- Settles "x"
+    let html = withTrailingRoot definition [| a; b |]
+    case.Outcome <- Settles "y"
+    let target = CheckSupport.host ()
+    target.innerHTML <- html
+
+    failsAsServed
+        target
+        (fun report ->
+            Hydration.hydrate graph None report strictOptions target definition [| a; b |]
+            |> ignore)
+        "Hydration mismatch at #1: expected <!--]-->, found b"
+        []
+
+/// <summary>A boundary whose content lists the characters of its source's value, each in a <c>b</c> element.</summary>
+let private characterContent (case: BoundaryCase) =
+    let content =
+        Component.define (fun _ (_: BoundaryStatus) -> contentSource case) (fun t ->
+            t.ul
+                [||]
+                [|
+                    t.each id (fun (source: AsyncSource<string>) -> [| for ch in source.Value -> string ch |]) innerCell
+                |])
+
+    let pending =
+        Component.define (fun _ () -> case.Log.Add "pending setup") (fun t -> t.i [||] [| t.text "loading" |])
+
+    Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.boundary pending failedMessage content |])
+
+let private pendingRowsHydrate () =
+    use graph = new Graph ()
+    let case = boundaryCase ()
+    let definition = characterContent case
+    let target = host ()
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        Mounting.mount graph None reports.Add target None (fun context -> Program.run (Component.render definition ()) context.Backend)
+
+    let mountedShown = target.innerHTML, messages reports
+    mounted.Dispose ()
+
+    let host = serveCase case definition (Settles "ab") Pends
+    let list = host.querySelector "ul"
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        Hydration.hydrate graph None reports.Add strictOptions host definition ()
+
+    let hydratedShown =
+        (element host "div").innerHTML, messages reports, List.ofSeq case.Log, host.contains (unbox<Node> list)
+
+    mounted.Dispose ()
+
+    // A mount shows the error view for the pending read of a list's items: the read fails the content's setup.
+    equal
+        (("<!--ranvier:start--><div><!--[--><!--ranvier:start--><span></span><!--ranvier:end--><!--]--></div><!--ranvier:end-->", [ [ "" ] ]),
+         ("<!--[c--><!--ranvier:start--><span></span><!--ranvier:end--><!--]-->", [ [ "" ] ], [ "content setup" ], false))
+        (mountedShown, hydratedShown)
+
 let private rootWidget =
     Component.define (fun _ (log: ResizeArray<string>) -> log) (fun t ->
         t.div
@@ -2006,6 +2554,19 @@ let cases: (string * (unit -> unit)) array =
             "rows in a hydrated arm adopt and reorder, and a row-count mismatch re-renders only the list; Strict raises", rowsInArms
             "arm switches after hydration run one cleanup per arm", armSwitchCleanups
             "view holes remove the server content and mount the view fresh", viewHolesRerender
+            "boundaries: content hydrates in place when ready", contentHydratesInPlace
+            "boundaries: server content stays as the pending view until reveal", serverContentStaysPending
+            "boundaries: a server pending view hydrates and the content reveals", serverPendingHydrates
+            "boundaries: a server error view re-renders the boundary", serverErrorRerenders
+            "boundaries: hydrated content takes row 0 and a pending or error view row 1, with the server's ids", boundaryIdsHydrate
+            "boundaries: content and pending views of zero and two roots hydrate in place between their range comments", boundaryRootCounts
+            "boundaries: a retry after a server error view mounts the content fresh and continues the region's row counter", retryAfterServedError
+            "boundaries: a structural mismatch in a hydrating view re-renders that view and reports once; Strict raises", boundaryMismatches
+            "boundaries: a mismatch after hydrated content restores the host under Strict and re-renders the root otherwise",
+            boundaryRestoresAndRecovers
+            "boundaries in hydrated rows adopt their content and write nothing; Strict restores the host", boundariesInRows
+            "boundaries: a pending read of a list's items in hydrating content goes to the boundary, which shows its error view as in a mount",
+            pendingRowsHydrate
             "a mismatch inside a row's nested region re-renders only that region and reports once per region; Strict raises and restores the host",
             nestedRowMismatch
             "adopted rows keep their positional ids and run their cleanups when removed, and later rows continue the row counter",

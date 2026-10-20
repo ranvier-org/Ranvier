@@ -149,7 +149,8 @@ let private adoptHost
 /// <c>host</c> and its matching end marker, adopting the server's nodes. The result behaves as a mount by
 /// <c>mountWith SynchronousCommits</c>: its slots compare their first value with the server's nodes and write only a
 /// difference; its lists adopt the server's rows in order, its arms adopt theirs when the server's arm hash equals the
-/// selected definition's, and its view holes and boundaries mount fresh between the server's region markers.
+/// selected definition's, its boundaries adopt the view their start marker records, and its view holes mount fresh
+/// between the server's region markers.
 /// </summary>
 /// <remarks>
 /// <para>Nodes outside a closed root marker pair stay in place and outside the mount's range.</para>
@@ -159,19 +160,29 @@ let private adoptHost
 /// head is removed, those served for other roots included; an entry under pending content keeps its adopted element.
 /// </para>
 /// <para>
-/// A structural mismatch inside a list or arm region re-renders the innermost such region containing it, and the rest
-/// of the hydration continues. The mismatch is passed to <c>report</c> once, first in a list with the pass's other
-/// failures; the server nodes between the region's markers are removed and the region mounts fresh. The region's meta
-/// and link entries then own new head elements in place of the adopted ones. A failure of that fresh mount is a
-/// failure of the hydration attempt.
+/// A boundary's content and its pending view hydrate between <c>ranvier:start</c> and <c>ranvier:end</c> comments,
+/// inserted around their adopted nodes. Server content (<c>&lt;!--[c--&gt;</c>) hydrates in place; while one of its
+/// reads is pending, it shows the server's values for those reads, with no pending view, until the reveal. Under a
+/// server pending view (<c>&lt;!--[p--&gt;</c>), the content mounts detached, and the pending view hydrates while the
+/// content is pending; ready content replaces the server's nodes at once. A server error view
+/// (<c>&lt;!--[e--&gt;</c>) is removed and the boundary mounts fresh. A failure of the content's setup shows the error
+/// view, as in a mount.
 /// </para>
 /// <para>
-/// A structural mismatch outside every list and arm region sets the head back as the server wrote it and is passed to
-/// <c>report</c> once, first in a list that also holds the failures of the attempt's rollback. The server nodes
-/// between the root markers are then removed and the root mounts fresh before the end marker. Without a root marker,
-/// the root mounts fresh at the end of <c>host</c>, after its children. Without the end marker, every node after the
-/// root marker, foreign siblings included, is removed and the root mounts fresh at the end of <c>host</c>. Ids issued
-/// by the fresh mount start again under <c>options.IdPrefix</c>.
+/// A structural mismatch inside a list or arm region, or inside a boundary's hydrating view, re-renders the innermost
+/// such region or view containing it, and the rest of the hydration continues. The mismatch is passed to
+/// <c>report</c> once, first in a list with the pass's other failures; the server nodes between the region's markers
+/// are removed and the region or view mounts fresh. The meta and link entries of the region or view then own new head
+/// elements in place of the adopted ones. A failure of a region's fresh mount is a failure of the hydration attempt;
+/// a failure of a boundary view's fresh mount goes to the boundary, as in a mount.
+/// </para>
+/// <para>
+/// A structural mismatch outside every list region, arm region and boundary view sets the head back as the server
+/// wrote it and is passed to <c>report</c> once, first in a list that also holds the failures of the attempt's
+/// rollback. The server nodes between the root markers are then removed and the root mounts fresh before the end
+/// marker. Without a root marker, the root mounts fresh at the end of <c>host</c>, after its children. Without the end
+/// marker, every node after the root marker, foreign siblings included, is removed and the root mounts fresh at the
+/// end of <c>host</c>. Ids issued by the fresh mount start again under <c>options.IdPrefix</c>.
 /// </para>
 /// <para>
 /// A failure of the fresh mount propagates with the server content already removed: the root markers are left empty

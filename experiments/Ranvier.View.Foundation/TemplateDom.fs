@@ -767,18 +767,12 @@ let private commit (services: MountServices) (state: obj array) (slot: Slot) (no
 
     if obj.ReferenceEquals (value, unset) then
         match slot.Target with
-        | TextTarget when obj.ReferenceEquals (previous, unset) ->
-            let node = at state (StateNodes + nodeIndex)
-
-            let cursor = services.Hydration
-
-            if isNull cursor then
-                setData node ""
-            elif dataDiffers node "" then
-                let inverse = keepData node
-                setData node ""
-                cursor.Undo inverse
-
+        // A hydrated text node keeps the server's text until the slot's first value.
+        | TextTarget when
+            obj.ReferenceEquals (previous, unset)
+            && isNull services.Hydration
+            ->
+            setData (at state (StateNodes + nodeIndex)) ""
             store state previousIndex (box "")
         | _ -> ()
     elif

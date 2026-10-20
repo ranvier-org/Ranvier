@@ -244,6 +244,9 @@ let private isSeparator (node: Node) : bool = jsNative
 [<Emit("$0 != null && $0.nodeType === 8 && $0.data === 'ranvier:row'")>]
 let private isRowMarker (node: Node) : bool = jsNative
 
+[<Emit("$0.data")>]
+let private commentData (node: Node) : string = jsNative
+
 /// <summary>Removes the server nodes between a region's markers and records their reinsertion before <c>regionEnd</c>.</summary>
 let private clearAdopted (cursor: TemplateDom.HydrationCursor) (regionStart: Node) (regionEnd: Node) =
     let removed = ResizeArray<Node>()
@@ -893,6 +896,12 @@ and Mounted internal (state: MountState) =
     /// <summary>Tears the mount down; inside a teardown window serving its reporter, its errors join that window.</summary>
     member internal _.Abandon() =
         state.Root.Abandon ()
+
+    /// <summary>
+    /// Tears down a mount built with a cursor, leaving its nodes in place, and undoes the edits recorded with the cursor.
+    /// </summary>
+    member internal _.AbandonAdopted() =
+        state.AbandonAdopted ()
 
     member _.MoveBefore(parent, before) =
         if state.Root.Phase <> Attached then
@@ -1546,12 +1555,23 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
 /// the content's setup or reveal replaces the content at once; after them, the reveal and the teardown run in the
 /// boundary's effect, after the binding, handler or pass that requested them. Each exception object is reported once
 /// until a retry.
+/// <para>
+/// With <c>hydration</c>, the boundary starts from the server nodes between the markers and the view the start marker
+/// records. Under <c>[c</c>, the content hydrates in place; while one of its reads is pending, its nodes stay between
+/// the markers with no pending view, and the reveal leaves them in place. Under <c>[p</c>, the content mounts
+/// detached; while it is pending, the pending view hydrates in place. Under <c>[e</c>, the server nodes are removed and
+/// the boundary mounts as in a mount. A structural mismatch of a hydrating view is reported once through
+/// <c>report</c>, the server nodes are removed and the view mounts fresh; with <c>hydration.Strict</c>, it goes to
+/// <c>failHydration</c> instead. <c>hydrationCursor</c> returns the mount's cursor, which records each removal of server
+/// nodes while the mount hydrates.
+/// </para>
 /// </remarks>
 and [<Sealed>] private ViewBoundary
     (
         graph: Graph,
         report: exn list -> unit,
         site: RegionSite,
+        regionStart: Node,
         regionEnd: Node,
         views: BoundaryViews,
         enclosing: ViewScope,
@@ -1560,7 +1580,19 @@ and [<Sealed>] private ViewBoundary
         parent: Placement,
         parentPath: InstancePath,
         region: int,
-        mountView: (unit -> obj) -> ((unit -> obj) -> Backend -> unit) -> ViewScope -> Placement -> InstancePath -> int -> int -> Row
+        mountView:
+            (unit -> obj)
+                -> ((unit -> obj) -> Backend -> unit)
+                -> ViewScope
+                -> Placement
+                -> InstancePath
+                -> int
+                -> int
+                -> TemplateDom.HydrationCursor
+                -> Row,
+        hydration: TemplateDom.HydrationCursor,
+        hydrationCursor: unit -> TemplateDom.HydrationCursor,
+        failHydration: exn -> unit
     ) =
     // The content's nested mount; null until its setup returns.
     let mutable content: Row = null
@@ -1583,8 +1615,48 @@ and [<Sealed>] private ViewBoundary
     let mutable wake: Signal<int> = Unchecked.defaultof<_>
     let mutable pending: Signal<bool> = Unchecked.defaultof<_>
     let mutable status: BoundaryStatus = Unchecked.defaultof<_>
+    // Whether unowned server nodes lie between the markers.
+    let mutable served = false
 
     let noItem () : obj = null
+
+    // Removes the server nodes between the markers, recording their reinsertion while the mount hydrates.
+    let clearServed () =
+        if served then
+            served <- false
+            let cursor = hydrationCursor ()
+
+            if isNull cursor then
+                Row.ClearBetween (site.Parent (), regionStart, regionEnd)
+            else
+                clearAdopted cursor regionStart regionEnd
+
+    // Tears down a view's mount. A view that adopted server nodes while the mount hydrates leaves them in place, unowned.
+    let abandon (row: Row) =
+        if row.Adopted && not (isNull (hydrationCursor ())) then
+            row.Mount.AbandonAdopted ()
+            served <- true
+        else
+            row.Mount.Abandon ()
+
+    // Raises a mismatch unless the cursor, after the adopted view `row`, is at the end marker.
+    let checkEnd (row: Row) (cursor: TemplateDom.HydrationCursor) =
+        if not (same cursor.Next regionEnd) then
+            raise (
+                TemplateDom.mismatch
+                    ("#"
+                     + string (positionAfter row.First cursor.Next - 1))
+                    "<!--]-->"
+                    (TemplateDom.describe cursor.Next)
+            )
+
+    // Reports a structural mismatch of a hydrating view once, first among the failure's errors.
+    let reportMismatch (found: TemplateDom.HydrationMismatchException) (error: exn) =
+        Api.untrack (fun () ->
+            report (
+                (found :> exn)
+                :: TemplateDom.failuresBesides found error
+            ))
 
     // Reports the exception objects of `errors` not reported before, in order, in one untracked call.
     let reportAll (errors: exn list) =
@@ -1596,15 +1668,20 @@ and [<Sealed>] private ViewBoundary
             with reporterError ->
                 raise (AggregateException ("Boundary failure and reporter failed", List.toArray (fresh @ [ reporterError ])))
 
-    // Moves the row's nodes before the end marker, in one insertion when they fill their fragment.
+    // Moves the row's nodes before the end marker, in one insertion when they fill their fragment. An adopted row is in
+    // place already; any other row first replaces the server nodes.
     let place (row: Row) =
-        let parent = site.Parent ()
-
-        if fillsFragment row.First row.Last then
-            parent.insertBefore (parentOrNull row.First, regionEnd)
-            |> ignore
+        if row.Adopted then
+            served <- false
         else
-            Row.MoveBefore (row, parent, regionEnd)
+            clearServed ()
+            let parent = site.Parent ()
+
+            if fillsFragment row.First row.Last then
+                parent.insertBefore (parentOrNull row.First, regionEnd)
+                |> ignore
+            else
+                Row.MoveBefore (row, parent, regionEnd)
 
         row.Mount.Relocate ()
         site.LaidOut.Add row
@@ -1614,16 +1691,28 @@ and [<Sealed>] private ViewBoundary
             let row = shown
             shown <- null
             site.LaidOut.Clear ()
-            row.Mount.Dispose ()
 
-    member private _.Show(render: Backend -> unit) =
+            if row.Adopted && not (isNull (hydrationCursor ())) then
+                row.Mount.AbandonAdopted ()
+                served <- true
+            else
+                row.Mount.Dispose ()
+
+    /// <summary>
+    /// Mounts the pending or error view and places it between the markers. With <c>cursor</c>, the view adopts the
+    /// server nodes from <c>cursor.Next</c> to the end marker.
+    /// </summary>
+    member private this.Show(render: Backend -> unit, cursor: TemplateDom.HydrationCursor) =
         let mutable row: Row = null
         let viewContainer = Placement parent
 
         try
             row <-
                 Api.runWithOwner site.Owner (fun () ->
-                    mountView noItem (fun _ backend -> render backend) outer viewContainer parentPath region (site.NextRow ()))
+                    mountView noItem (fun _ backend -> render backend) outer viewContainer parentPath region (site.NextRow ()) cursor)
+
+            if not (isNull cursor) then
+                checkEnd row cursor
 
             place row
             shown <- row
@@ -1632,12 +1721,26 @@ and [<Sealed>] private ViewBoundary
             viewContainer.Discard ()
 
             if not (isNull row) then
-                row.Mount.Dispose ()
+                abandon row
 
-            if unwinds () then
-                reraise ()
+            match
+                (if isNull cursor then
+                     None
+                 else
+                     TemplateDom.findMismatch error)
+            with
+            | Some found when not cursor.Strict ->
+                reportMismatch found error
+                clearServed ()
+                this.Show (render, null)
+            | Some _ -> failHydration error
+            | None ->
+                clearServed ()
 
-            enclosing.Fail [ error ]
+                if unwinds () then
+                    reraise ()
+
+                enclosing.Fail [ error ]
 
     member private this.Reveal() =
         revealed <- true
@@ -1664,10 +1767,10 @@ and [<Sealed>] private ViewBoundary
                 report,
                 fun () ->
                     if not (isNull content) then
-                        content.Mount.Abandon ()
+                        abandon content
 
                     if not (isNull shown) then
-                        shown.Mount.Abandon ()
+                        abandon shown
             )
 
         content <- null
@@ -1691,7 +1794,7 @@ and [<Sealed>] private ViewBoundary
         let mutable unwound = None
 
         try
-            this.Show (views.Failed failure)
+            this.Show (views.Failed failure, null)
         with error ->
             unwound <- Some error
 
@@ -1721,7 +1824,11 @@ and [<Sealed>] private ViewBoundary
         then
             this.Reveal ()
 
-    member private this.MountContent() =
+    /// <summary>
+    /// Mounts the content as row <c>row</c> of the region, adopting the server nodes at <c>cursor</c> when it is set,
+    /// and returns the mount's failure.
+    /// </summary>
+    member private this.SetUpContent(row: int, cursor: TemplateDom.HydrationCursor) : exn option =
         settingUp <- true
         waiting <- 0
         held.Clear ()
@@ -1739,17 +1846,66 @@ and [<Sealed>] private ViewBoundary
                             contentContainer
                             parentPath
                             region
-                            (site.NextRow ()))
+                            row
+                            cursor)
             with error ->
                 failure <- Some error
         finally
             settingUp <- false
 
+        failure
+
+    /// <summary>
+    /// Ends the content's setup: a failure tears the content down, ready content is revealed, and pending content shows
+    /// the pending view. Pending content adopted in place stays without a pending view; under server nodes left
+    /// between the markers, the pending view hydrates.
+    /// </summary>
+    member private this.SetUpEnded(failure: exn option) =
         match failure with
         | Some error -> this.TearDown (error :: List.ofSeq held)
         | None when held.Count > 0 -> this.TearDown (List.ofSeq held)
         | None when waiting = 0 -> this.Reveal ()
-        | None -> this.Show views.Pending
+        | None when content.Adopted -> ()
+        | None when served -> this.Show (views.Pending, TemplateDom.HydrationCursor (nextOrNull regionStart, hydration.Strict))
+        | None -> this.Show (views.Pending, null)
+
+    member private this.MountContent() =
+        this.SetUpEnded (this.SetUpContent (site.NextRow (), null))
+
+    /// <summary>Hydrates the content of a <c>[c</c> boundary in place.</summary>
+    member private this.HydrateContent() =
+        let attempt = TemplateDom.HydrationCursor (nextOrNull regionStart, hydration.Strict)
+
+        let failure =
+            match this.SetUpContent (site.NextRow (), attempt) with
+            | None ->
+                try
+                    checkEnd content attempt
+                    served <- false
+                    None
+                with error ->
+                    Some error
+            | failure -> failure
+
+        match failure |> Option.bind TemplateDom.findMismatch with
+        | Some found ->
+            // Cleared first: the teardown's released reads can wake the boundary, which then finds no content to reveal.
+            let attempted = content
+            content <- null
+
+            if not (isNull attempted) then
+                abandon attempted
+
+            contentContainer.Discard ()
+            contentContainer <- null
+
+            if hydration.Strict then
+                failHydration failure.Value
+            else
+                reportMismatch found failure.Value
+                clearServed ()
+                this.MountContent ()
+        | None -> this.SetUpEnded failure
 
     /// <summary>
     /// Creates the boundary's effect and mounts its content. Call once, inside the region's owner; disposing that owner
@@ -1769,7 +1925,17 @@ and [<Sealed>] private ViewBoundary
                 contentContainer.Discard ()
                 contentContainer <- null)
 
-        this.MountContent ()
+        if isNull hydration then
+            this.MountContent ()
+        else
+            served <- true
+
+            match commentData regionStart with
+            | "[c" -> this.HydrateContent ()
+            | "[p" -> this.MountContent ()
+            | _ ->
+                clearServed ()
+                this.MountContent ()
 
     /// <summary>Takes failures of the content, every one of them a failure including a pending read.</summary>
     member this.FailAll(errors: exn list) =
@@ -1863,6 +2029,8 @@ and internal MountState
     let mutable cursor = hydration
     // Whether the release leaves the range's nodes and adopted rows in place: set when a hydrating `Run` fails.
     let mutable keepNodes = false
+    // The mount whose `MountRow` created this one; null for a root mount.
+    let mutable enclosing: MountState = Unchecked.defaultof<_>
     // The first unrecovered failure of a region's hydrating pass; `Run` raises it once the build returns.
     let mutable hydrationFailure: exn = null
 
@@ -1907,19 +2075,26 @@ and internal MountState
         rowsReleased <- true
         let errors = ResizeArray<exn>()
 
+        // A mount built with a cursor also keeps its nodes while its enclosing mount keeps its own.
+        let keep =
+            keepNodes
+            || not (isNull hydration)
+               && not (isNull (box enclosing))
+               && enclosing.KeepsNodes
+
         if not (isNull releasedRows) then
             let rows = releasedRows
             releasedRows <- null
 
             for index in 0 .. rows.Count - 1 do
                 try
-                    if not (keepNodes && rows[index].Adopted) then
+                    if not (keep && rows[index].Adopted) then
                         removeRow rows[index]
                 with error ->
                     errors.Add error
 
         try
-            range.Release keepNodes
+            range.Release keep
         with error ->
             errors.Add error
 
@@ -2591,8 +2766,33 @@ and internal MountState
         let regionPath = pathOfMount().Authored(nextAuthored ())
         this.RegionOf (regionStart, regionEnd, placement, kind, items, render, null, regionPath, 0, container, null)
 
-    /// <summary>The cursor of the server nodes the mount adopts; null outside hydration and once <c>Run</c> returns.</summary>
-    member internal _.HydrationCursor: TemplateDom.HydrationCursor = cursor
+    /// <summary>
+    /// The cursor of the server nodes the mount adopts while <c>Run</c> builds it, and afterwards the enclosing mount's
+    /// cursor; null outside hydration.
+    /// </summary>
+    member internal _.HydrationCursor: TemplateDom.HydrationCursor =
+        if not (isNull cursor) then cursor
+        elif isNull (box enclosing) then null
+        else enclosing.HydrationCursor
+
+    /// <summary>Whether the mount's release leaves its nodes in place.</summary>
+    member internal _.KeepsNodes = keepNodes
+
+    /// <summary>The mount whose <c>MountRow</c> created this one; null for a root mount.</summary>
+    member internal _.Enclosing
+        with get () = enclosing
+        and set (value: MountState) = enclosing <- value
+
+    /// <summary>
+    /// Tears down a mount built with a cursor, leaving its nodes in place, and undoes the edits recorded with the cursor.
+    /// </summary>
+    member internal _.AbandonAdopted() =
+        keepNodes <- true
+
+        try
+            root.Abandon ()
+        finally
+            hydration.Restore ()
 
     /// <summary>Fails the hydrating <c>Run</c> with <c>error</c> once its build returns, unless an earlier failure was recorded.</summary>
     member internal _.HydrationFailed(error: exn) =
@@ -2640,6 +2840,12 @@ and internal MountState
     /// nested mount's first template takes the position of row <c>row</c> of region <c>region</c> under
     /// <c>parentPath</c>.
     /// </summary>
+    /// <remarks>
+    /// With a <c>cursor</c>, the nested mount adopts the server nodes from <c>cursor.Next</c> to the node at which its
+    /// build leaves the cursor, and they stay in place between its <c>ranvier:start</c> and <c>ranvier:end</c>
+    /// comments, inserted around them. The insertions are recorded with the cursor, and the cursor's edits with this
+    /// mount's cursor once the nested mount is built. A failure of the nested mount leaves the server nodes as they were.
+    /// </remarks>
     member private this.MountRow
         (
             current: unit -> obj,
@@ -2648,9 +2854,28 @@ and internal MountState
             target: Placement,
             parentPath: InstancePath,
             region: int,
-            row: int
+            row: int,
+            cursor: TemplateDom.HydrationCursor
         ) : Row =
-        let rowHost = fragment ()
+        let adopting = not (isNull cursor)
+
+        let rowHost =
+            if adopting then
+                parentOrNull cursor.Next
+            else
+                fragment () :> Node
+
+        let (first: Node), (last: Node) =
+            if adopting then
+                (comment "ranvier:start" :> Node), (comment "ranvier:end" :> Node)
+            else
+                Unchecked.defaultof<_>, Unchecked.defaultof<_>
+
+        if adopting then
+            rowHost.insertBefore (first, cursor.Next)
+            |> ignore
+
+            cursor.Undo (fun () -> remove (first :?> ChildNode))
 
         let nested =
             MountState (
@@ -2667,24 +2892,40 @@ and internal MountState
                 InstanceStep.Row,
                 region,
                 row,
-                null,
-                null,
-                null
+                cursor,
+                first,
+                last
             )
 
         nested.HeadDocument <- this.HeadDocument
+        nested.Enclosing <- this
 
-        let mounted = nested.Run (None, (fun context -> render current context.Backend))
+        let build (context: BuildContext) =
+            render current context.Backend
 
-        let first =
-            rowHost.firstChild
-            |> Option.defaultWith (fun () -> invalid "A keyed row has no start boundary")
+            if adopting then
+                rowHost.insertBefore (last, cursor.Next) |> ignore
+                cursor.Undo (fun () -> remove (last :?> ChildNode))
 
-        let last =
-            rowHost.lastChild
-            |> Option.defaultWith (fun () -> invalid "A keyed row has no end boundary")
+        let mounted = nested.Run (None, build)
 
-        Row (first, last, Mount = mounted)
+        if adopting then
+            let enclosingCursor = this.HydrationCursor
+
+            if not (isNull enclosingCursor) then
+                enclosingCursor.Undo (fun () -> cursor.Restore ())
+
+            Row (first, last, Mount = mounted, Adopted = true)
+        else
+            let first =
+                rowHost.firstChild
+                |> Option.defaultWith (fun () -> invalid "A keyed row has no start boundary")
+
+            let last =
+                rowHost.lastChild
+                |> Option.defaultWith (fun () -> invalid "A keyed row has no end boundary")
+
+            Row (first, last, Mount = mounted)
 
     /// <summary>
     /// Mounts one row per keyed item between the region's markers, on a core projection that creates new rows before it
@@ -2776,7 +3017,7 @@ and internal MountState
 
             row <-
                 if isNull rows then
-                    this.MountRow (current, render, boundary, passPlacement.Container, parentPath, region, site.NextRow ())
+                    this.MountRow (current, render, boundary, passPlacement.Container, parentPath, region, site.NextRow (), null)
                 else
                     site.Builder.Build (rows, current, passPlacement, site.NextRow ())
 
@@ -3197,7 +3438,7 @@ and internal MountState
 
                             let built =
                                 if isNull rows then
-                                    this.MountRow (current, render, boundary, armPlacement.Container, parentPath, region, site.NextRow ())
+                                    this.MountRow (current, render, boundary, armPlacement.Container, parentPath, region, site.NextRow (), null)
                                 else
                                     site.Builder.Build (rows, current, armPlacement, site.NextRow ())
 
@@ -3304,7 +3545,7 @@ and internal MountState
         let holeContainer = Placement parentContainer
 
         let row =
-            this.MountRow ((fun () -> view), render, boundary, holeContainer, parentPath, region, site.NextRow ())
+            this.MountRow ((fun () -> view), render, boundary, holeContainer, parentPath, region, site.NextRow (), null)
 
         Row.MoveBefore (row, site.Parent (), regionEnd)
         row.Mount.Relocate ()
@@ -3312,6 +3553,10 @@ and internal MountState
         holeContainer.Place ()
 
     /// <summary>Mounts a boundary between the markers. Its content's bindings report to the boundary, and its pending view's bindings to this mount's boundary, or to the view's own mount outside every boundary.</summary>
+    /// <remarks>
+    /// With <c>regionCursor</c>, the boundary hydrates from the server nodes between the markers as the start marker's
+    /// view (<c>[c</c>, <c>[p</c> or <c>[e</c>) records.
+    /// </remarks>
     member private this.BoundaryRegion
         (
             regionStart: Node,
@@ -3320,7 +3565,8 @@ and internal MountState
             views: BoundaryViews,
             parentPath: InstancePath,
             region: int,
-            parentContainer: Placement
+            parentContainer: Placement,
+            regionCursor: TemplateDom.HydrationCursor
         ) =
         let site = this.Site (regionStart, regionEnd, placement)
 
@@ -3329,6 +3575,7 @@ and internal MountState
                 graph,
                 report,
                 site,
+                regionStart,
                 regionEnd,
                 views,
                 this.Scope,
@@ -3337,15 +3584,19 @@ and internal MountState
                 parentContainer,
                 parentPath,
                 region,
-                fun current render scope target parentPath region row -> this.MountRow (current, render, scope, target, parentPath, region, row)
+                (fun current render scope target parentPath region row cursor ->
+                    this.MountRow (current, render, scope, target, parentPath, region, row, cursor)),
+                regionCursor,
+                (fun () -> this.HydrationCursor),
+                (fun error -> this.HydrationFailed error)
             )
 
         site.Own (fun () -> created.Start ())
 
     /// <summary>
     /// Mounts a region of <c>kind</c> between its markers. With <c>regionCursor</c>, a template list or arm adopts the
-    /// server rows between the markers, and every other region replaces the server nodes between them with a fresh
-    /// mount.
+    /// server rows between the markers, a boundary hydrates as <c>BoundaryRegion</c> describes, and every other region
+    /// replaces the server nodes between them with a fresh mount.
     /// </summary>
     /// <remarks>
     /// A structural mismatch of the region's hydrating pass, unless <c>regionCursor.Strict</c> is set, disposes the rows
@@ -3389,6 +3640,19 @@ and internal MountState
                         Api.runWithOwner enclosing (fun () -> mountRegion site)
 
             mountRegion site
+        | TemplateDom.BoundaryContent ->
+            let pairs = items.Read ()
+
+            this.BoundaryRegion (
+                start,
+                finish,
+                placement,
+                unbox<BoundaryViews>(KeyedItems.value (pairs[0])),
+                parentPath,
+                region,
+                parentContainer,
+                regionCursor
+            )
         | _ ->
             if not (isNull regionCursor) then
                 clearAdopted regionCursor start finish
@@ -3396,11 +3660,7 @@ and internal MountState
             match kind with
             | TemplateDom.ListRows
             | TemplateDom.SelectedArm -> mountRegion (this.Site (start, finish, placement))
-            | TemplateDom.ViewHole -> this.HoleRegion (start, finish, placement, items.Read, render, parentPath, region, parentContainer)
-            | TemplateDom.BoundaryContent ->
-                let pairs = items.Read ()
-
-                this.BoundaryRegion (start, finish, placement, unbox<BoundaryViews>(KeyedItems.value (pairs[0])), parentPath, region, parentContainer)
+            | _ -> this.HoleRegion (start, finish, placement, items.Read, render, parentPath, region, parentContainer)
 
     override _.Component(setup) =
         ensureSetup ()
@@ -3461,7 +3721,13 @@ and internal MountState
                 ensureSetup ()
                 range.AddAdopted node
 
-        member _.Hydration = cursor
+        // A first commit can run after the build; until the hydration ends, the commit writes only a value that differs
+        // from the server node's.
+        member this.Hydration =
+            if root.Phase = SettingUp then
+                cursor
+            else
+                this.HydrationCursor
 
         member _.Setup =
             if isNull (box templateSetup) then
