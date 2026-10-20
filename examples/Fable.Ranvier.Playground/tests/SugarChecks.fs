@@ -437,6 +437,28 @@ let private armFixtures () =
     explicitOps.Dispose ()
     sugarOps.Dispose ()
 
+let private demoState (graph: Graph) =
+    graph.Run (fun () ->
+        {
+            PlaygroundSugar.DemoState.Count = Api.createSignal 0
+            PlaygroundSugar.DemoState.Name = Api.createSignal "Ada"
+        })
+
+let private demoLayout () =
+    equal (layoutSignature PlaygroundSugar.demoExplicit.Root) (layoutSignature PlaygroundSugar.demoSugar.Root)
+    use graph = new Graph ()
+    let state = demoState graph
+    equal (Server.render omit PlaygroundSugar.demoExplicit state) (Server.render omit PlaygroundSugar.demoSugar state)
+
+let private demoClicks queued () =
+    pair queued demoState (Component.render PlaygroundSugar.demoExplicit) (Component.render PlaygroundSugar.demoSugar) (fun state ->
+        [
+            Each (click "[data-testid=increment]")
+            Each (click "[data-testid=burst]")
+            Each (click "[data-testid=reset]")
+            Write (fun () -> state.Name.Value <- "Grace")
+        ])
+
 let cases: (string * (unit -> unit)) array =
     strictCases (
         Array.concat
@@ -456,6 +478,10 @@ let cases: (string * (unit -> unit)) array =
                     "the sugared keyed benchmark fixture renders like the production fixture", keyedFixtures
                     "the sugared arm benchmark fixture renders like the production fixture", armFixtures
                 |]
+                [|
+                    "the sugared demo screen shares the explicit screen's layout and server HTML", demoLayout
+                |]
+                templated "the sugared demo screen updates like the explicit screen" demoClicks
                 [| "sugared and explicit twins hydrate each other's server HTML", hydration |]
             ]
     )
