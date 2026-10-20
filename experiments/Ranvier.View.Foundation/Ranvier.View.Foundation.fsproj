@@ -16,6 +16,7 @@
         <Compile Include="TemplateDom.fs" />
         <Compile Include="DocumentHead.fs" />
         <Compile Include="Mounting.fs" />
+        <Compile Include="Hydration.fs" />
         <Compile Include="Components.fs" />
         <Compile Include="Authoring.fs" />
         <ProjectReference Include="../../src/Fable.Ranvier/Fable.Ranvier.fsproj" />

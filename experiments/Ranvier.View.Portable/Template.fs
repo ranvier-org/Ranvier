@@ -348,15 +348,18 @@ type SkeletonLayout =
         RootCount: int
         /// <summary>The inlined children, at every depth, in document order.</summary>
         Children: InlinedChild array
-        /// <summary>The document head entries, at every depth, with their owning part.</summary>
-        Heads: (HeadTemplate * int) array
+        /// <summary>
+        /// The document head entries, at every depth, with their owning part and the number of dynamic nodes before them
+        /// in document order.
+        /// </summary>
+        Heads: (HeadTemplate * int * int) array
     }
 
 type private WriterState() =
     member val Targets = ResizeArray<TemplateNode * int array>()
     member val Owners = ResizeArray<int>()
     member val Children = ResizeArray<InlinedChild>()
-    member val Heads = ResizeArray<HeadTemplate * int>()
+    member val Heads = ResizeArray<HeadTemplate * int * int>()
     member val Parts = ResizeArray<int>()
     member val Part = 0 with get, set
 
@@ -391,7 +394,7 @@ let private writeMarkup (append: string -> unit) (state: WriterState) (root: Tem
         state.Parts.RemoveAt (state.Parts.Count - 1)
 
     let writeHead (head: HeadTemplate) =
-        state.Heads.Add ((head, state.Part))
+        state.Heads.Add ((head, state.Part, state.Targets.Count))
 
     let rec writeChildren (children: TemplateNode array) (path: int list) =
         let mutable index = 0

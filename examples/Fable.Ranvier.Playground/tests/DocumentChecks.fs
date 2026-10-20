@@ -655,6 +655,39 @@ let private holeShown queued () =
     mounted.Dispose ()
     equal [ ("Hole", "child"); ("Hole", "child") ] [ shown; serverShown holeThenChild ]
 
+/// <summary>A title entry and an element whose mounted hook logs <c>document.title</c>, the title first when <c>titleFirst</c>.</summary>
+let private titleAndHook (titleFirst: bool) =
+    Component.define (fun _ (log: ResizeArray<string>) -> log) (fun t ->
+        let hooked =
+            t.div
+                [|
+                    t.Hooks.mounted (fun (log: ResizeArray<string>) _ ->
+                        log.Add (title ())
+                        ignore)
+                |]
+                [||]
+
+        t.fragment (
+            if titleFirst then
+                [| t.Document.title "T"; hooked |]
+            else
+                [| hooked; t.Document.title "T" |]
+        ))
+
+let private hookSeesEarlierHead queued () =
+    let logged (titleFirst: bool) =
+        use graph = new Graph ()
+        setTitle "Before"
+        let log = ResizeArray<string>()
+
+        let mounted =
+            mountTemplate queued graph strict (host ()) (Component.render (titleAndHook titleFirst) log)
+
+        mounted.Dispose ()
+        List.ofSeq log
+
+    equal ([ "T" ], [ "Before" ]) (logged true, logged false)
+
 let cases: (string * (unit -> unit)) array =
     strictCases (
         Array.concat
@@ -685,6 +718,7 @@ let cases: (string * (unit -> unit)) array =
                 templated "a pending entry's adopted element gives way to a sibling entry of its key and returns at reveal" (siblingAdoption false)
                 templated "a pending entry's adopted element leaves the head when the boundary fails" pendingAdopterFails
                 templated "a title reader returning null sets an empty document.title" nullTitleEmpty
+                templated "a mounted hook sees the title entries before its element in document order and not those after it" hookSeesEarlierHead
                 templated "title entries from two graphs withdrawn out of order keep the shown title and restore the original" crossGraphTitles
                 [|
                     "event and property parts on a document entry fail at definition time; a dynamic key attribute and a data-ranvier-head attribute fail",

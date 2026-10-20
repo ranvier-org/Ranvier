@@ -238,6 +238,26 @@ let private rowSetHas (set: obj) (value: 'T) : bool = jsNative
 
 let private skip: unit -> unit = ignore
 
+/// <summary>Removes the server nodes between a region's markers and records their reinsertion before <c>regionEnd</c>.</summary>
+let private clearAdopted (cursor: TemplateDom.HydrationCursor) (regionStart: Node) (regionEnd: Node) =
+    let removed = ResizeArray<Node>()
+    let mutable node = nextOrNull regionStart
+
+    while not (isNull (box node))
+          && not (same node regionEnd) do
+        let next = nextOrNull node
+        removed.Add node
+        remove (node :?> ChildNode)
+        node <- next
+
+    if removed.Count > 0 then
+        cursor.Undo (fun () ->
+            let parent = parentOrNull regionEnd
+
+            for index in 0 .. removed.Count - 1 do
+                parent.insertBefore (removed[index], regionEnd)
+                |> ignore)
+
 #if RANVIER_VIEW_COUNTERS
 /// <summary>Counts of keyed-list work, defined only in the DOM test build.</summary>
 module internal ListCounters =
@@ -349,10 +369,13 @@ type private Entry =
         Restore: (unit -> unit) option
     }
 
-type private OwnedRange(host: Node) =
+/// <summary>
+/// The nodes a mount owns in its host: its boundary entries <c>first</c> and <c>last</c>, and between them its roots
+/// and its top-level regions' markers.
+/// </summary>
+type private OwnedRange(host: Node, first: Node, last: Node) =
     // Null until the range is first staged or moved.
     let mutable staging: DocumentFragment = Unchecked.defaultof<_>
-    let first, last = comment "ranvier:start", comment "ranvier:end"
     let entries = ResizeArray<Entry>()
     let mutable generatedDescendants: ResizeArray<Node> = null
     // The parent of the entries; null while they are detached and unstaged.
@@ -436,6 +459,31 @@ type private OwnedRange(host: Node) =
 
         claim claims first
         claim claims last
+
+    /// <summary>A range whose boundary entries are new <c>ranvier:start</c> and <c>ranvier:end</c> comments.</summary>
+    new(host: Node) = OwnedRange (host, comment "ranvier:start", comment "ranvier:end")
+
+    /// <summary>Adds a root already in place in the host as an entry, claimed and left where it is.</summary>
+    member _.AddAdopted(node: Node) =
+        entries.Insert (
+            entries.Count - 1,
+            {
+                Node = node
+                EndNode = node
+                Validate = skip
+                Relocate = skip
+                Restore = None
+            }
+        )
+
+        claim claims node
+
+    /// <summary>Places the range at its entries' current position: they must be children of <c>parent</c>, in order and contiguous.</summary>
+    member _.Adopt(parent: Node) =
+        if not (intactAt parent) then
+            invalid "Adopted roots are not contiguous children of the host"
+
+        placement <- parent
 
     member _.AddRegion(start: Node, finish: Node, validate: unit -> unit, relocate: unit -> unit) =
         stage ()
@@ -711,7 +759,8 @@ type private OwnedRange(host: Node) =
 
                 raise original
 
-    member _.Release() =
+    /// <summary>Unclaims the range's nodes and removes them, or with <c>keep</c> leaves every node where it is.</summary>
+    member _.Release(keep: bool) =
         let errors = ResizeArray<exn>()
 
 #if LADDER_NAIVE_RANGE
@@ -725,10 +774,11 @@ type private OwnedRange(host: Node) =
             for index in generatedDescendants.Count - 1 .. -1 .. 0 do
                 let node = at generatedDescendants index
 
-                try
-                    remove (node :?> ChildNode)
-                with error ->
-                    errors.Add error
+                if not keep then
+                    try
+                        remove (node :?> ChildNode)
+                    with error ->
+                        errors.Add error
 
                 unclaim claims node
 
@@ -739,6 +789,7 @@ type private OwnedRange(host: Node) =
             let spans = not (same entry.Node entry.EndNode)
 
             match entry.Restore with
+            | _ when keep -> ()
             | Some restore ->
                 try
                     restore ()
@@ -1175,6 +1226,8 @@ and private RowBuilder(state: MountState) =
             state.HeadIn (placement.Container, entry)
 
         member _.Identity = state.Identity
+
+        member _.Hydration = null
 
         member _.Region(start, finish, _, kind, items, render, rows, parentPath, region) =
             state.NestedRegion (start, finish, kind, items, render, rows, parentPath, region, placement.Container)
@@ -1668,11 +1721,24 @@ and internal MountState
         parentPath: InstancePath,
         kind: int,
         a: int,
-        b: int
+        b: int,
+        hydration: TemplateDom.HydrationCursor,
+        rootStart: Node,
+        rootEnd: Node
     ) =
     inherit Prepared.Backend()
 
-    let range = OwnedRange host
+    // With a cursor, the range's boundary entries are the server's root markers.
+    let range =
+        if isNull hydration then
+            OwnedRange host
+        else
+            OwnedRange (host, rootStart, rootEnd)
+
+    // The cursor of the server nodes the mount adopts; null outside hydration and once `Run` returns.
+    let mutable cursor = hydration
+    // Whether the release leaves the range's nodes in place: set when a hydrating `Run` fails.
+    let mutable keepNodes = false
 
     // The mount's path, one step of `kind` below `parentPath`; null until first requested.
     let mutable mountPath: InstancePath = null
@@ -1726,7 +1792,7 @@ and internal MountState
                     errors.Add error
 
         try
-            range.Release ()
+            range.Release keepNodes
         with error ->
             errors.Add error
 
@@ -2087,8 +2153,14 @@ and internal MountState
         | Synchronous -> [||]
         | Queued queue -> queue.Errors
 
-    /// <summary>Builds the view, attaches it before <c>before</c> in the host, and returns its handle.</summary>
-    /// <remarks>A build or attachment failure disposes the mount and rethrows.</remarks>
+    /// <summary>
+    /// Builds the view, attaches it before <c>before</c> in the host, and returns its handle. With a cursor, the build
+    /// adopts the server nodes between the root markers, which stay in place.
+    /// </summary>
+    /// <remarks>
+    /// A build or attachment failure disposes the mount and rethrows. With a cursor, the disposal leaves the adopted nodes
+    /// in place and the cursor's structural edits are restored.
+    /// </remarks>
     member this.Run(before: Node option, build: BuildContext -> unit) =
         let context = BuildContext this
 
@@ -2111,7 +2183,13 @@ and internal MountState
                     Api.runWithOwner parentOwner create)
 
             ensureSetup ()
-            range.Attach (host, before)
+
+            if isNull cursor then
+                range.Attach (host, before)
+            else
+                range.Adopt host
+                cursor <- null
+
             root.MarkAttached ()
             delegateAt host
 
@@ -2130,11 +2208,26 @@ and internal MountState
                 container.RaiseFailure ()
 
             Mounted this
-        with _ ->
-            if not (isNull root) then
-                root.Abandon ()
+        with original ->
+            if isNull hydration then
+                if not (isNull root) then
+                    root.Abandon ()
 
-            reraise ()
+                reraise ()
+            else
+                cursor <- null
+                keepNodes <- true
+
+                try
+                    try
+                        if not (isNull root) then
+                            root.Abandon ()
+                    finally
+                        hydration.Restore ()
+                with cleanup ->
+                    raise (AggregateException ("Hydration and its rollback failed", [| original; cleanup |]))
+
+                reraise ()
 
     override _.Clone(template, setup) =
         ensureSetup ()
@@ -2433,7 +2526,10 @@ and internal MountState
                 parentPath,
                 InstanceStep.Row,
                 region,
-                row
+                row,
+                null,
+                null,
+                null
             )
 
         nested.HeadDocument <- this.HeadDocument
@@ -3090,7 +3186,13 @@ and internal MountState
 
     interface TemplateDom.MountServices with
         member _.Append(node) =
-            append (node :?> ChildNode)
+            if isNull cursor || not (isNull (box target)) then
+                append (node :?> ChildNode)
+            else
+                ensureSetup ()
+                range.AddAdopted node
+
+        member _.Hydration = cursor
 
         member _.Setup =
             if isNull (box templateSetup) then
@@ -3144,6 +3246,9 @@ and internal MountState
                 else
                     NestedRegion
 
+            if not (isNull cursor) then
+                clearAdopted cursor start finish
+
             this.RegionOf (start, finish, placement, kind, items, render, rows, parentPath, region, container)
 
     interface ViewScope with
@@ -3192,7 +3297,10 @@ let mountWith mode graph (parentOwner: Owner option) report host before build =
             null,
             InstanceStep.Root,
             0,
-            0
+            0,
+            null,
+            null,
+            null
         )
             .Run(before, build)
     | QueuedCommits (failure, post) ->
@@ -3213,7 +3321,10 @@ let mountWith mode graph (parentOwner: Owner option) report host before build =
                     null,
                     InstanceStep.Root,
                     0,
-                    0
+                    0,
+                    null,
+                    null,
+                    null
                 )
 
             let mounted = state.Run (before, build)

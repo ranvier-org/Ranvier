@@ -3,6 +3,7 @@ module HydrationChecks
 
 open System
 open global.Ranvier
+open Fable.Core
 open Fable.Core.JsInterop
 open Fable.Core.TS.Dom
 open Ranvier.View.Foundation
@@ -58,6 +59,473 @@ let private clientCreateIdAfterSetup () =
 
     mounted.Dispose ()
     equal true (rejected :? InvalidOperationException)
+
+let private strictOptions: Hydration.HydrationOptions =
+    { IdPrefix = "r"; Strict = true }
+
+let private omit =
+    { Server.Options.defaults with
+        Policy = Omit
+    }
+
+/// <summary>A detached host holding the server HTML of <c>definition</c> for <c>props</c>.</summary>
+let private serve (definition: Component<'props>) (props: 'props) : HTMLElement =
+    let host = host ()
+    host.innerHTML <- Server.render omit definition props
+    host
+
+let private hydrate graph options (host: HTMLElement) (definition: Component<'props>) (props: 'props) =
+    Hydration.hydrate graph None strict options host definition props
+
+/// <summary>Every node under <c>root</c>, in document order.</summary>
+[<Emit("(() => { const w = document.createTreeWalker($0, 0xFFFFFFFF); const a = []; while (w.nextNode()) a.push(w.currentNode); return a; })()")>]
+let private nodesOf (root: Node) : Node array = jsNative
+
+[<Emit("Array.from($0.querySelectorAll($1))")>]
+let private all (root: Node) (selector: string) : Node array = jsNative
+
+let private sameNodes (before: Node array) (after: Node array) =
+    before.Length = after.Length
+    && Array.forall2 (fun (left: Node) (right: Node) -> obj.ReferenceEquals (left, right)) before after
+
+/// <summary>Records mutations under <c>root</c>; the returned function stops and returns their count.</summary>
+[<Emit("(() => { const o = new MutationObserver(() => {}); o.observe($0, { subtree: true, childList: true, attributes: true, characterData: true }); return () => { const n = o.takeRecords().length; o.disconnect(); return n; }; })()")>]
+let private recordMutations (root: Node) : unit -> int = jsNative
+
+[<Emit("$0.dispatchEvent(new FocusEvent('focus'))")>]
+let private focus (node: Node) : unit = jsNative
+
+[<Emit("$0.remove()")>]
+let private detach (node: Node) : unit = jsNative
+
+[<Emit("$0.setSelectionRange($1, $2)")>]
+let private select (node: Node) (start: int) (finish: int) : unit = jsNative
+
+[<Emit("[$0.selectionStart, $0.selectionEnd]")>]
+let private selection (node: Node) : int array = jsNative
+
+[<Emit("$0.textContent = $1")>]
+let private setText (node: obj) (text: string) : unit = jsNative
+
+let private element (host: HTMLElement) (selector: string) =
+    host.querySelector selector |> unbox<HTMLElement>
+
+let private input (host: HTMLElement) (selector: string) =
+    host.querySelector selector
+    |> unbox<HTMLInputElement>
+
+type private CardState =
+    {
+        Title: Signal<string>
+        Clicks: Signal<int>
+    }
+
+let private card =
+    Component.define
+        (fun _ (title: string) ->
+            {
+                Title = Api.createSignal title
+                Clicks = Api.createSignal 0
+            })
+        (fun t ->
+            t.div
+                [| t.Attrs.title (t.from (fun r -> r.Title)) |]
+                [|
+                    t.text "Title: "
+                    t.text (t.from (fun r -> r.Title))
+                    t.button [| t.Events.onClick (fun r _ -> r.Clicks.Value <- r.Clicks.Value + 1) |] [| t.text (fun r -> string r.Clicks.Value) |]
+                    t.input
+                        [|
+                            t.Events.on ("focus", fun r _ -> r.Clicks.Value <- r.Clicks.Value + 10)
+                            t.Attrs.Input.value (fun r -> r.Title.Value)
+                        |]
+                |])
+
+/// <summary>The title attribute, the text and the input value of a hydrated <c>card</c>.</summary>
+let private cardShown (host: HTMLElement) =
+    (element host "div").getAttribute "title", (element host "div").textContent, (input host "input").value
+
+let private adoptsEveryNode () =
+    use graph = new Graph ()
+    let host = serve card "a"
+    equal """<!--[r--><div title="a">Title: <!--!-->a<button>0</button><input value="a"></div><!--]-->""" host.innerHTML
+    let before = nodesOf host
+    let mounted = hydrate graph strictOptions host card "a"
+    equal (true, (Some "a", "Title: a0", "a")) (sameNodes before (nodesOf host), cardShown host)
+    mounted.Dispose ()
+
+let private updatesAndDisposes () =
+    use graph = new Graph ()
+    let host = serve card "a"
+    let mounted = hydrate graph strictOptions host card "a"
+    let button = element host "button"
+    button.click ()
+    equal "1" button.textContent
+    focus (unbox<Node>(host.querySelector "input"))
+    equal "11" button.textContent
+    mounted.Dispose ()
+    equal 0. host.childNodes.length
+    button.click ()
+    equal "11" button.textContent
+
+let private matchingValuesWriteNothing () =
+    use graph = new Graph ()
+    let host = serve card "a"
+    let mutations = recordMutations host
+    let mounted = hydrate graph strictOptions host card "a"
+    equal (0, (Some "a", "Title: a0", "a")) (mutations (), cardShown host)
+    mounted.Dispose ()
+
+let private differingValuesCorrected () =
+    use graph = new Graph ()
+    let host = serve card "a"
+    let mounted = hydrate graph strictOptions host card "b"
+    equal (Some "b", "Title: b0", "b") (cardShown host)
+    equal (Some "b") ((input host "input").getAttribute "value")
+    mounted.Dispose ()
+
+let private appending =
+    Component.define (fun _ (text: string) -> Api.createSignal text) (fun t ->
+        t.span
+            [|
+                t.Events.onClick (fun (text: Signal<string>) _ -> text.Value <- text.Value + "x")
+            |]
+            [| t.text (fun (text: Signal<string>) -> text.Value) |])
+
+let private emptyTextHydrates () =
+    use graph = new Graph ()
+    let host = serve appending ""
+    equal "<!--[r--><span><!--_--></span><!--]-->" host.innerHTML
+    let mounted = hydrate graph strictOptions host appending ""
+    let span = element host "span"
+    equal (1., 3.) (span.childNodes.length, span.firstChild.Value.nodeType)
+    span.click ()
+    equal "x" span.textContent
+    mounted.Dispose ()
+
+let private shapes () =
+    let check (definition: Component<'props>) (props: 'props) (text: string) =
+        use graph = new Graph ()
+        let host = serve definition props
+        let before = nodesOf host
+        let mounted = hydrate graph strictOptions host definition props
+        equal (true, text) (sameNodes before (nodesOf host), host.textContent)
+        mounted.Dispose ()
+        equal 0. host.childNodes.length
+
+    check (Component.define (fun _ () -> ()) (fun t -> t.fragment [||])) () ""
+    check textual "one" "one"
+    check pair greetingProps "Hello <Ada>!<Ada>"
+    check (Component.define (fun _ () -> ()) (fun t -> t.fragment [| t.text "a"; t.span [||] [| t.text "b" |] |])) () "ab"
+
+let private regionsMountWithContent () =
+    use graph = new Graph ()
+    let host = serve listed listedItems
+    let list = element host "ul"
+    let markers = list.firstChild.Value, list.lastChild.Value
+    let served = all host "li"
+    let mounted = hydrate graph strictOptions host listed listedItems
+    let rows = all host "li"
+
+    let fresh =
+        rows
+        |> Array.forall (fun row ->
+            served
+            |> Array.forall (fun server -> not (obj.ReferenceEquals (row, server))))
+
+    equal
+        (true, true, true, "a<b>", 2, true)
+        (obj.ReferenceEquals (list, element host "ul"),
+         obj.ReferenceEquals (fst markers, list.firstChild.Value),
+         obj.ReferenceEquals (snd markers, list.lastChild.Value),
+         list.textContent,
+         rows.Length,
+         fresh)
+
+    mounted.Dispose ()
+
+let private afterRegions =
+    Component.define (fun _ (items: Listed array) -> items) (fun t ->
+        t.fragment
+            [|
+                t.each (fun (item: Listed) -> item.Id) id listedRow
+                t.ul
+                    [||]
+                    [|
+                        t.each (fun (item: Listed) -> item.Id) id listedRow
+                        t.li [| t.Attrs.title (fun (items: Listed array) -> Some (string items.Length)) |] [| t.text "last" |]
+                    |]
+            |])
+
+let private nodesAfterRegions () =
+    use graph = new Graph ()
+    let host = serve afterRegions listedItems
+    let list = element host "ul"
+    let last = element host "li[title]"
+    let mounted = hydrate graph strictOptions host afterRegions listedItems
+
+    equal
+        (true, true, Some "2", "a<b>a<b>last", 5)
+        (obj.ReferenceEquals (list, element host "ul"),
+         obj.ReferenceEquals (last, element host "li[title]"),
+         last.getAttribute "title",
+         host.textContent,
+         (all host "li").Length)
+
+    mounted.Dispose ()
+    equal 0. host.childNodes.length
+
+let private queuedRaises () =
+    use graph = new Graph ()
+    let host = serve card "a"
+
+    let error =
+        ServerChecks.failure (fun () ->
+            Hydration.hydrateWith (Scheduling.QueuedCommits (Scheduling.CollectAndContinue, ignore)) graph None strict strictOptions host card "a"
+            |> ignore)
+
+    equal (true, "Hydration supports synchronous commits only") (error :? NotSupportedException, error.Message)
+
+let private foreignSiblings () =
+    use graph = new Graph ()
+    let host = host ()
+
+    host.innerHTML <-
+        "\n  <p>before</p>"
+        + Server.render omit card "a"
+        + "<script type=\"application/json\">{}</script>\n"
+
+    let paragraph, script = host.querySelector "p", host.querySelector "script"
+    let mounted = hydrate graph strictOptions host card "a"
+    (element host "button").click()
+    equal "Title: a1" (element host "div").textContent
+    mounted.Dispose ()
+
+    equal
+        (true, true, true, "\n  before{}\n")
+        (obj.ReferenceEquals (paragraph, host.querySelector "p"),
+         obj.ReferenceEquals (script, host.querySelector "script"),
+         isNull (box (host.querySelector "div")),
+         host.textContent)
+
+let private carriageReturn () =
+    use graph = new Graph ()
+    let host = serve card "a\r\nb"
+    let mutations = recordMutations host
+    let mounted = hydrate graph strictOptions host card "a\r\nb"
+    // A text input's value drops line breaks; its value attribute keeps them.
+    equal (0, (Some "a\r\nb", "Title: a\r\nb0", "ab"), Some "a\r\nb") (mutations (), cardShown host, (input host "input").getAttribute "value")
+    mounted.Dispose ()
+
+let private editable =
+    Component.define (fun _ (text: string) -> Api.createSignal text) (fun t ->
+        t.div
+            [||]
+            [|
+                t.input [| t.Props.Input.value (fun (text: Signal<string>) -> text.Value) |]
+                t.input [| t.Props.Input.value "fixed" |]
+                t.button [| t.Events.onClick (fun (text: Signal<string>) _ -> text.Value <- "set") |] [||]
+            |])
+
+let private editedInputsKept () =
+    use graph = new Graph ()
+    let host = serve editable "a"
+    attachToBody host
+    let inputs = all host "input"
+
+    let live, fixedInput =
+        unbox<HTMLInputElement> inputs[0], unbox<HTMLInputElement> inputs[1]
+
+    live.value <- "typed"
+    fixedInput.value <- "edited"
+    live.focus ()
+    select inputs[0] 1 3
+    let mounted = hydrate graph strictOptions host editable "a"
+
+    let kept =
+        live.value, fixedInput.value, obj.ReferenceEquals (activeElement (), live), List.ofArray (selection inputs[0])
+
+    (element host "button").click()
+    let set = live.value
+    mounted.Dispose ()
+    detach host
+    equal (("typed", "edited", true, [ 1; 3 ]), "set") (kept, set)
+
+let private differingInputsCorrected () =
+    use graph = new Graph ()
+    let host = serve editable "a"
+    let mounted = hydrate graph strictOptions host editable "b"
+    equal "b" (input host "input").value
+    mounted.Dispose ()
+
+type private RawState = { Markup: Signal<string> }
+
+let private rawCard =
+    Component.define (fun _ (markup: string) -> { Markup = Api.createSignal markup }) (fun t ->
+        t.div
+            [||]
+            [|
+                t.span [| t.Unsafe.html (fun r -> UnsafeHtml.Trust r.Markup.Value) |] [||]
+                t.button [| t.Events.onClick (fun r _ -> r.Markup.Value <- "<i>next</i>") |] [||]
+            |])
+
+let private rawContentRewritten () =
+    use graph = new Graph ()
+    let host = serve rawCard "<b>x</b>"
+    let content = element host "span"
+    let server = host.querySelector "b"
+    let mutations = recordMutations content
+    let mounted = hydrate graph strictOptions host rawCard "<b>x</b>"
+
+    let rewritten =
+        mutations (), content.innerHTML, obj.ReferenceEquals (server, host.querySelector "b")
+
+    (element host "button").click()
+    let updated = content.innerHTML
+    mounted.Dispose ()
+    equal ((1, "<b>x</b>", false), "<i>next</i>") (rewritten, updated)
+
+let private placedCard =
+    Component.define (fun _ (log: ResizeArray<obj>) -> log) (fun t ->
+        t.div
+            [||]
+            [|
+                t.span
+                    [|
+                        t.Hooks.mounted (fun (log: ResizeArray<obj>) span ->
+                            log.Add (box span)
+                            ignore)
+                    |]
+                    [| t.text "s" |]
+                t.div
+                    [|
+                        t.Hooks.widget (fun (log: ResizeArray<obj>) widget ->
+                            setText widget "widget"
+                            log.Add (box widget)
+                            fun () -> log.Add (box "destroyed"))
+                    |]
+                    [||]
+            |])
+
+let private placedOnAdopted () =
+    use graph = new Graph ()
+    let log = ResizeArray<obj>()
+    let host = serve placedCard log
+
+    let root, span, widget =
+        host.querySelector "div", host.querySelector "span", host.querySelector ":scope > div > div"
+
+    let served = host.innerHTML
+    let mounted = hydrate graph strictOptions host placedCard log
+    let hooked = List.ofSeq log
+
+    let placed =
+        match hooked with
+        | [ first; second ] ->
+            obj.ReferenceEquals (first, span), obj.ReferenceEquals (second, widget), obj.ReferenceEquals ((unbox<Node> first).parentNode.Value, root)
+        | _ -> false, false, false
+
+    let shown = (element host ":scope > div > div").textContent
+    mounted.Dispose ()
+
+    equal
+        ("<!--[r--><div><span>s</span><div></div></div><!--]-->", (true, true, true), "widget", box "destroyed")
+        (served, placed, shown, Seq.last log)
+
+let private noted =
+    Component.define (fun _ (text: string) -> Api.createSignal text) (fun t ->
+        t.div
+            [||]
+            [|
+                t.textarea [||] [| t.text (fun (text: Signal<string>) -> text.Value) |]
+                t.button [| t.Events.onClick (fun (text: Signal<string>) _ -> text.Value <- "typed") |] [||]
+            |])
+
+let private emptyRcdataText () =
+    use graph = new Graph ()
+    let host = serve noted ""
+
+    let area =
+        host.querySelector "textarea"
+        |> unbox<HTMLTextAreaElement>
+
+    let served = area.childNodes.length
+    let mounted = hydrate graph strictOptions host noted ""
+    let adopted = area.childNodes.length, area.firstChild.Value.nodeType, area.value
+    (element host "button").click()
+    let typed = area.value
+    mounted.Dispose ()
+    equal (0., (1., 3., ""), "typed") (served, adopted, typed)
+
+let private emptyAndMarked =
+    Component.define (fun _ (text: string) -> text) (fun t ->
+        t.span
+            [||]
+            [|
+                t.text (fun text -> text)
+                t.b [| t.Attrs.title (fun _ -> Some "x") |] [||]
+            |])
+
+let private emptyAndOther =
+    Component.define (fun _ (text: string) -> text) (fun t ->
+        t.span
+            [||]
+            [|
+                t.text (fun text -> text)
+                t.i [| t.Attrs.title (fun _ -> Some "x") |] [||]
+            |])
+
+let private listedThenMore =
+    Component.define (fun _ (items: Listed array) -> items) (fun t ->
+        t.fragment
+            [|
+                t.ul [||] [| t.each (fun (item: Listed) -> item.Id) id listedRow |]
+                t.b [||] [||]
+            |])
+
+let private mismatchRestores () =
+    let check (served: string) (client: Component<'props>) (props: 'props) =
+        use graph = new Graph ()
+        let host = host ()
+        host.innerHTML <- served
+        let before = nodesOf host
+
+        let outcome =
+            match
+                ServerChecks.failure (fun () ->
+                    hydrate graph strictOptions host client props
+                    |> ignore)
+            with
+            | TemplateDom.HydrationMismatchException (path, expected, found) as error -> Some (path, expected, found, error.Message)
+            | _ -> None
+
+        outcome, host.innerHTML = served, sameNodes before (nodesOf host)
+
+    equal
+        [
+            Some ("0/1", "<i>", "b", "Hydration mismatch at 0/1: expected <i>, found b"), true, true
+            Some ("#1", "<!--]-->", "b", "Hydration mismatch at #1: expected <!--]-->, found b"), true, true
+            Some ("#0", "a text node", "div", "Hydration mismatch at #0: expected a text node, found div"), true, true
+        ]
+        [
+            check (Server.render omit emptyAndMarked "") emptyAndOther ""
+            check (Server.render omit listedThenMore listedItems) listed listedItems
+            check (Server.render omit card "a") textual "a"
+        ]
+
+let private rootMarkerAbsent () =
+    use graph = new Graph ()
+    let host = host ()
+    host.innerHTML <- "<div>plain</div>"
+
+    match
+        ServerChecks.failure (fun () ->
+            hydrate graph strictOptions host card "a"
+            |> ignore)
+    with
+    | TemplateDom.HydrationMismatchException (path, expected, found) ->
+        equal (("root", "<!--[r-->", "absent"), "<div>plain</div>") ((path, expected, found), host.innerHTML)
+    | other -> failwithf "Expected HydrationMismatchException; got %O" other
 
 /// <summary>
 /// Mounts <c>definition</c> and checks that the client's sorted id log and its DOM ids in document order equal
@@ -134,6 +602,24 @@ let cases: (string * (unit -> unit)) array =
             "a Setup kept from one client setup raises when called during another instance's setup", clientCreateIdInLaterSetup
             "a client boundary's content takes row 0 and its pending or error view row 1, as the server's [c, [p and [e boundaries do",
             clientBoundaryIdentity
+            "hydrating server HTML adopts every node", adoptsEveryNode
+            "a hydrated template updates, dispatches delegated and direct events, and disposes like a mount", updatesAndDisposes
+            "hydration writes no text or attribute when values match", matchingValuesWriteNothing
+            "hydration corrects differing values without a report", differingValuesCorrected
+            "empty text slots hydrate through their placeholder and update", emptyTextHydrates
+            "empty, one-node, multi-root and fragment templates hydrate", shapes
+            "a template with regions hydrates its own nodes and mounts the client's rows fresh between the server's markers", regionsMountWithContent
+            "a region occupies two logical positions: the nodes and roots after a region's end marker are adopted", nodesAfterRegions
+            "queued-commit hydration raises NotSupportedException", queuedRaises
+            "hydration adopts only the root marker pair and leaves foreign siblings in place", foreignSiblings
+            "a text value with CR LF hydrates without writes", carriageReturn
+            "inputs edited before hydration keep their values, focus and selection when the server and client values agree", editedInputsKept
+            "a live input value differing from the server's is written by hydration", differingInputsCorrected
+            "hydration rewrites raw content once and the slot then updates", rawContentRewritten
+            "placed hooks run on the adopted nodes after adoption, and a widget attaches to its adopted empty element", placedOnAdopted
+            "an empty text slot in a textarea the server left empty hydrates into a created text node", emptyRcdataText
+            "a structural mismatch names the path, the expected and the found node, and leaves the server HTML as it was", mismatchRestores
+            "a host without a root marker raises a mismatch at root", rootMarkerAbsent
         |]
 
 /// <summary>The text and value of the first element matching <c>selector</c> after the browser parses <c>html</c>.</summary>

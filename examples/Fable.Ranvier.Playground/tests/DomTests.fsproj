@@ -34,6 +34,7 @@
     <Compile Include="../../../experiments/Ranvier.View.Foundation/TemplateDom.fs" Link="TemplateDom.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/DocumentHead.fs" Link="DocumentHead.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Mounting.fs" Link="Mounting.fs" />
+    <Compile Include="../../../experiments/Ranvier.View.Foundation/Hydration.fs" Link="Hydration.fs" />
     <Compile Include="RangeChecks.fs" />
     <Compile Include="BindingChecks.fs" />
     <Compile Include="BindingIntegrationChecks.fs" />

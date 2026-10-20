@@ -49,6 +49,122 @@ type RegionKind =
     /// <summary>A boundary: the region's single item's value is its <c>BoundaryViews</c>, read once.</summary>
     | BoundaryContent
 
+/// <summary>
+/// A server node that differs from the node the template expects at <c>Path</c>: <c>root</c> for a missing root
+/// marker, <c>#k</c> for the k-th root of an instance, and otherwise the dynamic node's child-index path.
+/// </summary>
+exception HydrationMismatchException of Path: string * Expected: string * Found: string with
+    override this.Message =
+        "Hydration mismatch at "
+        + this.Path
+        + ": expected "
+        + this.Expected
+        + ", found "
+        + this.Found
+
+/// <summary>A <c>HydrationMismatchException</c> whose <c>Message</c> is the override's text on .NET and under Fable.</summary>
+let internal mismatch (path: string) (expected: string) (found: string) : exn =
+    let error = HydrationMismatchException (path, expected, found)
+#if FABLE_COMPILER
+    // Fable reads Message from the JavaScript error's message property.
+    JsInterop.(?<-)
+        error
+        "message"
+        ("Hydration mismatch at "
+         + path
+         + ": expected "
+         + expected
+         + ", found "
+         + found)
+#endif
+    error
+
+/// <summary>The next server node a hydrating mount adopts, and the inverses of the structural edits made so far.</summary>
+[<Sealed; AllowNullLiteral>]
+type internal HydrationCursor(next: Node, strict: bool) =
+    let undo = ResizeArray<unit -> unit>()
+
+    /// <summary>The next server node to adopt; null past the last.</summary>
+    member val Next: Node = next with get, set
+
+    member _.Strict = strict
+
+    /// <summary>Records the inverse of a structural edit.</summary>
+    member _.Undo(inverse: unit -> unit) =
+        undo.Add inverse
+
+    /// <summary>Runs the recorded inverses, most recent first; raises after all have run when any raised.</summary>
+    member _.Restore() =
+        let errors = ResizeArray<exn>()
+
+        for index in undo.Count - 1 .. -1 .. 0 do
+            try
+                undo[index]()
+            with error ->
+                errors.Add error
+
+        undo.Clear ()
+
+        if errors.Count = 1 then
+            raise errors[0]
+        elif errors.Count > 1 then
+            raise (AggregateException ("Hydration restore failed", errors))
+
+let private noNode: Node = Unchecked.defaultof<_>
+
+[<Emit("$0.nodeType === 8")>]
+let private isComment (node: Node) : bool = jsNative
+
+[<Emit("$0.data")>]
+let private dataOf (node: Node) : string = jsNative
+
+[<Emit("$0.nextSibling")>]
+let private following (node: Node) : Node = jsNative
+
+/// <summary>Whether the node is a comment whose data starts with <c>[</c>.</summary>
+[<Emit("$0 != null && $0.nodeType === 8 && $0.data.startsWith('[')")>]
+let internal isStartMarker (node: Node) : bool = jsNative
+
+/// <summary>The sibling <c>]</c> comment closing the region that <c>start</c> opens.</summary>
+/// <exception cref="T:Ranvier.View.Foundation.TemplateDom.HydrationMismatchException">The siblings end first.</exception>
+let internal matchingEnd (start: Node) : Node =
+    let mutable depth = 0
+    let mutable node = following start
+    let mutable found = noNode
+
+    while isNull (box found) && not (isNull (box node)) do
+        if isComment node then
+            let data = dataOf node
+
+            if data = "]" then
+                if depth = 0 then found <- node else depth <- depth - 1
+            elif data.StartsWith "[" then
+                depth <- depth + 1
+
+        if isNull (box found) then
+            node <- following node
+
+    if isNull (box found) then
+        raise (mismatch ("<!--" + dataOf start + "-->") "<!--]-->" "absent")
+
+    found
+
+/// <summary>The node one logical position after <c>node</c>: a start marker's matching end, otherwise the next sibling.</summary>
+let internal logicalNext (node: Node) : Node =
+    if isStartMarker node then
+        matchingEnd node
+    else
+        following node
+
+/// <summary>The server node a collected node of a template adopts.</summary>
+type Expectation =
+    /// <summary>An element of the tag, compared without case.</summary>
+    | ExpectElement of tag: string
+    /// <summary>A text node, or the <c>&lt;!--_--&gt;</c> placeholder of an empty one.</summary>
+    | ExpectText
+    /// <summary>The start marker of a region of the kind.</summary>
+    | ExpectRegion of RegionKind
+
 [<NoEquality; NoComparison>]
 type CompiledRegion =
     {
@@ -82,12 +198,19 @@ type Compiled =
         Events: (int * string * Func<obj, obj, unit>) array
         /// <summary>The placed hooks of the part's nodes: node index, kind and hook.</summary>
         Placed: (int * PlacedKind * Func<obj, obj, (unit -> unit)>) array
-        /// <summary>The document head entries of the part.</summary>
-        Heads: HeadTemplate array
+        /// <summary>
+        /// The document head entries of the part in document order, each with the number of the part's dynamic nodes
+        /// before it.
+        /// </summary>
+        Heads: (HeadTemplate * int) array
         EventNames: string array
         Dispatch: Func<obj array, Node, obj, unit>
         Regions: CompiledRegion array
         Children: CompiledChild array
+        /// <summary>The server node each collected node adopts, in collection order; empty for an inlined child's tables.</summary>
+        Expect: Expectation array
+        /// <summary>The definition's <c>structuralHash</c>, computed on first use; empty for an inlined child's tables.</summary>
+        Hash: Lazy<string>
     }
 
 and [<NoEquality; NoComparison>] CompiledChild =
@@ -300,6 +423,8 @@ let private compilePart
     (walk: int array)
     (regions: CompiledRegion array)
     (children: CompiledChild array)
+    (expect: Expectation array)
+    (hash: Lazy<string>)
     : Compiled =
     let renderSlots, isolatedSlots, properties, events, placed =
         tables layout.Targets layout.Owners part first count
@@ -321,13 +446,34 @@ let private compilePart
         Placed = placed
         Heads =
             layout.Heads
-            |> Array.filter (fun (_, owner) -> owner = part)
-            |> Array.map fst
+            |> Array.filter (fun (_, owner, _) -> owner = part)
+            |> Array.map (fun (head, _, position) -> head, position - first)
         EventNames = eventNames
         Dispatch = dispatchFor count events eventNames
         Regions = regions
         Children = children
+        Expect = expect
+        Hash = hash
     }
+
+let private noHash = lazy ""
+
+let private expectation (target: TemplateNode) : Expectation =
+    match target with
+    | ElementNode (tag, _, _, _, _, _, _) -> ExpectElement (name tag)
+    | TextSlotNode _ -> ExpectText
+    | RegionNode region ->
+        ExpectRegion (
+            match region.Row with
+            | ItemRow _ -> ListRows
+            | ArmRow -> SelectedArm
+            | ViewRow -> ViewHole
+            | BoundaryRow -> BoundaryContent
+        )
+    | TextNode _
+    | FragmentNode _
+    | ChildNode _
+    | HeadNode _ -> raise (InvalidOperationException "Static nodes are not dynamic targets")
 
 /// <summary>Compiles a definition once: parses its skeleton markup and builds its walk, its slot tables, its regions and its inlined children's slot tables.</summary>
 /// <remarks>A skeleton with regions belongs to the main document, as do its clones; a skeleton without regions belongs to the template element's inert document.</remarks>
@@ -389,7 +535,7 @@ let compile (definition: TemplateComponent) : Compiled =
                 Props = child.Props
                 Owner = child.Owner
                 Offset = child.First
-                Tables = compilePart layout (index + 1) child.First child.Count Unchecked.defaultof<Node> 0 [||] [||] [||]
+                Tables = compilePart layout (index + 1) child.First child.Count Unchecked.defaultof<Node> 0 [||] [||] [||] [||] noHash
             })
 
     compilePart
@@ -408,6 +554,9 @@ let compile (definition: TemplateComponent) : Compiled =
              walk)
         regions
         children
+        (targets
+         |> Array.map (fun (target, _) -> expectation target))
+        (lazy (structuralHash definition))
 
 /// <summary>The mount-owned operations a template instance uses.</summary>
 type internal MountServices =
@@ -429,6 +578,9 @@ type internal MountServices =
     abstract Head: HeadEntry -> unit
     /// <summary>The ids of the mount; an instance's setup runs in its window.</summary>
     abstract Identity: IdentityScope
+
+    /// <summary>The cursor of the server nodes an instance adopts; null outside hydration.</summary>
+    abstract Hydration: HydrationCursor
 
     /// <summary>
     /// Mounts a region between its start and end markers. The flag marks markers that are roots of the appended clone;
@@ -478,14 +630,62 @@ let private write (slot: Slot) (node: obj) (value: obj) =
     | TextTarget -> setData node value
     | ContentTarget -> (unbox<HTMLElement> node).innerHTML <- markupOf value
 
+[<Emit("$0.data !== ($1 == null ? '' : String($1))")>]
+let private dataDiffers (node: obj) (value: obj) : bool = jsNative
+
+/// <summary>Whether the attribute differs from <c>value</c>, a string, or null for an absent attribute.</summary>
+[<Emit("$0.getAttribute($1) !== ($2 == null ? null : String($2))")>]
+let private attributeDiffers (node: obj) (name: string) (value: obj) : bool = jsNative
+
+[<Emit("$0.defaultValue !== ($1 == null ? '' : String($1))")>]
+let private defaultValueDiffers (node: obj) (value: obj) : bool = jsNative
+
+/// <summary>
+/// Writes a property's value during hydration when the server HTML differs from the client's serialisation: an
+/// attribute serialisation compares the attribute, a child-text property the element's <c>defaultValue</c>; a
+/// browser-only property is always written.
+/// </summary>
+let private writeHydratingProperty (property: PortableProperty) (node: obj) (value: obj) =
+    let differs =
+        match property.Html with
+        | AsAttribute (attribute, serialise) ->
+            attributeDiffers
+                node
+                attribute
+                (match serialise.Invoke value with
+                 | Some text -> box text
+                 | None -> null)
+        | AsChildText -> defaultValueDiffers node value
+        | BrowserOnly -> true
+
+    if differs then
+        property.Write.Invoke (node, value)
+
+/// <summary>Writes a slot's first value during hydration when it differs from the server node; raw content is always written.</summary>
+let private writeHydrating (slot: Slot) (node: obj) (value: obj) =
+    match slot.Target with
+    | AttributeTarget name ->
+        if attributeDiffers node name value then
+            setAttribute node value name
+    | PropertyTarget property -> writeHydratingProperty property node value
+    | TextTarget ->
+        if dataDiffers node value then
+            setData node value
+    | ContentTarget -> write slot node value
+
 // A failed write keeps the slot's previous value. During setup the failure aborts the mount; afterwards it is reported.
+// During hydration the first value is compared with the server node before it is written.
 let private commit (services: MountServices) (state: obj array) (slot: Slot) (nodeIndex: int) (previousIndex: int) (value: obj) =
     let previous = at state previousIndex
 
     if obj.ReferenceEquals (value, unset) then
         match slot.Target with
         | TextTarget when obj.ReferenceEquals (previous, unset) ->
-            setData (at state (StateNodes + nodeIndex)) ""
+            let node = at state (StateNodes + nodeIndex)
+
+            if isNull services.Hydration || dataDiffers node "" then
+                setData node ""
+
             store state previousIndex (box "")
         | _ -> ()
     elif
@@ -493,7 +693,14 @@ let private commit (services: MountServices) (state: obj array) (slot: Slot) (no
         || not (slot.Same.Invoke (previous, value))
     then
         try
-            write slot (at state (StateNodes + nodeIndex)) value
+            if
+                obj.ReferenceEquals (previous, unset)
+                && not (isNull services.Hydration)
+            then
+                writeHydrating slot (at state (StateNodes + nodeIndex)) value
+            else
+                write slot (at state (StateNodes + nodeIndex)) value
+
             store state previousIndex value
         with error ->
             if services.SettingUp () then
@@ -677,16 +884,24 @@ let private listenDirect (services: MountServices) (state: obj array) (node: obj
                     scope.FailAll [ error ]
     )
 
-/// <summary>Writes a part's static properties, starts its render and isolated effects, attaches its events and registers its placed hooks.</summary>
+/// <summary>
+/// Writes a part's static properties, starts its render and isolated effects, attaches its events, and registers its
+/// document head entries and placed hooks in document order. During hydration a static property is written as a slot's
+/// first value is.
+/// </summary>
 /// <remarks>The effects and listeners retain the state array and the services.</remarks>
 let private bind (services: MountServices) (compiled: Compiled) (state: obj array) =
     let properties = compiled.Properties
+    let hydrating = not (isNull services.Hydration)
 
     for i in 0 .. properties.Length - 1 do
         let nodeIndex, property, value = at properties i
 
         try
-            property.Write.Invoke (at state (StateNodes + nodeIndex), value)
+            if hydrating then
+                writeHydratingProperty property (at state (StateNodes + nodeIndex)) value
+            else
+                property.Write.Invoke (at state (StateNodes + nodeIndex), value)
         with error when services.SettingUp () ->
             services.SetupFailed error
             reraise ()
@@ -725,15 +940,27 @@ let private bind (services: MountServices) (compiled: Compiled) (state: obj arra
             listenDirect services state node eventName handler
 
     let placed = compiled.Placed
+    let heads = compiled.Heads
+    let instance = at state StateInstance
+    let mutable head = 0
 
     if placed.Length > 0 then
         let owner = at state StateOwner :?> Owner
-        let instance = at state StateInstance
 
         for i in 0 .. placed.Length - 1 do
             let nodeIndex, kind, hook = at placed i
+
+            while head < heads.Length
+                  && snd (at heads head) <= nodeIndex do
+                services.Head (headEntry (fst (at heads head)) instance)
+                head <- head + 1
+
             let node: Node = unbox (at state (StateNodes + nodeIndex))
             PlacedHook.register services.Placement services.Scope owner kind node (fun () -> hook.Invoke (instance, box node))
+
+    while head < heads.Length do
+        services.Head (headEntry (fst (at heads head)) instance)
+        head <- head + 1
 
 /// <summary>The instance of a part: the template's own for 0, an inlined child's from its state array otherwise.</summary>
 let private partInstance (state: obj array) (childBase: int) (part: int) : obj =
@@ -755,10 +982,193 @@ let private setUpChild (services: MountServices) (child: CompiledChild) (owner: 
     let setup = ownSetup services.Identity services.Setup
     Api.untrack (fun () -> child.Definition.Setup.Invoke (setup, child.Props.Invoke owner))
 
+/// <summary>The server node's name for a mismatch: a comment's markup, an element's or text node's lowercase name, or <c>absent</c>.</summary>
+let internal describe (node: Node) : string =
+    if isNull (box node) then "absent"
+    elif isComment node then "<!--" + dataOf node + "-->"
+    else node.nodeName.ToLowerInvariant ()
+
+[<Emit("$0.parentNode.replaceChild($1, $2)")>]
+let private replaceNode (existing: Node) (replacement: Node) (replaced: Node) : unit = jsNative
+
+[<Emit("$0.appendChild($1)")>]
+let private appendNode (parent: Node) (node: Node) : unit = jsNative
+
+[<Emit("$0.remove()")>]
+let private removeNode (node: Node) : unit = jsNative
+
+[<Emit("$0 != null && $0.nodeType === 8 && $0.data === '_'")>]
+let private isEmptyText (node: Node) : bool = jsNative
+
+/// <summary>Replaces the <c>&lt;!--_--&gt;</c> placeholder with an empty text node, recording the inverse, and returns the text node.</summary>
+let private replacePlaceholder (cursor: HydrationCursor) (placeholder: Node) : Node =
+    let text = document.createTextNode "" :> Node
+    replaceNode placeholder text placeholder
+    cursor.Undo (fun () -> replaceNode text placeholder text)
+    text
+
+/// <summary>
+/// Takes the instance's <c>RootCount</c> roots from the logical siblings at <c>cursor.Next</c>, each checked against the
+/// skeleton root at its index, and moves the cursor past the last. A text root accepts a text node or the
+/// <c>&lt;!--_--&gt;</c> placeholder, which is replaced; a start marker accepts any start marker, and another comment one
+/// with the same data.
+/// </summary>
+/// <exception cref="T:Ranvier.View.Foundation.TemplateDom.HydrationMismatchException">A root differs from the skeleton's.</exception>
+let private adoptRoots (cursor: HydrationCursor) (compiled: Compiled) : Node array =
+    let count = compiled.RootCount
+    let roots: Node array = Array.zeroCreate count
+    let skeleton = compiled.Skeleton
+
+    let mutable expected: Node =
+        if count = 1 then skeleton else unbox skeleton.firstChild
+
+    let mutable node = cursor.Next
+
+    for index in 0 .. count - 1 do
+        let fail (description: string) (found: Node) =
+            raise (mismatch ("#" + string index) description (describe found))
+
+        if expected.nodeType = 1. then
+            if
+                isNull (box node)
+                || node.nodeType <> 1.
+                || node.nodeName.ToLowerInvariant ()
+                   <> expected.nodeName.ToLowerInvariant ()
+            then
+                fail ("<" + expected.nodeName.ToLowerInvariant () + ">") node
+        elif expected.nodeType = 3. then
+            if isEmptyText node then
+                node <- replacePlaceholder cursor node
+            elif isNull (box node) || node.nodeType <> 3. then
+                fail "a text node" node
+        elif isStartMarker expected then
+            if not (isStartMarker node) then
+                fail "a region marker" node
+        elif
+            isNull (box node)
+            || not (isComment node)
+            || dataOf node <> dataOf expected
+        then
+            fail ("<!--" + dataOf expected + "-->") node
+
+        roots[index] <- node
+        node <- logicalNext node
+        expected <- following expected
+
+    cursor.Next <- node
+    roots
+
+/// <summary>Whether the node is a start marker of a region of <c>kind</c>.</summary>
+let private marksRegion (kind: RegionKind) (node: Node) =
+    isStartMarker node
+    && match kind with
+       | ListRows
+       | ViewHole -> dataOf node = "["
+       | SelectedArm -> (dataOf node).StartsWith "[a:"
+       | BoundaryContent ->
+           let data = dataOf node
+           data = "[c" || data = "[p" || data = "[e"
+
+[<Emit("$0 != null && $0.nodeType === 1 && ($0.localName === 'textarea' || $0.localName === 'title')")>]
+let private isRcdataElement (node: Node) : bool = jsNative
+
+/// <summary>
+/// The server node a collected node adopts: <c>node</c> checked against <c>expect</c>. A text expectation replaces the
+/// <c>&lt;!--_--&gt;</c> placeholder with an empty text node, and creates one in an empty <c>textarea</c> or
+/// <c>title</c>, <c>parent</c>; each edit's inverse is recorded.
+/// </summary>
+/// <exception cref="T:Ranvier.View.Foundation.TemplateDom.HydrationMismatchException">The node differs from the expectation.</exception>
+let private adoptTarget (cursor: HydrationCursor) (expect: Expectation) (path: ResizeArray<int>) (parent: Node) (node: Node) : Node =
+    let fail (description: string) =
+        raise (mismatch (path |> Seq.map string |> String.concat "/") description (describe node))
+
+    match expect with
+    | ExpectElement tag ->
+        if
+            isNull (box node)
+            || node.nodeType <> 1.
+            || node.nodeName.ToLowerInvariant ()
+               <> tag.ToLowerInvariant ()
+        then
+            fail ("<" + tag + ">")
+
+        node
+    | ExpectText ->
+        if isEmptyText node then
+            replacePlaceholder cursor node
+        elif isNull (box node) && isRcdataElement parent then
+            let text = document.createTextNode "" :> Node
+            appendNode parent text
+            cursor.Undo (fun () -> removeNode text)
+            text
+        elif isNull (box node) || node.nodeType <> 3. then
+            fail "a text node"
+        else
+            node
+    | ExpectRegion kind ->
+        if not (marksRegion kind node) then
+            fail "a region marker"
+
+        node
+
+/// <summary>
+/// Collects the dynamic nodes of adopted roots into <c>state</c>, running the compiled walk with a logical
+/// <c>NextSibling</c>: a start marker's next position is its matching end marker. A multi-root walk starts at the roots'
+/// virtual fragment: its first <c>FirstChild</c> is the first root.
+/// </summary>
+let private collectAdopted (roots: Node array) (compiled: Compiled) (state: obj array) (cursor: HydrationCursor) =
+    let walk = compiled.Walk
+    let single = compiled.RootCount = 1
+    let mutable node = if single then roots[0] else noNode
+    let mutable parent = noNode
+    // The child-index path of `node` in the skeleton's numbering.
+    let path = ResizeArray<int>()
+
+    if single then
+        path.Add 0
+
+    let mutable count = 0
+
+    for index in 0 .. walk.Length - 1 do
+        let op = at walk index
+
+        if op = FirstChild then
+            let atFragment = path.Count = 0
+            path.Add 0
+            parent <- node
+
+            node <-
+                if atFragment then
+                    (if roots.Length = 0 then noNode else roots[0])
+                elif isNull (box node) then
+                    noNode
+                else
+                    unbox node.firstChild
+        elif op = NextSibling then
+            path[path.Count - 1] <- path[path.Count - 1] + 1
+
+            node <-
+                if isNull (box node) then
+                    noNode
+                elif not single && path.Count = 1 then
+                    // A root's next position is the next adopted root.
+                    let position = path[0]
+                    if position < roots.Length then roots[position] else noNode
+                else
+                    logicalNext node
+        elif op = Parent then
+            path.RemoveAt (path.Count - 1)
+            node <- parent
+            parent <- if isNull (box node) then noNode else unbox node.parentNode
+        else
+            node <- adoptTarget cursor (at compiled.Expect count) path parent node
+            store state (StateNodes + count) (box node)
+            count <- count + 1
+
 /// <summary>
 /// Materialises one instance at the position one step of <c>kind</c> below <c>parent</c>: runs setup, clones the
-/// skeleton, binds its slots, events and placed hooks and those of its inlined children, appends it and mounts its
-/// regions.
+/// skeleton or, during hydration, adopts the server nodes at the cursor, binds its slots, events, head entries and
+/// placed hooks and those of its inlined children, appends it and mounts its regions.
 /// </summary>
 let rec internal materialise
     (definition: TemplateDefinition)
@@ -792,13 +1202,19 @@ let rec internal materialise
         finally
             identity.Leave ()
 
-    let clone = compiled.Skeleton.cloneNode true
+    let cursor = services.Hydration
     let state = stateFor compiled instance children.Length
-    collect clone compiled.Walk state
-    bind services compiled state
+    let mutable clone = noNode
+    let mutable roots: Node array = null
 
-    for i in 0 .. compiled.Heads.Length - 1 do
-        services.Head (headEntry (at compiled.Heads i) instance)
+    if isNull cursor then
+        clone <- compiled.Skeleton.cloneNode true
+        collect clone compiled.Walk state
+    else
+        roots <- adoptRoots cursor compiled
+        collectAdopted roots compiled state cursor
+
+    bind services compiled state
 
     let childBase =
         StateNodes
@@ -826,10 +1242,10 @@ let rec internal materialise
         store state (childBase + k) (box childState)
         bind services tables childState
 
-        for h in 0 .. tables.Heads.Length - 1 do
-            services.Head (headEntry (at tables.Heads h) childInstance)
-
-    if compiled.RootCount = 1 then
+    if not (isNull cursor) then
+        for index in 0 .. roots.Length - 1 do
+            services.Append (at roots index)
+    elif compiled.RootCount = 1 then
         services.Append clone
     else
         let mutable root: Node = unbox clone.firstChild
@@ -860,7 +1276,13 @@ let rec internal materialise
         let regionPath = partPath
         let regionIndex = region.Index
         let start: Node = unbox (at state (StateNodes + region.Marker))
-        let finish: Node = unbox start.nextSibling
+
+        let finish: Node =
+            if isNull cursor then
+                unbox start.nextSibling
+            else
+                matchingEnd start
+
         let items = region.Items
 
         let read =
