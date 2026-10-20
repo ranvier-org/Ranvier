@@ -44,6 +44,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 83,048 | 127,105 | 1,734,142 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 83,432 | 127,121 | 1,734,404 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 83,052 | 127,148 | 1,734,165 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 83,306 | 127,188 | 1,734,156 |
 
 ## app-table
 
@@ -89,6 +90,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 4,416,352 | 9,203,562 | 107,430,896 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 4,416,157 | 9,491,867 | 107,302,102 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 4,416,202 | 9,203,775 | 107,301,567 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 4,416,312 | 9,325,388 | 107,415,846 |
 
 ## async-recover
 
@@ -134,6 +136,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 139,048 | 39,725 | 440,644 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 139,040 | 39,650 | 440,652 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 139,040 | 39,723 | 440,649 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 139,040 | 39,714 | 440,649 |
 
 ## async-resolve
 
@@ -179,6 +182,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 2,793,110 | 1,085,386 | 12,317,049 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 2,792,310 | 1,085,329 | 12,314,001 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 2,792,309 | 1,085,796 | 12,314,132 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 2,792,310 | 1,085,311 | 12,314,272 |
 
 ## chain
 
@@ -224,6 +228,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 
 ## chain-affinity
 
@@ -269,6 +274,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 2,549 | 3,067 | 2,496 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 2,549 | 3,067 | 2,496 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 2,549 | 3,067 | 2,496 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 2,549 | 3,067 | 2,496 |
 
 ## control
 
@@ -314,6 +320,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 74,709 | 833,999 | 2,605,091 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 74,709 | 834,956 | 2,605,086 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 74,709 | 833,937 | 2,605,105 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 74,709 | 833,953 | 2,605,077 |
 
 ## create
 
@@ -359,6 +366,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 13,575,594 | 2,859,678 | 2,532,361 | 2,131,334 | 4,003,678 | 34,063,391 | 49,723,780 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 13,450,133 | 2,875,677 | 2,532,361 | 2,131,946 | 4,004,114 | 34,063,566 | 49,723,544 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 13,450,071 | 2,859,678 | 2,532,361 | 2,131,458 | 4,004,154 | 34,066,730 | 49,723,845 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 13,450,057 | 2,859,678 | 2,532,361 | 2,131,518 | 4,003,959 | 34,063,624 | 49,723,566 |
 
 ## create-on
 
@@ -404,6 +412,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 2,910,483 | 4,147,726 | 54,424,662 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 2,910,483 | 4,147,556 | 54,424,689 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 2,926,484 | 4,147,505 | 54,424,688 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 2,926,483 | 4,147,660 | 54,424,821 |
 
 ## cutoff
 
@@ -449,6 +458,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 
 ## derive-effect
 
@@ -494,6 +504,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 765 | 768 | 16,102 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 765 | 768 | 16,102 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 765 | 768 | 16,102 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 765 | 768 | 16,102 |
 
 ## derive-on
 
@@ -539,6 +550,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 737 | 775 | 16,261 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 737 | 775 | 16,261 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 737 | 775 | 16,261 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 737 | 775 | 16,261 |
 
 ## dispose
 
@@ -584,6 +596,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 2,707,644 | 806,291 | 367,497 | 466,067 | 485,210 | 13,195,163 | 9,105,961 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 2,707,643 | 806,291 | 367,497 | 465,931 | 485,220 | 13,195,546 | 9,106,491 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 2,707,643 | 806,290 | 367,497 | 466,202 | 485,089 | 13,194,030 | 9,106,150 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 2,707,641 | 806,291 | 367,497 | 466,091 | 485,125 | 13,195,635 | 9,105,967 |
 
 ## dispose-on
 
@@ -629,6 +642,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 346,497 | 478,468 | 8,902,248 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 346,497 | 478,492 | 8,902,693 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 346,497 | 478,608 | 8,902,307 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 346,497 | 478,565 | 8,901,904 |
 
 ## editable-edit
 
@@ -674,6 +688,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 180,106 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 180,106 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 180,106 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 180,106 |
 
 ## editable-upstream
 
@@ -719,6 +734,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 231,255 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 231,255 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 231,255 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 231,255 |
 
 ## fail-recompute
 
@@ -764,6 +780,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 65,098 | 1,366 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 65,082 | 1,366 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 65,082 | 1,366 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 65,082 | 1,366 |
 
 ## flight
 
@@ -809,6 +826,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 10,995 | 6,215 | 6,216 | 11,316 | 10,763 | 22,343 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 10,995 | 6,215 | 6,216 | 11,316 | 10,763 | 22,343 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 10,995 | 6,215 | 6,216 | 11,316 | 10,763 | 22,343 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 10,995 | 6,215 | 6,216 | 11,316 | 10,763 | 22,343 |
 
 ## keyed-insert
 
@@ -854,6 +872,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 1,921,809 | 53,951 | 54,949 | 3,218,687 | 661,692 | 176,576 | 44,849,813 | 2,634,960 | 2,654,184 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 1,921,809 | 53,971 | 54,948 | 3,218,737 | 661,695 | 176,469 | 44,849,847 | 2,634,939 | 2,654,314 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 1,921,801 | 53,951 | 54,942 | 3,218,668 | 661,900 | 176,563 | 44,849,844 | 2,634,980 | 2,654,193 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 1,921,809 | 53,951 | 54,947 | 3,218,777 | 661,746 | 176,641 | 44,849,870 | 2,634,910 | 2,654,364 |
 
 ## keyed-remove
 
@@ -899,6 +918,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 1,920,755 | 43,628 | 45,284 | 3,245,043 | 593,156 | 605,276 | 44,798,164 | 1,924,878 | 1,958,567 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 1,920,742 | 43,648 | 45,284 | 3,245,029 | 593,013 | 605,193 | 44,798,627 | 1,924,937 | 1,958,580 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 1,920,734 | 43,628 | 45,276 | 3,244,996 | 593,198 | 605,050 | 44,798,159 | 1,924,898 | 1,958,578 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 1,920,739 | 43,628 | 45,285 | 3,244,990 | 593,054 | 605,284 | 44,798,146 | 1,924,864 | 1,958,576 |
 
 ## keyed-swap
 
@@ -944,6 +964,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 1,973,428 | 46,161 | 46,916 | 3,566,419 | 148,779 | 511,233 | 45,980,315 | 916,555 | 932,783 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 1,973,428 | 46,177 | 46,916 | 3,565,260 | 148,814 | 511,392 | 45,980,289 | 916,542 | 932,942 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 1,973,412 | 46,162 | 46,900 | 3,560,289 | 148,782 | 511,268 | 45,980,332 | 916,504 | 932,917 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 1,973,428 | 46,161 | 46,915 | 3,564,429 | 148,798 | 511,205 | 45,980,650 | 916,496 | 932,804 |
 
 ## mvu-dispatch
 
@@ -989,6 +1010,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 58,261 | 772 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 58,261 | 772 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 58,261 | 772 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 58,261 | 772 |
 
 ## project-chain
 
@@ -1034,6 +1056,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 1,070,368 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 1,070,317 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 1,070,385 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 1,070,355 |
 
 ## project-churn
 
@@ -1079,6 +1102,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 36,473 | 34,310 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 36,489 | 34,326 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 36,473 | 34,310 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 36,489 | 34,326 |
 
 ## project-edit
 
@@ -1124,6 +1148,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 50,415 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 50,431 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 50,415 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 50,431 |
 
 ## project-reorder
 
@@ -1169,6 +1194,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 779,155 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 779,172 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 779,156 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 779,170 |
 
 ## server-render
 
@@ -1214,6 +1240,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 677,932 | 1,131,263 | 9,832,850 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 676,364 | 1,131,339 | 9,833,276 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 676,332 | 1,131,490 | 9,832,897 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 676,332 | 1,130,471 | 9,832,698 |
 
 ## shape-diamond
 
@@ -1259,6 +1286,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 59,899 | 79,968 | 1,763,357 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 59,899 | 79,968 | 1,763,357 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 59,899 | 79,968 | 1,763,357 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 59,899 | 79,968 | 1,763,357 |
 
 ## shape-dynamic
 
@@ -1304,6 +1332,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 82,921 | 107,033 | 2,006,140 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 82,921 | 107,033 | 2,006,140 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 82,921 | 107,033 | 2,006,140 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 82,921 | 107,033 | 2,006,140 |
 
 ## stream-burst-1
 
@@ -1349,6 +1378,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 1,974 | 1,572 | 2,491 | 4,672 | 3,644 | 13,372 | 47,201 | 45,417 | 55,171 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 1,974 | 1,572 | 2,491 | 4,670 | 3,644 | 13,366 | 47,201 | 45,417 | 55,168 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 1,974 | 1,572 | 2,491 | 4,672 | 3,644 | 13,369 | 47,201 | 45,417 | 55,169 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 1,974 | 1,572 | 2,491 | 4,672 | 3,644 | 13,369 | 47,201 | 45,417 | 55,169 |
 
 ## stream-burst-16
 
@@ -1394,6 +1424,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 5,631 | 25,017 | 5,701 | 9,499 | 49,601 | 8,050 | 120,973 | 714,180 | 113,522 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 5,631 | 25,017 | 5,701 | 9,502 | 49,601 | 8,051 | 120,973 | 714,180 | 113,519 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 5,631 | 25,017 | 5,701 | 9,503 | 49,601 | 8,051 | 120,973 | 714,180 | 113,519 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 5,631 | 25,017 | 5,701 | 9,501 | 49,601 | 8,051 | 120,969 | 714,180 | 113,520 |
 
 ## stream-burst-256
 
@@ -1439,6 +1470,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 64,131 | 400,101 | 57,040 | 127,472 | 787,260 | 74,603 | 1,301,576 | 11,413,287 | 1,046,550 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 64,131 | 400,101 | 57,040 | 127,421 | 787,259 | 74,595 | 1,301,529 | 11,413,287 | 1,046,482 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 64,131 | 400,101 | 57,040 | 127,474 | 787,200 | 74,605 | 1,301,576 | 11,413,287 | 1,046,550 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 64,131 | 400,101 | 57,040 | 127,452 | 787,223 | 74,603 | 1,301,576 | 11,413,290 | 1,046,484 |
 
 ## stream-restart
 
@@ -1484,6 +1516,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 4,188 | 4,976 | 6,106 | 16,355 | 41,497 | 70,403 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 4,188 | 4,996 | 6,102 | 16,358 | 41,495 | 70,406 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 4,188 | 4,976 | 6,106 | 16,360 | 41,498 | 70,402 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 4,188 | 4,976 | 6,106 | 16,358 | 41,497 | 70,404 |
 
 ## timed-admit-both
 
@@ -1529,6 +1562,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 118,591 | 134,967 | 2,679,929 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 118,591 | 134,965 | 2,679,929 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 118,591 | 134,965 | 2,679,929 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 118,591 | 134,965 | 2,679,928 |
 
 ## timed-admit-debounce
 
@@ -1574,6 +1608,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 117,496 | 133,558 | 2,640,272 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 117,496 | 133,558 | 2,640,273 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 117,496 | 133,558 | 2,640,285 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 117,496 | 133,557 | 2,640,272 |
 
 ## timed-admit-first
 
@@ -1619,6 +1654,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 69,479 | 79,052 | 1,611,692 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 69,479 | 79,053 | 1,611,692 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 69,479 | 79,053 | 1,611,692 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 69,479 | 79,053 | 1,611,692 |
 
 ## timed-admit-last
 
@@ -1664,6 +1700,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 117,758 | 133,852 | 2,650,128 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 117,758 | 133,852 | 2,650,141 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 117,758 | 133,877 | 2,650,128 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 117,758 | 133,853 | 2,650,128 |
 
 ## timed-capture-both
 
@@ -1709,6 +1746,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 35,726 | 44,805 | 846,997 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 35,726 | 44,808 | 846,997 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 35,726 | 44,808 | 846,997 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 35,726 | 44,808 | 846,999 |
 
 ## timed-capture-debounce
 
@@ -1754,6 +1792,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 35,598 | 44,103 | 847,375 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 35,598 | 44,104 | 847,375 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 35,598 | 44,104 | 847,375 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 35,598 | 44,104 | 847,375 |
 
 ## timed-capture-first
 
@@ -1799,6 +1838,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 32,078 | 36,612 | 745,370 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 32,078 | 36,612 | 745,370 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 32,078 | 36,612 | 745,372 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 32,078 | 36,612 | 745,372 |
 
 ## timed-capture-last
 
@@ -1844,6 +1884,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 35,534 | 44,040 | 839,503 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 35,534 | 44,040 | 839,503 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 35,534 | 44,040 | 839,503 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 35,534 | 44,040 | 839,503 |
 
 ## update
 
@@ -1889,6 +1930,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 1,089,283 | 38,805 | 82,505 | 262,529 | 151,711 | 3,350,289 | 2,502,802 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 1,087,683 | 38,805 | 82,505 | 262,474 | 151,703 | 3,350,265 | 2,502,833 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 1,089,283 | 38,805 | 82,505 | 262,483 | 151,715 | 3,350,266 | 2,502,844 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 1,087,683 | 38,805 | 82,505 | 262,463 | 151,710 | 3,350,232 | 2,502,805 |
 
 ## update-on
 
@@ -1934,6 +1976,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 93,005 | 165,229 | 2,830,393 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 93,005 | 165,185 | 2,830,404 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 93,005 | 165,259 | 2,830,433 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 93,005 | 165,219 | 2,830,335 |
 
 ## work-form
 
@@ -1979,6 +2022,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 170,300 | 163,392 | 295,967 | 291,422 | 5,349,177 | 5,295,441 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 170,300 | 163,392 | 295,912 | 291,395 | 5,349,284 | 5,295,446 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 170,300 | 163,392 | 295,948 | 291,398 | 5,349,284 | 5,295,444 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 170,300 | 163,392 | 295,901 | 291,347 | 5,349,287 | 5,295,440 |
 
 ## work-status
 
@@ -2024,6 +2068,7 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 100,445 | 78,815 | 264,842 | 152,911 | 2,611,017 | 2,360,847 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 100,445 | 78,815 | 264,821 | 152,964 | 2,611,057 | 2,360,877 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 100,445 | 78,815 | 264,843 | 152,965 | 2,611,046 | 2,360,873 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 100,445 | 78,815 | 264,817 | 152,938 | 2,611,041 | 2,360,865 |
 
 ## work-value
 
@@ -2069,4 +2114,5 @@
 | `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 107,569 | 119,469 | 265,090 | 279,879 | 2,595,670 | 2,920,217 |
 | `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | 107,569 | 119,469 | 265,067 | 279,896 | 2,595,694 | 2,920,213 |
 | `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | 107,569 | 119,469 | 265,072 | 279,903 | 2,595,717 | 2,920,193 |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 107,569 | 119,471 | 265,066 | 279,870 | 2,595,602 | 2,920,213 |
 
