@@ -185,7 +185,7 @@ The plan expected `nested list regions hydrate and update` to kill the first mut
 
 ## Hydration in Chromium
 
-Ranvier's `hydrate` of its own `Server.render` output (Omit policy, `{ IdPrefix = "r"; Strict = true }`) against Ranvier's client mount of the same page and against Solid 2's `hydrate` of its own `renderToString` output. The fixtures are `ServerFixtures.componentPage` (1, 16 and 128 rows) and `ServerFixtures.keyedPage` (1000 and 10000 rows) through `HydrationPerf`, and the same trees in Solid 2 (`server-solid.jsx`, compiled `generate: "ssr", hydratable: true` in Node for the server HTML and `generate: "dom", hydratable: true` in the bundle). Each Ranvier call creates a new `Graph`, and its disposal disposes the graph.
+Ranvier's `hydrate` of its own `Server.render` output (Omit policy, `{ IdPrefix = "r"; Strict = true }`) against Ranvier's client mount of the same page and against Solid 2's `hydrate` of its own `renderToString` output. The fixtures are `ServerFixtures.componentPage` (1, 16 and 128 rows) and `ServerFixtures.keyedPage` (1000 and 10000 rows) through `HydrationPerf`, and the same trees in Solid 2 (`server-solid.jsx`, compiled `generate: "ssr", hydratable: true` in Node for the server HTML and `generate: "dom", hydratable: true` in the bundle). Each Ranvier call creates a new `Graph`, and its disposal disposes the graph. The mount side runs `Mounting.mount` with `Program.run (Component.render page rows)`, while `hydrate` calls `Backend.Template` directly; the extra `Program.run` call is one indirection per mount and is counted in mount's time.
 
 Harness: `hydration-bench.mjs` follows `boundary-reveal.mjs`. Three Chromium processes each verify every fixture and mode, then run 60 samples per mode after 3 warmups per mode, for each fixture and row count (`--rounds`; the cyclic rotation defaults to Task 20's 15). The default rotation, `balanced`, orders each process's samples by a de Bruijn sequence of the three modes, so in every 9 samples each mode follows each mode, itself included, once; each process relabels the modes by its index. Each sample records the mode sampled before it, and `byPrevious` gives each mode's median per predecessor. `--rotation=cyclic` keeps Task 20's order, which runs the three modes in their cyclic order each round, starting one mode later per round and per process. Before each sample the page fills its hosts (attached to the body) with the server HTML, parsed as a document parse places it (`Range.createContextualFragment`), and the runner forces a collection (`HeapProfiler.collectGarbage`); the fill is outside the timed region, and `ranvier-mount` hosts stay empty. A sample times 64, 32 or 8 calls at 1, 16 or 128 component rows and 2 or 1 calls at 1000 or 10000 keyed rows, one host per call, and records milliseconds per call. The first-click timing is one call followed by a click on the first row's button (component) or link (keyed) and the commit of its update (`flush()` for Solid 2), in the same order as the samples, with a collection before each. Retained heap is the GC-stabilised JavaScript heap of 32 live hydrated (or mounted) hosts, their server DOM included, divided by their rows.
 
@@ -257,6 +257,27 @@ The two rotations' pooled ratios differ by more than the run-to-run spread only 
 
 Other ratios, reported and not gated (balanced run): Ranvier's hydrate against Solid 2's is 3.08 at 1 component row, 2.03 at 16, 1.50 at 128, 0.98 at 1000 keyed rows and 0.57 at 10000. At 1 component row the first click is 0.48 ms for hydrate, 0.52 ms for mount and 0.23 ms for Solid 2. Retained heap per row is within 1.1 % for hydrate and mount from 128 rows on (815 against 806 bytes at 1000 keyed rows). At one component row the per-host cost dominates (about 11 KB per hydrated host). The 1- and 16-row heaps have process outliers in every mode: mount 12076 / 1218 / 1940 bytes at 1 row, Solid 2 1576 / 3400 / 460 at 1 row and 124 / 59 / 1616 at 16.
 
+### Lenient against Strict, and a re-run after the rollback-log commit
+
+Not a gate. `hydration-bench.mjs` now ends each process with a lenient block: Strict hydration and lenient hydration (`Hydration.HydrationOptions.defaults`, `Strict = false`) of the same server HTML, 30 measured pairs per fixture after 3 warm-up pairs, the pair's order alternating by round (`lenientVersusStrict` in the output). One run, 2026-10-20 at 21:36–21:47 under the benchmark and browser locks, `--build`, base `7d0078c` with the benchmark files uncommitted (`dirty`), output outside the repository; the gate's file above is unchanged.
+
+| Fixture | Rows | Strict (µs) | Lenient (µs) | Lenient / Strict (per process) |
+|---|---|---|---|---|
+| component | 16 | 146.9 | 149.2 | 1.016 (1.011 / 1.003 / 1.014) |
+| keyed | 1000 | 4645 | 4593 | 0.989 (1.012 / 0.977 / 0.998) |
+
+Lenient hydration is within 2 % of Strict at both sizes. The same run's predecessor-matched gate, after `ef5ec56` (a hydrated root discards its rollback log once `Run` succeeds):
+
+| Fixture | Rows | After hydrate | After mount | After Solid 2 | Max: gate |
+|---|---|---|---|---|---|
+| component | 1 | 0.991 | 1.032 | 1.003 | **1.032, fails** |
+| component | 16 | 0.935 | 0.979 | 0.897 | 0.979, holds |
+| component | 128 | 0.893 | 0.895 | 0.926 | 0.926, holds |
+| keyed | 1000 | 0.968 | 0.954 | 0.944 | 0.968, holds |
+| keyed | 10000 | 0.597 | 0.610 | 0.708 | 0.708, holds |
+
+The gate's verdict per fixture is the same as in the run above: it fails at 1 component row and holds from 16 on.
+
 ### The per-call cost of hydrate
 
 Phase timers on the 1-row page (temporary instrumentation, removed), in the benchmark's sampling, put the fixed cost in the head guard and the root setup: `DocumentHead.keep` took about 3.7 µs per call before the fix, as much as 11 µs after the forced collection the benchmark runs before each sample, because it copied every head child's attribute list into arrays on every call. The fix:
@@ -310,7 +331,8 @@ Open items:
 2. O1, disposed-mount retention: a disposed mount stays reachable while its graph, or a settled source it read, is alive. This holds for client mounts, ready hydration and, since design 2a, the detached nodes of pending `[c` content. It predates 2a (present at `2a2d43b`) and needs its own triage.
 3. Server render per row: under Node, Solid 2 renders 1.6 to 2.7 times faster from 16 rows on (after Task 12b, above). F6, the server-only owner follow-up parked since Task 5 (the `RunRelease` closures, the `TeardownWindow` lists and the `Nest` allocations of a request's owners, kept because the brief requires `MountLifetime.Child`), is a candidate cause; it is still parked, to revisit with this item.
 4. Keyed create against Solid 2 at 1000 rows: the in-session ratio rose from 1.45 to 1.74 between `ae691d8` and `42d4c30` (above); not a gate, and not attributed to a commit.
-5. Test infrastructure, parked and still open:
+5. Retention of a recovered region's server rows, outside the rollback log. Under Fable a spent slot of the graph's scheduler queue keeps its last effect until a flush of the same length overwrites it (`Platform.releaseSlot`, a documented core trade). The failed hydrating pass's effect holds the pass's adopted rows, so a recovered list's server rows stay reachable until that overwrite. The Chromium retention check runs one 64-effect flush before collecting. Separately, a template region's row builder keeps the roots of the last row it built, which are server nodes when the recovered region has no rows.
+6. Test infrastructure, parked and still open:
    - mixed line endings in the repository (Task 1 Minor 4), pre-existing;
    - `SetMinThreads` hardening for `concurrentTeardown` (Task 5 re-review N2), optional;
    - the Chromium case "Fable watch replaces the app" takes 15.8 s against a 20 s budget and times out under load from concurrent worktrees (Task 5b M2), as does "microtask mode batches a burst"; the budget is unchanged;

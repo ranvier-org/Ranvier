@@ -1,6 +1,7 @@
 // Hydration benchmark in Chromium: Ranvier's hydrate of server HTML against Ranvier's client mount of the same page and
 // against Solid 2's hydrate of its own server HTML, for the component page (1/16/128 rows) and the keyed page
-// (1000/10000 rows). Also the time to the first handled click, and the retained heap per row.
+// (1000/10000 rows). Also the time to the first handled click, the retained heap per row, and lenient against Strict
+// hydration of the component page at 16 rows and the keyed page at 1000 rows.
 // Usage: node benchmarks/frameworks/hydration-bench.mjs [--build] [--verify-only] [--dist=<dir>] [--label=<name>] [--out=<dir>] [--port=<n>] [--rotation=balanced|cyclic] [--rounds=<n>]
 import { chromium } from "@playwright/test";
 import { spawn, execFileSync } from "node:child_process";
@@ -49,6 +50,10 @@ const fixtures = [
   { fixture: "keyed", rows: 1000, count: 2 },
   { fixture: "keyed", rows: 10000, count: 1 }
 ];
+// The lenient block, reported and not gated: Hydration.HydrationOptions.defaults (Strict = false) against Strict
+// hydration, in pairs whose order alternates by round.
+const lenientFixtures = [{ fixture: "component", rows: 16, count: 32 }, { fixture: "keyed", rows: 1000, count: 2 }];
+const lenientModes = ["ranvier-hydrate", "ranvier-hydrate-lenient"], lenientRounds = 30;
 
 if (process.argv.includes("--build")) {
   for (const args of [
@@ -85,7 +90,7 @@ server.stdout.on("data", data => serverOutput += data);
 server.stderr.on("data", data => serverOutput += data);
 const median = values => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
 const url = `http://127.0.0.1:${port}/benchmarks/frameworks/index.html`;
-const samples = [], clicks = [], heaps = [], verified = [];
+const samples = [], clicks = [], heaps = [], verified = [], lenientSamples = [];
 let chromiumVersion;
 
 try {
@@ -108,6 +113,10 @@ try {
     const collect = () => cdp.send("HeapProfiler.collectGarbage");
     for (const { fixture, rows } of fixtures) for (const mode of modes) {
       const entry = await page.evaluate(({ mode, fixture, rows }) => window.hydrationBench.verify(mode, fixture, rows), { mode, fixture, rows });
+      verified.push({ ...entry, replicate, passed: true });
+    }
+    for (const { fixture, rows } of lenientFixtures) {
+      const entry = await page.evaluate(({ fixture, rows }) => window.hydrationBench.verify("ranvier-hydrate-lenient", fixture, rows), { fixture, rows });
       verified.push({ ...entry, replicate, passed: true });
     }
     if (verifyOnly) {
@@ -140,6 +149,18 @@ try {
       const after = await cdp.send("Runtime.getHeapUsage");
       await page.evaluate(() => { window.releaseHydration(); delete window.releaseHydration; });
       heaps.push({ fixture, rows, mode, replicate, count: retained, retainedBytesPerRow: (after.usedSize - before.usedSize) / (retained * rows) });
+    }
+    for (const { fixture, rows, count } of lenientFixtures) {
+      for (let round = -warmups; round < lenientRounds; round++) {
+        for (const mode of (round + warmups) % 2 === 0 ? lenientModes : [...lenientModes].reverse()) {
+          await page.evaluate(({ mode, fixture, rows, count }) => window.hydrationBench.prepare(mode, fixture, rows, count), { mode, fixture, rows, count });
+          await collect();
+          const ms = await page.evaluate(({ mode, fixture, rows, count }) => window.hydrationBench.sample(mode, fixture, rows, count), { mode, fixture, rows, count });
+          if (!Number.isFinite(ms) || ms <= 0) throw Error(`Invalid timing ${fixture}/${mode}/${rows}: ${ms}`);
+          if (round >= 0) lenientSamples.push({ fixture, rows, mode, replicate, round, count, ms });
+        }
+      }
+      console.log(`Measured lenient ${fixture} at ${rows} rows, process ${replicate + 1}`);
     }
     if (errors.length) throw Error(errors.join("\n"));
     await browser.close();
@@ -176,14 +197,29 @@ try {
         const hydrateAfter = previousOf("ranvier-hydrate", previous), mountAfter = previousOf("ranvier-mount", previous);
         return [previous, hydrateAfter.medianUs === null || mountAfter.medianUs === null ? null : hydrateAfter.medianUs / mountAfter.medianUs];
       }));
-      const maxMatchedRatio = Math.max(...Object.values(matched).filter(value => value !== null));
+      // Null, and a failed gate, when no predecessor has a ratio.
+      const present = Object.values(matched).filter(value => value !== null);
+      const maxMatchedRatio = present.length ? Math.max(...present) : null;
       return {
         fixture, rows,
         ratio: find("ranvier-hydrate").medianUs / find("ranvier-mount").medianUs,
         medianRoundRatio: median(ratios.map(row => row.ratio)),
         byProcessRatio: byProcess(ratios, row => row.ratio),
         matched, maxMatchedRatio,
-        atOrBelowMount: maxMatchedRatio <= 1
+        atOrBelowMount: maxMatchedRatio !== null && maxMatchedRatio <= 1
+      };
+    });
+    // Per fixture, lenient hydration's median over Strict hydration's, pooled and per process.
+    const lenientVersusStrict = lenientFixtures.map(({ fixture, rows }) => {
+      const pick = mode => select(lenientSamples, fixture, rows, mode);
+      const strict = pick("ranvier-hydrate"), lenient = pick("ranvier-hydrate-lenient");
+      const strictByProcess = byProcess(strict, row => row.ms), lenientByProcess = byProcess(lenient, row => row.ms);
+      return {
+        fixture, rows,
+        strictUs: median(strict.map(row => row.ms)) * 1000,
+        lenientUs: median(lenient.map(row => row.ms)) * 1000,
+        ratio: median(lenient.map(row => row.ms)) / median(strict.map(row => row.ms)),
+        byProcessRatio: lenientByProcess.map((value, index) => value / strictByProcess[index])
       };
     });
     const result = {
@@ -201,9 +237,11 @@ try {
         "The spec's gate is `atOrBelowMount`: `maxMatchedRatio`, the largest of the `matched` ratios (hydrate's median over mount's for the same predecessor), is at most 1. `ratio` is the pooled medians' ratio, reported and not gated.",
         "`byPrevious` gives each mode's median by the mode sampled just before it; a sample's time depends on its predecessor.",
         "firstClick is the time from the call to the end of the first click on the first row's button (component) or link (keyed), including the commit of the click's update (Solid: flush()).",
-        "retainedBytesPerRow is the GC-stabilised retained JavaScript heap of 32 live hydrated (or mounted) hosts divided by their rows, the hosts' server DOM included; it is reported, not gated."
+        "retainedBytesPerRow is the GC-stabilised retained JavaScript heap of 32 live hydrated (or mounted) hosts divided by their rows, the hosts' server DOM included; it is reported, not gated.",
+        `lenientVersusStrict is reported, not gated: after the gated samples, each process samples Strict and lenient (Hydration.HydrationOptions.defaults) hydration of the same server HTML in ${lenientRounds} measured pairs per fixture after ${warmups} warm-up pairs, the pair's order alternating by round; \`ratio\` is lenient's median over Strict's.`
       ],
-      rotation, rounds, verified, samples, clicks, summaries, byPrevious, firstClick, heaps, heapSummaries, hydrateVersusMount
+      rotation, rounds, verified, samples, clicks, summaries, byPrevious, firstClick, heaps, heapSummaries, hydrateVersusMount,
+      lenientRounds, lenientSamples, lenientVersusStrict
     };
     await mkdir(output, { recursive: true });
     await writeFile(`${output}/${label}.json`, JSON.stringify(result, null, 2) + "\n");
@@ -214,7 +252,10 @@ try {
     console.table(hydrateVersusMount.map(({ fixture, rows, ratio, medianRoundRatio, byProcessRatio, matched, maxMatchedRatio, atOrBelowMount }) => ({
       fixture, rows,
       ...Object.fromEntries(modes.map(previous => [`after ${previous}`, matched[previous] === null ? "–" : matched[previous].toFixed(3)])),
-      maxMatched: maxMatchedRatio.toFixed(3), atOrBelowMount, pooledRatio: ratio.toFixed(3), medianRoundRatio: medianRoundRatio.toFixed(3), byProcess: byProcessRatio.map(value => value.toFixed(3)).join(" / ")
+      maxMatched: maxMatchedRatio === null ? "–" : maxMatchedRatio.toFixed(3), atOrBelowMount, pooledRatio: ratio.toFixed(3), medianRoundRatio: medianRoundRatio.toFixed(3), byProcess: byProcessRatio.map(value => value.toFixed(3)).join(" / ")
+    })));
+    console.table(lenientVersusStrict.map(({ fixture, rows, strictUs, lenientUs, ratio, byProcessRatio }) => ({
+      fixture, rows, strictUs: strictUs.toFixed(1), lenientUs: lenientUs.toFixed(1), lenientOverStrict: ratio.toFixed(3), byProcess: byProcessRatio.map(value => value.toFixed(3)).join(" / ")
     })));
   } else console.table(verified);
 } finally {
