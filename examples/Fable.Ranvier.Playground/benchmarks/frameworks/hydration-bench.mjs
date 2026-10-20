@@ -166,12 +166,20 @@ try {
       const hydrate = pick("ranvier-hydrate"), mount = pick("ranvier-mount");
       const ratios = hydrate.map(row => ({ replicate: row.replicate, ratio: row.ms / mount.find(other => other.replicate === row.replicate && other.round === row.round).ms }));
       const find = mode => summaries.find(s => s.fixture === fixture && s.rows === rows && s.mode === mode);
+      const previousOf = (mode, previous) => byPrevious.find(s => s.fixture === fixture && s.rows === rows && s.mode === mode && s.previous === previous);
+      // Per predecessor, hydrate's median over mount's; null when either mode has no sample after it.
+      const matched = Object.fromEntries(modes.map(previous => {
+        const hydrateAfter = previousOf("ranvier-hydrate", previous), mountAfter = previousOf("ranvier-mount", previous);
+        return [previous, hydrateAfter.medianUs === null || mountAfter.medianUs === null ? null : hydrateAfter.medianUs / mountAfter.medianUs];
+      }));
+      const maxMatchedRatio = Math.max(...Object.values(matched).filter(value => value !== null));
       return {
         fixture, rows,
         ratio: find("ranvier-hydrate").medianUs / find("ranvier-mount").medianUs,
         medianRoundRatio: median(ratios.map(row => row.ratio)),
         byProcessRatio: byProcess(ratios, row => row.ratio),
-        atOrBelowMount: find("ranvier-hydrate").medianUs <= find("ranvier-mount").medianUs
+        matched, maxMatchedRatio,
+        atOrBelowMount: maxMatchedRatio <= 1
       };
     });
     const result = {
@@ -184,8 +192,9 @@ try {
         "Each sample hydrates (or mounts) `count` hosts attached to the body. The hosts are filled with the fixture's server HTML, parsed as a document parse places it, before a forced garbage collection and outside the timed region; `ranvier-mount` hosts are empty.",
         "Ranvier hydrates its own Server.render output (Omit policy) with { IdPrefix = \"r\"; Strict = true }; Solid 2 hydrates its own renderToString output (hydratable). Each Ranvier call creates and its disposal disposes a new Graph.",
         rotation === "balanced"
-          ? "Rotation `balanced`: each process runs a de Bruijn sequence of the three modes, so each mode follows each mode, itself included, equally often; `round` is the mode's occurrence, and `hydrateVersusMount` pairs a process's k-th hydrate with its k-th mount sample. `atOrBelowMount` is the spec's gate."
-          : "Rotation `cyclic` (Task 20's order): modes rotate per round and process in their cyclic order, so mount follows hydrate in two rounds of three and no mode follows itself. `atOrBelowMount` is the spec's gate.",
+          ? "Rotation `balanced`: each process runs a de Bruijn sequence of the three modes, so each mode follows each mode, itself included, equally often; `round` is the mode's occurrence, and `medianRoundRatio` pairs a process's k-th hydrate with its k-th mount sample."
+          : "Rotation `cyclic` (Task 20's order): modes rotate per round and process in their cyclic order, so mount follows hydrate in two rounds of three and no mode follows itself; `matched` has no ratio after a Ranvier mode.",
+        "The spec's gate is `atOrBelowMount`: `maxMatchedRatio`, the largest of the `matched` ratios (hydrate's median over mount's for the same predecessor), is at most 1. `ratio` is the pooled medians' ratio, reported and not gated.",
         "`byPrevious` gives each mode's median by the mode sampled just before it; a sample's time depends on its predecessor.",
         "firstClick is the time from the call to the end of the first click on the first row's button (component) or link (keyed), including the commit of the click's update (Solid: flush()).",
         "retainedBytesPerRow is the GC-stabilised retained JavaScript heap of 32 live hydrated (or mounted) hosts divided by their rows, the hosts' server DOM included; it is reported, not gated."
@@ -198,7 +207,11 @@ try {
     console.table(firstClick.map(({ fixture, rows, mode, medianUs, byProcessUs }) => ({ fixture, rows, mode, medianUs: medianUs.toFixed(1), byProcessUs: byProcessUs.map(value => value.toFixed(1)).join(" / ") })));
     console.table(heapSummaries.map(({ fixture, rows, mode, medianBytesPerRow, byProcessBytesPerRow }) => ({ fixture, rows, mode, medianBytesPerRow: medianBytesPerRow.toFixed(0), byProcess: byProcessBytesPerRow.map(value => value.toFixed(0)).join(" / ") })));
     console.table(byPrevious.filter(row => row.samples > 0).map(({ fixture, rows, mode, previous, samples, medianUs }) => ({ fixture, rows, mode, previous, samples, medianUs: medianUs.toFixed(1) })));
-    console.table(hydrateVersusMount.map(({ fixture, rows, ratio, medianRoundRatio, byProcessRatio, atOrBelowMount }) => ({ fixture, rows, ratio: ratio.toFixed(3), medianRoundRatio: medianRoundRatio.toFixed(3), byProcess: byProcessRatio.map(value => value.toFixed(3)).join(" / "), atOrBelowMount })));
+    console.table(hydrateVersusMount.map(({ fixture, rows, ratio, medianRoundRatio, byProcessRatio, matched, maxMatchedRatio, atOrBelowMount }) => ({
+      fixture, rows,
+      ...Object.fromEntries(modes.map(previous => [`after ${previous}`, matched[previous] === null ? "–" : matched[previous].toFixed(3)])),
+      maxMatched: maxMatchedRatio.toFixed(3), atOrBelowMount, pooledRatio: ratio.toFixed(3), medianRoundRatio: medianRoundRatio.toFixed(3), byProcess: byProcessRatio.map(value => value.toFixed(3)).join(" / ")
+    })));
   } else console.table(verified);
 } finally {
   if (browser) await browser.close();
