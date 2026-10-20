@@ -3113,9 +3113,19 @@ and internal MountState
 
             Row (first, last, Mount = mounted)
 
+    /// <summary>
+    /// Runs a reflow's <c>After</c> once the pass's commits are in place: under synchronous commits as an untracked core
+    /// effect, which runs after the effects the pass created, and under queued commits on a commit slot. A failure goes to
+    /// the mount's scope.
+    /// </summary>
     member private this.Post(action: unit -> unit) =
         match scheduling with
-        | Synchronous -> Api.createEffect (fun () -> Api.untrack action)
+        | Synchronous ->
+            Api.createEffect (fun () ->
+                try
+                    Api.untrack action
+                with error ->
+                    this.Scope.FailAll [ error ])
         | Queued queue -> queue.Enqueue (queue.Reserve this.Scope, action)
 
     /// <summary>
