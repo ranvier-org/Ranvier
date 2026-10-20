@@ -2453,7 +2453,8 @@ and internal MountState
 
     /// <summary>
     /// Binds a document head entry for the current owner. Its readers are bindings of this mount; it is shown once
-    /// <c>target</c> is placed and withdrawn when the owner is disposed.
+    /// <c>target</c> is placed and withdrawn when the owner is disposed. A meta or link element shows the entry's
+    /// attribute values from the bind on, and each attribute is written only when it differs.
     /// </summary>
     member internal this.HeadIn(target: Placement, entry: HeadEntry) =
         let owner = Api.getOwner ()
@@ -2467,10 +2468,10 @@ and internal MountState
             let element = record.Element
 
             for name, value in entry.Attributes do
-                element.setAttribute (name, value)
+                DocumentHead.writeAttribute element name (Some value)
 
             for name, read in entry.Readers do
-                startBinding scope attributeEquals read (attributeValue element name)
+                startBinding scope attributeEquals read (DocumentHead.writeAttribute element name)
 
         target.Add (owner, (fun () -> DocumentHead.activate record))
 
