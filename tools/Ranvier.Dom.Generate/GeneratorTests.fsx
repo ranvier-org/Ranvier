@@ -375,31 +375,7 @@ let run (folder: string) =
          && stext.Contains "module Elements =")
         "sugar namespace and Elements module"
 
-    check (coverage.GetProperty("templateSugarTagCount").GetInt32() = 112) "templateSugarTagCount = 112"
     let sflat = flatten stext
-    check (count "[<ParamArray>] parts: Part<" sflat = 112) "every HTML tag needs one sugar member"
-
-    check
-        (sflat.Contains
-            "member _.``Div``([<ParamArray>] parts: Part<Dom.HTMLDivElement, 'inst> array) : ElementBuilder<Dom.HTMLDivElement, 'inst> = ElementBuilder<Dom.HTMLDivElement, 'inst> (Div, parts)")
-        "sugar Div member"
-
-    check
-        (sflat.Contains
-            "member _.``Br``([<ParamArray>] parts: Part<Dom.HTMLBRElement, 'inst> array) : TemplateView<'inst> = TemplateParts.element (HtmlTag \"br\") parts [||]")
-        "sugar Br member"
-
-    check
-        (sflat.Contains "member _.``Tbody`` ("
-         && sflat.Contains "member _.``H1``(")
-        "long members wrap after the name"
-
-    check
-        (count ": TemplateView<'inst> = TemplateParts.element" sflat =
-            (tags
-             |> List.filter (fun tag -> tag.GetProperty("isVoid").GetBoolean())
-             |> List.length))
-        "one TemplateParts.element sugar member per void tag"
 
     let explicitElements =
         matches
@@ -407,32 +383,6 @@ let run (folder: string) =
             flat
         |> List.map (fun m -> group 1 m, (group 2 m, group 3 m = ""))
         |> Map.ofList
-
-    let sugaredElements =
-        matches
-            @"member _\.``(\w+)`` ?\(\[<ParamArray>\] parts: Part<(Dom\.\w+), 'inst> array\) : (TemplateView<'inst>|ElementBuilder<(Dom\.\w+), 'inst>)"
-            sflat
-        |> List.map (fun m ->
-            let name, native, result, builder = group 1 m, group 2 m, group 3 m, group 4 m
-
-            if builder <> "" then
-                check
-                    (builder = native)
-                    (name
-                     + ": the builder's native type must equal the part's")
-
-            name.ToLowerInvariant (), (native, result = "TemplateView<'inst>"))
-        |> Map.ofList
-
-    check
-        (explicitElements.Count = 112
-         && sugaredElements.Count = 112)
-        "112 explicit and 112 sugared elements"
-
-    check
-        (stext.Contains "module Elements ="
-         && stext.Contains "module LegacyElements =")
-        "Elements and LegacyElements modules"
 
     check (coverage.GetProperty("templateTagClassCount").GetInt32() = 112) "templateTagClassCount = 112"
 
@@ -454,27 +404,52 @@ let run (folder: string) =
             set [ "base'"; "option'" ])
         "exactly base and option take an apostrophe"
 
-    for name, native, baseClass, elementNative in classes do
-        let tag = name.TrimEnd '\''
-
-        check
-            (fst sugaredElements[tag] = native)
-            (name
-             + ": the class's native type must equal HtmlTemplate.fs's")
-
-        check ((baseClass = "VoidElement<'i>") = snd sugaredElements[tag]) (name + ": void form must equal HtmlTemplate.fs's")
-
-        if elementNative <> "" then
-            check (elementNative = native) name
+    let sugaredElements =
+        classes
+        |> List.map (fun (name, native, baseClass, _) -> name.TrimEnd '\'', (native, baseClass = "VoidElement<'i>"))
+        |> Map.ofList
 
     check
-        (sflat.Contains
-            "type div<'i> private (ps: Part<Dom.HTMLDivElement, 'i> array, primary: unit) = inherit Element<Dom.HTMLDivElement, 'i>(Div, ps)")
+        (sugaredElements = explicitElements)
+        $"tag classes must match HtmlTemplate.fs in native type and void form: %A{Set.difference
+                                                                                      (set (Map.toList sugaredElements)
+                                                                                       + set (Map.toList explicitElements))
+                                                                                      (Set.intersect (set (Map.toList sugaredElements)) (set (Map.toList explicitElements)))}"
+
+    check
+        (explicitElements.Count = 112
+         && sugaredElements.Count = 112)
+        "112 explicit elements and 112 tag classes"
+
+    check
+        (not (stext.Contains "module LegacyElements =")
+         && not (stext.Contains "ElementBuilder"))
+        "the sugar output declares no v1 members"
+
+    for name, native, _, elementNative in classes do
+        if elementNative <> "" then
+            check
+                (elementNative = native)
+                (name
+                 + ": Element's native type must equal the parts'")
+
+    // Whitespace-free comparison: the literals hold under any Fantomas spacing.
+    let squeeze (text: string) =
+        Regex.Replace (text, @"\s+", "")
+
+    let squeezed = squeeze stext
+
+    check
+        (squeezed.Contains (
+            squeeze "type div<'i> private (ps: Part<Dom.HTMLDivElement, 'i> array, primary: unit) = inherit Element<Dom.HTMLDivElement, 'i>(Div, ps)"
+        ))
         "div tag class"
 
     check
-        (sflat.Contains
-            "type br<'i> private (ps: Part<Dom.HTMLBRElement, 'i> array, primary: unit) = inherit VoidElement<'i>(TemplateParts.element (HtmlTag \"br\") ps [||])")
+        (squeezed.Contains (
+            squeeze
+                "type br<'i> private (ps: Part<Dom.HTMLBRElement, 'i> array, primary: unit) = inherit VoidElement<'i>(TemplateParts.element (HtmlTag \"br\") ps [||])"
+        ))
         "br tag class"
 
     let handwrittenSugar =
@@ -500,13 +475,6 @@ let run (folder: string) =
 
     check collidingClasses.IsEmpty $"a tag class would collide with a Builders name %A{Set.toList collidingClasses}"
 
-    check
-        (sugaredElements = explicitElements)
-        $"sugar members must match HtmlTemplate.fs in native type and void form: %A{Set.difference
-                                                                                        (set (Map.toList sugaredElements)
-                                                                                         + set (Map.toList explicitElements))
-                                                                                        (Set.intersect (set (Map.toList sugaredElements)) (set (Map.toList explicitElements)))}"
-
     let handwritten =
         readText (Path.Combine (root, "../../experiments/Ranvier.View.Portable/Template.fs"))
 
@@ -525,16 +493,6 @@ let run (folder: string) =
                 |> set
         ]
         |> Map.ofList
-
-    let sugarNames =
-        matches @"member _\.``(\w+)`` ?\(\[<ParamArray>\]" sflat
-        |> List.map (group 1)
-        |> set
-
-    check (sugarNames.Count = 112) "112 sugar member names"
-    let clashes = Set.intersect sugarNames builderMembers["TemplateBuilder"]
-
-    check clashes.IsEmpty $"an intrinsic TemplateBuilder member would shadow the sugar members %A{Set.toList clashes}"
 
     let generator = readText (Path.Combine (root, "Program.fs"))
 

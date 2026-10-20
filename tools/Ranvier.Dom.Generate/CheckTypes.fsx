@@ -53,21 +53,6 @@ let fail (message: string) =
     eprintfn "FAIL %s" message
     exit 1
 
-let sugarMembers =
-    pairs @"member _\.``(\w+)`` ?\(\[<ParamArray>\] parts: Part<[^>]*>[^)]*\) : (ElementBuilder|TemplateView)"
-
-if sugarMembers.Length <> 112 then
-    fail "the generated sugar file must declare every HTML tag"
-
-// One call per generated tag: a void tag takes no body, any other tag takes an empty body.
-let allSugarTags =
-    sugarMembers
-    |> List.map (fun (name, kind) ->
-        "            t."
-        + name
-        + (if kind = "ElementBuilder" then "() { }" else "()"))
-    |> String.concat "\n"
-
 let tagClasses =
     pairs @"type (\w+'?)<'i> private \(ps: Part<[^>]*>[^)]*\) = inherit (Element|VoidElement)"
 
@@ -81,24 +66,6 @@ let allTagClasses =
         + name
         + (if kind = "Element" then "() { }" else "()"))
     |> String.concat "\n"
-
-let generatedSugarTags =
-    """
-open Ranvier.View.Foundation.Sugar
-let view =
-    Component.define (fun _ () -> ()) (fun t ->
-        t.Article(t.Attrs.className "a") {
-            t.Base()
-            t.Select() { t.Option() { "one" } }
-            t.Object() { }
-            t.Img()
-            t.H1() { "title" }
-            t.Tbody() { t.Tr() { t.Td() { "cell" } } }
-"""
-    + allSugarTags
-    + """
-        })
-"""
 
 let allTagClassesBody =
     """
@@ -213,101 +180,6 @@ type R = { Value: string }
 let view = Component.define (fun _ (p: R) -> p) (fun t -> t.br [||] [||])
 """
             (Some "FS0003")
-        case
-            "sugar element bodies"
-            """
-open Ranvier.View.Foundation.Sugar
-type SugarRow = { Value: global.Ranvier.Signal<string>; Count: global.Ranvier.Signal<int> }
-let view =
-    Component.define (fun _ (p: SugarRow) -> p) (fun t ->
-        t.Div(t.Attrs.className "x", t.Attrs.title (t.from (fun r -> r.Value))) {
-            "static"
-            t.Input(t.Props.Input.value (t.from (fun r -> r.Value)))
-            t.Span() { fun r -> string r.Count.Value }
-            t.Span() { t.text (fun (r: SugarRow) -> string r.Count.Value) }
-        })
-"""
-            None
-        case
-            "sugar input part on div"
-            """
-open Ranvier.View.Foundation.Sugar
-type SugarRow = { Value: global.Ranvier.Signal<string> }
-let view = Component.define (fun _ (p: SugarRow) -> p) (fun t -> t.Div(t.Props.Input.value (t.from (fun r -> r.Value))) { "x" })
-"""
-            (Some "FS0041")
-        case
-            "sugar void tag with children"
-            """
-open Ranvier.View.Foundation.Sugar
-let view = Component.define (fun _ () -> ()) (fun t -> t.Div() { t.Input() { "x" } })
-"""
-            (Some "FS0708")
-        case
-            "sugar part of another element"
-            """
-open Ranvier.View.Foundation.Sugar
-let view =
-    Component.define (fun _ () -> ()) (fun t ->
-        let part: Part<Dom.HTMLButtonElement, unit> = t.Props.Button.disabled true
-        t.Span(t.Attrs.className "x", part) { "y" })
-"""
-            (Some "FS0001")
-        case
-            "sugar lambda yield with a label shared by a later record"
-            """
-open Ranvier.View.Foundation.Sugar
-type SugarItem = { Id: int }
-type SugarOther = { Id: int; Name: string }
-let view =
-    Component.define (fun _ (items: SugarItem array) -> items) (fun t ->
-        t.Div() { t.forEach (fun (item: SugarItem) -> item.Id) id (fun r -> r.Span() { fun row -> string (row ()).Id }) })
-"""
-            (Some "FS0001")
-        // Counterpart of the lambda-yield case above: t.text compiles where the bare lambda yield conflicts.
-        case
-            "sugar t.text with a label shared by a later record"
-            """
-open Ranvier.View.Foundation.Sugar
-type SugarItem = { Id: int }
-type SugarOther = { Id: int; Name: string }
-let view =
-    Component.define (fun _ (items: SugarItem array) -> items) (fun t ->
-        t.Div() { t.forEach (fun (item: SugarItem) -> item.Id) id (fun r -> r.Span() { r.text (fun row -> string (row ()).Id) }) })
-"""
-            None
-        case
-            "sugar outer instance inside a row"
-            """
-open Ranvier.View.Foundation.Sugar
-type SugarItem = { Id: int }
-let view =
-    Component.define (fun _ (items: SugarItem array) -> items) (fun t ->
-        t.Div() { t.forEach (fun (item: SugarItem) -> item.Id) id (fun r -> r.Span() { t.text (fun (items: SugarItem array) -> string items.Length) }) })
-"""
-            (Some "FS0041")
-        case
-            "sugar Program view in a body"
-            """
-open Ranvier.View.Foundation.Sugar
-let view = Component.define (fun _ () -> ()) (fun t -> t.Div() { Program.text "x" })
-"""
-            (Some "FS0041")
-        case "generated sugar tags" generatedSugarTags None
-        case
-            "generated sugar void tag with children"
-            """
-open Ranvier.View.Foundation.Sugar
-let view = Component.define (fun _ () -> ()) (fun t -> t.Div() { t.Img() { "x" } })
-"""
-            (Some "FS0708")
-        case
-            "generated sugar part of another element"
-            """
-open Ranvier.View.Foundation.Sugar
-let view = Component.define (fun _ () -> ()) (fun t -> t.Span(t.Props.Input.value "x") { "y" })
-"""
-            (Some "FS0041")
         free
             "free element bodies"
             """
