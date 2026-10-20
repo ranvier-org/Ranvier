@@ -2738,6 +2738,603 @@ let private clientCreateIdInLaterSetup () =
 
     equal (true, "CreateId is valid only while a component's setup runs") (error :? InvalidOperationException, error.Message)
 
+/// <summary>Requires <c>actual</c> to equal <c>expected</c> at the journey step named <c>step</c>.</summary>
+let private atStep (step: string) expected actual =
+    if expected <> actual then
+        failwithf "At %s: expected %A; got %A" step expected actual
+
+[<Emit("$0.dispatchEvent(new Event($1, { bubbles: true }))")>]
+let private dispatch (node: Node) (name: string) : unit = jsNative
+
+[<Emit("$0.isConnected")>]
+let private connected (node: Node) : bool = jsNative
+
+/// <summary>Every node under <c>root</c> in document order, the descendants of <c>region</c> excluded.</summary>
+let private nodesBesides (region: Node) (root: Node) =
+    nodesOf root
+    |> Array.filter (fun node ->
+        obj.ReferenceEquals (node, region)
+        || not (region.contains node))
+
+type private JourneyLive =
+    {
+        Id: string
+        Name: Signal<string>
+        Clicks: Signal<int>
+        Items: Signal<Listed array>
+        Wide: Signal<bool>
+    }
+
+type private JourneyProps =
+    {
+        Name: string
+        Items: Listed array
+        Wide: bool
+    }
+
+/// <summary>The state of one journey's page instances.</summary>
+type private Journey =
+    {
+        /// <summary>The signals of the latest root instance.</summary>
+        mutable Live: JourneyLive
+        /// <summary>The setups and cleanups of the root, its rows and its arms, in order.</summary>
+        Log: ResizeArray<string>
+    }
+
+type private JourneyRow = { Item: unit -> Listed; Id: string }
+
+/// <summary>
+/// A page with a click counter, a text input and a checkbox bound to its signals, a list of its items whose rows show an
+/// id, and an arm that is a <c>b</c> element when the checkbox is checked and an <c>i</c> element otherwise; with the
+/// structural hashes of the checked and the unchecked arm.
+/// </summary>
+let private journeyPage (journey: Journey) =
+    let logged (name: string) (setup: Setup) =
+        journey.Log.Add ("setup " + name)
+        setup.OnCleanup (fun () -> journey.Log.Add ("cleanup " + name))
+
+    let row =
+        Component.define
+            (fun setup (item: unit -> Listed) ->
+                logged ("row " + (item ()).Text) setup
+                { Item = item; Id = setup.CreateId () })
+            (fun t -> t.li [| t.Attrs.id (fun (row: JourneyRow) -> Some row.Id) |] [| t.text (fun row -> (row.Item ()).Text) |])
+
+    let wide =
+        Component.define (fun setup (_: unit -> unit) -> logged "wide" setup) (fun t -> t.b [||] [| t.text "wide" |])
+
+    let narrow =
+        Component.define (fun setup (_: unit -> unit) -> logged "narrow" setup) (fun t -> t.i [||] [| t.text "narrow" |])
+
+    let page =
+        Component.define
+            (fun setup (props: JourneyProps) ->
+                logged "root" setup
+
+                journey.Live <-
+                    {
+                        Id = setup.CreateId ()
+                        Name = Api.createSignal props.Name
+                        Clicks = Api.createSignal 0
+                        Items = Api.createSignal props.Items
+                        Wide = Api.createSignal props.Wide
+                    }
+
+                journey.Live)
+            (fun t ->
+                t.div
+                    [|
+                        t.Attrs.id (fun (r: JourneyLive) -> Some r.Id)
+                        t.Attrs.title (fun (r: JourneyLive) -> Some r.Name.Value)
+                    |]
+                    [|
+                        t.button
+                            [| t.Events.onClick (fun r _ -> r.Clicks.Value <- r.Clicks.Value + 1) |]
+                            [| t.text (fun r -> string r.Clicks.Value) |]
+                        t.input
+                            [|
+                                t.Props.Input.value (fun r -> r.Name.Value)
+                                t.Events.on ("input", fun r event -> r.Name.Value <- (unbox<HTMLInputElement> event.target).value)
+                            |]
+                        t.input
+                            [|
+                                t.Attrs.Input.``type`` "checkbox"
+                                t.Props.Input.``checked`` (fun r -> r.Wide.Value)
+                                t.Events.on ("change", fun r event -> r.Wide.Value <- (unbox<HTMLInputElement> event.target).``checked``)
+                            |]
+                        t.span [||] [| t.text (fun r -> r.Name.Value) |]
+                        t.ul [||] [| t.each (fun (item: Listed) -> item.Id) (fun r -> r.Items.Value) row |]
+                        t.section
+                            [||]
+                            [|
+                                t.branch (fun r -> r.Wide.Value) (fun isWide -> if isWide then t.arm wide () else t.arm narrow ())
+                            |]
+                    |])
+
+    page, structuralHash wide, structuralHash narrow
+
+/// <summary>The id and text of each row under <c>host</c>.</summary>
+let private rowsShown (host: HTMLElement) =
+    [
+        for row in all host "li" do
+            let shown = unbox<HTMLElement> row
+            yield shown.id, shown.textContent
+    ]
+
+/// <summary>
+/// The root id and title, the button text, the text input's value, the checkbox state, the shown name, the rows and the
+/// arm's text of a mounted <c>journeyPage</c>.
+/// </summary>
+let private journeyShown (host: HTMLElement) =
+    let root = element host "div"
+    let inputs = all host "input"
+
+    root.id,
+    root.getAttribute "title",
+    (element host "button").textContent,
+    (unbox<HTMLInputElement> inputs[0]).value,
+    (unbox<HTMLInputElement> inputs[1]).``checked``,
+    (element host "span").textContent,
+    rowsShown host,
+    (element host "section").textContent
+
+/// <summary>Empties the journey's log, runs <c>action</c>, and returns the entries it logged.</summary>
+let private logOf (journey: Journey) (action: unit -> unit) =
+    journey.Log.Clear ()
+    action ()
+    List.ofSeq journey.Log
+
+let private hydrationJourney () =
+    use graph = new Graph ()
+
+    let journey =
+        {
+            Live = Unchecked.defaultof<_>
+            Log = ResizeArray ()
+        }
+
+    let page, wideHash, narrowHash = journeyPage journey
+    let host = host ()
+    attachToBody host
+
+    // Round 1: the server checked the box and selected the wide arm; the client selects the narrow arm.
+    let first =
+        {
+            Name = "a"
+            Items = [| a; b |]
+            Wide = true
+        }
+
+    loadServed host (Server.render omit page first)
+    let section = element host "section"
+    let served = nodesBesides section host
+    let servedSection = section.innerHTML
+    let servedArm = unbox<Node>(host.querySelector "b")
+    let rows = all host "li"
+    let reports = ResizeArray<exn list>()
+
+    let mismatch =
+        "Hydration mismatch at #0: expected <!--[a:"
+        + narrowHash
+        + "-->, found <!--[a:"
+        + wideHash
+        + "-->"
+
+    let mounted = ref Unchecked.defaultof<Mounting.Mounted>
+
+    let hydrated =
+        logOf journey (fun () -> mounted.Value <- Hydration.hydrate graph None reports.Add lenientOptions host page { first with Wide = false })
+
+    atStep
+        "round 1 hydrate"
+        ([ "setup root"; "setup row a"; "setup row b"; "setup narrow" ],
+         [ [ mismatch ] ],
+         ("r-0-0", Some "a", "0", "a", false, "a", [ "r-0.r0.0-0", "a"; "r-0.r0.1-0", "b" ], "narrow"),
+         true,
+         false)
+        (hydrated, messages reports, journeyShown host, sameNodes served (nodesBesides section host), connected servedArm)
+
+    let button = element host "button"
+    let text = (all host "input")[0]
+    button.click ()
+    (unbox<HTMLInputElement> text).value <- "typed"
+    dispatch text "input"
+    let typed = journeyShown host
+    graph.Run (fun () -> journey.Live.Name.Value <- "set")
+
+    atStep
+        "round 1 click and type"
+        (("r-0-0", Some "typed", "1", "typed", false, "typed", [ "r-0.r0.0-0", "a"; "r-0.r0.1-0", "b" ], "narrow"),
+         ("r-0-0", Some "set", "1", "set", false, "set", [ "r-0.r0.0-0", "a"; "r-0.r0.1-0", "b" ], "narrow"),
+         1)
+        (typed, journeyShown host, reports.Count)
+
+    let appended =
+        logOf journey (fun () -> graph.Run (fun () -> journey.Live.Items.Value <- [| a; b; c |]))
+
+    let appendedRows = all host "li"
+
+    atStep
+        "round 1 append"
+        ([ "setup row c" ], [ "r-0.r0.0-0", "a"; "r-0.r0.1-0", "b"; "r-0.r0.2-0", "c" ], true)
+        (appended, rowsShown host, sameNodes rows appendedRows[0..1])
+
+    let reordered =
+        logOf journey (fun () -> graph.Run (fun () -> journey.Live.Items.Value <- [| c; a; b |]))
+
+    atStep
+        "round 1 reorder"
+        ([], [ "r-0.r0.2-0", "c"; "r-0.r0.0-0", "a"; "r-0.r0.1-0", "b" ], true)
+        (reordered, rowsShown host, sameNodes [| appendedRows[2]; rows[0]; rows[1] |] (all host "li"))
+
+    let removed =
+        logOf journey (fun () -> graph.Run (fun () -> journey.Live.Items.Value <- [| c; a |]))
+
+    atStep
+        "round 1 remove"
+        ([ "cleanup row b" ], [ "r-0.r0.2-0", "c"; "r-0.r0.0-0", "a" ], true, false)
+        (removed, rowsShown host, sameNodes [| appendedRows[2]; rows[0] |] (all host "li"), connected rows[1])
+
+    // Checking the box selects the arm the server wrote.
+    let recovered =
+        logOf journey (fun () -> (element host "input[type=checkbox]").click())
+
+    atStep
+        "round 1 recover"
+        ([ "cleanup narrow"; "setup wide" ],
+         ("r-0-0", Some "set", "1", "set", true, "set", [ "r-0.r0.2-0", "c"; "r-0.r0.0-0", "a" ], "wide"),
+         servedSection,
+         1)
+        (recovered, journeyShown host, section.innerHTML, reports.Count)
+
+    let disposed = logOf journey (fun () -> mounted.Value.Dispose ())
+
+    atStep
+        "round 1 dispose"
+        ([ "cleanup wide"; "cleanup row c"; "cleanup row a"; "cleanup root" ], 0., 1)
+        (disposed, host.childNodes.length, reports.Count)
+
+    // Round 2: the same host and graph hydrate a second server render cleanly.
+    let second =
+        {
+            Name = "second"
+            Items = [| b |]
+            Wide = false
+        }
+
+    loadServed host (Server.render omit page second)
+    let served = nodesOf host
+    let ids = domIds host
+    let secondReports = ResizeArray<exn list>()
+
+    let hydrated =
+        logOf journey (fun () -> mounted.Value <- Hydration.hydrate graph None secondReports.Add lenientOptions host page second)
+
+    atStep
+        "round 2 hydrate"
+        ([ "setup root"; "setup row b"; "setup narrow" ],
+         [],
+         true,
+         ids,
+         ("r-0-0", Some "second", "0", "second", false, "second", [ "r-0.r0.0-0", "b" ], "narrow"))
+        (hydrated, messages secondReports, sameNodes served (nodesOf host), domIds host, journeyShown host)
+
+    // A row created after round 2 continues the second render's row counter.
+    let continued =
+        logOf journey (fun () -> graph.Run (fun () -> journey.Live.Items.Value <- [| b; c |]))
+
+    atStep "round 2 continue" ([ "setup row c" ], [ "r-0.r0.0-0", "b"; "r-0.r0.1-0", "c" ]) (continued, rowsShown host)
+
+    let disposed = logOf journey (fun () -> mounted.Value.Dispose ())
+    detach host
+
+    atStep
+        "round 2 dispose"
+        ([ "cleanup narrow"; "cleanup row c"; "cleanup row b"; "cleanup root" ], 0., [], 1)
+        (disposed, host.childNodes.length, messages secondReports, reports.Count)
+
+let private retryJourney () =
+    use graph = new Graph ()
+    let case = boundaryCase ()
+    let definition = retrying case
+    let host = serveCase case definition (Settles "server") Pends
+    let served = unbox<Node>(host.querySelector "span")
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        Hydration.hydrate graph None reports.Add strictOptions host definition ()
+
+    atStep
+        "hydrate"
+        ("<!--[c--><span id=\"r-0.r0.0-0\">server</span><!--]-->", false, [ "content setup" ], [])
+        ((element host "div").innerHTML, obj.ReferenceEquals (served, host.querySelector "span"), List.ofSeq case.Log, messages reports)
+
+    graph.Run (fun () -> case.Sources[0].Fail(Exception "failed"))
+
+    atStep
+        "fail"
+        ("failed", [], false, [ "content setup" ], [ [ "failed" ] ])
+        ((element host "div").textContent, domIds host, connected served, List.ofSeq case.Log, messages reports)
+
+    case.Outcome <- Settles "ok"
+    (element host "button").click()
+
+    // The content took row 0 and the error view row 1; the retried content takes row 2.
+    atStep
+        "retry"
+        ("ok", [ "r-0.r0.2-0" ], [ "content setup"; "content setup" ], [ [ "failed" ] ])
+        ((element host "div").textContent, domIds host, List.ofSeq case.Log, messages reports)
+
+    mounted.Dispose ()
+    atStep "dispose" (0., [ [ "failed" ] ]) (host.childNodes.length, messages reports)
+
+/// <summary>A list of the items of the signal its setup stores in <c>holder</c>, before a <c>bounded</c> boundary.</summary>
+let private listBesideBoundary (case: BoundaryCase) (holder: Signal<Listed array> ref) =
+    let inner = bounded case
+
+    Component.define
+        (fun _ (items: Listed array) ->
+            holder.Value <- Api.createSignal items
+            holder.Value)
+        (fun t ->
+            t.fragment
+                [|
+                    t.ul
+                        [||]
+                        [|
+                            t.each (fun (item: Listed) -> item.Id) (fun (items: Signal<Listed array>) -> items.Value) listedRow
+                        |]
+                    t.render inner (fun _ -> ())
+                |])
+
+let private pendingListJourney () =
+    use graph = new Graph ()
+    let case = boundaryCase ()
+    let holder = ref Unchecked.defaultof<Signal<Listed array>>
+    let definition = listBesideBoundary case holder
+    case.Outcome <- Settles "server"
+    let host = serve definition [| a; b |]
+    case.Outcome <- Pends
+    case.Log.Clear ()
+    case.Sources.Clear ()
+    let rows = all host "li"
+    let served = unbox<Node>(host.querySelector "span")
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        Hydration.hydrate graph None reports.Add strictOptions host definition [| a; b |]
+
+    let boundary = element host "div"
+    let copy = unbox<Node>(boundary.querySelector "span")
+
+    atStep
+        "hydrate"
+        ("ab", true, "<!--[c--><span>server</span><!--]-->", false, [ "content setup" ], [])
+        ((element host "ul").textContent,
+         sameNodes rows (all host "li"),
+         boundary.innerHTML,
+         obj.ReferenceEquals (served, copy),
+         List.ofSeq case.Log,
+         messages reports)
+
+    let mutations = recordMutations boundary
+    graph.Run (fun () -> holder.Value.Value <- [| b; a; c |])
+    let updated = all host "li"
+
+    atStep
+        "list update"
+        ("bac", true, 0, "<!--[c--><span>server</span><!--]-->", true, [ "content setup" ], [])
+        ((element host "ul").textContent,
+         sameNodes [| rows[1]; rows[0] |] updated[0..1],
+         mutations (),
+         boundary.innerHTML,
+         obj.ReferenceEquals (copy, boundary.querySelector "span"),
+         List.ofSeq case.Log,
+         messages reports)
+
+    graph.Run (fun () -> case.Sources[0].Settle "client")
+
+    atStep
+        "reveal"
+        ("client", true, false, [ "content setup" ], "bac", true, [])
+        (boundary.textContent,
+         obj.ReferenceEquals (served, boundary.querySelector "span"),
+         connected copy,
+         List.ofSeq case.Log,
+         (element host "ul").textContent,
+         sameNodes updated (all host "li"),
+         messages reports)
+
+    mounted.Dispose ()
+    atStep "dispose" 0. host.childNodes.length
+
+let private recoveryJourney () =
+    use graph = new Graph ()
+
+    let journey =
+        {
+            Live = Unchecked.defaultof<_>
+            Log = ResizeArray ()
+        }
+
+    let page, _, _ = journeyPage journey
+    let host = host ()
+    attachToBody host
+
+    let props =
+        {
+            Name = "a"
+            Items = [| a; b |]
+            Wide = false
+        }
+
+    // Round 1: an extra element before the root's end marker re-renders the root.
+    loadServed host (withTrailingRoot page props)
+    let servedRoot = unbox<Node>(host.querySelector "div")
+    let reports = ResizeArray<exn list>()
+    let mounted = ref Unchecked.defaultof<Mounting.Mounted>
+
+    let hydrated =
+        logOf journey (fun () -> mounted.Value <- Hydration.hydrate graph None reports.Add lenientOptions host page props)
+
+    atStep
+        "round 1 hydrate"
+        ([
+            "setup root"
+            "setup row a"
+            "setup row b"
+            "setup narrow"
+            "cleanup narrow"
+            "cleanup row b"
+            "cleanup row a"
+            "cleanup root"
+            "setup root"
+            "setup row a"
+            "setup row b"
+            "setup narrow"
+         ],
+         [ [ "Hydration mismatch at #1: expected <!--]-->, found b" ] ],
+         ("r-0-0", Some "a", "0", "a", false, "a", [ "r-0.r0.0-0", "a"; "r-0.r0.1-0", "b" ], "narrow"),
+         false,
+         0)
+        (hydrated, messages reports, journeyShown host, connected servedRoot, (all host "b").Length)
+
+    (element host "button").click()
+    graph.Run (fun () -> journey.Live.Items.Value <- [| b; c |])
+
+    atStep
+        "round 1 interact"
+        (("r-0-0", Some "a", "1", "a", false, "a", [ "r-0.r0.1-0", "b"; "r-0.r0.2-0", "c" ], "narrow"), 1)
+        (journeyShown host, reports.Count)
+
+    let disposed = logOf journey (fun () -> mounted.Value.Dispose ())
+
+    // The root's markers stay in the host after a re-rendered root is disposed.
+    atStep
+        "round 1 dispose"
+        ([ "cleanup narrow"; "cleanup row c"; "cleanup row b"; "cleanup root" ], "<!--[r--><!--]-->", 1)
+        (disposed, host.innerHTML, reports.Count)
+
+    // Round 2: a fresh server render on the same host hydrates without a report.
+    loadServed host (Server.render omit page props)
+    let served = nodesOf host
+    let secondReports = ResizeArray<exn list>()
+
+    let hydrated =
+        logOf journey (fun () -> mounted.Value <- Hydration.hydrate graph None secondReports.Add lenientOptions host page props)
+
+    (element host "button").click()
+
+    atStep
+        "round 2 hydrate"
+        ([ "setup root"; "setup row a"; "setup row b"; "setup narrow" ],
+         [],
+         true,
+         ("r-0-0", Some "a", "1", "a", false, "a", [ "r-0.r0.0-0", "a"; "r-0.r0.1-0", "b" ], "narrow"),
+         1)
+        (hydrated, messages secondReports, sameNodes served (nodesOf host), journeyShown host, reports.Count)
+
+    mounted.Value.Dispose ()
+    detach host
+    atStep "round 2 dispose" (0., [], 1) (host.childNodes.length, messages secondReports, reports.Count)
+
+[<Emit("document.head.insertAdjacentHTML('beforeend', $0)")>]
+let private appendHead (html: string) : unit = jsNative
+
+[<Emit("Array.from(document.head.querySelectorAll('[data-ranvier-head]'))")>]
+let private markedHead () : Node array = jsNative
+
+[<Emit("document.head.childNodes.length")>]
+let private headLength () : int = jsNative
+
+[<Emit("document.head.querySelectorAll('[data-ranvier-head]').forEach(node => node.remove())")>]
+let private clearMarkedHead () : unit = jsNative
+
+let private outerHtml (nodes: Node array) =
+    [ for node in nodes -> (unbox<Element> node).outerHTML ]
+
+/// <summary>A meta description showing the text of the signal its setup stores in <c>holder</c>, a canonical link, and a paragraph.</summary>
+let private headPage (holder: Signal<string> ref) =
+    Component.define
+        (fun _ (text: string) ->
+            holder.Value <- Api.createSignal text
+            holder.Value)
+        (fun t ->
+            t.fragment
+                [|
+                    t.Document.meta
+                        [|
+                            t.Attrs.attribute ("name", "description")
+                            t.Attrs.attribute ("content", fun (text: Signal<string>) -> Some text.Value)
+                        |]
+                    t.Document.link
+                        [|
+                            t.Attrs.attribute ("rel", "canonical")
+                            t.Attrs.attribute ("href", "/lamp")
+                        |]
+                    t.p [||] [| t.text (fun (text: Signal<string>) -> text.Value) |]
+                |])
+
+let private headEntries (content: string) =
+    [
+        "<meta data-ranvier-head=\"meta:name=description\" name=\"description\" content=\""
+        + content
+        + "\">"
+        "<link data-ranvier-head=\"link:canonical\" rel=\"canonical\" href=\"/lamp\">"
+    ]
+
+let private headJourney () =
+    let pageHead = headLength ()
+
+    try
+        use graph = new Graph ()
+        let holder = ref Unchecked.defaultof<Signal<string>>
+        let definition = headPage holder
+        let host = host ()
+
+        // Round 1 adopts the served entries and removes a marked element served for another root.
+        let page = Server.renderPage omit definition "one"
+
+        appendHead (
+            page.Head
+            + "<meta data-ranvier-head=\"meta:name=robots\" name=\"robots\" content=\"index\">"
+        )
+
+        loadServed host page.Body
+        let served = markedHead ()
+
+        let mounted =
+            Hydration.hydrate graph None strict strictOptions host definition "one"
+
+        atStep
+            "round 1 hydrate"
+            (headEntries "one", true, false, "one")
+            (outerHtml (markedHead ()), sameNodes served[0..1] (markedHead ()), connected served[2], (element host "p").textContent)
+
+        graph.Run (fun () -> holder.Value.Value <- "uno")
+        atStep "round 1 update" (headEntries "uno", true) (outerHtml (markedHead ()), sameNodes served[0..1] (markedHead ()))
+        mounted.Dispose ()
+        atStep "round 1 dispose" ([], false, false, pageHead) (outerHtml (markedHead ()), connected served[0], connected served[1], headLength ())
+
+        // Round 2 adopts the second render's entries.
+        let page = Server.renderPage omit definition "two"
+        appendHead page.Head
+        loadServed host page.Body
+        let servedAgain = markedHead ()
+
+        let mounted =
+            Hydration.hydrate graph None strict strictOptions host definition "two"
+
+        atStep
+            "round 2 hydrate"
+            (headEntries "two", true, "two")
+            (outerHtml (markedHead ()), sameNodes servedAgain (markedHead ()), (element host "p").textContent)
+
+        mounted.Dispose ()
+        atStep "round 2 dispose" ([], pageHead, 0.) (outerHtml (markedHead ()), headLength (), host.childNodes.length)
+    finally
+        clearMarkedHead ()
+
 let cases: (string * (unit -> unit)) array =
     strictCases
         [|
@@ -2829,6 +3426,15 @@ let cases: (string * (unit -> unit)) array =
             "forms hydrate a leading line feed, checked and selectedIndex without writes, and write the client's differing values", formsHydrate
             "state script round-trips JSON containing </script> and U+2028", stateRoundTrip
             "CreateId is equal on server and hydrated client, and rows created after hydration continue their region's counter", identityContinues
+            "journey: a hydrated page takes events and two-way input, moves its adopted rows, reports a region mismatch once, recovers by an update, disposes, and hydrates a second render on the same host and graph",
+            hydrationJourney
+            "journey: hydrated content pending on the client fails into its error view, and a retry continues the region's row counter", retryJourney
+            "journey: a list update while a boundary's content is pending leaves its inert copy untouched, and the reveal shows the content of the one setup",
+            pendingListJourney
+            "journey: a re-rendered root takes events and updates and disposes, and a second render on the same host hydrates without a report",
+            recoveryJourney
+            "journey: the head entries adopted in one round are withdrawn at disposal, and the next round adopts the newly served elements",
+            headJourney
         |]
 
 /// <summary>The text and value of the first element matching <c>selector</c> after the browser parses <c>html</c>.</summary>
