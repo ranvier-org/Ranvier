@@ -593,7 +593,7 @@ type internal HeadCollector() =
 
         System.String.Join ("", written)
 
-/// <summary>The operations of a server scope that authored content written through an <c>HtmlBackend</c> uses.</summary>
+/// <summary>The operations of a server scope used by authored content on an <c>HtmlBackend</c>.</summary>
 [<AbstractClass>]
 type internal ServerScopeBase() =
     /// <summary>Runs the body in a new nested scope; when it raises, that scope's cleanups run before the exception propagates.</summary>

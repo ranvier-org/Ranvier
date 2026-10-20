@@ -79,7 +79,7 @@ let internal mismatch (path: string) (expected: string) (found: string) : exn =
 #endif
     error
 
-/// <summary>The next server node a hydrating mount adopts, and the inverses of the structural edits made so far.</summary>
+/// <summary>The next server node a hydrating mount adopts, and the inverses of the edits made to the server nodes so far.</summary>
 [<Sealed; AllowNullLiteral>]
 type internal HydrationCursor(next: Node, strict: bool) =
     let undo = ResizeArray<unit -> unit>()
@@ -89,7 +89,7 @@ type internal HydrationCursor(next: Node, strict: bool) =
 
     member _.Strict = strict
 
-    /// <summary>Records the inverse of a structural edit.</summary>
+    /// <summary>Records the inverse of an edit to the server nodes.</summary>
     member _.Undo(inverse: unit -> unit) =
         undo.Add inverse
 
@@ -640,12 +640,24 @@ let private attributeDiffers (node: obj) (name: string) (value: obj) : bool = js
 [<Emit("$0.defaultValue !== ($1 == null ? '' : String($1))")>]
 let private defaultValueDiffers (node: obj) (value: obj) : bool = jsNative
 
+/// <summary>The inverse of a change to the node's data.</summary>
+[<Emit("(() => { const n = $0, d = n.data; return () => { n.data = d; }; })()")>]
+let private keepData (node: obj) : unit -> unit = jsNative
+
+/// <summary>The inverse of a change to the attribute: its value is set back, or it is removed when it was absent.</summary>
+[<Emit("(() => { const n = $0, a = $1, v = n.getAttribute(a); return () => { if (v === null) n.removeAttribute(a); else n.setAttribute(a, v); }; })()")>]
+let private keepAttribute (node: obj) (name: string) : unit -> unit = jsNative
+
+/// <summary>The inverse of a property write: the element's children, attributes and form state are set back.</summary>
+[<Emit("(() => { const n = $0, c = Array.from(n.childNodes), a = Array.from(n.attributes, x => [x.name, x.value]), v = n.value, k = n.checked, s = n.selected; return () => { n.replaceChildren(...c); for (const x of Array.from(n.attributes)) n.removeAttribute(x.name); for (const [x, y] of a) n.setAttribute(x, y); if ('value' in n) n.value = v; if ('checked' in n) n.checked = k; if ('selected' in n) n.selected = s; }; })()")>]
+let private keepElement (node: obj) : unit -> unit = jsNative
+
 /// <summary>
 /// Writes a property's value during hydration when the server HTML differs from the client's serialisation: an
 /// attribute serialisation compares the attribute, a child-text property the element's <c>defaultValue</c>; a
-/// browser-only property is always written.
+/// browser-only property is always written. The write's inverse is recorded with <c>cursor</c>.
 /// </summary>
-let private writeHydratingProperty (property: PortableProperty) (node: obj) (value: obj) =
+let private writeHydratingProperty (cursor: HydrationCursor) (property: PortableProperty) (node: obj) (value: obj) =
     let differs =
         match property.Html with
         | AsAttribute (attribute, serialise) ->
@@ -659,19 +671,31 @@ let private writeHydratingProperty (property: PortableProperty) (node: obj) (val
         | BrowserOnly -> true
 
     if differs then
+        let inverse = keepElement node
         property.Write.Invoke (node, value)
+        cursor.Undo inverse
 
-/// <summary>Writes a slot's first value during hydration when it differs from the server node; raw content is always written.</summary>
-let private writeHydrating (slot: Slot) (node: obj) (value: obj) =
+/// <summary>
+/// Writes a slot's first value during hydration when it differs from the server node, recording the write's inverse
+/// with <c>cursor</c>; raw content is always written.
+/// </summary>
+let private writeHydrating (cursor: HydrationCursor) (slot: Slot) (node: obj) (value: obj) =
     match slot.Target with
     | AttributeTarget name ->
         if attributeDiffers node name value then
+            let inverse = keepAttribute node name
             setAttribute node value name
-    | PropertyTarget property -> writeHydratingProperty property node value
+            cursor.Undo inverse
+    | PropertyTarget property -> writeHydratingProperty cursor property node value
     | TextTarget ->
         if dataDiffers node value then
+            let inverse = keepData node
             setData node value
-    | ContentTarget -> write slot node value
+            cursor.Undo inverse
+    | ContentTarget ->
+        let inverse = keepElement node
+        write slot node value
+        cursor.Undo inverse
 
 // A failed write keeps the slot's previous value. During setup the failure aborts the mount; afterwards it is reported.
 // During hydration the first value is compared with the server node before it is written.
@@ -683,8 +707,14 @@ let private commit (services: MountServices) (state: obj array) (slot: Slot) (no
         | TextTarget when obj.ReferenceEquals (previous, unset) ->
             let node = at state (StateNodes + nodeIndex)
 
-            if isNull services.Hydration || dataDiffers node "" then
+            let cursor = services.Hydration
+
+            if isNull cursor then
                 setData node ""
+            elif dataDiffers node "" then
+                let inverse = keepData node
+                setData node ""
+                cursor.Undo inverse
 
             store state previousIndex (box "")
         | _ -> ()
@@ -697,7 +727,7 @@ let private commit (services: MountServices) (state: obj array) (slot: Slot) (no
                 obj.ReferenceEquals (previous, unset)
                 && not (isNull services.Hydration)
             then
-                writeHydrating slot (at state (StateNodes + nodeIndex)) value
+                writeHydrating services.Hydration slot (at state (StateNodes + nodeIndex)) value
             else
                 write slot (at state (StateNodes + nodeIndex)) value
 
@@ -887,19 +917,19 @@ let private listenDirect (services: MountServices) (state: obj array) (node: obj
 /// <summary>
 /// Writes a part's static properties, starts its render and isolated effects, attaches its events, and registers its
 /// document head entries and placed hooks in document order. During hydration a static property is written as a slot's
-/// first value is.
+/// first value is, and a placed hook on one of the adopted <c>roots</c> is a hook on a root.
 /// </summary>
 /// <remarks>The effects and listeners retain the state array and the services.</remarks>
-let private bind (services: MountServices) (compiled: Compiled) (state: obj array) =
+let private bind (services: MountServices) (compiled: Compiled) (state: obj array) (roots: Node array) =
     let properties = compiled.Properties
-    let hydrating = not (isNull services.Hydration)
+    let cursor = services.Hydration
 
     for i in 0 .. properties.Length - 1 do
         let nodeIndex, property, value = at properties i
 
         try
-            if hydrating then
-                writeHydratingProperty property (at state (StateNodes + nodeIndex)) value
+            if not (isNull cursor) then
+                writeHydratingProperty cursor property (at state (StateNodes + nodeIndex)) value
             else
                 property.Write.Invoke (at state (StateNodes + nodeIndex), value)
         with error when services.SettingUp () ->
@@ -956,7 +986,12 @@ let private bind (services: MountServices) (compiled: Compiled) (state: obj arra
                 head <- head + 1
 
             let node: Node = unbox (at state (StateNodes + nodeIndex))
-            PlacedHook.register services.Placement services.Scope owner kind node (fun () -> hook.Invoke (instance, box node))
+
+            let root =
+                not (isNull roots)
+                && Array.exists (fun (adopted: Node) -> obj.ReferenceEquals (adopted, node)) roots
+
+            PlacedHook.register services.Placement services.Scope owner kind node root (fun () -> hook.Invoke (instance, box node))
 
     while head < heads.Length do
         services.Head (headEntry (fst (at heads head)) instance)
@@ -1074,8 +1109,8 @@ let private isRcdataElement (node: Node) : bool = jsNative
 
 /// <summary>
 /// The server node a collected node adopts: <c>node</c> checked against <c>expect</c>. A text expectation replaces the
-/// <c>&lt;!--_--&gt;</c> placeholder with an empty text node, and creates one in an empty <c>textarea</c> or
-/// <c>title</c>, <c>parent</c>; each edit's inverse is recorded.
+/// <c>&lt;!--_--&gt;</c> placeholder with an empty text node, and creates one in <c>parent</c> when it is an empty
+/// <c>textarea</c> or <c>title</c>; each edit's inverse is recorded.
 /// </summary>
 /// <exception cref="T:Ranvier.View.Foundation.TemplateDom.HydrationMismatchException">The node differs from the expectation.</exception>
 let private adoptTarget (cursor: HydrationCursor) (expect: Expectation) (path: ResizeArray<int>) (parent: Node) (node: Node) : Node =
@@ -1214,7 +1249,7 @@ let rec internal materialise
         roots <- adoptRoots cursor compiled
         collectAdopted roots compiled state cursor
 
-    bind services compiled state
+    bind services compiled state roots
 
     let childBase =
         StateNodes
@@ -1240,7 +1275,7 @@ let rec internal materialise
             store childState (StateNodes + i) (at state (StateNodes + child.Offset + i))
 
         store state (childBase + k) (box childState)
-        bind services tables childState
+        bind services tables childState roots
 
     if not (isNull cursor) then
         for index in 0 .. roots.Length - 1 do

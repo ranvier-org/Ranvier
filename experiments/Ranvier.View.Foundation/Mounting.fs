@@ -2159,7 +2159,7 @@ and internal MountState
     /// </summary>
     /// <remarks>
     /// A build or attachment failure disposes the mount and rethrows. With a cursor, the disposal leaves the adopted nodes
-    /// in place and the cursor's structural edits are restored.
+    /// in place and every edit recorded with the cursor is undone.
     /// </remarks>
     member this.Run(before: Node option, build: BuildContext -> unit) =
         let context = BuildContext this
@@ -2316,7 +2316,7 @@ and internal MountState
 
             markWidget node
 
-        PlacedHook.register container this.Scope (Api.getOwner ()) kind (node :> Node) (fun () -> hook (box node))
+        PlacedHook.register container this.Scope (Api.getOwner ()) kind (node :> Node) false (fun () -> hook (box node))
 
     override this.Head(entry) =
         this.HeadIn (container, entry)

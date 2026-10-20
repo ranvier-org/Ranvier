@@ -1277,12 +1277,25 @@ let private authoredPendingWithCleanupFailure () =
             Server.render Server.Options.defaults authoredPendingGuarded ()
             |> ignore)
 
+#if FABLE_COMPILER
+    // Fable's exception stores the inner array as its inner exception.
+    let firstInner = (unbox<exn array>(box outside.InnerException))[0]
+#else
+    let firstInner = (outside :?> AggregateException).InnerExceptions[0]
+#endif
+
+    let pendingFirst =
+        match firstInner with
+        | Server.ServerPendingException (NotReadyException _) -> true
+        | _ -> false
+
     equal
-        (true, true, [ "pending setup" ])
+        (true, true, true, [ "pending setup" ])
         (outside.Message.StartsWith (
             "Server render failed: A read outside every boundary is pending; authored cleanup failed",
             StringComparison.Ordinal
          ),
+         pendingFirst,
          inside.Message.StartsWith ("Server render cleanup failed: authored cleanup failed", StringComparison.Ordinal),
          List.ofSeq attemptLog)
 

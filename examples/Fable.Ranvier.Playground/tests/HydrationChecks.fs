@@ -527,6 +527,98 @@ let private rootMarkerAbsent () =
         equal (("root", "<!--[r-->", "absent"), "<div>plain</div>") ((path, expected, found), host.innerHTML)
     | other -> failwithf "Expected HydrationMismatchException; got %O" other
 
+/// <summary>The server HTML of <c>definition</c> with an extra <c>&lt;b&gt;</c> root before the root end marker.</summary>
+let private withTrailingRoot (definition: Component<'props>) (props: 'props) =
+    let html = Server.render omit definition props
+
+    html.Substring (0, html.Length - 8)
+    + "<b></b><!--]-->"
+
+let private strictRestoresValues () =
+    let check (definition: Component<'props>) (served: 'props) (client: 'props) (shown: HTMLElement -> 'shown) =
+        use graph = new Graph ()
+        let host = host ()
+        let html = withTrailingRoot definition served
+        host.innerHTML <- html
+        let before = nodesOf host
+        let expected = shown host
+
+        let path =
+            match
+                ServerChecks.failure (fun () ->
+                    hydrate graph strictOptions host definition client
+                    |> ignore)
+            with
+            | TemplateDom.HydrationMismatchException (path, _, _) -> path
+            | other -> other.Message
+
+        equal ("#1", html, true, expected) (path, host.innerHTML, sameNodes before (nodesOf host), shown host)
+
+    check card "a" "b" cardShown
+    check editable "a" "b" (fun host -> (input host "input").value, (all host "input").Length)
+    check rawCard "<b>x</b>" "<i>y</i>" (fun host -> (element host "span").innerHTML)
+
+let private rootWidget =
+    Component.define (fun _ (log: ResizeArray<string>) -> log) (fun t ->
+        t.div
+            [|
+                t.Hooks.widget (fun (log: ResizeArray<string>) _ ->
+                    log.Add "attached"
+                    fun () -> log.Add "destroyed")
+            |]
+            [||])
+
+let private hydratedRootWidgetMoves () =
+    use graph = new Graph ()
+    let log = ResizeArray<string>()
+    let host = serve rootWidget log
+    let widget = host.querySelector "div"
+    let other = CheckSupport.host ()
+    let mounted = hydrate graph strictOptions host rootWidget log
+    mounted.MoveBefore (other, None)
+    let moved = obj.ReferenceEquals (widget, other.querySelector "div")
+    mounted.Dispose ()
+    equal (true, [ "attached"; "destroyed" ], 0.) (moved, List.ofSeq log, other.childNodes.length)
+
+let private formsHydrate () =
+    let shown (host: HTMLElement) =
+        let area =
+            host.querySelector "textarea"
+            |> unbox<HTMLTextAreaElement>
+
+        let toggle = input host "input"
+
+        let list =
+            host.querySelector "select"
+            |> unbox<HTMLSelectElement>
+
+        area.value, toggle.``checked``, list.selectedIndex, (element host "pre").textContent
+
+    let served: ServerChecks.FormState =
+        {
+            Text = "\nline"
+            On = true
+            Choice = "b"
+        }
+
+    let differing: ServerChecks.FormState =
+        {
+            Text = "other"
+            On = false
+            Choice = "a"
+        }
+
+    let hydrateWith (client: ServerChecks.FormState) =
+        use graph = new Graph ()
+        let host = serve ServerChecks.formFixture served
+        let mutations = recordMutations host
+        let mounted = hydrate graph strictOptions host ServerChecks.formFixture client
+        let outcome = mutations (), shown host
+        mounted.Dispose ()
+        outcome
+
+    equal ((0, ("\nline", true, 1., "\nline")), ("other", false, 0., "other")) (hydrateWith served, snd (hydrateWith differing))
+
 /// <summary>
 /// Mounts <c>definition</c> and checks that the client's sorted id log and its DOM ids in document order equal
 /// <c>expected</c>, and that the server's DOM ids equal the client's.
@@ -620,6 +712,9 @@ let cases: (string * (unit -> unit)) array =
             "an empty text slot in a textarea the server left empty hydrates into a created text node", emptyRcdataText
             "a structural mismatch names the path, the expected and the found node, and leaves the server HTML as it was", mismatchRestores
             "a host without a root marker raises a mismatch at root", rootMarkerAbsent
+            "a mismatch after the first commits leaves the server's text, attributes, live values and raw content in place", strictRestoresValues
+            "a widget on a hydrated root moves with its mount and is destroyed without a report", hydratedRootWidgetMoves
+            "forms hydrate a leading line feed, checked and selectedIndex without writes, and write the client's differing values", formsHydrate
         |]
 
 /// <summary>The text and value of the first element matching <c>selector</c> after the browser parses <c>html</c>.</summary>

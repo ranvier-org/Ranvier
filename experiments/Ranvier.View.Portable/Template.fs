@@ -1907,7 +1907,7 @@ let internal headEntry (head: HeadTemplate) (instance: obj) : HeadEntry =
     }
 
 /// <summary>
-/// The modifier of a property part whose value <c>read</c> returns. On an <c>HtmlBackend</c> an attribute serialisation
+/// The modifier of a property part with the value returned by <c>read</c>. On an <c>HtmlBackend</c> an attribute serialisation
 /// writes its attribute, a browser-only property is a browser part, and a child-text property is left to
 /// <c>childTextView</c>; on any other backend the writer receives the value, once when <c>dynamic</c> is false.
 /// </summary>
@@ -1972,7 +1972,7 @@ let rec private expandNode (ops: Operations<'view>) (instance: obj) (node: Templ
                 for kind, hook in placed -> fun (backend: Backend) -> backend.Placed (kind, (fun node -> hook.Invoke (instance, node)))
             |]
 
-        // The content the server plan writes from properties and raw-HTML parts.
+        // The child content written by the server plan for child-text properties and raw-HTML parts.
         let partContent =
             [|
                 for property, value in properties do

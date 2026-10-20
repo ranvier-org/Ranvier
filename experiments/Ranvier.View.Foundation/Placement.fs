@@ -211,10 +211,22 @@ module internal PlacedHook =
     /// failure during the root's first placement, outside every boundary, unwinds <c>mountWith</c> after the placement's
     /// remaining hooks run; every other failure goes to <c>scope</c>. After the cleanup of a lent or widget hook on an
     /// element that is not a row or mount root, a parent different from the one the hook ran under raises "An integration
-    /// moved its element", also when the cleanup fails.
+    /// moved its element", also when the cleanup fails. A node is a root when <c>root</c> is set, as for a root adopted by
+    /// hydration, or when it is detached or a child of a document fragment.
     /// </summary>
-    let register (container: Placement) (scope: ViewScope) (owner: Owner) (kind: PlacedKind) (node: Node) (hook: unit -> (unit -> unit)) =
-        let checksParent = kind <> PlacedKind.Mounted && not (atRoot node)
+    let register
+        (container: Placement)
+        (scope: ViewScope)
+        (owner: Owner)
+        (kind: PlacedKind)
+        (node: Node)
+        (root: bool)
+        (hook: unit -> (unit -> unit))
+        =
+        let checksParent =
+            kind <> PlacedKind.Mounted
+            && not root
+            && not (atRoot node)
 
         container.Add (
             owner,

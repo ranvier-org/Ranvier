@@ -33,8 +33,8 @@ let private following (node: Node) : Node = jsNative
 /// difference, and its regions mount their rows fresh between the server's region markers.
 /// </summary>
 /// <remarks>
-/// Nodes outside the root marker pair stay in place and are never owned by the mount. A failure disposes what the call
-/// created, leaves the adopted nodes in place with their structural edits undone, and propagates.
+/// Nodes outside the root marker pair stay in place and outside the mount's range. A failure disposes what the call
+/// created and propagates; the host is then as the server wrote it.
 /// </remarks>
 /// <exception cref="T:System.NotSupportedException"><c>mode</c> is <c>QueuedCommits</c>.</exception>
 /// <exception cref="T:Ranvier.View.Foundation.TemplateDom.HydrationMismatchException">
