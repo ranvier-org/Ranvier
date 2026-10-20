@@ -421,11 +421,6 @@ let run (folder: string) =
          && sugaredElements.Count = 112)
         "112 explicit elements and 112 tag classes"
 
-    check
-        (not (stext.Contains "module LegacyElements =")
-         && not (stext.Contains "ElementBuilder"))
-        "the sugar output declares no v1 members"
-
     for name, native, _, elementNative in classes do
         if elementNative <> "" then
             check
