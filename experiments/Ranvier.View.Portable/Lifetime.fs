@@ -199,11 +199,21 @@ type MountLifetime private (graph: Graph, owner: Owner, report: exn list -> unit
         this.EnsureLive ()
         let mutable child: MountLifetime = null
 
-        graph.Run (fun () ->
-            Api.runWithOwner owner (fun () ->
-                Api.createRoot (fun childOwner ->
-                    child <- MountLifetime.Create (graph, childOwner, report, childRelease, this)
-                    body child)))
+        let create () =
+            Api.createRoot (fun childOwner ->
+                child <- MountLifetime.Create (graph, childOwner, report, childRelease, this)
+                body child)
+
+        // True when the graph is ambient and this lifetime's owner is its current owner.
+        let current =
+            match Graph.TryCurrent with
+            | ValueSome ambient when obj.ReferenceEquals (ambient, graph) -> obj.ReferenceEquals (Api.getOwner (), owner)
+            | _ -> false
+
+        if current then
+            create ()
+        else
+            graph.Run (fun () -> Api.runWithOwner owner create)
 
         child
 
