@@ -32,6 +32,54 @@ let private definitionTimeReadIsStatic () =
     let layout = skeletonLayout definitionTimeRead.Root
     equal ("<span>1</span>", 0) (layout.Markup, layout.Targets.Length)
 
+let private showOffMarkup () =
+    let graph = new Graph ()
+    let hidden = graph.Run (fun () -> toggle false)
+
+    equal
+        ("<!--[r--><div>before<!--[a:"
+         + structuralHash (Ranvier.View.Foundation.Sugar.Builders.emptyArm ())
+         + "--><!--ranvier:row--><!--]-->after</div><!--]-->")
+        (Server.render
+            { Server.Options.defaults with
+                Policy = Omit
+            }
+            showSugar
+            hidden)
+
+let private oneEmptyArm () =
+    let first = Ranvier.View.Foundation.Sugar.Builders.emptyArm ()
+    equal true (obj.ReferenceEquals (first, Ranvier.View.Foundation.Sugar.Builders.emptyArm ()))
+
+#if !FABLE_COMPILER
+/// <summary>Clears the shared empty arm, then takes it from 16 threads at once.</summary>
+let private emptyArmOnce () =
+    let holder =
+        typeof<TemplateBuilder<unit>>.Assembly.GetType("Ranvier.View.Foundation.Sugar.Builders+EmptyArm", true)
+
+    let field =
+        holder.GetField (
+            "shared",
+            Reflection.BindingFlags.Static
+            ||| Reflection.BindingFlags.NonPublic
+            ||| Reflection.BindingFlags.Public
+        )
+
+    equal false (isNull field)
+    field.SetValue (null, null)
+
+    let arms =
+        Array.Parallel.init 16 (fun _ -> Ranvier.View.Foundation.Sugar.Builders.emptyArm () :> obj)
+
+    equal
+        true
+        (arms
+         |> Array.forall (fun arm -> obj.ReferenceEquals (arm, arms[0])))
+
+let dotnetCases: (string * (unit -> unit)) array =
+    [| "concurrent first uses of show share one empty arm", emptyArmOnce |]
+#endif
+
 let cases: (string * (unit -> unit)) array =
     [|
         "sugared elements share their explicit twins' layouts and hashes", sameLayouts elementPairs
@@ -39,4 +87,8 @@ let cases: (string * (unit -> unit)) array =
         "a CE body keeps document order across for, if, yield! and adjacent texts", semanticsOrder
         "a body lambda that ignores its parameter is a text slot", ignoredParameterIsSlot
         "a body line reading a module-level signal is static text", definitionTimeReadIsStatic
+        "control-flow sugar shares its explicit twins' layouts and hashes", sameLayouts flowPairs
+        "control-flow sugar renders its explicit twins' server HTML", sameServerHtml flowServerPairs
+        "a hidden show writes a zero-root arm marked with the shared empty arm's hash", showOffMarkup
+        "show reuses one empty arm", oneEmptyArm
     |]
