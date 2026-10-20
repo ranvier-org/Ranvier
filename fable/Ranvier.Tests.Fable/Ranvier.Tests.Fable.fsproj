@@ -1,11 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-    <!-- The .NET suite in tests/Ranvier.Tests, compiled with Fable and run under Mocha. -->
+    <!-- The .NET suites in tests/Ranvier.Tests and tests/Ranvier.Wire.Tests, compiled with Fable and run under Mocha. -->
     <PropertyGroup>
         <OutputType>Library</OutputType>
         <TargetFramework>net10.0</TargetFramework>
         <LangVersion>latest</LangVersion>
         <IsPackable>false</IsPackable>
+        <IsExcludedFromRootBuild>true</IsExcludedFromRootBuild>
         <GenerateDocumentationFile>false</GenerateDocumentationFile>
     </PropertyGroup>
 
@@ -14,6 +15,7 @@
     </ItemGroup>
 
     <Import Project="..\..\tests\Ranvier.Tests\TestFiles.props" />
+    <Import Project="..\..\tests\Ranvier.Wire.Tests\WireTestFiles.props" />
 
     <ItemGroup>
         <Compile Include="Main.fs" />
@@ -23,6 +25,7 @@
         <ProjectReference Include="..\..\src\Ranvier\Ranvier.fsproj" />
         <ProjectReference Include="..\..\src\Ranvier.Elmish\Ranvier.Elmish.fsproj" />
         <ProjectReference Include="..\..\src\Ranvier.Query\Ranvier.Query.fsproj" />
+        <ProjectReference Include="..\..\src\Ranvier.Wire\Ranvier.Wire.fsproj" />
         <PackageReference Include="Fable.Core" Version="5.3.0" />
         <PackageReference Include="Fable.Mocha" Version="2.17.0" />
     </ItemGroup>
