@@ -392,15 +392,18 @@ let private heldInsideRemovedRow queued () =
 
     mounted.Flush ()
     write graph mounted (fun () -> state.Inner.Value <- [| 1 |])
-    let held = textsOf target "b" |> List.ofArray
+    let held = textsOf target "b" |> List.ofArray, List.sort (taken ())
     write graph mounted (fun () -> state.Outer.Value <- [| 2 |])
-    let removed = textsOf target "b" |> List.ofArray
-    finish "12"
+    let removed = textsOf target "b" |> List.ofArray, taken ()
     finish "22"
     write graph mounted (fun () -> state.Inner.Value <- [| 1; 3 |])
     let later = textsOf target "b" |> List.ofArray
     mounted.Dispose ()
-    equal ([ "11"; "12"; "21"; "22" ], [ "21"; "22" ], [ "21"; "23" ]) (held, removed, later)
+    let disposed = taken ()
+
+    equal
+        ((([ "11"; "12"; "21"; "22" ], [ "exit 12"; "exit 22" ]), ([ "21"; "22" ], [])), ([ "21"; "23" ], [ "cancel 12" ]))
+        ((held, removed), (later, disposed))
 
 let private finishedAtOnce queued () =
     use graph = new Graph ()
@@ -554,12 +557,34 @@ let private reflowAfterQueuedCommits () =
     mounted.Dispose ()
     equal ([ "ul before 1" ], [ "ul after 12" ]) (beforeFlush, afterFlush)
 
-let private reflowWithdrawnOnDisposal queued () =
+/// <summary>A measured list inside a shown arm.</summary>
+let private measuredArm =
+    Component.template
+        (fun _ (state: Rows) -> state)
+        (div () {
+            show
+                (fun (s: Rows) -> s.Shown.Value)
+                (ul (Hooks.reflow (fun (_: Rows) (node: HTMLUListElement) -> measuring "ul" node)) {
+                    forEach id (fun (s: Rows) -> s.Items.Value) (li () { fun (row: unit -> int) -> string (row ()) })
+                })
+        })
+
+let private reflowWithdrawnWithInstance queued () =
     use graph = new Graph ()
-    let state, mounted = mountMeasured queued graph
+    log.Clear ()
+    let state = graph.Run (fun () -> rows [| 1 |] true)
+    let target = host ()
+
+    let mounted =
+        mountTemplate queued graph strict target (Component.render measuredArm state)
+
+    mounted.Flush ()
+    let measuredList: Node = unbox (target.querySelector "ul")
+    let registered = Departures.hasReflow measuredList
+    write graph mounted (fun () -> state.Shown.Value <- false)
+    let withdrawn = not (Departures.hasReflow measuredList)
     mounted.Dispose ()
-    graph.Run (fun () -> state.Left.Value <- [| 5 |])
-    equal [] (taken ())
+    equal (true, true) (registered, withdrawn)
 
 let private reflowSkipsHydration () =
     use graph = new Graph ()
@@ -585,10 +610,188 @@ let private reflowSkipsHydration () =
     mounted.Dispose ()
     equal ([], [ "ul before L1R1"; "ul after L1" ]) (first, pass)
 
+let private waiting = Component.template (fun _ () -> ()) (span () { "loading" })
+
+let private failed =
+    Component.template (fun _ (failure: BoundaryFailure) -> failure) (span () { "failed" })
+
+let private ready =
+    Component.template (fun _ (status: BoundaryStatus) -> status) (em () { "ready" })
+
+/// <summary>Rows whose exiting root holds a nested list, a shown arm and a boundary.</summary>
+let private nestedContent =
+    Component.template
+        (fun _ (state: Rows) -> state)
+        (ul () {
+            forEach
+                id
+                (fun (s: Rows) -> s.Items.Value)
+                (li (Hooks.exit (fun (_: unit -> int) (node: HTMLLIElement) finish -> exitOf node finish)) {
+                    forEach id (fun (row: unit -> int) -> [| row () * 10 + 1; row () * 10 + 2 |]) (b () { fun (row: unit -> int) -> string (row ()) })
+                    show (fun (_: unit -> int) -> true) (i () { "x" })
+                    boundary waiting failed ready
+                })
+        })
+
+[<Emit("$0.querySelectorAll('li')[$1].innerHTML")>]
+let private rowMarkup (target: HTMLElement) (index: int) : string = jsNative
+
+[<Emit("Array.from($0.querySelectorAll('li'), n => n.textContent)")>]
+let private rowTexts (target: HTMLElement) : string array = jsNative
+
+let private heldRootKeepsContent queued () =
+    use graph = new Graph ()
+    log.Clear ()
+    finishes.Clear ()
+    let state = graph.Run (fun () -> rows [| 1; 2 |] true)
+    let target = host ()
+
+    let mounted =
+        mountTemplate queued graph strict target (Component.render nestedContent state)
+
+    mounted.Flush ()
+    let before = rowMarkup target 0
+    write graph mounted (fun () -> state.Items.Value <- [| 2 |])
+    let held = rowMarkup target 0, taken ()
+    let rowsHeld = List.ofArray (rowTexts target)
+    finish "1112xready"
+    let finished = List.ofArray (rowTexts target)
+    mounted.Dispose ()
+
+    equal (((before, [ "exit 1112xready" ]), [ "1112xready"; "2122xready" ]), [ "2122xready" ]) ((held, rowsHeld), finished)
+
+/// <summary>Rows of two roots, the first with an exit that raises.</summary>
+let private raisingFirstRoot =
+    Component.template
+        (fun _ (state: Rows) -> state)
+        (div () {
+            forEach
+                id
+                (fun (s: Rows) -> s.Items.Value)
+                (fragment
+                    [|
+                        b (Hooks.exit (fun (_: unit -> int) (_: HTMLElement) _ -> raise (InvalidOperationException "exit failed"))) {
+                            fun (row: unit -> int) -> string (row ())
+                        }
+                        i () { "tail" }
+                    |])
+        })
+
+let private raisingExitKeepsRegion queued () =
+    use graph = new Graph ()
+    let state = graph.Run (fun () -> rows [| 1; 2 |] false)
+    let target = host ()
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        mountTemplate queued graph reports.Add target (Component.render raisingFirstRoot state)
+
+    mounted.Flush ()
+    write graph mounted (fun () -> state.Items.Value <- [| 2 |])
+    let removed = childrenAt "div" target
+    write graph mounted (fun () -> state.Items.Value <- [| 2; 3 |])
+    let added = childrenAt "div" target
+    mounted.Dispose ()
+    let reported = messages reports |> List.concat
+
+    equal
+        (([ "2"; "tail" ], [ "2"; "tail"; "3"; "tail" ]), true)
+        ((removed, added),
+         (not reported.IsEmpty
+          && List.forall (fun message -> message = "exit failed") reported))
+
+let private pendingMotion (row: unit -> int) (_: HTMLElement) (motion: MotionContext) =
+    let name = string (row ())
+    fun () -> log.Add (sprintf "cleanup %s exit pending=%b" name (motion.ExitPending ()))
+
+/// <summary>Rows with a motion hook before an exit hook, after it, and without one.</summary>
+let private pendingExits =
+    Component.template
+        (fun _ (state: Rows) -> state)
+        (ul () {
+            forEach
+                id
+                (fun (s: Rows) -> s.Items.Value)
+                (li (Hooks.motion pendingMotion, Hooks.exit (fun (_: unit -> int) (node: HTMLLIElement) finish -> exitOf node finish)) {
+                    b (Hooks.motion pendingMotion) { fun (row: unit -> int) -> string (row ()) }
+                })
+
+            forEach
+                id
+                (fun (s: Rows) -> if s.Shown.Value then [| 7 |] else [||])
+                (li (Hooks.exit (fun (_: unit -> int) (node: HTMLLIElement) finish -> exitOf node finish), Hooks.motion pendingMotion) { "after" })
+        })
+
+let private motionCleanupSeesExit queued () =
+    use graph = new Graph ()
+    log.Clear ()
+    finishes.Clear ()
+    let state = graph.Run (fun () -> rows [| 1 |] true)
+    let target = host ()
+
+    let mounted =
+        mountTemplate queued graph strict target (Component.render pendingExits state)
+
+    mounted.Flush ()
+    write graph mounted (fun () -> state.Items.Value <- [||])
+    let first = List.sort (taken ())
+    write graph mounted (fun () -> state.Shown.Value <- false)
+    let second = List.sort (taken ())
+    mounted.Dispose ()
+
+    equal
+        ([ "cleanup 1 exit pending=false"; "cleanup 1 exit pending=true"; "exit 1" ], [ "cleanup 7 exit pending=true"; "exit after" ])
+        (first, second)
+
+#if RANVIER_VIEW_COUNTERS
+/// <summary>
+/// The view counters of keyed-list and arm-list operations with no motion, exit or reflow hook, run before any hook of
+/// this file registers. The counts are those of 268c357, before the motion seam.
+/// </summary>
+let private countersWithoutHooks () =
+    let validated, lookups, runs, held =
+        Mounting.ListCounters.validatedRows.Value,
+        Mounting.ListCounters.lookups.Value,
+        Mounting.ListCounters.increasingRuns.Value,
+        PlacementCounters.held.Value
+
+    let target = host ()
+    let list = KeyedRowsPerf.mountKeyed target
+    list.Create 1000
+    list.UpdateEvery10th ()
+    list.Swap ()
+    list.Remove 5
+    list.Append 100
+    list.Clear ()
+    list.Create 200
+    list.Dispose ()
+    let arms = KeyedRowsPerf.mountArms target
+    arms.Create 200
+    arms.Switch ()
+    arms.Payload ()
+    arms.Clear ()
+    arms.Dispose ()
+
+    equal
+        (210, 1502, 0, 0, false)
+        (Mounting.ListCounters.validatedRows.Value
+         - validated,
+         Mounting.ListCounters.lookups.Value - lookups,
+         Mounting.ListCounters.increasingRuns.Value - runs,
+         PlacementCounters.held.Value - held,
+         (Departures.seam.Enabled = true
+          || Departures.seam.ReflowEnabled = true))
+#endif
+
 let cases: (string * (unit -> unit)) array =
     strictCases (
         Array.concat
             [
+#if RANVIER_VIEW_COUNTERS
+                [|
+                    "keyed and arm lists with no motion hook count the work they counted before the seam", countersWithoutHooks
+                |]
+#endif
                 templated "rows and a shown arm are inserted only after their region's first pass" insertedAfterFirstPass
                 templated "an arm shown by the first pass is not inserted" shownOnFirstPass
                 templated "rows created by the first pass of a region inside an inserted row are not inserted" nestedRowsDoNotEnter
@@ -602,7 +805,7 @@ let cases: (string * (unit -> unit)) array =
                 templated "an arm switch leaves the old and new arm roots in order" armSwitchKeepsOrder
                 templated "disposing the mount cancels and removes every held root" disposalEndsExits
                 templated "an exit finishes after the safety timeout" finishesAfterTimeout
-                templated "a root held inside a removed row leaves with the row" heldInsideRemovedRow
+                templated "a root held inside a removed row leaves with the row and runs until disposal" heldInsideRemovedRow
                 templated "an exit that finishes at once removes its root at once" finishedAtOnce
                 [|
                     "a hydrated row's root with an exit is held when its row is retired", adoptedRowsRetire
@@ -614,7 +817,10 @@ let cases: (string * (unit -> unit)) array =
                 [|
                     "a reflow's After follows the pass's queued commits", reflowAfterQueuedCommits
                 |]
-                templated "a disposed mount's reflow no longer measures" reflowWithdrawnOnDisposal
+                templated "a disposed instance withdraws its reflow registration" reflowWithdrawnWithInstance
+                templated "a held root keeps its nested lists, arms and boundaries until finish" heldRootKeepsContent
+                templated "a raising exit on a row's first root removes every root and keeps the region valid" raisingExitKeepsRegion
+                templated "a motion hook's cleanup reads whether an exit of its element follows" motionCleanupSeesExit
                 [|
                     "a reflow skips the hydrating pass and measures later passes", reflowSkipsHydration
                 |]

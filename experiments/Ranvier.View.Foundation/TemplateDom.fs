@@ -1098,14 +1098,8 @@ let private bind (services: MountServices) (compiled: Compiled) (state: obj arra
                 not (isNull roots)
                 && Array.exists (fun (adopted: Node) -> obj.ReferenceEquals (adopted, node)) roots
 
-            let argument =
-                match kind with
-                | PlacedKind.Mounted
-                | PlacedKind.Lent
-                | PlacedKind.Widget -> null
-                | _ -> PlacedHook.argument kind node root (not (isNull services.Hydration)) services.Placement
-
-            PlacedHook.register services.Placement services.Scope owner kind node root (fun () -> unbox (hook.Invoke (instance, box node, argument)))
+            PlacedHook.register services.Placement services.Scope owner kind node root (not (isNull services.Hydration)) (fun flags ->
+                unbox (hook.Invoke (instance, box node, flags)))
 
     while head < heads.Length do
         services.Head (headEntry (fst (at heads head)) instance)

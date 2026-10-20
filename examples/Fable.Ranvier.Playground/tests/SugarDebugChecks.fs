@@ -140,15 +140,20 @@ let private innerExit =
         (fun _ (items: int array) -> items)
         (ul () { forEach id (fun (items: int array) -> items) (li () { b (Hooks.exit (fun (_: unit -> int) (_: HTMLElement) _ -> ignore)) { "x" } }) })
 
-/// <summary>The messages of mounting <c>innerExit</c> on one row: raised during the mount or reported.</summary>
-let private innerExitMessages () =
+/// <summary>A template whose root element, a root of the mount, has an exit.</summary>
+let private rootExit =
+    Component.template (fun _ (items: int array) -> items) (ul (Hooks.exit (fun (_: int array) (_: HTMLUListElement) _ -> ignore)) { "x" })
+
+/// <summary>The messages of mounting <c>definition</c> on one row: raised during the mount or reported.</summary>
+let private exitMessages (definition: Component<int array>) =
     use graph = new Graph ()
     let reports = ResizeArray<exn list>()
 
     let thrown =
         try
             let mounted =
-                Mounting.mount graph None reports.Add (host ()) None (fun context -> Program.run (Component.render innerExit [| 1 |]) context.Backend)
+                Mounting.mount graph None reports.Add (host ()) None (fun context ->
+                    Program.run (Component.render definition [| 1 |]) context.Backend)
 
             mounted.Dispose ()
             []
@@ -246,7 +251,13 @@ let cases: (string * (unit -> unit)) array =
         (fun () ->
             equal
                 true
-                (innerExitMessages ()
+                (exitMessages innerExit
+                 |> List.exists (fun text -> text.Contains "An exit hook requires a row or arm root element")))
+        "an exit hook on a mount root raises in a Debug build",
+        (fun () ->
+            equal
+                true
+                (exitMessages rootExit
                  |> List.exists (fun text -> text.Contains "An exit hook requires a row or arm root element")))
     |]
 #else
@@ -272,6 +283,7 @@ let cases: (string * (unit -> unit)) array =
         (fun () -> equal (3, "3") (remounts membersHazard))
         "Component.ofClass in an arms function remounts on every update and shows the last payload in Release",
         (fun () -> equal (3, "3") (remounts classHazard))
-        "an exit hook below a row root mounts without a report in Release", (fun () -> equal [] (innerExitMessages ()))
+        "an exit hook below a row root mounts without a report in Release", (fun () -> equal [] (exitMessages innerExit))
+        "an exit hook on a mount root mounts without a report in Release", (fun () -> equal [] (exitMessages rootExit))
     |]
 #endif

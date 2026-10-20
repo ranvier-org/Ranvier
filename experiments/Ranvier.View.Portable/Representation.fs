@@ -115,8 +115,8 @@ type PlacedKind =
     | Reflow
 
 /// <summary>
-/// The part name of a placed hook in a browser-capability error; null for a motion, exit or reflow hook, which adds no
-/// markup and is omitted from server HTML under every policy.
+/// The part name of a placed hook in a browser-capability error; null for a motion, exit or reflow hook; the server omits
+/// these under every policy.
 /// </summary>
 let internal placedPart kind =
     match kind with
@@ -171,6 +171,11 @@ type MotionContext =
         Hydrated: bool
         /// <summary>Whether the element's row or arm was created by a region pass after the region's first.</summary>
         Inserted: bool
+        /// <summary>
+        /// A reader of whether the element has an exit hook that has not started. Read in the motion hook's cleanup, true
+        /// means the element stays in place for its exit once the instance is disposed, unless the mount tears down.
+        /// </summary>
+        ExitPending: unit -> bool
     }
 
 /// <summary>The measurements a reflow hook takes around the region passes under its element.</summary>
@@ -664,8 +669,8 @@ type Backend() =
 
     /// <summary>
     /// Registers a hook for the element currently receiving modifiers, run once the element is placed in the mount's
-    /// host. The hook receives the element and, for a motion hook, its <c>MotionContext</c>, and returns a value of its
-    /// kind: a cleanup, which runs when the element's owner is disposed, an exit, or a <c>Reflow</c>.
+    /// host. The hook receives the element and the flags of its <c>MotionContext</c> (1 hydrated, 2 inserted), and returns
+    /// its cleanup, which runs when the element's owner is disposed.
     /// </summary>
     abstract Placed: PlacedKind * System.Func<obj, obj, obj> -> unit
 

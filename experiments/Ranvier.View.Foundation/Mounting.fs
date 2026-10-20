@@ -163,12 +163,7 @@ let private markWidget (node: Node) : unit = jsNative
 [<Emit("$0.nextSibling")>]
 let private nextOrNull (node: Node) : Node = jsNative
 
-/// <summary>The node's next sibling, skipping the nodes held by their exits once an exit is registered.</summary>
-let inline private nextRowNode (node: Node) : Node =
-    if Departures.seam.Enabled then
-        Departures.seam.NextLive.Invoke node
-    else
-        nextOrNull node
+let private nextNode = System.Func<Node, Node>(fun node -> nextOrNull node)
 
 [<Emit("$0.textContent = ''")>]
 let private clearChildren (parent: Node) : unit = jsNative
@@ -490,6 +485,9 @@ type private OwnedRange(host: Node, first: Node, last: Node) =
     /// <summary>A range whose boundary entries are new <c>ranvier:start</c> and <c>ranvier:end</c> comments.</summary>
     new(host: Node) = OwnedRange (host, comment "ranvier:start", comment "ranvier:end")
 
+    /// <summary>The range's start boundary.</summary>
+    member _.First = first
+
     /// <summary>Adds a root already in place in the host as an entry, claimed and left where it is.</summary>
     member _.AddAdopted(node: Node) =
         entries.Insert (
@@ -801,7 +799,8 @@ type private OwnedRange(host: Node, first: Node, last: Node) =
             for index in generatedDescendants.Count - 1 .. -1 .. 0 do
                 let node = at generatedDescendants index
 
-                if not keep then
+                // A retiring release leaves each node to its root: held, or removed with it.
+                if not keep && isNull held then
                     try
                         remove (node :?> ChildNode)
                     with error ->
@@ -946,13 +945,14 @@ and [<Sealed; AllowNullLiteral>] private Row(first: Node, last: Node) =
 
     /// <summary>
     /// Marks the row removed and removes its nodes. With <c>held</c>, a node that <c>Departures.seam.Retire</c> holds stays in
-    /// place and joins <c>held</c>.
+    /// place and joins <c>held</c>. A failure of one node's retirement is raised once every node is handled.
     /// </summary>
     static member Remove(row: Row, held: ResizeArray<unit -> unit>) =
         if not row.Removed then
             row.Removed <- true
             let mutable cursor = row.First
             let mutable going = true
+            let mutable failure: exn = null
 
             while going do
                 let next = nextOrNull cursor
@@ -960,13 +960,19 @@ and [<Sealed; AllowNullLiteral>] private Row(first: Node, last: Node) =
                 if same cursor row.Last then
                     going <- false
 
-                if
-                    isNull held
-                    || not (Departures.seam.Retire.Invoke (cursor, held))
-                then
-                    remove (cursor :?> ChildNode)
+                try
+                    if
+                        isNull held
+                        || not (Departures.seam.Retire.Invoke (cursor, held))
+                    then
+                        remove (cursor :?> ChildNode)
+                with error ->
+                    failure <- error
 
                 cursor <- next
+
+            if not (isNull failure) then
+                raise failure
 
     /// <summary>Removes the nodes between the markers, which are children of <c>parent</c>; both markers stay in place.</summary>
     static member ClearBetween(parent: Node, regionStart: Node, regionEnd: Node) =
@@ -1017,11 +1023,14 @@ and [<Sealed; AllowNullLiteral>] private Row(first: Node, last: Node) =
         let last = min last (laidOut.Count - 1)
         let mutable index = max first 0
 
-        let mutable cursor =
-            if index = 0 then
-                nextRowNode regionStart
+        let step =
+            if Departures.seam.Enabled then
+                Departures.seam.NextLive
             else
-                nextRowNode laidOut[index - 1].Last
+                nextNode
+
+        let mutable cursor =
+            step.Invoke (if index = 0 then regionStart else laidOut[index - 1].Last)
 
         while index <= last do
             let row = laidOut[index]
@@ -1036,7 +1045,7 @@ and [<Sealed; AllowNullLiteral>] private Row(first: Node, last: Node) =
                 if not (same cursor row.First) then
                     invalid "Keyed-list rows or contents were externally mutated"
 
-                cursor <- nextRowNode row.Last
+                cursor <- step.Invoke row.Last
 
             index <- index + 1
 
@@ -1357,9 +1366,6 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
     /// <summary>Whether the region's first pass adopts the server rows at the mount's hydration cursor.</summary>
     member val Hydrating = false with get, set
 
-    /// <summary>The commit slot of the region's reflow measurements under queued commits; null until first used.</summary>
-    [<DefaultValue>]
-    val mutable ReflowSlot: Slot
 
     /// <summary>
     /// Re-renders the region after a structural mismatch of its hydrating pass and reports the errors it receives, the
@@ -1502,7 +1508,7 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
                 && not (isNull (box parent))
                 && not (
                     Departures.seam.Enabled
-                    && RegionSite.Departs (rows, regionStart, regionEnd)
+                    && Departures.seam.Holds.Invoke (regionStart, regionEnd)
                 )
             then
                 Row.ClearBetween (parent, regionStart, regionEnd)
@@ -1523,10 +1529,6 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
                 elif errors.Count > 1 then
                     raise (AggregateException ("Row release failed", errors))
 
-    /// <summary>Whether a root of <c>rows</c> has an exit, or a node between the markers is leaving.</summary>
-    static member private Departs(rows: Row array, regionStart: Node, regionEnd: Node) =
-        Departures.seam.AnyLeaving.Invoke (regionStart, regionEnd)
-        || Array.exists (fun (row: Row) -> Departures.seam.AnyExit.Invoke (row.First, row.Last)) rows
 
     /// <summary>
     /// Runs <c>body</c> in a new root owner of the region, then raises the setup failure recorded during that first pass.
@@ -2183,9 +2185,6 @@ and internal MountState
 
     let mutable root: MountLifetime = null
 
-    // Whether the mount is a list row or an arm, whose roots its release retires into the enclosing mount.
-    let mutable departs = false
-
     // The retired row roots held in place by their exits; null until the first is held.
     let mutable leaving: ResizeArray<unit -> unit> = null
 
@@ -2210,16 +2209,6 @@ and internal MountState
             )
 
     // Ends every held exit: cancels it, then removes its node.
-    let endLeaving (errors: ResizeArray<exn>) =
-        if not (isNull leaving) && leaving.Count > 0 then
-            let departing = leaving.ToArray ()
-
-            for index in 0 .. departing.Length - 1 do
-                try
-                    departing[index]()
-                with error ->
-                    errors.Add error
-
     // Whether the release leaves the mount's nodes in place. A mount built with a cursor also keeps them while its
     // enclosing mount keeps its own.
     let keeps () =
@@ -2232,7 +2221,24 @@ and internal MountState
         rowsReleased <- true
         let errors = ResizeArray<exn>()
         let keep = keeps ()
-        endLeaving errors
+
+        // A live release inside a live enclosing mount: a list row's or an arm's roots with exits stay in place, held by
+        // the enclosing mount, and this mount's held exits move there, still running.
+        let departing = Departures.seam.Enabled && not keep
+
+        let live =
+            departing
+            && not (isNull (box enclosing))
+            && not enclosing.Root.IsDisposed
+
+        // Inside a root that is leaving, or whose exit follows, the nodes stay in place and leave with that root.
+        let within =
+            departing
+            && Departures.seam.Within.Invoke range.First
+
+        // Ends every held exit, or moves them, still running, into the enclosing mount on a live release.
+        if not (isNull leaving) then
+            Departures.seam.End.Invoke (leaving, errors, (if live then enclosing.Leaving else null))
 
         if not (isNull releasedRows) then
             let rows = releasedRows
@@ -2240,27 +2246,14 @@ and internal MountState
 
             for index in 0 .. rows.Count - 1 do
                 try
-                    if not (keep && rows[index].Adopted) then
+                    if not (within || keep && rows[index].Adopted) then
                         removeRow rows[index] true
                 with error ->
                     errors.Add error
 
-        // A list row's or an arm's roots with exits stay in place, held by the enclosing mount, unless an enclosing
-        // mount tears down.
-        let held =
-            if
-                departs
-                && Departures.seam.Enabled
-                && not keep
-                && not enclosing.Root.IsDisposed
-                && obj.ReferenceEquals (root.Outermost (), root)
-            then
-                enclosing.Leaving
-            else
-                null
-
         try
-            range.Release (keep, held)
+            // A list row's or an arm's mount, which inherits a region pass's container, retires its roots on a live release.
+            range.Release (keep || within, (if live && inherited.Row then enclosing.Leaving else null))
         with error ->
             errors.Add error
 
@@ -2796,14 +2789,8 @@ and internal MountState
 
             markWidget node
 
-        let argument =
-            match kind with
-            | PlacedKind.Mounted
-            | PlacedKind.Lent
-            | PlacedKind.Widget -> null
-            | _ -> PlacedHook.argument kind node false (not (isNull cursor)) container
-
-        PlacedHook.register container this.Scope (Api.getOwner ()) kind (node :> Node) false (fun () -> unbox (hook.Invoke (box node, argument)))
+        PlacedHook.register container this.Scope (Api.getOwner ()) kind (node :> Node) false (not (isNull cursor)) (fun flags ->
+            unbox (hook.Invoke (box node, flags)))
 
     override this.Head(entry) =
         this.HeadIn (container, entry)
@@ -2963,11 +2950,6 @@ and internal MountState
     /// <summary>The retired row roots this mount holds in place while their exits run.</summary>
     member internal _.Leaving: ResizeArray<unit -> unit> = ensureLeaving ()
 
-    /// <summary>Whether the mount is a list row or an arm, whose release retires its roots into the enclosing mount.</summary>
-    member internal _.Departs
-        with get () = departs
-        and set (value: bool) = departs <- value
-
     /// <summary>The mount whose <c>MountRow</c> created this one; null for a root mount.</summary>
     member internal _.Enclosing
         with get () = enclosing
@@ -3059,8 +3041,7 @@ and internal MountState
             parentPath: InstancePath,
             region: int,
             row: int,
-            cursor: TemplateDom.HydrationCursor,
-            departs: bool
+            cursor: TemplateDom.HydrationCursor
         ) : Row =
         let adopting = not (isNull cursor)
 
@@ -3104,7 +3085,6 @@ and internal MountState
 
         nested.HeadDocument <- this.HeadDocument
         nested.Enclosing <- this
-        nested.Departs <- departs
 
         let build (context: BuildContext) =
             render current context.Backend
@@ -3133,46 +3113,10 @@ and internal MountState
 
             Row (first, last, Mount = mounted)
 
-    /// <summary>
-    /// Runs the <c>Before</c> of the reflow registered on the region's parent, unless the pass hydrates, and returns the
-    /// parent; null when the pass hydrates or the markers have no parent. A failure is reported with the region's errors.
-    /// </summary>
-    member private _.MeasureBefore(site: RegionSite, regionStart: Node, hydrating: bool) : Node =
-        if hydrating then
-            Unchecked.defaultof<_>
-        else
-            let parent = parentOrNull regionStart
-
-            if not (isNull (box parent)) then
-                try
-                    Departures.seam.Before.Invoke parent
-                with error ->
-                    site.Errors.Report [ error ]
-
-            parent
-
-    /// <summary>
-    /// Posts the <c>After</c> of the reflow measured on <c>parent</c>: under synchronous commits as an untracked core
-    /// effect, which runs after the effects the pass created, and under queued commits on the region's commit slot, after
-    /// the commits enqueued before it.
-    /// </summary>
-    member private this.MeasureAfter(site: RegionSite, parent: Node) =
-        Departures.seam.After.Invoke (
-            parent,
-            fun action ->
-                match scheduling with
-                | Synchronous ->
-                    Api.createEffect (fun () ->
-                        try
-                            Api.untrack action
-                        with error ->
-                            site.Errors.Report [ error ])
-                | Queued queue ->
-                    if isNull (box site.ReflowSlot) then
-                        site.ReflowSlot <- queue.Reserve this.Scope
-
-                    queue.Enqueue (site.ReflowSlot, action)
-        )
+    member private this.Post(action: unit -> unit) =
+        match scheduling with
+        | Synchronous -> Api.createEffect (fun () -> Api.untrack action)
+        | Queued queue -> queue.Enqueue (queue.Reserve this.Scope, action)
 
     /// <summary>
     /// Mounts one row per keyed item between the region's markers, on a core projection that creates new rows before it
@@ -3216,8 +3160,6 @@ and internal MountState
         let moved = ResizeArray<int>()
         // The passes whose containers hold the hooks of the rows each pass creates.
         let passPlacement = PlacementPass parentContainer
-        // Whether a pass has started; rows of later passes are inserted.
-        let mutable started = false
 
         // When the window from `first` keeps its length and spans more than `smallWindow` positions, collects into `moved`
         // the positions whose key differs between `prior` and `next` and returns true.
@@ -3266,7 +3208,7 @@ and internal MountState
 
             row <-
                 if isNull rows then
-                    this.MountRow (current, render, boundary, passPlacement.Container, parentPath, region, site.NextRow (), null, true)
+                    this.MountRow (current, render, boundary, passPlacement.Container, parentPath, region, site.NextRow (), null)
                 else
                     site.Builder.Build (rows, current, passPlacement, site.NextRow ())
 
@@ -3275,14 +3217,12 @@ and internal MountState
         let reconcile () =
             if site.Live () then
                 passPlacement.Begin ()
-                passPlacement.Inserted <- started
-                started <- true
                 // A hydrating pass adopts its rows in place, without window validation or a flush of released rows.
                 let hydrating = site.Hydrating
 
                 let measured =
-                    if Departures.seam.ReflowEnabled then
-                        this.MeasureBefore (site, regionStart, hydrating)
+                    if Departures.seam.ReflowEnabled && not hydrating then
+                        Departures.seam.Before.Invoke (regionStart, this.Post)
                     else
                         Unchecked.defaultof<_>
 
@@ -3603,7 +3543,7 @@ and internal MountState
                 )
 
                 if not (isNull (box measured)) then
-                    this.MeasureAfter (site, measured)
+                    measured ()
 
         site.Own (fun () ->
             version <- Api.createSignal 0
@@ -3646,8 +3586,6 @@ and internal MountState
         let mutable armKey: obj = null
         // The arm mounts, each a pass whose container holds the hooks of the arm.
         let armPlacement = PlacementPass parentContainer
-        // Whether a selection has been reconciled; arms mounted by later selections are inserted.
-        let mutable started = false
 
         let disposeArm () =
             if not (isNull (box armOwner)) then
@@ -3683,7 +3621,6 @@ and internal MountState
                     checkHash value
 
                 let item = Api.createSignal value
-                armPlacement.Begin ()
                 let mutable created: Owner = Unchecked.defaultof<_>
                 let mutable row: Row = null
 
@@ -3701,17 +3638,7 @@ and internal MountState
 
                             let built =
                                 if isNull rows then
-                                    this.MountRow (
-                                        current,
-                                        render,
-                                        boundary,
-                                        armPlacement.Container,
-                                        parentPath,
-                                        region,
-                                        site.NextRow (),
-                                        null,
-                                        true
-                                    )
+                                    this.MountRow (current, render, boundary, armPlacement.Container, parentPath, region, site.NextRow (), null)
                                 else
                                     site.Builder.Build (rows, current, armPlacement, site.NextRow ())
 
@@ -3750,12 +3677,11 @@ and internal MountState
             if site.Live () then
                 let hydrating = site.Hydrating
                 let resumed = if hydrating then cursor.Next else Unchecked.defaultof<_>
-                armPlacement.Inserted <- started
-                started <- true
+                armPlacement.Begin ()
 
                 let measured =
-                    if Departures.seam.ReflowEnabled then
-                        this.MeasureBefore (site, regionStart, hydrating)
+                    if Departures.seam.ReflowEnabled && not hydrating then
+                        Departures.seam.Before.Invoke (regionStart, this.Post)
                     else
                         Unchecked.defaultof<_>
 
@@ -3787,7 +3713,7 @@ and internal MountState
                 site.Settle (recorded, failure, hydrating, (fun recorded -> site.Errors.Report recorded))
 
                 if not (isNull (box measured)) then
-                    this.MeasureAfter (site, measured)
+                    measured ()
 
         let updatePayload () =
             let current = items.Value
@@ -3829,7 +3755,7 @@ and internal MountState
         let holeContainer = Placement parentContainer
 
         let row =
-            this.MountRow ((fun () -> view), render, boundary, holeContainer, parentPath, region, site.NextRow (), null, false)
+            this.MountRow ((fun () -> view), render, boundary, holeContainer, parentPath, region, site.NextRow (), null)
 
         Row.MoveBefore (row, site.Parent (), regionEnd)
         row.Mount.Relocate ()
@@ -3869,7 +3795,7 @@ and internal MountState
                 parentPath,
                 region,
                 (fun current render scope target parentPath region row cursor ->
-                    this.MountRow (current, render, scope, target, parentPath, region, row, cursor, false)),
+                    this.MountRow (current, render, scope, target, parentPath, region, row, cursor)),
                 regionCursor,
                 (fun () -> this.HydrationCursor),
                 (fun error -> this.HydrationFailed error),

@@ -1030,7 +1030,7 @@ let motionPlain =
 
 /// <summary>The server HTML of <c>motionPlain</c> and <c>motionHooked</c> under <c>Reject</c> and <c>Omit</c>, shown and hidden.</summary>
 let motionServerPairs () : (string * string * string) array =
-    let graph = new Graph ()
+    use graph = new Graph ()
 
     let shown, hidden =
         graph.Run (fun () ->

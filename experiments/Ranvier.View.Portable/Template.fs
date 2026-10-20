@@ -2334,21 +2334,21 @@ type HookBuilder<'inst> internal () =
                         {
                             Hydrated = flags &&& 1 <> 0
                             Inserted = flags &&& 2 <> 0
+                            ExitPending = fun () -> Departures.hasExit (unbox node)
                         }
                 ))
         )
 
     /// <summary>
-    /// On a row or arm root element: when the row is retired, its node stays in place and <c>exit</c> runs with
-    /// <c>finish</c>; the node leaves when <c>finish</c> is called. The returned function cancels the exit when the removal
-    /// is forced. The server omits the hook.
+    /// On a row or arm root element: when the row is retired, its node stays in place with its content and <c>exit</c>
+    /// runs with <c>finish</c>; the node leaves when <c>finish</c> is called. The returned function cancels the exit when
+    /// the removal is forced. An exit applies once the element is placed. The server omits the hook.
     /// </summary>
     member _.exit(exit: 'inst -> 'native -> (unit -> unit) -> (unit -> unit)) : Part<'native, 'inst> =
         PlacedPart (
             PlacedKind.Exit,
             Func<obj, obj, obj, obj>(fun instance node _ ->
-                Departures.register (unbox node) (fun finish -> exit (unbox instance) (unbox node) finish)
-                null)
+                box (Departures.register (unbox node) (fun finish -> exit (unbox instance) (unbox node) finish)))
         )
 
     /// <summary>
