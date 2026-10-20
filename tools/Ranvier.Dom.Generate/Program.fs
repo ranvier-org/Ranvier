@@ -1407,13 +1407,7 @@ let generate compilerRoot policyRoot packageRoot output (templateOutput: string 
                 + "Template.fs"
             ))
 
-    let sugarReserved =
-        Set.union reserved["TemplateBuilder"] (set [ "armOf"; "forEach"; "forEachFixed"; "show"; "showElse" ])
-
     unique "TemplateBuilder (sugar)" (sugarTags |> Seq.map fst)
-
-    for sugarName, _ in sugarTags do
-        require (not (sugarReserved.Contains sugarName)) $"Sugar member takes a reserved name: TemplateBuilder.{sugarName}"
 
     let sugarSource =
         String.concat

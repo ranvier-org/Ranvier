@@ -14,6 +14,15 @@ module H = Ranvier.View.Foundation.Generated.Html
 open Ranvier.View.Foundation.Generated.Html.Authoring
 open Ranvier.View.Foundation.Template
 """
+sugar_members = re.findall(
+    r"member _\.``(\w+)`` ?\(\[<ParamArray>\] parts: Part<[^>]*>[^)]*\) : (ElementBuilder|TemplateView)",
+    re.sub(r"\s+", " ", (root / "experiments/Ranvier.View.Portable/Generated/HtmlTemplateSugar.fs").read_text(encoding="utf-8")),
+)
+assert len(sugar_members) == 112, "the generated sugar file must declare every HTML tag"
+# One call per generated tag: a void tag takes no body, any other tag takes an empty body.
+all_sugar_tags = "\n".join(
+    "            t." + name + ("() { }" if kind == "ElementBuilder" else "()") for name, kind in sugar_members
+)
 examples = [
     ("valid helpers", "let view = H.div Tree.ops [| H.Properties.HTMLElement.titleStatic \"shared\"; H.Events.onClick (fun (_: Dom.PointerEvent) -> ()) |] [| H.input Tree.ops [| H.Input.checkedStatic true |]; H.select Tree.ops [||] [| H.option Tree.ops [||] [||] |]; H.br Tree.ops [||] |]", None),
     ("generic modifiers reject lists", "let view = H.div Tree.ops [] [||]", "FS0001"),
@@ -108,7 +117,8 @@ let view =
     Component.define (fun _ (items: SugarItem array) -> items) (fun t ->
         t.Div() { t.forEach (fun (item: SugarItem) -> item.Id) id (fun r -> r.Span() { fun row -> string (row ()).Id }) })
 ''', "FS0001"),
-    ("sugar t.text with a label shared by a later record (the lambda-yield negative above proves the label conflicts)", '''
+    # Counterpart of the lambda-yield case above: t.text compiles where the bare lambda yield conflicts.
+    ("sugar t.text with a label shared by a later record", '''
 open Ranvier.View.Foundation.Sugar
 type SugarItem = { Id: int }
 type SugarOther = { Id: int; Name: string }
@@ -138,6 +148,7 @@ let view =
             t.Img()
             t.H1() { "title" }
             t.Tbody() { t.Tr() { t.Td() { "cell" } } }
+''' + all_sugar_tags + '''
         })
 ''', None),
     ("generated sugar void tag with children", '''

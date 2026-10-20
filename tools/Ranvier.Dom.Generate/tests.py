@@ -137,6 +137,19 @@ with tempfile.TemporaryDirectory() as folder:
     assert "member _.``Br``([<ParamArray>] parts: Part<Dom.HTMLBRElement, 'inst> array) : TemplateView<'inst> = TemplateParts.element (HtmlTag \"br\") parts [||]" in sflat
     assert "member _.``Tbody`` (" in sflat and "member _.``H1``(" in sflat, "long members wrap after the name"
     assert sflat.count(": TemplateView<'inst> = TemplateParts.element") == sum(1 for tag in coverage["tags"] if tag["isVoid"])
+    explicit_elements = {
+        name: (native, not children)
+        for name, native, children in re.findall(r"member _\.``([a-z0-9]+)`` ?\(parts: Part<(Dom\.\w+), 'inst> array\)( \(children: TemplateView<'inst> array\))? : TemplateView<'inst>", flat)
+    }
+    sugared_elements = {}
+    for name, native, result, builder in re.findall(
+        r"member _\.``(\w+)`` ?\(\[<ParamArray>\] parts: Part<(Dom\.\w+), 'inst> array\) : (TemplateView<'inst>|ElementBuilder<(Dom\.\w+), 'inst>)", sflat
+    ):
+        if builder:
+            assert builder == native, name + ": the builder's native type must equal the part's"
+        sugared_elements[name.lower()] = (native, result == "TemplateView<'inst>")
+    assert len(explicit_elements) == 112 and len(sugared_elements) == 112
+    assert sugared_elements == explicit_elements, "sugar members must match HtmlTemplate.fs in native type and void form: " + repr(sorted(set(sugared_elements.items()) ^ set(explicit_elements.items())))
     handwritten = (root / "../../experiments/Ranvier.View.Portable/Template.fs").read_text(encoding="utf-8")
     builder_members = {}
     for builder in ("TemplateBuilder", "AttributeBuilder", "PropertyBuilder", "EventBuilder"):
