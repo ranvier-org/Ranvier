@@ -1,5 +1,6 @@
 """Compile valid generated usage and reject incompatible/readonly examples."""
 from pathlib import Path
+import re
 import subprocess
 import tempfile
 
@@ -107,7 +108,7 @@ let view =
     Component.define (fun _ (items: SugarItem array) -> items) (fun t ->
         t.Div() { t.forEach (fun (item: SugarItem) -> item.Id) id (fun r -> r.Span() { fun row -> string (row ()).Id }) })
 ''', "FS0001"),
-    ("sugar t.text with a label shared by a later record", '''
+    ("sugar t.text with a label shared by a later record (the lambda-yield negative above proves the label conflicts)", '''
 open Ranvier.View.Foundation.Sugar
 type SugarItem = { Id: int }
 type SugarOther = { Id: int; Name: string }
@@ -148,6 +149,9 @@ with tempfile.TemporaryDirectory(prefix="ranvier-generated-types-") as directory
         if diagnostic is None:
             if result.returncode:
                 raise AssertionError(f"{name} failed:\n{output}")
-        elif result.returncode == 0 or f"error {diagnostic}" not in output:
-            raise AssertionError(f"{name} did not fail with {diagnostic}:\n{output}")
+        else:
+            errors = sorted({match.group(0) for match in re.finditer(r"[^\r\n]*\berror FS\d+:[^\r\n]*", output)})
+            codes = [re.search(r"error (FS\d+)", line).group(1) for line in errors]
+            if result.returncode == 0 or codes != [diagnostic]:
+                raise AssertionError(f"{name} must fail with exactly one error {diagnostic}, got {codes}:\n{output}")
         print(f"PASS {name}")
