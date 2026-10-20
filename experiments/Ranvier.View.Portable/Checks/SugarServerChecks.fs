@@ -6,6 +6,7 @@ open global.Ranvier
 open Ranvier.View.Foundation
 open Ranvier.View.Foundation.Representation
 open Ranvier.View.Foundation.Template
+open Ranvier.View.Foundation.Sugar
 open SugarFixtures
 
 let private equal expected actual =
@@ -47,13 +48,56 @@ let private showOffMarkup () =
             showSugar
             hidden)
 
-let private oneEmptyArm () =
-    let first = Ranvier.View.Foundation.Sugar.Builders.emptyArm ()
-    equal true (obj.ReferenceEquals (first, Ranvier.View.Foundation.Sugar.Builders.emptyArm ()))
+let private omit =
+    { Server.Options.defaults with
+        Policy = Omit
+    }
+
+/// <summary>
+/// Renders each control-flow form on and off several times; its content, fallback and row definitions are built once
+/// per call.
+/// </summary>
+let private definitionsBuiltOncePerCall () =
+    use graph = new Graph ()
+    let shownBuilds, elseBuilds, rowBuilds = ref 0, ref 0, ref 0
+
+    let flow =
+        Component.define (fun _ (state: Toggle) -> state) (fun t ->
+            t.Div () {
+                t.show (fun s -> s.On.Value) (fun c ->
+                    shownBuilds.Value <- shownBuilds.Value + 1
+                    c.Span () { "x" })
+
+                t.showElse
+                    (fun s -> s.On.Value)
+                    (fun c ->
+                        elseBuilds.Value <- elseBuilds.Value + 1
+                        c.Span () { "y" })
+                    (fun c ->
+                        elseBuilds.Value <- elseBuilds.Value + 1
+                        c.Em () { "z" })
+            })
+
+    let rows =
+        Component.define (fun _ (items: KeyedItem array) -> items) (fun t ->
+            t.Div () {
+                t.forEachFixed (fun (row: KeyedItem) -> row.Id) (fun items -> items) (fun r ->
+                    rowBuilds.Value <- rowBuilds.Value + 1
+                    r.Span () { "r" })
+            })
+
+    equal (1, 2, 1) (shownBuilds.Value, elseBuilds.Value, rowBuilds.Value)
+    let items = graph.Run keyedItems
+
+    for on in [ true; false; true; false ] do
+        let state = graph.Run (fun () -> toggle on)
+        Server.render omit flow state |> ignore
+        Server.render omit rows items |> ignore
+
+    equal (1, 2, 1) (shownBuilds.Value, elseBuilds.Value, rowBuilds.Value)
 
 #if !FABLE_COMPILER
-/// <summary>Clears the shared empty arm, then takes it from 16 threads at once.</summary>
-let private emptyArmOnce () =
+let private emptyArmField () =
     let holder =
         typeof<TemplateBuilder<unit>>.Assembly.GetType("Ranvier.View.Foundation.Sugar.Builders+EmptyArm", true)
 
@@ -66,18 +110,59 @@ let private emptyArmOnce () =
         )
 
     equal false (isNull field)
-    field.SetValue (null, null)
+    field
 
-    let arms =
-        Array.Parallel.init 16 (fun _ -> Ranvier.View.Foundation.Sugar.Builders.emptyArm () :> obj)
+/// <summary>Clears the shared empty arm, renders a hidden <c>show</c> built earlier, and restores the arm.</summary>
+let private showTakesEmptyArmOnce () =
+    let field = emptyArmField ()
+    let original = field.GetValue null
+    let graph = new Graph ()
+    let hidden = graph.Run (fun () -> toggle false)
 
-    equal
-        true
-        (arms
-         |> Array.forall (fun arm -> obj.ReferenceEquals (arm, arms[0])))
+    try
+        field.SetValue (null, null)
+        Server.render omit showSugar hidden |> ignore
+        equal true (isNull (field.GetValue null))
+    finally
+        field.SetValue (null, original)
+
+/// <summary>Repeatedly clears the shared empty arm, then takes it from 16 threads released together.</summary>
+let private emptyArmOnce () =
+    let field = emptyArmField ()
+    let original = field.GetValue null
+
+    try
+        for _ in 1..100 do
+            field.SetValue (null, null)
+            let arms = Array.zeroCreate<obj> 16
+            use barrier = new Threading.Barrier 16
+
+            let threads =
+                [|
+                    for index in 0..15 ->
+                        Threading.Thread (fun () ->
+                            barrier.SignalAndWait ()
+                            arms[index] <- Ranvier.View.Foundation.Sugar.Builders.emptyArm () :> obj)
+                |]
+
+            for thread in threads do
+                thread.Start ()
+
+            for thread in threads do
+                thread.Join ()
+
+            equal
+                true
+                (arms
+                 |> Array.forall (fun arm -> obj.ReferenceEquals (arm, arms[0])))
+    finally
+        field.SetValue (null, original)
 
 let dotnetCases: (string * (unit -> unit)) array =
-    [| "concurrent first uses of show share one empty arm", emptyArmOnce |]
+    [|
+        "concurrent first uses of show share one empty arm", emptyArmOnce
+        "show takes the empty arm once per call, outside the arms function", showTakesEmptyArmOnce
+    |]
 #endif
 
 let cases: (string * (unit -> unit)) array =
@@ -90,5 +175,5 @@ let cases: (string * (unit -> unit)) array =
         "control-flow sugar shares its explicit twins' layouts and hashes", sameLayouts flowPairs
         "control-flow sugar renders its explicit twins' server HTML", sameServerHtml flowServerPairs
         "a hidden show writes a zero-root arm marked with the shared empty arm's hash", showOffMarkup
-        "show reuses one empty arm", oneEmptyArm
+        "show, showElse and forEachFixed build their definitions once per call", definitionsBuiltOncePerCall
     |]

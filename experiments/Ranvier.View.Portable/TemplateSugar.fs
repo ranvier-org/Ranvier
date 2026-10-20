@@ -44,14 +44,16 @@ module Builders =
 
     [<Sealed>]
     type private EmptyArm private () =
+        static let gate = obj ()
         static let mutable shared: Component<unit -> unit> = Unchecked.defaultof<_>
 
         static member Get() =
+            // The first read is deliberately unsynchronised: a stale null only sends the caller into the locked re-check.
             if isNull (box shared) then
 #if FABLE_COMPILER
                 shared <- Component.define (fun _ (_: unit -> unit) -> ()) (fun t -> t.fragment [||])
 #else
-                lock typeof<EmptyArm> (fun () ->
+                lock gate (fun () ->
                     if isNull (box shared) then
                         shared <- Component.define (fun _ (_: unit -> unit) -> ()) (fun t -> t.fragment [||]))
 #endif
@@ -62,7 +64,7 @@ module Builders =
         EmptyArm.Get ()
 
     type TemplateBuilder<'inst> with
-        /// <summary>An arm definition whose instance is its props, created once with the enclosing template.</summary>
+        /// <summary>An arm definition whose instance is its props.</summary>
         member _.armOf(build: TemplateBuilder<unit -> 'payload> -> TemplateView<unit -> 'payload>) : Component<unit -> 'payload> =
             Component.define (fun _ payload -> payload) build
 
