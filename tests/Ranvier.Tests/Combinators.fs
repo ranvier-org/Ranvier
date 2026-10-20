@@ -1297,53 +1297,49 @@ let sortKeyOrderTests =
             // .NET only: JavaScript exposes no allocation counter.
             untracedOnly
             <| test "a sort pass over int keys allocates no box per comparison" {
-                // Unoptimised code keeps the box in isNaN.
-                let optimiserDisabled (assembly: Reflection.Assembly) =
-                    match Attribute.GetCustomAttribute (assembly, typeof<Diagnostics.DebuggableAttribute>) with
-                    | :? Diagnostics.DebuggableAttribute as debuggable -> debuggable.IsJITOptimizerDisabled
-                    | _ -> false
-
-                if
-                    optimiserDisabled typeof<Graph>.Assembly
-                    || optimiserDisabled (Reflection.Assembly.GetExecutingAssembly ())
-                then
-                    skiptest "the JIT optimiser is disabled"
+                // A Debug build of Ranvier allocates in its sort path at every JIT tier.
+                match Attribute.GetCustomAttribute (typeof<Graph>.Assembly, typeof<Diagnostics.DebuggableAttribute>) with
+                | :? Diagnostics.DebuggableAttribute as debuggable when debuggable.IsJITOptimizerDisabled ->
+                    skiptest "Ranvier is built without optimisation"
+                | _ -> ()
 
                 let rowCount = 1000
-                use g = new Graph ()
-                use _ = g.Activate ()
-                let forward = [ for i in 0 .. rowCount - 1 -> i, (i * 7919) % rowCount ]
-                let backward = List.rev forward
-                let source = createSignal forward
 
-                let view =
-                    createProjection fst snd (fun () -> source.Value)
-                    |> Projection.sortBy id
+                // Bytes per pass of `shape` over an upstream alternating between two orders of the same rows.
+                let bytesPerPass (shape: Projection<int, int> -> Projection<int, int>) =
+                    use g = new Graph ()
+                    use _ = g.Activate ()
+                    let forward = [ for i in 0 .. rowCount - 1 -> i, (i * 7919) % rowCount ]
+                    let backward = List.rev forward
+                    let source = createSignal forward
 
-                // Bytes per sort pass over an upstream alternating between two orders of the same rows.
-                let bytesPerPass () =
+                    let view =
+                        createProjection fst snd (fun () -> source.Value)
+                        |> shape
+
+                    let passes count =
+                        for i in 1..count do
+                            source.Value <- if i % 2 = 0 then backward else forward
+                            view.Keys |> ignore
+
+                    // The first passes compile the code and size the buffers.
+                    passes 4
                     let before = GC.GetAllocatedBytesForCurrentThread ()
-
-                    for i in 1..20 do
-                        source.Value <- if i % 2 = 0 then backward else forward
-                        view.Keys |> ignore
+                    passes 20
 
                     (GC.GetAllocatedBytesForCurrentThread () - before)
                     / 20L
 
+                // A filter pass reconciles the same upstream rows without comparing ranks. The difference is the sort's
+                // own allocation, at any JIT tier: unoptimised code boxes in the reconciliation, in both views alike.
+                let sorted = bytesPerPass (Projection.sortBy id)
+                let filtered = bytesPerPass (Projection.filter (fun _ -> true))
+
                 // A boxing comparer allocates 48 bytes per comparison, about 500,000 bytes per pass here.
-                let limit = int64 (32 * rowCount)
-
-                // Tier-0 code boxes in isNaN; the least over rounds is the tier-1 figure.
-                let mutable least = bytesPerPass ()
-                let mutable rounds = 1
-
-                while least >= limit && rounds < 50 do
-                    Threading.Thread.Sleep 20
-                    least <- min least (bytesPerPass ())
-                    rounds <- rounds + 1
-
-                Expect.isLessThan least limit $"a sort pass over %d{rowCount} rows allocated %d{least} bytes"
+                Expect.isLessThan
+                    (sorted - filtered)
+                    (int64 (32 * rowCount))
+                    $"a sort pass over %d{rowCount} rows allocated %d{sorted} bytes, a filter pass %d{filtered}"
             }
 #endif
         ]

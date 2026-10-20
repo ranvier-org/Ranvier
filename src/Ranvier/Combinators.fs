@@ -346,16 +346,30 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
     /// <summary>Whether <c>order</c> holds the result of a completed sort.</summary>
     let mutable sorted = false
 
+#if !FABLE_COMPILER
+    // The order of compare, unboxed for value types.
+    let comparer = LanguagePrimitives.FastGenericComparer<'S>
+
+    // True when a rank can hold a float or float32. isNaN boxes its rank only when true, at every JIT tier.
+    let floatRanks =
+        typeof<'S>.IsAssignableFrom typeof<float>
+        || typeof<'S>.IsAssignableFrom typeof<float32>
+#endif
+
     // Local copies of the Ranks orders: a call into Ranks, direct or through a closure, costs 5-15% per sorting pass.
+#if FABLE_COMPILER
     let isNaN (rank: 'S) =
         match box rank with
         | :? float as f -> System.Double.IsNaN f
         | :? float32 as f -> System.Single.IsNaN f
         | _ -> false
-
-#if !FABLE_COMPILER
-    // The order of compare, unboxed for value types.
-    let comparer = LanguagePrimitives.FastGenericComparer<'S>
+#else
+    let isNaN (rank: 'S) =
+        floatRanks
+        && (match box rank with
+            | :? float as f -> System.Double.IsNaN f
+            | :? float32 as f -> System.Single.IsNaN f
+            | _ -> false)
 #endif
 
     /// <summary>The order of <c>sortByDescending</c> when <c>descending</c> is set, of <c>sortBy</c> otherwise.</summary>
