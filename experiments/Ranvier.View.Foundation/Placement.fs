@@ -224,7 +224,7 @@ module internal PlacedHook =
         (hook: unit -> (unit -> unit))
         =
         let checksParent =
-            kind <> PlacedKind.Mounted
+            (kind = PlacedKind.Lent || kind = PlacedKind.Widget)
             && not root
             && not (atRoot node)
 

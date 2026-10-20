@@ -172,7 +172,7 @@ type TemplateNode =
         (PortableProperty * obj) array *
         Slot array *
         (string * Func<obj, obj, unit>) array *
-        (PlacedKind * Func<obj, obj, (unit -> unit)>) array *
+        (PlacedKind * Func<obj, obj, obj, obj>) array *
         TemplateNode array
     | TextNode of string
     | TextSlotNode of Slot
@@ -1228,7 +1228,8 @@ let private compilePlan (root: TemplateNode) : ServerPlan =
                 emit (BrowserOp (tagName, "listener " + eventName))
 
             for kind, _ in placed do
-                emit (BrowserOp (tagName, placedPart kind))
+                if not (serverOmitted kind) then
+                    emit (BrowserOp (tagName, placedPart kind))
 
             write ("<" + tagName)
 
@@ -1948,6 +1949,17 @@ let private contentView (ops: Operations<'view>) (leadingLineFeed: bool) (read: 
             html.Sink.Append markup
         | _ -> ())
 
+/// <summary>
+/// A placed hook for a backend's <c>Placed</c>: a motion hook receives a context with both flags false, and exit and
+/// reflow hooks are inert.
+/// </summary>
+let private expandedHook (kind: PlacedKind) (hook: Func<obj, obj, obj, obj>) (instance: obj) : obj -> (unit -> unit) =
+    match kind with
+    | PlacedKind.Exit
+    | PlacedKind.Reflow -> fun _ -> ignore
+    | PlacedKind.Motion -> fun node -> unbox (hook.Invoke (instance, node, box { Hydrated = false; Inserted = false }))
+    | _ -> fun node -> unbox (hook.Invoke (instance, node, null))
+
 let rec private expandNode (ops: Operations<'view>) (instance: obj) (node: TemplateNode) : 'view =
     match node with
     | TextNode value -> ops.Text value
@@ -1969,7 +1981,7 @@ let rec private expandNode (ops: Operations<'view>) (instance: obj) (node: Templ
                             | _ -> backend.ReactiveProperty ((fun () -> box (markupOf (slot.Read.Invoke instance))), innerHtml)
                     | TextTarget -> invalidOp "A text slot is a child node"
                 for eventName, handler in events -> listenModifier eventName (fun event -> handler.Invoke (instance, event))
-                for kind, hook in placed -> fun (backend: Backend) -> backend.Placed (kind, (fun node -> hook.Invoke (instance, node)))
+                for kind, hook in placed -> fun (backend: Backend) -> backend.Placed (kind, expandedHook kind hook instance)
             |]
 
         // The child content written by the server plan for child-text properties and raw-HTML parts.
@@ -2054,7 +2066,7 @@ type Part<'native, 'inst> =
     | StaticProperty of PortableProperty * obj
     | DynamicPart of Slot
     | EventPart of string * Func<obj, obj, unit>
-    | PlacedPart of PlacedKind * Func<obj, obj, (unit -> unit)>
+    | PlacedPart of PlacedKind * Func<obj, obj, obj, obj>
     | NoPart
 
 /// <summary>A template subtree for instances of type <c>'inst</c>.</summary>
@@ -2289,7 +2301,7 @@ type EventBuilder<'inst> internal () =
         TemplateParts.event eventName handler
 
 let private placedHook (hook: 'inst -> 'native -> (unit -> unit)) =
-    Func<obj, obj, (unit -> unit)>(fun instance node -> hook (unbox instance) (unbox node))
+    Func<obj, obj, obj, obj>(fun instance node _ -> box (hook (unbox instance) (unbox node)))
 
 /// <summary>Hook parts: code that runs once the element is placed in the mount's host.</summary>
 [<Sealed>]
@@ -2303,7 +2315,7 @@ type HookBuilder<'inst> internal () =
     /// once the instance is disposed.
     /// </summary>
     member _.ref(select: 'inst -> NodeRef<'native>) : Part<'native, 'inst> =
-        PlacedPart (PlacedKind.Mounted, Func<obj, obj, (unit -> unit)>(fun instance node -> (select (unbox instance)).Place node))
+        PlacedPart (PlacedKind.Mounted, Func<obj, obj, obj, obj>(fun instance node _ -> box ((select (unbox instance)).Place node)))
 
     /// <summary>The widget owns the element's content once placed, and the template declares the element empty. The cleanup destroys the widget.</summary>
     member _.widget(attach: 'inst -> 'native -> (unit -> unit)) : Part<'native, 'inst> =
@@ -2312,6 +2324,32 @@ type HookBuilder<'inst> internal () =
     /// <summary>The integration borrows the element once placed; the cleanup removes what it added. The integration keeps the element under its parent; moving it is reported after the cleanup.</summary>
     member _.lend(attach: 'inst -> 'native -> (unit -> unit)) : Part<'native, 'inst> =
         PlacedPart (PlacedKind.Lent, placedHook attach)
+
+    /// <summary>
+    /// Runs once the element is placed, with whether the element was adopted from server HTML and whether its row or arm
+    /// was created by a region pass after the region's first. The returned cleanup runs when the instance is disposed.
+    /// The server omits the hook.
+    /// </summary>
+    member _.motion(hook: 'inst -> 'native -> MotionContext -> (unit -> unit)) : Part<'native, 'inst> =
+        PlacedPart (
+            PlacedKind.Motion,
+            Func<obj, obj, obj, obj>(fun instance node context -> box (hook (unbox instance) (unbox node) (unbox context)))
+        )
+
+    /// <summary>
+    /// On a row or arm root element: when the row is retired, its node stays in place and <c>exit</c> runs with
+    /// <c>finish</c>; the node leaves when <c>finish</c> is called. The returned function cancels the exit when the removal
+    /// is forced. The server omits the hook.
+    /// </summary>
+    member _.exit(exit: 'inst -> 'native -> (unit -> unit) -> (unit -> unit)) : Part<'native, 'inst> =
+        PlacedPart (PlacedKind.Exit, Func<obj, obj, obj, obj>(fun instance node finish -> box (exit (unbox instance) (unbox node) (unbox finish))))
+
+    /// <summary>
+    /// On a region's parent element: <c>Before</c> runs before the first region pass under the element in a flush,
+    /// <c>After</c> once the pass's nodes and commits are in place. The server omits the hook.
+    /// </summary>
+    member _.reflow(measure: 'inst -> 'native -> Reflow) : Part<'native, 'inst> =
+        PlacedPart (PlacedKind.Reflow, Func<obj, obj, obj, obj>(fun instance node _ -> box (measure (unbox instance) (unbox node))))
 
 /// <summary>Raw-HTML parts: the element's whole content, parsed without escaping.</summary>
 [<Sealed>]

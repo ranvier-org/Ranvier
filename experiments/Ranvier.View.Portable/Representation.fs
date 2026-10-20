@@ -107,6 +107,12 @@ type PlacedKind =
     | Lent
     /// <summary>Owns the element's content.</summary>
     | Widget
+    /// <summary>Runs code against the element with the element's placement context.</summary>
+    | Motion
+    /// <summary>Holds a retired row or arm root element in place until the hook finishes.</summary>
+    | Exit
+    /// <summary>Measures the element before and after the region passes under it.</summary>
+    | Reflow
 
 /// <summary>The part name of a placed hook in a browser-capability error.</summary>
 let internal placedPart kind =
@@ -114,6 +120,17 @@ let internal placedPart kind =
     | PlacedKind.Mounted -> "mounted hook"
     | PlacedKind.Lent -> "lent hook"
     | PlacedKind.Widget -> "widget"
+    | PlacedKind.Motion -> "motion hook"
+    | PlacedKind.Exit -> "exit hook"
+    | PlacedKind.Reflow -> "reflow hook"
+
+/// <summary>Whether a placed hook adds no markup and is omitted from server HTML under every policy.</summary>
+let internal serverOmitted kind =
+    match kind with
+    | PlacedKind.Motion
+    | PlacedKind.Exit
+    | PlacedKind.Reflow -> true
+    | _ -> false
 
 /// <summary>The browser-capability error under <c>Reject</c> for <c>part</c> of an element <c>tag</c>.</summary>
 let internal browserRejected (tag: string) (part: string) =
@@ -152,6 +169,26 @@ type NodeRef<'native> internal () =
 module NodeRef =
     let create () : NodeRef<'native> =
         NodeRef<'native>()
+
+/// <summary>The placement of an element with a motion hook.</summary>
+[<NoEquality; NoComparison>]
+type MotionContext =
+    {
+        /// <summary>Whether the element was adopted from server HTML.</summary>
+        Hydrated: bool
+        /// <summary>Whether the element's row or arm was created by a region pass after the region's first.</summary>
+        Inserted: bool
+    }
+
+/// <summary>The measurements a reflow hook takes around the region passes under its element.</summary>
+[<NoEquality; NoComparison>]
+type Reflow =
+    {
+        /// <summary>Runs before the first region pass under the element.</summary>
+        Before: unit -> unit
+        /// <summary>Runs once the passes' nodes and commits are in place.</summary>
+        After: unit -> unit
+    }
 
 /// <summary>The element a document head entry stands for.</summary>
 [<RequireQualifiedAccess>]
@@ -860,7 +897,10 @@ and [<Sealed>] HtmlBackend(policy: BrowserPolicy, sink: HtmlSink) =
         browserCapability "browser hook"
 
     override _.Placed(kind, _) =
-        browserCapability (placedPart kind)
+        if serverOmitted kind then
+            ensureAttributes ()
+        else
+            browserCapability (placedPart kind)
 
         if kind = PlacedKind.Widget then
             if widget then
