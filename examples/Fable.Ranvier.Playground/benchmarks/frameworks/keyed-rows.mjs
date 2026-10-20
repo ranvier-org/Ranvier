@@ -266,5 +266,5 @@ function summarizeHeap(heap) {
     for (const child of node.children || []) visit(child, here);
   };
   visit(heap.head, false);
-  return { totalBytes: total, self: [...self].sort((a, b) => b[1] - a[1]).slice(0, 60).map(([name, bytes]) => ({ name, bytes })) };
+  return { totalBytes: total, self: [...self].sort((a, b) => b[1] - a[1]).map(([name, bytes]) => ({ name, bytes })) };
 }

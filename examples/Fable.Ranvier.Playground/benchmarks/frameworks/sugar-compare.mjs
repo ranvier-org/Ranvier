@@ -28,16 +28,22 @@ for (const file of files) {
     for (const rows of [...new Set(data.results.map(row => row.rows))]) {
       const of = mode => data.results.filter(row => row.mode === mode && row.rows === rows).map(row => row.jsBytesPerRow);
       const explicit = of("ranvier"), sugar = of("ranvier-sugar");
-      const median = values => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
-      const ok = Math.abs(median(sugar) - median(explicit)) <= 0.005 * median(explicit);
+      const median = values => {
+        const sorted = [...values].sort((a, b) => a - b), middle = sorted.length >> 1;
+        return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+      };
+      const ok = sugar.every(value => Math.abs(value - median(explicit)) <= 0.005 * median(explicit));
       if (!ok) failed++;
       console.log(`${ok ? "same    " : "DIFFER  "} heap ${rows} rows: explicit ${explicit.join(", ")} B/row, sugar ${sugar.join(", ")} B/row`);
     }
   if (kind === "alloc")
-    for (const sample of data.allocations.filter(sample => sample.mode === "ranvier-sugar")) {
-      const named = sample.self.filter(row => /ElementBuilder|Builders_|Sugar/.test(row.name));
+    for (const sample of data.allocations.filter(sample => sample.mode.endsWith("sugar"))) {
+      // Every sampled function is searched, not only the largest.
+      // The adapter entry `mountTemplateSugar` is the harness function under test, not a sugar type.
+      const named = sample.self.filter(row => /ElementBuilder|Builders_|Sugar|TemplateBuilder\$1_|Delay/.test(row.name) && !row.name.startsWith("mountTemplateSugar "));
+      const twin = data.allocations.find(other => other.mode === sample.mode.replace(/-sugar$/, "") && other.operation === sample.operation && other.process === sample.process);
       if (named.length) failed++;
-      console.log(`${named.length ? "SUGAR   " : "clean   "} ${sample.operation}: ${named.map(row => row.name).join(", ")}`);
+      console.log(`${named.length ? "SUGAR   " : "clean   "} ${sample.operation ?? `width ${sample.width}`}${sample.process === undefined ? "" : ` process ${sample.process + 1}`}: ${sample.self.length} functions${twin ? `, ${sample.totalBytes} B against ${twin.totalBytes} B explicit` : ""}${named.length ? ", " + named.map(row => row.name).join(", ") : ""}`);
     }
 }
 process.exitCode = failed ? 1 : 0;

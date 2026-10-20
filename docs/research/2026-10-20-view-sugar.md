@@ -75,25 +75,36 @@ Differences between the two fixtures that readers should not attribute to the su
 | 1,000 | 856.1, 856.1 | 795.3, 856.1 | 905.4, 905.4 |
 | 10,000 | 839.3, 839.3 | 839.3, 839.3 | 936.0, 936.0 |
 
-The comparer's medians (the upper value of two samples) are equal at both counts. At 1,000 rows one sugared process retained 795.3 B/row, 61 B/row less than every other Ranvier sample; the other sugared process retained 856.1 B/row, identical to the explicit adapter. The spec's 994 B at 1k is superseded by 856 B in the current build, so the comparison is against the explicit adapter of the same run. `keyed-heap.mjs` with the `ranvier-sugar` bundle addition ran to completion.
+With 2 processes one sugared process retained 795.3 B/row, 61 B/row less than every other Ranvier sample, and the other retained 856.1 B/row. A median of two samples cannot establish equality, so the comparer now requires every sugared sample to lie within 0.5 % of the explicit median, and the heap run was repeated with 4 processes (`heap-sugar-4p.json`, commit `df3bb0b`):
+
+| Rows | `ranvier` (4 processes) | `ranvier-sugar` (4 processes) |
+|-----:|------------------------:|------------------------------:|
+| 1,000 | 856.1, 856.1, 856.1, 856.1 | 795.3, 856.1, 795.3, 795.3 |
+| 10,000 | 860.0, 839.3, 839.3, 843.6 | 839.3, 839.3, 839.3, 839.3 |
+
+The comparer reports `same` at 10,000 rows and `DIFFER` at 1,000 rows. At 1,000 rows three of four sugared processes retain 795.3 B/row, 7.1 % below the explicit 856.1; no sugared sample retains more than the explicit adapter.
+
+The gap is confined to one category of the retained-object breakdown: `string` is 34,416 B in a 795.3 process and 95,248 B in an 856.1 process (a difference of 60,832 B) with 18,311 and 18,251 strings. Every other JS category is identical. A constant 60.8 KB is 61 B/row at 1,000 rows and about 6 B/row at 10,000 rows, where the two adapters agree, so the difference is a fixed-size string present in some processes and not a per-row cost. Its origin is not identified. The spec's 994 B at 1k is superseded by 856 B in the current build. `keyed-heap.mjs` with the `ranvier-sugar` bundle addition ran to completion.
 
 ## Allocation sample (criterion 3, fourth bullet)
 
-`keyed-rows.mjs --profile --repeats=10 --ops=create1k --modes=ranvier,ranvier-sugar`. The comparer printed `clean create1k`: no `ElementBuilder`, `Builders_` or `Sugar` function appears among the self-allocating functions of `ranvier-sugar`.
+Two samples, each over the whole profile: every allocating function is kept and searched by name for `ElementBuilder`, `Builders_`, `Sugar`, `TemplateBuilder$1_*` and `Delay`, not only the largest 60.
 
-Total sampled bytes over 10 repeats: explicit 16,458,772; sugared 16,442,376 (-0.1 %).
+**128-row mount of the template row** (the sample the spec names). `sugar-alloc.mjs` mounts 10 hosts of 128 `perfRowSugar` rows (`ranvier-template-sugar`) and of the explicit `perfRow` (`ranvier-template`) through the same adapters as the template comparison, after one warm-up mount, with V8 sampling at 64 B in 4 Chromium processes (`alloc-template-row.json`, unminified build). The mode sampled first alternates by process (explicit first in processes 1 and 3, sugared first in 2 and 4).
 
-Top five self-allocating functions of `ranvier-sugar/create1k`:
+| Process | First mode | Explicit bytes (10 mounts) | Sugared bytes (10 mounts) | Functions sampled (explicit / sugared) |
+|--------:|------------|---------------------------:|--------------------------:|--------------------------------------:|
+| 1 | explicit | 1,561,916 | 1,496,116 | 149 / 85 |
+| 2 | sugared | 1,496,728 | 1,565,484 | 84 / 151 |
+| 3 | explicit | 1,564,880 | 1,537,132 | 150 / 103 |
+| 4 | sugared | 1,530,716 | 1,553,960 | 110 / 153 |
+| mean | | 1,538,560 | 1,538,173 (-0.03 %) | |
 
-| Function | Bytes |
-|----------|------:|
-| `materialise` | 2,662,840 |
-| `Effect$1` | 1,806,388 |
-| `startRender` | 1,302,712 |
-| `RowsOf$3__CreateOnce_5BDD81` | 1,236,800 |
-| `push` (native) | 1,199,624 |
+That is about 154 KB per 128-row mount in both modes. In each process the mode sampled first allocates more (1.53 to 1.57 MB against 1.50 to 1.54 MB) and lists about 150 functions where the second lists 84 to 110, whichever mode it is: the difference between the modes follows the order inside the process (warmed code, inlined callees), not the sugar. No `ElementBuilder`, `TemplateBuilder$1_*`, `Builders_` or `Delay` function allocates in any sugared sample, and no sampled function name contains `Sugar` other than `mountTemplateSugar`, the adapter entry, which allocates 308 to 464 B per sample against 168 to 380 B for its counterpart `mountTemplate`. The largest functions are the same in both modes (`materialise`, `ObserverSet__grow`, `startRender`, `stateFor`, `Effect$1`).
 
-The brief measured a 1,000-row create (`create1k`); the spec's criterion text names a 128-row mount. The template comparison at width 128 covers the mount path of the sugared row.
+**1,000-row keyed create** (`create1k`, `alloc-sugar-full.json`, 10 repeats, 1 process, commit `df3bb0b`): explicit 16,439,124 B, sugared 16,430,288 B (-0.05 %); `clean create1k` among 89 sugared functions. Top five of `ranvier-sugar`: `materialise` 2,676,784; `Effect$1` 1,810,740; `startRender` 1,296,556; `RowsOf$3__CreateOnce_5BDD81` 1,218,320; `Signal$1` constructor 1,200,900. The earlier file `alloc-sugar.json` kept only the largest 60 functions per sample and is superseded.
+
+Per-function attribution differs between the modes while the totals agree. In the keyed sample `materialise` is 1.54 MB explicit and 2.68 MB sugared, `Effect$1` 0.88 and 1.81 MB, and `collect` (0.78 MB) and `ownSetup` (0.50 MB) are absent from the sugared profile. The template-row sample shows the same shift, and it follows the order in which the modes ran in a process rather than the mode (see the table above: the second mode sampled in a process lists 84 to 110 functions against about 150 for the first, for explicit and sugared alike). The keyed sample runs the explicit mode first and the sugared mode second in one process, which matches that pattern. The explanation is that V8 has inlined callees into their callers by the time the second mode is sampled, and the sampler attributes an allocation to the function it is inlined into, so the same bytes move among `materialise`, `Effect$1`, `collect` and `ownSetup`. This is inferred from the unchanged totals and the order dependence of the template-row sample; an inlining trace was not taken. The attribution difference is sampling, not a different allocation pattern.
 
 ## Bundle size (criterion 4)
 
@@ -105,9 +116,11 @@ The brief measured a 1,000-row create (`create1k`); the spec's criterion text na
 | sugared | 206,859 | 59,266 | 51,937 |
 | delta | +2,807 | +582 | +394 |
 
-The gzip delta is 582 B against the 1,024 B budget of open question 8, which is 57 % of the budget.
+The gzip delta is 582 B against the 1,024 B budget of open question 8, which is 57 % of the budget. The delta is net: the sugared bundle omits the explicit row definitions (`perfRow`, `keyedRow`, the arm rows) that the explicit bundle holds, so it measures the cost of choosing the sugar, not the gross size of the sugar code.
 
-`perfRowSugar` moved from `FrameworkPerf.fs` to `FrameworkSugarPerf.fs`: its top-level `Component.define` call cannot be tree-shaken, so with the row in `FrameworkPerf.fs` the explicit entry already held sugar and the delta undercounted. The explicit entry is now checked on an unminified build (minification renames the probe identifiers): `explicitHoldsSugar` is `false`, and the same probe finds sugar in the unminified sugared build (`sugaredHoldsSugar` is `true`).
+Emitted sugar modules contain 0 `curry`, `uncurry` and `partialApply` (criterion 4, second sentence): `grep -c "curry\|uncurry\|partialApply"` over `generated-tests/experiments/Ranvier.View.Portable/Generated/HtmlTemplateSugar.js`, `.../TemplateSugar.js`, `FrameworkSugarPerf.js`, `KeyedRowsSugarPerf.js` and `PlaygroundSugar.js` prints 0 for each.
+
+`perfRowSugar` moved from `FrameworkPerf.fs` to `FrameworkSugarPerf.fs`: its top-level `Component.define` call cannot be tree-shaken, so with the row in `FrameworkPerf.fs` the explicit entry already held sugar and the delta undercounted. The explicit entry is checked on an unminified build: `explicitHoldsSugar` is `false`, and the same probe finds sugar in the unminified sugared build (`sugaredHoldsSugar` is `true`).
 
 Playground bundle: `dist/assets/*.js` hashes match the base build exactly (`diff` against the recorded baseline printed nothing) and contain no `ElementBuilder` or `Ranvier.View.Foundation.Sugar` names. The sugar costs 0 B when unused.
 
@@ -119,7 +132,8 @@ Template lines are counted from the `let` line to the end of the template, after
 |---------|---------:|--------:|
 | keyed list (`keyedRow` + `keyedList` against `keyedList`) | 39 lines | 22 lines |
 | arms (`plainArm` + `countedArm` + `armRow` + `armList` against `armList`) | 31 lines | 22 lines |
-| playground demo (`App.demoView` against `PlaygroundSugar.demoSugar`) | 103 lines | 83 lines |
+| playground demo, setup included (`App.demoView` against `PlaygroundSugar.demoSugar` + `demoSetup`) | 103 lines | 89 lines |
+| playground demo, setup excluded on both sides (explicit setup is 5 lines, `demoSetup` 6) | 98 lines | 83 lines |
 | `Component.define` in `KeyedRowsPerf.fs` / `KeyedRowsSugarPerf.fs` | 6 | 2 |
 
 `git diff --stat ca03e98` over `App.fs`, `ComponentsExample.fs` and `KeyedRowsPerf.fs` is empty (criterion 5). The separate module-level row and arm definitions are gone from the sugared fixtures: four definitions disappear (keyed row, plain arm, counted arm and arm row).
@@ -130,5 +144,5 @@ Template lines are counted from the `let` line to the end of the template, after
 - [template-run-1.json](framework-performance/investigation/view-sugar/template-run-1.json), [template-run-2.json](framework-performance/investigation/view-sugar/template-run-2.json), [template-run-3.json](framework-performance/investigation/view-sugar/template-run-3.json)
 - [first-attempt-template-run-2.json](framework-performance/investigation/view-sugar/first-attempt-template-run-2.json)
 - [keyed-sugar.json](framework-performance/investigation/view-sugar/keyed-sugar.json), [keyed-sugar-rerun.json](framework-performance/investigation/view-sugar/keyed-sugar-rerun.json)
-- [heap-sugar.json](framework-performance/investigation/view-sugar/heap-sugar.json)
-- [alloc-sugar.json](framework-performance/investigation/view-sugar/alloc-sugar.json)
+- [heap-sugar.json](framework-performance/investigation/view-sugar/heap-sugar.json), [heap-sugar-4p.json](framework-performance/investigation/view-sugar/heap-sugar-4p.json)
+- [alloc-template-row.json](framework-performance/investigation/view-sugar/alloc-template-row.json) (128-row mount), [alloc-sugar-full.json](framework-performance/investigation/view-sugar/alloc-sugar-full.json) (create1k, whole profile), [alloc-sugar.json](framework-performance/investigation/view-sugar/alloc-sugar.json) (superseded, top 60 only)

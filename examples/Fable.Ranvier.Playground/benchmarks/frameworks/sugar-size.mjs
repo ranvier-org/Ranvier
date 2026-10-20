@@ -14,7 +14,7 @@ const build = (entry, minify) => {
   execFileSync(process.execPath, ["node_modules/vite/bin/vite.js", "build", "--config", "benchmarks/frameworks/sugar-size.config.mjs"], { cwd, stdio: ["ignore", 2, 2], windowsHide: true, env: { ...process.env, SUGAR_SIZE_ENTRY: entry, SUGAR_SIZE_MINIFY: String(minify) } });
   return new URL(`generated-sugar-size/${entry}${minify ? "" : "-unminified"}/bundle.js`, cwd);
 };
-// Minification renames these identifiers, so sugar is detected on unminified builds.
+// Sugar is detected on unminified builds.
 const sugarNames = /Ranvier\.View\.Foundation\.Sugar|ElementBuilder|TemplateBuilder\$1_[A-Z]/;
 const result = {};
 for (const entry of ["explicit", "sugared"]) result[entry] = size(build(entry, true));

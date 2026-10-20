@@ -1,4 +1,4 @@
-/// <summary>The template benchmark row of <c>FrameworkPerf</c> written with the template sugar, in a module of its own so bundles of the explicit fixtures hold no sugar code.</summary>
+/// <summary>The template benchmark row of <c>FrameworkPerf</c> written with the template sugar. Kept apart from <c>FrameworkPerf</c>; bundles of the explicit fixtures hold no sugar code.</summary>
 module FrameworkSugarPerf
 
 open global.Ranvier
