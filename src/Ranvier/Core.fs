@@ -2250,7 +2250,19 @@ type Graph(options: GraphOptions) =
         passCount <- passCount + 1
 
     /// <summary>True while a pass or an item is queued.</summary>
-    member private _.HasQueued = passHead < passCount || queueHead < queueCount
+    member private _.HasQueued = queueHead < queueCount || passCount <> 0
+
+    /// <summary>Runs the queued passes, including those queued by a pass, and empties the pass buffer.</summary>
+    member private this.RunPasses() =
+        while passHead < passCount do
+            let item = Platform.entryAt passHead passes
+            Tracer.Dequeue (this, item)
+            Platform.releaseSlot passes passHead
+            passHead <- passHead + 1
+            item.Execute ()
+
+        passHead <- 0
+        passCount <- 0
 
     /// <summary>
     /// Runs every queued effect. Re-entrant calls are absorbed: an effect that
@@ -2275,13 +2287,10 @@ type Graph(options: GraphOptions) =
             let previousAmbient = this.EnterAmbient ()
 
             try
-                while passHead < passCount || queueHead < queueCount do
-                    if passHead < passCount then
-                        let item = Platform.entryAt passHead passes
-                        Tracer.Dequeue (this, item)
-                        Platform.releaseSlot passes passHead
-                        passHead <- passHead + 1
-                        item.Execute ()
+                // `passCount` is 0 whenever no pass is queued.
+                while queueHead < queueCount || passCount <> 0 do
+                    if passCount <> 0 then
+                        this.RunPasses ()
                     else
                         let item = Platform.entryAt queueHead queue
                         Tracer.Dequeue (this, item)
@@ -2298,8 +2307,6 @@ type Graph(options: GraphOptions) =
                 // the next flush to pick up, which is what the `Queue` did.
                 queueHead <- 0
                 queueCount <- 0
-                passHead <- 0
-                passCount <- 0
             finally
                 flushing <- false
 
@@ -3738,7 +3745,11 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
 
                 if not queued then
                     queued <- true
-                    this.Enqueue ()
+
+                    if publishes then
+                        graph.SchedulePass (this :> IScheduled)
+                    else
+                        graph.Schedule (this :> IScheduled)
 
         member this.MarkCheck() =
             if not disposed && not inCleanup then
@@ -3747,13 +3758,11 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
 
                 if not queued then
                     queued <- true
-                    this.Enqueue ()
 
-    member private this.Enqueue() =
-        if publishes then
-            graph.SchedulePass (this :> IScheduled)
-        else
-            graph.Schedule (this :> IScheduled)
+                    if publishes then
+                        graph.SchedulePass (this :> IScheduled)
+                    else
+                        graph.Schedule (this :> IScheduled)
 
     /// <summary>
     /// Set on an effect whose readers are marked only when its body writes, such as a lookup's refresh. A flush runs
