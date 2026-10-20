@@ -53,3 +53,63 @@ Rulings:
 - Ruling: a root held inside a row that is then removed leaves with that row; its exit keeps running until `finish` or the safety timeout, and `finish` then does nothing visible — tracking nested held roots per row would add state to every row — cost if wrong: an exit callback runs for up to 10 s on a detached node.
 - Ruling: an exit that raises finishes at once (its node leaves) and the error is raised through the row release, which reports it with the pass — cost if wrong: none beyond the report.
 - Ruling: `MountState.leaving` holds each held root's end action (cancel, then remove) instead of `Node * cancel` tuples — removal by reference needs an identity, and F# tuples compare structurally under Fable — cost if wrong: none.
+
+## Seam gate (step 7)
+
+Baseline: `268c357` (master `642d889` plus the spec), measured in a detached worktree of that commit on the same machine (AMD Ryzen 9 9900X, Node 26.7.0, Chromium 153.0.8010.12, Fable 5.18.0).
+
+### Bundle delta
+
+`benchmarks/frameworks/sugar-size.mjs` (rolldown, minified, gzip level 9), the explicit entry against the baseline:
+
+| Entry | Baseline raw / gzip / brotli | Seam raw / gzip / brotli | Delta gzip |
+|---|---|---|---|
+| explicit | 212381 / 61180 / 53654 | 214068 / 61767 / 54151 | **+587** |
+| explicit-combined | 213763 / 61361 / 53756 | 215451 / 61950 / 54296 | +589 |
+| sugared | 216416 / 62020 / 54249 | 218104 / 62592 / 54784 | +572 |
+
+The budget is ≤ 150 B gzip; the seam is over it. The first implementation, with the registry in the Foundation and called directly from the mount paths, measured +1236 B. Moving the registry behind `Departures.seam` (see above), registering every kind through one container path and folding `forced` into a null held list brought it to +587 B. Two removal experiments on the final code size the remaining parts:
+
+| Removed from the final code | Explicit delta gzip |
+|---|---|
+| nothing | +587 |
+| exits on the expanded path (`OwnedRange.Release` retire, the nested mount's held list) | +543 |
+| that, and reflow measurement in list and arm passes (`MeasureBefore`, `MeasureAfter`, their call sites) | +421 |
+
+The +421 B floor is the code every bundle runs on each region pass or row removal once a hook might exist: three `PlacedKind` cases and the part-name change in server code, the motion-flag argument, `Placement.Inserted` and its pass copy, the `nextRowNode` stepping in `Row.ValidateWindow`, the retire test in `Row.Remove`, the cleared-path guard, the held list and its release in `MountState`, and the seam object.
+
+### Keyed rows
+
+`keyed-rows.mjs --build`, 3 processes × 15 rounds, per-process medians (ms). Every operation's range overlaps between baseline and seam except `clear10k` for `ranvier-sugar`, where the seam is faster (baseline 7.03–9.69, seam 6.28–6.48). No measurable regression, so the Risk 4 fallback (a separate `Part` case for the new kinds) is not applied.
+
+| Operation | ranvier baseline → seam | ranvier-sugar baseline → seam |
+|---|---|---|
+| create1k | 6.50 [6.36–6.93] → 6.83 [6.22–7.42] | 6.58 [6.50–7.19] → 6.79 [6.37–7.44] |
+| create10k | 53.60 [53.02–54.28] → 53.07 [52.24–56.71] | 53.71 [52.83–54.48] → 52.88 [52.67–54.12] |
+| replace1k | 5.79 [5.58–5.83] → 5.58 [5.34–6.26] | 5.58 [5.49–5.81] → 5.63 [5.34–6.34] |
+| update10th1k | 0.065 [0.065–0.070] → 0.065 [0.055–0.075] | 0.065 [0.060–0.070] → 0.065 [0.065–0.075] |
+| swap1k | 0.140 [0.135–0.145] → 0.150 [0.145–0.165] | 0.155 [0.150–0.155] → 0.150 [0.135–0.175] |
+| remove1k | 0.155 [0.140–0.170] → 0.170 [0.160–0.205] | 0.150 [0.145–0.175] → 0.165 [0.160–0.190] |
+| remove10k | 0.655 [0.655–0.660] → 0.645 [0.635–0.655] | 0.630 [0.615–0.640] → 0.640 [0.630–0.665] |
+| clear1k | 0.965 [0.925–0.995] → 0.990 [0.940–1.005] | 0.965 [0.935–1.015] → 0.970 [0.955–1.030] |
+| clear10k | 6.89 [6.57–7.95] → 6.82 [6.42–7.24] | 9.12 [7.03–9.69] → 6.34 [6.28–6.48] |
+| append1k | 3.90 [3.77–3.93] → 3.89 [3.82–3.97] | 3.66 [3.64–3.79] → 3.63 [3.56–3.81] |
+| armsCreate1k | 11.63 [11.16–12.38] → 11.33 [11.30–11.56] | 11.86 [11.54–12.12] → 11.42 [11.26–11.99] |
+| armsSwitch1k | 5.67 [5.65–5.84] → 5.54 [5.43–5.73] | 5.66 [5.40–5.88] → 5.43 [5.25–5.57] |
+| armsPayload1k | 0.785 [0.770–0.805] → 0.790 [0.775–0.805] | 0.805 [0.770–0.870] → 0.795 [0.780–0.825] |
+| armsClear1k | 1.89 [1.66–2.00] → 1.73 [1.66–1.88] | 1.86 [1.66–2.06] → 1.68 [1.63–1.81] |
+
+### Template comparison
+
+`run.mjs --template-comparison`, run five times in the order baseline, seam, seam, baseline, seam (3 processes each). In the first pair alone, 10 of the 45 Ranvier cells had disjoint ranges, and Solid, Ripple and React, which the seam does not touch, drifted by the same 5–10 % on update and dispose. Pooled over all runs (6 baseline and 9 seam process medians per cell), every one of the 45 Ranvier cells (widths 1, 16, 128 × mount, update, dispose × five Ranvier modes) overlaps; median changes lie within −8.2 % to +8.7 %, with the template modes within −1.7 % to +5.6 %. The per-cell table is in the job's `motion-seam/template-pooled.txt`.
+
+### Counters
+
+`generated-tests-counters` (core counters and `RANVIER_VIEW_COUNTERS`) after one script of keyed-list operations (create 1000, update every 10th, swap, remove, append 100, clear, create 200, dispose) and arm-list operations (create 200, switch, payload, clear, dispose), with no motion, exit or reflow hook. The baseline and the seam give identical counts:
+
+```
+core: SignalsCreated 3410, MemosCreated 400, EffectsCreated 2102, OwnersCreated 2308, EdgesAdded 2304, EdgesRemoved 2304,
+      ObserverInserts 2304, ObserverRemoves 2304, MemoRecomputes 1000, EffectRuns 2810, Flushes 13, FactoryRowsCreated 0,
+      OnceRowsCreated 1500
+view: ListCounters lookups 1502, validatedRows 210, increasingRuns 0; PlacementCounters held 0; BoundaryCounters wakes 0
+```
