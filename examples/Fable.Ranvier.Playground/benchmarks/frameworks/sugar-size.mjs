@@ -1,5 +1,5 @@
 // Criterion 4: bundle bytes of the explicit fixtures, of each sugared declaration style (free, ofMembers, ofClass) and of all three combined,
-// raw, gzip and Brotli, each delta against its explicit twin entry held to budgetGzip; whether the explicit and sugared entries hold sugar
+// raw, gzip and Brotli, each delta against its explicit twin entry held to budgetGzip (exit code 1 otherwise); whether the explicit and sugared entries hold sugar
 // code; and frameCheck: every declaration in the combined bundle's sugar modules is a sugar name, both explicit bundles hold none (exit code 1 otherwise),
 // and nameCollisions lists the explicit declarations that a frame without a recorded module would misattribute by name.
 // Writes docs/research/framework-performance/investigation/view-sugar-v2/bundle.json; Vite's log goes to stderr.
@@ -48,7 +48,7 @@ result.frameCheck = {
     ...[["explicit", explicitSugar], ["explicit-combined", explicitCombinedSugar]].filter(([, sugar]) => sugar.inSugar.length).map(([entry, sugar]) => `the ${entry} bundle declares ${sugar.inSugar.slice(0, 5).join(", ")} in a sugar module`)
   ]
 };
-if (result.frameCheck.violations.length) process.exitCode = 1;
+if (!result.withinBudget || result.frameCheck.violations.length) process.exitCode = 1;
 mkdirSync(new URL("./", output), { recursive: true });
 writeFileSync(output, JSON.stringify(result, null, 2) + "\n");
 console.log(JSON.stringify(result, null, 2));

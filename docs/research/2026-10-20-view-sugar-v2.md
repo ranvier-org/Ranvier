@@ -143,7 +143,7 @@ The comparer reports `same` at 10,000 rows and `LOWER` at 1,000 rows, exit 0. On
 - **Unused sugar costs 0 B:** the playground's `dist/assets/*.js` hashes equal the baseline taken after Task 9's merge (`diff` printed nothing), and `grep -c "Ranvier.View.Foundation.Sugar\|ComponentTag\|VoidElement"` over `dist/assets` counts 0 in each file.
 - `tests/sugar-emit.test.mjs`: 2 of 2 pass; `TemplateSugar.js` and `Generated/HtmlTemplateSugar.js` contain 0 `curry`, `uncurry` or `partialApply`.
 
-The explicit twins in `FrameworkTwinsPerf.fs` render the same DOM as the sugared rows and `FrameworkPerf`'s row at mount, after a click, after an update and after disposal (checked once in jsdom while preparing this note).
+The explicit twins in `FrameworkTwinsPerf.fs` render the same DOM as the sugared rows and `FrameworkPerf`'s row at mount, after a click, after an update and after disposal; `tests/sugar-rows.test.mjs`, part of `npm run test:dom`, checks each row and twin against `FrameworkPerf`'s row.
 
 ## Authoring counts (criterion 6)
 
