@@ -3403,6 +3403,45 @@ let private headJourney () =
     finally
         clearMarkedHead ()
 
+/// <summary>Replaces each <c>tag</c> element under <c>root</c> with an empty HTML element named <c>x:tag</c>.</summary>
+[<Emit("$0.querySelectorAll($1).forEach(e => e.replaceWith(e.ownerDocument.createElementNS('http://www.w3.org/1999/xhtml', 'x:' + $1)))")>]
+let private prefixElements (root: Node) (tag: string) : unit = jsNative
+
+let private boldRoot =
+    Component.define (fun _ () -> ()) (fun t -> t.element (HtmlTag "b") [||] [| t.text "x" |])
+
+let private titledItalic =
+    Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.element (HtmlTag "i") [| t.Attrs.title (fun (_: unit) -> "x") |] [||] |])
+
+let private boldThenItalic =
+    Component.define (fun _ () -> ()) (fun t ->
+        t.div
+            [||]
+            [|
+                t.element (HtmlTag "b") [||] [| t.text (fun (_: unit) -> "x") |]
+                t.element (HtmlTag "i") [| t.Attrs.title (fun (_: unit) -> "x") |] [||]
+            |])
+
+let private prefixedElementsMismatch () =
+    let raised (definition: Component<unit>) (tag: string) =
+        use graph = new Graph ()
+        let host = serve definition ()
+        prefixElements host tag
+
+        try
+            hydrate graph strictOptions host definition ()
+            |> ignore
+
+            "none"
+        with error ->
+            error.Message
+
+    equal
+        ("Hydration mismatch at #0: expected <b>, found x:b",
+         "Hydration mismatch at 0/0: expected <i>, found x:i",
+         "Hydration mismatch at 0/1: expected <i>, found x:i")
+        (raised boldRoot "b", raised titledItalic "i", raised boldThenItalic "i")
+
 let cases: (string * (unit -> unit)) array =
     strictCases
         [|
@@ -3416,6 +3455,7 @@ let cases: (string * (unit -> unit)) array =
             "a client boundary's content takes row 0 and its pending or error view row 1, as the server's [c, [p and [e boundaries do",
             clientBoundaryIdentity
             "hydrating server HTML adopts every node", adoptsEveryNode
+            "an element with a prefix is a mismatch for a template element of its local name, named at its path", prefixedElementsMismatch
             "a hydrated template updates, dispatches delegated and direct events, and disposes like a mount", updatesAndDisposes
             "hydration writes no text or attribute when values match", matchingValuesWriteNothing
             "hydration corrects differing values without a report", differingValuesCorrected

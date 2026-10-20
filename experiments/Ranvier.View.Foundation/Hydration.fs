@@ -19,12 +19,26 @@ type HydrationOptions =
         Strict: bool
     }
 
-/// <summary>The first <c>&lt;!--[r--&gt;</c> child of <c>host</c>, or null.</summary>
-[<Emit("(() => { for (let node = $0.firstChild; node; node = node.nextSibling) if (node.nodeType === 8 && node.data === '[r') return node; return null; })()")>]
-let private rootMarker (host: Node) : Node = jsNative
+[<Emit("$0.firstChild")>]
+let private firstChildOf (node: Node) : Node = jsNative
 
 [<Emit("$0.nextSibling")>]
 let private following (node: Node) : Node = jsNative
+
+[<Emit("$0 == null")>]
+let private absent (node: Node) : bool = jsNative
+
+[<Emit("$0.nodeType === 8 && $0.data === '[r'")>]
+let private isRootMarker (node: Node) : bool = jsNative
+
+/// <summary>The first <c>&lt;!--[r--&gt;</c> child of <c>host</c>, or null.</summary>
+let private rootMarker (host: Node) : Node =
+    let mutable node = firstChildOf host
+
+    while not (absent node) && not (isRootMarker node) do
+        node <- following node
+
+    node
 
 [<Emit("$0.remove()")>]
 let private removeNode (node: Node) : unit = jsNative
@@ -38,6 +52,62 @@ let private clearAfter (start: Node) (finish: Node) =
         let next = following node
         removeNode node
         node <- next
+
+/// <summary>
+/// The synchronous mount state of a root in <c>host</c>; a null <c>cursor</c> mounts fresh, otherwise it adopts the
+/// server nodes between <c>rootStart</c> and <c>rootEnd</c>.
+/// </summary>
+let private rootState
+    (graph: Graph)
+    (owner: Owner)
+    (report: exn list -> unit)
+    (options: HydrationOptions)
+    (host: Node)
+    (cursor: TemplateDom.HydrationCursor)
+    (rootStart: Node)
+    (rootEnd: Node)
+    =
+    MountState (
+        Synchronous,
+        graph,
+        null,
+        owner,
+        report,
+        host,
+        Unchecked.defaultof<_>,
+        Unchecked.defaultof<_>,
+        IdentityScope options.IdPrefix,
+        null,
+        InstanceStep.Root,
+        0,
+        0,
+        cursor,
+        rootStart,
+        rootEnd
+    )
+
+/// <summary>Mounts <c>definition</c> fresh in <c>host</c> before <c>before</c>; disposing the mount also removes <c>markers</c>.</summary>
+let private freshRoot
+    (graph: Graph)
+    (owner: Owner)
+    (report: exn list -> unit)
+    (options: HydrationOptions)
+    (host: Node)
+    (definition: Component<'props>)
+    (props: 'props)
+    (before: Node option)
+    (markers: Node list)
+    : Mounted =
+    let created =
+        rootState graph owner report options host null Unchecked.defaultof<_> Unchecked.defaultof<_>
+
+    let mounted =
+        created.Run (before, (fun context -> context.Backend.Template (definition, box props)))
+
+    if not markers.IsEmpty then
+        created.Root.OnCleanup (fun () -> List.iter removeNode markers)
+
+    mounted
 
 /// <summary>
 /// Hydrates the root of <c>host</c> as <c>hydrateWith</c> does, the document's head aside; before a re-rendered root
@@ -62,49 +132,16 @@ let private adoptHost
             | Some owner -> owner
             | None -> Unchecked.defaultof<_>
 
-        let build (context: BuildContext) =
-            context.Backend.Template (definition, box props)
-
-        let state (cursor: TemplateDom.HydrationCursor) (rootStart: Node) (rootEnd: Node) =
-            MountState (
-                Synchronous,
-                graph,
-                null,
-                owner,
-                report,
-                host,
-                Unchecked.defaultof<_>,
-                Unchecked.defaultof<_>,
-                IdentityScope options.IdPrefix,
-                null,
-                InstanceStep.Root,
-                0,
-                0,
-                cursor,
-                rootStart,
-                rootEnd
-            )
-
-        // Mounts the root fresh before `before`; disposing the mount also removes `markers`.
-        let fresh (before: Node option) (markers: Node list) =
-            let created = state null Unchecked.defaultof<_> Unchecked.defaultof<_>
-            let mounted = created.Run (before, build)
-
-            if not markers.IsEmpty then
-                created.Root.OnCleanup (fun () -> List.iter removeNode markers)
-
-            mounted
-
         let rootStart = rootMarker host
 
-        if isNull (box rootStart) then
+        if absent rootStart then
             let error = TemplateDom.mismatch "root" "<!--[r-->" "absent"
 
             if options.Strict then
                 raise error
 
             report [ error ]
-            fresh None []
+            freshRoot graph owner report options host definition props None []
         else
             let rootEnd =
                 try
@@ -114,18 +151,18 @@ let private adoptHost
                     clearAfter rootStart Unchecked.defaultof<_>
                     Unchecked.defaultof<_>
 
-            if isNull (box rootEnd) then
-                fresh None [ rootStart ]
+            if absent rootEnd then
+                freshRoot graph owner report options host definition props None [ rootStart ]
             else
                 let first = following rootStart
                 let cursor = TemplateDom.HydrationCursor (first, options.Strict)
 
                 try
-                    (state cursor rootStart rootEnd)
+                    (rootState graph owner report options host cursor rootStart rootEnd)
                         .Run(
                             None,
                             fun context ->
-                                build context
+                                context.Backend.Template (definition, box props)
 
                                 if not (obj.ReferenceEquals (cursor.Next, rootEnd)) then
                                     let mutable position = 0
@@ -148,7 +185,7 @@ let private adoptHost
                         )
 
                         clearAfter rootStart rootEnd
-                        fresh (Some rootEnd) [ rootStart; rootEnd ]
+                        freshRoot graph owner report options host definition props (Some rootEnd) [ rootStart; rootEnd ]
                     | None -> reraise ()
 
 /// <summary>
@@ -222,14 +259,17 @@ let hydrateWith
     let served = DocumentHead.keep document
 
     try
-        let mounted =
-            adoptHost served mode graph parentOwner report options host definition props
+        try
+            let mounted =
+                adoptHost (fun () -> served.Restore ()) mode graph parentOwner report options host definition props
 
-        DocumentHead.removeUnadopted document
-        mounted
-    with _ ->
-        served ()
-        reraise ()
+            DocumentHead.removeUnadopted document
+            mounted
+        with _ ->
+            served.Restore ()
+            reraise ()
+    finally
+        served.Release ()
 
 [<Emit("document.getElementById($0)")>]
 let private elementById (id: string) : Element = jsNative
