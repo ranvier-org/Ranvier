@@ -320,7 +320,7 @@ Measured with rolldown (minify) and gzip level 9 on anime 4.5.0, importing from 
 
 | Check | Budget |
 |---|---|
-| Runtime seam: the Playground `sugar-size.mjs` explicit entry, before and after steps 3–6 | ≤ 450 B gzip (re-baselined from 150 B on review; measured +438 B, see `docs/research/2026-10-21-motion-seam.md`) |
+| Runtime seam: the Playground `sugar-size.mjs` explicit entry, before and after steps 3–6 | ≤ 450 B gzip (re-baselined from 150 B on review; measured +447 B, see `docs/research/2026-10-21-motion-seam.md`) |
 | Bindings: `Anime.animate` entry vs hand-written JS calling `animate` | ≤ 64 B gzip |
 | Glue: `Motion.presence` entry vs `Hooks.motion`/`Hooks.exit` calling `animate` by hand | ≤ 900 B gzip |
 | Glue: `Motion.flip` entry vs `Hooks.reflow` calling `createLayout` by hand | ≤ 600 B gzip |

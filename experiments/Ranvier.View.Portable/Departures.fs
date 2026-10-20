@@ -231,18 +231,28 @@ let private before (regionStart: Node) (post: (unit -> unit) -> unit) : unit -> 
     if isNullish entry then
         Unchecked.defaultof<_>
     else
+        let mutable failure: exn = null
+
         if not entry.Open then
             entry.Open <- true
-            entry.Reflow.Before ()
 
-        fun () ->
-            let mutable posted = entry.Posts + 1
-            entry.Posts <- posted
+            try
+                entry.Reflow.Before ()
+            with error ->
+                entry.Open <- false
+                failure <- error
 
-            post (fun () ->
-                if entry.Open && entry.Posts = posted then
-                    entry.Open <- false
-                    entry.Reflow.After ())
+        if not (isNull failure) then
+            fun () -> post (fun () -> raise failure)
+        else
+            fun () ->
+                let mutable posted = entry.Posts + 1
+                entry.Posts <- posted
+
+                post (fun () ->
+                    if entry.Open && entry.Posts = posted then
+                        entry.Open <- false
+                        entry.Reflow.After ())
 
 /// <summary>
 /// Registers <c>exit</c> for <c>node</c>, replacing an earlier registration, enables exits, and returns the cleanup that
@@ -258,6 +268,7 @@ let register (node: Node) (exit: (unit -> unit) -> (unit -> unit)) : unit -> uni
         seam.End <- System.Action<_, _, _> endAll
         seam.Enabled <- true
 
+    forget pending node
     store exits node exit
 
     fun () ->

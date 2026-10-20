@@ -569,6 +569,51 @@ let private measuredArm =
                 })
         })
 
+/// <summary>The measurement step of the current <c>failingMeasure</c> case that raises: "before", "after" or none.</summary>
+let mutable private failingStep = ""
+
+let private failingMeasure (_: Rows) (_: HTMLUListElement) =
+    let fail (step: string) =
+        if failingStep = step then
+            failingStep <- ""
+            raise (InvalidOperationException (step + " failed"))
+
+    {
+        Before = fun () -> fail "before"
+        After = fun () -> fail "after"
+    }
+
+/// <summary>A list whose reflow raises from the step named by <c>failingStep</c>, once.</summary>
+let private failingReflow =
+    Component.template
+        (fun _ (state: Rows) -> state)
+        (ul (Hooks.reflow failingMeasure) { forEach id (fun (s: Rows) -> s.Items.Value) (li () { fun (row: unit -> int) -> string (row ()) }) })
+
+let private reflowFailuresReported queued () =
+    use graph = new Graph ()
+    failingStep <- ""
+    let state = graph.Run (fun () -> rows [| 1 |] false)
+    let target = host ()
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        mountTemplate queued graph reports.Add target (Component.render failingReflow state)
+
+    mounted.Flush ()
+    failingStep <- "before"
+    write graph mounted (fun () -> state.Items.Value <- [| 1; 2 |])
+    let afterBefore = items target
+    failingStep <- "after"
+    write graph mounted (fun () -> state.Items.Value <- [| 1; 2; 3 |])
+    let afterAfter = items target
+    write graph mounted (fun () -> state.Items.Value <- [| 3; 2; 1 |])
+    let later = items target
+    mounted.Dispose ()
+
+    equal
+        (([ "1"; "2" ], [ "1"; "2"; "3" ], [ "3"; "2"; "1" ]), [ [ "before failed" ]; [ "after failed" ] ])
+        ((afterBefore, afterAfter, later), messages reports)
+
 let private reflowWithdrawnWithInstance queued () =
     use graph = new Graph ()
     log.Clear ()
@@ -818,6 +863,7 @@ let cases: (string * (unit -> unit)) array =
                     "a reflow's After follows the pass's queued commits", reflowAfterQueuedCommits
                 |]
                 templated "a disposed instance withdraws its reflow registration" reflowWithdrawnWithInstance
+                templated "a raising reflow Before or After is reported once and the list keeps updating" reflowFailuresReported
                 templated "a held root keeps its nested lists, arms and boundaries until finish" heldRootKeepsContent
                 templated "a raising exit on a row's first root removes every root and keeps the region valid" raisingExitKeepsRegion
                 templated "a motion hook's cleanup reads whether an exit of its element follows" motionCleanupSeesExit

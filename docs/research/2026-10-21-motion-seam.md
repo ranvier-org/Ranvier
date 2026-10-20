@@ -56,7 +56,8 @@ Rulings:
 - Ruling: a root held inside a row that is then removed leaves with that row (or stays inside it, when that row is held too); its exit keeps running until `finish`, the safety timeout or the mount's disposal, which cancels it — under both commit modes: a nested mount's live release moves its held exits to the enclosing mount instead of ending them — cost if wrong: an exit callback runs for up to 10 s on a detached node.
 - Ruling: an exit that raises finishes at once (its node leaves); `Row.Remove` handles every other root of the row, then raises, and the error is reported with the pass; the region stays valid — cost if wrong: none beyond the report.
 - Ruling: `MotionContext.ExitPending ()` reads whether the element has a registered exit that has not started, for the "paused, not reverted" interplay of step 8; it is true in the motion hook's cleanup whichever order the two hooks have on the element, and also during a forced teardown, where the paused animation is removed with the node — cost if wrong: a forced teardown pauses instead of reverting an animation on a node that is about to be removed.
-- Ruling: a failing reflow `Before` fails the region's pass, and a failing `After` propagates from its core effect (synchronous commits) or is reported to the mount scope through its commit slot (queued commits), as in the reviewer's slimmed seam — the region-error wrappers cost bundle bytes on every page — cost if wrong: a broken reflow measurement fails the pass instead of being reported alongside it.
+- Ruling: a failing reflow `Before` closes its measurement and the pass runs on; the error is raised from the posted `After` instead, so it is reported once, after the pass's commits, with the mount's scope. A failing `After` is reported once with the mount's scope: caught in `MountState.Post`'s synchronous effect, or through its commit slot under queued commits. An earlier version let a failing `Before` escape the reconcile effect, which stopped the list for the rest of the mount without a report (found on re-review) — cost if wrong: a reflow failure surfaces one commit later than the pass that caused it.
+- Ruling: `Departures.register` clears a node's pending mark before registering its exit — a hydration abandon keeps server nodes in place, and a pending mark left on a kept node would make a later adoption of it keep its nested mounts' nodes — cost if wrong: none.
 
 Rulings from the review of 2026-10-21:
 
@@ -77,14 +78,14 @@ Baseline: `268c357` (master `642d889` plus the spec), measured in a detached wor
 
 | Entry | Baseline raw / gzip / brotli | Seam raw / gzip / brotli | Delta gzip |
 |---|---|---|---|
-| explicit | 212381 / 61180 / 53654 | 213461 / 61618 / 53992 | **+438** |
-| explicit-combined | 213763 / 61361 / 53756 | 214844 / 61804 / 54187 | +443 |
-| sugared | 216416 / 62020 / 54249 | 217497 / 62461 / 54679 | +441 |
+| explicit | 212381 / 61180 / 53654 | 213495 / 61627 / 54035 | **+447** |
+| explicit-combined | 213763 / 61361 / 53756 | 214878 / 61814 / 54145 | +453 |
+| sugared | 216416 / 62020 / 54249 | 217531 / 62461 / 54657 | +441 |
 | members | 216566 / 62005 / 54317 | 217647 / 62432 / 54613 | +427 |
 | class | 216656 / 62073 / 54377 | 217737 / 62497 / 54753 | +424 |
 | combined | 218051 / 62230 / 54495 | 219132 / 62673 / 54767 | +443 |
 
-The budget is ≤ 450 B gzip (re-baselined, see Rulings). History: +1236 B with the registry in the Foundation; +587 B behind the seam; +416 B in the reviewer's slimmed prototype; +462 B with the review's fixes added; +438 B after deriving a nested mount's row status from its inherited container (`Placement.Row`, replacing the `departs` flag and `MountRow` parameter), leaving a retiring release's generated descendants to their roots, and dropping a redundant `Outermost` test (a disposed ancestor disposes the enclosing mount first).
+The budget is ≤ 450 B gzip (re-baselined, see Rulings). History: +1236 B with the registry in the Foundation; +587 B behind the seam; +416 B in the reviewer's slimmed prototype; +462 B with the review's fixes added; +438 B after deriving a nested mount's row status from its inherited container (`Placement.Row`, replacing the `departs` flag and `MountRow` parameter), leaving a retiring release's generated descendants to their roots, and dropping a redundant `Outermost` test (a disposed ancestor disposes the enclosing mount first); +447 B after the re-review's reflow failure handling (`Before` caught in the registry, synchronous `After` failures reported to the scope). The members, class and combined rows are those of the +438 B build.
 
 Attribution, measured by the reviewer on the slimmed seam (each part removed on top of the others):
 
