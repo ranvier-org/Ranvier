@@ -341,7 +341,7 @@ let private hydratedTwins
     sugarMount.Dispose ()
     equal left.innerHTML right.innerHTML
 
-/// <summary>Server nodes adopted per case by this branch's hydration, where lists and arms mount fresh; update these when the hydration branch is merged.</summary>
+/// <summary>Adoption counts with lists and arms mounting fresh; update this block when list and arm hydration is merged in.</summary>
 module private Adopted =
     /// <summary>All 6 server nodes.</summary>
     let bench = 6
@@ -349,6 +349,7 @@ module private Adopted =
     let keyed = 6
     /// <summary>6 of 22 server nodes.</summary>
     let arms = 6
+    /// <summary>7 of 8 server nodes.</summary>
     let show = 7
     /// <summary>5 of 19 server nodes.</summary>
     let nested = 5
