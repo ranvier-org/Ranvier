@@ -85,6 +85,15 @@ let all =
                     Ranvier.Tests.Combinators.groupByTests
                     Ranvier.Tests.Combinators.chainPendingTests
                     Ranvier.Tests.Combinators.foldTests
+                    Ranvier.Tests.Combinators.ownershipTests
+                    Ranvier.Tests.Combinators.sizeTests
+                    Ranvier.Tests.Combinators.positionTests
+                    Ranvier.Tests.Combinators.findTests
+                    Ranvier.Tests.Combinators.averageTests
+                    Ranvier.Tests.Combinators.extremeTests
+                    Ranvier.Tests.Combinators.partitionTests
+                    Ranvier.Tests.Combinators.distinctByTests
+                    Ranvier.Tests.Combinators.groupingAggregateTests
                 ]
             testList "PreviousValues.fs" [ Ranvier.Tests.PreviousValues.tests; Ranvier.Tests.PreviousValues.asyncTests ]
             testList
@@ -111,6 +120,12 @@ let all =
             testList "QueryDictionary.fs" [ Ranvier.Tests.QueryDictionary.tests ]
             testList "QueryErgonomics.fs" [ Ranvier.Tests.QueryErgonomics.tests ]
             testList "QueryNavigationTests.fs" [ Ranvier.Tests.QueryNavigationTests.tests ]
+            testList "VendoredThoth.fs" [ Ranvier.Wire.Tests.VendoredThoth.tests ]
+            testList "WireDecoding.fs" [ Ranvier.Wire.Tests.WireDecoding.tests ]
+            testList "NumericDecoding.fs" [ Ranvier.Wire.Tests.NumericDecoding.tests ]
+            testList "DateTimeOffsetCodec.fs" [ Ranvier.Wire.Tests.DateTimeOffsetCodec.tests ]
+            testList "NumberText.fs" [ Ranvier.Wire.Tests.NumberText.tests ]
+            testList "Conformance.fs" [ Ranvier.Wire.Tests.Conformance.tests ]
         ]
 
 Mocha.runTests all |> ignore

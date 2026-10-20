@@ -1873,7 +1873,7 @@ let cases: (string * (unit -> unit)) array =
         "a cleanup failure of an abandoned content attempt fails the render", abandonedCleanupFailure
         "an abandoned boundary attempt's entries are not written and an overridden key's earlier entry returns", abandonedHeads
 #if FABLE_COMPILER
-        "two concurrent server requests collect only their own entries", sequentialHeads
+        "two sequential server requests collect only their own entries", sequentialHeads
 #endif
         "server plan matches the current writer for every template fixture", templatePins
         "server plan matches the current writer for arms", armPins

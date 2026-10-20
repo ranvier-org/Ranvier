@@ -12,7 +12,8 @@ open Ranvier.View.Foundation.Template
 let private report (errors: exn list) =
     failwithf "%A" errors
 
-let private options: Hydration.HydrationOptions = { IdPrefix = "r"; Strict = true }
+let private strictOptions: Hydration.HydrationOptions =
+    { IdPrefix = "r"; Strict = true }
 
 /// <summary>The page of <c>fixture</c>: <c>"component"</c> or <c>"keyed"</c>.</summary>
 let private page (fixture: string) : Component<int> =
@@ -30,11 +31,7 @@ let serverHtml (fixture: string) (rows: int) : string =
         (page fixture)
         rows
 
-/// <summary>
-/// Hydrates the server HTML of <c>fixture</c> at <c>rows</c> rows held by <c>host</c>, in a new graph, and returns the
-/// disposal of the mount and its graph.
-/// </summary>
-let hydrateFixture (fixture: string) (host: HTMLElement) (rows: int) : unit -> unit =
+let private hydrateWith (options: Hydration.HydrationOptions) (fixture: string) (host: HTMLElement) (rows: int) : unit -> unit =
     let graph = new Graph ()
 
     let mounted = Hydration.hydrate graph None report options host (page fixture) rows
@@ -42,6 +39,17 @@ let hydrateFixture (fixture: string) (host: HTMLElement) (rows: int) : unit -> u
     fun () ->
         mounted.Dispose ()
         graph.Dispose ()
+
+/// <summary>
+/// Hydrates the server HTML of <c>fixture</c> at <c>rows</c> rows held by <c>host</c> with <c>Strict</c> set, in a new
+/// graph, and returns the disposal of the mount and its graph.
+/// </summary>
+let hydrateFixture (fixture: string) (host: HTMLElement) (rows: int) : unit -> unit =
+    hydrateWith strictOptions fixture host rows
+
+/// <summary>Hydrates as <c>hydrateFixture</c> does, with <c>Hydration.HydrationOptions.defaults</c>.</summary>
+let hydrateFixtureLenient (fixture: string) (host: HTMLElement) (rows: int) : unit -> unit =
+    hydrateWith Hydration.HydrationOptions.defaults fixture host rows
 
 /// <summary>Mounts <c>fixture</c> at <c>rows</c> rows into <c>host</c>, in a new graph, and returns the disposal of the mount and its graph.</summary>
 let mountFixture (fixture: string) (host: HTMLElement) (rows: int) : unit -> unit =

@@ -79,10 +79,29 @@ let internal mismatch (path: string) (expected: string) (found: string) : exn =
 #endif
     error
 
+#if RANVIER_VIEW_COUNTERS
+/// <summary>Counts of hydration rollback work, defined only in the DOM test build.</summary>
+module internal HydrationCounters =
+    /// <summary>Inverses recorded with any hydration cursor.</summary>
+    let recorded = ref 0
+
+    /// <summary>Recorded inverses neither run by a <c>Restore</c> nor discarded by a <c>Commit</c>.</summary>
+    let held = ref 0
+#endif
+
 /// <summary>The next server node a hydrating mount adopts, and the inverses of the edits made to the server nodes so far.</summary>
 [<Sealed; AllowNullLiteral>]
 type internal HydrationCursor(next: Node, strict: bool) =
     let undo = ResizeArray<unit -> unit>()
+    // The cursors of nested mounts recorded by `Nest`; null until the first.
+    let mutable nested: ResizeArray<HydrationCursor> = null
+
+    let discard () =
+#if RANVIER_VIEW_COUNTERS
+        HydrationCounters.held.Value <- HydrationCounters.held.Value - undo.Count
+#endif
+        undo.Clear ()
+        nested <- null
 
     /// <summary>The next server node to adopt; null past the last.</summary>
     member val Next: Node = next with get, set
@@ -91,7 +110,19 @@ type internal HydrationCursor(next: Node, strict: bool) =
 
     /// <summary>Records the inverse of an edit to the server nodes.</summary>
     member _.Undo(inverse: unit -> unit) =
+#if RANVIER_VIEW_COUNTERS
+        HydrationCounters.recorded.Value <- HydrationCounters.recorded.Value + 1
+        HydrationCounters.held.Value <- HydrationCounters.held.Value + 1
+#endif
         undo.Add inverse
+
+    /// <summary>Records a nested mount's cursor: <c>Restore</c> restores it in its place among the inverses, and <c>Commit</c> commits it.</summary>
+    member this.Nest(child: HydrationCursor) =
+        if isNull nested then
+            nested <- ResizeArray ()
+
+        nested.Add child
+        this.Undo (fun () -> child.Restore ())
 
     /// <summary>Runs the recorded inverses, most recent first; raises after all have run when any raised.</summary>
     member _.Restore() =
@@ -103,14 +134,27 @@ type internal HydrationCursor(next: Node, strict: bool) =
             with error ->
                 errors.Add error
 
-        undo.Clear ()
+        discard ()
 
         if errors.Count = 1 then
             raise errors[0]
         elif errors.Count > 1 then
             raise (AggregateException ("Hydration restore failed", errors))
 
+    /// <summary>Discards the recorded inverses of the cursor and of every nested cursor, and sets <c>Next</c> to null.</summary>
+    member this.Commit() =
+        let children = nested
+        discard ()
+        this.Next <- Unchecked.defaultof<_>
+
+        if not (isNull children) then
+            for child in children do
+                child.Commit ()
+
 let private noNode: Node = Unchecked.defaultof<_>
+
+[<Emit("$0 == null")>]
+let private absent (node: Node) : bool = jsNative
 
 [<Emit("$0.nodeType === 8")>]
 let private isComment (node: Node) : bool = jsNative
@@ -132,7 +176,7 @@ let internal matchingEnd (start: Node) : Node =
     let mutable node = following start
     let mutable found = noNode
 
-    while isNull (box found) && not (isNull (box node)) do
+    while absent found && not (absent node) do
         if isComment node then
             let data = dataOf node
 
@@ -141,10 +185,10 @@ let internal matchingEnd (start: Node) : Node =
             elif data.StartsWith "[" then
                 depth <- depth + 1
 
-        if isNull (box found) then
+        if absent found then
             node <- following node
 
-    if isNull (box found) then
+    if absent found then
         raise (mismatch ("<!--" + dataOf start + "-->") "<!--]-->" "absent")
 
     found
@@ -1141,6 +1185,18 @@ let private adoptedPath (roots: Node array) (node: Node) : string =
         steps.Insert (0, root.Value)
         pathText steps
 
+/// <summary>Whether <c>node</c> is an element whose lowercased name equals the lowercased name of the element <c>expected</c>.</summary>
+[<Emit("$0 != null && $0.nodeType === 1 && (($0.localName === $1.localName && $0.prefix === null && $1.prefix === null) || $0.nodeName.toLowerCase() === $1.nodeName.toLowerCase())")>]
+let private sameElementName (node: Node) (expected: Node) : bool = jsNative
+
+/// <summary>Whether <c>node</c> is an element whose lowercased name equals the lowercased <c>tag</c>.</summary>
+[<Emit("$0 != null && $0.nodeType === 1 && (($0.localName === $1 && $0.prefix === null) || $0.nodeName.toLowerCase() === $1.toLowerCase())")>]
+let private isElementNamed (node: Node) (tag: string) : bool = jsNative
+
+/// <summary>The mismatch at the root position <c>#index</c>.</summary>
+let private rootMismatch (index: int) (description: string) (found: Node) =
+    mismatch ("#" + string index) description (describe found)
+
 /// <summary>
 /// Takes the instance's <c>RootCount</c> roots from the logical siblings at <c>cursor.Next</c>, each checked against the
 /// skeleton root at its index, and moves the cursor past the last. A text root accepts a text node or the
@@ -1159,39 +1215,30 @@ let private adoptRoots (cursor: HydrationCursor) (compiled: Compiled) : Node arr
     let mutable node = cursor.Next
 
     for index in 0 .. count - 1 do
-        let fail (description: string) (found: Node) =
-            raise (mismatch ("#" + string index) description (describe found))
-
         if expected.nodeType = 1. then
-            if
-                isNull (box node)
-                || node.nodeType <> 1.
-                || node.nodeName.ToLowerInvariant ()
-                   <> expected.nodeName.ToLowerInvariant ()
-            then
-                fail ("<" + expected.nodeName.ToLowerInvariant () + ">") node
+            if not (sameElementName node expected) then
+                raise (rootMismatch index ("<" + expected.nodeName.ToLowerInvariant () + ">") node)
         elif expected.nodeType = 3. then
             if isEmptyText node then
                 node <- replacePlaceholder cursor node
-            elif isNull (box node) || node.nodeType <> 3. then
-                fail "a text node" node
+            elif absent node || node.nodeType <> 3. then
+                raise (rootMismatch index "a text node" node)
         elif isStartMarker expected then
             if not (isStartMarker node) then
-                fail "a region marker" node
+                raise (rootMismatch index "a region marker" node)
         elif
-            isNull (box node)
+            absent node
             || not (isComment node)
             || dataOf node <> dataOf expected
         then
-            fail ("<!--" + dataOf expected + "-->") node
+            raise (rootMismatch index ("<!--" + dataOf expected + "-->") node)
 
         roots[index] <- node
 
-        node <-
-            try
-                logicalNext node
-            with HydrationMismatchException (_, closing, absent) ->
-                raise (mismatch ("#" + string index) closing absent)
+        try
+            node <- logicalNext node
+        with HydrationMismatchException (_, closing, missing) ->
+            raise (mismatch ("#" + string index) closing missing)
 
         expected <- following expected
 
@@ -1213,41 +1260,63 @@ let private marksRegion (kind: RegionKind) (node: Node) =
 let private isRcdataElement (node: Node) : bool = jsNative
 
 /// <summary>
+/// The mismatch path of the position <c>walk</c> reaches before its op at <c>index</c>: the child index at each level,
+/// in the skeleton's numbering, starting at the root's <c>0</c> for a single-root walk.
+/// </summary>
+let private walkPath (walk: int array) (single: bool) (index: int) : string =
+    let path = ResizeArray<int>()
+
+    if single then
+        path.Add 0
+
+    for position in 0 .. index - 1 do
+        let op = at walk position
+
+        if op = FirstChild then
+            path.Add 0
+        elif op = NextSibling then
+            path[path.Count - 1] <- path[path.Count - 1] + 1
+        elif op = Parent then
+            path.RemoveAt (path.Count - 1)
+
+    pathText path
+
+/// <summary>
 /// The server node a collected node adopts: <c>node</c> checked against <c>expect</c>. A text expectation replaces the
 /// <c>&lt;!--_--&gt;</c> placeholder with an empty text node, and creates one in <c>parent</c> when it is an empty
 /// <c>textarea</c> or <c>title</c>; each edit's inverse is recorded.
 /// </summary>
 /// <exception cref="T:Ranvier.View.Foundation.TemplateDom.HydrationMismatchException">The node differs from the expectation.</exception>
-let private adoptTarget (cursor: HydrationCursor) (expect: Expectation) (path: ResizeArray<int>) (parent: Node) (node: Node) : Node =
-    let fail (description: string) =
-        raise (mismatch (pathText path) description (describe node))
-
+let private adoptTarget
+    (cursor: HydrationCursor)
+    (expect: Expectation)
+    (walk: int array)
+    (single: bool)
+    (index: int)
+    (parent: Node)
+    (node: Node)
+    : Node =
     match expect with
     | ExpectElement tag ->
-        if
-            isNull (box node)
-            || node.nodeType <> 1.
-            || node.nodeName.ToLowerInvariant ()
-               <> tag.ToLowerInvariant ()
-        then
-            fail ("<" + tag + ">")
+        if not (isElementNamed node tag) then
+            raise (mismatch (walkPath walk single index) ("<" + tag + ">") (describe node))
 
         node
     | ExpectText ->
         if isEmptyText node then
             replacePlaceholder cursor node
-        elif isNull (box node) && isRcdataElement parent then
+        elif absent node && isRcdataElement parent then
             let text = document.createTextNode "" :> Node
             appendNode parent text
             cursor.Undo (fun () -> removeNode text)
             text
-        elif isNull (box node) || node.nodeType <> 3. then
-            fail "a text node"
+        elif absent node || node.nodeType <> 3. then
+            raise (mismatch (walkPath walk single index) "a text node" (describe node))
         else
             node
     | ExpectRegion kind ->
         if not (marksRegion kind node) then
-            fail "a region marker"
+            raise (mismatch (walkPath walk single index) "a region marker" (describe node))
 
         node
 
@@ -1259,53 +1328,54 @@ let private adoptTarget (cursor: HydrationCursor) (expect: Expectation) (path: R
 let private collectAdopted (roots: Node array) (compiled: Compiled) (state: obj array) (cursor: HydrationCursor) =
     let walk = compiled.Walk
     let single = compiled.RootCount = 1
-    let mutable node = if single then roots[0] else noNode
+    let mutable node = if single then at roots 0 else noNode
     let mutable parent = noNode
-    // The child-index path of `node` in the skeleton's numbering.
-    let path = ResizeArray<int>()
-
-    if single then
-        path.Add 0
-
+    // The depth of `node` below the walk's start; at depth 1 of a multi-root walk, `rootIndex` is its root's index.
+    let mutable depth = if single then 1 else 0
+    let mutable rootIndex = 0
     let mutable count = 0
 
     for index in 0 .. walk.Length - 1 do
         let op = at walk index
 
         if op = FirstChild then
-            let atFragment = path.Count = 0
-            path.Add 0
+            let atFragment = depth = 0
+            depth <- depth + 1
             parent <- node
 
-            node <-
-                if atFragment then
-                    (if roots.Length = 0 then noNode else roots[0])
-                elif isNull (box node) then
-                    noNode
-                else
-                    unbox node.firstChild
+            if atFragment then
+                rootIndex <- 0
+                node <- if roots.Length = 0 then noNode else at roots 0
+            elif absent node then
+                node <- noNode
+            else
+                node <- unbox node.firstChild
         elif op = NextSibling then
-            path[path.Count - 1] <- path[path.Count - 1] + 1
+            if depth = 1 then
+                rootIndex <- rootIndex + 1
 
-            node <-
-                if isNull (box node) then
-                    noNode
-                elif not single && path.Count = 1 then
-                    // A root's next position is the next adopted root.
-                    let position = path[0]
-                    if position < roots.Length then roots[position] else noNode
-                else
-                    try
-                        logicalNext node
-                    with HydrationMismatchException (_, closing, absent) ->
-                        path[path.Count - 1] <- path[path.Count - 1] - 1
-                        raise (mismatch (pathText path) closing absent)
+            if absent node then
+                node <- noNode
+            elif not single && depth = 1 then
+                // A root's next position is the next adopted root.
+                node <-
+                    if rootIndex < roots.Length then
+                        at roots rootIndex
+                    else
+                        noNode
+            elif isStartMarker node then
+                try
+                    node <- matchingEnd node
+                with HydrationMismatchException (_, closing, missing) ->
+                    raise (mismatch (walkPath walk single index) closing missing)
+            else
+                node <- following node
         elif op = Parent then
-            path.RemoveAt (path.Count - 1)
+            depth <- depth - 1
             node <- parent
-            parent <- if isNull (box node) then noNode else unbox node.parentNode
+            parent <- if absent node then noNode else unbox node.parentNode
         else
-            node <- adoptTarget cursor (at compiled.Expect count) path parent node
+            node <- adoptTarget cursor (at compiled.Expect count) walk single index parent node
             store state (StateNodes + count) (box node)
             count <- count + 1
 
