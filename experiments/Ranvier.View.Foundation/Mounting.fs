@@ -1290,7 +1290,9 @@ and private RowBuilder(state: MountState, hydration: unit -> TemplateDom.Hydrati
 
         member _.Identity = state.Identity
 
-        member _.Hydration = cursor
+        // A row's first commit can run after its build; until the mount's hydration ends, the commit writes only a value
+        // that differs from the server node's.
+        member _.Hydration = if settingUp then cursor else state.HydrationCursor
 
         member _.Region(start, finish, _, kind, items, render, rows, parentPath, region) =
             state.NestedRegion (start, finish, kind, items, render, rows, parentPath, region, placement.Container, cursor)
@@ -1495,8 +1497,9 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
     /// <remarks>
     /// A failed <c>hydrating</c> pass passes a structural mismatch to <c>Recover</c> when it is set, with the failure's
     /// other errors and <c>recorded</c>; a failure of <c>Recover</c> fails the mount's hydration. Any other failure of a
-    /// hydrating pass, and a failure of the pass that follows <c>Recovering</c> being set, fails the mount's hydration;
-    /// while <c>Errors.Initializing</c> is set it is also recorded as the region's setup failure.
+    /// hydrating pass fails the mount's hydration. A failure of the pass that follows <c>Recovering</c> being set also
+    /// fails the mount's hydration. While <c>Errors.Initializing</c> is set, either failure is also recorded as the
+    /// region's setup failure.
     /// </remarks>
     member this.Settle(recorded: exn list, failure: exn option, hydrating: bool, settle: exn list -> unit) =
         let recovering = this.Recovering
@@ -3119,7 +3122,7 @@ and internal MountState
     /// A first selection with <c>site.Hydrating</c> set requires <c>regionStart</c> to be <c>&lt;!--[a:HASH--&gt;</c>,
     /// with the selected template arm's structural hash, adopts the server arm after it in place, and requires the
     /// cursor to end at <c>regionEnd</c>; the mount's cursor position is kept. A selected arm whose hash raises is a
-    /// mismatch. The failure is settled by <c>RegionSite.Settle</c>.
+    /// mismatch. A failure of the pass is settled by <c>RegionSite.Settle</c>.
     /// </remarks>
     member private this.ArmRegion
         (
@@ -3198,7 +3201,7 @@ and internal MountState
                                 else
                                     site.Builder.Build (rows, current, armPlacement, site.NextRow ())
 
-                            // An adopted arm that fails here keeps its nodes for the restore or the region's re-render.
+                            // An adopted arm whose end check fails keeps its nodes for the restore or the region's re-render.
                             if hydrating && not (same cursor.Next regionEnd) then
                                 raise (
                                     TemplateDom.mismatch

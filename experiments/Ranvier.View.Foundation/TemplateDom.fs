@@ -636,7 +636,10 @@ type internal MountServices =
     /// <summary>The ids of the mount; an instance's setup runs in its window.</summary>
     abstract Identity: IdentityScope
 
-    /// <summary>The cursor of the server nodes an instance adopts; null outside hydration.</summary>
+    /// <summary>
+    /// The cursor of the server nodes an instance adopts, which also records the edits of the instance's first
+    /// commits; null outside hydration.
+    /// </summary>
     abstract Hydration: HydrationCursor
 
     /// <summary>

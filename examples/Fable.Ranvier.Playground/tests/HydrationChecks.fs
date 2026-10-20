@@ -433,8 +433,9 @@ let private listsHydrate () =
     use graph = new Graph ()
     let host = serve liveList [| a; b |]
     let before = nodesOf host
+    let mutations = recordMutations host
     let mounted = hydrate graph strictOptions host liveList [| a; b |]
-    equal true (sameNodes before (nodesOf host))
+    equal (0, true, "ab") (mutations (), sameNodes before (nodesOf host), (element host "ul").textContent)
     let first, second = (all host "li")[0], (all host "li")[1]
     graph.Run (fun () -> liveItems.Value <- [| b; a |])
     equal ("ba", true) ((element host "ul").textContent, sameNodes [| second; first |] (all host "li"))
@@ -563,6 +564,20 @@ let private trackedList =
                 t.each (fun (item: Listed) -> item.Id) (fun (items: Signal<Listed array>) -> items.Value) trackedRow
             |])
 
+/// <summary>A live list of characters; a character's cell setup raises <c>"cell d"</c> for <c>"d"</c>.</summary>
+let private failingCharacters =
+    let cell =
+        Component.define
+            (fun _ (text: unit -> string) ->
+                if text () = "d" then
+                    failwith "cell d"
+
+                text)
+            (fun t -> t.element (HtmlTag "b") [||] [| t.text (fun text -> text ()) |])
+
+    Component.define (fun _ (items: string array) -> liveStrings items) (fun t ->
+        t.div [||] [| t.each id (fun (items: Signal<string array>) -> items.Value) cell |])
+
 let private rowCountMismatch () =
     for serverItems, clientItems in [ [| a; b |], [| a; b; c |]; [| a; b; c |], [| a |] ] do
         use graph = new Graph ()
@@ -586,6 +601,20 @@ let private rowCountMismatch () =
         graph.Run (fun () -> liveItems.Value <- [| c; a |])
         equal "ca" list.textContent
         mounted.Dispose ()
+
+    // A later failing pass of the recovered list is reported as after a mount.
+    use graph = new Graph ()
+    let host = serve failingCharacters [| "a"; "b" |]
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        Hydration.hydrate graph None reports.Add lenientOptions host failingCharacters [| "a"; "b"; "c" |]
+
+    graph.Run (fun () -> liveTexts.Value <- [| "a"; "b"; "c"; "d" |])
+
+    equal ([ [ "Hydration mismatch at #0: expected <b>, found <!--]-->" ]; [ "cell d" ] ], "abc") (messages reports, (element host "div").textContent)
+
+    mounted.Dispose ()
 
     // Recovered rows continue the row counter after the hydrating pass's rows 0 to 2.
     use graph = new Graph ()
@@ -685,8 +714,9 @@ let private armsHydrate () =
     let staged = liveStaged stage
     let host = serve staged (Working 3)
     let before = nodesOf host
+    let mutations = recordMutations host
     let mounted = hydrate graph strictOptions host staged (Working 3)
-    equal (true, "working 3") (sameNodes before (nodesOf host), (element host "div").textContent)
+    equal (0, true, "working 3") (mutations (), sameNodes before (nodesOf host), (element host "div").textContent)
     let span = host.querySelector "span"
     graph.Run (fun () -> stage.Value.Value <- Working 4)
     equal ("working 4", true) ((element host "div").textContent, obj.ReferenceEquals (span, host.querySelector "span"))
@@ -909,6 +939,111 @@ let private armsInRows () =
             |> ignore)
 
     equal (true, before, true) (error :? TemplateDom.HydrationMismatchException, host.innerHTML, sameNodes nodes (nodesOf host))
+
+let private listArm =
+    Component.define (fun _ (items: unit -> Listed array) -> live (items ())) (fun t ->
+        t.ul
+            [||]
+            [|
+                t.each (fun (item: Listed) -> item.Id) (fun (items: Signal<Listed array>) -> items.Value) listedRow
+            |])
+
+let private armedList =
+    Component.define (fun _ (items: Listed array) -> items) (fun t ->
+        t.div
+            [||]
+            [|
+                t.matchWith (fun (items: Listed array) -> items) (fun items -> t.arm listArm items)
+            |])
+
+let private rowsInArms () =
+    use graph = new Graph ()
+    let host = serve armedList [| a; b |]
+    let before = nodesOf host
+    let mounted = hydrate graph strictOptions host armedList [| a; b |]
+    equal (true, "ab") (sameNodes before (nodesOf host), (element host "ul").textContent)
+    let rows = all host "li"
+    graph.Run (fun () -> liveItems.Value <- [| b; a |])
+    equal ("ba", true) ((element host "ul").textContent, sameNodes [| rows[1]; rows[0] |] (all host "li"))
+    mounted.Dispose ()
+
+    use graph = new Graph ()
+    let host = serve armedList [| a; b |]
+    let list = element host "ul"
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        Hydration.hydrate graph None reports.Add lenientOptions host armedList [| a; b; c |]
+
+    equal (true, "abc", true) (singleMismatch reports, list.textContent, obj.ReferenceEquals (list, element host "ul"))
+    graph.Run (fun () -> liveItems.Value <- [| c; a |])
+    equal ("ca", 1) (list.textContent, reports.Count)
+    mounted.Dispose ()
+
+    use graph = new Graph ()
+    let host = serve armedList [| a; b |]
+    let before = host.innerHTML
+    let nodes = nodesOf host
+
+    let error =
+        ServerChecks.failure (fun () ->
+            hydrate graph strictOptions host armedList [| a; b; c |]
+            |> ignore)
+
+    equal ("Hydration mismatch at #0: expected <li>, found <!--]-->", before, true) (error.Message, host.innerHTML, sameNodes nodes (nodesOf host))
+
+let private armLog = ResizeArray<string>()
+
+/// <summary>An arm whose setup and cleanup are logged as <c>name</c>.</summary>
+let private loggedArm (name: string) =
+    Component.define
+        (fun setup (_: unit -> unit) ->
+            armLog.Add ("setup " + name)
+            setup.OnCleanup (fun () -> armLog.Add ("cleanup " + name)))
+        (fun t -> t.span [||] [| t.text name |])
+
+let private pArm = loggedArm "p"
+let private qArm = loggedArm "q"
+
+let private armSwitchCleanups () =
+    use graph = new Graph ()
+    let holder = ref Unchecked.defaultof<Signal<bool>>
+
+    let tracked =
+        Component.define
+            (fun _ (first: bool) ->
+                holder.Value <- Api.createSignal first
+                holder.Value)
+            (fun t ->
+                t.div
+                    [||]
+                    [|
+                        t.branch (fun (first: Signal<bool>) -> first.Value) (fun first -> if first then t.arm pArm () else t.arm qArm ())
+                    |])
+
+    let host = serve tracked true
+    armLog.Clear ()
+    let served = host.querySelector "span"
+    let mounted = hydrate graph strictOptions host tracked true
+
+    let hydrated =
+        List.ofSeq armLog, (element host "div").textContent, obj.ReferenceEquals (served, host.querySelector "span")
+
+    armLog.Clear ()
+    graph.Run (fun () -> holder.Value.Value <- false)
+
+    let toQ =
+        List.ofSeq armLog, (element host "div").textContent, host.contains (unbox<Node> served)
+
+    armLog.Clear ()
+    graph.Run (fun () -> holder.Value.Value <- true)
+    let toP = List.ofSeq armLog, (element host "div").textContent
+    armLog.Clear ()
+    mounted.Dispose ()
+
+    equal
+        (([ "setup p" ], "p", true), ([ "cleanup p"; "setup q" ], "q", false), ([ "cleanup q"; "setup p" ], "p"), [ "cleanup p" ])
+        (hydrated, toQ, toP, List.ofSeq armLog)
 
 let private viewHolesRerender () =
     use graph = new Graph ()
@@ -1695,6 +1830,8 @@ let private strictRestoresValues () =
     let client: ServerChecks.FormState = { Text = "y"; On = false; Choice = "a" }
     check ServerChecks.formFixture served client formState
     check (inlined ServerChecks.formFixture) served client formState
+    check liveList [| a; b |] [| b; a |] (fun host -> (element host "ul").textContent)
+    check armedList [| a; b |] [| b; a |] (fun host -> (element host "ul").textContent)
     check attributed true false (fun host -> (element host "span").getAttribute "title")
     check (inlined attributed) true false (fun host -> (element host "span").getAttribute "id")
 
@@ -1854,7 +1991,8 @@ let cases: (string * (unit -> unit)) array =
             "nested list regions hydrate and update", nestedRegions
             "text-adjacent row separators are removed during hydration", textRowSeparators
             "zero-root rows hydrate and keep their place", zeroRootRows
-            "a list with fewer or more client items than server rows re-renders the region and reports once", rowCountMismatch
+            "a list with fewer or more client items than server rows re-renders the region, reports once and reports a later failure",
+            rowCountMismatch
             "a row whose first roots are a region's markers hydrates in place", rowStartsWithRegion
             "a same-count list with reordered items hydrates positionally and later moves keep keyed identity", reorderedItems
             "arms hydrate under an equal hash and keep their nodes across payload updates", armsHydrate
@@ -1865,6 +2003,8 @@ let cases: (string * (unit -> unit)) array =
             "a client arm the server plan rejects is a hash mismatch: the region re-renders and reports once; Strict raises",
             rejectedArmHashMismatches
             "arms in hydrated rows adopt under an equal hash, and a different arm re-renders only its region; Strict raises", armsInRows
+            "rows in a hydrated arm adopt and reorder, and a row-count mismatch re-renders only the list; Strict raises", rowsInArms
+            "arm switches after hydration run one cleanup per arm", armSwitchCleanups
             "view holes remove the server content and mount the view fresh", viewHolesRerender
             "a mismatch inside a row's nested region re-renders only that region and reports once per region; Strict raises and restores the host",
             nestedRowMismatch

@@ -1068,6 +1068,135 @@ let private headRecovered () =
         mounted.Dispose ()
         equal ([ true; true; true ], (false, false), hydratedHead "Desk · Shop", "Desk · Shop", 1) shown)
 
+let private metaRow =
+    Component.define (fun _ (item: unit -> int) -> item) (fun t ->
+        t.fragment
+            [|
+                t.Document.meta
+                    [|
+                        t.Attrs.attribute ("name", "row")
+                        t.Attrs.attribute ("content", fun (item: unit -> int) -> Some ("row " + string (item ())))
+                    |]
+                t.li [||] [| t.text (fun (item: unit -> int) -> string (item ())) |]
+            |])
+
+/// <summary>A titled page with a meta description and a list whose rows each bind a row meta.</summary>
+let private rowsPage =
+    Component.define (fun _ (items: int array) -> items) (fun t ->
+        t.fragment
+            [|
+                t.Document.title "Page"
+                description "client" t
+                t.ul [||] [| t.each id (fun (items: int array) -> items) metaRow |]
+            |])
+
+let private characterCell =
+    Component.define (fun _ (text: unit -> string) -> text) (fun t ->
+        t.element (HtmlTag "b") [||] [| t.text (fun (text: unit -> string) -> text ()) |])
+
+let private characterRow =
+    Component.define (fun _ (item: unit -> string) -> item) (fun t ->
+        t.fragment
+            [|
+                t.Document.meta
+                    [|
+                        t.Attrs.attribute ("name", "row")
+                        t.Attrs.attribute ("content", fun (item: unit -> string) -> Some ("row " + item ()))
+                    |]
+                t.li
+                    [||]
+                    [|
+                        t.each id (fun (item: unit -> string) -> [| for ch in item () -> string ch |]) characterCell
+                    |]
+            |])
+
+/// <summary>A titled page with a meta description and a list whose rows bind a row meta and list their characters.</summary>
+let private charactersPage =
+    Component.define (fun _ (items: string array) -> items) (fun t ->
+        t.fragment
+            [|
+                t.Document.title "Page"
+                description "client" t
+                t.ul [||] [| t.each id (fun (items: string array) -> items) characterRow |]
+            |])
+
+/// <summary>Writes the head of <c>definition</c>'s page for <c>props</c>, with a robots meta, and returns a host holding its body.</summary>
+let private servePageWithRobots (definition: Component<'props>) (props: 'props) =
+    let page = Server.renderPage omitted definition props
+
+    setHead (
+        page.Head
+        + "<meta data-ranvier-head=\"meta:name=robots\" name=\"robots\" content=\"index\">"
+    )
+
+    let target = host ()
+    target.innerHTML <- page.Body
+    target
+
+let private nestedStrictRestoresHead () =
+    withHead (fun () ->
+        use graph = new Graph ()
+        let target = servePageWithRobots charactersPage [| "ab" |]
+        let head = headHtml ()
+        let served = headElements ()
+        let body = target.innerHTML
+
+        let failed =
+            try
+                Hydration.hydrate graph None strict (hydrationOptions true) target charactersPage [| "abc" |]
+                |> ignore
+
+                "none"
+            with
+            | TemplateDom.HydrationMismatchException _ as error -> error.Message
+            | error -> "other " + error.Message
+
+        equal
+            ("Hydration mismatch at #0: expected <b>, found <!--]-->", head, true, "row ab", body)
+            (failed, headHtml (), sameNodes served (headElements ()), headAttribute "meta[name=row]" "content", target.innerHTML))
+
+let private regionRecoveryRemovesOnce () =
+    withHead (fun () ->
+        use graph = new Graph ()
+        let target = servePageWithRobots rowsPage [| 1; 2 |]
+        let titleElement = inHead "title"
+        let descriptionElement = inHead "meta[name=description]"
+        let row = inHead "meta[name=row]"
+        let robots = inHead "meta[name=robots]"
+        // Whether the robots meta is in the head at each report, and the report's length.
+        let atReport = ResizeArray<bool * int>()
+
+        let report (errors: exn list) =
+            atReport.Add (isConnected robots, errors.Length)
+
+        let mounted =
+            Hydration.hydrate graph None report (hydrationOptions false) target rowsPage [| 1; 2; 3 |]
+
+        let shown =
+            List.ofSeq atReport,
+            isConnected robots,
+            obj.ReferenceEquals (inHead "title", titleElement),
+            obj.ReferenceEquals (inHead "meta[name=description]", descriptionElement),
+            obj.ReferenceEquals (inHead "meta[name=row]", row),
+            headCount "meta[name=row]",
+            target.textContent,
+            headHtml ()
+
+        mounted.Dispose ()
+
+        equal
+            ([ true, 1 ],
+             false,
+             true,
+             true,
+             false,
+             1,
+             "123",
+             "<title data-ranvier-head=\"title\">Page</title>"
+             + "<meta data-ranvier-head=\"meta:name=description\" name=\"description\" content=\"client\">"
+             + "<meta data-ranvier-head=\"meta:name=row\" name=\"row\" content=\"row 3\">")
+            shown)
+
 let cases: (string * (unit -> unit)) array =
     strictCases (
         Array.concat
@@ -1112,6 +1241,10 @@ let cases: (string * (unit -> unit)) array =
                     pendingHeadAdopted
                     "a failed hydration leaves the head as the server wrote it", headRestoredOnFailure
                     "a hydration that re-renders the root adopts the head as a fresh mount and removes unadopted elements", headRecovered
+                    "a Strict mismatch in a row's nested list leaves the head as the server wrote it, attributes written at bind included",
+                    nestedStrictRestoresHead
+                    "a re-rendered list region recreates its rows' head elements and unadopted elements are removed once, after hydrate returns",
+                    regionRecoveryRemovesOnce
                 |]
                 templated "a client mount adopts marked elements without hydrate and removes none" mountAdoptsHead
             ]
