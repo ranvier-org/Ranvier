@@ -41,6 +41,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 83,015 | 125,883 | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 83,016 | 125,845 | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 83,006 | 125,908 | 1,732,908 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 83,048 | 127,105 | 1,734,142 |
 
 ## app-table
 
@@ -83,6 +84,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 9,137,917 | 9,770,657 | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 4,416,155 | 9,667,570 | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 4,416,056 | 9,769,936 | 107,687,281 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 4,416,352 | 9,203,562 | 107,430,896 |
 
 ## async-recover
 
@@ -125,6 +127,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 139,063 | 37,451 | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 139,048 | 37,449 | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 139,047 | 37,452 | 440,318 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 139,048 | 39,725 | 440,644 |
 
 ## async-resolve
 
@@ -167,6 +170,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 2,793,119 | 1,080,083 | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 2,793,109 | 1,079,946 | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 2,793,109 | 1,079,567 | 12,301,104 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 2,793,110 | 1,085,386 | 12,317,049 |
 
 ## chain
 
@@ -209,6 +213,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | — | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | — | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 
 ## chain-affinity
 
@@ -251,6 +256,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 2,549 | 3,067 | 2,496 |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 2,549 | 3,067 | 2,496 |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 2,549 | 3,067 | 2,496 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 2,549 | 3,067 | 2,496 |
 
 ## control
 
@@ -293,6 +299,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 74,719 | 834,039 | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 74,709 | 833,882 | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 74,709 | 834,030 | 2,605,052 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 74,709 | 833,999 | 2,605,091 |
 
 ## create
 
@@ -335,6 +342,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 13,449,953 | 2,859,678 | 2,532,409 | 2,131,062 | 4,002,325 | — | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 13,449,953 | 2,859,678 | 2,532,377 | 2,131,932 | 4,002,655 | — | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 13,449,960 | 2,875,677 | 2,548,361 | 2,131,894 | 3,998,782 | 34,065,187 | 49,618,972 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 13,575,594 | 2,859,678 | 2,532,361 | 2,131,334 | 4,003,678 | 34,063,391 | 49,723,780 |
 
 ## create-on
 
@@ -377,6 +385,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 2,910,485 | 4,375,852 | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 2,910,486 | 4,375,978 | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 2,926,532 | 4,375,792 | 54,330,721 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 2,910,483 | 4,147,726 | 54,424,662 |
 
 ## cutoff
 
@@ -419,6 +428,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 1,182 | 50 | 111 | 65 | 35 | — | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 1,182 | 50 | 111 | 65 | 35 | — | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 
 ## derive-effect
 
@@ -461,6 +471,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 765 | 699 | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 765 | 699 | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 765 | 699 | 15,940 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 765 | 768 | 16,102 |
 
 ## derive-on
 
@@ -503,6 +514,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 737 | 694 | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 737 | 694 | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 753 | 694 | 16,099 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 737 | 775 | 16,261 |
 
 ## dispose
 
@@ -545,6 +557,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 2,707,646 | 806,290 | 367,497 | 465,980 | 434,616 | — | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 2,707,644 | 806,291 | 367,497 | 465,967 | 434,888 | — | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 2,706,241 | 806,290 | 367,497 | 466,249 | 434,395 | 13,195,661 | 9,112,722 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 2,707,644 | 806,291 | 367,497 | 466,067 | 485,210 | 13,195,163 | 9,105,961 |
 
 ## dispose-on
 
@@ -587,6 +600,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 346,497 | 430,526 | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 346,497 | 430,629 | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 346,497 | 430,507 | 8,908,961 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 346,497 | 478,468 | 8,902,248 |
 
 ## editable-edit
 
@@ -629,6 +643,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 180,106 |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 180,106 |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 180,106 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 180,106 |
 
 ## editable-upstream
 
@@ -671,6 +686,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 231,255 |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 231,255 |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 231,255 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 231,255 |
 
 ## fail-recompute
 
@@ -713,6 +729,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 64,914 | 1,366 |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 64,930 | 1,366 |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 65,098 | 1,366 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 65,098 | 1,366 |
 
 ## flight
 
@@ -755,6 +772,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 10,995 | 6,215 | 6,216 | 11,316 | 10,763 | 22,343 |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 10,995 | 6,215 | 6,216 | 11,316 | 10,763 | 22,343 |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 10,995 | 6,215 | 6,216 | 11,316 | 10,763 | 22,343 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 10,995 | 6,215 | 6,216 | 11,316 | 10,763 | 22,343 |
 
 ## keyed-insert
 
@@ -797,6 +815,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 1,921,825 | 53,971 | 54,964 | 3,164,362 | 167,302 | 167,653 | — | — | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 1,921,809 | 53,951 | 54,946 | 3,164,311 | 167,299 | 167,724 | — | — | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 1,921,905 | 53,951 | 55,044 | 3,164,391 | 167,252 | 167,625 | 44,661,301 | 2,639,507 | 2,657,596 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 1,921,809 | 53,951 | 54,949 | 3,218,687 | 661,692 | 176,576 | 44,849,813 | 2,634,960 | 2,654,184 |
 
 ## keyed-remove
 
@@ -839,6 +858,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 1,920,761 | 43,648 | 45,300 | 3,163,880 | 133,139 | 140,930 | — | — | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 1,920,729 | 43,628 | 45,284 | 3,163,876 | 133,201 | 141,010 | — | — | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 1,920,844 | 43,628 | 45,381 | 3,163,763 | 133,188 | 140,934 | 44,623,063 | 1,929,588 | 1,962,426 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 1,920,755 | 43,628 | 45,284 | 3,245,043 | 593,156 | 605,276 | 44,798,164 | 1,924,878 | 1,958,567 |
 
 ## keyed-swap
 
@@ -881,6 +901,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 1,973,444 | 46,177 | 46,931 | 3,282,864 | 80,396 | 85,129 | — | — | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 1,973,428 | 46,162 | 46,916 | 3,282,926 | 80,399 | 85,118 | — | — | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 1,973,524 | 46,161 | 47,011 | 3,282,982 | 80,381 | 85,111 | 45,819,080 | 919,448 | 935,758 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 1,973,428 | 46,161 | 46,916 | 3,566,419 | 148,779 | 511,233 | 45,980,315 | 916,555 | 932,783 |
 
 ## mvu-dispatch
 
@@ -923,6 +944,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 58,261 | 772 |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 58,261 | 772 |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 58,261 | 772 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 58,261 | 772 |
 
 ## project-chain
 
@@ -965,6 +987,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 3,844,844 |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 1,070,308 |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 1,070,194 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 1,070,368 |
 
 ## project-churn
 
@@ -1007,6 +1030,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 36,489 | 34,326 |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 36,473 | 34,310 |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 36,473 | 34,310 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 36,473 | 34,310 |
 
 ## project-edit
 
@@ -1049,6 +1073,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 50,431 |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 50,415 |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 50,431 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 50,415 |
 
 ## project-reorder
 
@@ -1091,6 +1116,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 779,171 |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 779,156 |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 779,170 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 779,155 |
 
 ## server-render
 
@@ -1133,6 +1159,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 677,932 | 1,131,206 | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 676,332 | 1,131,179 | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 676,396 | 1,131,282 | 9,832,906 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 677,932 | 1,131,263 | 9,832,850 |
 
 ## shape-diamond
 
@@ -1175,6 +1202,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 59,899 | 88,772 | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 59,899 | 88,772 | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 59,899 | 88,772 | 1,763,207 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 59,899 | 79,968 | 1,763,357 |
 
 ## shape-dynamic
 
@@ -1217,6 +1245,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 82,921 | 96,578 | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 82,921 | 96,580 | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 82,921 | 96,577 | 1,992,771 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 82,921 | 107,033 | 2,006,140 |
 
 ## stream-burst-1
 
@@ -1259,6 +1288,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 1,974 | 1,572 | 2,490 | 5,260 | 6,373 | 10,444 | — | — | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 1,974 | 1,572 | 2,491 | 5,260 | 6,373 | 10,446 | — | — | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 1,974 | 1,572 | 2,491 | 5,260 | 6,373 | 10,446 | 47,094 | 45,312 | 54,896 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 1,974 | 1,572 | 2,491 | 4,672 | 3,644 | 13,372 | 47,201 | 45,417 | 55,171 |
 
 ## stream-burst-16
 
@@ -1301,6 +1331,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 5,631 | 25,017 | 5,700 | 10,631 | 48,403 | 13,097 | — | — | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 5,631 | 25,017 | 5,701 | 10,631 | 48,406 | 13,097 | — | — | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 5,631 | 25,017 | 5,701 | 10,632 | 48,403 | 13,097 | 120,864 | 712,439 | 113,248 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 5,631 | 25,017 | 5,701 | 9,499 | 49,601 | 8,050 | 120,973 | 714,180 | 113,522 |
 
 ## stream-burst-256
 
@@ -1343,6 +1374,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 64,131 | 400,101 | 57,039 | 123,029 | 795,710 | 70,601 | — | — | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 64,131 | 400,101 | 57,040 | 123,049 | 795,709 | 70,598 | — | — | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 64,131 | 400,101 | 57,040 | 122,983 | 795,712 | 70,598 | 1,301,559 | 11,385,440 | 1,046,210 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 64,131 | 400,101 | 57,040 | 127,472 | 787,260 | 74,603 | 1,301,576 | 11,413,287 | 1,046,550 |
 
 ## stream-restart
 
@@ -1385,6 +1417,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 4,188 | 4,976 | 12,496 | 8,970 | — | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 4,188 | 4,976 | 12,498 | 8,970 | — | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 4,188 | 4,976 | 12,497 | 8,974 | 41,396 | 70,017 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 4,188 | 4,976 | 6,106 | 16,355 | 41,497 | 70,403 |
 
 ## timed-admit-both
 
@@ -1427,6 +1460,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 120,639 | 135,172 | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 118,591 | 135,174 | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 119,615 | 135,166 | 2,653,179 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 118,591 | 134,967 | 2,679,929 |
 
 ## timed-admit-debounce
 
@@ -1469,6 +1503,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 119,544 | 133,759 | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 117,496 | 133,769 | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 118,520 | 133,743 | 2,613,535 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 117,496 | 133,558 | 2,640,272 |
 
 ## timed-admit-first
 
@@ -1511,6 +1546,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 71,527 | 82,869 | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 69,479 | 82,869 | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 70,503 | 82,868 | 1,594,156 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 69,479 | 79,052 | 1,611,692 |
 
 ## timed-admit-last
 
@@ -1553,6 +1589,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 119,806 | 134,086 | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 117,758 | 134,079 | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 118,782 | 134,089 | 2,623,379 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 117,758 | 133,852 | 2,650,128 |
 
 ## timed-capture-both
 
@@ -1595,6 +1632,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 35,726 | 45,087 | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 35,726 | 45,087 | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 35,726 | 45,098 | 837,335 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 35,726 | 44,805 | 846,997 |
 
 ## timed-capture-debounce
 
@@ -1637,6 +1675,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 35,598 | 43,719 | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 35,598 | 43,719 | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 35,598 | 43,719 | 838,606 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 35,598 | 44,103 | 847,375 |
 
 ## timed-capture-first
 
@@ -1679,6 +1718,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 32,078 | 39,004 | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 32,078 | 39,004 | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 32,078 | 39,003 | 736,153 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 32,078 | 36,612 | 745,370 |
 
 ## timed-capture-last
 
@@ -1721,6 +1761,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 35,534 | 43,654 | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 35,534 | 43,654 | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 35,534 | 43,655 | 830,736 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 35,534 | 44,040 | 839,503 |
 
 ## update
 
@@ -1763,6 +1804,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 1,087,690 | 38,805 | 82,505 | 262,800 | 209,569 | — | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 1,087,690 | 38,805 | 82,505 | 262,806 | 209,556 | — | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 1,087,690 | 38,805 | 82,505 | 262,360 | 209,567 | 3,350,233 | 2,489,232 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 1,089,283 | 38,805 | 82,505 | 262,529 | 151,711 | 3,350,289 | 2,502,802 |
 
 ## update-on
 
@@ -1805,6 +1847,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 93,005 | 222,286 | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 93,005 | 222,299 | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 94,605 | 222,303 | 2,816,807 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 93,005 | 165,229 | 2,830,393 |
 
 ## work-form
 
@@ -1847,6 +1890,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 170,300 | 165,392 | 290,646 | 293,110 | — | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 170,300 | 163,392 | 290,634 | 293,092 | — | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 170,300 | 165,392 | 290,646 | 293,110 | 5,332,104 | 5,269,666 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 170,300 | 163,392 | 295,967 | 291,422 | 5,349,177 | 5,295,441 |
 
 ## work-status
 
@@ -1889,6 +1933,7 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 100,445 | 78,815 | 322,752 | 156,116 | — | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 100,445 | 78,815 | 322,831 | 156,132 | — | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 100,445 | 80,415 | 322,818 | 156,135 | 2,597,373 | 2,351,545 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 100,445 | 78,815 | 264,842 | 152,911 | 2,611,017 | 2,360,847 |
 
 ## work-value
 
@@ -1931,4 +1976,5 @@
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 107,571 | 119,470 | 323,069 | 284,502 | — | — |
 | `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 107,569 | 119,469 | 323,011 | 284,508 | — | — |
 | `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | 107,571 | 121,069 | 323,040 | 284,460 | 2,582,023 | 2,910,903 |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | 107,569 | 119,469 | 265,090 | 279,879 | 2,595,670 | 2,920,217 |
 
