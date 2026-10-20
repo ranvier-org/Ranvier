@@ -70,7 +70,12 @@ type internal TeardownWindow(root: Owner, start: int, report: exn list -> unit) 
 /// </remarks>
 [<Sealed; AllowNullLiteral>]
 type MountLifetime private (graph: Graph, owner: Owner, report: exn list -> unit, release: unit -> unit, parent: MountLifetime) =
-    let inherits = not (isNull parent) && parent.Phase = SettingUp
+    let inherits =
+        not (isNull parent)
+        && (match parent.Phase with
+            | SettingUp -> true
+            | Attached
+            | Disposed -> false)
     // The teardown reports the owner's errors recorded at or after this position.
     let ownerStart = owner.ErrorCount
     let mutable attached = false
@@ -178,7 +183,14 @@ type MountLifetime private (graph: Graph, owner: Owner, report: exn list -> unit
     member _.Phase =
         if owner.IsDisposed then
             Disposed
-        elif attached || (inherits && parent.Phase = Attached) then
+        elif
+            attached
+            || (inherits
+                && (match parent.Phase with
+                    | Attached -> true
+                    | SettingUp
+                    | Disposed -> false))
+        then
             Attached
         else
             SettingUp
