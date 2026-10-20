@@ -287,7 +287,7 @@ let private bounded queued () =
 [<Emit("Array.from($1.querySelectorAll($0)).forEach(node => node.click())")>]
 let private clickAll (selector: string) (root: HTMLElement) : unit = jsNative
 
-/// <summary>Clicks every button twice on both twins; each static <c>View</c> still ran once.</summary>
+/// <summary>Clicks every button twice on both twins; each static <c>View</c> ran once.</summary>
 let private mixedClicks (sugared: Component<unit>) queued () =
     pair queued (fun _ -> ()) (fun () -> Component.render MixedExplicit.root ()) (fun () -> Component.render sugared ()) (fun () ->
         [ Each (clickAll "button"); Each (clickAll "button") ])
@@ -379,6 +379,20 @@ let private hydratedSteps
 let private hydratedTwins served explicitDefinition sugarDefinition props (writes: (unit -> unit) list) adopts graph =
     hydratedSteps served explicitDefinition sugarDefinition props (List.map Write writes) adopts graph
 
+let private demoState (graph: Graph) =
+    graph.Run (fun () ->
+        {
+            PlaygroundSugar.DemoState.Count = Api.createSignal 0
+            PlaygroundSugar.DemoState.Name = Api.createSignal "Ada"
+        })
+
+let private demoStyles: (string * Component<PlaygroundSugar.DemoState>) array =
+    [|
+        "template", PlaygroundSugar.demoSugar
+        "record", PlaygroundSugar.demoMembers
+        "class", PlaygroundSugar.demoClass
+    |]
+
 /// <summary>The number of server nodes each hydrated pair adopts.</summary>
 module private Adopted =
     /// <summary>All 6 server nodes.</summary>
@@ -395,6 +409,8 @@ module private Adopted =
     let nested = 19
     /// <summary>All 59 server nodes: two root markers, the root div and two panels of 28 (section, h2 and its text, five counters of 5).</summary>
     let mixed = 59
+    /// <summary>All 38 server nodes of the demo screen.</summary>
+    let demo = 38
 
 /// <summary>Each pair hydrated from the explicit twin's HTML and from the sugared twin's HTML.</summary>
 let private hydration () =
@@ -463,6 +479,18 @@ let private hydration () =
             Adopted.mixed
             graph
 
+        for _, definition in demoStyles do
+            let state = demoState graph
+
+            hydratedTwins
+                (pick PlaygroundSugar.demoExplicit definition)
+                PlaygroundSugar.demoExplicit
+                definition
+                state
+                [ fun () -> state.Count.Value <- 4 ]
+                Adopted.demo
+                graph
+
 /// <summary>The elements under <c>root</c> that carry event handlers, as one <c>position:handler keys</c> entry each.</summary>
 [<Emit("Array.from($0.querySelectorAll('*')).map((node, index) => [index, Object.getOwnPropertyNames(node).filter(name => name.startsWith('$$ranvier')).join(',')]).filter(([, keys]) => keys !== '').map(([index, keys]) => index + ':' + keys).join(' ')")>]
 let private handlerSites (root: HTMLElement) : string = jsNative
@@ -509,24 +537,19 @@ let private armFixtures () =
     explicitOps.Dispose ()
     sugarOps.Dispose ()
 
-let private demoState (graph: Graph) =
-    graph.Run (fun () ->
-        {
-            PlaygroundSugar.DemoState.Count = Api.createSignal 0
-            PlaygroundSugar.DemoState.Name = Api.createSignal "Ada"
-        })
-
 let private demoLayout () =
-    equal (layoutSignature PlaygroundSugar.demoExplicit.Root) (layoutSignature PlaygroundSugar.demoSugar.Root)
     use graph = new Graph ()
     let state = demoState graph
-    equal (Server.render omit PlaygroundSugar.demoExplicit state) (Server.render omit PlaygroundSugar.demoSugar state)
+
+    for name, definition in demoStyles do
+        equal (name, layoutSignature PlaygroundSugar.demoExplicit.Root) (name, layoutSignature definition.Root)
+        equal (name, Server.render omit PlaygroundSugar.demoExplicit state) (name, Server.render omit definition state)
 
 [<Emit("(() => { const field = $2.querySelector($0); field.value = $1; field.dispatchEvent(new Event('input', { bubbles: true })); })()")>]
 let private typeInto (selector: string) (text: string) (root: HTMLElement) : unit = jsNative
 
-let private demoClicks queued () =
-    pair queued demoState (Component.render PlaygroundSugar.demoExplicit) (Component.render PlaygroundSugar.demoSugar) (fun state ->
+let private demoClicks (definition: Component<PlaygroundSugar.DemoState>) queued () =
+    pair queued demoState (Component.render PlaygroundSugar.demoExplicit) (Component.render definition) (fun state ->
         [
             Each (click "[data-testid=reset]")
             Each (click "[data-testid=increment]")
@@ -559,9 +582,10 @@ let cases: (string * (unit -> unit)) array =
                     "the sugared arm benchmark fixture renders like the production fixture", armFixtures
                 |]
                 [|
-                    "the sugared demo screen shares the explicit screen's layout and server HTML", demoLayout
+                    "every demo style shares the explicit screen's layout and server HTML", demoLayout
                 |]
-                templated "the sugared demo screen updates like the explicit screen" demoClicks
+                for name, definition in demoStyles do
+                    templated (sprintf "the %s demo screen updates like the explicit screen" name) (demoClicks definition)
                 [| "sugared and explicit twins hydrate each other's server HTML", hydration |]
             ]
     )

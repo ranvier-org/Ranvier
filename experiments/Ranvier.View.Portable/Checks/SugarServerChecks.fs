@@ -33,6 +33,11 @@ let private definitionTimeReadIsStatic () =
     let layout = skeletonLayout definitionTimeRead.Root
     equal ("<span>1</span>", 0) (layout.Markup, layout.Targets.Length)
 
+let private omit =
+    { Server.Options.defaults with
+        Policy = Omit
+    }
+
 let private showOffMarkup () =
     let graph = new Graph ()
     let hidden = graph.Run (fun () -> toggle false)
@@ -41,17 +46,7 @@ let private showOffMarkup () =
         ("<!--[r--><div>before<!--[a:"
          + structuralHash (Ranvier.View.Foundation.Sugar.Builders.emptyArm ())
          + "--><!--ranvier:row--><!--]-->after</div><!--]-->")
-        (Server.render
-            { Server.Options.defaults with
-                Policy = Omit
-            }
-            showSugar
-            hidden)
-
-let private omit =
-    { Server.Options.defaults with
-        Policy = Omit
-    }
+        (Server.render omit showSugar hidden)
 
 #if !FABLE_COMPILER
 let private emptyArmField () =
@@ -122,10 +117,8 @@ let dotnetCases: (string * (unit -> unit)) array =
     |]
 #endif
 
-/// <summary>Renders both mixed trees three times; each static <c>View</c> ran once, when its helper built the definition.</summary>
+/// <summary>Renders both mixed trees three times; each static <c>View</c> ran once, at definition time.</summary>
 let private viewsBuiltOnce () =
-    use graph = new Graph ()
-
     for _ in 1..3 do
         Server.render omit mixedSugar () |> ignore
         Server.render omit mixedRendered () |> ignore

@@ -251,7 +251,7 @@ module Builders =
         TemplateBuilder<'inst>().render definition (fun _ -> props)
 
     /// <summary>A component used as a tag: yields the child view of <c>definition</c>.</summary>
-    /// <remarks>A subclass declares a private primary constructor and public overloads.</remarks>
+    /// <remarks>Subclasses take a private primary constructor and public overloads.</remarks>
     [<AbstractClass>]
     type ComponentTag<'props, 'inst>(definition: Component<'props>, props: 'inst -> 'props) =
         inherit VoidElement<'inst>(TemplateBuilder<'inst>().render definition props)
