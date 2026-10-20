@@ -1,17 +1,20 @@
 // Allocation sample of the mount of the 128-row template benchmark row, explicit and sugared.
 // Usage: node benchmarks/frameworks/sugar-alloc.mjs [--build] [--processes=3] [--mounts=10] [--width=128] [--label=alloc-template-row] [--out=<dir>]
-// Writes <out>/<label>.json with every allocating function of each sample.
+// Writes <out>/<label>.json with every allocating function of each sample and its bundle source module (`module`).
 import { chromium } from "@playwright/test";
 import { spawn, execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
+import { lineModules } from "./sugar-frames.mjs";
 
 const cwd = fileURLToPath(new URL("../../", import.meta.url));
 const argument = (name, fallback) => process.argv.find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const output = argument("out", fileURLToPath(new URL("../../../../docs/research/framework-performance/investigation/view-sugar-v2/", import.meta.url)));
 const label = argument("label", "alloc-template-row");
 const processes = Number(argument("processes", 3)), mounts = Number(argument("mounts", 10)), width = Number(argument("width", 128));
-const modes = ["ranvier-template", "ranvier-template-sugar", "ranvier-template-members", "ranvier-template-class"];
+// The explicit twin is sampled first and last in each process; its repeats give the comparer's noise tolerance.
+const modes = ["ranvier-template", "ranvier-template-sugar", "ranvier-template-members", "ranvier-template-class", "ranvier-template"];
 const outDir = "generated-keyed-profile";
 const env = { ...process.env, RanvierCounters: "false", RANVIER_PERF_OUTPUT: outDir, RANVIER_PERF_PROFILE: "true" };
 const port = Number(argument("port", 5188));
@@ -28,6 +31,14 @@ server.stdout.on("data", data => serverOutput += data);
 server.stderr.on("data", data => serverOutput += data);
 
 const fileOf = url => url ? url.replace(/^.*\/(generated-tests|node_modules|benchmarks|assets)\//, "$1/").replace(/\?.*$/, "") : "(native)";
+// The bundle's source module of a frame, from the `//#region` comments of the unminified served bundle.
+const regions = new Map();
+const moduleOf = (url, lineNumber) => {
+  const file = fileOf(url);
+  if (!file.startsWith("assets/")) return undefined;
+  if (!regions.has(file)) regions.set(file, lineModules(readFileSync(`${cwd}${outDir}/${file}`, "utf8")));
+  return regions.get(file)[lineNumber];
+};
 
 // Sampled allocation bytes by allocating function, attributed to the leaf frame, for the samples under `run`.
 function summarizeHeap(heap) {
@@ -38,13 +49,15 @@ function summarizeHeap(heap) {
     const here = inside || frame.functionName === "run";
     if (here && node.selfSize) {
       const key = `${frame.functionName || "(anonymous)"} ${fileOf(frame.url)}:${frame.lineNumber + 1}`;
-      self.set(key, (self.get(key) || 0) + node.selfSize);
+      const entry = self.get(key) || { bytes: 0, module: moduleOf(frame.url, frame.lineNumber) };
+      entry.bytes += node.selfSize;
+      self.set(key, entry);
       total += node.selfSize;
     }
     for (const child of node.children || []) visit(child, here);
   };
   visit(heap.head, false);
-  return { totalBytes: total, self: [...self].sort((a, b) => b[1] - a[1]).map(([name, bytes]) => ({ name, bytes })) };
+  return { totalBytes: total, self: [...self].sort((a, b) => b[1].bytes - a[1].bytes).map(([name, { bytes, module }]) => ({ name, bytes, module: module ?? "(none)" })) };
 }
 
 try {
@@ -67,7 +80,7 @@ try {
     await page.goto(`http://127.0.0.1:${port}/benchmarks/frameworks/index.html`);
     await page.waitForFunction(() => window.frameworkPerf);
     const cdp = await page.context().newCDPSession(page);
-    // Odd processes sample the sugared mode first.
+    // Odd processes sample the sugared modes in reverse order.
     for (const mode of replicate % 2 ? [...modes].reverse() : modes) {
       // One mount first, so one-time definition compilation is outside the sample.
       await page.evaluate(({ mode, width }) => { const warm = window.frameworkPerf.prepare(mode, width, "mount", 1); warm.run(); warm.cleanup(); }, { mode, width });

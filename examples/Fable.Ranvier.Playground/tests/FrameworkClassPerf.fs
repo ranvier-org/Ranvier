@@ -1,4 +1,4 @@
-/// <summary>The template benchmark row declared as a class with a static View. Kept apart from the other rows, so each bundle entry holds one row.</summary>
+/// <summary>The template benchmark row declared as a class with a static View. The module holds this row alone and is the <c>class</c> bundle entry's row.</summary>
 module FrameworkClassPerf
 
 open global.Ranvier

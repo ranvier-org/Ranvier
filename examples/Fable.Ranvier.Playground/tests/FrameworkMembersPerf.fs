@@ -1,4 +1,4 @@
-/// <summary>The template benchmark row declared as a record with static Create and View. Kept apart from the other rows, so each bundle entry holds one row.</summary>
+/// <summary>The template benchmark row declared as a record with static Create and View. The module holds this row alone and is the <c>members</c> bundle entry's row.</summary>
 module FrameworkMembersPerf
 
 open global.Ranvier

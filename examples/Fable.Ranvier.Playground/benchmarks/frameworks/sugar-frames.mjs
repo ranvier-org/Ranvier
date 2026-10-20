@@ -1,50 +1,75 @@
-// Names Fable gives the template sugar's emitted code, for the allocation comparer and the bundle-size check.
-// The tag classes are read from the generated sugar module, so the list follows the generator.
+// Names and modules of the template sugar's emitted code, for the allocation comparer and the bundle-size check.
+// Requires `npm run compile:tests`: the names are read from the emitted sugar modules.
 import { readFileSync } from "node:fs";
 
-const generated = new URL("../../../../experiments/Ranvier.View.Portable/Generated/HtmlTemplateSugar.fs", import.meta.url);
+const portable = new URL("../../generated-tests/experiments/Ranvier.View.Portable/", import.meta.url);
+const generatedSource = new URL("../../../../experiments/Ranvier.View.Portable/Generated/HtmlTemplateSugar.fs", import.meta.url);
 
-/** The generated tag-class names as Fable emits them, without the `$1` suffix (`base'` is `base$0027`). */
-export const tagClasses = [...readFileSync(generated, "utf8").matchAll(/^\s*type ([a-z][a-z0-9']*)<'i> private \(ps:/gm)]
-  .map(match => match[1].replace("'", "$0027"));
-if (tagClasses.length !== 112) throw Error(`Expected 112 tag classes in ${generated.pathname}, found ${tagClasses.length}`);
+/** Bundle module paths (as in `//#region` comments and frame `module` fields) of the sugar layer. */
+export const sugarModules = ["experiments/Ranvier.View.Portable/TemplateSugar.js", "experiments/Ranvier.View.Portable/Generated/HtmlTemplateSugar.js"];
+export const isSugarModule = path => sugarModules.some(module => path.endsWith(module));
 
-const escape = name => name.replace(/\$/g, "\\$");
+/** A JavaScript source with comments removed and string and template literals emptied; line breaks are kept. */
+export const stripLiterals = source =>
+  source.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|`(?:\\.|[^`\\])*`/g, match => {
+    const breaks = match.replace(/[^\n]/g, "");
+    return match.startsWith("/") ? breaks : '""' + breaks;
+  });
 
+/** The names of the functions and classes declared in a JavaScript source: `function` and `class` declarations, and `var`, `let` or `const` bound to a function, class or arrow. */
+export const declarations = source =>
+  [...stripLiterals(source).matchAll(/\b(?:function\*?|class)\s+(?!extends\b)([A-Za-z_$][\w$]*)|\b(?:var|let|const)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:class\b|function\b|async\b|\([^()]*\)\s*=>|[A-Za-z_$][\w$]*\s*=>)/g)].map(match => match[1] ?? match[2]);
+
+let derived;
 /**
- * Each alternative of the sugar-frame pattern, by name.
- * A tag class `<tag>$1` is matched through its `_$ctor_` and `_$reflection` functions and a bundler-renamed `<tag>$1$<n>`;
- * the bare `<tag>$1` also names unrelated bundler-renamed functions, such as fable-library's `map$1`.
- * `componentTag` appears in no benchmark fixture; `exempt` lists the alternatives a sugared bundle need not contain.
+ * The emitted tag-class names without the `$1` suffix (`base'` is `base$0027`), checked against the classes declared in `HtmlTemplateSugar.fs`,
+ * and every name declared by the emitted sugar modules: tag classes and their functions, `Element$2`, `VoidElement$1`, `ComponentTag$2` and the free builders.
  */
-export const sugarAlternatives = {
-  element: /\bElement\$\d/,
-  voidElement: /\bVoidElement\$\d/,
-  componentTag: /\bComponentTag\$\d/,
-  tagClass: new RegExp(`(^|[^A-Za-z0-9_$])(${tagClasses.map(escape).join("|")})\\$1(_\\$ctor_|_\\$reflection\\b|\\$\\d)`),
-  sugar: /Sugar/,
-  delay: /Delay/
-};
-export const exempt = ["componentTag"];
-
-/** Matches a function or frame name that belongs to the template sugar. */
-export const sugarFrame = new RegExp(Object.values(sugarAlternatives).map(pattern => pattern.source).join("|"));
-
-/** The identifiers of a JavaScript source. */
-export const identifiers = source => [...new Set(source.match(/[A-Za-z_$][\w$]*/g))];
-
-/**
- * The identifiers each alternative matches in the sugared and the explicit source, and the violations:
- * an alternative outside `exempt` that matches no sugared identifier, or any alternative that matches an explicit identifier.
- */
-export function checkAlternatives(sugaredSource, explicitSource) {
-  const sugared = identifiers(sugaredSource), explicit = identifiers(explicitSource);
-  const counts = {}, violations = [];
-  for (const [name, pattern] of Object.entries(sugarAlternatives)) {
-    const inSugared = sugared.filter(id => pattern.test(id)), inExplicit = explicit.filter(id => pattern.test(id));
-    counts[name] = { sugared: inSugared.length, explicit: inExplicit.length };
-    if (!inSugared.length && !exempt.includes(name)) violations.push(`${name} matches no sugared identifier`);
-    if (inExplicit.length) violations.push(`${name} matches explicit ${inExplicit.slice(0, 5).join(", ")}`);
-  }
-  return { counts, violations };
+export function sugarDeclarations() {
+  if (derived) return derived;
+  const tagSource = [...readFileSync(generatedSource, "utf8").matchAll(/^\s*type ([a-z][a-z0-9']*)<'i> private \(ps:/gm)].map(match => match[1].replace("'", "$0027"));
+  const tagsEmitted = readFileSync(new URL("Generated/HtmlTemplateSugar.js", portable), "utf8");
+  const tagClasses = [...tagsEmitted.matchAll(/^export class ([a-z][a-z0-9$]*)\$1 extends (?:Element\$2|VoidElement\$1) /gm)].map(match => match[1]);
+  if (tagSource.length !== tagClasses.length || tagSource.some((tag, index) => tag !== tagClasses[index]))
+    throw Error(`Tag classes differ: ${tagSource.length} in HtmlTemplateSugar.fs, ${tagClasses.length} emitted in HtmlTemplateSugar.js`);
+  const names = new Set([...declarations(readFileSync(new URL("TemplateSugar.js", portable), "utf8")), ...declarations(tagsEmitted)]);
+  return (derived = { tagClasses, names });
 }
+
+/** Whether a function name is a sugar declaration, as emitted or with bundler suffixes `$<n>`. */
+export function isSugarName(name) {
+  const { names } = sugarDeclarations();
+  for (let candidate = name; ; ) {
+    if (names.has(candidate)) return true;
+    const renamed = /^(.+)\$\d+$/.exec(candidate);
+    if (!renamed) return false;
+    candidate = renamed[1];
+  }
+}
+
+/** The module of each line (0-based) of an unminified bundle, from its `//#region` comments; `undefined` outside regions. */
+export function lineModules(bundle) {
+  let current;
+  return bundle.split("\n").map(line => {
+    const region = /^\/\/#region (.*)$/.exec(line.trim());
+    if (region) return (current = region[1]);
+    if (line.trim() === "//#endregion") { const ended = current; current = undefined; return ended; }
+    return current;
+  });
+}
+
+/** The declarations of an unminified bundle inside the sugar modules, and the declarations elsewhere that carry a sugar name. */
+export function bundleSugar(bundle) {
+  const modules = lineModules(bundle), lines = stripLiterals(bundle).split("\n");
+  const inSugar = [], collisions = [];
+  lines.forEach((line, index) => {
+    for (const name of declarations(line)) {
+      if (modules[index] !== undefined && isSugarModule(modules[index])) inSugar.push(name);
+      else if (isSugarName(name)) collisions.push(`${name} (${modules[index] ?? "no module"})`);
+    }
+  });
+  return { inSugar, collisions };
+}
+
+/** Whether a sampled frame belongs to the sugar layer: by its `module` when recorded, otherwise by name. */
+export const isSugarFrame = frame => frame.module !== undefined ? isSugarModule(frame.module) : isSugarName(frame.name.split(" ")[0]);
