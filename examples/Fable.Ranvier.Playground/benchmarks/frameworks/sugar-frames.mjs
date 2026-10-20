@@ -16,9 +16,19 @@ export const stripLiterals = source =>
     return match.startsWith("/") ? breaks : '""' + breaks;
   });
 
-/** The names of the functions and classes declared in a JavaScript source: `function` and `class` declarations, and `var`, `let` or `const` bound to a function, class or arrow. */
-export const declarations = source =>
-  [...stripLiterals(source).matchAll(/\b(?:function\*?|class)\s+(?!extends\b)([A-Za-z_$][\w$]*)|\b(?:var|let|const)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:class\b|function\b|async\b|\([^()]*\)\s*=>|[A-Za-z_$][\w$]*\s*=>)/g)].map(match => match[1] ?? match[2]);
+/** The functions and classes declared in a JavaScript source, with the 0-based line of each declaration keyword: `function` and `class` declarations, and `var`, `let` or `const` bound to a function, class or arrow. */
+export function declarationsAt(source) {
+  const stripped = stripLiterals(source), result = [];
+  let line = 0, scanned = 0;
+  for (const match of stripped.matchAll(/\b(?:function\*?|class)\s+(?!extends\b)([A-Za-z_$][\w$]*)|\b(?:var|let|const)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:class\b|function\b|async\b|\([^()]*\)\s*=>|[A-Za-z_$][\w$]*\s*=>)/g)) {
+    for (; scanned < match.index; scanned++) if (stripped.charCodeAt(scanned) === 10) line++;
+    result.push({ name: match[1] ?? match[2], line });
+  }
+  return result;
+}
+
+/** The names of the functions and classes declared in a JavaScript source, as `declarationsAt` finds them. */
+export const declarations = source => declarationsAt(source).map(declaration => declaration.name);
 
 let derived;
 /**
@@ -60,14 +70,11 @@ export function lineModules(bundle) {
 
 /** The declarations of an unminified bundle inside the sugar modules, and the declarations elsewhere that carry a sugar name. */
 export function bundleSugar(bundle) {
-  const modules = lineModules(bundle), lines = stripLiterals(bundle).split("\n");
-  const inSugar = [], collisions = [];
-  lines.forEach((line, index) => {
-    for (const name of declarations(line)) {
-      if (modules[index] !== undefined && isSugarModule(modules[index])) inSugar.push(name);
-      else if (isSugarName(name)) collisions.push(`${name} (${modules[index] ?? "no module"})`);
-    }
-  });
+  const modules = lineModules(bundle), inSugar = [], collisions = [];
+  for (const { name, line } of declarationsAt(bundle)) {
+    if (modules[line] !== undefined && isSugarModule(modules[line])) inSugar.push(name);
+    else if (isSugarName(name)) collisions.push(`${name} (${modules[line] ?? "no module"})`);
+  }
   return { inSugar, collisions };
 }
 

@@ -1,14 +1,16 @@
 // Range comparison of the sugared adapters with their explicit twins.
 // Usage: node benchmarks/frameworks/sugar-compare.mjs template|keyed|heap|alloc [--allow-class-tuple] <result.json>...
-// alloc fails on a sugar frame and on sampled bytes above the explicit twin's; --allow-class-tuple reports the ofClass row's excess as KNOWN instead.
+// alloc fails on a sugar frame, on fixture-module bytes above the explicit twin's, on a missing positive control and on sugar-alloc.mjs data
+// without twin repeats or modules; --allow-class-tuple reports the ofClass row's excess as KNOWN instead.
 import { readFileSync } from "node:fs";
 import { isSugarFrame } from "./sugar-frames.mjs";
 
 const [kind, ...rest] = process.argv.slice(2);
 const allowClassTuple = rest.includes("--allow-class-tuple"), files = rest.filter(arg => !arg.startsWith("--"));
 const load = file => JSON.parse(readFileSync(file, "utf8"));
-// The fixture module of each sugared row; the bytes it allocates per sample are printed beside the byte check.
-const rowModules = { "ranvier-template-sugar": "FrameworkSugarPerf.js", "ranvier-template-members": "FrameworkMembersPerf.js", "ranvier-template-class": "FrameworkClassPerf.js", "ranvier-sugar": "KeyedRowsSugarPerf.js" };
+// The fixture module of each explicit twin and of each sugared row; the byte check sums the bytes they allocate.
+const twinModules = { "ranvier-template": "FrameworkPerf.js", ranvier: "KeyedRowsPerf.js" };
+const rowModules ={ "ranvier-template-sugar": "FrameworkSugarPerf.js", "ranvier-template-members": "FrameworkMembersPerf.js", "ranvier-template-class": "FrameworkClassPerf.js", "ranvier-sugar": "KeyedRowsSugarPerf.js" };
 const median = values => {
   const sorted = [...values].sort((a, b) => a - b), middle = sorted.length >> 1;
   return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
@@ -57,21 +59,50 @@ for (const file of files) {
       if (named.length) failed++;
       console.log(`${named.length ? "SUGAR   " : "clean   "} ${sample.mode} ${sample.operation ?? `width ${sample.width}`}${sample.process === undefined ? "" : ` process ${sample.process + 1}`}: ${sample.self.length} functions${twin ? `, ${sample.totalBytes} B against ${twin.totalBytes} B explicit` : ""}${named.length ? ", " + named.map(row => row.name).join(", ") : ""}`);
     }
-    // Sampled bytes: the sugared median may exceed the explicit median by at most the explicit samples' own range.
+    // Positive control: a sugar-alloc.mjs file holds a control sample with allocations in a sugar module, in every process.
+    const recorded = data.allocations.every(sample => sample.self.every(row => row.module !== undefined));
+    const controls = data.allocations.filter(sample => sample.mode === "sugar-alloc-control");
+    if (recorded) {
+      const processes = new Set(data.allocations.map(sample => sample.process));
+      const proven = new Set(controls.filter(sample => sample.self.some(row => isSugarFrame(row))).map(sample => sample.process));
+      const missing = [...processes].filter(process => !proven.has(process));
+      if (missing.length) failed++;
+      console.log(`${missing.length ? "CONTROL " : "control "} ${controls.map(sample => `process ${sample.process + 1}: ${sample.self.filter(row => isSugarFrame(row)).reduce((sum, row) => sum + row.bytes, 0)} B in sugar modules`).join(", ") || "no control sample"}${missing.length ? `; no sugar-module allocation in process ${missing.map(process => process + 1).join(", ")}` : ""}`);
+    }
+    // Sampled bytes, gated on the fixture modules (the twin's fixture module plus the row's own): the sugared median may exceed the
+    // twin's median by at most the range of the twin's own fixture-module samples. Total heap bytes are reported with their detection limit.
     for (const [mode, samples] of Object.entries(Object.groupBy(data.allocations.filter(sample => sugared.test(sample.mode)), sample => `${sample.mode}\u0000${sample.operation ?? sample.width}`))) {
-      const [name] = mode.split("\u0000"), explicit = explicitOf(samples[0]).map(sample => sample.totalBytes);
+      const [name] = mode.split("\u0000"), twins = explicitOf(samples[0]), twinName = twins[0]?.mode ?? name.replace(sugared, "");
       const rows = samples[0].width && (samples[0].mounts ?? data.mounts) ? samples[0].width * (samples[0].mounts ?? data.mounts) : 1;
       const unit = rows === 1 ? "B" : "B/row", perRow = bytes => bytes / rows, fixed = value => value.toFixed(rows === 1 ? 0 : 1);
       const at = samples[0].operation ?? `width ${samples[0].width}`;
-      if (explicit.length < 2) { console.log(`UNTESTED bytes ${name} ${at}: ${explicit.length} explicit sample, no tolerance`); continue; }
-      const tolerance = perRow(Math.max(...explicit) - Math.min(...explicit));
-      const excess = perRow(median(samples.map(sample => sample.totalBytes)) - median(explicit));
-      const over = excess > tolerance;
-      const known = over && name.endsWith("-class") && allowClassTuple;
+      if (samples[0].operation !== undefined && (twins.length < 2 || !recorded)) {
+        console.log(`UNTESTED bytes ${name} ${at}: keyed-rows.mjs profiles record one sample per mode and operation without modules; no twin tolerance`);
+        continue;
+      }
+      if (twins.length < 2 || !recorded) {
+        failed++;
+        console.log(`UNTESTED bytes ${name} ${at}: ${twins.length} ${twinName} sample(s)${recorded ? "" : ", frames without modules"}; sugar-alloc.mjs data needs 2 or more twin samples with modules`);
+        continue;
+      }
+      const fixtureBytes = (sample, modules) => sample.self.filter(row => modules.some(module => row.module.endsWith(`/${module}`))).reduce((sum, row) => sum + row.bytes, 0);
+      const twinFixture = twins.map(sample => perRow(fixtureBytes(sample, [twinModules[twinName]])));
+      const ownFixture = samples.map(sample => perRow(fixtureBytes(sample, [twinModules[twinName], rowModules[name]])));
+      const tolerance = Math.max(...twinFixture) - Math.min(...twinFixture);
+      const excess = median(ownFixture) - median(twinFixture);
+      const over = excess > tolerance, isClass = name.endsWith("-class"), known = over && isClass && allowClassTuple;
       if (over && !known) failed++;
-      const own = rowModules[name] && samples.map(sample => sample.self.filter(row => row.module?.endsWith(rowModules[name])).reduce((sum, row) => sum + row.bytes, 0));
-      if (own?.some(Boolean)) console.log(`info     ${name} ${at}: ${rowModules[name]} allocates ${own.map(bytes => fixed(perRow(bytes))).join(", ")} ${unit}`);
-      console.log(`${!over ? "bytes ok" : known ? "KNOWN   " : "BYTES   "} ${name} ${at}: median ${fixed(perRow(median(samples.map(sample => sample.totalBytes))))} against ${fixed(perRow(median(explicit)))} ${unit} explicit, excess ${fixed(excess)} ${unit}, tolerance ${fixed(tolerance)} ${unit} (explicit range, ${explicit.length} samples)${over && name.endsWith("-class") ? "; criterion 3 known item: the ofClass constructor tuple" + (known ? ", allowed by --allow-class-tuple" : "") : ""}`);
+      console.log(`${!over ? "bytes ok" : known ? "KNOWN   " : "BYTES   "} ${name} ${at}: ${twinModules[twinName]} + ${rowModules[name]} allocate ${ownFixture.map(fixed).join(", ")} ${unit} (median ${fixed(median(ownFixture))}) against ${twinModules[twinName]} ${twinFixture.map(fixed).join(", ")} ${unit} (median ${fixed(median(twinFixture))}); excess ${fixed(excess)} ${unit}, tolerance ${fixed(tolerance)} ${unit}${over && isClass ? "; criterion 3 known item: the ofClass constructor tuple" + (known ? ", allowed by --allow-class-tuple" : "") : ""}`);
+      const totals = twins.map(sample => perRow(sample.totalBytes)), limit = Math.max(...totals) - Math.min(...totals);
+      console.log(`info     ${name} ${at}: total heap median ${fixed(perRow(median(samples.map(sample => sample.totalBytes))))} against ${fixed(median(totals))} ${unit} explicit; detects excess above ${fixed(limit)} ${unit} only`);
+      // Modules whose sugared median exceeds the twin's by more than the twin's own range for that module.
+      const moduleBytes = (sample, module) => perRow(sample.self.filter(row => row.module === module).reduce((sum, row) => sum + row.bytes, 0));
+      for (const module of new Set([...samples, ...twins].flatMap(sample => sample.self.map(row => row.module)))) {
+        const twin = twins.map(sample => moduleBytes(sample, module)), own = median(samples.map(sample => moduleBytes(sample, module)));
+        const moduleExcess = own - median(twin), moduleRange = Math.max(...twin) - Math.min(...twin);
+        if (moduleExcess > moduleRange && module !== `generated-tests/${rowModules[name]}`)
+          console.log(`info     ${name} ${at}: ${module} median ${fixed(own)} against ${fixed(median(twin))} ${unit} explicit, excess ${fixed(moduleExcess)} above its explicit range ${fixed(moduleRange)} ${unit}`);
+      }
     }
   }
 }
