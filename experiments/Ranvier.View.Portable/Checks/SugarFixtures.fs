@@ -667,3 +667,228 @@ let flowServerPairs () : (string * string * string) array =
         "nested", Server.render omit nestedExplicit listed, Server.render omit nestedSugar listed
         "boundary", Server.render omit boundedExplicit (), Server.render omit boundedSugar ()
     |]
+
+// Declarations: a counter in record, class and template form, a tag class, two parents and the mixed tree.
+
+/// <summary>How many times each static <c>View</c> ran.</summary>
+module Builds =
+    let mutable counterRecord = 0
+    let mutable counterClass = 0
+
+type CounterProps = { Start: int; Caption: string }
+
+type CounterRecord =
+    {
+        Count: Signal<int>
+        Caption: string
+    }
+
+    static member Create(_: Setup, props: CounterProps) =
+        {
+            Count = Api.createSignal props.Start
+            Caption = props.Caption
+        }
+
+    static member View =
+        Builds.counterRecord <- Builds.counterRecord + 1
+
+        div (Attrs.className "counter") {
+            span (Attrs.className "caption") { fun c -> c.Caption }
+
+            button (Attrs.attribute ("type", "button"), Events.onClick (fun c _ -> c.Count.Value <- c.Count.Value + 1)) {
+                fun c -> string c.Count.Value
+            }
+        }
+
+let counterRecord = Component.ofMembers<CounterRecord, _>()
+
+type CounterClass(setup: Setup, props: CounterProps) =
+    member val Count = Api.createSignal props.Start
+    member _.Caption = props.Caption
+
+    static member View: TemplateView<CounterClass> =
+        Builds.counterClass <- Builds.counterClass + 1
+
+        div (Attrs.className "counter") {
+            span (Attrs.className "caption") { fun (c: CounterClass) -> c.Caption }
+
+            button (Attrs.attribute ("type", "button"), Events.onClick (fun (c: CounterClass) _ -> c.Count.Value <- c.Count.Value + 1)) {
+                fun (c: CounterClass) -> string c.Count.Value
+            }
+        }
+
+let counterClass = Component.ofClass CounterClass
+
+let counterTemplate =
+    Component.template
+        (fun _ (props: CounterProps) ->
+            {
+                Count = Api.createSignal props.Start
+                Caption = props.Caption
+            })
+        (div (Attrs.className "counter") {
+            span (Attrs.className "caption") { fun c -> c.Caption }
+
+            button (Attrs.attribute ("type", "button"), Events.onClick (fun c _ -> c.Count.Value <- c.Count.Value + 1)) {
+                fun c -> string c.Count.Value
+            }
+        })
+
+/// <summary>The record counter as a tag: a reader or fixed props under one name.</summary>
+type counterOf<'i> private (props: 'i -> CounterProps, primary: unit) =
+    inherit ComponentTag<CounterProps, 'i>(counterRecord, props)
+    new(props: 'i -> CounterProps) = counterOf<'i>(props, ())
+    new(props: CounterProps) = counterOf<'i>((fun _ -> props), ())
+
+type PanelProps = { Title: string }
+
+type PanelRecord =
+    {
+        Title: string
+        Hits: Signal<int>
+    }
+
+    static member Create(_: Setup, props: PanelProps) =
+        {
+            Title = props.Title
+            Hits = Api.createSignal 0
+        }
+
+    static member View =
+        section (Attrs.className "panel") {
+            h2 () { fun p -> p.Title }
+            render counterRecord (fun p -> { Start = 1; Caption = p.Title })
+            render counterClass (fun p -> { Start = 2; Caption = p.Title + "!" })
+            renderOf counterTemplate { Start = 3; Caption = "fixed" }
+            counterOf (fun p -> { Start = 4; Caption = p.Title + "?" })
+            counterOf { Start = 5; Caption = "tag" }
+        }
+
+let panelRecord = Component.ofMembers<PanelRecord, _>()
+
+type PanelClass(setup: Setup, props: PanelProps) =
+    member _.Title = props.Title
+    member val Hits = Api.createSignal 0
+
+    static member View: TemplateView<PanelClass> =
+        section (Attrs.className "panel") {
+            h2 () { fun (p: PanelClass) -> p.Title }
+            render counterRecord (fun (p: PanelClass) -> { Start = 1; Caption = p.Title })
+            render counterClass (fun (p: PanelClass) -> { Start = 2; Caption = p.Title + "!" })
+            renderOf counterTemplate { Start = 3; Caption = "fixed" }
+            counterOf (fun (p: PanelClass) -> { Start = 4; Caption = p.Title + "?" })
+            counterOf { Start = 5; Caption = "tag" }
+        }
+
+let panelClass = Component.ofClass PanelClass
+
+/// <summary>The mixed tree's root as free tags.</summary>
+let mixedSugar =
+    Component.template
+        (fun _ () -> ())
+        (div (Attrs.className "mixed") {
+            renderOf panelRecord { Title = "R" }
+            renderOf panelClass { Title = "C" }
+        })
+
+/// <summary>The mixed tree's root, explicit, over the sugared parents.</summary>
+let mixedRendered =
+    Component.define (fun _ () -> ()) (fun t ->
+        t.div
+            [| t.Attrs.className "mixed" |]
+            [|
+                t.render panelRecord (fun _ -> { Title = "R" })
+                t.render panelClass (fun _ -> { Title = "C" })
+            |])
+
+/// <summary>The explicit twin of the mixed tree.</summary>
+module MixedExplicit =
+    type Counter = { Count: Signal<int>; Caption: string }
+
+    let counter =
+        Component.define
+            (fun _ (props: CounterProps) ->
+                {
+                    Count = Api.createSignal props.Start
+                    Caption = props.Caption
+                })
+            (fun t ->
+                t.div
+                    [| t.Attrs.className "counter" |]
+                    [|
+                        t.span [| t.Attrs.className "caption" |] [| t.text (fun (c: Counter) -> c.Caption) |]
+                        t.button
+                            [|
+                                t.Attrs.attribute ("type", "button")
+                                t.Events.onClick (fun (c: Counter) _ -> c.Count.Value <- c.Count.Value + 1)
+                            |]
+                            [| t.text (fun (c: Counter) -> string c.Count.Value) |]
+                    |])
+
+    type Panel = { Title: string; Hits: Signal<int> }
+
+    let panel =
+        Component.define
+            (fun _ (props: PanelProps) ->
+                {
+                    Title = props.Title
+                    Hits = Api.createSignal 0
+                })
+            (fun t ->
+                t.section
+                    [| t.Attrs.className "panel" |]
+                    [|
+                        t.h2 [||] [| t.text (fun (p: Panel) -> p.Title) |]
+                        t.render counter (fun p -> { Start = 1; Caption = p.Title })
+                        t.render counter (fun p -> { Start = 2; Caption = p.Title + "!" })
+                        t.render counter (fun _ -> { Start = 3; Caption = "fixed" })
+                        t.render counter (fun p -> { Start = 4; Caption = p.Title + "?" })
+                        t.render counter (fun _ -> { Start = 5; Caption = "tag" })
+                    |])
+
+    let root =
+        Component.define (fun _ () -> ()) (fun t ->
+            t.div
+                [| t.Attrs.className "mixed" |]
+                [|
+                    t.render panel (fun _ -> { PanelProps.Title = "R" })
+                    t.render panel (fun _ -> { PanelProps.Title = "C" })
+                |])
+
+let declPairs: (string * TemplateComponent * TemplateComponent) array =
+    [|
+        "mixed tree, free root", MixedExplicit.root, mixedSugar
+        "mixed tree, t.render root", MixedExplicit.root, mixedRendered
+        "record counter", MixedExplicit.counter, counterRecord
+        "class counter", MixedExplicit.counter, counterClass
+        "template counter", MixedExplicit.counter, counterTemplate
+    |]
+
+let declServerPairs () : (string * string * string) array =
+    let graph = new Graph ()
+    let counted = { Start = 7; Caption = "<c>" }
+
+    graph.Run (fun () ->
+        [|
+            "mixed tree, free root", Server.render omit MixedExplicit.root (), Server.render omit mixedSugar ()
+            "mixed tree, t.render root", Server.render omit MixedExplicit.root (), Server.render omit mixedRendered ()
+            "record counter", Server.render omit MixedExplicit.counter counted, Server.render omit counterRecord counted
+            "class counter", Server.render omit MixedExplicit.counter counted, Server.render omit counterClass counted
+            "template counter", Server.render omit MixedExplicit.counter counted, Server.render omit counterTemplate counted
+        |])
+
+/// <summary>A parent whose child props read a signal: the props are read once per instance, untracked.</summary>
+type Captioned = { Caption: Signal<string> }
+
+let untrackedExplicit =
+    Component.define (fun _ (state: Captioned) -> state) (fun t ->
+        t.div
+            [||]
+            [|
+                t.render MixedExplicit.counter (fun (s: Captioned) -> { Start = 0; Caption = s.Caption.Value })
+            |])
+
+let untrackedSugar =
+    Component.template
+        (fun _ (state: Captioned) -> state)
+        (div () { render counterRecord (fun (s: Captioned) -> { Start = 0; Caption = s.Caption.Value }) })

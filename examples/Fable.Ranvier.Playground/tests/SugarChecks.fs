@@ -284,6 +284,34 @@ let private nestedLive queued () =
 let private bounded queued () =
     pair queued (fun _ -> ()) (fun () -> Component.render boundedExplicit ()) (fun () -> Component.render boundedSugar ()) (fun () -> [])
 
+[<Emit("Array.from($1.querySelectorAll($0)).forEach(node => node.click())")>]
+let private clickAll (selector: string) (root: HTMLElement) : unit = jsNative
+
+/// <summary>Clicks every button twice on both twins; each static <c>View</c> still ran once.</summary>
+let private mixedClicks (sugared: Component<unit>) queued () =
+    pair queued (fun _ -> ()) (fun () -> Component.render MixedExplicit.root ()) (fun () -> Component.render sugared ()) (fun () ->
+        [ Each (clickAll "button"); Each (clickAll "button") ])
+
+    equal (1, 1) (Builds.counterRecord, Builds.counterClass)
+
+/// <summary>Props are read once per instance, untracked: a later write to the caption signal leaves the child unchanged.</summary>
+let private renderPropsAreUntracked queued () =
+    let traces, _ =
+        twins
+            queued
+            (fun (graph: Graph) ->
+                graph.Run (fun () ->
+                    {
+                        Captioned.Caption = Api.createSignal "one"
+                    }))
+            (Component.render untrackedExplicit)
+            (Component.render untrackedSugar)
+            (fun state -> [ Write (fun () -> state.Caption.Value <- "two") ])
+
+    same traces
+    // Shot 0 is the mount, shot 1 the markup after the write.
+    equal true ((List.item 1 (snd traces).Shots).Contains "one")
+
 [<Emit("(() => { const w = document.createTreeWalker($0, 0xFFFFFFFF); const a = []; while (w.nextNode()) a.push(w.currentNode); return a; })()")>]
 let private nodesOf (root: Node) : Node array = jsNative
 
@@ -300,14 +328,15 @@ let private strictOptions: Hydration.HydrationOptions =
 
 /// <summary>
 /// Hydrates the explicit and the sugared definition from the server HTML of <c>served</c>. Both adopt exactly
-/// <c>adopts</c> server nodes. After each write both retain equal numbers of the server nodes, and they show the same markup after hydration, each write and disposal.
+/// <c>adopts</c> server nodes. After each step both retain equal numbers of the server nodes, and they show the same markup after hydration, each step and disposal.
 /// </summary>
-let private hydratedTwins
+/// <remarks>A <c>Write</c> step runs once on the graph; an <c>Each</c> step runs on the explicit host, then the sugared host.</remarks>
+let private hydratedSteps
     (served: Component<'props>)
     (explicitDefinition: Component<'props>)
     (sugarDefinition: Component<'props>)
     (props: 'props)
-    (writes: (unit -> unit) list)
+    (steps: Step list)
     (adopts: int)
     (graph: Graph)
     =
@@ -333,14 +362,22 @@ let private hydratedTwins
     equal adopts (adopted rightNodes right)
     equal left.innerHTML right.innerHTML
 
-    for write in writes do
-        graph.Run write
+    for step in steps do
+        match step with
+        | Write write -> graph.Run write
+        | Each act ->
+            act left
+            act right
+
         equal (adopted leftNodes left) (adopted rightNodes right)
         equal left.innerHTML right.innerHTML
 
     explicitMount.Dispose ()
     sugarMount.Dispose ()
     equal left.innerHTML right.innerHTML
+
+let private hydratedTwins served explicitDefinition sugarDefinition props (writes: (unit -> unit) list) adopts graph =
+    hydratedSteps served explicitDefinition sugarDefinition props (List.map Write writes) adopts graph
 
 /// <summary>The number of server nodes each hydrated pair adopts.</summary>
 module private Adopted =
@@ -356,6 +393,8 @@ module private Adopted =
     let showElse = 7
     /// <summary>All 19 server nodes.</summary>
     let nested = 19
+    /// <summary>All 59 server nodes: two root markers, the root div and two panels of 28 (section, h2 and its text, five counters of 5).</summary>
+    let mixed = 59
 
 /// <summary>Each pair hydrated from the explicit twin's HTML and from the sugared twin's HTML.</summary>
 let private hydration () =
@@ -413,6 +452,15 @@ let private hydration () =
             listed
             [ fun () -> listed.Entries.Value[0].Open.Value <- true ]
             Adopted.nested
+            graph
+
+        hydratedSteps
+            (pick MixedExplicit.root mixedSugar)
+            MixedExplicit.root
+            mixedSugar
+            ()
+            [ Each (clickAll "button"); Each (clickAll "button") ]
+            Adopted.mixed
             graph
 
 /// <summary>The elements under <c>root</c> that carry event handlers, as one <c>position:handler keys</c> entry each.</summary>
@@ -503,6 +551,9 @@ let cases: (string * (unit -> unit)) array =
                 templated "show in forEachFixed in an armOf arm updates like its twin" nested
                 templated "a live forEach in an armOf arm mounts and cleans up rows like its twin" nestedLive
                 templated "a boundary around sugared content renders like its twin" bounded
+                templated "the mixed tree (free root) updates like its twin" (mixedClicks mixedSugar)
+                templated "the mixed tree (t.render root) updates like its twin" (mixedClicks mixedRendered)
+                templated "render reads its props once per instance, untracked" renderPropsAreUntracked
                 [|
                     "the sugared keyed benchmark fixture renders like the production fixture", keyedFixtures
                     "the sugared arm benchmark fixture renders like the production fixture", armFixtures

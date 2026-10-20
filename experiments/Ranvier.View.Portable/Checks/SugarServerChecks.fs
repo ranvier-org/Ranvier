@@ -48,12 +48,12 @@ let private showOffMarkup () =
             showSugar
             hidden)
 
-#if !FABLE_COMPILER
 let private omit =
     { Server.Options.defaults with
         Policy = Omit
     }
 
+#if !FABLE_COMPILER
 let private emptyArmField () =
     let holder =
         typeof<TemplateBuilder<unit>>.Assembly.GetType("Ranvier.View.Foundation.Sugar.Builders+EmptyArm", true)
@@ -122,6 +122,16 @@ let dotnetCases: (string * (unit -> unit)) array =
     |]
 #endif
 
+/// <summary>Renders both mixed trees three times; each static <c>View</c> ran once, when its helper built the definition.</summary>
+let private viewsBuiltOnce () =
+    use graph = new Graph ()
+
+    for _ in 1..3 do
+        Server.render omit mixedSugar () |> ignore
+        Server.render omit mixedRendered () |> ignore
+
+    equal (1, 1) (Builds.counterRecord, Builds.counterClass)
+
 let cases: (string * (unit -> unit)) array =
     [|
         "sugared elements share their explicit twins' layouts and hashes", sameLayouts elementPairs
@@ -132,4 +142,7 @@ let cases: (string * (unit -> unit)) array =
         "control-flow sugar shares its explicit twins' layouts and hashes", sameLayouts flowPairs
         "control-flow sugar renders its explicit twins' server HTML", sameServerHtml flowServerPairs
         "a hidden show writes a zero-root arm marked with the shared empty arm's hash", showOffMarkup
+        "declaration styles share their explicit twins' layouts and hashes", sameLayouts declPairs
+        "declaration styles render their explicit twins' server HTML", sameServerHtml declServerPairs
+        "a static View is read once per definition", viewsBuiltOnce
     |]

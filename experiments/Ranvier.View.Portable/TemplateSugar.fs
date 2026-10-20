@@ -242,7 +242,32 @@ module Builders =
     let boundary (pending: Component<unit>) (failed: Component<BoundaryFailure>) (content: Component<BoundaryStatus>) : TemplateView<'inst> =
         TemplateBuilder<'inst>().boundary pending failed content
 
+    /// <summary>Inlines a child template; its props are read from the instance, untracked, once per instance.</summary>
+    let render (definition: Component<'props>) (props: 'inst -> 'props) : TemplateView<'inst> =
+        TemplateBuilder<'inst>().render definition props
+
+    /// <summary>Inlines a child template with fixed props.</summary>
+    let renderOf (definition: Component<'props>) (props: 'props) : TemplateView<'inst> =
+        TemplateBuilder<'inst>().render definition (fun _ -> props)
+
+    /// <summary>A component used as a tag: yields the child view of <c>definition</c>.</summary>
+    /// <remarks>A subclass declares a private primary constructor and public overloads.</remarks>
+    [<AbstractClass>]
+    type ComponentTag<'props, 'inst>(definition: Component<'props>, props: 'inst -> 'props) =
+        inherit VoidElement<'inst>(TemplateBuilder<'inst>().render definition props)
+
     module Component =
         /// <summary>Defines a component from per-instance setup and its template, built once.</summary>
         let template (setup: Setup -> 'props -> 'inst) (view: TemplateView<'inst>) : Component<'props> =
             Component.define setup (fun _ -> view)
+
+        /// <summary>A component from the type's static <c>Create</c> (setup) and <c>View</c> (template, read once).</summary>
+        let inline ofMembers< ^T, 'props when ^T: (static member Create: Setup * 'props -> ^T) and ^T: (static member View: TemplateView< ^T >)>
+            ()
+            : Component<'props> =
+            Component.define (fun setup props -> (^T: (static member Create: Setup * 'props -> ^T) (setup, props))) (fun _ ->
+                (^T: (static member View: TemplateView< ^T >) ()))
+
+        /// <summary>A component from a constructor (setup) and the type's static <c>View</c> (template, read once).</summary>
+        let inline ofClass ([<InlineIfLambda>] create: Setup * 'props -> ^T) : Component<'props> =
+            Component.define (fun setup props -> create (setup, props)) (fun _ -> (^T: (static member View: TemplateView< ^T >) ()))

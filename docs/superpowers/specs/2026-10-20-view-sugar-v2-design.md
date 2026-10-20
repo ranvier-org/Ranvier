@@ -278,7 +278,7 @@ v1's `forEach`/`forEachFixed` semantics (live reader against snapshot row instan
 | `show cond content` | v1's `matchWith` with a `ValueOption` selector and the shared empty arm | v1's: two markers, the arm memo, one `Arm` and one `ValueSome` per selector evaluation |
 | `render definition props` / `renderOf definition value` | `TemplateBuilder<'inst>().render definition props` / `(fun _ -> value)` | none |
 | `Component.template setup view` | `Component.define setup (fun _ -> view)` | none |
-| `Component.ofMembers<T, _> ()` | `Component.define T.Create (fun _ -> T.View)`; Fable emits a direct reference to `T.Create` | none |
+| `Component.ofMembers<T, _> ()` (the one-argument form fails to compile, §4.6) | `Component.define T.Create (fun _ -> T.View)`; Fable emits a direct reference to `T.Create` | none |
 | `Component.ofClass Ctor` | `Component.define (fun s p -> Ctor (s, p)) (fun _ -> T.View)` | Fable: one 2-element array per instance setup; member reads are getter calls (§4.6) |
 | a tag class over `ComponentTag` | `render definition props` | none |
 
@@ -309,7 +309,7 @@ Probes run on F# 10 (FSharp.Core 10.1.401), net10.0 Release and Fable 5.18.0 Rel
 | SRTP sees explicit interface implementations | **Refuted**: FS0001. |
 | A component CE flows the instance type into the view | **Refuted**: FS0072. |
 | A constructor constraint with arguments (`^T: (new: Setup * 'props -> ^T)`) | **Refuted**: FS0700 "'new' constraints must take one argument of type 'unit'"; `ofClass` takes the constructor as a function instead. |
-| The sugar's `Component` module merges with `Template.Component` under one name | Partly proved: with the free namespace open, `Component.define` and `Component.template` resolve in one file (`DeclFixtures.fs`). `ofMembers` and `ofClass` in that module are unchecked (probe 3 used `Declare`); delivery step 2 checks them. |
+| The sugar's `Component` module merges with `Template.Component` under one name | Proved: `Component.define`, `Component.template`, `Component.ofMembers` and `Component.ofClass` resolve in one file on .NET and under Fable 5.18.0 (delivery step 2's probe and `SugarFixtures.fs`). |
 
 The generator's workaround is the only shape it emits for tag classes, and the docs show the same shape for hand-written component tag classes. Both Fable defects are reported upstream as a follow-up (§7).
 
@@ -354,7 +354,7 @@ let inline ofMembers< ^T, 'props
 
 Fable emits `Component_define(Counter_Create_..., (_arg) => Counter_get_View())`: one function reference, with no tuple and no wrapper lambda. A record without `Create` or `View` fails with FS0001 naming the missing member.
 
-**One type argument (decision 11).** Delivery step 2 probes a shape that is written `Component.ofMembers<Counter> ()`, with the props type taken from `Create`'s parameter. It ships if it compiles on .NET and under Fable 5.18.0 and the demo screen, the counter and the panel keep 0 annotations. Otherwise `Component.ofMembers<Counter, _> ()` ships, as shown above, and the spec records the failure.
+**One type argument (decision 11).** Delivery step 2 probes a shape that is written `Component.ofMembers<Counter> ()`, with the props type taken from `Create`'s parameter. It ships if it compiles on .NET and under Fable 5.18.0 and the demo screen, the counter and the panel keep 0 annotations. Otherwise `Component.ofMembers<Counter, _> ()` ships, as shown above, and the spec records the failure. Delivery step 2 rejected it: on .NET the one-argument shape fails with FS0039 "The type parameter 'props is not defined" at its `Create` constraint, FS0064 ("The type variable 'props has been constrained to be type 'obj'") and FS0001 "The type 'obj' is not compatible with type 'CounterProps'" at `Component.ofMembers<Counter> ()`; `Component.ofMembers<Counter, _> ()` ships.
 
 **2. `Component.template setup view`.** For small and one-off components; 0 annotations when the instance is a record. The view argument is evaluated once, where the definition is bound.
 
