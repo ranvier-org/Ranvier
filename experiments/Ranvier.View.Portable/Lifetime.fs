@@ -208,6 +208,13 @@ type MountLifetime private (graph: Graph, owner: Owner, report: exn list -> unit
 
     /// <summary>A lifetime nested in this one, its owner a root under this lifetime's owner, with <c>body</c> run inside that root.</summary>
     member this.Child(childRelease: unit -> unit, body: MountLifetime -> unit) : MountLifetime =
+        this.ChildUnder (owner, childRelease, body)
+
+    /// <summary>
+    /// A lifetime nested in this one, its owner a root under <c>under</c>, with <c>body</c> run inside that root.
+    /// <c>under</c> is this lifetime's owner or an owner it adopted.
+    /// </summary>
+    member internal this.ChildUnder(under: Owner, childRelease: unit -> unit, body: MountLifetime -> unit) : MountLifetime =
         this.EnsureLive ()
         let mutable child: MountLifetime = null
 
@@ -216,16 +223,16 @@ type MountLifetime private (graph: Graph, owner: Owner, report: exn list -> unit
                 child <- MountLifetime.Create (graph, childOwner, report, childRelease, this)
                 body child)
 
-        // True when the graph is ambient and this lifetime's owner is its current owner.
+        // True when the graph is ambient and `under` is its current owner.
         let current =
             match Graph.TryCurrent with
-            | ValueSome ambient when obj.ReferenceEquals (ambient, graph) -> obj.ReferenceEquals (Api.getOwner (), owner)
+            | ValueSome ambient when obj.ReferenceEquals (ambient, graph) -> obj.ReferenceEquals (Api.getOwner (), under)
             | _ -> false
 
         if current then
             create ()
         else
-            graph.Run (fun () -> Api.runWithOwner owner create)
+            graph.Run (fun () -> Api.runWithOwner under create)
 
         child
 

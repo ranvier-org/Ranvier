@@ -39,16 +39,17 @@ let private serverPending (pending: exn) : exn =
     error
 
 /// <summary>
-/// The owners of a request: each nested instance runs under its own child of <c>lifetime</c>, and its <c>Setup</c>
-/// registers cleanups on that child until the instance is written. A failure to dispose an abandoned attempt goes to
-/// <c>report</c>.
+/// The owners of a request: each nested instance runs under its own owner, a root under the enclosing instance's
+/// <c>owner</c> whose teardown errors <c>lifetime</c> reports, and its <c>Setup</c> registers cleanups on that owner
+/// until the instance is written. <c>lifetime</c> is the request root or the innermost boundary attempt, and
+/// <c>owner</c> is its owner or an owner it adopted. A failure to dispose an abandoned attempt goes to <c>report</c>.
 /// </summary>
 [<Sealed>]
-type internal RequestScope(lifetime: MountLifetime, identity: IdentityScope, createId: unit -> string, report: exn -> unit) =
+type internal RequestScope(lifetime: MountLifetime, owner: Owner, identity: IdentityScope, createId: unit -> string, report: exn -> unit) =
     inherit ServerScope()
     let mutable completed = false
 
-    // The Setup of the instance owned by this scope: OnCleanup registers on the scope's lifetime, and raises after Complete.
+    // The Setup of the instance owned by this scope: OnCleanup registers on `owner`, and raises after Complete.
     let setup =
         {
             OnCleanup =
@@ -56,24 +57,29 @@ type internal RequestScope(lifetime: MountLifetime, identity: IdentityScope, cre
                     if completed then
                         raise (InvalidOperationException "Server component setup is completed")
 
-                    lifetime.OnCleanup cleanup
+                    if owner.IsDisposed then
+                        raise (InvalidOperationException "Renderer scope is disposed")
+
+                    owner.OnCleanup (Action cleanup)
             CreateId = createId
         }
 
-    new(lifetime: MountLifetime, identity: IdentityScope, report: exn -> unit) = RequestScope (lifetime, identity, identity.CreateId, report)
+    new(lifetime: MountLifetime, identity: IdentityScope, report: exn -> unit) =
+        RequestScope (lifetime, lifetime.Owner, identity, identity.CreateId, report)
 
     override _.Nest body =
-        lifetime.Child (
-            ignore,
-            fun child ->
-                let scope = RequestScope (child, identity, createId, report)
+        if owner.IsDisposed then
+            raise (InvalidOperationException "Renderer scope is disposed")
+
+        Api.runWithOwner owner (fun () ->
+            Api.createRoot (fun child ->
+                lifetime.Adopt child
+                let scope = RequestScope (lifetime, child, identity, createId, report)
 
                 try
                     body scope scope.InstanceSetup
                 finally
-                    scope.Complete ()
-        )
-        |> ignore
+                    scope.Complete ()))
 
     member private _.InstanceSetup = setup
 
@@ -84,11 +90,12 @@ type internal RequestScope(lifetime: MountLifetime, identity: IdentityScope, cre
         let attempt: MountLifetime ref = ref null
 
         try
-            lifetime.Child (
+            lifetime.ChildUnder (
+                owner,
                 ignore,
                 fun child ->
                     attempt.Value <- child
-                    body (RequestScope (child, identity, createId, report))
+                    body (RequestScope (child, child.Owner, identity, createId, report))
             )
             |> ignore
         with _ ->
