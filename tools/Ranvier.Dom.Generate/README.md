@@ -2,7 +2,7 @@
 
 `authoring.json` selects a small overloaded modifier surface under `Html.Authoring`: ten attributes from the validated attribute policy and four writable primitive properties from Wire/catalogue/native member facts. Values, readers, signals and memos use inline static methods. String/ARIA attributes also accept optional sources for removal. Coverage records the selection count and policy hash. Unsafe, readonly, missing and unsupported selected properties fail generation before output is written.
 
-The generated `Html.Program` module supplies inline constructors bound to `Program.View`. See the [view authoring example](../../experiments/Ranvier.View.Foundation/README.md) for component setup, text, props and modifiers.
+The generated `Html.Program` module supplies inline constructors bound to `Program.View`. `Generated.Html` requires qualified access: callers alias it (`module H = Ranvier.View.Foundation.Generated.Html`) or open its nested `Authoring` module. See the [view authoring example](../../experiments/Ranvier.View.Foundation/README.md) for component setup, text, props and modifiers.
 
 Run from the repository root:
 

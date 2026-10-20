@@ -452,7 +452,7 @@ v1's sugar layer is the PascalCase `t.Div` extension members (112 generated in `
   | An unannotated class-member read | FS0001 (the label resolves to an unrelated record) or FS0072 (no record declares it) |
   | `base` as a tag name | FS0010 |
   | `open Ranvier.View.Foundation.Generated.Html` (the module requires qualified access) | FS0892 |
-  | The sugar and `Generated.Html.Authoring` opened in one file, then `Attrs.className "x"` in a free tag | the code the compiler reports, pinned when the case is written |
+  | The sugar, then `Generated.Html.Authoring`, opened in one file, then `Attrs.className "x"` in a free tag | FS0041 "No overloads match for method 'div`1'" |
   | A local value named like a tag, used as one | FS0003 |
   | `Component.ofMembers` on a type without `Create`, or `Component.ofClass` on a type without `View` | FS0001 "lacks the required member" |
 

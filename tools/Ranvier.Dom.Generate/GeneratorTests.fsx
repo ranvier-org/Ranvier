@@ -81,6 +81,9 @@ let run (folder: string) =
 
     check (sameBytes first second) "regeneration must be byte-identical"
     let text = readText first
+
+    check (text.Contains "[<RequireQualifiedAccess>]\nmodule Ranvier.View.Foundation.Generated.Html\n") "Generated.Html requires qualified access"
+
     check (text.Contains "module Authoring =") "generate overloaded authoring helpers"
     check (text.Contains "static member inline") "static member inline in text"
     check (text.Contains "module Program =") "generate the bound Program element authoring surface"

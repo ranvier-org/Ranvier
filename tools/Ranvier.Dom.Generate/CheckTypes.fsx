@@ -498,6 +498,22 @@ type childOf<'i> private (props: 'i -> Props, primary: unit) =
 let view = Component.template (fun _ (p: Props) -> p) (div () { childOf (fun p -> { Start = p.Start + 1 }); childOf { Start = 9 } })
 """
             None
+        case "open of Generated.Html" "open Ranvier.View.Foundation.Generated.Html\nlet view = ()" (Some "FS0892")
+        free
+            "Authoring opened with the sugar"
+            """
+open Ranvier.View.Foundation.Generated.Html.Authoring
+let view = Component.template (fun _ () -> ()) (div (Attrs.className "x") { "y" })
+"""
+            (Some "FS0041")
+        free
+            "qualified Generated.Html beside the sugar"
+            """
+module H = Ranvier.View.Foundation.Generated.Html
+let tree = H.div Tree.ops [||] [| Tree.ops.Text "x" |]
+let view = Component.template (fun _ () -> ()) (div (Attrs.className "x") { "y" })
+"""
+            None
     ]
 
 let duplicates =
