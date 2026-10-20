@@ -1217,7 +1217,7 @@ let private serverContentStaysPending () =
     let span = host.querySelector "span"
     let mounted = hydrate graph strictOptions host definition ()
 
-    // The content adopted the server's span; it keeps the server's text until its read settles, with no pending view.
+    // The content bound the server's span, which is held detached; a copy of the server's nodes is the pending view.
     let pending =
         (element host "div").innerHTML, obj.ReferenceEquals (span, host.querySelector "span"), List.ofSeq case.Log
 
@@ -1228,8 +1228,49 @@ let private serverContentStaysPending () =
 
     mounted.Dispose ()
 
+    equal (("<!--[c--><span>server</span><!--]-->", false, [ "content setup" ]), ("client", true)) (pending, revealed)
+
+/// <summary>A boundary whose content is a button logging its clicks with its source's value, and its mounted hook.</summary>
+let private clickedContent (case: BoundaryCase) =
+    let pending =
+        Component.define (fun _ () -> case.Log.Add "pending setup") (fun t -> t.i [||] [| t.text "loading" |])
+
+    let content =
+        Component.define (fun _ (_: BoundaryStatus) -> contentSource case) (fun t ->
+            t.button
+                [|
+                    t.Events.onClick (fun (source: AsyncSource<string>) _ -> case.Log.Add ("clicked " + source.Value))
+                    t.Hooks.mounted (fun _ _ ->
+                        case.Log.Add "mounted"
+                        ignore)
+                |]
+                [| t.text (fun (source: AsyncSource<string>) -> source.Value) |])
+
+    Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.boundary pending failedMessage content |])
+
+let private pendingContentInert () =
+    use graph = new Graph ()
+    let case = boundaryCase ()
+    let definition = clickedContent case
+    let host = serveCase case definition (Settles "server") Pends
+    let served = host.querySelector "button"
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        Hydration.hydrate graph None reports.Add strictOptions host definition ()
+
+    (element host "button").click()
+    let pending = (element host "div").innerHTML, List.ofSeq case.Log, messages reports
+    graph.Run (fun () -> case.Sources[0].Settle "client")
+    (element host "button").click()
+
+    let revealed =
+        (element host "div").textContent, obj.ReferenceEquals (served, host.querySelector "button"), List.ofSeq case.Log, messages reports
+
+    mounted.Dispose ()
+
     equal
-        (("<!--[c--><!--ranvier:start--><span>server</span><!--ranvier:end--><!--]-->", true, [ "content setup" ]), ("client", true))
+        (("<!--[c--><button>server</button><!--]-->", [ "content setup" ], []), ("client", true, [ "content setup"; "mounted"; "clicked client" ], []))
         (pending, revealed)
 
 let private serverPendingHydrates () =
@@ -2382,6 +2423,43 @@ let private boundaryRestoresAndRecovers () =
     mounted.Dispose ()
     equal ([ [ mismatch ] ], "client", 1, 0) shown
 
+    // Content pending on the client is detached behind its copy; Strict puts the server's nodes back.
+    let target = trailingHost ()
+    case.Outcome <- Pends
+
+    failsAsServed
+        target
+        (fun report ->
+            Hydration.hydrate graph None report strictOptions target definition ()
+            |> ignore)
+        mismatch
+        []
+
+    // A boundary nested in hydrated content keeps its server nodes through a Strict failure.
+    let nested =
+        let pending =
+            Component.define (fun _ () -> ()) (fun t -> t.i [||] [| t.text "loading" |])
+
+        let content =
+            Component.define (fun _ (_: BoundaryStatus) -> ()) (fun t -> t.section [||] [| t.render definition (fun _ -> ()) |])
+
+        Component.define (fun _ () -> ()) (fun t -> t.article [||] [| t.boundary pending failedMessage content |])
+
+    for client in [ Settles "client"; Pends ] do
+        case.Outcome <- Settles "server"
+        let html = withTrailingRoot nested ()
+        case.Outcome <- client
+        let target = host ()
+        target.innerHTML <- html
+
+        failsAsServed
+            target
+            (fun report ->
+                Hydration.hydrate graph None report strictOptions target nested ()
+                |> ignore)
+            mismatch
+            []
+
 /// <summary>A list whose rows each hold a <c>bounded</c> boundary.</summary>
 let private boundedRows (case: BoundaryCase) =
     let inner = bounded case
@@ -2401,9 +2479,24 @@ let private boundariesInRows () =
     let mutations = recordMutations host
     let mounted = hydrate graph strictOptions host definition [| a; b |]
 
-    // Each row's content inserts its two range comments, and the content's first commits write nothing.
-    equal (4, true, "xx") (mutations (), sameNodes before (serverNodes host), (element host "ul").textContent)
+    // A source settled in a row's setup is settled after the row's first commits, so each row's content is pending at
+    // the boundary's decision: per row, two range comments, four moves to detach the content behind its copy, and two
+    // to put it back at the reveal within the same `hydrate`. The content's first commits write nothing.
+    equal (16, true, "xx") (mutations (), sameNodes before (serverNodes host), (element host "ul").textContent)
     mounted.Dispose ()
+
+    // Content pending on the client shows the copies of the server rows until it settles.
+    case.Outcome <- Settles "x"
+    let host = serve definition [| a; b |]
+    let spans = all host "span"
+    case.Outcome <- Pends
+    case.Sources.Clear ()
+    let mounted = hydrate graph strictOptions host definition [| a; b |]
+    let pending = (element host "ul").textContent, sameNodes spans (all host "span")
+    graph.Run (fun () -> Seq.iter (fun (source: AsyncSource<string>) -> source.Settle "y") case.Sources)
+    let revealed = (element host "ul").textContent, sameNodes spans (all host "span")
+    mounted.Dispose ()
+    equal (("xx", false), ("yy", true)) (pending, revealed)
 
     case.Outcome <- Settles "x"
     let html = withTrailingRoot definition [| a; b |]
@@ -2418,6 +2511,54 @@ let private boundariesInRows () =
             |> ignore)
         "Hydration mismatch at #1: expected <!--]-->, found b"
         []
+
+type private SourcedItem =
+    {
+        Key: string
+        Source: AsyncSource<string>
+    }
+
+/// <summary>A list of the case's items, each row showing the value of the source the root's setup created.</summary>
+let private sourcedList (case: BoundaryCase) =
+    let row =
+        Component.define (fun _ (item: unit -> SourcedItem) -> item) (fun t ->
+            t.li [||] [| t.text (fun (item: unit -> SourcedItem) -> (item ()).Source.Value) |])
+
+    Component.define
+        (fun _ () ->
+            let source = contentSource case
+
+            [| for key in case.Items -> { Key = key; Source = source } |])
+        (fun t -> t.ul [||] [| t.each (fun (item: SourcedItem) -> item.Key) id row |])
+
+let private pendingFreshRowsEmpty () =
+    use graph = new Graph ()
+    let case = boundaryCase ()
+    let definition = sourcedList case
+    case.Items <- [| "a"; "b" |]
+    let host = serveCase case definition (Settles "s") Pends
+    case.Items <- [| "a"; "b"; "c" |]
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        Hydration.hydrate graph None reports.Add lenientOptions host definition ()
+
+    let recovered = (element host "ul").innerHTML, messages reports
+    mounted.Dispose ()
+    let target = host
+    target.innerHTML <- ""
+
+    let mounted =
+        Mounting.mount graph None reports.Add target None (fun context -> Program.run (Component.render definition ()) context.Backend)
+
+    let shownByMount = (element target "ul").innerHTML
+    mounted.Dispose ()
+
+    // Recovered rows whose read is pending show an empty text, as a client mount's rows do.
+    equal
+        (("<!--[--><li></li><li></li><li></li><!--]-->", [ [ "Hydration mismatch at #0: expected <li>, found <!--]-->" ] ]),
+         "<!--[--><li></li><li></li><li></li><!--]-->")
+        (recovered, shownByMount)
 
 /// <summary>A boundary whose content lists the characters of its source's value, each in a <c>b</c> element.</summary>
 let private characterContent (case: BoundaryCase) =
@@ -2638,6 +2779,8 @@ let cases: (string * (unit -> unit)) array =
             "view holes remove the server content and mount the view fresh", viewHolesRerender
             "boundaries: content hydrates in place when ready", contentHydratesInPlace
             "boundaries: server content stays as the pending view until reveal", serverContentStaysPending
+            "boundaries: pending server content is an inert copy, and the reveal places the bound nodes and runs their hooks once",
+            pendingContentInert
             "boundaries: a server pending view hydrates and the content reveals", serverPendingHydrates
             "boundaries: a server error view re-renders the boundary", serverErrorRerenders
             "boundaries: hydrated content takes row 0 and a pending or error view row 1, with the server's ids", boundaryIdsHydrate
@@ -2646,7 +2789,9 @@ let cases: (string * (unit -> unit)) array =
             "boundaries: a structural mismatch in a hydrating view re-renders that view and reports once; Strict raises", boundaryMismatches
             "boundaries: a mismatch after hydrated content restores the host under Strict and re-renders the root otherwise",
             boundaryRestoresAndRecovers
-            "boundaries in hydrated rows adopt their content and write nothing; Strict restores the host", boundariesInRows
+            "boundaries in hydrated rows adopt their content, show copies of the server rows while pending; Strict restores the host",
+            boundariesInRows
+            "recovered rows whose read is pending show an empty text, as a client mount's rows do", pendingFreshRowsEmpty
             "boundaries: a pending read of a list's items in hydrating content goes to the boundary, which shows its error view as in a mount",
             pendingRowsHydrate
             "a mismatch inside a row's nested region re-renders only that region and reports once per region; Strict raises and restores the host",

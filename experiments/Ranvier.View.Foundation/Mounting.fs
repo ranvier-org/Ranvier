@@ -1300,7 +1300,7 @@ and private RowBuilder(state: MountState, hydration: unit -> TemplateDom.Hydrati
         member _.Identity = state.Identity
 
         // A row's first commit can run after its build; until the mount's hydration ends, the commit writes only a value
-        // that differs from the server node's.
+        // that differs from the node's current value, and records the write with the hydration cursor.
         member _.Hydration = if settingUp then cursor else state.HydrationCursor
 
         member _.Region(start, finish, _, kind, items, render, rows, parentPath, region) =
@@ -1557,8 +1557,9 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
 /// until a retry.
 /// <para>
 /// With <c>hydration</c>, the boundary starts from the server nodes between the markers and the view the start marker
-/// records. Under <c>[c</c>, the content hydrates in place; while one of its reads is pending, its nodes stay between
-/// the markers with no pending view, and the reveal leaves them in place. Under <c>[p</c>, the content mounts
+/// records. Under <c>[c</c>, the content hydrates in place; when one of its reads is pending, its bound nodes are held
+/// detached and a copy of the server nodes, taken before its first commits, stays between the markers as the inert
+/// pending view until the reveal. Under <c>[p</c>, the content mounts
 /// detached; while it is pending, the pending view hydrates in place. Under <c>[e</c>, the server nodes are removed and
 /// the boundary mounts as in a mount. A structural mismatch of a hydrating view is reported once through
 /// <c>report</c>, the server nodes are removed and the view mounts fresh; with <c>hydration.Strict</c>, it goes to
@@ -1617,8 +1618,21 @@ and [<Sealed>] private ViewBoundary
     let mutable status: BoundaryStatus = Unchecked.defaultof<_>
     // Whether unowned server nodes lie between the markers.
     let mutable served = false
+    // A copy of the server nodes between the markers, taken before a `[c` content's first commits; null otherwise.
+    let mutable copy: DocumentFragment = Unchecked.defaultof<_>
 
     let noItem () : obj = null
+
+    // A copy of the server nodes between the markers.
+    let copyServed () =
+        let copied = fragment ()
+        let mutable node = nextOrNull regionStart
+
+        while not (same node regionEnd) do
+            copied.appendChild (node.cloneNode true) |> ignore
+            node <- nextOrNull node
+
+        copied
 
     // Removes the server nodes between the markers, recording their reinsertion while the mount hydrates.
     let clearServed () =
@@ -1673,6 +1687,7 @@ and [<Sealed>] private ViewBoundary
     let place (row: Row) =
         if row.Adopted then
             served <- false
+            copy <- Unchecked.defaultof<_>
         else
             clearServed ()
             let parent = site.Parent ()
@@ -1742,6 +1757,40 @@ and [<Sealed>] private ViewBoundary
 
                 enclosing.Fail [ error ]
 
+    /// <summary>
+    /// Holds the pending adopted content's nodes detached and puts the copy of the server nodes between the markers as
+    /// the inert pending view; the reveal replaces the copy with the content's nodes. A Strict failure puts the
+    /// content's nodes back in place of the copy.
+    /// </summary>
+    member private _.Detach() =
+        let detached = fragment ()
+        Row.MoveBefore (content, detached, Unchecked.defaultof<_>)
+        let shownCopy = copy
+        copy <- Unchecked.defaultof<_>
+
+        let copied =
+            [|
+                for index in 0 .. int shownCopy.childNodes.length - 1 -> unbox<Node>(shownCopy.childNodes.item (float index))
+            |]
+
+        let parent = site.Parent ()
+
+        parent.insertBefore (shownCopy, regionEnd)
+        |> ignore
+
+        content.Adopted <- false
+        served <- true
+        let cursor = hydrationCursor ()
+        let bound = content
+
+        if not (isNull cursor) then
+            cursor.Undo (fun () ->
+                for node in copied do
+                    if not (isNull (box (parentOrNull node))) then
+                        remove (node :?> ChildNode)
+
+                Row.MoveBefore (bound, parentOrNull regionEnd, regionEnd))
+
     member private this.Reveal() =
         revealed <- true
 
@@ -1758,6 +1807,7 @@ and [<Sealed>] private ViewBoundary
     /// </summary>
     member private this.TearDown(errors: exn list) =
         failed <- true
+        copy <- Unchecked.defaultof<_>
         generation <- generation + 1
         let current = generation
 
@@ -1857,15 +1907,15 @@ and [<Sealed>] private ViewBoundary
 
     /// <summary>
     /// Ends the content's setup: a failure tears the content down, ready content is revealed, and pending content shows
-    /// the pending view. Pending content adopted in place stays without a pending view; under server nodes left
-    /// between the markers, the pending view hydrates.
+    /// the pending view. Pending content adopted in place is detached behind its copy of the server nodes; under server
+    /// nodes left between the markers, the pending view hydrates.
     /// </summary>
     member private this.SetUpEnded(failure: exn option) =
         match failure with
         | Some error -> this.TearDown (error :: List.ofSeq held)
         | None when held.Count > 0 -> this.TearDown (List.ofSeq held)
         | None when waiting = 0 -> this.Reveal ()
-        | None when content.Adopted -> ()
+        | None when content.Adopted -> this.Detach ()
         | None when served -> this.Show (views.Pending, TemplateDom.HydrationCursor (nextOrNull regionStart, hydration.Strict))
         | None -> this.Show (views.Pending, null)
 
@@ -1874,6 +1924,7 @@ and [<Sealed>] private ViewBoundary
 
     /// <summary>Hydrates the content of a <c>[c</c> boundary in place.</summary>
     member private this.HydrateContent() =
+        copy <- copyServed ()
         let attempt = TemplateDom.HydrationCursor (nextOrNull regionStart, hydration.Strict)
 
         let failure =
@@ -1889,9 +1940,10 @@ and [<Sealed>] private ViewBoundary
 
         match failure |> Option.bind TemplateDom.findMismatch with
         | Some found ->
-            // Cleared first: the teardown's released reads can wake the boundary, which then finds no content to reveal.
+            // `content` is null before the abandon, so a wake during the teardown reveals nothing.
             let attempted = content
             content <- null
+            copy <- Unchecked.defaultof<_>
 
             if not (isNull attempted) then
                 abandon attempted
@@ -2071,16 +2123,18 @@ and internal MountState
         else
             Row.Remove row
 
+    // Whether the release leaves the mount's nodes in place. A mount built with a cursor also keeps them while its
+    // enclosing mount keeps its own.
+    let keeps () =
+        keepNodes
+        || not (isNull hydration)
+           && not (isNull (box enclosing))
+           && enclosing.KeepsNodes
+
     let release () =
         rowsReleased <- true
         let errors = ResizeArray<exn>()
-
-        // A mount built with a cursor also keeps its nodes while its enclosing mount keeps its own.
-        let keep =
-            keepNodes
-            || not (isNull hydration)
-               && not (isNull (box enclosing))
-               && enclosing.KeepsNodes
+        let keep = keeps ()
 
         if not (isNull releasedRows) then
             let rows = releasedRows
@@ -2776,7 +2830,7 @@ and internal MountState
         else enclosing.HydrationCursor
 
     /// <summary>Whether the mount's release leaves its nodes in place.</summary>
-    member internal _.KeepsNodes = keepNodes
+    member internal _.KeepsNodes = keeps ()
 
     /// <summary>The mount whose <c>MountRow</c> created this one; null for a root mount.</summary>
     member internal _.Enclosing
@@ -3722,7 +3776,7 @@ and internal MountState
                 range.AddAdopted node
 
         // A first commit can run after the build; until the hydration ends, the commit writes only a value that differs
-        // from the server node's.
+        // from the node's current value, and records the write with the hydration cursor.
         member this.Hydration =
             if root.Phase = SettingUp then
                 cursor
