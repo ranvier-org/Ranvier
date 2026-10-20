@@ -1949,17 +1949,6 @@ let private contentView (ops: Operations<'view>) (leadingLineFeed: bool) (read: 
             html.Sink.Append markup
         | _ -> ())
 
-/// <summary>
-/// A placed hook for a backend's <c>Placed</c>: a motion hook receives a context with both flags false, and exit and
-/// reflow hooks are inert.
-/// </summary>
-let private expandedHook (kind: PlacedKind) (hook: Func<obj, obj, obj, obj>) (instance: obj) : obj -> (unit -> unit) =
-    match kind with
-    | PlacedKind.Exit
-    | PlacedKind.Reflow -> fun _ -> ignore
-    | PlacedKind.Motion -> fun node -> unbox (hook.Invoke (instance, node, box { Hydrated = false; Inserted = false }))
-    | _ -> fun node -> unbox (hook.Invoke (instance, node, null))
-
 let rec private expandNode (ops: Operations<'view>) (instance: obj) (node: TemplateNode) : 'view =
     match node with
     | TextNode value -> ops.Text value
@@ -1981,7 +1970,8 @@ let rec private expandNode (ops: Operations<'view>) (instance: obj) (node: Templ
                             | _ -> backend.ReactiveProperty ((fun () -> box (markupOf (slot.Read.Invoke instance))), innerHtml)
                     | TextTarget -> invalidOp "A text slot is a child node"
                 for eventName, handler in events -> listenModifier eventName (fun event -> handler.Invoke (instance, event))
-                for kind, hook in placed -> fun (backend: Backend) -> backend.Placed (kind, expandedHook kind hook instance)
+                for kind, hook in placed ->
+                    fun (backend: Backend) -> backend.Placed (kind, Func<obj, obj, obj>(fun node context -> hook.Invoke (instance, node, context)))
             |]
 
         // The child content written by the server plan for child-text properties and raw-HTML parts.

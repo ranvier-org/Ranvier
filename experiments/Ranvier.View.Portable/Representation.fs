@@ -671,9 +671,10 @@ type Backend() =
 
     /// <summary>
     /// Registers a hook for the element currently receiving modifiers, run once the element is placed in the mount's
-    /// host. The hook's returned cleanup runs when the element's owner is disposed.
+    /// host. The hook receives the element and, for a motion hook, its <c>MotionContext</c>, and returns a value of its
+    /// kind: a cleanup, which runs when the element's owner is disposed, an exit, or a <c>Reflow</c>.
     /// </summary>
-    abstract Placed: PlacedKind * (obj -> (unit -> unit)) -> unit
+    abstract Placed: PlacedKind * System.Func<obj, obj, obj> -> unit
 
     default _.Placed(_, _) =
         raise (System.NotSupportedException "Placed hooks require a DOM mount")

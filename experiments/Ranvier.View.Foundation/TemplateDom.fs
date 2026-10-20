@@ -1102,7 +1102,12 @@ let private bind (services: MountServices) (compiled: Compiled) (state: obj arra
             | PlacedKind.Exit
             | PlacedKind.Reflow -> ()
             | PlacedKind.Motion ->
-                let context = box { Hydrated = false; Inserted = false }
+                let context =
+                    box
+                        {
+                            Hydrated = not (isNull services.Hydration)
+                            Inserted = services.Placement.Inserted
+                        }
 
                 PlacedHook.register services.Placement services.Scope owner kind node root (fun () ->
                     unbox (hook.Invoke (instance, box node, context)))

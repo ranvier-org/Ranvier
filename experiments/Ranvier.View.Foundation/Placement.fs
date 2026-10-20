@@ -56,6 +56,9 @@ type internal Placement(parent: Placement) =
     /// <summary>True while a root mount's first placement runs inside <c>mountWith</c>.</summary>
     member val Placing = false with get, set
 
+    /// <summary>Whether the container holds the hooks of a region pass after the region's first.</summary>
+    member val Inserted = false with get, set
+
     member _.IsPlaced: bool = laidOut && (isNull parent || parent.IsPlaced)
 
     /// <summary>The container of the root mount.</summary>
@@ -172,6 +175,9 @@ type internal PlacementPass(parent: Placement) =
     let mutable current: Placement = null
     let mutable placed = false
 
+    /// <summary>Whether the current pass follows the region's first; the pass's container takes the flag.</summary>
+    member val Inserted = false with get, set
+
     /// <summary>Starts a pass: the next request allocates a new container.</summary>
     member _.Begin() =
         current <- null
@@ -181,12 +187,13 @@ type internal PlacementPass(parent: Placement) =
     /// The container of the current pass. A request after the pass's <c>Place</c> and before the next <c>Begin</c> raises
     /// "A pass placement container was requested after its Place".
     /// </summary>
-    member _.Container: Placement =
+    member this.Container: Placement =
         if placed then
             raise (InvalidOperationException "A pass placement container was requested after its Place")
 
         if isNull current then
             current <- Placement parent
+            current.Inserted <- this.Inserted
 
         current
 

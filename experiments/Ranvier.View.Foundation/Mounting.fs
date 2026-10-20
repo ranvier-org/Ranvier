@@ -2715,7 +2715,19 @@ and internal MountState
 
             markWidget node
 
-        PlacedHook.register container this.Scope (Api.getOwner ()) kind (node :> Node) false (fun () -> hook (box node))
+        match kind with
+        | PlacedKind.Exit
+        | PlacedKind.Reflow -> ()
+        | PlacedKind.Motion ->
+            let context =
+                box
+                    {
+                        Hydrated = not (isNull cursor)
+                        Inserted = container.Inserted
+                    }
+
+            PlacedHook.register container this.Scope (Api.getOwner ()) kind (node :> Node) false (fun () -> unbox (hook.Invoke (box node, context)))
+        | _ -> PlacedHook.register container this.Scope (Api.getOwner ()) kind (node :> Node) false (fun () -> unbox (hook.Invoke (box node, null)))
 
     override this.Head(entry) =
         this.HeadIn (container, entry)
@@ -3077,6 +3089,8 @@ and internal MountState
         let moved = ResizeArray<int>()
         // The passes whose containers hold the hooks of the rows each pass creates.
         let passPlacement = PlacementPass parentContainer
+        // Whether a pass has started; rows of later passes are inserted.
+        let mutable started = false
 
         // When the window from `first` keeps its length and spans more than `smallWindow` positions, collects into `moved`
         // the positions whose key differs between `prior` and `next` and returns true.
@@ -3134,6 +3148,8 @@ and internal MountState
         let reconcile () =
             if site.Live () then
                 passPlacement.Begin ()
+                passPlacement.Inserted <- started
+                started <- true
                 // A hydrating pass adopts its rows in place, without window validation or a flush of released rows.
                 let hydrating = site.Hydrating
                 let resumed = if hydrating then cursor.Next else Unchecked.defaultof<_>
@@ -3493,6 +3509,8 @@ and internal MountState
         let mutable armKey: obj = null
         // The arm mounts, each a pass whose container holds the hooks of the arm.
         let armPlacement = PlacementPass parentContainer
+        // Whether a selection has been reconciled; arms mounted by later selections are inserted.
+        let mutable started = false
 
         let disposeArm () =
             if not (isNull (box armOwner)) then
@@ -3585,6 +3603,8 @@ and internal MountState
             if site.Live () then
                 let hydrating = site.Hydrating
                 let resumed = if hydrating then cursor.Next else Unchecked.defaultof<_>
+                armPlacement.Inserted <- started
+                started <- true
 
                 if hydrating then
                     cursor.Next <- nextOrNull regionStart
