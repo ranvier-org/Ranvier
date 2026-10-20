@@ -32,7 +32,7 @@ type Anime =
     static member onScroll(?parameters: ScrollParams) : ScrollObserver = jsNative
 
     /// <summary>A layout recorder over the children of <c>root</c>.</summary>
-    /// <remarks>Transforms animate through WAAPI, so a tickable clock does not drive them.</remarks>
+    /// <remarks>Transforms animate through WAAPI, outside anime's engine clock.</remarks>
     [<Import("createLayout", "animejs")>]
     static member layout(root: TS.Dom.Element, ?parameters: LayoutParams) : AutoLayout = jsNative
 
@@ -89,7 +89,7 @@ type WaapiModule =
 /// <summary>Animations run by the browser's Web Animations API, for transforms and opacity off the main thread.</summary>
 [<Erase>]
 type Waapi =
-    /// <summary>anime's <c>waapi</c> export.</summary>
+    /// <summary>The module object behind <c>animate</c> and <c>convertEase</c>.</summary>
     [<Import("waapi", "animejs")>]
     static member api: WaapiModule = jsNative
 
@@ -147,9 +147,9 @@ type Utils =
     [<Import("mapRange", "animejs")>]
     static member mapRange(value: float, inLow: float, inHigh: float, outLow: float, outHigh: float) : float = jsNative
 
-    /// <summary>Rounds <c>value</c> to the nearest multiple of <c>increment</c>.</summary>
+    /// <summary>Rounds <c>value</c> to the nearest multiple of an increment, or to the nearest of <c>Snap.points</c>.</summary>
     [<Import("snap", "animejs")>]
-    static member snap(value: float, increment: float) : float = jsNative
+    static member snap(value: float, increment: Snap) : float = jsNative
 
     /// <summary>Interpolates from <c>start</c> to <c>finish</c> by <c>amount</c> in 0..1.</summary>
     [<Import("lerp", "animejs")>]
@@ -201,7 +201,7 @@ type EngineSettings =
 /// <summary>anime's engine.</summary>
 [<Erase>]
 type Engine =
-    /// <summary>The engine's settings and controls.</summary>
+    /// <summary>The engine's main-loop, speed, frame-rate and time-unit settings, and its manual <c>update</c>.</summary>
     [<Import("engine", "animejs")>]
     static member settings: EngineSettings = jsNative
 

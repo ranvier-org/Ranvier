@@ -51,3 +51,9 @@ test("namespace and engine members call through anime's exports", () => {
   assert.ok(compacted.includes("engine_1.speed=2;engine_1.update();"), "Engine");
   assert.ok(compacted.includes('returnget$(el,"x",false);'), "Utils.getNumber");
 });
+
+test("numeric array parameters emit plain arrays", () => {
+  assert.equal(body("bounds"), "return{container:[0,100,50,0],snap:[0,10],};");
+  assert.equal(body("gridFrom"), "returnanimate(el,{delay:stagger(10,{from:[0.5,0.5],grid:[3,3],}),});");
+  for (const [name, text] of [["Fixtures.js", fixtures], ["Surface.js", surface]]) assert.deepEqual(text.match(/\b(Int32|Float64)Array\b/g), null, name);
+});

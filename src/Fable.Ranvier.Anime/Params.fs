@@ -12,10 +12,10 @@ type Autoplay =
         Erased.cast observer
 
 /// <summary>
-/// Animation parameters. Every argument given becomes a property of the emitted object literal; the others are absent.
+/// Animation parameters. The emitted object literal holds exactly the arguments given.
 /// </summary>
 /// <remarks>
-/// Transforms compose in the order of the arguments in this constructor, translations before rotations before scales.
+/// Transforms compose in anime's fixed order: perspective, translations, rotations, scales, skews.
 /// <c>With</c> adds a property the constructor lacks, such as a CSS variable or an attribute.
 /// </remarks>
 type Anim
@@ -73,6 +73,7 @@ type Anim
         ?composition: Composition,
         ?playbackRate: float,
         ?frameRate: float,
+        ?priority: int,
         ?persist: bool,
         ?keyframes: Keyframes,
         ?modifier: float -> float,
@@ -114,6 +115,7 @@ type TimerParams
         ?autoplay: Autoplay,
         ?frameRate: float,
         ?playbackRate: float,
+        ?priority: int,
         ?onBegin: Timer -> unit,
         ?onBeforeUpdate: Timer -> unit,
         ?onUpdate: Timer -> unit,
@@ -122,7 +124,7 @@ type TimerParams
         ?onComplete: Timer -> unit
     ) = class end
 
-/// <summary>Timeline parameters. <c>defaults</c> applies to every child that does not set the parameter itself.</summary>
+/// <summary>Timeline parameters. <c>defaults</c> supplies each parameter a child leaves unset.</summary>
 type TimelineParams
     /// <summary>Timeline parameters with the given timing, child defaults and callbacks.</summary>
     [<ParamObject; Emit("$0")>]
@@ -138,6 +140,7 @@ type TimelineParams
         ?autoplay: Autoplay,
         ?frameRate: float,
         ?playbackRate: float,
+        ?priority: int,
         ?playbackEase: Ease,
         ?composition: bool,
         ?onBegin: Timeline -> unit,
@@ -206,8 +209,8 @@ type Snap =
         Erased.cast increment
 
     /// <summary>Snaps to the nearest of <c>positions</c>.</summary>
-    static member inline points(positions: float array) : Snap =
-        Erased.cast positions
+    [<Emit("[$0...]")>]
+    static member points([<System.ParamArray>] positions: float array) : Snap = jsNative
 
 /// <summary>A drag axis: enabled, disabled, or with its own mapping and snap.</summary>
 [<Erase>]
@@ -229,8 +232,8 @@ type DragContainer =
         Erased.cast element
 
     /// <summary>Bounds in pixels from the element's initial position.</summary>
-    static member inline bounds(top: float, right: float, bottom: float, left: float) : DragContainer =
-        Erased.cast [| top; right; bottom; left |]
+    [<Emit("[$0, $1, $2, $3]")>]
+    static member bounds(top: float, right: float, bottom: float, left: float) : DragContainer = jsNative
 
 /// <summary>Draggable parameters.</summary>
 type DraggableParams
@@ -300,6 +303,12 @@ type ScrollSync =
     static member inline methods(methods: string) : ScrollSync =
         Erased.cast methods
 
+/// <summary>The scroll axis an observer follows.</summary>
+[<Erase>]
+type ScrollAxis =
+    static member inline x: ScrollAxis = Erased.cast "x"
+    static member inline y: ScrollAxis = Erased.cast "y"
+
 /// <summary>Scroll observer parameters.</summary>
 type ScrollParams
     /// <summary>Scroll observer parameters; <c>container</c> defaults to the window.</summary>
@@ -308,7 +317,7 @@ type ScrollParams
         ?id: string,
         ?container: Targets,
         ?target: Targets,
-        ?axis: Axis,
+        ?axis: ScrollAxis,
         ?enter: Threshold,
         ?leave: Threshold,
         ?sync: ScrollSync,
@@ -358,9 +367,12 @@ type SplitValue =
     static member inline op_Implicit(html: string) : SplitValue =
         Erased.cast html
 
-    /// <summary>Splits into elements with the class <c>className</c>, wrapped in an element with overflow <c>wrap</c>.</summary>
+    /// <summary>
+    /// Splits into elements with the class <c>class</c> (<c>false</c> for none), each wrapped in an element with the
+    /// overflow <c>wrap</c> and cloned towards the side <c>clone</c> (<c>true</c> for anime's defaults).
+    /// </summary>
     [<ParamObject; Emit("$0")>]
-    static member template(?``class``: string, ?wrap: string, ?clone: string) : SplitValue = jsNative
+    static member template(?``class``: Switch, ?wrap: Switch, ?clone: Switch) : SplitValue = jsNative
 
 /// <summary>Text splitter parameters.</summary>
 type SplitParams
@@ -371,14 +383,19 @@ type SplitParams
 /// <summary>Scramble parameters; <c>chars</c> takes named sets such as <c>"uppercase"</c> or ranges such as <c>"A-Z"</c>.</summary>
 type ScrambleParams
     /// <summary>Scramble parameters; times are in milliseconds and rates per second.</summary>
+    /// <remarks>
+    /// <c>from</c> is a character index or <c>"left"</c>, <c>"center"</c>, <c>"right"</c>, <c>"random"</c> or
+    /// <c>"auto"</c>; <c>cursor</c> is <c>true</c>, a character code or a string; <c>override</c> sets the starting text.
+    /// </remarks>
     [<ParamObject; Emit("$0")>]
     (
         ?text: string,
         ?chars: string,
         ?ease: Ease,
-        ?from: string,
+        ?from: Value,
         ?reversed: bool,
-        ?cursor: string,
+        ?cursor: Switch,
+        ?``override``: Switch,
         ?perturbation: float,
         ?seed: int,
         ?revealRate: float,

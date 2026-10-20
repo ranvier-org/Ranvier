@@ -145,7 +145,7 @@ type Ease =
     static member inline fn(f: float -> float) : Ease =
         Erased.cast f
 
-    /// <summary>An anime ease string not covered by a member, such as <c>"cubic-bezier(.2,0,0,1)"</c> for WAAPI.</summary>
+    /// <summary>Any other anime or WAAPI ease string, such as <c>"cubic-bezier(.2,0,0,1)"</c>.</summary>
     static member inline named(ease: string) : Ease =
         Erased.cast ease
 
@@ -161,9 +161,21 @@ type StaggerFrom =
     static member inline index(index: int) : StaggerFrom =
         Erased.cast index
 
-    /// <summary>The grid cell at (<c>column</c>, <c>row</c>), for a stagger with <c>grid</c>.</summary>
-    static member inline cell(column: int, row: int) : StaggerFrom =
-        Erased.cast [| column; row |]
+    /// <summary>
+    /// The grid point at fractions <c>x</c> and <c>y</c> of the grid's width and height, each in 0..1, for a stagger with
+    /// <c>grid</c>: <c>(0.5, 0.5)</c> is the centre.
+    /// </summary>
+    [<Emit("[$0, $1]")>]
+    static member at(x: float, y: float) : StaggerFrom = jsNative
+
+/// <summary>The grid of a stagger: measured from the targets' positions, or given as columns and rows.</summary>
+[<Erase>]
+type Grid =
+    /// <summary>The grid read from the targets' layout.</summary>
+    static member inline auto: Grid = Erased.cast true
+
+    [<Emit("[$0, $1]")>]
+    static member size(columns: int, rows: int) : Grid = jsNative
 
 /// <summary>A spatial axis: x, y or z.</summary>
 [<Erase>]
@@ -171,6 +183,30 @@ type Axis =
     static member inline x: Axis = Erased.cast "x"
     static member inline y: Axis = Erased.cast "y"
     static member inline z: Axis = Erased.cast "z"
+
+/// <summary>A setting given as a boolean, a string or a number, as anime's options of that shape take.</summary>
+[<Erase>]
+type Switch =
+    static member inline op_Implicit(value: bool) : Switch =
+        Erased.cast value
+
+    static member inline op_Implicit(value: string) : Switch =
+        Erased.cast value
+
+    static member inline op_Implicit(value: int) : Switch =
+        Erased.cast value
+
+/// <summary>How an animation combines with others animating the same property of the same target.</summary>
+[<Erase>]
+type Composition =
+    /// <summary>The new animation replaces the running one on the property.</summary>
+    static member inline replace: Composition = Erased.cast "replace"
+
+    /// <summary>The animations run independently and the last rendered wins.</summary>
+    static member inline none: Composition = Erased.cast "none"
+
+    /// <summary>The animations add their values together.</summary>
+    static member inline blend: Composition = Erased.cast "blend"
 
 /// <summary>
 /// A property value or timing parameter: a number, a string with a unit, operator or colour, a from/to pair, a keyframe
@@ -203,22 +239,31 @@ type Value =
     /// <summary>A tween object with its own timing, overriding the animation's for this property.</summary>
     [<ParamObject; Emit("$0")>]
     static member tween
-        (?``to``: Value, ?from: Value, ?duration: Value, ?delay: Value, ?ease: Ease, ?modifier: float -> float, ?composition: string)
-        : Value =
+        (
+            ?``to``: Value,
+            ?from: Value,
+            ?fromTo: Value,
+            ?duration: Value,
+            ?delay: Value,
+            ?ease: Ease,
+            ?modifier: float -> float,
+            ?composition: Composition
+        ) : Value =
         jsNative
 
     /// <summary>Keyframes played in sequence, each taking an equal share of the duration.</summary>
     static member inline keys(frames: Value array) : Value =
         Erased.cast frames
 
-    /// <summary>A value computed per target from the target, its index and the target count.</summary>
-    static member inline per(f: TS.Dom.Element -> int -> int -> Value) : Value =
+    /// <summary>A value computed per target from the target, its index and every target.</summary>
+    static member inline per(f: TS.Dom.Element -> int -> TS.Dom.Element array -> Value) : Value =
         Erased.cast (System.Func<_, _, _, _> f)
 
     /// <summary>
     /// A per-target value growing by <c>each</c> from target to target. <c>each</c> given as <c>Value.fromTo</c>
     /// distributes the range across the targets.
     /// </summary>
+    /// <remarks><c>use</c> names the property or attribute of each target that holds its stagger index.</remarks>
     [<Import("stagger", "animejs"); ParamObject(1)>]
     static member stagger
         (
@@ -226,8 +271,9 @@ type Value =
             ?start: Value,
             ?from: StaggerFrom,
             ?reversed: bool,
-            ?grid: int array,
+            ?grid: Grid,
             ?axis: Axis,
+            ?``use``: string,
             ?total: int,
             ?ease: Ease,
             ?modifier: float -> float,
@@ -255,11 +301,11 @@ type At =
     [<Emit("'*=' + $0")>]
     static member times(factor: float) : At = jsNative
 
-    /// <summary>The end of the previous child (<c>"&lt;"</c>).</summary>
-    static member inline withPrevious: At = Erased.cast "<"
+    /// <summary>Sequential: the end of the previous child (<c>"&lt;"</c>).</summary>
+    static member inline afterPrevious: At = Erased.cast "<"
 
-    /// <summary>The start of the previous child (<c>"&lt;&lt;"</c>).</summary>
-    static member inline withPreviousStart: At = Erased.cast "<<"
+    /// <summary>Simultaneous: the start of the previous child (<c>"&lt;&lt;"</c>).</summary>
+    static member inline withPrevious: At = Erased.cast "<<"
 
     /// <summary><c>ms</c> milliseconds after the start of the previous child (<c>"&lt;&lt;+=ms"</c>).</summary>
     [<Emit("'<<+=' + $0")>]
@@ -283,18 +329,6 @@ type Loop =
         Erased.cast forever
 
     static member inline forever: Loop = Erased.cast true
-
-/// <summary>How an animation combines with others animating the same property of the same target.</summary>
-[<Erase>]
-type Composition =
-    /// <summary>The new animation replaces the running one on the property.</summary>
-    static member inline replace: Composition = Erased.cast "replace"
-
-    /// <summary>The animations run independently and the last rendered wins.</summary>
-    static member inline none: Composition = Erased.cast "none"
-
-    /// <summary>The animations add their values together.</summary>
-    static member inline blend: Composition = Erased.cast "blend"
 
 /// <summary>An object built from key-value pairs, for parameters keyed by arbitrary names.</summary>
 [<Erase>]

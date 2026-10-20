@@ -132,6 +132,10 @@ type Animatable =
     [<Emit("$0[$1]($2, $3, $4)")>]
     abstract set: property: string * value: float * ?duration: float * ?ease: Ease -> unit
 
+    /// <summary>Animates the multi-value <c>property</c> to <c>values</c>, such as an RGB colour's channels.</summary>
+    [<Emit("$0[$1](Array.from($2), $3, $4)")>]
+    abstract setMany: property: string * values: float array * ?duration: float * ?ease: Ease -> unit
+
     /// <summary>The current value of <c>property</c>.</summary>
     [<Emit("$0[$1]()")>]
     abstract get: property: string -> float

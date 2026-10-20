@@ -20,14 +20,17 @@ type Playback =
         Completed: Memo<bool>
     }
 
-[<Emit("(() => { const previous = $0[$1]; $0[$1] = self => { if (previous) previous(self); $2(); }; return () => { $0[$1] = previous; }; })()")>]
+[<Emit("(() => { const previous = $0[$1]; const chained = self => { if (previous) previous(self); $2(); }; $0[$1] = chained; return () => { if ($0[$1] === chained) $0[$1] = previous; }; })()")>]
 let private chain (tickable: ITickable) (callback: string) (after: unit -> unit) : unit -> unit = jsNative
 
 /// <summary>
 /// The playback state of <c>tickable</c>, written on its begin, update, loop, pause and completion. The callbacks it
 /// already had still run, first.
 /// </summary>
-/// <remarks>The callbacks it had are restored when the current owner is disposed.</remarks>
+/// <remarks>
+/// When the current owner is disposed, each callback slot still holding the chain gets back the callback it had; a slot
+/// assigned since keeps its new callback.
+/// </remarks>
 let track (tickable: #ITickable) : Playback =
     let tickable = tickable :> ITickable
     let graph = Graph.Current
@@ -73,40 +76,65 @@ type MotionPolicy =
 type private MediaQuery =
     abstract matches: bool
     abstract addEventListener: string * (MediaQuery -> unit) -> unit
+    abstract removeEventListener: string * (MediaQuery -> unit) -> unit
 
 [<Emit("(typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia($0) : null)")>]
 let private matchMedia (query: string) : MediaQuery = jsNative
 
-let mutable private policyGraph: Graph = Unchecked.defaultof<_>
-let mutable private policySignal: Signal<MotionPolicy> = Unchecked.defaultof<_>
-
 let private policyOf (matches: bool) =
     if matches then Reduced else Full
+
+#if FABLE_COMPILER
+[<AllowNullLiteral>]
+type private PolicyCache =
+    abstract get: Graph -> Signal<MotionPolicy>
+    abstract set: Graph * Signal<MotionPolicy> -> unit
+
+[<Emit("new WeakMap()")>]
+let private policyCache () : PolicyCache = jsNative
+
+let private policies = policyCache ()
+#else
+let private policies =
+    System.Runtime.CompilerServices.ConditionalWeakTable<Graph, Signal<MotionPolicy>>()
+#endif
 
 /// <summary>
 /// The motion policy of the current graph: a signal seeded from <c>(prefers-reduced-motion: reduce)</c> on first read and
 /// written on each change of the media query.
 /// </summary>
 /// <remarks>
-/// Every call on a graph returns the same signal. A write overrides the media query until its next change. Without
-/// <c>matchMedia</c>, as on .NET or in jsdom, the seed is <c>Full</c>.
+/// Every call on a graph returns the same signal. A write overrides the media query until its next change; disposing the
+/// graph detaches the media query. Without <c>matchMedia</c>, as on .NET or in jsdom, the seed is <c>Full</c>. The first
+/// call on a graph runs outside pure derivations, as <c>onCleanup</c> does.
 /// </remarks>
 let policy () : Signal<MotionPolicy> =
     let graph = Graph.Current
-
-    if not (obj.ReferenceEquals (policyGraph, graph)) then
 #if FABLE_COMPILER
+    let cached = policies.get graph
+
+    if not (isNull (box cached)) then
+        cached
+    else
         let query = matchMedia "(prefers-reduced-motion: reduce)"
-#else
-        let query: MediaQuery = null
-#endif
+
         let signal =
             Api.createSignal (if isNull query then Full else policyOf query.matches)
 
         if not (isNull query) then
-            query.addEventListener ("change", (fun change -> signal.Value <- policyOf change.matches))
+            let follow (change: MediaQuery) =
+                signal.Value <- policyOf change.matches
 
-        policyGraph <- graph
-        policySignal <- signal
+            query.addEventListener ("change", follow)
+            Api.runWithOwner graph.Root (fun () -> Api.onCleanup (fun () -> query.removeEventListener ("change", follow)))
 
-    policySignal
+        policies.set (graph, signal)
+        signal
+#else
+    match policies.TryGetValue graph with
+    | true, signal -> signal
+    | _ ->
+        let signal = Api.createSignal Full
+        policies.Add (graph, signal)
+        signal
+#endif

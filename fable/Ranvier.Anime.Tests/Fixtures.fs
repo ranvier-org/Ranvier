@@ -25,3 +25,9 @@ let timeline (el: Element) =
 
 let spring (el: Element) =
     Anime.animate (el, Anim (x = 1, ease = Ease.spring (stiffness = 200.)))
+
+let bounds () =
+    DraggableParams (container = DragContainer.bounds (0., 100., 50., 0.), snap = Snap.points (0., 10.))
+
+let gridFrom (el: Element) =
+    Anime.animate (el, Anim (delay = Value.stagger (10, grid = Grid.size (3, 3), from = StaggerFrom.at (0.5, 0.5))))
