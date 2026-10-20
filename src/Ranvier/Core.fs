@@ -1578,6 +1578,20 @@ type Graph(options: GraphOptions) =
     /// </summary>
     let mutable queueHead = 0
 
+    /// <summary>
+    /// Queued projection passes and lookup refreshes, a buffer read through a cursor as <c>queue</c> is. A flush runs
+    /// every queued pass before the next <c>queue</c> item.
+    /// </summary>
+    /// <remarks>
+    /// A pass marks its readers only when it publishes, so a reader run ahead of a queued pass would read the previous
+    /// keys, rows or lookup values.
+    /// </remarks>
+    let passes = ResizeArray<IScheduled>()
+
+    let mutable passCount = 0
+
+    let mutable passHead = 0
+
 #if !FABLE_COMPILER
     /// <summary>
     /// The thread the graph was constructed on. Everything mutating the graph
@@ -2220,13 +2234,32 @@ type Graph(options: GraphOptions) =
 
         queueCount <- queueCount + 1
 
+    /// <summary>Queues a projection pass or a lookup refresh. A flush runs it before every item <c>Schedule</c> queued.</summary>
+    member internal this.SchedulePass(item: IScheduled) =
+        Tracer.Schedule (this, item, passCount - passHead)
+
+        if passCount < passes.Count then
+#if FABLE_COMPILER
+            Platform.setEntryAt passCount passes item
+#else
+            passes[passCount] <- item
+#endif
+        else
+            passes.Add item
+
+        passCount <- passCount + 1
+
+    /// <summary>True while a pass or an item is queued.</summary>
+    member private _.HasQueued = passHead < passCount || queueHead < queueCount
+
     /// <summary>
     /// Runs every queued effect. Re-entrant calls are absorbed: an effect that
     /// writes a signal adds to the queue this loop is already draining, rather
     /// than starting a nested flush.
     /// </summary>
     /// <remarks>
-    /// The graph is ambient while the loop runs.
+    /// The graph is ambient while the loop runs. Every queued projection pass and lookup refresh runs before the next
+    /// queued effect, so an effect reads the keys, rows and lookup values of the write that woke it.
     /// </remarks>
     member this.Flush() =
         this.Entered ("A flush", (fun () -> this.RunFlush ()))
@@ -2242,22 +2275,31 @@ type Graph(options: GraphOptions) =
             let previousAmbient = this.EnterAmbient ()
 
             try
-                while queueHead < queueCount do
-                    let item = Platform.entryAt queueHead queue
-                    Tracer.Dequeue (this, item)
+                while passHead < passCount || queueHead < queueCount do
+                    if passHead < passCount then
+                        let item = Platform.entryAt passHead passes
+                        Tracer.Dequeue (this, item)
+                        Platform.releaseSlot passes passHead
+                        passHead <- passHead + 1
+                        item.Execute ()
+                    else
+                        let item = Platform.entryAt queueHead queue
+                        Tracer.Dequeue (this, item)
 
-                    // Released as it is consumed, so a disposed effect is not
-                    // kept alive by a spent slot until a later turn overwrites
-                    // it. A no-op under Fable; see `Platform.releaseSlot`.
-                    Platform.releaseSlot queue queueHead
-                    queueHead <- queueHead + 1
-                    item.Execute ()
+                        // Released as it is consumed, so a disposed effect is not
+                        // kept alive by a spent slot until a later turn overwrites
+                        // it. A no-op under Fable; see `Platform.releaseSlot`.
+                        Platform.releaseSlot queue queueHead
+                        queueHead <- queueHead + 1
+                        item.Execute ()
 
                 // Reached only on a clean drain. An effect that throws leaves
                 // the cursor where it stopped and the rest still queued, for
                 // the next flush to pick up, which is what the `Queue` did.
                 queueHead <- 0
                 queueCount <- 0
+                passHead <- 0
+                passCount <- 0
             finally
                 flushing <- false
 
@@ -2273,7 +2315,7 @@ type Graph(options: GraphOptions) =
     /// stale read, they run once the outermost body or read has finished.
     /// </summary>
     member internal this.RequestFlush() =
-        if queueHead < queueCount && batchDepth = 0 then
+        if this.HasQueued && batchDepth = 0 then
             if
                 pullDepth = 0
                 && Platform.isNull (box current)
@@ -2436,11 +2478,7 @@ type Graph(options: GraphOptions) =
         this.Detached (owner, owner.DisposeScope)
         Tracer.DischargeEnd owner
 
-        if
-            batchDepth = 0
-            && not flushing
-            && queueHead < queueCount
-        then
+        if batchDepth = 0 && not flushing && this.HasQueued then
             flushOwed <- true
 
     /// <summary>
@@ -2450,7 +2488,7 @@ type Graph(options: GraphOptions) =
     member internal this.Retire(owner: Owner) =
         this.Detached (owner, owner.Dispose)
 
-        if queueHead < queueCount then
+        if this.HasQueued then
             this.RequestFlush ()
 
     interface ILateRunner with
@@ -2470,7 +2508,7 @@ type Graph(options: GraphOptions) =
                             owner.RecordError ex
                 )
 
-                if queueHead < queueCount then
+                if this.HasQueued then
                     this.RequestFlush ()
             finally
 #if !FABLE_COMPILER
@@ -3628,6 +3666,8 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
     /// </remarks>
     let mutable inCleanup = false
 
+    let mutable publishes = false
+
 #if RANVIER_COUNTERS
     do Counters.EffectCreated ()
 #endif
@@ -3698,7 +3738,7 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
 
                 if not queued then
                     queued <- true
-                    graph.Schedule (this :> IScheduled)
+                    this.Enqueue ()
 
         member this.MarkCheck() =
             if not disposed && not inCleanup then
@@ -3707,7 +3747,20 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
 
                 if not queued then
                     queued <- true
-                    graph.Schedule (this :> IScheduled)
+                    this.Enqueue ()
+
+    member private this.Enqueue() =
+        if publishes then
+            graph.SchedulePass (this :> IScheduled)
+        else
+            graph.Schedule (this :> IScheduled)
+
+    /// <summary>
+    /// Set on an effect whose readers are marked only when its body writes, such as a lookup's refresh. A flush runs
+    /// the effect with the projection passes, ahead of every other queued effect.
+    /// </summary>
+    member internal _.Publishes
+        with set value = publishes <- value
 
     interface IScheduled with
         member this.Execute() =

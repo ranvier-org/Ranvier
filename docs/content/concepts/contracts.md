@@ -48,6 +48,8 @@ the graph. `ThreadAffinity.Serialised` replaces it with a check that one thread 
 
 - **Effects** run on the owning thread, in the flush at the end of the write or batch that woke them, or in
   the flush that `Pump` runs after draining the inbox.
+- **Projection passes and lookup refreshes** run first in a flush, before every queued effect, so an effect
+  reads keys, rows and lookup values from the write that woke it.
 - **A write inside an effect body** joins the running flush. The effects it wakes run before the outer write
   returns, and an effect that writes a signal it reads re-runs until the value stops changing.
 - **A write inside a memo body** wakes effects that run once the outermost body or read has finished, before
