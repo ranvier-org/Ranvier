@@ -33,6 +33,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 84,042 | 126,373 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 84,044 | 126,391 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 84,130 | 127,478 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 84,129 | 127,464 |
 
 ## app-table
 
@@ -67,6 +68,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 9,120,327 | 9,716,330 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 9,120,285 | 9,783,165 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 9,135,649 | 9,838,145 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 9,135,632 | 9,661,994 |
 
 ## async-recover
 
@@ -101,6 +103,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 138,884 | 37,318 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 138,884 | 37,321 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 139,024 | 37,319 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 139,024 | 37,325 |
 
 ## async-resolve
 
@@ -135,6 +138,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 2,788,202 | 1,074,577 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 2,788,200 | 1,074,546 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 2,791,802 | 1,074,391 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 2,791,802 | 1,081,668 |
 
 ## chain
 
@@ -169,6 +173,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 13,043 | 318 | 2,450 | 4,491 | 3,180 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 13,075 | 318 | 2,450 | 4,491 | 3,180 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 13,107 | 318 | 2,450 | 4,491 | 3,180 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 13,043 | 318 | 2,450 | 4,491 | 3,180 |
 
 ## chain-affinity
 
@@ -203,6 +208,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 2,549 | 3,067 | 2,496 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 2,549 | 3,067 | 2,496 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 2,549 | 3,067 | 2,496 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 2,549 | 3,067 | 2,496 |
 
 ## control
 
@@ -237,6 +243,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 74,720 | 843,934 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 74,720 | 844,008 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 74,719 | 833,977 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 74,719 | 833,959 |
 
 ## create
 
@@ -271,6 +278,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 13,839,911 | 2,881,678 | 2,528,376 | 2,131,058 | 3,984,927 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 13,575,375 | 2,913,676 | 2,528,442 | 2,132,028 | 3,984,669 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 13,589,016 | 2,865,678 | 2,528,377 | 2,131,888 | 3,984,728 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 13,463,453 | 2,865,679 | 2,528,361 | 2,131,887 | 3,984,560 |
 
 ## create-on
 
@@ -305,6 +313,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 2,910,484 | 4,367,075 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 2,910,564 | 4,366,918 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 2,942,484 | 4,367,066 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 2,926,484 | 4,366,959 |
 
 ## cutoff
 
@@ -339,6 +348,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 1,182 | 50 | 111 | 65 | 35 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 1,182 | 50 | 111 | 65 | 35 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 1,182 | 50 | 111 | 65 | 35 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 1,182 | 50 | 111 | 65 | 35 |
 
 ## derive-effect
 
@@ -373,6 +383,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 760 | 680 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 760 | 680 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 760 | 680 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 760 | 680 |
 
 ## derive-on
 
@@ -407,6 +418,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 735 | 684 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 735 | 684 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 767 | 684 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 751 | 684 |
 
 ## dispose
 
@@ -441,6 +453,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 2,706,755 | 806,290 | 367,497 | 466,198 | 434,098 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 2,707,644 | 806,290 | 367,497 | 466,421 | 434,430 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 2,706,244 | 806,290 | 367,497 | 466,182 | 434,518 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 2,706,242 | 806,291 | 367,497 | 466,205 | 434,132 |
 
 ## dispose-on
 
@@ -475,6 +488,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 346,497 | 430,725 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 346,497 | 430,432 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 346,497 | 430,169 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 346,497 | 430,463 |
 
 ## editable-edit
 
@@ -509,6 +523,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 179,606 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 179,606 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 179,606 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 179,606 |
 
 ## editable-upstream
 
@@ -543,6 +558,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 230,755 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 230,755 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 230,755 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 230,755 |
 
 ## fail-recompute
 
@@ -577,6 +593,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 64,974 | 1,366 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 64,974 | 1,366 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 64,990 | 1,366 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 64,990 | 1,366 |
 
 ## flight
 
@@ -611,6 +628,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 10,999 | 6,217 | 6,218 | 11,320 | 10,767 | 22,345 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 10,999 | 6,217 | 6,218 | 11,320 | 10,767 | 22,345 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 10,993 | 6,216 | 6,217 | 11,318 | 10,765 | 22,349 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 10,993 | 6,216 | 6,217 | 11,318 | 10,765 | 22,349 |
 
 ## keyed-insert
 
@@ -645,6 +663,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 1,918,538 | 53,948 | 54,610 | 3,115,288 | 164,080 | 167,386 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 1,918,672 | 54,044 | 54,745 | 3,115,213 | 164,099 | 167,492 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 1,918,533 | 53,949 | 54,613 | 3,115,365 | 164,077 | 167,439 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 1,918,533 | 53,949 | 54,614 | 3,115,302 | 164,107 | 167,393 |
 
 ## keyed-remove
 
@@ -679,6 +698,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 1,917,462 | 43,618 | 44,970 | 3,114,568 | 132,052 | 139,972 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 1,917,586 | 43,714 | 45,108 | 3,114,500 | 131,444 | 139,977 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 1,917,459 | 43,619 | 44,974 | 3,115,016 | 131,917 | 140,743 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 1,917,466 | 43,619 | 44,975 | 3,115,030 | 131,871 | 140,793 |
 
 ## keyed-swap
 
@@ -713,6 +733,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 1,970,155 | 46,160 | 46,624 | 3,264,995 | 79,178 | 84,538 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 1,970,250 | 46,256 | 46,719 | 3,265,024 | 79,175 | 84,567 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 1,970,155 | 46,162 | 46,624 | 3,264,841 | 79,090 | 84,442 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 1,970,155 | 46,161 | 46,624 | 3,264,869 | 79,079 | 84,420 |
 
 ## mvu-dispatch
 
@@ -747,6 +768,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 58,066 | 767 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 58,066 | 767 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 58,066 | 767 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 58,067 | 767 |
 
 ## project-chain
 
@@ -781,6 +803,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 3,834,822 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 3,834,796 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 3,843,198 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 3,843,167 |
 
 ## project-churn
 
@@ -815,6 +838,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 36,207 | 34,047 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 36,207 | 34,047 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 36,213 | 34,051 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 36,213 | 34,051 |
 
 ## project-edit
 
@@ -849,6 +873,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 50,182 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 50,198 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 50,168 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 50,168 |
 
 ## project-reorder
 
@@ -883,6 +908,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 778,885 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 778,886 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 778,887 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 778,886 |
 
 ## shape-diamond
 
@@ -917,6 +943,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 59,894 | 88,557 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 59,894 | 88,557 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 59,894 | 88,557 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 59,894 | 88,557 |
 
 ## shape-dynamic
 
@@ -951,6 +978,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 82,520 | 95,581 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 82,520 | 95,583 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 82,520 | 95,580 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 82,520 | 95,575 |
 
 ## stream-burst-1
 
@@ -985,6 +1013,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 1,969 | 1,567 | 2,485 | 5,233 | 6,299 | 10,438 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 1,969 | 1,567 | 2,485 | 5,235 | 6,299 | 10,436 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 1,969 | 1,567 | 2,486 | 5,232 | 6,299 | 10,434 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 1,969 | 1,567 | 2,486 | 5,235 | 6,299 | 10,436 |
 
 ## stream-burst-16
 
@@ -1019,6 +1048,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 5,626 | 24,937 | 5,695 | 10,349 | 47,734 | 13,089 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 5,626 | 24,937 | 5,695 | 10,346 | 47,734 | 13,089 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 5,626 | 24,937 | 5,696 | 10,347 | 47,734 | 13,087 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 5,626 | 24,937 | 5,696 | 10,351 | 47,732 | 13,089 |
 
 ## stream-burst-256
 
@@ -1053,6 +1083,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 64,126 | 398,821 | 57,034 | 119,341 | 792,637 | 70,590 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 64,126 | 398,821 | 57,034 | 119,302 | 792,633 | 70,590 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 64,126 | 398,821 | 57,035 | 119,306 | 792,637 | 70,590 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 64,126 | 398,821 | 57,035 | 119,391 | 792,627 | 70,590 |
 
 ## stream-restart
 
@@ -1087,6 +1118,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 4,184 | 4,965 | 12,436 | 8,953 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 4,184 | 4,981 | 12,436 | 8,951 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 4,181 | 4,978 | 12,437 | 8,950 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 4,181 | 4,962 | 12,433 | 8,952 |
 
 ## timed-admit-both
 
@@ -1121,6 +1153,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 118,269 | 133,820 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 118,269 | 133,823 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 120,317 | 133,817 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 118,269 | 133,819 |
 
 ## timed-admit-debounce
 
@@ -1155,6 +1188,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 117,174 | 132,381 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 117,174 | 132,382 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 119,222 | 132,420 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 117,174 | 132,415 |
 
 ## timed-admit-first
 
@@ -1189,6 +1223,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 69,285 | 82,220 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 69,285 | 82,222 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 70,309 | 82,222 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 69,285 | 82,222 |
 
 ## timed-admit-last
 
@@ -1223,6 +1258,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 117,436 | 132,701 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 117,436 | 132,699 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 119,484 | 132,712 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 117,436 | 132,738 |
 
 ## timed-capture-both
 
@@ -1257,6 +1293,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 35,724 | 45,022 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 35,724 | 45,022 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 35,724 | 45,095 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 35,724 | 45,095 |
 
 ## timed-capture-debounce
 
@@ -1291,6 +1328,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 35,596 | 43,713 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 35,596 | 43,713 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 35,596 | 43,712 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 35,596 | 43,712 |
 
 ## timed-capture-first
 
@@ -1325,6 +1363,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 32,076 | 38,934 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 32,076 | 38,933 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 32,076 | 38,934 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 32,076 | 38,934 |
 
 ## timed-capture-last
 
@@ -1359,6 +1398,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 35,532 | 43,649 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 35,532 | 43,649 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 35,532 | 43,648 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 35,532 | 43,648 |
 
 ## update
 
@@ -1393,6 +1433,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 1,088,390 | 38,805 | 82,005 | 262,616 | 207,667 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 1,088,390 | 38,805 | 82,005 | 262,888 | 207,655 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 1,089,983 | 38,805 | 82,005 | 262,549 | 207,612 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 1,088,390 | 38,805 | 82,005 | 262,517 | 207,660 |
 
 ## update-on
 
@@ -1427,6 +1468,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 92,805 | 221,289 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 92,805 | 221,297 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 96,005 | 221,313 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 94,405 | 221,334 |
 
 ## work-form
 
@@ -1461,6 +1503,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 169,672 | 163,139 | 288,794 | 287,138 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 169,672 | 163,172 | 288,738 | 287,081 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 169,672 | 163,139 | 288,761 | 287,093 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 169,672 | 163,139 | 288,739 | 287,121 |
 
 ## work-status
 
@@ -1495,6 +1538,7 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 99,945 | 78,615 | 320,901 | 155,429 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 99,945 | 78,615 | 320,914 | 155,421 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 99,945 | 81,815 | 320,867 | 155,443 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 99,945 | 80,215 | 320,903 | 155,394 |
 
 ## work-value
 
@@ -1529,4 +1573,5 @@
 | `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | 107,070 | 119,269 | 321,175 | 283,799 |
 | `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | 107,069 | 119,271 | 321,148 | 283,799 |
 | `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | 107,069 | 122,469 | 321,138 | 283,817 |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 107,069 | 120,869 | 321,107 | 283,810 |
 
