@@ -30,6 +30,17 @@ let private appendToHead (document: Document) (node: Element) : unit = jsNative
 [<Emit("(Array.from($0.head.querySelectorAll('[data-ranvier-head]')).find(node => node.getAttribute('data-ranvier-head') === $1 && !$2.includes(node)) ?? null)")>]
 let private marked (document: Document) (key: string) (claimed: ResizeArray<Element>) : Element = jsNative
 
+/// <summary>Removes the marked head elements of the document absent from <c>claimed</c>.</summary>
+[<Emit("Array.from($0.head?.querySelectorAll('[data-ranvier-head]') ?? []).filter(node => !$1.includes(node)).forEach(node => node.remove())")>]
+let private removeUnclaimed (document: Document) (claimed: ResizeArray<Element>) : unit = jsNative
+
+/// <summary>
+/// The inverse of edits to the document's head: its child list, the attributes of each child element in order and the
+/// children of each <c>title</c> element are set back. Equal parts are left untouched.
+/// </summary>
+[<Emit("(() => { const h = $0.head; if (!h) return () => {}; const c = Array.from(h.childNodes), a = c.map(n => n.nodeType === 1 ? Array.from(n.attributes, x => [x.name, x.value]) : null), t = c.map(n => n.nodeName === 'TITLE' ? Array.from(n.childNodes) : null); return () => { c.forEach((n, i) => { if (h.childNodes[i] !== n) h.insertBefore(n, h.childNodes[i] ?? null); }); while (h.childNodes.length > c.length) h.lastChild.remove(); c.forEach((n, i) => { const x = a[i]; if (x && (n.attributes.length !== x.length || x.some(([k, v], j) => n.attributes[j].name !== k || n.attributes[j].value !== v))) { for (const y of Array.from(n.attributes)) n.removeAttribute(y.name); for (const [k, v] of x) n.setAttribute(k, v); } const y = t[i]; if (y && (n.childNodes.length !== y.length || y.some((m, j) => n.childNodes[j] !== m))) n.replaceChildren(...y); }); }; })()")>]
+let keep (document: Document) : unit -> unit = jsNative
+
 [<Emit("$0.title")>]
 let private titleOf (document: Document) : string = jsNative
 
@@ -47,7 +58,7 @@ type Record internal (registry: Registry, kind: HeadKind, key: string, element: 
     member _.Kind = kind
     /// <summary>The entry's key; null for an unkeyed link.</summary>
     member _.Key = key
-    /// <summary>The entry's head element; null for a title entry.</summary>
+    /// <summary>The entry's head element; for a title entry, the adopted marked title element or null.</summary>
     member _.Element = element
     member val Title = "" with get, set
     member val Shown = false with get, set
@@ -58,7 +69,7 @@ and [<Sealed>] Registry(document: Document) =
     member _.Document = document
     /// <summary>Per key, the live records in activation order; the last one is shown.</summary>
     member val Live = Dictionary<string, ResizeArray<Record>>()
-    /// <summary>The marked server elements adopted by records not yet withdrawn.</summary>
+    /// <summary>The elements of records not yet withdrawn: adopted marked elements and created ones.</summary>
     member val Claimed = ResizeArray<Element>()
     /// <summary>While a title record is live, the document's title from before the first one.</summary>
     member val Original: string = null with get, set
@@ -68,7 +79,8 @@ and [<Sealed>] Registry(document: Document) =
 // The registries of documents with records not yet withdrawn.
 let private registries = ResizeArray<Registry>()
 
-let private registryOf (document: Document) =
+/// <summary>The registry of the document; null when it has no record.</summary>
+let private existingRegistry (document: Document) =
     let mutable found: Registry = Unchecked.defaultof<_>
 
     for index in 0 .. registries.Count - 1 do
@@ -77,6 +89,11 @@ let private registryOf (document: Document) =
             && obj.ReferenceEquals (registries[index].Document, document)
         then
             found <- registries[index]
+
+    found
+
+let private registryOf (document: Document) =
+    let mutable found = existingRegistry document
 
     if isNull (box found) then
         found <- Registry document
@@ -122,37 +139,58 @@ let private heldFor (registry: Registry) (key: string) (own: Element) : Element 
     found
 
 /// <summary>
-/// A record for an entry of the document. A meta or link record owns the document's marked head element of the same
-/// key when one is unclaimed, and otherwise a new element marked with its key.
+/// A record for an entry of the document. A keyed record adopts the document's marked head element of the same key when
+/// one is unclaimed; otherwise a meta or link record owns a new element marked with its key, and a title record has no
+/// element. An unkeyed link always owns a new element.
 /// </summary>
 let create (document: Document) (kind: HeadKind) (key: string) : Record =
     let registry = registryOf document
     registry.Records <- registry.Records + 1
 
-    match kind with
-    | HeadKind.Title -> Record (registry, kind, key, null)
-    | HeadKind.Meta
-    | HeadKind.Link ->
-        let server =
-            if isNull key then
-                Unchecked.defaultof<_>
-            else
-                marked document key registry.Claimed
-
-        if isNull (box server) then
-            let element =
-                createElement document (if kind = HeadKind.Meta then "meta" else "link")
-
-            element.setAttribute ("data-ranvier-head", (if isNull key then "" else key))
-            Record (registry, kind, key, element)
+    let server =
+        if isNull key then
+            Unchecked.defaultof<_>
         else
-            registry.Claimed.Add server
-            Record (registry, kind, key, server)
+            marked document key registry.Claimed
+
+    if not (isNull (box server)) then
+        registry.Claimed.Add server
+        Record (registry, kind, key, server)
+    elif kind = HeadKind.Title then
+        Record (registry, kind, key, null)
+    else
+        let element =
+            createElement document (if kind = HeadKind.Meta then "meta" else "link")
+
+        element.setAttribute ("data-ranvier-head", (if isNull key then "" else key))
+        registry.Claimed.Add element
+        Record (registry, kind, key, element)
+
+/// <summary>Removes each marked head element of the document that its registry has not claimed.</summary>
+let removeUnadopted (document: Document) =
+    let registry = existingRegistry document
+
+    removeUnclaimed
+        document
+        (if isNull (box registry) then
+             ResizeArray ()
+         else
+             registry.Claimed)
+
+/// <summary>Sets the attribute of a head element to <c>Some</c> value and removes it for <c>None</c>, when it differs.</summary>
+let writeAttribute (element: Element) (name: string) (value: string option) =
+    match value with
+    | Some text ->
+        if element.getAttribute name <> Some text then
+            element.setAttribute (name, text)
+    | None ->
+        if element.hasAttribute name then
+            element.removeAttribute name
 
 /// <summary>
-/// Shows the record above the key's other live records. The first title record of a key keeps the document's title for
-/// <c>withdraw</c>. The first shown meta or link record of a key takes the place of a marked element adopted by a record
-/// not yet shown.
+/// Shows the record above the key's other live records. A title record writes the document's title when it differs; the
+/// first title record of a key keeps the document's title for <c>withdraw</c>. The first shown meta or link record of a
+/// key takes the place of a marked element adopted by a record not yet shown.
 /// </summary>
 let activate (record: Record) =
     let registry = record.Registry
@@ -184,7 +222,10 @@ let activate (record: Record) =
         entries.Add record
         record.Shown <- true
 
-        if record.Kind = HeadKind.Title then
+        if
+            record.Kind = HeadKind.Title
+            && titleOf registry.Document <> record.Title
+        then
             setTitleOf registry.Document record.Title
 
 /// <summary>
