@@ -354,7 +354,7 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
         | _ -> false
 
 #if !FABLE_COMPILER
-    // The order of compare, comparing value types unboxed.
+    // The order of compare, unboxed for value types.
     let comparer = LanguagePrimitives.FastGenericComparer<'S>
 #endif
 

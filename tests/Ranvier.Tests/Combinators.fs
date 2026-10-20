@@ -1276,6 +1276,8 @@ let sortKeyOrderTests =
                     { Name = "A"; Rank = 1 }
                 ]
             keyOrderCase "option" [ Some "b"; None; Some "B"; Some "a"; None; Some "" ]
+            keyOrderCase "tuple with NaN" [ 0.0, 1; nan, 1; -1.0, 2; nan, 0; infinity, 0; nan, 1 ]
+            keyOrderCase "option with NaN" [ Some 0.0; Some nan; None; Some -infinity; Some nan; Some 1.0 ]
             keyOrderCase "union" [ Square "b"; Dot; Circle 2.0; Square "B"; Circle -1.0; Dot; Square "a" ]
             keyOrderCase "decimal" [ 1.10M; 1.1M; -0.5M; 0M; Decimal.MaxValue; Decimal.MinValue; 0.001M ]
             keyOrderCase "char" [ 'b'; 'B'; 'a'; 'é'; 'A'; '-'; 'ä' ]
@@ -1295,6 +1297,18 @@ let sortKeyOrderTests =
             // .NET only: JavaScript exposes no allocation counter.
             untracedOnly
             <| test "a sort pass over int keys allocates no box per comparison" {
+                // Unoptimised code keeps the box in isNaN.
+                let optimiserDisabled (assembly: Reflection.Assembly) =
+                    match Attribute.GetCustomAttribute (assembly, typeof<Diagnostics.DebuggableAttribute>) with
+                    | :? Diagnostics.DebuggableAttribute as debuggable -> debuggable.IsJITOptimizerDisabled
+                    | _ -> false
+
+                if
+                    optimiserDisabled typeof<Graph>.Assembly
+                    || optimiserDisabled (Reflection.Assembly.GetExecutingAssembly ())
+                then
+                    skiptest "the JIT optimiser is disabled"
+
                 let rowCount = 1000
                 use g = new Graph ()
                 use _ = g.Activate ()
@@ -1317,17 +1331,19 @@ let sortKeyOrderTests =
                     (GC.GetAllocatedBytesForCurrentThread () - before)
                     / 20L
 
-                // Unoptimised tier-0 code boxes in any comparer: the least over rounds is the optimised figure, after
-                // tiered compilation.
-                let least =
-                    Seq.init 50 (fun _ ->
-                        let bytes = bytesPerPass ()
-                        Threading.Thread.Sleep 20
-                        bytes)
-                    |> Seq.min
-
                 // A boxing comparer allocates 48 bytes per comparison, about 500,000 bytes per pass here.
-                Expect.isLessThan least (int64 (32 * rowCount)) $"a sort pass over %d{rowCount} rows allocated %d{least} bytes"
+                let limit = int64 (32 * rowCount)
+
+                // Tier-0 code boxes in isNaN; the least over rounds is the tier-1 figure.
+                let mutable least = bytesPerPass ()
+                let mutable rounds = 1
+
+                while least >= limit && rounds < 50 do
+                    Threading.Thread.Sleep 20
+                    least <- min least (bytesPerPass ())
+                    rounds <- rounds + 1
+
+                Expect.isLessThan least limit $"a sort pass over %d{rowCount} rows allocated %d{least} bytes"
             }
 #endif
         ]
