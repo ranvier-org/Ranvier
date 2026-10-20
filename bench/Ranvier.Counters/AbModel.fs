@@ -49,16 +49,14 @@ module Runtimes =
     [<Literal>]
     let Node = "node"
 
-    /// <summary>The Fable harness under <c>node --jitless</c>.</summary>
+    /// <summary>The Fable harness under <c>node --jitless</c>; measured on <c>arm64-counters</c> only.</summary>
     [<Literal>]
     let NodeJitless = "node-jitless"
 
     [<Literal>]
     let Dotnet = "dotnet"
 
-    /// <summary>
-    /// The runtimes a leg measures, in measurement order. Only <c>arm64-counters</c> measures <c>node-jitless</c>.
-    /// </summary>
+    /// <summary>The runtimes a leg measures, in measurement order.</summary>
     let measured (leg: string) =
         if leg = "arm64-counters" then
             [ Node; NodeJitless; Dotnet ]
@@ -66,16 +64,26 @@ module Runtimes =
             [ Node; Dotnet ]
 
     /// <summary>
-    /// Whether a runtime has a separate library-counter run. <c>node-jitless</c> runs the code of <c>node</c>, so its
-    /// library counters are those of <c>node</c>.
+    /// The runtimes <c>run</c> was recorded with: <c>measured</c>, without <c>node-jitless</c> for an arm64 artifact
+    /// recorded before that runtime existed.
     /// </summary>
+    let recorded (run: AbRun) =
+        let present =
+            run.Processes
+            |> Array.exists (fun p -> p.Runtime = NodeJitless)
+            || run.NoBaseline
+               |> Array.exists (fun label -> label.Name = NodeJitless)
+
+        measured run.Leg
+        |> List.filter (fun runtime -> runtime <> NodeJitless || present)
+
+    /// <summary>Whether a runtime has its own library-counter run; <c>node-jitless</c> shares the counters of <c>node</c>.</summary>
     let instrumented (runtime: string) =
         runtime <> NodeJitless
 
     /// <summary>
-    /// Whether the gate metric of a runtime can fail a gating leg. Tiered Node figures depend on JIT history, which
-    /// objects an earlier run left alive, so they are reported and not gated; <c>node-jitless</c> is the gated Node
-    /// runtime.
+    /// Whether a regression of <c>runtime</c> on <c>leg</c> can fail the leg or warn. False only for tiered
+    /// <c>node</c> on <c>arm64-counters</c>, where <c>node-jitless</c> is the gated Node runtime.
     /// </summary>
-    let gated (runtime: string) =
-        runtime <> Node
+    let gated (leg: string) (runtime: string) =
+        not (leg = "arm64-counters" && runtime = Node)

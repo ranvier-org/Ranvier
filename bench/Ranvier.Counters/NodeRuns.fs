@@ -101,9 +101,7 @@ let script (output: string) (build: string) =
     Path.Combine (output, build, "Main.fs.js")
 
 /// <summary>
-/// The extra V8 flag of the gated Node runs. Under <c>--jitless</c> every function runs in the interpreter, so a
-/// region's instruction count follows the work it does and is the same whichever earlier objects were collected.
-/// Tiered counts depend on that history through V8's optimisation decisions, so they are reported and not gated.
+/// The extra V8 flag of the <c>node-jitless</c> runtime: every function of the run executes in the interpreter.
 /// </summary>
 let jitless = [ "--jitless" ]
 

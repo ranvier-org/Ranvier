@@ -187,6 +187,46 @@ let tests =
 
                 Expect.equal r.Medians.Length 6 "all available timing metrics"
                 Expect.equal r.Runs[0].Counters.Length 2 "single instrumented process per runtime side"
+            testCase "a new record requires node-jitless and a stored record from before it is recreated"
+            <| fun _ ->
+                let a = ab "h" [ "x", 1100. ]
+
+                let predating =
+                    { a with
+                        Processes =
+                            a.Processes
+                            |> Array.filter (fun p -> p.Runtime <> Runtimes.NodeJitless)
+                    }
+
+                Expect.throws
+                    (fun () ->
+                        History.create "h" "p" DateTime.UtcNow "new" [] [| predating |]
+                        |> ignore)
+                    "a new arm64 record must carry node-jitless"
+
+                let r = History.recreate "h" "p" DateTime.UtcNow "stored" [] [| predating |]
+
+                Expect.isFalse
+                    (r.Medians
+                     |> Array.exists (fun m -> m.Runtime = Runtimes.NodeJitless))
+                    "a stored record keeps the runtimes it was recorded with"
+
+                let partial =
+                    { a with
+                        Processes =
+                            a.Processes
+                            |> Array.filter (fun p ->
+                                not (
+                                    p.Runtime = Runtimes.NodeJitless
+                                    && p.Side = "base"
+                                ))
+                    }
+
+                Expect.throws
+                    (fun () ->
+                        History.recreate "h" "p" DateTime.UtcNow "stored" [] [| partial |]
+                        |> ignore)
+                    "a record with node-jitless still needs complete node-jitless coverage"
             testCase "both legs require matching parents and advisory changes are declarations only"
             <| fun _ ->
                 let a = ab "h" [ "x", 1100. ]
@@ -304,6 +344,27 @@ let tests =
                         (History.main [ "timeline"; "--runs"; runDir; "--out"; Path.Combine (dir, "timeline.md") ])
                         0
                         "timeline reads records that predate Packages"
+
+                    // A record from before node-jitless: its arm64 artifact holds node and dotnet processes only.
+                    let predatingJitless = Nodes.JsonNode.Parse(recorded).AsObject()
+
+                    let dropJitless (rows: Nodes.JsonArray) =
+                        for i in rows.Count - 1 .. -1 .. 0 do
+                            let runtime = rows[i].AsObject().["Runtime"].GetValue<string>()
+
+                            if runtime = Runtimes.NodeJitless then
+                                rows.RemoveAt i
+
+                    for run in predatingJitless["Runs"].AsArray() do
+                        dropJitless (run["Processes"].AsArray())
+
+                    dropJitless (predatingJitless["Medians"].AsArray())
+                    File.WriteAllText (Path.Combine (runDir, "h.json"), predatingJitless.ToJsonString ())
+
+                    Expect.equal
+                        (History.main [ "timeline"; "--runs"; runDir; "--out"; Path.Combine (dir, "timeline.md") ])
+                        0
+                        "timeline reads records that predate node-jitless"
 
                     File.WriteAllText (Path.Combine (runDir, "h.json"), recorded.Replace ("\"Gc\": true,", ""))
 

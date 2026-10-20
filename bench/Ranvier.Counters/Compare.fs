@@ -36,8 +36,8 @@ type Finding =
         Delta: float option
         Accepted: bool
         /// <summary>
-        /// Whether a regression of this finding can fail a gating leg: false for tiered Node, whose figures depend on JIT
-        /// history. See <c>Runtimes.gated</c>.
+        /// <c>Runtimes.gated</c> for the finding's leg and runtime: whether a regression can fail the leg, warn or
+        /// change the headline.
         /// </summary>
         Gated: bool
         BaseGc: bool
@@ -237,8 +237,11 @@ let private scenarioSet (p: ProcessFigures) =
     |> Array.map scenarioKey
     |> Set.ofArray
 
-/// <summary>Requires a complete five-round CI artifact with both head runtimes and explicit bootstrap reasons for missing baselines.</summary>
-let validate (gate: string) (run: AbRun) =
+/// <summary>
+/// Requires a complete five-round CI artifact covering each of <c>runtimes</c> on both sides, with explicit bootstrap
+/// reasons for missing baselines.
+/// </summary>
+let validateWith (runtimes: string list) (gate: string) (run: AbRun) =
     require (not (isNull (box run))) "Missing AB artifact."
 
     require
@@ -262,7 +265,7 @@ let validate (gate: string) (run: AbRun) =
     for a in [ box run.Processes; box run.Counters; box run.NoBaseline; box run.Versions ] do
         require (not (isNull a)) "Missing artifact collection."
 
-    let runtimes = Runtimes.measured run.Leg
+    require (List.forall (fun r -> List.contains r (Runtimes.measured run.Leg)) runtimes) "Unknown runtime for the leg."
     let instrumented = runtimes |> List.filter Runtimes.instrumented
     unique "baseline runtime" _.Name run.NoBaseline
 
@@ -388,22 +391,28 @@ let validate (gate: string) (run: AbRun) =
                         "Metric coverage differs between sides."
                 | None -> ()
 
+/// <summary>
+/// <c>validateWith</c> over every runtime the leg measures (<c>Runtimes.measured</c>).
+/// </summary>
+let validate (gate: string) (run: AbRun) =
+    validateWith (Runtimes.measured run.Leg) gate run
+
 let private isRanvier (engine: string) =
     engine.StartsWith ("Ranvier", StringComparison.Ordinal)
 
 /// <summary>
-/// Validates CI coverage and compares all metrics; unaccepted Ranvier gate regressions of a gated runtime fail a gating
-/// leg.
+/// <c>verdict</c> for an artifact validated against <c>runtimes</c>; unaccepted Ranvier gate regressions of a gated
+/// runtime fail a gating leg.
 /// </summary>
 /// <remarks>
-/// Tiered <c>node</c> findings are reported with <c>Gated = false</c> and never fail or warn; <c>node-jitless</c> is the
-/// gated Node runtime. Unknown acceptance names fail every leg, including advisory legs. When the gate metric of a runtime's
-/// <c>control</c> scenario is <c>Regressed</c> or <c>Improved</c>, every gate regression of that runtime is
-/// <c>Inconclusive</c> and passes.
+/// A finding of a runtime <c>Runtimes.gated</c> rejects for the leg has <c>Gated = false</c>: it is reported, and it
+/// never fails, warns or changes the headline. Unknown acceptance names fail every leg, including advisory legs. When
+/// the gate metric of a runtime's <c>control</c> scenario is <c>Regressed</c> or <c>Improved</c>, every gate regression
+/// of that runtime is <c>Inconclusive</c> and passes.
 /// </remarks>
-let verdict gate threshold floor failing (accept: Acceptance) (run: AbRun) =
+let verdictWith (runtimes: string list) gate threshold floor failing (accept: Acceptance) (run: AbRun) =
     configuration threshold floor
-    validate gate run
+    validateWith runtimes gate run
 
     let counterUnavailable =
         run.Versions
@@ -483,9 +492,9 @@ let verdict gate threshold floor failing (accept: Acceptance) (run: AbRun) =
                         Delta = delta
                         Accepted =
                             kind = Regressed
-                            && Runtimes.gated runtime
+                            && Runtimes.gated run.Leg runtime
                             && (accept.All || List.contains scenario accept.Names)
-                        Gated = Runtimes.gated runtime
+                        Gated = Runtimes.gated run.Leg runtime
                         BaseGc = bs |> Array.exists gc
                         HeadGc = hs |> Array.exists gc
                         BaseCompiled = bs |> Array.exists compiled
@@ -548,6 +557,10 @@ let verdict gate threshold floor failing (accept: Acceptance) (run: AbRun) =
                 |> Array.map (fun f -> $"{run.Leg} {f.Runtime} {f.Scenario} ({f.Engine}): {gate} regression")
     }
 
+/// <summary><c>verdictWith</c> over every runtime the leg measures (<c>Runtimes.measured</c>).</summary>
+let verdict gate threshold floor failing (accept: Acceptance) (run: AbRun) =
+    verdictWith (Runtimes.measured run.Leg) gate threshold floor failing accept run
+
 let private escape (s: string) =
     s.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("|", "&#124;").Replace("\r", " ").Replace("\n", " ")
 
@@ -589,7 +602,7 @@ let markdown (accept: Acceptance) (verdicts: Verdict list) =
             verdicts
             |> List.exists (fun v ->
                 v.Findings
-                |> Array.exists (fun f -> f.Kind = Inconclusive))
+                |> Array.exists (fun f -> f.Gated && f.Kind = Inconclusive))
         then
             "## Performance: inconclusive"
         else

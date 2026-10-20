@@ -23,8 +23,7 @@
 /// </para>
 /// <para>
 /// Under <c>node --jitless</c> each case runs one warm-up at 2N and a full collection, with no settling and no tier
-/// flags; both regions run in the interpreter. Its instruction counts follow the work done and are the gated Node
-/// metric; the tiered figures are reported only.
+/// flags; both regions run in the interpreter.
 /// </para>
 /// </remarks>
 module FableCounters.Main
@@ -92,10 +91,7 @@ let inline private signal (handshake: bool) (line: string) =
         Node.writeLine 1 line
         Node.waitLine 0
 
-/// <summary>
-/// The default warm-up runs under <c>--jitless</c>. One run at 2N fills the inline caches the interpreter reads;
-/// with no compiler there is no tier to settle.
-/// </summary>
+/// <summary>The default warm-up runs, at 2N, under <c>--jitless</c>.</summary>
 [<Literal>]
 let private JitlessWarmup = 1
 

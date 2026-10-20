@@ -731,7 +731,7 @@ let tests =
 
                 let v = verdict "cpu_ns" 0.15 0. false none r
                 Expect.isFalse v.Fails "advisory"
-                Expect.hasLength v.Warnings 1 "dotnet only: tiered Node is not gated"
+                Expect.hasLength v.Warnings 2 "each runtime: x64 has no jitless leg, so tiered Node warns"
                 let typo = acceptance true [ "Perf-Accepted: typo -- mistake" ] (Set.singleton "x")
                 Expect.isTrue (verdict "cpu_ns" 0.15 0. false typo r).Fails "unknown override remains fatal"
             testCase "CLI writes readable DTO on rejected regression and validates overrides"

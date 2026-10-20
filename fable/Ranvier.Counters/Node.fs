@@ -78,14 +78,15 @@ let codeHeapUsed () =
 [<Import("setFlagsFromString", "node:v8")>]
 let private setFlags (flags: string) : unit = jsNative
 
-/// <summary>Whether the process runs under <c>node --jitless</c>, where every function runs in the interpreter.</summary>
-[<Emit("process.execArgv.includes('--jitless')")>]
+/// <summary>
+/// Whether the process runs under <c>--jitless</c>, given on the command line or in <c>NODE_OPTIONS</c>.
+/// </summary>
+[<Emit("process.execArgv.includes('--jitless') || (process.env.NODE_OPTIONS || '').split(/\\s+/).includes('--jitless')")>]
 let jitless () : bool = jsNative
 
 /// <summary>
 /// Enables or disables tier-up to Sparkplug, Maglev and TurboFan. While disabled, every function keeps its
-/// current tier or drops to the interpreter on deoptimisation. A no-op under <c>--jitless</c>, where V8 crashes on
-/// these flags at run time.
+/// current tier or drops to the interpreter on deoptimisation. A no-op under <c>--jitless</c>.
 /// </summary>
 let setTierUp (enabled: bool) =
     if not (jitless ()) then
