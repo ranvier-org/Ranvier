@@ -774,6 +774,50 @@ let private withTrailingRoot (definition: Component<'props>) (props: 'props) =
     html.Substring (0, html.Length - 8)
     + "<b></b><!--]-->"
 
+/// <summary>Runs once, in the setup of the next <c>sabotage</c> instance.</summary>
+let mutable private sabotageOnce: unit -> unit = ignore
+
+let private sabotage =
+    Component.define
+        (fun _ () ->
+            let run = sabotageOnce
+            sabotageOnce <- ignore
+            run ())
+        (fun t -> t.b [||] [||])
+
+let private sabotaged =
+    Component.define (fun _ (text: string) -> text) (fun t -> t.span [||] [| t.text (fun text -> text); t.render sabotage ignore |])
+
+let private rollbackFailureReported () =
+    use graph = new Graph ()
+    let host = host ()
+    host.innerHTML <- withTrailingRoot sabotaged ""
+    // Detaching the text node that replaced the empty-text placeholder makes the placeholder's restore fail.
+    sabotageOnce <- fun () -> detach (element host "span").firstChild.Value
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        Hydration.hydrate graph None reports.Add lenientOptions host sabotaged ""
+
+    let reported =
+        [
+            for errors in reports ->
+                [
+                    for error in errors ->
+                        match error with
+                        | TemplateDom.HydrationMismatchException _ -> error.Message
+                        | _ -> "other"
+                ]
+        ]
+
+    let shown = host.innerHTML
+    mounted.Dispose ()
+
+    equal
+        ([ [ "Hydration mismatch at #1: expected <!--]-->, found b"; "other" ] ],
+         "<!--[r--><!--ranvier:start--><span><b></b></span><!--ranvier:end--><!--]-->")
+        (reported, shown)
+
 /// <summary>An element whose <c>title</c> and <c>id</c> are written when the props are true.</summary>
 let private attributed =
     Component.define (fun _ (on: bool) -> on) (fun t ->
@@ -985,6 +1029,7 @@ let cases: (string * (unit -> unit)) array =
             "a re-rendered root and a fresh mount without a root marker update and dispatch events", recoveredMountsAreLive
             "a re-rendered root issues ids under the hydration's prefix", recoveredIdsUsePrefix
             "a mismatch is found directly and among aggregated inner exceptions at any depth", aggregatedMismatch
+            "a rollback failure is reported with the mismatch and the root re-renders", rollbackFailureReported
             "an unclosed region raises at its logical path and an unclosed root re-renders its content", unclosedRegions
             "inputs edited before hydration keep their values, focus and selection when the server and client values agree", editedInputsKept
             "a live input value differing from the server's is written by hydration", differingInputsCorrected

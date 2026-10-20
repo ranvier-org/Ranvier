@@ -239,6 +239,7 @@ Hydration runs the template path with a cursor instead of a clone:
 
 - **Value differences** (text, attribute and serialised property values, list items with equal row shape) are corrected by the first commit and not reported.
 - **Structural differences** (a missing or different element, a wrong region kind, a different arm hash, extra or missing rows, a missing root marker) raise a `HydrationMismatchException` carrying the logical path, the expected node and the found node. It is caught at the nearest enclosing region, reported once through `report`, the region's server nodes between its markers are removed, and the region mounts fresh. A mismatch outside every region clears the root marker pair's content and mounts the root fresh.
+- A root start marker without a matching end marker is a structural mismatch at `#k` (the first unclosed start marker among the root's logical positions) or at `root`. Every node after the root start marker is the root's content: it is removed, and the root mounts fresh at the end of the host. Foreign siblings after an unclosed root marker are removed with it. A host without a root marker mounts the root fresh at the end of the host, after its children.
 - `Strict = true` raises the exception from `hydrate` instead, after disposing what was created. Tests use it.
 - Structure is replaced by region, not patched node by node.
 

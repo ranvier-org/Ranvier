@@ -46,16 +46,22 @@ let private clearAfter (start: Node) (finish: Node) =
 /// difference, and its regions mount their rows fresh between the server's region markers.
 /// </summary>
 /// <remarks>
-/// <para>Nodes outside the root marker pair stay in place and outside the mount's range.</para>
+/// <para>Nodes outside a closed root marker pair stay in place and outside the mount's range.</para>
 /// <para>
-/// A structural mismatch is passed to <c>report</c> once, as a one-element list. The server nodes between the root
-/// markers are then removed and the root mounts fresh before the end marker. Without a root marker, the root mounts
-/// fresh at the end of <c>host</c>, after its children; without the end marker, the nodes after the root marker are
-/// removed first. Ids issued by the fresh mount start again under <c>options.IdPrefix</c>.
+/// A structural mismatch is passed to <c>report</c> once, first in a list that also holds the failures of the
+/// attempt's rollback. The server nodes between the root markers are then removed and the root mounts fresh before the
+/// end marker. Without a root marker, the root mounts fresh at the end of <c>host</c>, after its children. Without the
+/// end marker, every node after the root marker, foreign siblings included, is removed and the root mounts fresh at the
+/// end of <c>host</c>. Ids issued by the fresh mount start again under <c>options.IdPrefix</c>.
 /// </para>
 /// <para>
-/// Under <c>options.Strict</c>, and for every other failure, the call disposes what it created and raises; the host is
-/// then as the server wrote it. A failure of <c>report</c> also propagates with the host as the server wrote it.
+/// A failure of the fresh mount propagates with the server content already removed: the root markers are left empty
+/// as <c>&lt;!--[r--&gt;&lt;!--]--&gt;</c>, or, without the end marker, <c>&lt;!--[r--&gt;</c> is the host's last child.
+/// </para>
+/// <para>
+/// Under <c>options.Strict</c>, and for every other failure of the hydration attempt, the call disposes what it created
+/// and raises; the host is then as the server wrote it. A failure of <c>report</c> also propagates with the host as the
+/// server wrote it.
 /// </para>
 /// </remarks>
 /// <exception cref="T:System.NotSupportedException"><c>mode</c> is <c>QueuedCommits</c>.</exception>
@@ -151,7 +157,11 @@ let hydrateWith
                 with error when not options.Strict ->
                     match TemplateDom.findMismatch error with
                     | Some found ->
-                        report [ found :> exn ]
+                        report (
+                            (found :> exn)
+                            :: TemplateDom.failuresBesides found error
+                        )
+
                         clearAfter rootStart rootEnd
                         fresh (Some rootEnd)
                     | None -> reraise ()

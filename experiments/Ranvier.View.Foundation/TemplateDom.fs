@@ -181,22 +181,37 @@ let internal rootEnd (start: Node) : Node =
 
 #if FABLE_COMPILER
 /// <summary>The inner exceptions of an <c>AggregateException</c>, held under Fable as an <c>innerException</c> array; empty for any other exception.</summary>
-[<Emit("Array.isArray($0.innerException) ? $0.innerException : []")>]
+[<Emit("$0 != null && Array.isArray($0.innerException) ? $0.innerException : []")>]
 let private aggregated (error: exn) : exn array = jsNative
+#else
+/// <summary>The inner exceptions of an <c>AggregateException</c>; empty for any other exception.</summary>
+let private aggregated (error: exn) : exn array =
+    match error with
+    | :? AggregateException as aggregate -> Seq.toArray aggregate.InnerExceptions
+    | _ -> [||]
 #endif
 
 /// <summary>The first <c>HydrationMismatchException</c> in <c>error</c> or, at any depth, its aggregated inner exceptions.</summary>
 let rec internal findMismatch (error: exn) : HydrationMismatchException option =
     match error with
     | :? HydrationMismatchException as found -> Some found
-#if FABLE_COMPILER
     | _ -> aggregated error |> Array.tryPick findMismatch
-#else
-    | :? AggregateException as aggregate ->
-        aggregate.InnerExceptions
-        |> Seq.tryPick findMismatch
-    | _ -> None
-#endif
+
+/// <summary>
+/// The exceptions of <c>error</c> other than <c>excluded</c>, with every <c>AggregateException</c> at any depth replaced
+/// by its inner exceptions, in depth-first order.
+/// </summary>
+let rec internal failuresBesides (excluded: exn) (error: exn) : exn list =
+    let inner = aggregated error
+
+    if inner.Length > 0 then
+        inner
+        |> Seq.collect (failuresBesides excluded)
+        |> List.ofSeq
+    elif obj.ReferenceEquals (error, excluded) then
+        []
+    else
+        [ error ]
 
 /// <summary>The server node a collected node of a template adopts.</summary>
 type Expectation =
