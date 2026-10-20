@@ -26,7 +26,8 @@ let private strictOptions: Hydration.HydrationOptions =
 
 let private loops () =
     use graph = new Graph ()
-    let setups = Loops.childSetups
+    // Snapshots of module mutables are `let mutable`: Fable 5.18 inlines a single-use immutable binding at its use site.
+    let mutable setups = Loops.childSetups
     let target = host ()
     let reports = ResizeArray<exn list>()
 
@@ -44,8 +45,8 @@ let private loops () =
 
     equal (1, "1", "0", "0") (Loops.childSetups - setups, text ".step", text ".total", text ".last")
 
-    // A parent change that leaves the selected step equal reads nothing in the child.
-    let reads = Loops.stepReads
+    // A parent change that leaves the selected step equal causes 0 child step reads.
+    let mutable reads = Loops.stepReads
     act (fun () -> Loops.parentDispatch (Rename "b"))
     equal ("b", 0, 1) (text ".label", Loops.stepReads - reads, Loops.childSetups - setups)
 
@@ -63,10 +64,9 @@ let private loops () =
     act (fun () -> Loops.held Tick)
     equal "102" (text ".total")
 
-    // Hiding the child disposes it; its held dispatch reaches nothing (PR #122).
+    // Hiding the child disposes it; its held dispatch is dropped (PR #122).
     act (fun () -> Loops.parentDispatch Toggle)
     equal null (text ".child")
-    // Fable inlines a single-use immutable read of a module mutable at its use site; a mutable local stays a snapshot.
     let mutable updates = Loops.childUpdates
     act (fun () -> Loops.held Tick)
     act (fun () -> Loops.held Add)

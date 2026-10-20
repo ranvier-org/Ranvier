@@ -428,7 +428,7 @@ let run (folder: string) =
                 (name
                  + ": Element's native type must equal the parts'")
 
-    // Whitespace-free comparison: the literals hold under any Fantomas spacing.
+    // Compares with whitespace removed.
     let squeeze (text: string) =
         Regex.Replace (text, @"\s+", "")
 

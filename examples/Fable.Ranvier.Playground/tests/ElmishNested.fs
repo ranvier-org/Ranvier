@@ -26,12 +26,12 @@ type ChildMsg =
     | Add
     | Tick
 
-/// <summary>Counters the checks read.</summary>
+/// <summary>Counts and dispatch handles recorded by the fixtures.</summary>
 module Loops =
     let mutable childSetups = 0
     let mutable stepReads = 0
     let mutable childUpdates = 0
-    /// <summary>The dispatch a child's initial command keeps, standing in for a timer or subscription.</summary>
+    /// <summary>The dispatch kept by a child's initial command, standing in for a timer or subscription.</summary>
     let mutable held: ChildMsg -> unit = ignore
     let mutable parentDispatch: ParentMsg -> unit = ignore
 
