@@ -5,6 +5,16 @@ Branch: `poc/fable-ranvier-dom`
 Baseline: `7ffa5f9` (template boundaries, pending registration and handler failures implemented)
 Plan: [Task 9](../plans/2026-10-06-fable-ranvier-framework.md#task-9--server-html-and-hydration-follow-on), open item 7. Contract C09 ([brief](2026-10-06-fable-ranvier-framework-brief.md#c09--portability-ssr-and-hydration)); risks G02, G09, G11, G12, G13 ([variants and risks](2026-10-06-fable-ranvier-framework-variants-and-risks.md)).
 Status: approved 2026-10-19. The user agreed the `CreateId` decision (a positional instance path plus a per-region row counter, held by the view); the other decisions marked (review) stand as written.
+Amended after approval, by the implementation's review rounds:
+- `695515c`: What happens today. The markers sentence names the two row cases the hydration markers add: a row with no roots, and two rows meeting text to text.
+- `b872d0b`: Malformed HTML normalisation. The parser rules gain `select` and `optgroup` children, nested `option`, nested list and description items, nested headings and nested buttons.
+- `5094c96`: Mismatch policy. A root start marker without its end marker, and a host without a root marker, mount the root fresh at the end of the host.
+- `8806e25`: Boundaries and Decision 8. Pending `[c` content binds the server nodes, holds them detached, and shows an inert copy of them as the pending view.
+- `8b8339d`: Testing. Test 32's names map to `editedInputsKept`, `formsHydrate` and `emptyRcdataText`.
+- `af3b462`: Testing. Test 34, the journeys.
+- `c1c0296`: Boundaries and Decision 8. Pending content is decided at the end of `hydrate`; ready content keeps its nodes; focus inside detached content is lost; each `[c` boundary's server nodes are cloned once.
+- `42d4c30`: Boundaries. Pending content is decided at the end of the root mount's build.
+- The final review's fixes: out of scope gains several roots per document; Testing notes that test 30's authored root cannot be built, and adds test 35.
 
 ## Core and view state
 
@@ -41,7 +51,7 @@ Two deliverables, in order:
 1. **Server HTML.** A request renders a template component to an HTML string on .NET (and synchronously under Fable on Node), with escaped text and attributes, serialised portable properties, deterministic identity, request-local scopes and explicit pending/error output. Its first content is indexable without client JavaScript.
 2. **Hydration.** The client attaches a template component's bindings, listeners, regions and boundaries to that server output, adopting its nodes instead of cloning skeletons, with an explicit mismatch policy.
 
-Out of scope: streaming, event replay before hydration, selective or lazy hydration (separate later proposals); hydration of authored `Program`/`Tree` views outside templates; queued-commit hydration; the raw-HTML escape hatch (G13), whose later design inherits the [marker constraint](#raw-html); any change to `src/Ranvier`.
+Out of scope: streaming, event replay before hydration, selective or lazy hydration (separate later proposals); hydration of authored `Program`/`Tree` views outside templates; queued-commit hydration; the raw-HTML escape hatch (G13), whose later design inherits the [marker constraint](#raw-html); several hydrated roots in one document, whose first `hydrate` removes the unadopted head elements served for the later roots; any change to `src/Ranvier`.
 
 ## What happens today
 
@@ -324,12 +334,14 @@ Hydration (jsdom unless noted; each with `Strict = true` for the matching case):
 28. Boundaries: "content hydrates in place when ready", "server content stays as the pending view until reveal", "a server pending view hydrates and the content reveals", "a server error view re-renders the boundary".
 29. "a structural mismatch outside every region re-renders the root"; "Strict raises and leaves the host as the server wrote it".
 30. "queued-commit hydration raises NotSupportedException"; "an authored root raises".
+    - "An authored root raises" has no test: `hydrate` takes a `Component<'props>`, which is always a template, so an authored root cannot be passed.
 31. "state script round-trips JSON containing </script> and U+2028".
 32. Forms (Chromium): "an input edited before hydration keeps its value when the server and client values agree"; "checkbox, textarea and select hydrate their server state"; "focus inside a hydrated input survives hydration".
     - The first and third names are `editedInputsKept` ("inputs edited before hydration keep their values, focus and selection when the server and client values agree"), and the second is `formsHydrate` ("forms hydrate a leading line feed, checked and selectedIndex without writes, and write the client's differing values"). Both run in Chromium through `hydrationCases`.
     - The empty text slot in an RCDATA element (preflight ruling C14, test name `textareaEmptySlot`) is `emptyRcdataText` ("an empty text slot in a textarea the server left empty hydrates into a created text node"), in Chromium through `hydrationCases`.
 33. Normalisation (Chromium): for each content-model rule, the rejected markup parses differently from the client DOM, and every accepted fixture's server HTML parses to the client DOM's serialisation.
 34. Journeys (jsdom, and Chromium through `hydrationCases`), each on one host and one graph, with the visible DOM and the exact reports asserted at every step: `hydrationJourney` (events and two-way input, row moves, a region mismatch reported once and recovered by an update, disposal, then a second render hydrated cleanly with its own row counter), `retryJourney` (pending content fails into its error view, and a retry continues the row counter), `pendingListJourney` (a list update while `[c` content is pending leaves the inert copy untouched), `recoveryJourney` (a re-rendered root takes interaction and disposes, then a second render hydrates cleanly) and `headJourney` (head entries adopted, withdrawn at disposal, and adopted afresh in the next round).
+35. Rollback retention: "a returned hydrate holds no inverse of its edits, nested cursors included, and a raised one has run them all" (jsdom, through the DOM test build's counters); "a view hole's removed server nodes are collected while the hydrated mount is live" and "a recovered list's removed server rows are collected while the hydrated mount is live" (Chromium, a `WeakRef` after a forced collection); "a failure removing the unadopted head elements disposes the mount and leaves the host and the head as served".
 
 Mutation checks before review: removing the logical-sibling skip, the arm hash check, the empty-text placeholder, the row separator, the region-level mismatch catch, the attempt-owner disposal and the escape fast path must each fail a test.
 

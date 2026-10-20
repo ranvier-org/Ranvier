@@ -206,6 +206,12 @@ let internal renderOn
 /// Under Fable <c>render</c> is synchronous only.
 /// </para>
 /// </remarks>
+/// <exception cref="T:Ranvier.View.Foundation.Server.ServerPendingException">
+/// A read outside every boundary is pending, and the request's cleanup succeeds.
+/// </exception>
+/// <exception cref="T:System.AggregateException">
+/// The request's cleanup fails. The inner exceptions are the render's failure, when it failed, then the cleanup's.
+/// </exception>
 let render (options: Options) (definition: Component<'props>) (props: 'props) : string =
     let sink = HtmlSink ()
     use graph = new Graph (options.GraphOptions)
@@ -213,6 +219,12 @@ let render (options: Options) (definition: Component<'props>) (props: 'props) : 
     sink.ToString ()
 
 /// <summary>Renders as <c>render</c> does, then passes the output's segments to <c>write</c> in order; a failed render writes nothing.</summary>
+/// <exception cref="T:Ranvier.View.Foundation.Server.ServerPendingException">
+/// A read outside every boundary is pending, and the request's cleanup succeeds.
+/// </exception>
+/// <exception cref="T:System.AggregateException">
+/// The request's cleanup fails. The inner exceptions are the render's failure, when it failed, then the cleanup's.
+/// </exception>
 let renderTo (options: Options) (definition: Component<'props>) (props: 'props) (write: string -> unit) : unit =
     let sink = HtmlSink ()
 
@@ -257,6 +269,12 @@ type Page = { Body: string; Head: string }
 /// elements are concatenated without separators.
 /// </para>
 /// </remarks>
+/// <exception cref="T:Ranvier.View.Foundation.Server.ServerPendingException">
+/// A read outside every boundary is pending, and the request's cleanup succeeds.
+/// </exception>
+/// <exception cref="T:System.AggregateException">
+/// The request's cleanup fails. The inner exceptions are the render's failure, when it failed, then the cleanup's.
+/// </exception>
 let renderPage (options: Options) (definition: Component<'props>) (props: 'props) : Page =
     let sink = HtmlSink ()
     let heads = HeadCollector ()
