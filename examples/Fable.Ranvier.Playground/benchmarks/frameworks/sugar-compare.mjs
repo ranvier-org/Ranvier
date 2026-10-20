@@ -1,12 +1,11 @@
 // Range comparison of the sugared adapters with their explicit twins.
-// Usage: node benchmarks/frameworks/sugar-compare.mjs template|keyed|heap|alloc [--allow-class-tuple] <result.json>...
+// Usage: node benchmarks/frameworks/sugar-compare.mjs template|keyed|heap|alloc <result.json>...
 // alloc fails on a sugar frame, on fixture-module bytes above the explicit twin's, on a missing positive control and on sugar-alloc.mjs data
-// without twin repeats or modules; --allow-class-tuple reports the ofClass row's excess as KNOWN instead.
+// without twin repeats or modules.
 import { readFileSync } from "node:fs";
 import { isSugarFrame } from "./sugar-frames.mjs";
 
-const [kind, ...rest] = process.argv.slice(2);
-const allowClassTuple = rest.includes("--allow-class-tuple"), files = rest.filter(arg => !arg.startsWith("--"));
+const [kind, ...files] = process.argv.slice(2);
 const load = file => JSON.parse(readFileSync(file, "utf8"));
 // The fixture module of each explicit twin and of each sugared row; the byte check sums the bytes they allocate.
 const twinModules = { "ranvier-template": "FrameworkPerf.js", ranvier: "KeyedRowsPerf.js" };
@@ -90,9 +89,9 @@ for (const file of files) {
       const ownFixture = samples.map(sample => perRow(fixtureBytes(sample, [twinModules[twinName], rowModules[name]])));
       const tolerance = Math.max(...twinFixture) - Math.min(...twinFixture);
       const excess = median(ownFixture) - median(twinFixture);
-      const over = excess > tolerance, isClass = name.endsWith("-class"), known = over && isClass && allowClassTuple;
-      if (over && !known) failed++;
-      console.log(`${!over ? "bytes ok" : known ? "KNOWN   " : "BYTES   "} ${name} ${at}: ${twinModules[twinName]} + ${rowModules[name]} allocate ${ownFixture.map(fixed).join(", ")} ${unit} (median ${fixed(median(ownFixture))}) against ${twinModules[twinName]} ${twinFixture.map(fixed).join(", ")} ${unit} (median ${fixed(median(twinFixture))}); excess ${fixed(excess)} ${unit}, tolerance ${fixed(tolerance)} ${unit}${over && isClass ? "; criterion 3 known item: the ofClass constructor tuple" + (known ? ", allowed by --allow-class-tuple" : "") : ""}`);
+      const over = excess > tolerance;
+      if (over) failed++;
+      console.log(`${over ? "BYTES   " : "bytes ok"} ${name} ${at}: ${twinModules[twinName]} + ${rowModules[name]} allocate ${ownFixture.map(fixed).join(", ")} ${unit} (median ${fixed(median(ownFixture))}) against ${twinModules[twinName]} ${twinFixture.map(fixed).join(", ")} ${unit} (median ${fixed(median(twinFixture))}); excess ${fixed(excess)} ${unit}, tolerance ${fixed(tolerance)} ${unit}`);
       const totals = twins.map(sample => perRow(sample.totalBytes)), limit = Math.max(...totals) - Math.min(...totals);
       console.log(`info     ${name} ${at}: total heap median ${fixed(perRow(median(samples.map(sample => sample.totalBytes))))} against ${fixed(median(totals))} ${unit} explicit; detects excess above ${fixed(limit)} ${unit} only`);
       // Modules whose sugared median exceeds the twin's by more than the twin's own range for that module.

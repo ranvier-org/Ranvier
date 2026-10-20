@@ -1,6 +1,6 @@
 # View sugar v2 design: free tags and component declarations
 
-> **Status 2026-10-20:** approved. The user answered the first draft's open questions on the same day; §0 records the answers, and the sections below carry them. It amends the [view sugar design](2026-10-19-view-sugar-design.md) (v1). Every v1 rule this spec does not change stays binding: the lowering contract (§2 of v1), the twin-equality criteria, the definition-in-read check, the `forEach`/`forEachFixed` split and the `show` lowering.
+> **Status 2026-10-21:** implemented on `feat/view-sugar-v2`; §9 records the measurements. Approved 2026-10-20; the user answered the first draft's open questions on the same day; §0 records the answers, and the sections below carry them. It amends the [view sugar design](2026-10-19-view-sugar-design.md) (v1). Every v1 rule this spec does not change stays binding: the lowering contract (§2 of v1), the twin-equality criteria, the definition-in-read check, the `forEach`/`forEachFixed` split and the `show` lowering.
 >
 > **Decisions taken by the user on 2026-10-20** (binding; §0 quotes them):
 >
@@ -315,7 +315,7 @@ The generator's workaround is the only shape it emits for tag classes, and the d
 
 ### 4.6 Declaring components
 
-All styles return a plain `Component<'props>` from one `Component.define` call, so `Mounting.mount`, `Hydration.hydrate`, `Server.render`, the Debug definition-in-read check and twin equality apply to them unchanged. They mix freely: a record parent renders a class child, a class parent renders a record child, and an explicit `t.render` root renders both (probe 3's mixed tree: hash `9f5e7312` for all three spellings, equal server HTML on .NET and under Fable, `Strict` hydration with 39 of 39 server nodes adopted).
+All styles return a plain `Component<'props>` from one `Component.define` call, so `Mounting.mount`, `Hydration.hydrate`, `Server.render`, the Debug definition-in-read check and twin equality apply to them unchanged. They mix freely: a record parent renders a class child, a class parent renders a record child, and an explicit `t.render` root renders both (probe 3's mixed tree: hash `9f5e7312` for all three spellings, equal server HTML on .NET and under Fable, `Strict` hydration with all server nodes adopted: 59 of 59 in the implementation's mixed tree [probe: 39 of 39]).
 
 **Public names.** The helpers live in the sugar's `Component` module: `Component.template`, `Component.ofMembers` and `Component.ofClass`, beside the core's `Component.define`. One module name holds every way to make a definition, so completion on `Component.` lists all four styles together, and the docs' ranking maps to one prefix. The probe's `Declare` module is not carried; it was a probe-isolation name. `render` and `renderOf` are free functions in `Builders`, since they are view parts rather than declarations.
 
@@ -518,32 +518,36 @@ None. The first draft's ten questions and the second draft's question on `Genera
 
 ## 9. Measurements
 
-Not yet measured on the implementation. The probe figures below (2026-10-20, Ryzen 9 9900X, Chromium 153.0.8010.12, at `df3bb0b`) are the baseline the implementation has to reproduce.
+Measured on 2026-10-21 at `432592f`; tables and files are in the [research note](../../research/2026-10-20-view-sugar-v2.md). Figures in brackets are the probe's (2026-10-20, at `df3bb0b`) where they differ.
 
-**Twin equality (criteria 1, 2).** For the demo screen, the keyed fixture, the arm fixture and the benchmark row, the free twins match the explicit twins on layout signature, `structuralHash` and server HTML, and show identical markup, reports, core counter deltas, `addEventListener` registrations and MutationObserver writes (`free-counters.test.mjs`, 13 pass). The demo in every declaration style shares hash `21e93577` with `demoExplicit` and hydrates 38 of 38 server nodes under `Strict`; the mixed tree shares `9f5e7312` and hydrates 39 of 39. `decl.test.mjs`: 19 of 19 pass in Release; in Debug, the two misuse cases fail as intended.
+**Twin equality (criteria 1, 2).** For the demo screen, the keyed fixture, the arm fixture and the benchmark row, the free twins match the explicit twins on layout signature, `structuralHash` and server HTML, and show identical markup, reports, core counter deltas, `addEventListener` registrations and MutationObserver writes (`sugar-counters.test.mjs`, `sugar.test.mjs`, `SugarServerChecks`). The demo in every declaration style shares hash `21e93577` with `demoExplicit` and hydrates 38 of 38 server nodes under `Strict`; the mixed tree shares `460c3ee6` [`9f5e7312`] and hydrates 59 of 59 [39 of 39; the implementation's mixed tree is larger]. In Debug, the misuse cases fail as intended (`sugar-debug.test.mjs`).
 
-**Arm timing (criterion 3, partial).** Free `matchWith` against explicit `t.matchWith`, paired same-round ratios over 45 samples per cell: mount 1.049 (Q1–Q3 0.945–1.117), switch 1.001 (0.910–1.131), payload update 0.946 (0.863–1.185). Allocation per operation equals explicit within 1 % (5.59 MB, 2.15 MB, 121.6 kB against 5.59 MB, 2.16 MB, 122.5 kB). Keyed operations, `keyed-heap.mjs`, the template comparison and the frame search were not run by the probes.
+**Template and keyed timing (criterion 3).** `run.mjs --template-comparison`, three runs: the free, `ofMembers` and `ofClass` rows overlap the explicit row on all 27 rows of each run (run 3 after its one permitted repeat; its first attempt had one `DISJOINT` row with the sugar faster). The `ofClass` per-instance array is accepted. `keyed-rows.mjs`: all 14 operations overlap on the rerun (the first run had 3 disjoint operations, all with the sugar faster). `keyed-heap.mjs`: 847.3 B/row for both at 10,000 rows; at 1,000 rows `LOWER` (803.3 and 864.1 against 864.1). The 128-row allocation sample holds no sugar-module frame in any of 12 sugared samples, and the fixture-module bytes are −16.9 (free), −18.1 (members) and −4.4 (class) B/row against explicit, inside a 38.3 B/row tolerance. The probe measured arm timing only: free `matchWith` against explicit `t.matchWith`, paired ratios mount 1.049, switch 1.001, payload update 0.946.
 
-**Bundle (criterion 4).** Entries hold the benchmark row and the keyed and arm fixtures:
+**Bundle (criterion 4).** One-row entries hold one benchmark row and the keyed and arm fixtures; the combined entries hold all three rows:
 
-| Entry | raw | gzip | Brotli | Δ gzip vs explicit |
+| Entry | raw | gzip | Brotli | Δ gzip |
 |---|---|---|---|---|
-| explicit | 204,474 | 58,784 | 51,572 | — |
-| v1 sugar | 207,281 | 59,361 | 52,020 | +577 |
-| free tags | 208,580 | 59,660 | 52,200 | **+876** |
+| explicit | 212,352 [204,474] | 61,169 [58,784] | 53,606 [51,572] | — |
+| v1 sugar (before its removal, against its explicit 60,704) | 213,353 [207,281] | 61,301 [59,361] | 53,651 [52,020] | +597 [+577] |
+| free tags, `Component.template` | 216,387 [208,580] | 62,009 [59,660] | 54,304 [52,200] | **+840** [+876] |
+| `Component.ofMembers` row | 216,537 | 61,993 | 54,298 | +824 |
+| `Component.ofClass` row | 216,627 | 62,061 | 54,314 | +892 |
+| explicit-combined | 213,734 | 61,350 | 53,733 | — |
+| combined (free tags, control flow and all three helpers) | 218,022 | 62,219 | 54,446 | **+869** against explicit-combined; +1,050 against explicit |
 
-The declaration helpers were not in these entries. 0 `curry`, `uncurry` or `partialApply` in the emitted sugar, helper and fixture modules.
+Every entry is within the 1,024 B budget against its like-for-like explicit entry. `render`, `renderOf` and `ComponentTag` are tree-shaken from every benchmark entry. Unused sugar costs 0 B (the playground bundle hashes are unchanged). 0 `curry`, `uncurry` or `partialApply` in the emitted sugar modules.
 
 **Authoring (criterion 6).**
 
 | Fixture | Annotations, v1 sugar (written / needed) | Annotations, v2 | Non-whitespace characters, v1 → v2 |
 |---|---|---|---|
-| Demo screen | 10 / 0 | 0 (records), 8 (`ofClass`) | 2,436 → 2,135 (`Component.template`, setup included) |
-| Keyed rows | 4 / 1 | 3 | 637 → 559 |
-| Arm rows | 6 / 0 | 1 | 537 → 484 |
-| Benchmark row | 6 / not measured | 0 | not measured |
+| Demo screen | 10 / 0 | 0 (records), 8 (`ofClass`) | 2,432 [2,436] → 2,116 [2,135] (`Component.template`, setup included); 2,220 (`ofMembers`), 2,291 (`ofClass`) |
+| Keyed rows | 4 / 1 | 3 | 638 [637] → 560 [559] |
+| Arm rows | 6 / 0 | 1 | 538 [537] → 403 [484] |
+| Benchmark row | 6 / not measured | 0 (free, `ofMembers`), 6 (`ofClass`) | 530 → 433 (free) [not measured] |
 
-The arm fixture keeps 3 definitions (the list and two hoisted arms).
+Each fixture keeps one declaration call site in v1 and in v2. The arm fixture keeps 3 definitions (the list and two hoisted arms).
 
 ## References
 
