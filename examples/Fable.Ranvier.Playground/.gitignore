@@ -1,6 +1,7 @@
 generated/
 generated-tests/
 generated-authoring-counters/
+generated-tests-counters/
 generated-ripple/
 generated-framework-dist/
 generated-framework-shared/
