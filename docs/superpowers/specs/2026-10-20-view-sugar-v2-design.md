@@ -1,6 +1,6 @@
 # View sugar v2 design: free tags and component declarations
 
-> **Status 2026-10-21:** implemented on `feat/view-sugar-v2`; §9 records the measurements. Approved 2026-10-20; the user answered the first draft's open questions on the same day; §0 records the answers, and the sections below carry them. It amends the [view sugar design](2026-10-19-view-sugar-design.md) (v1). Every v1 rule this spec does not change stays binding: the lowering contract (§2 of v1), the twin-equality criteria, the definition-in-read check, the `forEach`/`forEachFixed` split and the `show` lowering.
+> **Status 2026-10-21:** implemented on `feat/view-sugar-v2`; §9 records the measurements, and the docs page is [`experiments/Ranvier.View.Portable/README.md`](../../../experiments/Ranvier.View.Portable/README.md). Approved 2026-10-20; the user answered the first draft's open questions on the same day; §0 records the answers, and the sections below carry them. It amends the [view sugar design](2026-10-19-view-sugar-design.md) (v1). Every v1 rule this spec does not change stays binding: the lowering contract (§2 of v1), the twin-equality criteria, the definition-in-read check, the `forEach`/`forEachFixed` split and the `show` lowering.
 >
 > **Decisions taken by the user on 2026-10-20** (binding; §0 quotes them):
 >
@@ -26,7 +26,7 @@ These are the user's decisions of 2026-10-20, quoted; "[…]" marks omitted inst
 
 The user then answered the first draft's open questions (2026-10-20):
 
-6. **v1's `t.Div` layer is removed.** Its 7 fixture files and the sugar cases of `check-types.py` are migrated, and v1's criteria 3 and 4 are re-run on the migrated adapters (§4.8, §6.8).
+6. **v1's `t.Div` layer is removed.** Its 7 fixture files and the sugar cases of `CheckTypes.fsx` are migrated, and v1's criteria 3 and 4 are re-run on the migrated adapters (§4.8, §6.8).
 7. **The namespace is `Ranvier.View.Foundation.Sugar`** (§4).
 8. **`Generated.Html` becomes `[<RequireQualifiedAccess>]`.** A qualified-access check replaces the first draft's one-vocabulary-per-file rule (§4, §5, §7).
 9. **`isolated`, `view`, `Unsafe` and `Document` have no free form in v2** (§4.2).
@@ -36,7 +36,19 @@ The user then answered the first draft's open questions (2026-10-20):
 13. **The bundle budget is 1 kB gzip over explicit, including the component helpers** (criterion 4).
 14. **`Component.ofType` over `IComponent` is deferred.** It is recorded in this spec only, with no upstream Fable issue, and is added once a pinned Fable compiles static interface calls (§3.3, §7).
 15. **`ComponentTag` ships** (§4.6).
-16. **`Generated.Html.Authoring` stays openable.** It does not require qualified access; a file that opens the sugar does not open `Authoring`, and a `check-types.py` case covers the rule (§4, §5, §8).
+16. **`Generated.Html.Authoring` stays openable.** It does not require qualified access; a file that opens the sugar does not open `Authoring`, and a `CheckTypes.fsx` case covers the rule (§4, §5, §8).
+
+## Core and view state
+
+Required by `.claude/rules/view-uses-core.md`. v2 adds no state beyond v1's.
+
+**Core primitives used:** none directly, and none new. Every form lowers to a v1 region:
+
+- `forEach`, `forEachFixed` and `each` lower to `TemplateBuilder.each`: a core projection keyed by the item key, an owner per row.
+- `show`, `showElse`, `matchWith`, `branch` and `armOf` arms lower to `TemplateBuilder.matchWith`/`branch`: a core memo with a comparer on the selected definition, an owner per arm.
+- Ownership and cleanup stay with `Owner`, `onCleanup` and `MountLifetime`. Nested Elmish loops are owned by master's `Mvu` (PR #122): messages are dropped once the loop's construction scope is torn down.
+
+**View-owned state:** unchanged from v1. `EmptyArm.shared` (the zero-root arm definition every `show` shares) and, in Fable Debug builds only, `RegionReads.depth`. Both are v1 state; v2 adds none. Tag-class instances, `Element` builders and `AttributeBuilder` instances exist only while a view is built, at definition time.
 
 ## 1. Purpose
 
@@ -315,7 +327,7 @@ The generator's workaround is the only shape it emits for tag classes, and the d
 
 ### 4.6 Declaring components
 
-All styles return a plain `Component<'props>` from one `Component.define` call, so `Mounting.mount`, `Hydration.hydrate`, `Server.render`, the Debug definition-in-read check and twin equality apply to them unchanged. They mix freely: a record parent renders a class child, a class parent renders a record child, and an explicit `t.render` root renders both (probe 3's mixed tree: hash `9f5e7312` for all three spellings, equal server HTML on .NET and under Fable, `Strict` hydration with all server nodes adopted: 59 of 59 in the implementation's mixed tree [probe: 39 of 39]).
+All styles return a plain `Component<'props>` from one `Component.define` call, so `Mounting.mount`, `Hydration.hydrate`, `Server.render`, the Debug definition-in-read check and twin equality apply to them unchanged. They mix freely: a record parent renders a class child, a class parent renders a record child, and an explicit `t.render` root renders both (the implementation's mixed tree: hash `460c3ee6` [probe 3: `9f5e7312`] for all three spellings, equal server HTML on .NET and under Fable, `Strict` hydration with all server nodes adopted: 59 of 59 [probe 3: 39 of 39], §9).
 
 **Public names.** The helpers live in the sugar's `Component` module: `Component.template`, `Component.ofMembers` and `Component.ofClass`, beside the core's `Component.define`. One module name holds every way to make a definition, so completion on `Component.` lists all four styles together, and the docs' ranking maps to one prefix. The probe's `Declare` module is not carried; it was a probe-isolation name. `render` and `renderOf` are free functions in `Builders`, since they are view parts rather than declarations.
 
@@ -433,11 +445,11 @@ The docs page describes this fixed behaviour; it carries no workaround. The prob
 
 v1's sugar layer is the PascalCase `t.Div` extension members (112 generated in `Generated/HtmlTemplateSugar.fs`), `ElementBuilder`, and the `t.armOf`, `t.forEach`, `t.forEachFixed`, `t.show` and `t.showElse` members in `TemplateSugar.fs`. The explicit lowercase `t.div parts children` members and the other `t.` members are core, not sugar, and stay.
 
-**The v1 sugar layer is removed** (decision 6), in this branch, after its fixtures are migrated (§6.8). The work is one migration pass over the 7 fixture files and `check-types.py`'s sugar cases, and a re-run of v1's criteria 3 and 4 on the migrated adapters. `Ranvier.View.Portable` is `IsPackable=false`, so the removal reaches in-repository callers only. The generator's v1 sugar output and its `templateSugarTagCount` coverage key are replaced by the tag classes of §4.1. Top-down typing through `t.` stays available through the explicit members (§4.1).
+**The v1 sugar layer is removed** (decision 6), in this branch, after its fixtures are migrated (§6.8). The work is one migration pass over the 7 fixture files and `CheckTypes.fsx`'s sugar cases, and a re-run of v1's criteria 3 and 4 on the migrated adapters. `Ranvier.View.Portable` is `IsPackable=false`, so the removal reaches in-repository callers only. The generator's v1 sugar output and its `templateSugarTagCount` coverage key are replaced by the tag classes of §4.1. Top-down typing through `t.` stays available through the explicit members (§4.1).
 
 ## 5. Error handling
 
-- **Compile time.** Negative cases go in `check-types.py`, ported to the free spelling:
+- **Compile time.** Negative cases go in `CheckTypes.fsx`, ported to the free spelling:
 
   | Mistake | Code |
   |---|---|
@@ -450,7 +462,7 @@ v1's sugar layer is the PascalCase `t.Div` extension members (112 generated in `
   | A `Program.View` in a body | FS0041 |
   | A lambda whose label resolves to another record | FS0001, FS0193 or FS0041, by site |
   | An unannotated class-member read | FS0001 (the label resolves to an unrelated record) or FS0072 (no record declares it) |
-  | `base` as a tag name | FS0010 |
+  | `base` as a tag name | FS0010 as a binding (`let tag = base ()`); FS0583, FS0604 and FS0010 twice inside a body (`head () { base () }`) |
   | `open Ranvier.View.Foundation.Generated.Html` (the module requires qualified access) | FS0892 |
   | The sugar, then `Generated.Html.Authoring`, opened in one file, then `Attrs.className "x"` in a free tag | FS0041 "No overloads match for method 'div`1'" |
   | A local value named like a tag, used as one | FS0003 |
@@ -468,7 +480,7 @@ v1's sugar layer is the PascalCase `t.Div` extension members (112 generated in `
 3. **Hydration.** Every declaration style and the mixed tree, under `Strict`, from the twin's HTML and from its own, followed by updates.
 4. **Nested Elmish.** The pattern of §4.7 as a fixture: selector isolation, props down, callback up, server render and hydration. The disposal case asserts the fixed behaviour of PR #122: after the child is hidden, a held child `dispatch` reaches nothing and the parent's report count stays the same. The fixture lands after the master merge of §4.7.
 5. **Debug.** The misuse fixtures (`ofClass` and `ofMembers` inside an arms function) fail in the Fable Debug compile and mount in Release; the Release JS has no counter.
-6. **Compiler-negative tests.** §5's table in `check-types.py`, one case per row, each pinned to its code; the generated-file assertion counts 112 tag classes.
+6. **Compiler-negative tests.** §5's table in `CheckTypes.fsx`, one case per row, each pinned to its code; the generated-file assertion counts 112 tag classes.
 7. **Performance.** The `ranvier-template-sugar` adapter of `run.mjs --template-comparison`, the sugared rows of `keyed-rows.mjs` and `keyed-heap.mjs`, and the bundle entries of `sugar-size.mjs` switch to the free fixtures under their v1 names, so v1's harness and comparisons stay. Add an `ofMembers` row adapter and an `ofClass` row adapter to the template comparison. Take an allocation sample of a 128-row mount and search its frames (criterion 3). Paired, alternating runs, only when no other benchmark uses the machine.
 8. **Fixture migration.** Each v1 sugar fixture is rewritten in place in the free spelling; the probe files supply the rewrites:
 
@@ -480,26 +492,26 @@ v1's sugar layer is the PascalCase `t.Div` extension members (112 generated in `
    | `tests/KeyedRowsSugarPerf.fs` | `KeyedRowsFreePerf.fs` |
    | `tests/PlaygroundSugar.fs` | `FreeFixtures.demoFree`, `DeclFixtures.demoMembers` |
    | `tests/SugarChecks.fs`, `tests/SugarDebugChecks.fs` | `freeCases`, `DeclChecks.fs` |
-   | `tools/Ranvier.Dom.Generate/check-types.py` | `probe/FreeProbe`, `probe/Collide`, `probe/DeclProbe` `Inference.fs` |
+   | `tools/Ranvier.Dom.Generate/CheckTypes.fsx` | `probe/FreeProbe`, `probe/Collide`, `probe/DeclProbe` `Inference.fs` |
 
    The `.mjs` runners (`sugar*.test.mjs`, `sugar-*.mjs`) keep their names and gain the declaration cases. `KeyedRowsMatchPerf.fs` and the `match!` adapters are not carried.
 9. **Permanent no-sugar app.** Unchanged from v1.
 
 ## 7. Delivery order
 
-1. **Generator.** `tools/Ranvier.Dom.Generate` emits the 112 tag classes into `Generated/HtmlTemplateSugar.fs`, with the private-primary-constructor shape and `base'`/`option'`. Byte-identical regeneration; `check-types.py` counts and compiles every tag.
+1. **Generator.** `tools/Ranvier.Dom.Generate` emits the 112 tag classes into `Generated/HtmlTemplateSugar.fs`, with the private-primary-constructor shape and `base'`/`option'`. Byte-identical regeneration; `CheckTypes.fsx` counts and compiles every tag.
 2. **Handwritten layer.** `TemplateSugar.fs`: `Element`, `VoidElement`, `ComponentTag`, the entry points, the control flow (including the uncompiled ports `showElse`, `each`, `branch`, `boundary`), `render`/`renderOf`, the `Component` module and the empty arm. Check the `Component` module merge with `ofMembers` and `ofClass`, and compile the record-to-record pair of §4.6 (probe 3 compiled only the crossed record/class pair). Probe the one-type-argument `Component.ofMembers<Counter> ()` on .NET and under Fable 5.18.0 (§4.6); fall back to `<Counter, _>` if it fails on either or costs an annotation.
 3. **Fixtures and checks.** §6.1–§6.6 and §6.8, except the nested Elmish fixture (step 6).
 4. **`Generated.Html` qualified access** (decision 8). The generator (`tools/Ranvier.Dom.Generate/Program.fs`, the `emit "module Ranvier.View.Foundation.Generated.Html"` line) emits `[<RequireQualifiedAccess>]` on the module; `Generated/Html.fs` is regenerated byte-identically apart from that line. A search of `src`, `tests`, `examples`, `experiments`, `tools` and `docs` at `deafe75` finds no `open` of the module itself. The callers fall in four groups:
 
    | Use | Files | Change |
    |---|---|---|
-   | A module alias of `Generated.Html` or one of its nested modules (`module H = ...`, `module G = ...`, `module GeneratedHtml = ...`, `module Html = ...Html.Program`, `module Attr = ...Html.Attrs`, `module Events = ...Html.Events`) | `examples/Fable.Ranvier.Playground/App.fs`; `ComponentsExample.fs`; `tests/{AttributeChecks,AuthoringChecks,DelegationChecks,DispatchPerf,FrameworkPerf,FrameworkSemantics,GeneratedChecks,MountingInvestigationChecks,PreparedChecks,TemplateCatalogueChecks,TemplateChecks}.fs`; `experiments/Ranvier.View.Foundation/AuthoringPerfFixtures.fs`; `tools/Ranvier.Dom.Generate/check-types.py` (prefix) | none expected; the build confirms |
+   | A module alias of `Generated.Html` or one of its nested modules (`module H = ...`, `module G = ...`, `module GeneratedHtml = ...`, `module Html = ...Html.Program`, `module Attr = ...Html.Attrs`, `module Events = ...Html.Events`) | `examples/Fable.Ranvier.Playground/App.fs`; `ComponentsExample.fs`; `tests/{AttributeChecks,AuthoringChecks,DelegationChecks,DispatchPerf,FrameworkPerf,FrameworkSemantics,GeneratedChecks,MountingInvestigationChecks,PreparedChecks,TemplateCatalogueChecks,TemplateChecks}.fs`; `experiments/Ranvier.View.Foundation/AuthoringPerfFixtures.fs`; `tools/Ranvier.Dom.Generate/CheckTypes.fsx` (prefix) | none expected; the build confirms |
    | A fully qualified path (`Generated.Html.Program.section`, `Generated.Html.Attrs.idStatic`, ...) | `tests/FrameworkDiagnostics.fs` (11 lines), `tests/FrameworkPerf.fs` (1 line) | none expected; the build confirms |
-   | An `open` of the nested module `Generated.Html.Authoring` | `ComponentsExample.fs`, `tests/AuthoringChecks.fs`, `tests/FrameworkPerf.fs`, `experiments/Ranvier.View.Foundation/AuthoringPerfFixtures.fs`, `check-types.py` (prefix), and the usage example in `experiments/Ranvier.View.Foundation/README.md` | the build decides: if the compiler accepts a nested open under the parent's qualified access, none; otherwise each file aliases `Authoring.Attrs` and `Authoring.Props` (`module Attrs = Ranvier.View.Foundation.Generated.Html.Authoring.Attrs`), and the README example follows |
+   | An `open` of the nested module `Generated.Html.Authoring` | `ComponentsExample.fs`, `tests/AuthoringChecks.fs`, `tests/FrameworkPerf.fs`, `experiments/Ranvier.View.Foundation/AuthoringPerfFixtures.fs`, `CheckTypes.fsx` (prefix), and the usage example in `experiments/Ranvier.View.Foundation/README.md` | the build decides: if the compiler accepts a nested open under the parent's qualified access, none; otherwise each file aliases `Authoring.Attrs` and `Authoring.Props` (`module Attrs = Ranvier.View.Foundation.Generated.Html.Authoring.Attrs`), and the README example follows |
    | A file path (`Generated/Html.fs`, `Generated/Html.js`) | `Ranvier.slnx`, `Ranvier.View.Foundation.fsproj`, `tests/DomTests.fsproj`, `benchmarks/frameworks/run.mjs`, `tests/component.test.mjs`, `tools/Ranvier.Dom.Generate/{Program.fs,README.md}` | none |
 
-   `tools/Ranvier.Dom.Generate/README.md` gains one sentence on qualified access. Historical plans, specs and research notes that quote `Generated.Html` or `Generated/Html.fs` (13 files under `docs/`) record past states and stay as written. `check-types.py` gains the FS0892 case and the `Authoring` case of §5.
+   `tools/Ranvier.Dom.Generate/README.md` gains one sentence on qualified access. Historical plans, specs and research notes that quote `Generated.Html` or `Generated/Html.fs` (13 files under `docs/`) record past states and stay as written. `CheckTypes.fsx` gains the FS0892 case and the `Authoring` case of §5.
 5. **Remove the v1 sugar layer** (§4.8).
 6. **Master merge, then nested Elmish.** Merge master into `feat/view-sugar-v2` to pick up PR #122 (after #42 and #120 land, or directly), then add the nested Elmish fixture of §6.4.
 7. **Measurements.** Criteria 3, 4, 6 and 7, recorded in `docs/research/2026-10-20-view-sugar-v2.md` and summarised in §9. v1's criteria 3 and 4 are re-run on the migrated adapters.
@@ -514,11 +526,11 @@ v1's sugar layer is the PascalCase `t.Div` extension members (112 generated in `
 
 None. The first draft's ten questions and the second draft's question on `Generated.Html.Authoring` are settled (§0, decisions 6–16).
 
-**`Generated.Html.Authoring` (decision 16).** `Authoring` keeps ordinary access: `open ...Generated.Html.Authoring` followed by `Attrs.title source` stays the authored path's documented spelling (the Foundation README). Its `Attrs` and `Props` collide with the sugar's when both are opened in one file; the scope rule of §4 and its `check-types.py` case (§5) cover that collision. Whether the compiler accepts the nested open under the parent's qualified access is checked in §7 step 4.
+**`Generated.Html.Authoring` (decision 16).** `Authoring` keeps ordinary access: `open ...Generated.Html.Authoring` followed by `Attrs.title source` stays the authored path's documented spelling (the Foundation README). Its `Attrs` and `Props` collide with the sugar's when both are opened in one file; the scope rule of §4 and its `CheckTypes.fsx` case (§5) cover that collision. Whether the compiler accepts the nested open under the parent's qualified access is checked in §7 step 4.
 
 ## 9. Measurements
 
-Measured on 2026-10-21 at `432592f`; tables and files are in the [research note](../../research/2026-10-20-view-sugar-v2.md). Figures in brackets are the probe's (2026-10-20, at `df3bb0b`) where they differ.
+Measured on 2026-10-21 at `f7c2a13` (`432592f` plus the twin fixture `FrameworkTwinsPerf.fs` and the measurement scripts); tables and files are in the [research note](../../research/2026-10-20-view-sugar-v2.md). Figures in brackets are the probe's (2026-10-20, at `df3bb0b`) where they differ.
 
 **Twin equality (criteria 1, 2).** For the demo screen, the keyed fixture, the arm fixture and the benchmark row, the free twins match the explicit twins on layout signature, `structuralHash` and server HTML, and show identical markup, reports, core counter deltas, `addEventListener` registrations and MutationObserver writes (`sugar-counters.test.mjs`, `sugar.test.mjs`, `SugarServerChecks`). The demo in every declaration style shares hash `21e93577` with `demoExplicit` and hydrates 38 of 38 server nodes under `Strict`; the mixed tree shares `460c3ee6` [`9f5e7312`] and hydrates 59 of 59 [39 of 39; the implementation's mixed tree is larger]. In Debug, the misuse cases fail as intended (`sugar-debug.test.mjs`).
 

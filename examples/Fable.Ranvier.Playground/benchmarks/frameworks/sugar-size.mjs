@@ -18,8 +18,8 @@ const build = (entry, minify) => {
   execFileSync(process.execPath, ["node_modules/vite/bin/vite.js", "build", "--config", "benchmarks/frameworks/sugar-size.config.mjs"], { cwd, stdio: ["ignore", 2, 2], windowsHide: true, env: { ...process.env, SUGAR_SIZE_ENTRY: entry, SUGAR_SIZE_MINIFY: String(minify) } });
   return new URL(`generated-sugar-size/${entry}${minify ? "" : "-unminified"}/bundle.js`, cwd);
 };
-// Each sugared entry and the explicit entry its delta is held against: one-row entries against the one-row explicit entry, and the
-// three-row combined entry against explicit-combined, the explicit twins of the same three rows with the same keyed and arm fixtures.
+// Each sugared entry mapped to the explicit entry used as its delta baseline: one-row entries to the one-row explicit entry, and the
+// three-row combined entry to explicit-combined, the explicit twins of the same three rows with the same keyed and arm fixtures.
 const twins = { sugared: "explicit", members: "explicit", class: "explicit", combined: "explicit-combined" };
 const entries = ["explicit", "explicit-combined", ...Object.keys(twins)];
 const result = {};
