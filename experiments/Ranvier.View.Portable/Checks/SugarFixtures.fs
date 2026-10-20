@@ -892,3 +892,103 @@ let untrackedSugar =
     Component.template
         (fun _ (state: Captioned) -> state)
         (div () { render counterRecord (fun (s: Captioned) -> { Start = 0; Caption = s.Caption.Value }) })
+
+// Void and component tags as views outside an element body, through VoidElement.View: show content, armOf views,
+// fragment children, row views and template roots.
+
+/// <summary>Logs the image's placement and its cleanup.</summary>
+let private loggedImage (state: Toggle) (_: Dom.HTMLImageElement) =
+    state.Log.Add "mounted"
+    fun () -> state.Log.Add "cleanup"
+
+let private shownImage =
+    Component.define (fun _ (current: unit -> Toggle) -> current ()) (fun t ->
+        t.img
+            [|
+                t.Hooks.mounted loggedImage
+                t.Attrs.title (t.from (fun (s: Toggle) -> s.Name))
+            |])
+
+let private shownCounter =
+    Component.define (fun _ (current: unit -> Toggle) -> current ()) (fun t ->
+        t.render MixedExplicit.counter (fun _ -> { Start = 6; Caption = "shown" }))
+
+let private breakArm =
+    Component.define (fun _ (_: unit -> unit) -> ()) (fun t -> t.br [||])
+
+let private ruleArm =
+    Component.define (fun _ (_: unit -> unit) -> ()) (fun t -> t.hr [||])
+
+let private counterArm =
+    Component.define (fun _ (_: unit -> unit) -> ()) (fun t -> t.render MixedExplicit.counter (fun _ -> { Start = 7; Caption = "arm" }))
+
+let private pictureRow =
+    Component.define (fun _ (current: unit -> int) -> current ()) (fun t -> t.img [| t.Attrs.title (fun (n: int) -> string n) |])
+
+let tagViewsExplicit =
+    Component.define (fun _ (state: Toggle) -> state) (fun t ->
+        t.div
+            [||]
+            [|
+                t.matchWith (fun (s: Toggle) -> if s.On.Value then ValueSome s else ValueNone) (function
+                    | ValueSome s -> t.arm shownImage s
+                    | ValueNone -> t.arm hiddenArm ())
+                t.matchWith (fun (s: Toggle) -> if s.On.Value then ValueSome s else ValueNone) (function
+                    | ValueSome s -> t.arm shownCounter s
+                    | ValueNone -> t.arm hiddenArm ())
+                t.matchWith (fun (s: Toggle) -> s.On.Value) (fun on -> if on then t.arm breakArm () else t.arm ruleArm ())
+                t.matchWith (fun (s: Toggle) -> s.On.Value) (fun _ -> t.arm counterArm ())
+                t.fragment
+                    [|
+                        t.br [||]
+                        t.hr [||]
+                        t.render MixedExplicit.counter (fun _ -> { Start = 8; Caption = "f" })
+                    |]
+                t.each (fun (n: int) -> n) (fun _ -> [| 1; 2 |]) pictureRow
+            |])
+
+let private breakFree = armOf (br ()).View
+let private ruleFree = armOf (hr ()).View
+let private counterFree = armOf (counterOf { Start = 7; Caption = "arm" }).View
+
+let tagViewsSugar =
+    Component.template
+        (fun _ (state: Toggle) -> state)
+        (div () {
+            show (fun s -> s.On.Value) (img (Hooks.mounted loggedImage, Attrs.title (from (fun (s: Toggle) -> s.Name)))).View
+            show (fun s -> s.On.Value) (counterOf { Start = 6; Caption = "shown" }).View
+            matchWith (fun s -> s.On.Value) (fun on -> if on then arm breakFree () else arm ruleFree ())
+            matchWith (fun s -> s.On.Value) (fun _ -> arm counterFree ())
+            fragment [| (br ()).View; (hr ()).View; (counterOf { Start = 8; Caption = "f" }).View |]
+            forEachFixed (fun (n: int) -> n) (fun _ -> [| 1; 2 |]) (img (Attrs.title (fun (n: int) -> string n))).View
+        })
+
+let voidRootExplicit =
+    Component.define (fun _ () -> ()) (fun t -> t.img [| t.Attrs.className "root" |])
+
+let voidRootSugar =
+    Component.template (fun _ () -> ()) (img (Attrs.className "root")).View
+
+let tagRootExplicit =
+    Component.define (fun _ () -> ()) (fun t -> t.render MixedExplicit.counter (fun _ -> { Start = 9; Caption = "root" }))
+
+let tagRootSugar =
+    Component.template (fun _ () -> ()) (counterOf { Start = 9; Caption = "root" }).View
+
+let tagViewPairs: (string * TemplateComponent * TemplateComponent) array =
+    [|
+        "void and component tags in show, armOf, fragment and forEachFixed", tagViewsExplicit, tagViewsSugar
+        "a void tag as the root", voidRootExplicit, voidRootSugar
+        "a component tag as the root", tagRootExplicit, tagRootSugar
+    |]
+
+let tagViewServerPairs () : (string * string * string) array =
+    let graph = new Graph ()
+    let shown, hidden = graph.Run (fun () -> toggle true, toggle false)
+
+    [|
+        "tag views on", Server.render omit tagViewsExplicit shown, Server.render omit tagViewsSugar shown
+        "tag views off", Server.render omit tagViewsExplicit hidden, Server.render omit tagViewsSugar hidden
+        "a void tag as the root", Server.render omit voidRootExplicit (), Server.render omit voidRootSugar ()
+        "a component tag as the root", Server.render omit tagRootExplicit (), Server.render omit tagRootSugar ()
+    |]

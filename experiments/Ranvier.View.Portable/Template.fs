@@ -2217,7 +2217,6 @@ module internal TemplateParts =
     let sourceText (source: Source<'inst, string>) : TemplateView<'inst> =
         TemplateView (TextSlotNode (sourceSlot TextTarget source primitiveSame))
 
-    /// <summary>An arm that renders <c>definition</c>; its props read the payload of the arm currently selected.</summary>
     let arm (definition: Component<unit -> 'payload>) (payload: 'payload) : Arm =
         let template = definition :> TemplateComponent
 

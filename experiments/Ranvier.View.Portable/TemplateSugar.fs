@@ -29,14 +29,15 @@ module Builders =
 #endif
             shared
 
-    /// <summary>The zero-root arm every <c>show</c> selects while its condition is false, created on first use.</summary>
+    /// <summary>The zero-root arm selected by <c>show</c> while its condition is false, created on first use.</summary>
     let internal emptyArm () : Component<unit -> unit> =
         EmptyArm.Get ()
 
     /// <summary>A void element, accepted as a child by <c>Element</c>.</summary>
     [<AbstractClass>]
     type VoidElement<'inst> internal (view: TemplateView<'inst>) =
-        member internal _.View = view
+        /// <summary>The element's view, for a position that takes a <c>TemplateView</c>.</summary>
+        member _.View = view
 
     /// <summary>The computation expression for an element's children; <c>Run</c> returns the element.</summary>
     /// <remarks>
@@ -92,6 +93,7 @@ module Builders =
     let text (read: 'inst -> string) : TemplateView<'inst> =
         TemplateParts.readText read
 
+    /// <summary>The children as one view, with no element of their own.</summary>
     let fragment (children: TemplateView<'inst> array) : TemplateView<'inst> =
         TemplateBuilder<'inst>().fragment children
 
@@ -103,12 +105,16 @@ module Builders =
     let arm (definition: Component<unit -> 'payload>) (payload: 'payload) : Arm =
         TemplateParts.arm definition payload
 
+    /// <summary>Renders the arm that <c>arms</c> selects for the instance's union value, between region markers.</summary>
+    /// <remarks>Arms are compared by key under <c>=</c>; a <c>matchWith</c> key is the arm's definition. Selecting another definition remounts, and selecting the same definition updates the payload read by its props. Writing <c>arms</c> as a <c>function</c> match lets the compiler check that every case has an arm. A remount runs the previous arm's cleanups and removes its nodes before the new arm is set up.</remarks>
     let matchWith (read: 'inst -> 'union) (arms: 'union -> Arm) : TemplateView<'inst> =
         TemplateBuilder<'inst>().matchWith read arms
 
+    /// <summary>Renders the arm selected for the instance's key, between region markers; a key change under <c>=</c> or a change of the selected definition remounts the arm.</summary>
     let branch<'inst, 'key when 'key: equality> (key: 'inst -> 'key) (arms: 'key -> Arm) : TemplateView<'inst> =
         TemplateBuilder<'inst>().branch key arms
 
+    /// <summary>Renders one <c>row</c> instance per item, between region markers; items with equal keys under <c>=</c> keep their row, whose props read the current item.</summary>
     let each<'inst, 'item, 'key when 'key: equality>
         (key: 'item -> 'key)
         (items: 'inst -> 'item array)
@@ -161,6 +167,7 @@ module Builders =
              | Choice1Of2 instance -> arm shown instance
              | Choice2Of2 instance -> arm other instance)
 
+    /// <summary>A boundary between region markers: <c>content</c> once every binding under it has read a value, <c>pending</c> until then, and <c>failed</c> after a failure under the content.</summary>
     let boundary (pending: Component<unit>) (failed: Component<BoundaryFailure>) (content: Component<BoundaryStatus>) : TemplateView<'inst> =
         TemplateBuilder<'inst>().boundary pending failed content
 
@@ -179,7 +186,7 @@ module Builders =
         inherit VoidElement<'inst>(TemplateBuilder<'inst>().render definition props)
 
     module Component =
-        /// <summary>Defines a component from per-instance setup and its template, built once.</summary>
+        /// <summary>Defines a component from per-instance setup and a template shared by every instance.</summary>
         let template (setup: Setup -> 'props -> 'inst) (view: TemplateView<'inst>) : Component<'props> =
             Component.define setup (fun _ -> view)
 

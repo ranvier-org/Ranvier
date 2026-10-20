@@ -370,6 +370,39 @@ type childOf<'i> private (props: 'i -> Props, primary: unit) =
 let view = Component.template (fun _ (p: Props) -> p) (div () { childOf (fun p -> { Start = p.Start + 1 }); childOf { Start = 9 } })
 """
             None
+        free
+            "void and component tags as views outside a body"
+            """
+type Shown = { On: global.Ranvier.Signal<bool>; Src: string }
+type Props = { Start: int }
+let child = Component.template (fun _ (p: Props) -> p) (span () { fun p -> string p.Start })
+type childOf<'i> private (props: 'i -> Props, primary: unit) =
+    inherit ComponentTag<Props, 'i>(child, props)
+    new(props: 'i -> Props) = childOf<'i>(props, ())
+    new(props: Props) = childOf<'i>((fun _ -> props), ())
+let breakArm = armOf (br ()).View
+let childArm = armOf (childOf { Start = 1 }).View
+let view =
+    Component.template (fun _ (s: Shown) -> s) (
+        div () {
+            show (fun s -> s.On.Value) (img (Attrs.title (fun s -> s.Src))).View
+            show (fun s -> s.On.Value) (childOf { Start = 2 }).View
+            matchWith (fun s -> s.On.Value) (fun _ -> arm breakArm ())
+            matchWith (fun s -> s.On.Value) (fun _ -> arm childArm ())
+            fragment [| (br ()).View; (hr ()).View; (childOf { Start = 3 }).View |]
+            forEachFixed (fun (n: int) -> n) (fun _ -> [| 1; 2 |]) (img (Attrs.title (fun (n: int) -> string n))).View
+            forEachFixed (fun (n: int) -> n) (fun _ -> [| 1; 2 |]) (childOf (fun n -> { Start = n })).View
+        })
+let voidRoot = Component.template (fun _ () -> ()) (input (Attrs.className "root")).View
+let tagRoot = Component.template (fun _ () -> ()) (childOf { Start = 4 }).View
+"""
+            None
+        free
+            "a void tag in a view position without View"
+            """
+let view = Component.template (fun _ () -> ()) (div () { show (fun _ -> true) (img ()) })
+"""
+            (Some "FS0193")
         case "open of Generated.Html" "open Ranvier.View.Foundation.Generated.Html\nlet view = ()" (Some "FS0892")
         free
             "the sugar, then Generated.Html.Authoring, collides"

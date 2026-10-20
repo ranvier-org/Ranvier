@@ -121,13 +121,15 @@ All sugar is opt-in: `open Ranvier.View.Foundation.Sugar` (decision 7). The name
 - `Builders` (handwritten, `TemplateSugar.fs`): `Element`, `VoidElement`, `ComponentTag`, the entry points, the control flow, `render`/`renderOf` and the `Component` module of declaration helpers.
 - `Elements` (generated, `Generated/HtmlTemplateSugar.fs`): one class per tag.
 
+Free tags also need `open Ranvier.View.Foundation` (the generated `Attrs`, `Props` and `Events` members of the auto-opened `HtmlTemplate`), `Representation`, `Template` and `global.Ranvier`; the docs page lists the five lines.
+
 Both stay in `experiments/Ranvier.View.Portable`, after `Generated/HtmlTemplate.fs`, for v1's reason: they need the internal `TemplateView` constructor and `TemplateParts`. v1's PascalCase layer leaves the namespace (§4.8), and the probe's `Ranvier.View.Foundation.Free` is not used.
 
 **`Generated.Html` requires qualified access** (decision 8). The authored-path module `Ranvier.View.Foundation.Generated.Html` declares a lowercase function for every tag and its own `Attrs`, `Events` and `Properties` modules. In the probe, opening it after the free tags shadowed all of them (`div (Attrs.className "x") { ... }` failed with FS0001, FS0193 and FS0740 "Invalid record, sequence or computation expression"). The generator now emits `[<RequireQualifiedAccess>]` on the module, so `open Ranvier.View.Foundation.Generated.Html` is a compile error (FS0892) and the shadowing has no spelling. Authored code reaches the module through an alias (`module H = Ranvier.View.Foundation.Generated.Html`) or a qualified path, as every current caller already does (§7 step 4).
 
 **Two scope rules,** both documented on the namespace and in the docs page:
 
-- **A file that opens the sugar does not open `Generated.Html.Authoring`.** `Authoring` holds the authored path's overloaded `Attrs` and `Props` modules; opening it with the sugar makes one of the two `Attrs` and `Props` vocabularies unreachable by its short name. Whether an open of this nested module stays legal under the parent's `[<RequireQualifiedAccess>]` is checked in §7 step 4.
+- **A file that opens the sugar does not open `Generated.Html.Authoring`.** `Authoring` holds the authored path's overloaded `Attrs` and `Props` modules; opening it with the sugar makes one of the two `Attrs` and `Props` vocabularies unreachable by its short name. With `Authoring` opened after the sugar, a free tag's `Attrs.className` fails with FS0041; opened before the sugar, the file compiles and the sugar's `Attrs` and `Props` shadow `Authoring`'s. Whether an open of this nested module stays legal under the parent's `[<RequireQualifiedAccess>]` is checked in §7 step 4.
 - **A local value named like a tag shadows the tag.** `let p = "note"` followed by `p () { "x" }` fails with FS0003. One-letter tags (`a`, `b`, `i`, `p`, `q`, `s`, `u`) meet this most often; a one-letter lambda parameter shadows the tag only inside its own body.
 
 ### 4.1 Elements as free tags
@@ -150,6 +152,8 @@ type input<'i> private (ps: Part<Dom.HTMLInputElement, 'i> array, primary: unit)
 - **Names.** The raw lowercase tag name, except where the name is an F# keyword or an FSharp.Core type of arity 1. Among the 112 tags that is exactly two: **`base'`** (`base` is a keyword: FS0010 in a type name) and **`option'`** (a generic `option<'i>` has arity 1 and shadows `'T option`: `let c: string option = Some "x"` fails with FS0001). Oxpecker keeps `option` because its tags are not generic. `object`, `select` and the 28 other names the probe checked for collisions (among them `map`, `data`, `title`, `label`, `source`, `style`, `template`, `slot`, `form`, `input` and the one-letter tags) keep their raw spelling: they compile with FSharp.Core, Fable.Core, `Ranvier`, `Representation` and `Template` open, and `query { select }`, `Option.map`, `Map.empty` and `List.map` keep working.
 
 `Element<'native,'inst>` carries v1's `ElementBuilder` members unchanged (`Yield` for a view, a string, an `'inst -> string` and a `Source`; `YieldFrom`, `Zero`, `Combine`, `Delay`, `For`, `Run`), each with the explicit `TemplateView<'inst> array` return type, plus `Yield(element: VoidElement<'inst>)`, which yields `element.View`.
+
+**A void tag outside a body.** `VoidElement.View` is public: every other position that takes a `TemplateView<'inst>` (the content of `show` and `showElse`, an `armOf` view, a `fragment` child, a `forEach`/`forEachFixed` row, the view of `Component.template`) takes `(img (parts)).View`, and the same holds for a `ComponentTag` subclass, `(counterOf props).View`. `show condition (img ())` without `View` fails with FS0193. A `VoidElement` is not a `TemplateView` (a single-case union, which no class can extend), the free control-flow functions cannot be overloaded, and an `op_Implicit` conversion warns FS3391 at every use, so `View` is the spelling.
 
 **Entry points.** `Attrs`, `Props`, `Events` and `Hooks` are type functions over v1's builders, so every generated member (`className`, `data`, `aria`, `Props.Button.disabled`, `Props.Input.value`, `Events.onInput`, ...) is reused without regeneration:
 
@@ -283,6 +287,7 @@ v1's `forEach`/`forEachFixed` semantics (live reader against snapshot row instan
 |---|---|---|
 | `div (parts) { children }` | `TemplateParts.element Div parts children` | none |
 | `input (parts)` (void) | `TemplateParts.element Input parts [||]`, yielded through `VoidElement.View` | none |
+| `(input (parts)).View` outside a body | the same view, read from the tag | none |
 | string, reader or `Source` yield | v1: `TemplateParts.text`, `readText` or `sourceText` | none |
 | `armOf view` | `Component.define (fun _ p -> p) (fun _ -> view)` | none |
 | `forEach key items row` | `each key items (Component.define (fun _ c -> c) (fun _ -> row))` | none |
@@ -418,7 +423,7 @@ type counterOf<'i> private (props: 'i -> CounterProps, primary: unit) =
     new(props: CounterProps) = counterOf<'i>((fun _ -> props), ())
 ```
 
-The tag class is optional (decision 3); `render`/`renderOf` come first in the docs. In a class parent, `render`'s props lambda is annotated like any other instance lambda (probe 3 I1: FS0041 on `Yield` without it).
+A component tag is a `VoidElement`, so outside a body it is used through `View`, as a void tag is (§4.1). The tag class is optional (decision 3); `render`/`renderOf` come first in the docs. In a class parent, `render`'s props lambda is annotated like any other instance lambda (probe 3 I1: FS0041 on `Yield` without it).
 
 **Definition identity.** The Debug check covers every helper, because each calls `Component.define`: `Component.ofClass ArmClass` written inside a `matchWith` arms function raises "a template definition was created while a region was read; bind it in the template's build function" in the Fable Debug compile, and `ofMembers` behaves the same.
 
@@ -457,6 +462,7 @@ v1's sugar layer is the PascalCase `t.Div` extension members (112 generated in `
   | A generated part of another element (`span (Props.Input.value "x")`) | FS0041 |
   | A part bound with another element's type (`Part<HTMLButtonElement, unit>` passed to `span`) | FS0001 |
   | Children on a void tag (`input () { "x" }`) | FS0708 |
+  | A void tag in a view position outside a body without `View` (`show condition (img ())`) | FS0193 |
   | The outer instance inside a row through `text` | FS0041 |
   | The outer instance inside a row through a part, or a pre-bound outer part | FS0193 |
   | A `Program.View` in a body | FS0041 |

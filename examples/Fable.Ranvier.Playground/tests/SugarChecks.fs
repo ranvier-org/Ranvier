@@ -411,6 +411,12 @@ module private Adopted =
     let mixed = 59
     /// <summary>All 38 server nodes of the demo screen.</summary>
     let demo = 38
+    /// <summary>All 30 server nodes of the hidden tag views: two root markers, the div, two hidden shows of 3, an arm of 3, a counter arm of 7, two void tags, a counter of 5 and two rows with their markers.</summary>
+    let tagViews = 30
+    /// <summary>All 3 server nodes: two root markers and the image.</summary>
+    let voidRoot = 3
+    /// <summary>All 7 server nodes: two root markers and a counter of 5.</summary>
+    let tagRoot = 7
 
 /// <summary>Each pair hydrated from the explicit twin's HTML and from the sugared twin's HTML.</summary>
 let private hydration () =
@@ -459,6 +465,22 @@ let private hydration () =
             Adopted.showElse
             graph
 
+        let tagState = graph.Run (fun () -> toggle false)
+
+        hydratedTwins
+            (pick tagViewsExplicit tagViewsSugar)
+            tagViewsExplicit
+            tagViewsSugar
+            tagState
+            [
+                (fun () -> tagState.On.Value <- true)
+                (fun () -> tagState.On.Value <- false)
+            ]
+            Adopted.tagViews
+            graph
+
+        hydratedTwins (pick voidRootExplicit voidRootSugar) voidRootExplicit voidRootSugar () [] Adopted.voidRoot graph
+        hydratedTwins (pick tagRootExplicit tagRootSugar) tagRootExplicit tagRootSugar () [] Adopted.tagRoot graph
         let listed = graph.Run board
 
         hydratedTwins
@@ -571,6 +593,8 @@ let cases: (string * (unit -> unit)) array =
                 templated "armOf arms switch and update their payload like their twins" arms
                 templated "show toggles with cleanups like its twin" (fun queued -> toggled queued showExplicit showSugar)
                 templated "showElse toggles with cleanups like its twin" (fun queued -> toggled queued showElseExplicit showElseSugar)
+                templated "void and component tags as show content, arms, fragment children and rows update like their twins" (fun queued ->
+                    toggled queued tagViewsExplicit tagViewsSugar)
                 templated "show in forEachFixed in an armOf arm updates like its twin" nested
                 templated "a live forEach in an armOf arm mounts and cleans up rows like its twin" nestedLive
                 templated "a boundary around sugared content renders like its twin" bounded

@@ -138,4 +138,6 @@ let cases: (string * (unit -> unit)) array =
         "declaration styles share their explicit twins' layouts and hashes", sameLayouts declPairs
         "declaration styles render their explicit twins' server HTML", sameServerHtml declServerPairs
         "a static View is read once per definition", viewsBuiltOnce
+        "void and component tags as views share their explicit twins' layouts and hashes", sameLayouts tagViewPairs
+        "void and component tags as views render their explicit twins' server HTML", sameServerHtml tagViewServerPairs
     |]

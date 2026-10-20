@@ -42,6 +42,24 @@ A tag takes its parts in parentheses, `div ()` or `div (Attrs.className "x", Eve
 
 **Void tags take no body.** `input`, `br`, `img`, `meta`, `base'` and the other void elements are written `input (parts)`; `input () { "x" }` fails with FS0708.
 
+**A void tag outside a body is used through `View`.** Inside a body a void tag is yielded as it is. Every other position that takes a `TemplateView` (the content of `show` or `showElse`, an `armOf` view, a `fragment` child, a row view, a template root) takes the tag's `View`, `(img (parts)).View`. Without it, `show condition (img ())` fails with FS0193. A [component tag](#declaring-components) is used the same way.
+
+```fsharp
+type Gallery =
+    { Covered: Signal<bool>; Photos: string array }
+
+let gallery =
+    Component.template
+        (fun _ (photos: string array) -> { Covered = Api.createSignal true; Photos = photos })
+        (div (Attrs.className "gallery") {
+            show (fun g -> g.Covered.Value) (img (Attrs.title "cover")).View
+            forEachFixed id (fun g -> g.Photos) (img (Attrs.title (fun (photo: string) -> photo))).View
+            fragment [| (hr ()).View; (br ()).View |]
+        })
+
+let divider = Component.template (fun _ () -> ()) (hr ()).View
+```
+
 **A body yields:**
 
 | Item | Renders |
@@ -101,7 +119,7 @@ let profile =
 
 A missing annotation is reported at the element, as FS0001, FS0193 or FS0041, rather than at the lambda.
 
-**`t.` carries the instance type.** Inside `Component.define setup (fun t -> ...)`, `t` is the template builder of the instance type, so `t.Attrs`, `t.Events`, `t.text` and the explicit `t.div parts children` members type their lambdas top down, and they mix with free tags. A view that would need many annotations can be written with `t.`. Below, `Id` is also declared by the later `Marker`; `t.text` resolves it to `Entry`, where a free reader would need `fun (e: Entry) -> string e.Id`:
+**`t.` carries the instance type.** Inside `Component.define setup (fun t -> ...)`, `t` is the template builder of the instance type, so `t.Attrs`, `t.Events`, `t.text` and the explicit `t.div parts children` members type their lambdas top down, and they mix with free tags. A view that would need many annotations can be written with `t.`. In this sample, `Id` is also declared by the later `Marker`; `t.text` resolves it to `Entry`, where a free reader would need `fun (e: Entry) -> string e.Id`:
 
 ```fsharp
 type Entry = { Id: int; Label: string }
@@ -115,7 +133,7 @@ let entry =
         })
 ```
 
-`t.isolated`, `t.view`, `t.Unsafe` and `t.Document` are reached the same way, inside free tags.
+`t.isolated`, `t.view`, `t.Unsafe` and `t.Document` are `TemplateBuilder` members; inside `Component.define setup (fun t -> …)` they are used as parts or children of free tags.
 
 ## Control flow
 
@@ -288,7 +306,25 @@ type PanelRecord =
 let panelRecord = Component.ofMembers<PanelRecord, _> ()
 ```
 
-The tag class takes a private primary constructor and public overloads because Fable 5.18.0 miscompiles a class with no primary constructor and a ParamArray primary constructor alike; the generated tags use the same shape.
+Fable 5.18.0 miscompiles a class with no primary constructor and a class with a ParamArray primary constructor; a private primary constructor with public overloads avoids both, and the generated tags use the same shape.
+
+A component tag is a void element: inside a body it is yielded as it is, and in any other view position it is used through `View`, as a void tag is:
+
+```fsharp
+type Hint = { Visible: Signal<bool> }
+
+let private counterArm = armOf (counterOf { Start = 6; Caption = "arm" }).View
+
+let hint =
+    Component.template (fun _ () -> { Visible = Api.createSignal true }) (
+        div () {
+            show (fun h -> h.Visible.Value) (counterOf { Start = 7; Caption = "hint" }).View
+            matchWith (fun h -> h.Visible.Value) (fun _ -> arm counterArm ())
+        }
+    )
+
+let counterRoot = Component.template (fun _ () -> ()) (counterOf { Start = 8; Caption = "root" }).View
+```
 
 ## Nested Elmish
 
@@ -370,7 +406,7 @@ let mvuParent = Component.ofMembers<MvuParent, _> ()
 
 ## Costs
 
-**Per instance:** zero for the free tags, the control flow, `Component.template`, `Component.ofMembers`, `render`, `renderOf` and `ComponentTag`; each mounts the same owners, effects, edges, listeners and DOM writes as its explicit twin. `Component.ofClass` is the exception: under Fable it builds one 2-element array per instance setup, and every member read is a getter call. In the 128-row allocation sample its steady-state excess over the explicit row is zero (−4.4 B/row, inside the explicit row's 38.3 B/row spread); before the code is optimised the array costs about 24 B/row.
+**Per instance:** zero for the free tags, the control flow, `Component.template`, `Component.ofMembers`, `render`, `renderOf` and `ComponentTag`; each mounts the same owners, effects, edges, listeners and DOM writes as its explicit twin. `Component.ofClass` is the exception: under Fable it builds one 2-element array per instance setup, and every member read is a getter call. In the 128-row allocation sample its fixture modules allocate no more than the explicit row's (−4.4 B/row, inside the explicit row's 38.3 B/row spread); `Core.js` shows +29 B/row (reported as info). An under-warmed run measured the array at about 24 B/row.
 
 **Per definition, once:** one tag-class instance per element, one builder per part and per control-flow call, all while the definition is built.
 
