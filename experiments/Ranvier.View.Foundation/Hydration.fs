@@ -26,6 +26,19 @@ let private rootMarker (host: Node) : Node = jsNative
 [<Emit("$0.nextSibling")>]
 let private following (node: Node) : Node = jsNative
 
+[<Emit("$0.remove()")>]
+let private removeNode (node: Node) : unit = jsNative
+
+/// <summary>Removes the siblings after <c>start</c> up to <c>finish</c>, or to the last sibling when <c>finish</c> is null.</summary>
+let private clearAfter (start: Node) (finish: Node) =
+    let mutable node = following start
+
+    while not (isNull (box node))
+          && not (obj.ReferenceEquals (node, finish)) do
+        let next = following node
+        removeNode node
+        node <- next
+
 /// <summary>
 /// Mounts <c>definition</c> for <c>props</c> over the server HTML between the first <c>&lt;!--[r--&gt;</c> child of
 /// <c>host</c> and its matching end marker, adopting the server's nodes. The result behaves as a mount by
@@ -33,12 +46,21 @@ let private following (node: Node) : Node = jsNative
 /// difference, and its regions mount their rows fresh between the server's region markers.
 /// </summary>
 /// <remarks>
-/// Nodes outside the root marker pair stay in place and outside the mount's range. A failure disposes what the call
-/// created and propagates; the host is then as the server wrote it.
+/// <para>Nodes outside the root marker pair stay in place and outside the mount's range.</para>
+/// <para>
+/// A structural mismatch is passed to <c>report</c> once, as a one-element list. The server nodes between the root
+/// markers are then removed and the root mounts fresh before the end marker. Without a root marker, the root mounts
+/// fresh at the end of <c>host</c>, after its children; without the end marker, the nodes after the root marker are
+/// removed first. Ids issued by the fresh mount start again under <c>options.IdPrefix</c>.
+/// </para>
+/// <para>
+/// Under <c>options.Strict</c>, and for every other failure, the call disposes what it created and raises; the host is
+/// then as the server wrote it. A failure of <c>report</c> also propagates with the host as the server wrote it.
+/// </para>
 /// </remarks>
 /// <exception cref="T:System.NotSupportedException"><c>mode</c> is <c>QueuedCommits</c>.</exception>
 /// <exception cref="T:Ranvier.View.Foundation.TemplateDom.HydrationMismatchException">
-/// The host has no root marker, or the server HTML differs from the template's structure.
+/// <c>options.Strict</c> is set, and the host has no root marker or the server HTML differs from the template's structure.
 /// </exception>
 let hydrateWith
     (mode: CommitMode)
@@ -53,21 +75,15 @@ let hydrateWith
     match mode with
     | QueuedCommits _ -> raise (NotSupportedException "Hydration supports synchronous commits only")
     | SynchronousCommits ->
-        let rootStart = rootMarker host
-
-        if isNull (box rootStart) then
-            raise (TemplateDom.mismatch "root" "<!--[r-->" "absent")
-
-        let rootEnd = TemplateDom.matchingEnd rootStart
-        let first = following rootStart
-        let cursor = TemplateDom.HydrationCursor (first, options.Strict)
-
         let owner =
             match parentOwner with
             | Some owner -> owner
             | None -> Unchecked.defaultof<_>
 
-        let state =
+        let build (context: BuildContext) =
+            context.Backend.Template (definition, box props)
+
+        let state (cursor: TemplateDom.HydrationCursor) (rootStart: Node) (rootEnd: Node) =
             MountState (
                 Synchronous,
                 graph,
@@ -87,21 +103,58 @@ let hydrateWith
                 rootEnd
             )
 
-        state.Run (
-            None,
-            fun context ->
-                context.Backend.Template (definition, box props)
+        let fresh (before: Node option) =
+            (state null Unchecked.defaultof<_> Unchecked.defaultof<_>).Run(before, build)
 
-                if not (obj.ReferenceEquals (cursor.Next, rootEnd)) then
-                    let mutable position = 0
-                    let mutable node = first
+        let rootStart = rootMarker host
 
-                    while not (obj.ReferenceEquals (node, cursor.Next)) do
-                        node <- TemplateDom.logicalNext node
-                        position <- position + 1
+        if isNull (box rootStart) then
+            let error = TemplateDom.mismatch "root" "<!--[r-->" "absent"
 
-                    raise (TemplateDom.mismatch ("#" + string position) "<!--]-->" (TemplateDom.describe cursor.Next))
-        )
+            if options.Strict then
+                raise error
+
+            report [ error ]
+            fresh None
+        else
+            let rootEnd =
+                try
+                    TemplateDom.rootEnd rootStart
+                with TemplateDom.HydrationMismatchException _ as error when not options.Strict ->
+                    report [ error ]
+                    clearAfter rootStart Unchecked.defaultof<_>
+                    Unchecked.defaultof<_>
+
+            if isNull (box rootEnd) then
+                fresh None
+            else
+                let first = following rootStart
+                let cursor = TemplateDom.HydrationCursor (first, options.Strict)
+
+                try
+                    (state cursor rootStart rootEnd)
+                        .Run(
+                            None,
+                            fun context ->
+                                build context
+
+                                if not (obj.ReferenceEquals (cursor.Next, rootEnd)) then
+                                    let mutable position = 0
+                                    let mutable node = first
+
+                                    while not (obj.ReferenceEquals (node, cursor.Next)) do
+                                        node <- TemplateDom.logicalNext node
+                                        position <- position + 1
+
+                                    raise (TemplateDom.mismatch ("#" + string position) "<!--]-->" (TemplateDom.describe cursor.Next))
+                        )
+                with error when not options.Strict ->
+                    match TemplateDom.findMismatch error with
+                    | Some found ->
+                        report [ found :> exn ]
+                        clearAfter rootStart rootEnd
+                        fresh (Some rootEnd)
+                    | None -> reraise ()
 
 /// <summary>Hydrates as <c>hydrateWith SynchronousCommits</c> does.</summary>
 let hydrate graph parentOwner report options host (definition: Component<'props>) (props: 'props) : Mounted =

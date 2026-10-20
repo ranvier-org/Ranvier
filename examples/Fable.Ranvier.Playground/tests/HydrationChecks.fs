@@ -63,6 +63,9 @@ let private clientCreateIdAfterSetup () =
 let private strictOptions: Hydration.HydrationOptions =
     { IdPrefix = "r"; Strict = true }
 
+let private lenientOptions: Hydration.HydrationOptions =
+    { IdPrefix = "r"; Strict = false }
+
 let private omit =
     { Server.Options.defaults with
         Policy = Omit
@@ -317,6 +320,227 @@ let private carriageReturn () =
     equal (0, (Some "a\r\nb", "Title: a\r\nb0", "ab"), Some "a\r\nb") (mutations (), cardShown host, (input host "input").getAttribute "value")
     mounted.Dispose ()
 
+let private otherRoot =
+    Component.define (fun _ (title: string) -> title) (fun t -> t.span [||] [| t.text (fun title -> title) |])
+
+let private singleMismatch (reports: ResizeArray<exn list>) =
+    match List.ofSeq reports with
+    | [ [ TemplateDom.HydrationMismatchException _ ] ] -> true
+    | _ -> false
+
+let private rootMismatch () =
+    use graph = new Graph ()
+    let host = serve card "a"
+    let before = host.innerHTML
+
+    let strictOutcome =
+        try
+            hydrate graph strictOptions host otherRoot "a"
+            |> ignore
+
+            None
+        with TemplateDom.HydrationMismatchException (_, expected, found) ->
+            Some (expected, found)
+
+    equal (Some ("<span>", "div"), before) (strictOutcome, host.innerHTML)
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        Hydration.hydrate graph None reports.Add lenientOptions host otherRoot "a"
+
+    equal (true, "a", true) (singleMismatch reports, host.textContent, isNull (box (host.querySelector "div")))
+    mounted.Dispose ()
+    equal true (isNull (box (host.querySelector "span")))
+
+let private linkCard =
+    Component.define (fun _ (title: string) -> Api.createSignal title) (fun t ->
+        t.div
+            [| t.Attrs.title (t.from id) |]
+            [|
+                t.text "Title: "
+                t.text (t.from id)
+                t.a [| t.Events.onClick (fun _ _ -> ()) |] [| t.text "0" |]
+                t.input [||]
+            |])
+
+let private nestedMismatchNamesNodes () =
+    use graph = new Graph ()
+    let host = serve card "a"
+
+    let outcome =
+        try
+            hydrate graph strictOptions host linkCard "a"
+            |> ignore
+
+            None
+        with TemplateDom.HydrationMismatchException (_, expected, found) ->
+            Some (expected, found)
+
+    equal (Some ("<a>", "button")) outcome
+
+let private missingRootMarker () =
+    use graph = new Graph ()
+    let host = host ()
+    host.innerHTML <- "<div>plain</div>"
+
+    let strictPath =
+        try
+            hydrate graph strictOptions host card "a"
+            |> ignore
+
+            None
+        with TemplateDom.HydrationMismatchException (path, _, _) ->
+            Some path
+
+    equal (Some "root", "<div>plain</div>") (strictPath, host.innerHTML)
+    let reports = ResizeArray<exn list>()
+    let mounted = Hydration.hydrate graph None reports.Add lenientOptions host card "a"
+    equal (true, "plainTitle: a0") (singleMismatch reports, host.textContent)
+    mounted.Dispose ()
+    equal "<div>plain</div>" host.innerHTML
+
+let private setupThrowsDuringHydration () =
+    use graph = new Graph ()
+    let host = serve card "a"
+    let before = host.innerHTML
+
+    let throwing =
+        Component.define (fun _ (_: string) -> failwith "boom") (fun t -> t.div [||] [||])
+
+    let message =
+        try
+            hydrate graph lenientOptions host throwing "a"
+            |> ignore
+
+            ""
+        with error ->
+            error.Message
+
+    equal ("boom", before) (message, host.innerHTML)
+
+let private recoveredMountsAreLive () =
+    use graph = new Graph ()
+    let host = serve card "a"
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        Hydration.hydrate graph None reports.Add lenientOptions host appending "a"
+
+    let recovered = messages reports, host.innerHTML
+    (element host "span").click()
+    let updated = host.innerHTML
+    mounted.Dispose ()
+
+    equal
+        (([ [ "Hydration mismatch at #0: expected <span>, found div" ] ], "<!--[r--><!--ranvier:start--><span>a</span><!--ranvier:end--><!--]-->"),
+         "<!--[r--><!--ranvier:start--><span>ax</span><!--ranvier:end--><!--]-->",
+         "<!--[r--><!--]-->")
+        (recovered, updated, host.innerHTML)
+
+    let host = CheckSupport.host ()
+    host.innerHTML <- "<p>plain</p>"
+    let reports = ResizeArray<exn list>()
+    let mounted = Hydration.hydrate graph None reports.Add lenientOptions host card "a"
+    (element host "button").click()
+    let shown = messages reports, cardShown host, host.textContent
+    mounted.Dispose ()
+
+    equal
+        (([ [ "Hydration mismatch at root: expected <!--[r-->, found absent" ] ], (Some "a", "Title: a1", "a"), "plainTitle: a1"), "<p>plain</p>")
+        (shown, host.innerHTML)
+
+let private aggregatedMismatch () =
+    let found = TemplateDom.mismatch "#0" "<span>" "div"
+    let other = InvalidOperationException "other" :> exn
+
+    let nested =
+        AggregateException ("outer", [| other; AggregateException ("inner", [| other; found |]) :> exn |]) :> exn
+
+    let messageOf (error: exn) =
+        TemplateDom.findMismatch error
+        |> Option.map _.Message
+
+    equal
+        [ Some found.Message; Some found.Message; None; None ]
+        [
+            messageOf found
+            messageOf nested
+            messageOf other
+            messageOf (AggregateException ("outer", [| other |]) :> exn)
+        ]
+
+let private recoveredIdsUsePrefix () =
+    use graph = new Graph ()
+    let host = serve card "a"
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        Hydration.hydrate graph None reports.Add { lenientOptions with IdPrefix = "s" } host identified [| 7; 8 |]
+
+    let shown = singleMismatch reports, List.sort (domIds host)
+    mounted.Dispose ()
+
+    equal
+        (true,
+         identityIds "s"
+         |> List.filter (fun id -> id <> "s-0-1"))
+        shown
+
+/// <summary>The server HTML of <c>definition</c> without its <c>n</c>-th <c>&lt;!--]--&gt;</c>, counted from 0.</summary>
+let private withoutEnd (n: int) (definition: Component<'props>) (props: 'props) =
+    let html = Server.render omit definition props
+    let mutable index = html.IndexOf "<!--]-->"
+
+    for _ in 1..n do
+        index <- html.IndexOf ("<!--]-->", index + 1)
+
+    html.Remove (index, 8)
+
+let private unclosedRegions () =
+    let check (served: string) (client: Component<'props>) (props: 'props) =
+        use graph = new Graph ()
+        let host = host ()
+        host.innerHTML <- served
+        let html = host.innerHTML
+        let before = nodesOf host
+
+        let error =
+            ServerChecks.failure (fun () ->
+                hydrate graph strictOptions host client props
+                |> ignore)
+
+        error.Message, host.innerHTML = html, sameNodes before (nodesOf host)
+
+    let served = Server.render omit afterRegions listedItems
+    let truncated = served.Substring (0, served.IndexOf "<!--]-->")
+
+    equal
+        [
+            "Hydration mismatch at #0: expected <!--]-->, found absent", true, true
+            "Hydration mismatch at 2/0: expected <!--]-->, found absent", true, true
+            "Hydration mismatch at 0/0: expected <!--]-->, found absent", true, true
+            "Hydration mismatch at root: expected <!--]-->, found absent", true, true
+        ]
+        [
+            check truncated afterRegions listedItems
+            check (withoutEnd 1 afterRegions listedItems) afterRegions listedItems
+            check (withoutEnd 0 listed listedItems) listed listedItems
+            check (withoutEnd 0 card "a") card "a"
+        ]
+
+    use graph = new Graph ()
+    let host = host ()
+    host.innerHTML <- truncated
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        Hydration.hydrate graph None reports.Add lenientOptions host afterRegions listedItems
+
+    let shown = messages reports, host.textContent, (all host "li").Length
+    mounted.Dispose ()
+
+    equal (([ [ "Hydration mismatch at #0: expected <!--]-->, found absent" ] ], "a<b>a<b>last", 5), "<!--[r-->") (shown, host.innerHTML)
+
 let private editable =
     Component.define (fun _ (text: string) -> Api.createSignal text) (fun t ->
         t.div
@@ -384,6 +608,22 @@ let private rawContentRewritten () =
     let updated = content.innerHTML
     mounted.Dispose ()
     equal ((1, "<b>x</b>", false), "<i>next</i>") (rewritten, updated)
+
+let private rawHtmlClosesElement () =
+    use graph = new Graph ()
+    let host = serve rawCard "a</div><div>b"
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        Hydration.hydrate graph None reports.Add lenientOptions host rawCard "a</div><div>b"
+
+    let recovered =
+        singleMismatch reports, (element host "span").innerHTML, host.textContent
+
+    (element host "button").click()
+    let updated = (element host "span").innerHTML
+    mounted.Dispose ()
+    equal ((true, "a<div>b</div>", "ab"), "<i>next</i>") (recovered, updated)
 
 let private placedCard =
     Component.define (fun _ (log: ResizeArray<obj>) -> log) (fun t ->
@@ -737,9 +977,19 @@ let cases: (string * (unit -> unit)) array =
             "queued-commit hydration raises NotSupportedException", queuedRaises
             "hydration adopts only the root marker pair and leaves foreign siblings in place", foreignSiblings
             "a text value with CR LF hydrates without writes", carriageReturn
+            "a structural mismatch outside every region re-renders the root and reports once; Strict raises and leaves the host as the server wrote it",
+            rootMismatch
+            "a mismatch names the expected and the found node", nestedMismatchNamesNodes
+            "a host without a root marker raises under Strict and mounts fresh otherwise", missingRootMarker
+            "a setup failure during hydration propagates and leaves the server HTML in place", setupThrowsDuringHydration
+            "a re-rendered root and a fresh mount without a root marker update and dispatch events", recoveredMountsAreLive
+            "a re-rendered root issues ids under the hydration's prefix", recoveredIdsUsePrefix
+            "a mismatch is found directly and among aggregated inner exceptions at any depth", aggregatedMismatch
+            "an unclosed region raises at its logical path and an unclosed root re-renders its content", unclosedRegions
             "inputs edited before hydration keep their values, focus and selection when the server and client values agree", editedInputsKept
             "a live input value differing from the server's is written by hydration", differingInputsCorrected
             "hydration rewrites raw content once and the slot then updates", rawContentRewritten
+            "raw content that closes its element re-renders the root and reports once", rawHtmlClosesElement
             "placed hooks run on the adopted nodes after adoption, and a widget attaches to its adopted empty element", placedOnAdopted
             "an empty text slot in a textarea the server left empty hydrates into a created text node", emptyRcdataText
             "a structural mismatch names the path, the expected and the found node, and leaves the server HTML as it was", mismatchRestores

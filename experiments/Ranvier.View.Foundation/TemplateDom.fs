@@ -50,8 +50,8 @@ type RegionKind =
     | BoundaryContent
 
 /// <summary>
-/// A server node that differs from the node the template expects at <c>Path</c>: <c>root</c> for a missing root
-/// marker, <c>#k</c> for the k-th root of an instance, and otherwise the dynamic node's child-index path.
+/// A server node that differs from the node the template expects at <c>Path</c>: <c>root</c> for a missing or unclosed
+/// root marker, <c>#k</c> for the k-th root of an instance, and otherwise the dynamic node's child-index path.
 /// </summary>
 exception HydrationMismatchException of Path: string * Expected: string * Found: string with
     override this.Message =
@@ -155,6 +155,48 @@ let internal logicalNext (node: Node) : Node =
         matchingEnd node
     else
         following node
+
+/// <summary>The <c>]</c> comment closing the root marker <c>start</c>.</summary>
+/// <exception cref="T:Ranvier.View.Foundation.TemplateDom.HydrationMismatchException">
+/// The siblings end first: at <c>#k</c> when the k-th logical position after <c>start</c> is an unclosed start marker,
+/// otherwise at <c>root</c>.
+/// </exception>
+let internal rootEnd (start: Node) : Node =
+    try
+        matchingEnd start
+    with HydrationMismatchException _ ->
+        let mutable node = following start
+        let mutable position = 0
+
+        while not (isNull (box node)) do
+            node <-
+                try
+                    logicalNext node
+                with HydrationMismatchException (_, closing, absent) ->
+                    raise (mismatch ("#" + string position) closing absent)
+
+            position <- position + 1
+
+        raise (mismatch "root" "<!--]-->" "absent")
+
+#if FABLE_COMPILER
+/// <summary>The inner exceptions of an <c>AggregateException</c>, held under Fable as an <c>innerException</c> array; empty for any other exception.</summary>
+[<Emit("Array.isArray($0.innerException) ? $0.innerException : []")>]
+let private aggregated (error: exn) : exn array = jsNative
+#endif
+
+/// <summary>The first <c>HydrationMismatchException</c> in <c>error</c> or, at any depth, its aggregated inner exceptions.</summary>
+let rec internal findMismatch (error: exn) : HydrationMismatchException option =
+    match error with
+    | :? HydrationMismatchException as found -> Some found
+#if FABLE_COMPILER
+    | _ -> aggregated error |> Array.tryPick findMismatch
+#else
+    | :? AggregateException as aggregate ->
+        aggregate.InnerExceptions
+        |> Seq.tryPick findMismatch
+    | _ -> None
+#endif
 
 /// <summary>The server node a collected node of a template adopts.</summary>
 type Expectation =
@@ -1045,6 +1087,42 @@ let private replacePlaceholder (cursor: HydrationCursor) (placeholder: Node) : N
     cursor.Undo (fun () -> replaceNode text placeholder text)
     text
 
+let private pathText (path: ResizeArray<int>) =
+    path |> Seq.map string |> String.concat "/"
+
+/// <summary>
+/// The mismatch path of <c>node</c>, an adopted node of the instance whose roots are <c>roots</c>: <c>#k</c> for the
+/// k-th root, otherwise the root's index followed by the logical child index at each level below it.
+/// </summary>
+let private adoptedPath (roots: Node array) (node: Node) : string =
+    let steps = ResizeArray<int>()
+    let mutable current = node
+
+    let rootIndex (candidate: Node) =
+        roots
+        |> Array.tryFindIndex (fun root -> obj.ReferenceEquals (root, candidate))
+
+    let mutable root = rootIndex current
+
+    while root.IsNone do
+        let parent: Node = unbox current.parentNode
+        let mutable sibling: Node = unbox parent.firstChild
+        let mutable position = 0
+
+        while not (obj.ReferenceEquals (sibling, current)) do
+            sibling <- logicalNext sibling
+            position <- position + 1
+
+        steps.Insert (0, position)
+        current <- parent
+        root <- rootIndex current
+
+    if steps.Count = 0 then
+        "#" + string root.Value
+    else
+        steps.Insert (0, root.Value)
+        pathText steps
+
 /// <summary>
 /// Takes the instance's <c>RootCount</c> roots from the logical siblings at <c>cursor.Next</c>, each checked against the
 /// skeleton root at its index, and moves the cursor past the last. A text root accepts a text node or the
@@ -1090,7 +1168,13 @@ let private adoptRoots (cursor: HydrationCursor) (compiled: Compiled) : Node arr
             fail ("<!--" + dataOf expected + "-->") node
 
         roots[index] <- node
-        node <- logicalNext node
+
+        node <-
+            try
+                logicalNext node
+            with HydrationMismatchException (_, closing, absent) ->
+                raise (mismatch ("#" + string index) closing absent)
+
         expected <- following expected
 
     cursor.Next <- node
@@ -1118,7 +1202,7 @@ let private isRcdataElement (node: Node) : bool = jsNative
 /// <exception cref="T:Ranvier.View.Foundation.TemplateDom.HydrationMismatchException">The node differs from the expectation.</exception>
 let private adoptTarget (cursor: HydrationCursor) (expect: Expectation) (path: ResizeArray<int>) (parent: Node) (node: Node) : Node =
     let fail (description: string) =
-        raise (mismatch (path |> Seq.map string |> String.concat "/") description (describe node))
+        raise (mismatch (pathText path) description (describe node))
 
     match expect with
     | ExpectElement tag ->
@@ -1193,7 +1277,11 @@ let private collectAdopted (roots: Node array) (compiled: Compiled) (state: obj 
                     let position = path[0]
                     if position < roots.Length then roots[position] else noNode
                 else
-                    logicalNext node
+                    try
+                        logicalNext node
+                    with HydrationMismatchException (_, closing, absent) ->
+                        path[path.Count - 1] <- path[path.Count - 1] - 1
+                        raise (mismatch (pathText path) closing absent)
         elif op = Parent then
             path.RemoveAt (path.Count - 1)
             node <- parent
@@ -1319,7 +1407,10 @@ let rec internal materialise
             if isNull cursor then
                 unbox start.nextSibling
             else
-                matchingEnd start
+                try
+                    matchingEnd start
+                with HydrationMismatchException (_, closing, absent) ->
+                    raise (mismatch (adoptedPath roots start) closing absent)
 
         let items = region.Items
 
