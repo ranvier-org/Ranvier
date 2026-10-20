@@ -228,8 +228,8 @@ Hydration runs the template path with a cursor instead of a clone:
 - **Arms.** The arm memo selects as in a mount. The start marker's hash must equal the selected definition's hash, then the arm adopts its rows.
 - **View holes.** The content between the markers is removed and the view mounted fresh. Authored `Program`/`Tree` views are not hydrated.
 - **Boundaries.**
-  - `[c` and the content's reads are ready on the client by the end of `hydrate`: the content hydrates in place and keeps its nodes; no pending phase.
-  - `[c` and a content read is still pending on the client at the end of `hydrate`: the content's one setup binds the server nodes, which are then held detached; a copy of the server nodes, taken before the content's first commits, stays between the markers as the boundary's inert pending view; the reveal replaces the copy with the bound nodes.
+  - `[c` and the content's reads are ready on the client by the end of the root mount's build: the content hydrates in place and keeps its nodes; no pending phase.
+  - `[c` and a content read is still pending on the client at the end of the root mount's build: the content's one setup binds the server nodes, which are then held detached; a copy of the server nodes, taken before the content's first commits, stays between the markers as the boundary's inert pending view; the reveal replaces the copy with the bound nodes. Content whose read is settled by a `mounted` hook is detached at the end of the build and revealed within the same `hydrate`.
   - `[p`: the pending view hydrates in place; the content mounts detached and reveals as usual.
   - `[e`: the nodes between the markers are removed and the boundary mounts fresh, with a new content setup.
 
