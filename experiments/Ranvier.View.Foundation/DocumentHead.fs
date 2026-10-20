@@ -44,6 +44,9 @@ let keep (document: Document) : unit -> unit = jsNative
 [<Emit("$0.title")>]
 let private titleOf (document: Document) : string = jsNative
 
+[<Emit("$0.textContent")>]
+let private textOf (node: Element) : string = jsNative
+
 [<Emit("$0.title = $1")>]
 let private setTitleOf (document: Document) (value: string) : unit = jsNative
 
@@ -166,7 +169,7 @@ let create (document: Document) (kind: HeadKind) (key: string) : Record =
         registry.Claimed.Add element
         Record (registry, kind, key, element)
 
-/// <summary>Removes each marked head element of the document that its registry has not claimed.</summary>
+/// <summary>Removes each marked head element of the document not claimed by its registry.</summary>
 let removeUnadopted (document: Document) =
     let registry = existingRegistry document
 
@@ -188,9 +191,10 @@ let writeAttribute (element: Element) (name: string) (value: string option) =
             element.removeAttribute name
 
 /// <summary>
-/// Shows the record above the key's other live records. A title record writes the document's title when it differs; the
-/// first title record of a key keeps the document's title for <c>withdraw</c>. The first shown meta or link record of a
-/// key takes the place of a marked element adopted by a record not yet shown.
+/// Shows the record above the key's other live records. A title record writes the document's title when it differs from
+/// the adopted title element's text, or from the document's title when it adopted none; the first title record of a key
+/// keeps the document's title for <c>withdraw</c>. The first shown meta or link record of a key takes the place of a
+/// marked element adopted by a record not yet shown.
 /// </summary>
 let activate (record: Record) =
     let registry = record.Registry
@@ -222,11 +226,15 @@ let activate (record: Record) =
         entries.Add record
         record.Shown <- true
 
-        if
-            record.Kind = HeadKind.Title
-            && titleOf registry.Document <> record.Title
-        then
-            setTitleOf registry.Document record.Title
+        if record.Kind = HeadKind.Title then
+            let shown =
+                if isNull (box record.Element) then
+                    titleOf registry.Document
+                else
+                    textOf record.Element
+
+            if shown <> record.Title then
+                setTitleOf registry.Document record.Title
 
 /// <summary>
 /// Withdraws the record, once. When it was shown, the key's most recent remaining record is shown; the last title record

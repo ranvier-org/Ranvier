@@ -794,7 +794,7 @@ let private servePage () =
     target.innerHTML <- page.Body
     target
 
-/// <summary>The head <c>servePage</c> writes, as the document serialises it.</summary>
+/// <summary>The head written by <c>servePage</c>, as the document serialises it.</summary>
 let private servedHead =
     "<title data-ranvier-head=\"title\">Lamp · Shop</title>"
     + "<meta data-ranvier-head=\"meta:name=description\" name=\"description\" content=\"client\">"
@@ -802,7 +802,7 @@ let private servedHead =
     + "<link data-ranvier-head=\"\" rel=\"preload\" href=\"/font.woff2\">"
     + "<meta data-ranvier-head=\"meta:name=robots\" name=\"robots\" content=\"index\">"
 
-/// <summary>The head the entries of <c>shopPage false</c> show over <c>servePage</c>'s head once hydrated.</summary>
+/// <summary>The head of <c>servePage</c> once hydrated by <c>shopPage false</c>.</summary>
 let private hydratedHead (title: string) =
     "<title data-ranvier-head=\"title\">"
     + title
@@ -851,6 +851,24 @@ let private headHydrated () =
         equal
             (0, [ true; true; true; true ], (false, false), (hydratedHead "Lamp · Shop", "Lamp · Shop"), ("Desk · Shop", true, 1))
             (written, adopted, unadopted, shown, updated))
+
+let private spacedTitleKept () =
+    withHead (fun () ->
+        use graph = new Graph ()
+        setHead "<title data-ranvier-head=\"title\">  Lamp  · Shop</title>"
+        let text = titleText ()
+        let target = host ()
+        target.innerHTML <- Server.render omitted (shopPage false) (shop "  Lamp ")
+        let writes = recordWrites ()
+
+        let mounted =
+            Hydration.hydrate graph None strict (hydrationOptions true) target (shopPage false) (shop "  Lamp ")
+
+        let shown =
+            writes (), obj.ReferenceEquals (titleText (), text), title (), (inHead "title").textContent
+
+        mounted.Dispose ()
+        equal (0, true, "Lamp · Shop", Some "  Lamp  · Shop") shown)
 
 let private mountAdoptsHead queued () =
     withHead (fun () ->
@@ -909,21 +927,24 @@ let private unkeyedLinkReplaced () =
 
         equal (1, false, false, "<link data-ranvier-head=\"\" rel=\"preload\" href=\"/font.woff2\">") shown)
 
-/// <summary>Whether the content of <c>pendingHead</c> settles its source during setup.</summary>
-let mutable private headContentReady = true
+/// <summary>The state of one case's <c>pendingHead</c> instances.</summary>
+type private HeadContent =
+    {
+        /// <summary>Whether an instance settles its source during setup.</summary>
+        mutable Ready: bool
+        /// <summary>The sources created by the instances, in setup order.</summary>
+        Sources: ResizeArray<AsyncSource<string>>
+    }
 
-/// <summary>The sources <c>pendingHead</c> instances created, in setup order.</summary>
-let private headContentSources = ResizeArray<AsyncSource<string>>()
-
-let private pendingHead =
+let private pendingHead (content: HeadContent) =
     Component.define
         (fun _ (_: BoundaryStatus) ->
             let source = Api.createAsyncSource<string>()
 
-            if headContentReady then
+            if content.Ready then
                 source.Settle "ready"
 
-            headContentSources.Add source
+            content.Sources.Add source
             source)
         (fun t ->
             t.fragment
@@ -937,17 +958,24 @@ let private pendingHead =
                     t.span [||] [| t.text (fun (source: AsyncSource<string>) -> source.Value) |]
                 |])
 
-let private guardedHead =
-    Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.boundary titlePending titleFailed pendingHead |])
+let private guardedHead (content: HeadContent) =
+    Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.boundary titlePending titleFailed (pendingHead content) |])
 
 let private pendingHeadAdopted () =
     withHead (fun () ->
         use graph = new Graph ()
         let target = host ()
-        headContentReady <- true
-        target.innerHTML <- Server.render omitted guardedHead ()
-        headContentReady <- false
-        headContentSources.Clear ()
+
+        let content =
+            {
+                Ready = true
+                Sources = ResizeArray ()
+            }
+
+        let guarded = guardedHead content
+        target.innerHTML <- Server.render omitted guarded ()
+        content.Ready <- false
+        content.Sources.Clear ()
 
         setHead (
             "<title data-ranvier-head=\"title\">Server</title>"
@@ -959,10 +987,7 @@ let private pendingHeadAdopted () =
         let robots = inHead "meta[name=robots]"
 
         let mounted =
-            try
-                Hydration.hydrate graph None strict (hydrationOptions true) target guardedHead ()
-            finally
-                headContentReady <- true
+            Hydration.hydrate graph None strict (hydrationOptions true) target guarded ()
 
         let read () =
             obj.ReferenceEquals (inHead "meta[data-ranvier-head]", server),
@@ -972,7 +997,7 @@ let private pendingHeadAdopted () =
             title ()
 
         let pending = read (), isConnected robots
-        graph.Run (fun () -> headContentSources[0].Settle "ready")
+        graph.Run (fun () -> content.Sources[0].Settle "ready")
         let revealed = read (), target.textContent
         mounted.Dispose ()
 
@@ -981,10 +1006,10 @@ let private pendingHeadAdopted () =
             (pending, revealed))
 
 let private headRestoredOnFailure () =
-    let check (definition: Component<Shop>) (body: string) =
+    let check (head: string) (definition: Component<Shop>) (body: string) =
         withHead (fun () ->
             use graph = new Graph ()
-            servePage () |> ignore
+            setHead head
             let target = host ()
             target.innerHTML <- body
             let served = headElements ()
@@ -1000,17 +1025,19 @@ let private headRestoredOnFailure () =
                     true
 
             equal
-                (true, servedHead, true, true, "Lamp · Shop")
+                (true, head, true, true, "Lamp · Shop")
                 (failed, headHtml (), sameNodes served (headElements ()), obj.ReferenceEquals (titleText (), text), title ()))
 
     let page = Server.render omitted (shopPage false) (shop "Lamp")
 
-    check
-        (shopPage false)
-        (page.Substring (0, page.Length - 8)
-         + "<b></b><!--]-->")
+    let trailing =
+        page.Substring (0, page.Length - 8)
+        + "<b></b><!--]-->"
 
-    check failingShop (Server.render omitted failingShop (shop "Lamp"))
+    check servedHead (shopPage false) trailing
+    check servedHead failingShop (Server.render omitted failingShop (shop "Lamp"))
+    // The client writes its description and canonical values over the served ones at bind, before the mismatch.
+    check (servedHead.Replace("content=\"client\"", "content=\"server\"").Replace("href=\"/lamp\"", "href=\"/old\"")) (shopPage false) trailing
 
 let private headRecovered () =
     withHead (fun () ->
@@ -1080,6 +1107,7 @@ let cases: (string * (unit -> unit)) array =
                     "each document keeps its own title and adopts only its own marked elements", perDocument
                     "hydration adopts marked head elements by key and removes unadopted ones", headHydrated
                     "hydration replaces a served unkeyed link with the client's own", unkeyedLinkReplaced
+                    "hydration leaves a served title with spacing equal to the entry's text unwritten", spacedTitleKept
                     "an entry under pending content keeps its adopted element through hydration and shows the client's attributes before and after reveal",
                     pendingHeadAdopted
                     "a failed hydration leaves the head as the server wrote it", headRestoredOnFailure

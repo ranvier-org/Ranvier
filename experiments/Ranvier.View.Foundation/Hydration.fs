@@ -149,13 +149,13 @@ let private adoptHost
 /// <para>Nodes outside the root marker pair stay in place and outside the mount's range.</para>
 /// <para>
 /// Document entries adopt the head elements marked with their key, as in every mount, and a title entry writes the
-/// document's title only when it differs. Once the mount is built, the marked head elements no entry adopted are
-/// removed; an entry under pending content keeps its adopted element.
+/// document's title only when it differs. Once the mount is built, every unadopted marked element of the document's
+/// head is removed, those served for other roots included; an entry under pending content keeps its adopted element.
 /// </para>
 /// <para>
-/// A structural mismatch is passed to <c>report</c> once, as a one-element list. The server nodes between the root
-/// markers are then removed, the head is set back as the server wrote it, and the root mounts fresh before the end
-/// marker. Without a root marker, the root mounts fresh at the end of <c>host</c>, after its children; without the end
+/// On a structural mismatch, the head is set back as the server wrote it and the mismatch is passed to <c>report</c>
+/// once, as a one-element list. The server nodes between the root markers are then removed and the root mounts fresh
+/// before the end marker. Without a root marker, the root mounts fresh at the end of <c>host</c>, after its children; without the end
 /// marker, the nodes after the root marker are removed first. Ids issued by the fresh mount start again under
 /// <c>options.IdPrefix</c>.
 /// </para>
