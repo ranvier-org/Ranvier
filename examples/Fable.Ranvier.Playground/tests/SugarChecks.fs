@@ -398,6 +398,45 @@ let private hydration () =
             Adopted.nested
             graph
 
+/// <summary>The production keyed fixture and its sugared rewrite, driven by the same operations.</summary>
+let private keyedFixtures () =
+    let left, right = host (), host ()
+    let explicitOps = KeyedRowsPerf.mountKeyed left
+    let sugarOps = KeyedRowsSugarPerf.mountKeyed right
+
+    let both (step: KeyedRowsPerf.KeyedOperations -> unit) =
+        step explicitOps
+        step sugarOps
+        equal left.innerHTML right.innerHTML
+
+    both (fun ops -> ops.Create 20)
+    both (fun ops -> ops.Append 5)
+    both (fun ops -> ops.UpdateEvery10th ())
+    both (fun ops -> ops.Remove 3)
+    both (fun ops -> ops.Create 1000)
+    both (fun ops -> ops.Swap ())
+    both (fun ops -> ops.Clear ())
+    explicitOps.Dispose ()
+    sugarOps.Dispose ()
+
+let private armFixtures () =
+    let left, right = host (), host ()
+    let explicitOps = KeyedRowsPerf.mountArms left
+    let sugarOps = KeyedRowsSugarPerf.mountArms right
+
+    let both (step: KeyedRowsPerf.ArmOperations -> unit) =
+        step explicitOps
+        step sugarOps
+        equal left.innerHTML right.innerHTML
+
+    both (fun ops -> ops.Create 12)
+    both (fun ops -> ops.Switch ())
+    both (fun ops -> ops.Payload ())
+    both (fun ops -> ops.Switch ())
+    both (fun ops -> ops.Clear ())
+    explicitOps.Dispose ()
+    sugarOps.Dispose ()
+
 let cases: (string * (unit -> unit)) array =
     strictCases (
         Array.concat
@@ -413,6 +452,10 @@ let cases: (string * (unit -> unit)) array =
                 templated "show in forEachFixed in an armOf arm updates like its twin" nested
                 templated "a live forEach in an armOf arm mounts and cleans up rows like its twin" nestedLive
                 templated "a boundary around sugared content renders like its twin" bounded
+                [|
+                    "the sugared keyed benchmark fixture renders like the production fixture", keyedFixtures
+                    "the sugared arm benchmark fixture renders like the production fixture", armFixtures
+                |]
                 [| "sugared and explicit twins hydrate each other's server HTML", hydration |]
             ]
     )
