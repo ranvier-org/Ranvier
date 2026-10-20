@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <!-- Xantham.Fable.Core.TS, which supplies the DOM types, targets net8.0 only. -->
+        <TargetFrameworks>net10.0;net8.0</TargetFrameworks>
+        <LangVersion>latest</LangVersion>
+        <RootNamespace>Ranvier.Anime</RootNamespace>
+        <AssemblyName>Fable.Ranvier.Anime</AssemblyName>
+        <PackageId>Fable.Ranvier.Anime</PackageId>
+        <!-- As for Ranvier: the traced build packs as Fable.Ranvier.Anime.Traced and depends on Ranvier.Traced. -->
+        <PackageId Condition="'$(RanvierTrace)' == 'true'">Fable.Ranvier.Anime.Traced</PackageId>
+        <Title>Fable.Ranvier.Anime</Title>
+        <Description>Typed Fable bindings for anime.js 4.5, with Ranvier integration: animations reverted by their owner, playback state as memos, and signals that seek timelines and drive animatable properties.</Description>
+        <Description Condition="'$(RanvierTrace)' == 'true'">The traced build of Fable.Ranvier.Anime: typed anime.js 4.5 bindings with Ranvier integration. Depends on Ranvier.Traced.</Description>
+        <PackageTags>animation;animejs;anime;reactive;signals;fable;fsharp</PackageTags>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <Version>0.1.0-preview.1</Version>
+        <AssemblyVersion>0.0.0.0</AssemblyVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="Values.fs" />
+        <Compile Include="Tickables.fs" />
+        <Compile Include="Params.fs" />
+        <Compile Include="Anime.fs" />
+        <Compile Include="Reactive.fs" />
+        <Compile Include="Testing.fs" />
+        <None Include="README.md" Pack="true" PackagePath="\" />
+        <None Include="../../brand/icon/ranvier-icon.png" Pack="true" PackagePath="\" Visible="false" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../Ranvier/Ranvier.fsproj" />
+        <PackageReference Include="Xantham.Fable.Core.TS" Version="0.2.1" />
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(RanvierTrace)' == 'true'">
+        <AssemblyMetadata Include="RanvierTrace" Value="true" />
+    </ItemGroup>
+
+</Project>
