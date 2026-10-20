@@ -1594,8 +1594,9 @@ type Graph(options: GraphOptions) =
     /// <para>A reader run ahead of a queued pass reads the previous keys, rows or lookup values.</para>
     /// <para>
     /// While a pass is queued, <c>queue</c> holds <c>passDrain</c> at or after <c>queueHead</c>, so a non-empty
-    /// <c>queue</c> is the one test for queued work. A pass queued inside a flush puts <c>passDrain</c> at the head
-    /// of <c>queue</c>. A flush runs the passes queued before it starts ahead of its first item.
+    /// <c>queue</c> is the one test for queued work. A pass queued while an item runs puts <c>passDrain</c> at the
+    /// head of <c>queue</c>, and one queued outside a flush puts it at the tail. A pass queued while
+    /// <c>RunPasses</c> runs joins that run. A flush runs the passes queued before it starts ahead of its first item.
     /// </para>
     /// </remarks>
     let passes = ResizeArray<IScheduled>()
@@ -1608,6 +1609,9 @@ type Graph(options: GraphOptions) =
 
     /// <summary>The <c>queue</c> item that runs <c>RunPasses</c>. Created by the first queued pass.</summary>
     let mutable passDrain: IScheduled = Unchecked.defaultof<IScheduled>
+
+    /// <summary>True while <c>RunPasses</c> runs; a pass queued then runs in the same <c>RunPasses</c>.</summary>
+    let mutable runningPasses = false
 
 #if !FABLE_COMPILER
     /// <summary>
@@ -2255,7 +2259,7 @@ type Graph(options: GraphOptions) =
     member internal this.SchedulePass(item: IScheduled) =
         Tracer.Schedule (this, item, passCount - passHead)
 
-        if passHead = passCount then
+        if passHead = passCount && not runningPasses then
             this.QueueDrain ()
 
         if passCount < passes.Count then
@@ -2299,6 +2303,8 @@ type Graph(options: GraphOptions) =
     /// <summary>Runs the queued passes, including those queued by a pass, and empties the pass buffer.</summary>
     /// <remarks>A pass that throws leaves the passes after it queued, with <c>passDrain</c> queued to run them.</remarks>
     member private this.RunPasses() =
+        runningPasses <- true
+
         try
             while passHead < passCount do
                 let item = Platform.entryAt passHead passes
@@ -2307,6 +2313,8 @@ type Graph(options: GraphOptions) =
                 passHead <- passHead + 1
                 item.Execute ()
         finally
+            runningPasses <- false
+
             if passHead < passCount then
                 this.QueueDrain ()
             else

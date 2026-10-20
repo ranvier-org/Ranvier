@@ -1834,6 +1834,44 @@ let tests =
                         Expect.isGreaterThan reads 1 "the reader runs again"
                     }
 
+                    test "a pass left queued by the guard leaves a later write that marks only a projection its flush" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let t = Signal (g, 0)
+                        let watched = createProjection id id (fun () -> [ t.Value ])
+                        let mutable seen = -1
+                        createEffect (fun () -> seen <- watched.Keys[0])
+
+                        let counter = Signal (g, 0)
+                        let mutable bumping = true
+
+                        let runaway =
+                            createProjection
+                                (fun x ->
+                                    if bumping && counter.Value < 5000 then
+                                        counter.Value <- counter.Value + 1
+
+                                    x)
+                                id
+                                (fun () ->
+                                    counter.Value |> ignore
+                                    [ 1 ] :> seq<_>)
+
+                        let raised =
+                            try
+                                createEffect (fun () -> runaway.Keys |> ignore)
+                                false
+                            with :? System.InvalidOperationException ->
+                                true
+
+                        Expect.isTrue raised "the runaway pass trips the guard"
+                        bumping <- false
+
+                        // The write marks only `watched`; its pass and the effect it wakes run in this write's flush.
+                        t.Value <- 7
+                        Expect.equal seen 7 "the effect reads the new key"
+                    }
+
                     test "a guarded self-write of ten steps runs to completion" {
                         use g = new Graph ()
                         use _ = g.Activate ()

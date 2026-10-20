@@ -353,6 +353,26 @@ let tests =
                 Expect.sequenceEqual seen [ (1, 1); (4, 4) ] "the pass queued inside the flush runs before the reader"
             }
 
+            test "a pass queued by an effect that first reads its projection runs before an effect queued ahead of the write" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let t = createSignal 0
+                let s = createSignal [ 1; 2; 3 ]
+                let p = createProjection id id (fun () -> s.Value)
+                let m = createMemo (fun _ -> p.Keys.Length)
+                let seen = ResizeArray ()
+                // Created first, so the write to `t` queues it behind the effect below, which writes `s`.
+                createEffect (fun () -> seen.Add (t.Value, m.Value))
+
+                createEffect (fun () ->
+                    if t.Value = 1 then
+                        p.Keys |> ignore
+                        s.Value <- [ 1; 2; 3; 4 ])
+
+                t.Value <- 1
+                Expect.sequenceEqual seen [ (0, 3); (1, 4) ] "the reader, queued before the write, reads the keys of the write"
+            }
+
             test "an effect reading a memo over a lookup's key, then the source, sees one state per write" {
                 use g = new Graph ()
                 use _ = g.Activate ()
