@@ -39,6 +39,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 83,000 | 125,893 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 82,998 | 125,847 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 83,015 | 125,883 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 83,016 | 125,845 |
 
 ## app-table
 
@@ -79,6 +80,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 9,135,960 | 9,728,643 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 9,136,099 | 9,667,396 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 9,137,917 | 9,770,657 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 4,416,155 | 9,667,570 |
 
 ## async-recover
 
@@ -119,6 +121,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 138,975 | 37,447 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 138,975 | 37,453 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 139,063 | 37,451 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 139,048 | 37,449 |
 
 ## async-resolve
 
@@ -159,6 +162,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 2,789,917 | 1,079,794 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 2,789,917 | 1,079,809 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 2,793,119 | 1,080,083 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 2,793,109 | 1,079,946 |
 
 ## chain
 
@@ -199,6 +203,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 13,035 | 318 | 2,450 | 4,491 | 3,180 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 13,035 | 318 | 2,450 | 4,491 | 3,180 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 13,035 | 318 | 2,450 | 4,491 | 3,180 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 13,035 | 318 | 2,450 | 4,491 | 3,180 |
 
 ## chain-affinity
 
@@ -239,6 +244,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 2,549 | 3,067 | 2,496 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 2,549 | 3,067 | 2,496 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 2,549 | 3,067 | 2,496 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 2,549 | 3,067 | 2,496 |
 
 ## control
 
@@ -279,6 +285,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 74,719 | 833,983 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 74,719 | 833,913 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 74,719 | 834,039 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 74,709 | 833,882 |
 
 ## create
 
@@ -319,6 +326,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 13,465,934 | 2,875,678 | 2,532,362 | 2,131,779 | 4,002,416 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 13,449,947 | 2,859,679 | 2,532,361 | 2,131,112 | 4,002,120 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 13,449,953 | 2,859,678 | 2,532,409 | 2,131,062 | 4,002,325 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 13,449,953 | 2,859,678 | 2,532,377 | 2,131,932 | 4,002,655 |
 
 ## create-on
 
@@ -359,6 +367,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 2,926,482 | 4,375,976 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 2,910,484 | 4,375,772 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 2,910,485 | 4,375,852 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 2,910,486 | 4,375,978 |
 
 ## cutoff
 
@@ -399,6 +408,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 1,182 | 50 | 111 | 65 | 35 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 1,182 | 50 | 111 | 65 | 35 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 1,182 | 50 | 111 | 65 | 35 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 1,182 | 50 | 111 | 65 | 35 |
 
 ## derive-effect
 
@@ -439,6 +449,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 765 | 699 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 765 | 699 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 765 | 699 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 765 | 699 |
 
 ## derive-on
 
@@ -479,6 +490,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 753 | 694 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 737 | 694 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 737 | 694 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 737 | 694 |
 
 ## dispose
 
@@ -519,6 +531,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 2,706,750 | 806,291 | 367,497 | 466,097 | 434,568 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 2,706,752 | 806,291 | 367,497 | 466,200 | 434,499 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 2,707,646 | 806,290 | 367,497 | 465,980 | 434,616 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 2,707,644 | 806,291 | 367,497 | 465,967 | 434,888 |
 
 ## dispose-on
 
@@ -559,6 +572,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 346,497 | 430,578 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 346,497 | 430,530 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 346,497 | 430,526 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 346,497 | 430,629 |
 
 ## editable-edit
 
@@ -599,6 +613,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 180,106 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 180,106 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 180,106 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 180,106 |
 
 ## editable-upstream
 
@@ -639,6 +654,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 231,255 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 231,255 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 231,255 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 231,255 |
 
 ## fail-recompute
 
@@ -679,6 +695,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 64,946 | 1,366 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 64,946 | 1,366 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 64,914 | 1,366 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 64,930 | 1,366 |
 
 ## flight
 
@@ -719,6 +736,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 10,995 | 6,215 | 6,216 | 11,316 | 10,763 | 22,343 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 10,995 | 6,215 | 6,216 | 11,316 | 10,763 | 22,343 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 10,995 | 6,215 | 6,216 | 11,316 | 10,763 | 22,343 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 10,995 | 6,215 | 6,216 | 11,316 | 10,763 | 22,343 |
 
 ## keyed-insert
 
@@ -759,6 +777,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 1,921,810 | 53,951 | 54,951 | 3,164,266 | 167,267 | 167,379 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 1,921,810 | 53,951 | 54,950 | 3,164,403 | 167,255 | 167,103 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 1,921,825 | 53,971 | 54,964 | 3,164,362 | 167,302 | 167,653 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 1,921,809 | 53,951 | 54,946 | 3,164,311 | 167,299 | 167,724 |
 
 ## keyed-remove
 
@@ -799,6 +818,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 1,920,738 | 43,628 | 45,285 | 3,163,821 | 133,239 | 140,975 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 1,920,740 | 43,628 | 45,284 | 3,163,814 | 133,127 | 141,021 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 1,920,761 | 43,648 | 45,300 | 3,163,880 | 133,139 | 140,930 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 1,920,729 | 43,628 | 45,284 | 3,163,876 | 133,201 | 141,010 |
 
 ## keyed-swap
 
@@ -839,6 +859,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 1,973,429 | 46,161 | 46,916 | 3,282,926 | 80,397 | 85,105 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 1,973,429 | 46,162 | 46,916 | 3,282,896 | 80,397 | 85,137 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 1,973,444 | 46,177 | 46,931 | 3,282,864 | 80,396 | 85,129 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 1,973,428 | 46,162 | 46,916 | 3,282,926 | 80,399 | 85,118 |
 
 ## mvu-dispatch
 
@@ -879,6 +900,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 58,261 | 772 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 58,261 | 772 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 58,261 | 772 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 58,261 | 772 |
 
 ## project-chain
 
@@ -919,6 +941,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 3,844,584 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 3,844,591 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 3,844,844 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 1,070,308 |
 
 ## project-churn
 
@@ -959,6 +982,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 36,489 | 34,326 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 36,505 | 34,342 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 36,489 | 34,326 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 36,473 | 34,310 |
 
 ## project-edit
 
@@ -999,6 +1023,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 50,431 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 50,431 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 50,431 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 50,415 |
 
 ## project-reorder
 
@@ -1039,6 +1064,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 779,171 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 779,171 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 779,171 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 779,156 |
 
 ## server-render
 
@@ -1079,6 +1105,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 676,332 | 1,131,247 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 676,332 | 1,131,418 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 677,932 | 1,131,206 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 676,332 | 1,131,179 |
 
 ## shape-diamond
 
@@ -1119,6 +1146,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 59,899 | 88,772 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 59,899 | 88,772 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 59,899 | 88,772 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 59,899 | 88,772 |
 
 ## shape-dynamic
 
@@ -1159,6 +1187,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 82,921 | 96,580 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 82,921 | 96,576 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 82,921 | 96,578 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 82,921 | 96,580 |
 
 ## stream-burst-1
 
@@ -1199,6 +1228,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 1,974 | 1,572 | 2,490 | 5,260 | 6,373 | 10,444 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 1,974 | 1,572 | 2,490 | 5,258 | 6,373 | 10,446 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 1,974 | 1,572 | 2,490 | 5,260 | 6,373 | 10,444 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 1,974 | 1,572 | 2,491 | 5,260 | 6,373 | 10,446 |
 
 ## stream-burst-16
 
@@ -1239,6 +1269,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) (accepted) | 5,631 | 25,017 | 5,700 | 10,631 | 48,406 | 13,097 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 5,631 | 25,017 | 5,700 | 10,631 | 48,404 | 13,097 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 5,631 | 25,017 | 5,700 | 10,631 | 48,403 | 13,097 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 5,631 | 25,017 | 5,701 | 10,631 | 48,406 | 13,097 |
 
 ## stream-burst-256
 
@@ -1279,6 +1310,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) (accepted) | 64,131 | 400,101 | 57,039 | 123,003 | 795,709 | 70,598 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 64,131 | 400,101 | 57,039 | 123,049 | 795,709 | 70,598 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 64,131 | 400,101 | 57,039 | 123,029 | 795,710 | 70,601 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 64,131 | 400,101 | 57,040 | 123,049 | 795,709 | 70,598 |
 
 ## stream-restart
 
@@ -1319,6 +1351,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 4,188 | 4,976 | 12,498 | 8,966 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 4,188 | 4,996 | 12,496 | 8,972 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 4,188 | 4,976 | 12,496 | 8,970 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 4,188 | 4,976 | 12,498 | 8,970 |
 
 ## timed-admit-both
 
@@ -1359,6 +1392,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 118,591 | 135,174 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 118,591 | 135,172 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 120,639 | 135,172 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 118,591 | 135,174 |
 
 ## timed-admit-debounce
 
@@ -1399,6 +1433,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 117,496 | 133,772 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 117,496 | 133,769 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 119,544 | 133,759 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 117,496 | 133,769 |
 
 ## timed-admit-first
 
@@ -1439,6 +1474,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 69,479 | 82,869 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 69,479 | 82,868 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 71,527 | 82,869 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 69,479 | 82,869 |
 
 ## timed-admit-last
 
@@ -1479,6 +1515,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 117,758 | 134,091 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 117,758 | 134,116 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 119,806 | 134,086 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 117,758 | 134,079 |
 
 ## timed-capture-both
 
@@ -1519,6 +1556,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 35,726 | 45,087 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 35,726 | 45,078 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 35,726 | 45,087 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 35,726 | 45,087 |
 
 ## timed-capture-debounce
 
@@ -1559,6 +1597,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 35,598 | 43,719 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 35,598 | 43,718 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 35,598 | 43,719 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 35,598 | 43,719 |
 
 ## timed-capture-first
 
@@ -1599,6 +1638,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 32,078 | 39,004 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 32,078 | 39,003 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 32,078 | 39,004 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 32,078 | 39,004 |
 
 ## timed-capture-last
 
@@ -1639,6 +1679,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 35,534 | 43,653 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 35,534 | 43,655 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 35,534 | 43,654 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 35,534 | 43,654 |
 
 ## update
 
@@ -1679,6 +1720,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 1,087,690 | 38,805 | 82,505 | 262,572 | 209,535 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 1,087,690 | 38,805 | 82,505 | 262,596 | 209,569 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 1,087,690 | 38,805 | 82,505 | 262,800 | 209,569 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 1,087,690 | 38,805 | 82,505 | 262,806 | 209,556 |
 
 ## update-on
 
@@ -1719,6 +1761,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 94,605 | 222,273 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 93,005 | 222,262 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 93,005 | 222,286 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 93,005 | 222,299 |
 
 ## work-form
 
@@ -1759,6 +1802,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) (accepted) | 170,300 | 163,392 | 290,624 | 293,073 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 170,300 | 163,392 | 290,635 | 293,046 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 170,300 | 165,392 | 290,646 | 293,110 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 170,300 | 163,392 | 290,634 | 293,092 |
 
 ## work-status
 
@@ -1799,6 +1843,7 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 100,445 | 80,415 | 322,808 | 156,087 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 100,445 | 78,815 | 322,790 | 156,108 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 100,445 | 78,815 | 322,752 | 156,116 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 100,445 | 78,815 | 322,831 | 156,132 |
 
 ## work-value
 
@@ -1839,4 +1884,5 @@
 | `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 107,570 | 121,069 | 322,982 | 284,497 |
 | `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | 107,569 | 119,469 | 323,049 | 284,505 |
 | `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | 107,571 | 119,470 | 323,069 | 284,502 |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | 107,569 | 119,469 | 323,011 | 284,508 |
 
