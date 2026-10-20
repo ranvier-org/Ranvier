@@ -196,14 +196,12 @@ jobs:
       - name: Run the view layer representation checks
         run: dotnet run --project experiments/Ranvier.View.Foundation/RepresentationChecks.fsproj -c Release
         working-directory: .
-      # Compiles the tests with RANVIER_VIEW_COUNTERS defined, then runs every tests/*.test.mjs suite under jsdom.
-      - name: Run the DOM suites
-        run: npm run test:dom
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      # Compiles the fixtures and the app, then runs the Playwright specs against a Vite server on port 5178.
-      - name: Run the Chromium suite
-        run: npm run test:browser
+      # npm test runs the package's whole test chain: the jsdom suites (test:dom, with the view counters defined)
+      # and the Chromium suite (test:browser), plus any suites the script gains.
+      - name: Run the playground tests
+        run: npm test
 
   # The one CI check that branch rules require: it fails when any job failed or was cancelled, and passes when the
   # build and test jobs were skipped for a documentation-only change.
