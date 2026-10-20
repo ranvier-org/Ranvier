@@ -2,10 +2,6 @@
 title: Getting started with views
 ---
 
-:::warning Experimental
-The view layer is experimental and unpackaged; see [Views](index.md) for its status.
-:::
-
 Build a counter component, compile it with Fable and mount it into a page. The finished app is the
 same shape as the [playground](https://github.com/shayanhabibi/Ranvier/tree/master/examples/Fable.Ranvier.Playground),
 which is the runnable reference for everything in this section.
@@ -79,7 +75,7 @@ let counter = Component.ofMembers<Counter, _> ()
   instance and re-runs when a signal it read changes.
 - `Events.onClick` receives the instance and the event.
 
-The four open lines are the same in every view file. `Ranvier.View.Foundation.Sugar` provides the
+The five open lines are the same in every view file. `Ranvier.View.Foundation.Sugar` provides the
 lowercase tags, `Attrs`, `Events` and `Component.ofMembers`; [Sugar](sugar.md) describes that
 vocabulary and its rules.
 

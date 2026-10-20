@@ -125,6 +125,7 @@ let theme =
                         Menu.page "view/events.md"
                         Menu.page "view/document-head.md"
                         Menu.page "view/sugar.md"
+                        Menu.page "view/authored.md"
                     ]
                 Menu.section
                     "Running views"
@@ -132,7 +133,6 @@ let theme =
                         Menu.page "view/lifetimes.md"
                         Menu.page "view/elmish.md"
                         Menu.page "view/testing.md"
-                        Menu.page "view/authored.md"
                     ]
                 Menu.section "Reference" [ Menu.page "view/troubleshooting.md"; Menu.page "view/reference.md" ]
             ]
@@ -294,7 +294,8 @@ let site =
     |> OgImage.registerWith ogImages
     |> AgentFriendly.registerWith (
         AgentFriendly.summary "Fine-grained reactive computation for .NET, with a Fable target"
-        >> AgentFriendly.details "Start with the guide. Concepts explains the engine's model; Benchmarks holds measured results."
+        >> AgentFriendly.details
+            "Start with the guide. Views covers the experimental template components, Server their server rendering and hydration; Concepts explains the engine's model; Benchmarks holds measured results."
     )
     |> LightningCss.register
     |> Esbuild.register

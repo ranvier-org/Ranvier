@@ -5,7 +5,7 @@ order: 1
 
 :::warning Experimental
 Server rendering and hydration are experimental. `Server` lives in `experiments/Ranvier.View.Portable`
-and `Hydration` in `experiments/Ranvier.View.Foundation`; neither is published as a package, and their
+and `Hydration` in `experiments/Ranvier.View.Foundation`; both are consumed from a checkout of the repository, and their
 APIs may change. `Ranvier.Wire`, used for state transfer, is a package.
 :::
 
@@ -17,7 +17,7 @@ in the browser without being rebuilt:
 2. **Transfer.** The page carries the props the client needs, encoded as JSON in a
    `<script type="application/json">` element.
 3. **Hydrate.** In the browser, `Hydration.hydrate` runs the same component over the server's nodes:
-   setup runs again, each binding compares its first value with the node the server wrote, and the
+   setup runs again, each binding writes its first value only where it differs from the server's node, and the
    mount keeps the server's elements.
 
 ```fsharp

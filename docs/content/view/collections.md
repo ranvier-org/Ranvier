@@ -2,10 +2,6 @@
 title: Lists and keyed rows
 ---
 
-:::warning Experimental
-The view layer is experimental and unpackaged; see [Views](index.md) for its status.
-:::
-
 A list renders one **row** per item of an array read from the instance. Rows are keyed: when the array
 changes, an item whose key is still present keeps its row, its DOM nodes and its state, and moves to
 its new position. New keys create rows; missing keys dispose theirs.
@@ -31,7 +27,7 @@ let todoList =
 
 `forEachFixed key items row` takes the key of an item, the reader of the items, and the row view. The
 row's instance is **the item the row was created for**. A later item with the same key keeps the row
-and its original item, so a row follows changes through the signals the item holds (`Label` and
+and its original item; a row follows changes through the signals the item holds (`Label` and
 `Done` above).
 
 ## `forEach`: a row that follows its item
@@ -73,7 +69,7 @@ the item itself, or through a signal or memo that the item or the definition hol
 outer instance inside a row fails to compile (FS0041 through a text yield, FS0193 through a part).
 
 The annotations in the samples follow the [inference rule](sugar.md#the-inference-rule): the items
-reader reads a `Signal`, a class, so its parameter is annotated; the key lambda is annotated where the
+reader reads a `Signal`, a class, and its parameter carries the annotation; the key lambda is annotated where the
 item's labels are also declared by a later record.
 
 ## Server HTML

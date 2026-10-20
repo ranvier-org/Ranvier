@@ -2,10 +2,6 @@
 title: Conditional arms
 ---
 
-:::warning Experimental
-The view layer is experimental and unpackaged; see [Views](index.md) for its status.
-:::
-
 An **arm** is a component selected by a value of the instance. The region shows one arm at a time:
 when the selection changes to another arm, the previous arm's cleanups run, its nodes leave, and the
 new arm is set up in its place. When the selection keeps the same arm with a new payload, the arm
@@ -102,7 +98,7 @@ An arm region's start marker carries the selected arm's structural hash:
 
 [Hydration](../server/hydration.md) adopts the server's arm when the client selects an arm with the
 same hash; otherwise it re-renders that region alone and reports the mismatch. An arm with no nodes
-renders a placeholder comment.
+renders the placeholder comment `<!--ranvier:row-->`.
 
 ## The explicit form
 

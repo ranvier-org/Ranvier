@@ -2,11 +2,6 @@
 title: State transfer
 ---
 
-:::warning Experimental
-`Server.stateScript` and `Hydration.readState` are experimental and unpackaged; see
-[Server rendering](index.md) for their status. `Ranvier.Wire` is a package.
-:::
-
 The client hydrates with the props the server rendered with. The server writes them into the page as
 JSON in a `<script type="application/json">` element, and the client reads that element before it
 hydrates. `Ranvier.Wire` encodes and decodes the JSON with the same text on .NET and under Fable.
@@ -68,7 +63,7 @@ when the document has none. `Decode` returns every failure as an `Error`:
 | `WireError` | Cause |
 | --- | --- |
 | `Syntax` | The text is null, not JSON, or holds a lone surrogate. |
-| `Limit` | The text exceeds the codec's `WireLimits`: depth 64 and 100,000 items by default, checked before parsing. |
+| `Limit` | The text exceeds the codec's `WireLimits`: by default depth 64 and 100,000 items, checked before parsing, and 4,300 digits for a `Codecs.bigint` value. |
 | `Shape` | The JSON does not fit the type. |
 
 ## The wire contract

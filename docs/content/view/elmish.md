@@ -2,17 +2,13 @@
 title: Elmish components
 ---
 
-:::warning Experimental
-The view layer is experimental and unpackaged; see [Views](index.md) for its status.
-:::
-
 A component can run its own Elmish loop. Its setup creates an [`Mvu`](../guide/elmish.md), the
 instance holds the loop's `Dispatch` and the selector memos its template reads, and the loop is
 disposed with the instance. Components that each own a loop nest through two channels:
 
 - **Props down.** The parent passes the child a memo or reader over its own model.
 - **Callbacks up.** The child keeps its own `Msg` type and reports to the parent through a callback in
-  its props. The parent handles one message for the report and lifts no child messages.
+  its props. The parent handles one message for the report; child messages stay in the child.
 
 The samples use the opens from [Templates and bindings](templates.md) and `open Ranvier.Elmish`.
 
@@ -96,7 +92,7 @@ let page = Component.ofMembers<Page, _> ()
 ```
 
 The child receives `CurrentStep`, a selector memo. A parent message that leaves `Step` unchanged, such
-as `StepperReported`, causes no read in the child: the memo's equality cutoff stops it.
+as `StepperReported`, leaves the child's bindings unread: the memo's equality cutoff stops propagation there.
 
 ## Lifetime
 
@@ -110,7 +106,9 @@ as `StepperReported`, causes no read in the child: the memo's equality cutoff st
 ## On the server
 
 Elmish components render on the server like any other: `Create` runs, `init`'s commands run, and the
-template is written. The request is synchronous, so a command that dispatches later has no effect on
-the HTML. [Hydration](../server/hydration.md) runs `Create` again on the client.
+template is written. A command that dispatches later leaves the HTML as written.
+[Hydration](../server/hydration.md) runs `Create` again on the client.
 
-[Migrating from Elmish](../guide/elmish.md) covers `Mvu`, commands and selector costs.
+[Migrating from Elmish](../guide/elmish.md) covers `Mvu`, commands and selector costs, and the view sugar
+README's [Nested Elmish](https://github.com/shayanhabibi/Ranvier/blob/master/experiments/Ranvier.View.Portable/README.md#nested-elmish)
+section states the pattern with its disposal rules.

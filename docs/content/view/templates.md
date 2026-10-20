@@ -2,10 +2,6 @@
 title: Templates and bindings
 ---
 
-:::warning Experimental
-The view layer is experimental and unpackaged; see [Views](index.md) for its status.
-:::
-
 A template is a tree of elements, text and **parts** (attributes, properties, events and hooks)
 for one instance type `'inst`. It is a value of type `TemplateView<'inst>`, built once when its
 component is defined. Every dynamic part is a function of the instance: when a component mounts,
@@ -40,7 +36,7 @@ div (Attrs.className "panel", Attrs.id "main") {
 - A void element (`input`, `br`, `img`, `meta` and the other HTML void elements) takes parts only.
   It appears as a child of another element.
 - An element's parts are typed by its DOM interface. `Props.Input.value` applies to `input` only, and
-  the compiler reports it on any other tag.
+  any other tag fails to compile with it.
 
 ## Text
 
@@ -109,22 +105,22 @@ Each attribute accepts a fixed value, a reader of the instance, or a `from` sour
 sources make the attribute a binding.
 
 ```fsharp
-type Task =
+type Chore =
     { Title: Signal<string>
       Note: Signal<string option>
       Done: Signal<bool>
       Owner: string }
 
-let task =
-    Component.template (fun _ (task: Task) -> task) (
+let chore =
+    Component.template (fun _ (chore: Chore) -> chore) (
         li (
-            Attrs.className "task",
-            Attrs.title (fun t -> t.Title.Value),
-            Attrs.data ("owner", fun t -> Some t.Owner),
-            Attrs.attribute ("aria-describedby", fun t -> t.Note.Value |> Option.map (fun _ -> "note")),
-            Attrs.hidden (from (fun t -> t.Done))
+            Attrs.className "chore",
+            Attrs.title (fun c -> c.Title.Value),
+            Attrs.data ("owner", fun c -> Some c.Owner),
+            Attrs.attribute ("aria-describedby", fun c -> c.Note.Value |> Option.map (fun _ -> "note")),
+            Attrs.hidden (from (fun c -> c.Done))
         ) {
-            fun t -> t.Title.Value
+            fun c -> c.Title.Value
         }
     )
 ```
@@ -198,7 +194,7 @@ give a custom property a server form.
 
 Each instance has one **render effect**. It reads every binding of the instance in template order,
 then writes each value that differs from the one already in the DOM. A change to any signal read by
-any of the instance's bindings re-runs the effect; unchanged values cause no DOM write.
+any of the instance's bindings re-runs the effect, and the effect writes changed values only.
 
 - A binding whose read is [pending](../guide/pending.md) keeps the value already written. The
   enclosing [boundary](boundaries.md) records the wait.
@@ -208,7 +204,7 @@ any of the instance's bindings re-runs the effect; unchanged values cause no DOM
 - A binding with its own effect re-runs alone. Mark it with `t.isolated` (below) when one value
   changes much more often than the rest of the instance.
 
-Static text and fixed attribute values create no binding and no effect.
+Static text and fixed attribute values are written once, with the copy of the template.
 
 ## Explicit-only members
 

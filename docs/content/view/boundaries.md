@@ -2,10 +2,6 @@
 title: Boundaries
 ---
 
-:::warning Experimental
-The view layer is experimental and unpackaged; see [Views](index.md) for its status.
-:::
-
 A view boundary shows a **pending view** until every binding, row and arm under its content has read
 a value, then reveals the content in one insertion. A failure under the content replaces it with an
 **error view**. The reads are the core's [pending reads](../guide/pending.md): an
@@ -52,7 +48,7 @@ let profileView (store: ProfileStore) =
 - `BoundaryFailure.Error` is the first exception of the failure. `BoundaryFailure.Retry ()` disposes
   the error view and mounts the content again with a new setup.
 - `BoundaryStatus.IsPending ()` is a tracked reader: `true` after the first reveal while a binding
-  under the boundary waits for a pending read. The content stays shown during that wait, so a refetch
+  under the boundary waits for a pending read. The content stays shown during that wait: a refetch
   keeps the previous data on screen.
 - The content receives the status as its props. Data the content shows comes from state the content's
   definition can reach, such as the store captured above. Build the definitions once.
@@ -81,7 +77,9 @@ The server renders the boundary's current state between markers that record it:
 <section><!--[e--><p class="error">offline<button>Retry</button></p><!--]--></section>
 ```
 
-The server renders synchronously: it writes whatever state each read has when the render reaches it.
+A server render is synchronous: the HTML holds the state of each read at the moment the render reaches it.
+An error view rendered on the server receives a `Retry` that does nothing; hydration removes the
+server's error view and mounts the boundary fresh (see [Hydration](../server/hydration.md#boundaries)).
 A pending read outside every boundary raises `ServerPendingException` from `Server.render`. See
 [Server rendering](../server/rendering.md#pending-reads) and, for how the client picks up each state,
 [Hydration](../server/hydration.md#boundaries).

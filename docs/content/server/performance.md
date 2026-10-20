@@ -2,12 +2,9 @@
 title: Performance
 ---
 
-:::warning Experimental
-These figures measure experimental code at one point in its development. They come from one machine
-(AMD Ryzen 9 9900X, Windows 11) and are not gates; rerun the benchmarks before relying on a number.
-:::
-
 This page states what the view and server benchmarks measure and what their results mean for an app.
+The figures come from one machine (AMD Ryzen 9 9900X, Windows 11) at one point in the code's development;
+rerun the benchmarks before relying on a number.
 The raw data and method are in the repository's research notes:
 [server HTML and hydration](https://github.com/shayanhabibi/Ranvier/blob/master/docs/research/2026-10-19-server-html-hydration.md)
 and its [result files](https://github.com/shayanhabibi/Ranvier/tree/master/docs/research/framework-performance/investigation/server-html).
@@ -79,22 +76,11 @@ host, and against Solid 2's `hydrate`, medians over 180 samples:
 
 ## Sugar
 
-The [sugar](../view/sugar.md) adds no per-instance work: free tags, control flow, `Component.template`,
-`Component.ofMembers`, `render`, `renderOf` and `ComponentTag` mount the same owners, effects,
-listeners and DOM writes as the explicit form. `Component.ofClass` builds one two-element array per
-instance setup under Fable.
-
-Bundle cost, gzip, over a like-for-like explicit entry holding one benchmark row, a keyed fixture and
-an arm fixture:
-
-| Entry | Δ gzip |
-| --- | --- |
-| Free tags, `Component.template` row | +840 B |
-| `Component.ofMembers` row | +824 B |
-| `Component.ofClass` row | +892 B |
-| All three rows, against their three explicit twins | +869 B |
-
-Unused sugar adds 0 bytes.
+The [sugar](../view/sugar.md) mounts the same owners, effects, listeners and DOM writes as the explicit
+form for every style except `Component.ofClass`, which builds one two-element array per instance setup
+under Fable. Unused sugar adds 0 bytes to a bundle; the bundle cost of each style is in the view sugar
+README's [Costs](https://github.com/shayanhabibi/Ranvier/blob/master/experiments/Ranvier.View.Portable/README.md#costs)
+section.
 
 ## Guidance
 
@@ -104,7 +90,8 @@ Unused sugar adds 0 bytes.
 - **One render effect per instance.** All of an instance's bindings re-run together when any of their
   dependencies changes. A binding that changes far more often than its siblings is a candidate for
   `t.isolated` (see [Templates and bindings](../view/templates.md#how-bindings-re-run)).
-- **Hydrate long pages.** The larger the page, the more hydration saves over a client mount.
+- **Hydrate long pages.** Hydration took 0.91 of a mount's time at 128 component rows and 0.63 at
+  10,000 keyed rows, and the same time at one component.
 - **Settle data before rendering** when the server should send content rather than a pending view.
 
 ## Running the benchmarks

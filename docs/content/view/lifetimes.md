@@ -2,10 +2,6 @@
 title: Mounts and lifetimes
 ---
 
-:::warning Experimental
-The view layer is experimental and unpackaged; see [Views](index.md) for its status.
-:::
-
 A **mount** is a view placed in a DOM element: its nodes, its instances' owners, effects and
 listeners, and a handle that disposes all of them. Mounting runs in the browser under Fable; the
 functions are in `Ranvier.View.Foundation.Mounting`.
@@ -32,7 +28,7 @@ let mounted =
 `build` receives a `BuildContext`:
 
 - `context.Backend` is the backend that `Program.run view context.Backend` writes into. Each
-  `Program.run` call adds roots in order, so one mount can hold several views.
+  `Program.run` call adds roots in order, and one mount can hold several views.
 - `context.Native (node, Owned)` adds an existing DOM node as a root. An `Owned` node is removed when
   the mount is disposed; a `Borrowed` node returns to its original parent and position.
 - `context.OnCleanup cleanup` registers a cleanup on the mount's root owner.
@@ -88,8 +84,8 @@ runs at once; only the DOM write waits. `CollectAndContinue` commits every slot 
 collects setter failures in `CommitErrors`; `FailFastCancel` stops at the first failure and cancels
 the remaining slots of that flush.
 
-Hydration and server-matching ids use `SynchronousCommits`; see
-[Components](components.md#setup).
+Hydration requires `SynchronousCommits`. Under `QueuedCommits`, `Setup.CreateId` issues ids in another
+format, which can differ from the server's; see [Components](components.md#setup).
 
 ## Failures
 

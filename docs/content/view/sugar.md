@@ -2,17 +2,12 @@
 title: Sugar
 ---
 
-:::warning Experimental
-The view layer is experimental and unpackaged; see [Views](index.md) for its status.
-:::
-
 `open Ranvier.View.Foundation.Sugar` brings in the vocabulary the other pages use: lowercase tags with
 computation-expression bodies, `Attrs`, `Props`, `Events` and `Hooks` as free values, control flow over
 views, and the declaration helpers `Component.template`, `Component.ofMembers` and `Component.ofClass`.
-Every form lowers to one `Component.define` call and the template builder's operations, so a sugared
-component renders the same template tree, server HTML and mounted resources as its
-[explicit form](templates.md#the-explicit-form), and adds zero cost per instance except under
-`Component.ofClass`.
+Every form lowers to one `Component.define` call and the template builder's operations. A sugared
+component renders the same template tree and server HTML as its
+[explicit form](templates.md#the-explicit-form), and mounts the same resources.
 
 This page is the tutorial-level summary. The full reference is the
 [view sugar README](https://github.com/shayanhabibi/Ranvier/blob/master/experiments/Ranvier.View.Portable/README.md),
@@ -65,37 +60,18 @@ element is a child of another element; a template's root is a non-void element o
 
 ## The inference rule
 
-> A lambda gets its instance type from its own body. A record label read resolves to the latest record
-> in scope that declares the label. Annotate a lambda that reads a label also declared by a later
-> record, and every lambda that reads a member of a class instance: a class component, `Signal`,
-> `Memo`, or any other class.
+Each lambda in a sugared template infers its instance type from its own body. A lambda that reads a
+record field declared only by the instance's record needs no annotation; annotate the instance type on
+a lambda that reads a class member (a `Signal`, a `Memo`, a class component) or a record label that a
+later record also declares. A missing annotation is reported at the element (FS0001, FS0193 or FS0041).
+The README's
+[Inference rule](https://github.com/shayanhabibi/Ranvier/blob/master/experiments/Ranvier.View.Portable/README.md#inference-rule)
+states the rule exactly, with a table of cases.
 
-| Lambda | Annotation |
-| --- | --- |
-| Reads a record field whose label only that record declares: `fun r -> string r.Local.Value` | None. |
-| Reads a record field inside that record's own static members | None. |
-| Reads a label a later record also declares: `fun (row: KeyedRow) -> string row.Id` | The record type. |
-| Reads a class member, including an item list held in a `Signal`: `fun (rows: Signal<_ array>) -> rows.Value` | The class type. |
-| A non-overloaded `Events.*` entry after an annotated sibling in the same tag's parts | None. |
-
-A missing annotation is reported at the element, as FS0001, FS0193 or FS0041, rather than at the
-lambda. Inside `Component.define setup (fun t -> ...)`, `t.` members carry the instance type top-down
-and mix with free tags, which suits a view that would otherwise need many annotations:
-
-```fsharp
-type Entry = { Id: int; Label: string }
-type Marker = { Id: int; Colour: string }
-
-let entry =
-    Component.define (fun _ (e: Entry) -> e) (fun t ->
-        li (t.Attrs.className "entry") {
-            span () { t.text (fun e -> string e.Id) }
-            span () { fun e -> e.Label }
-        })
-```
-
-`t.isolated`, `t.view`, `t.Unsafe` and `t.Document` have no free form and are written the same way;
-see [Explicit-only members](templates.md#explicit-only-members).
+Inside `Component.define setup (fun t -> ...)`, `t.` members carry the instance type into their
+lambdas and mix with free tags, which suits a view that would otherwise need many annotations.
+`t.isolated`, `t.view`, `t.Unsafe` and `t.Document` are written the same way; see
+[Explicit-only members](templates.md#explicit-only-members).
 
 ## Control flow and components
 
@@ -108,23 +84,16 @@ see [Explicit-only members](templates.md#explicit-only-members).
 | `render`, `renderOf`, `ComponentTag` | [Components](components.md#child-components) |
 | An `Mvu` per component | [Elmish components](elmish.md) |
 
-Three rules carry across these pages:
-
-- **Bind arm definitions with `let`.** An `armOf` inside an `arms` function, or in a `static member`
-  property, creates a new definition on every evaluation and remounts the arm each time.
-- **Only the helpers read `View`.** Each read of a `static member View` builds a new template;
-  `Component.ofMembers` and `Component.ofClass` read it once per definition.
-- **Rows keep their own instance.** Reading the enclosing instance inside a row fails to compile:
-  FS0041 through a text yield, FS0193 through a part.
-
-A definition created while a list or arm region is read raises in a Fable Debug build: "a template
-definition was created while a region was read; bind it in the template's build function".
+Each of those pages states the rules that apply to its forms: arm definitions are bound with `let`,
+the declaration helpers read `View` once, and a row reads only its own instance. The README's
+[Control flow](https://github.com/shayanhabibi/Ranvier/blob/master/experiments/Ranvier.View.Portable/README.md#control-flow)
+and
+[Declaring components](https://github.com/shayanhabibi/Ranvier/blob/master/experiments/Ranvier.View.Portable/README.md#declaring-components)
+sections collect them, with their compile errors.
 
 ## Costs
 
-The free tags, the control flow, `Component.template`, `Component.ofMembers`, `render`, `renderOf`
-and `ComponentTag` mount the same owners, effects, listeners and DOM writes as their explicit twins.
-Unused sugar adds 0 bytes to a bundle; [Performance](../server/performance.md#sugar) gives the bundle
-cost of using it, and the README's
+Every sugar form except `Component.ofClass` mounts the same owners, effects, listeners and DOM writes as
+its explicit twin. The README's
 [Costs](https://github.com/shayanhabibi/Ranvier/blob/master/experiments/Ranvier.View.Portable/README.md#costs)
-section has the per-style figures.
+section gives the bundle size of each style and the per-instance cost of `Component.ofClass`.

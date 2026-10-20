@@ -2,12 +2,8 @@
 title: Rendering
 ---
 
-:::warning Experimental
-Server rendering is experimental and unpackaged; see [Server rendering](index.md) for its status.
-:::
-
 `Ranvier.View.Foundation.Server` renders a template component to HTML. It compiles for .NET and Fable
-and has no browser dependency. The samples use the opens from
+and depends on the DOM types only, which compile on .NET. The samples use the opens from
 [Templates and bindings](../view/templates.md).
 
 ## A render is one request
@@ -72,6 +68,7 @@ nodes:
 | `<!--[r-->` … `<!--]-->` | The root of the render. |
 | `<!--!-->` | Between adjacent text nodes. |
 | `<!--_-->` | A text binding whose value is empty. |
+| `<!--ranvier:row-->` | A row or arm with no nodes. |
 | `<!--[-->` … `<!--]-->` | A list region or a view hole. |
 | `<!--[a:hash-->` … `<!--]-->` | An arm region; `hash` identifies the selected arm's structure. |
 | `<!--[c-->`, `<!--[p-->`, `<!--[e-->` … `<!--]-->` | A boundary's ready content, pending view or error view. |
@@ -80,12 +77,13 @@ nodes:
 <!--[r--><div><button>Details</button><!--[a:8fe1b6e4--><p>b</p><!--]--></div><!--]-->
 ```
 
-- Text and attribute values are escaped: `<`, `>` and `&` everywhere, `"` in attributes. `Html.escape`
+- Text and attribute values are escaped: `<`, `>`, `&` and a carriage return (as `&#13;`) everywhere, `"` in
+  attributes. `Html.escape`
   is the same escaper. `null` text renders as empty text.
 - Event handlers and hooks are browser-only; see below.
 - Generated properties write their attribute form: an input's `value` as `value="..."`, `checked` and
   `disabled` as presence attributes, a textarea's value as its text.
-- A line feed at the start of a `pre`, `listing` or `textarea` binding is doubled, so the HTML parser's
+- A line feed at the start of a `pre`, `listing` or `textarea` binding is doubled; the HTML parser's
   removal of one leading line feed leaves the value intact.
 - [Raw content](../view/templates.md#explicit-only-members) is written as given.
 

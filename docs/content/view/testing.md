@@ -2,10 +2,6 @@
 title: Testing views
 ---
 
-:::warning Experimental
-The view layer is experimental and unpackaged; see [Views](index.md) for its status.
-:::
-
 A view has two kinds of test. **HTML checks** render a component with `Server.render` and compare the
 string; they run on .NET in any test framework and need no DOM. **DOM checks** mount a component into
 a document under Node with jsdom, compiled with Fable, and drive it with events.
@@ -17,7 +13,7 @@ The samples check the counter from [Getting started](getting-started.md).
 ```fsharp
 open Ranvier.View.Foundation
 open Ranvier.View.Foundation.Representation
-open GettingStarted
+open Counter
 
 let private omit = { Server.Options.defaults with Policy = Omit }
 
@@ -31,7 +27,7 @@ let rendersStartValue () =
         failwithf "Expected %s; got %s" expected html
 ```
 
-`Server.render` creates and disposes its own graph and runs every setup and cleanup, so an HTML check
+`Server.render` creates and disposes its own graph and runs every setup and cleanup: an HTML check
 also covers setup failures and cleanup order. Use the `Omit` policy for components with handlers or
 hooks. [Server rendering](../server/rendering.md) describes the output, including the markers that
 lists, arms and boundaries write.
@@ -49,7 +45,7 @@ open global.Ranvier
 open Ranvier.View.Foundation
 open Ranvier.View.Foundation.Representation
 open Ranvier.View.Foundation.Template
-open GettingStarted
+open Counter
 
 [<Global "document">]
 let private document: Document = jsNative

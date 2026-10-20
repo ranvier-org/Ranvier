@@ -2,10 +2,6 @@
 title: API reference
 ---
 
-:::warning Experimental
-The view layer is experimental and unpackaged; see [Views](index.md) for its status.
-:::
-
 The view and server modules are outside the site's generated API reference, which
 covers the packaged libraries. Their documentation comments are in the source; this index lists each
 module and the page that covers it.

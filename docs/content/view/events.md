@@ -2,10 +2,6 @@
 title: Events and hooks
 ---
 
-:::warning Experimental
-The view layer is experimental and unpackaged; see [Views](index.md) for its status.
-:::
-
 Events and hooks are the parts of a template that run code in the browser: event handlers, code that
 runs once an element is placed, references to elements, and elements handed to other libraries. All of
 them are browser-only; see [Browser-only parts](../server/rendering.md#browser-only-parts) for what the
@@ -46,6 +42,30 @@ let basket =
   is disposed.
 - A handler that throws under a [boundary](boundaries.md) shows the boundary's error view; outside
   every boundary the exception goes to the mount's `report`.
+
+## Event delegation
+
+Twenty-two bubbling events are **delegated**: a mount registers one listener per event name on its
+host element, and that listener dispatches to the template handlers between the event's target and the
+host. The delegated set is `beforeinput`, `click`, `contextmenu`, `dblclick`, `focusin`, `focusout`,
+`input`, `keydown`, `keyup`, `mousedown`, `mousemove`, `mouseout`, `mouseover`, `mouseup`,
+`pointerdown`, `pointermove`, `pointerout`, `pointerover`, `pointerup`, `touchend`, `touchmove` and
+`touchstart` (`delegatedEvents` in [`Mounting.fs`](https://github.com/shayanhabibi/Ranvier/blob/master/experiments/Ranvier.View.Foundation/Mounting.fs)).
+Every other event name, such as `change`, `submit`, `focus`, `blur` or `scroll`, attaches a listener to
+the element itself.
+
+For a delegated event:
+
+- The host's listener walks from the target up to the host and runs each Ranvier handler on the way, in
+  bubbling order.
+- `event.currentTarget` is the element whose handler is running.
+- `event.stopPropagation ()` in a handler stops the walk: Ranvier handlers above that element skip the
+  event, and so do listeners above the host. Native listeners on elements between the target and the
+  host run before every Ranvier handler; a native
+  listener there that stops propagation keeps the event from every Ranvier handler of the mount.
+- A handler receives events whose target is inside the mount's host.
+- With nested mounts, the inner host dispatches first, and the outer host continues from the inner
+  host's parent.
 
 ## Hooks
 

@@ -2,10 +2,6 @@
 title: Troubleshooting views
 ---
 
-:::warning Experimental
-The view layer is experimental and unpackaged; see [Views](index.md) for its status.
-:::
-
 Each entry gives a message or symptom, its cause and the fix. Compile errors of the sugar are listed in
 [Sugar](sugar.md) and the
 [view sugar README](https://github.com/shayanhabibi/Ranvier/blob/master/experiments/Ranvier.View.Portable/README.md).
@@ -16,7 +12,7 @@ Each entry gives a message or symptom, its cause and the fix. Compile errors of 
 the [inference rule](sugar.md#the-inference-rule): annotate a lambda that reads a class member
 (`Signal`, `Memo`, a class component) or a label also declared by a later record.
 
-**FS0072 on a lambda that reads a class member.** No record declares the label, so the lambda has no
+**FS0072 on a lambda that reads a class member.** No record declares the label, and the lambda has no
 type to start from. Annotate it with the class type.
 
 **FS0041 "No overloads match for method 'Yield'" with a tag type in the message.** A non-void element

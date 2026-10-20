@@ -2,10 +2,6 @@
 title: Document head
 ---
 
-:::warning Experimental
-The view layer is experimental and unpackaged; see [Views](index.md) for its status.
-:::
-
 A component can own entries in the document's `<head>`: the title, `meta` elements and `link`
 elements. An entry is shown once its instance is placed and withdrawn when the instance is disposed,
 so the head follows whichever components are mounted.

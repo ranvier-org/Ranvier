@@ -2,13 +2,9 @@
 title: Hydration
 ---
 
-:::warning Experimental
-Hydration is experimental and unpackaged; see [Server rendering](index.md) for its status.
-:::
-
 Hydration mounts a component over the HTML that `Server.render` wrote for it. The client runs every
-setup again, and instead of inserting new nodes, each binding compares its first value with the server's
-node and writes only a difference. Elements, text nodes and their identity stay as the server wrote
+setup again and keeps the server's nodes: each binding writes its first value only where it differs from the
+server's node. Elements, text nodes and their identity stay as the server wrote
 them; the client adds listeners, hooks and browser-only properties.
 
 ## Hydrating a component

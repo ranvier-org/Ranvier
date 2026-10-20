@@ -2,10 +2,6 @@
 title: Other authoring layers
 ---
 
-:::warning Experimental
-The view layer is experimental and unpackaged; see [Views](index.md) for its status.
-:::
-
 Template components are the authoring form that renders on the server and hydrates. Two other layers
 build DOM in the browser: **authored views**, which construct each instance's DOM during mounting, and
 **`Fable.Ranvier`**, a small library of DOM helpers.
@@ -57,11 +53,11 @@ members accept a value, a `unit -> 'T` reader, a `Signal<'T>` or a `Memo<'T>`. K
 files that open the [sugar](sugar.md).
 
 Run an authored view in a mount with `Program.run view context.Backend`, the same call that runs
-`Component.render`. A static snapshot comes from `Representation.Html.render`:
+`Component.render`. A static snapshot comes from `Representation.Html.render`, written in full beside the `Html` alias:
 
 ```fsharp
 let snapshot (rows: Signal<(int * string) array>) : string =
-    Representation.Html.render Omit (Program.run (rowsView rows))
+    Ranvier.View.Foundation.Representation.Html.render Omit (Program.run (rowsView rows))
 ```
 
 ```html
