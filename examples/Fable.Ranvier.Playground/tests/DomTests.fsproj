@@ -25,6 +25,8 @@
     <Compile Include="../../../experiments/Ranvier.View.Foundation/DomEvents.fs" Link="DomEvents.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Portable/Template.fs" Link="Template.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Portable/Generated/HtmlTemplate.fs" Link="Generated/HtmlTemplate.fs" />
+    <Compile Include="../../../experiments/Ranvier.View.Portable/TemplateSugar.fs" Link="TemplateSugar.fs" />
+    <Compile Include="../../../experiments/Ranvier.View.Portable/TemplateSugarElements.fs" Link="TemplateSugarElements.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Portable/Server.fs" Link="Server.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Generated/Html.fs" Link="Generated/Html.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Browser.fs" Link="Browser.fs" />
@@ -70,6 +72,8 @@
     <Compile Include="OwnedAsyncChecks.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Portable/Checks/ServerFixtures.fs" Link="Checks/ServerFixtures.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Portable/Checks/ServerChecks.fs" Link="Checks/ServerChecks.fs" />
+    <Compile Include="../../../experiments/Ranvier.View.Portable/Checks/SugarFixtures.fs" Link="Checks/SugarFixtures.fs" />
+    <Compile Include="../../../experiments/Ranvier.View.Portable/Checks/SugarServerChecks.fs" Link="Checks/SugarServerChecks.fs" />
     <Compile Include="HydrationChecks.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/ComponentBench.fs" Link="ComponentBench.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Fixtures.fs" Link="Fixtures.fs" />

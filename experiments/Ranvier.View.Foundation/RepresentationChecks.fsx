@@ -615,3 +615,4 @@ runCases PackagingChecks.cases
 
 runCases ServerChecks.cases
 runCases ServerChecks.dotnetCases
+runCases SugarServerChecks.cases

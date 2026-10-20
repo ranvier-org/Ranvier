@@ -2208,6 +2208,15 @@ module internal TemplateParts =
     let event name (handler: 'inst -> 'event -> unit) : Part<'native, 'inst> =
         EventPart (name, Func<obj, obj, unit>(fun instance event -> handler (unbox instance) (unbox event)))
 
+    let text (value: string) : TemplateView<'inst> =
+        TemplateView (TextNode value)
+
+    let readText (read: 'inst -> string) : TemplateView<'inst> =
+        TemplateView (TextSlotNode (slot TextTarget RenderMode read primitiveSame))
+
+    let sourceText (source: Source<'inst, string>) : TemplateView<'inst> =
+        TemplateView (TextSlotNode (sourceSlot TextTarget source primitiveSame))
+
 /// <summary>Attribute parts: a value is static, a reader or source is dynamic.</summary>
 [<Sealed>]
 type AttributeBuilder<'inst> internal () =
