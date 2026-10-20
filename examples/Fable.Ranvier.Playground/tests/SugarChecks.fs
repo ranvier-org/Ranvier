@@ -34,7 +34,7 @@ let private watchListeners () : ListenerWatch = jsNative
 [<Emit("globalThis.ranvierExpectCounters === true")>]
 let private countersExpected () : bool = jsNative
 
-/// <summary>The graph counters as name-value pairs; empty without <c>RANVIER_COUNTERS</c> unless the run expects counters, which fails.</summary>
+/// <summary>The graph counters as name-value pairs; fails when counters are expected but not compiled.</summary>
 let private tally () : (string * float) list =
 #if RANVIER_COUNTERS
     [ for name, value in Counters.Snapshot () -> name, float value ]
@@ -341,6 +341,18 @@ let private hydratedTwins
     sugarMount.Dispose ()
     equal left.innerHTML right.innerHTML
 
+/// <summary>Server nodes adopted per case by this branch's hydration, where lists and arms mount fresh; update these when the hydration branch is merged.</summary>
+module private Adopted =
+    /// <summary>All 6 server nodes.</summary>
+    let bench = 6
+    /// <summary>6 of 21 server nodes.</summary>
+    let keyed = 6
+    /// <summary>6 of 22 server nodes.</summary>
+    let arms = 6
+    let show = 7
+    /// <summary>5 of 19 server nodes.</summary>
+    let nested = 5
+
 /// <summary>Each pair hydrated from the explicit twin's HTML and from the sugared twin's HTML.</summary>
 let private hydration () =
     for fromSugar in [ false; true ] do
@@ -349,7 +361,7 @@ let private hydration () =
         let pick (explicitDefinition: Component<'p>) (sugarDefinition: Component<'p>) =
             if fromSugar then sugarDefinition else explicitDefinition
 
-        hydratedTwins (pick benchExplicit benchSugar) benchExplicit benchSugar 3 [] 6 graph
+        hydratedTwins (pick benchExplicit benchSugar) benchExplicit benchSugar 3 [] Adopted.bench graph
         let rows = graph.Run (fun () -> Api.createSignal (keyedItems ()))
 
         hydratedTwins
@@ -358,11 +370,11 @@ let private hydration () =
             keyedLiveSugar
             rows
             [ fun () -> rows.Value <- Array.rev rows.Value ]
-            6
+            Adopted.keyed
             graph
 
         let armed = graph.Run (fun () -> Api.createSignal (armItems ()))
-        hydratedTwins (pick armsExplicit armsSugar) armsExplicit armsSugar armed [ fun () -> armed.Value[1].Mode.Value <- Plain ] 6 graph
+        hydratedTwins (pick armsExplicit armsSugar) armsExplicit armsSugar armed [ fun () -> armed.Value[1].Mode.Value <- Plain ] Adopted.arms graph
         let state = graph.Run (fun () -> toggle false)
 
         hydratedTwins
@@ -371,7 +383,7 @@ let private hydration () =
             showSugar
             state
             [ (fun () -> state.On.Value <- true); (fun () -> state.On.Value <- false) ]
-            7
+            Adopted.show
             graph
 
         let listed = graph.Run board
@@ -382,7 +394,7 @@ let private hydration () =
             nestedSugar
             listed
             [ fun () -> listed.Entries.Value[0].Open.Value <- true ]
-            5
+            Adopted.nested
             graph
 
 let cases: (string * (unit -> unit)) array =
