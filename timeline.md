@@ -36,6 +36,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 84,129 | 127,464 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 84,133 | 127,465 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 84,134 | 127,505 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 83,000 | 125,893 |
 
 ## app-table
 
@@ -73,6 +74,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 9,135,632 | 9,661,994 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 9,135,840 | 9,661,584 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 9,135,842 | 9,669,436 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 9,135,960 | 9,728,643 |
 
 ## async-recover
 
@@ -110,6 +112,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 139,024 | 37,325 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 139,024 | 37,318 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 138,971 | 37,321 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 138,975 | 37,447 |
 
 ## async-resolve
 
@@ -147,6 +150,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 2,791,802 | 1,081,668 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 2,791,801 | 1,074,462 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 2,790,985 | 1,074,472 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 2,789,917 | 1,079,794 |
 
 ## chain
 
@@ -184,6 +188,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 13,043 | 318 | 2,450 | 4,491 | 3,180 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 13,043 | 318 | 2,450 | 4,491 | 3,180 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 13,043 | 318 | 2,450 | 4,491 | 3,180 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 13,035 | 318 | 2,450 | 4,491 | 3,180 |
 
 ## chain-affinity
 
@@ -221,6 +226,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 2,549 | 3,067 | 2,496 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 2,549 | 3,067 | 2,496 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 2,549 | 3,067 | 2,496 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 2,549 | 3,067 | 2,496 |
 
 ## control
 
@@ -258,6 +264,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 74,719 | 833,959 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 74,719 | 833,925 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 74,719 | 833,959 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 74,719 | 833,983 |
 
 ## create
 
@@ -295,6 +302,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 13,463,453 | 2,865,679 | 2,528,361 | 2,131,887 | 3,984,560 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 13,463,470 | 2,897,741 | 2,528,376 | 2,131,010 | 3,984,540 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 13,463,416 | 2,865,677 | 2,528,360 | 2,132,018 | 3,984,596 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 13,465,934 | 2,875,678 | 2,532,362 | 2,131,779 | 4,002,416 |
 
 ## create-on
 
@@ -332,6 +340,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 2,926,484 | 4,366,959 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 2,926,484 | 4,367,202 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 2,910,486 | 4,367,118 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 2,926,482 | 4,375,976 |
 
 ## cutoff
 
@@ -369,6 +378,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 1,182 | 50 | 111 | 65 | 35 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 1,182 | 50 | 111 | 65 | 35 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 1,182 | 50 | 111 | 65 | 35 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 1,182 | 50 | 111 | 65 | 35 |
 
 ## derive-effect
 
@@ -406,6 +416,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 760 | 680 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 760 | 680 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 760 | 680 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 765 | 699 |
 
 ## derive-on
 
@@ -443,6 +454,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 751 | 684 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 735 | 684 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 735 | 684 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 753 | 694 |
 
 ## dispose
 
@@ -480,6 +492,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 2,706,242 | 806,291 | 367,497 | 466,205 | 434,132 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 2,707,640 | 806,291 | 367,497 | 466,421 | 434,170 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 2,707,647 | 806,291 | 367,497 | 466,419 | 434,178 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 2,706,750 | 806,291 | 367,497 | 466,097 | 434,568 |
 
 ## dispose-on
 
@@ -517,6 +530,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 346,497 | 430,463 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 346,497 | 430,362 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 346,497 | 430,305 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 346,497 | 430,578 |
 
 ## editable-edit
 
@@ -554,6 +568,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 179,606 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 179,606 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 179,606 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 180,106 |
 
 ## editable-upstream
 
@@ -591,6 +606,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 230,755 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 230,755 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 230,755 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 231,255 |
 
 ## fail-recompute
 
@@ -628,6 +644,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 64,990 | 1,366 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 64,990 | 1,366 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 64,930 | 1,366 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 64,946 | 1,366 |
 
 ## flight
 
@@ -665,6 +682,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 10,993 | 6,216 | 6,217 | 11,318 | 10,765 | 22,349 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 10,993 | 6,216 | 6,217 | 11,318 | 10,765 | 22,349 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 10,995 | 6,215 | 6,216 | 11,316 | 10,763 | 22,341 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 10,995 | 6,215 | 6,216 | 11,316 | 10,763 | 22,343 |
 
 ## keyed-insert
 
@@ -702,6 +720,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 1,918,533 | 53,949 | 54,614 | 3,115,302 | 164,107 | 167,393 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 1,918,534 | 53,949 | 54,613 | 3,115,265 | 164,106 | 167,361 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 1,918,525 | 53,950 | 54,613 | 3,115,354 | 164,055 | 167,126 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 1,921,810 | 53,951 | 54,951 | 3,164,266 | 167,267 | 167,379 |
 
 ## keyed-remove
 
@@ -739,6 +758,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 1,917,466 | 43,619 | 44,975 | 3,115,030 | 131,871 | 140,793 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 1,917,462 | 43,619 | 44,974 | 3,115,023 | 131,915 | 140,812 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 1,917,458 | 43,625 | 44,990 | 3,114,969 | 131,923 | 140,729 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 1,920,738 | 43,628 | 45,285 | 3,163,821 | 133,239 | 140,975 |
 
 ## keyed-swap
 
@@ -776,6 +796,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 1,970,155 | 46,161 | 46,624 | 3,264,869 | 79,079 | 84,420 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 1,970,156 | 46,161 | 46,624 | 3,264,836 | 79,032 | 84,334 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 1,970,143 | 46,161 | 46,624 | 3,264,831 | 79,023 | 84,420 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 1,973,429 | 46,161 | 46,916 | 3,282,926 | 80,397 | 85,105 |
 
 ## mvu-dispatch
 
@@ -813,6 +834,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 58,067 | 767 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 58,067 | 767 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 58,067 | 767 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 58,261 | 772 |
 
 ## project-chain
 
@@ -850,6 +872,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 3,843,167 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 3,843,182 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 3,843,463 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 3,844,584 |
 
 ## project-churn
 
@@ -887,6 +910,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 36,213 | 34,051 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 36,213 | 34,051 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 36,212 | 34,069 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 36,489 | 34,326 |
 
 ## project-edit
 
@@ -924,6 +948,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 50,168 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 50,168 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 50,167 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 50,431 |
 
 ## project-reorder
 
@@ -961,6 +986,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 778,886 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 778,886 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 778,899 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 779,171 |
 
 ## server-render
 
@@ -998,6 +1024,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | — | — |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | — | — |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 677,749 | 1,130,753 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 676,332 | 1,131,247 |
 
 ## shape-diamond
 
@@ -1035,6 +1062,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 59,894 | 88,557 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 59,894 | 88,557 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 59,894 | 88,557 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 59,899 | 88,772 |
 
 ## shape-dynamic
 
@@ -1072,6 +1100,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 82,520 | 95,575 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 82,520 | 95,572 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 82,520 | 95,577 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 82,921 | 96,580 |
 
 ## stream-burst-1
 
@@ -1109,6 +1138,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 1,969 | 1,567 | 2,486 | 5,235 | 6,299 | 10,436 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 1,969 | 1,567 | 2,486 | 5,233 | 6,299 | 10,438 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 1,969 | 1,567 | 2,486 | 5,235 | 6,299 | 10,438 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 1,974 | 1,572 | 2,490 | 5,260 | 6,373 | 10,444 |
 
 ## stream-burst-16
 
@@ -1146,6 +1176,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 5,626 | 24,937 | 5,696 | 10,351 | 47,732 | 13,089 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 5,626 | 24,937 | 5,696 | 10,350 | 47,732 | 13,092 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 5,626 | 24,937 | 5,696 | 10,350 | 47,734 | 13,089 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) (accepted) | 5,631 | 25,017 | 5,700 | 10,631 | 48,406 | 13,097 |
 
 ## stream-burst-256
 
@@ -1183,6 +1214,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 64,126 | 398,821 | 57,035 | 119,391 | 792,627 | 70,590 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 64,126 | 398,821 | 57,035 | 119,319 | 792,639 | 70,590 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 64,126 | 398,821 | 57,035 | 119,372 | 792,642 | 70,590 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) (accepted) | 64,131 | 400,101 | 57,039 | 123,003 | 795,709 | 70,598 |
 
 ## stream-restart
 
@@ -1220,6 +1252,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 4,181 | 4,962 | 12,433 | 8,952 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 4,181 | 4,962 | 12,435 | 8,952 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 4,183 | 4,982 | 12,433 | 8,951 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 4,188 | 4,976 | 12,498 | 8,966 |
 
 ## timed-admit-both
 
@@ -1257,6 +1290,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 118,269 | 133,819 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 118,269 | 133,817 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 118,269 | 133,821 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 118,591 | 135,174 |
 
 ## timed-admit-debounce
 
@@ -1294,6 +1328,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 117,174 | 132,415 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 117,174 | 132,418 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 117,174 | 132,412 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 117,496 | 133,772 |
 
 ## timed-admit-first
 
@@ -1331,6 +1366,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 69,285 | 82,222 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 69,285 | 82,221 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 69,285 | 82,222 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 69,479 | 82,869 |
 
 ## timed-admit-last
 
@@ -1368,6 +1404,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 117,436 | 132,738 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 117,436 | 132,736 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 117,436 | 132,738 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 117,758 | 134,091 |
 
 ## timed-capture-both
 
@@ -1405,6 +1442,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 35,724 | 45,095 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 35,724 | 45,092 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 35,724 | 45,095 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 35,726 | 45,087 |
 
 ## timed-capture-debounce
 
@@ -1442,6 +1480,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 35,596 | 43,712 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 35,596 | 43,712 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 35,596 | 43,713 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 35,598 | 43,719 |
 
 ## timed-capture-first
 
@@ -1479,6 +1518,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 32,076 | 38,934 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 32,076 | 38,934 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 32,076 | 38,934 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 32,078 | 39,004 |
 
 ## timed-capture-last
 
@@ -1516,6 +1556,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 35,532 | 43,648 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 35,532 | 43,649 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 35,532 | 43,648 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 35,534 | 43,653 |
 
 ## update
 
@@ -1553,6 +1594,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 1,088,390 | 38,805 | 82,005 | 262,517 | 207,660 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 1,088,390 | 38,805 | 82,005 | 262,630 | 207,629 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 1,088,390 | 38,805 | 82,005 | 262,514 | 207,638 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 1,087,690 | 38,805 | 82,505 | 262,572 | 209,535 |
 
 ## update-on
 
@@ -1590,6 +1632,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 94,405 | 221,334 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 92,805 | 221,297 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 92,805 | 221,275 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 94,605 | 222,273 |
 
 ## work-form
 
@@ -1627,6 +1670,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 169,672 | 163,139 | 288,739 | 287,121 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 169,672 | 163,139 | 288,716 | 287,084 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 169,672 | 163,139 | 288,778 | 287,115 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) (accepted) | 170,300 | 163,392 | 290,624 | 293,073 |
 
 ## work-status
 
@@ -1664,6 +1708,7 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 99,945 | 80,215 | 320,903 | 155,394 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 99,945 | 78,615 | 320,874 | 155,391 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 99,945 | 78,615 | 320,931 | 155,426 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 100,445 | 80,415 | 322,808 | 156,087 |
 
 ## work-value
 
@@ -1701,4 +1746,5 @@
 | `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | 107,069 | 120,869 | 321,107 | 283,810 |
 | `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | 107,069 | 119,269 | 321,122 | 283,739 |
 | `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | 107,069 | 119,269 | 321,148 | 283,819 |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | 107,570 | 121,069 | 322,982 | 284,497 |
 
