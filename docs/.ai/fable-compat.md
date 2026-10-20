@@ -34,7 +34,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Edges.fs | 5 | 5 | 5 | 5 | 5 | 5 | 0 | 0 |
 | Invalidation.fs | 4 | 4 | 4 | 4 | 4 | 4 | 0 | 0 |
 | Lifetime.fs | 6 | 6 | 6 | 6 | 6 | 6 | 0 | 0 |
-| Retention.fs | 2 | 2 | 2 | 2 | 2 | 2 | 16 | 0 |
+| Retention.fs | 2 | 2 | 2 | 2 | 2 | 2 | 17 | 0 |
 | Tracing.fs | 2 | 2 | 2 | 82 | 77 | 77 | 1 | 0 |
 | TraceModelTests.fs | 0 | 0 | 0 | 12 | 12 | 12 | 2 | 0 |
 | Observers.fs | 102 | 102 | 102 | 102 | 102 | 102 | 0 | 0 |
@@ -81,7 +81,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 9 | 9 | 9 | 9 | 9 | 9 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1522 | 1501 | 1498 | 1662 | 1636 | 1633 | 105 | 1 |
+| **Total** | 1522 | 1501 | 1498 | 1662 | 1636 | 1633 | 106 | 1 |
 
 ## Tests.fs
 
@@ -495,6 +495,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | a disposed effect is not retained by its owner | JavaScript exposes no forced collection. |
 | a disposed memo is not retained by its owner | JavaScript exposes no forced collection. |
 | a disposed root is not retained by its parent | JavaScript exposes no forced collection. |
+| effects disposed after a flush ran them are not retained by the graph's queue | JavaScript exposes no forced collection. |
 | a torn-down subtree is released even while its signal lives on | JavaScript exposes no forced collection. |
 | a wide source with live readers does not pin dead ones | JavaScript exposes no forced collection. |
 | {name}: an undisposed token registration is released once its flight settles | JavaScript exposes no forced collection. |
