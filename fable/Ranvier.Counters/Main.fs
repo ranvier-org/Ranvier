@@ -21,6 +21,11 @@
 /// disabled across both regions, so the regions at N and 2N run the same code. A region that compiles any function
 /// reports positive <c>CodeBytes</c>.
 /// </para>
+/// <para>
+/// Under <c>node --jitless</c> each case runs one warm-up at 2N and a full collection, with no settling and no tier
+/// flags; both regions run in the interpreter. Its instruction counts follow the work done and are the gated Node
+/// metric; the tiered figures are reported only.
+/// </para>
 /// </remarks>
 module FableCounters.Main
 
@@ -86,6 +91,13 @@ let inline private signal (handshake: bool) (line: string) =
     if handshake then
         Node.writeLine 1 line
         Node.waitLine 0
+
+/// <summary>
+/// The default warm-up runs under <c>--jitless</c>. One run at 2N fills the inline caches the interpreter reads;
+/// with no compiler there is no tier to settle.
+/// </summary>
+[<Literal>]
+let private JitlessWarmup = 1
 
 /// <summary>
 /// The most runs <c>settle</c> spends on a case.
@@ -176,7 +188,7 @@ let main argv =
             {
                 Out = ""
                 Scale = 1
-                Warmup = 10
+                Warmup = if Node.jitless () then JitlessWarmup else 10
                 Only = ""
                 Scenario = ""
                 Handshake = false
@@ -209,7 +221,10 @@ let main argv =
 
             Node.collect ()
             Node.collect ()
-            settle case
+
+            if not (Node.jitless ()) then
+                settle case
+
             Node.setTierUp false
 
             let measurements =

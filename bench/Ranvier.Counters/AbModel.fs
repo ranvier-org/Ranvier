@@ -17,7 +17,9 @@ type ScenarioFigures =
         Metrics: Metric[]
     }
 
-/// <summary>One process of a side (<c>base</c> or <c>head</c>) and runtime (<c>node</c> or <c>dotnet</c>).</summary>
+/// <summary>
+/// One process of a side (<c>base</c> or <c>head</c>) and runtime (<c>node</c>, <c>node-jitless</c> or <c>dotnet</c>).
+/// </summary>
 type ProcessFigures =
     {
         Side: string
@@ -40,3 +42,40 @@ type AbRun =
         Processes: ProcessFigures[]
         Counters: ProcessFigures[]
     }
+
+/// <summary>The runtimes of an AB artifact, and which of them the verdict gates.</summary>
+module Runtimes =
+    /// <summary>The Fable harness under tiered V8.</summary>
+    [<Literal>]
+    let Node = "node"
+
+    /// <summary>The Fable harness under <c>node --jitless</c>.</summary>
+    [<Literal>]
+    let NodeJitless = "node-jitless"
+
+    [<Literal>]
+    let Dotnet = "dotnet"
+
+    /// <summary>
+    /// The runtimes a leg measures, in measurement order. Only <c>arm64-counters</c> measures <c>node-jitless</c>.
+    /// </summary>
+    let measured (leg: string) =
+        if leg = "arm64-counters" then
+            [ Node; NodeJitless; Dotnet ]
+        else
+            [ Node; Dotnet ]
+
+    /// <summary>
+    /// Whether a runtime has a separate library-counter run. <c>node-jitless</c> runs the code of <c>node</c>, so its
+    /// library counters are those of <c>node</c>.
+    /// </summary>
+    let instrumented (runtime: string) =
+        runtime <> NodeJitless
+
+    /// <summary>
+    /// Whether the gate metric of a runtime can fail a gating leg. Tiered Node figures depend on JIT history, which
+    /// objects an earlier run left alive, so they are reported and not gated; <c>node-jitless</c> is the gated Node
+    /// runtime.
+    /// </summary>
+    let gated (runtime: string) =
+        runtime <> Node

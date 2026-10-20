@@ -35,6 +35,11 @@ type Finding =
         /// <summary>Finite relative median change; absent when either side, a nonzero baseline, or a finite ratio is unavailable.</summary>
         Delta: float option
         Accepted: bool
+        /// <summary>
+        /// Whether a regression of this finding can fail a gating leg: false for tiered Node, whose figures depend on JIT
+        /// history. See <c>Runtimes.gated</c>.
+        /// </summary>
+        Gated: bool
         BaseGc: bool
         HeadGc: bool
         BaseCompiled: bool
@@ -257,10 +262,12 @@ let validate (gate: string) (run: AbRun) =
     for a in [ box run.Processes; box run.Counters; box run.NoBaseline; box run.Versions ] do
         require (not (isNull a)) "Missing artifact collection."
 
+    let runtimes = Runtimes.measured run.Leg
+    let instrumented = runtimes |> List.filter Runtimes.instrumented
     unique "baseline runtime" _.Name run.NoBaseline
 
     for nb in run.NoBaseline do
-        require (nb.Name = "node" || nb.Name = "dotnet") "Unknown no-baseline runtime."
+        require (List.contains nb.Name runtimes) "Unknown no-baseline runtime."
         nonempty "baseline reason" nb.Value
 
     let absent = run.NoBaseline |> Array.map _.Name |> Set.ofArray
@@ -270,7 +277,7 @@ let validate (gate: string) (run: AbRun) =
 
         for p in rows do
             require (p.Side = "base" || p.Side = "head") "Invalid process side."
-            require (p.Runtime = "node" || p.Runtime = "dotnet") "Invalid process runtime."
+            require (List.contains p.Runtime (if counter then instrumented else runtimes)) "Invalid process runtime."
             require (p.Commit = (if p.Side = "base" then run.Base else run.Head)) "Process commit differs from its side."
 
             require
@@ -295,7 +302,7 @@ let validate (gate: string) (run: AbRun) =
                 if not counter then
                     require (s.Metrics |> Array.exists (fun m -> m.Name = gate)) ("Missing gate metric " + gate + ".")
 
-        for runtime in [ "node"; "dotnet" ] do
+        for runtime in (if counter then instrumented else runtimes) do
             for side in [ "base"; "head" ] do
                 let ps =
                     rows
@@ -337,7 +344,7 @@ let validate (gate: string) (run: AbRun) =
 
         require (scenarioSet p = scenarioSet timing) "Library and timing scenario coverage differs."
 
-    for runtime in [ "node"; "dotnet" ] do
+    for runtime in runtimes do
         for side in [ "base"; "head" ] do
             let cs =
                 run.Counters
@@ -353,7 +360,8 @@ let validate (gate: string) (run: AbRun) =
                 require (cs.Length = 0) "Unavailable instrumentation contradicts base counter figures."
 
             if
-                not (
+                Runtimes.instrumented runtime
+                && not (
                     side = "base"
                     && (absent.Contains runtime || unavailable)
                 )
@@ -383,9 +391,13 @@ let validate (gate: string) (run: AbRun) =
 let private isRanvier (engine: string) =
     engine.StartsWith ("Ranvier", StringComparison.Ordinal)
 
-/// <summary>Validates CI coverage and compares all metrics; unaccepted Ranvier gate regressions fail a gating leg.</summary>
+/// <summary>
+/// Validates CI coverage and compares all metrics; unaccepted Ranvier gate regressions of a gated runtime fail a gating
+/// leg.
+/// </summary>
 /// <remarks>
-/// Unknown acceptance names fail every leg, including advisory legs. When the gate metric of a runtime's
+/// Tiered <c>node</c> findings are reported with <c>Gated = false</c> and never fail or warn; <c>node-jitless</c> is the
+/// gated Node runtime. Unknown acceptance names fail every leg, including advisory legs. When the gate metric of a runtime's
 /// <c>control</c> scenario is <c>Regressed</c> or <c>Improved</c>, every gate regression of that runtime is
 /// <c>Inconclusive</c> and passes.
 /// </remarks>
@@ -471,7 +483,9 @@ let verdict gate threshold floor failing (accept: Acceptance) (run: AbRun) =
                         Delta = delta
                         Accepted =
                             kind = Regressed
+                            && Runtimes.gated runtime
                             && (accept.All || List.contains scenario accept.Names)
+                        Gated = Runtimes.gated runtime
                         BaseGc = bs |> Array.exists gc
                         HeadGc = hs |> Array.exists gc
                         BaseCompiled = bs |> Array.exists compiled
@@ -511,6 +525,7 @@ let verdict gate threshold floor failing (accept: Acceptance) (run: AbRun) =
         findings
         |> Array.filter (fun f ->
             f.Metric = gate
+            && f.Gated
             && isRanvier f.Engine
             && f.Kind = Regressed
             && not f.Accepted)
@@ -608,6 +623,13 @@ let markdown (accept: Acceptance) (verdicts: Verdict list) =
         for runtime in v.ControlMoved do
             line ($"- {escape runtime}: the control moved between base and head; its {escape v.Gate} regressions are inconclusive")
 
+        for runtime in
+            v.Findings
+            |> Array.filter (fun f -> not f.Gated)
+            |> Array.map _.Runtime
+            |> Array.distinct do
+            line ($"- {escape runtime}: reported, not gated: JIT history-dependent")
+
         let table rows =
             line "| Runtime | Scenario | Engine | Metric | Base | Head | Change | Status |"
             line "|---|---|---|---|---:|---:|---:|---|"
@@ -616,6 +638,10 @@ let markdown (accept: Acceptance) (verdicts: Verdict list) =
                 let status =
                     string f.Kind
                     + (if f.Accepted then " accepted" else "")
+                    + (if f.Gated then
+                           ""
+                       else
+                           " (not gated: JIT history-dependent)")
 
                 line (
                     $"| {escape f.Runtime} | {escape f.Scenario} | {escape f.Engine} | {escape f.Metric} | {metricFigure f f.Base} | {metricFigure f f.Head} | {change f} | {status} |"
@@ -851,6 +877,7 @@ let main args =
                                     Kind = string f.Kind
                                     Delta = f.Delta |> Option.toNullable
                                     Accepted = f.Accepted
+                                    Gated = f.Gated
                                     BaseGc = f.BaseGc
                                     HeadGc = f.HeadGc
                                     BaseCompiled = f.BaseCompiled
