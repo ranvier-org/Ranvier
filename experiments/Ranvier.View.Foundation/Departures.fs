@@ -20,8 +20,8 @@ type internal ReflowEntry(reflow: Reflow) =
     member _.Reflow = reflow
     /// <summary>Set by <c>Before</c>, cleared when the posted <c>After</c> runs.</summary>
     member val Open = false with get, set
-    /// <summary>Whether the open measurement's <c>After</c> is posted.</summary>
-    member val Posted = false with get, set
+    /// <summary>The number of <c>After</c> posts; only the latest post of an open measurement runs <c>After</c>.</summary>
+    member val Posts = 0 with get, set
 
 /// <summary>
 /// The exit and reflow hooks of placed elements, and the retired row roots held in place while their exits run. Until
@@ -221,23 +221,20 @@ module internal Departures =
             entry.Reflow.Before ()
 
     /// <summary>
-    /// Posts the <c>After</c> of the reflow registered on <c>parent</c> when its measurement is open and its
-    /// <c>After</c> is not yet posted. The posted action closes the measurement, then runs <c>After</c>.
+    /// Posts the <c>After</c> of the reflow registered on <c>parent</c> when its measurement is open. Of the posts made
+    /// while the measurement is open, the one posted last closes it and runs <c>After</c>; the earlier ones do nothing.
     /// </summary>
     let after (parent: Node) (post: (unit -> unit) -> unit) =
         let entry: ReflowEntry = lookup reflows parent
 
-        if
-            not (isNullish entry)
-            && entry.Open
-            && not entry.Posted
-        then
-            entry.Posted <- true
+        if not (isNullish entry) && entry.Open then
+            let mutable posted = entry.Posts + 1
+            entry.Posts <- posted
 
             post (fun () ->
-                entry.Open <- false
-                entry.Posted <- false
-                entry.Reflow.After ())
+                if entry.Open && entry.Posts = posted then
+                    entry.Open <- false
+                    entry.Reflow.After ())
 
     /// <summary>
     /// Registers a motion, exit or reflow hook for <c>node</c>. <c>invoke</c> calls the hook with its argument: the

@@ -453,6 +453,138 @@ let private moveCarriesHeldRoots queued () =
     mounted.Dispose ()
     equal ((([ "1"; "2"; "3" ], []), [ "3"; "1"; "2" ]), [ "3"; "1" ]) ((moved, reordered), finished)
 
+type Pair =
+    {
+        Left: Signal<int array>
+        Right: Signal<int array>
+        Shown: Signal<bool>
+    }
+
+let private measuring (name: string) (node: HTMLElement) =
+    {
+        Before = fun () -> log.Add (sprintf "%s before %s" name node.textContent)
+        After = fun () -> log.Add (sprintf "%s after %s" name node.textContent)
+    }
+
+/// <summary>Two lists under one measured element, and an arm switch under another.</summary>
+let private measured =
+    Component.template
+        (fun _ (state: Pair) -> state)
+        (div () {
+            ul (Hooks.reflow (fun (_: Pair) (node: HTMLUListElement) -> measuring "ul" node)) {
+                forEach id (fun (s: Pair) -> s.Left.Value) (li () { fun (row: unit -> int) -> "L" + string (row ()) })
+                forEach id (fun (s: Pair) -> s.Right.Value) (li () { fun (row: unit -> int) -> "R" + string (row ()) })
+            }
+
+            p (Hooks.reflow (fun (_: Pair) (node: HTMLParagraphElement) -> measuring "p" node)) {
+                showElse (fun (s: Pair) -> s.Shown.Value) (b () { "on" }) (i () { "off" })
+            }
+        })
+
+let private mountMeasured queued (graph: Graph) =
+    log.Clear ()
+
+    let state =
+        graph.Run (fun () ->
+            {
+                Left = Api.createSignal [| 1 |]
+                Right = Api.createSignal [| 1 |]
+                Shown = Api.createSignal true
+            })
+
+    let mounted =
+        mountTemplate queued graph strict (host ()) (Component.render measured state)
+
+    mounted.Flush ()
+    state, mounted
+
+let private reflowAroundListPass queued () =
+    use graph = new Graph ()
+    let state, mounted = mountMeasured queued graph
+    let first = taken ()
+    write graph mounted (fun () -> state.Left.Value <- [| 2; 1 |])
+    let pass = taken ()
+    mounted.Dispose ()
+    equal ([], [ "ul before L1R1"; "ul after L2L1R1" ]) (first, pass)
+
+let private reflowAroundArmPass queued () =
+    use graph = new Graph ()
+    let state, mounted = mountMeasured queued graph
+    write graph mounted (fun () -> state.Shown.Value <- false)
+    let pass = taken ()
+    mounted.Dispose ()
+    equal [ "p before on"; "p after off" ] pass
+
+/// <summary>Both lists under the measured element change in one batch: one <c>Before</c> and one <c>After</c>.</summary>
+let private reflowPerFlush queued () =
+    use graph = new Graph ()
+    let state, mounted = mountMeasured queued graph
+
+    write graph mounted (fun () ->
+        Api.batch (fun () ->
+            state.Left.Value <- [| 3 |]
+            state.Right.Value <- [| 4 |]))
+
+    let pass = taken ()
+    mounted.Dispose ()
+
+    equal [ "ul before L1R1"; "ul after L3R4" ] pass
+
+/// <summary>Under queued commits, <c>After</c> runs once the pass's rows have their first commits.</summary>
+let private reflowAfterQueuedCommits () =
+    use graph = new Graph ()
+    log.Clear ()
+    let state = graph.Run (fun () -> rows [| 1 |] false)
+
+    let template =
+        Component.template
+            (fun _ (state: Rows) -> state)
+            (ul (Hooks.reflow (fun (_: Rows) (node: HTMLUListElement) -> measuring "ul" node)) {
+                forEach id (fun (s: Rows) -> s.Items.Value) (li () { fun (row: unit -> int) -> string (row ()) })
+            })
+
+    let mounted =
+        mountTemplate true graph strict (host ()) (Component.render template state)
+
+    mounted.Flush ()
+    graph.Run (fun () -> state.Items.Value <- [| 1; 2 |])
+    let beforeFlush = taken ()
+    mounted.Flush ()
+    let afterFlush = taken ()
+    mounted.Dispose ()
+    equal ([ "ul before 1" ], [ "ul after 12" ]) (beforeFlush, afterFlush)
+
+let private reflowWithdrawnOnDisposal queued () =
+    use graph = new Graph ()
+    let state, mounted = mountMeasured queued graph
+    mounted.Dispose ()
+    graph.Run (fun () -> state.Left.Value <- [| 5 |])
+    equal [] (taken ())
+
+let private reflowSkipsHydration () =
+    use graph = new Graph ()
+    log.Clear ()
+
+    let state =
+        graph.Run (fun () ->
+            {
+                Left = Api.createSignal [| 1 |]
+                Right = Api.createSignal [| 1 |]
+                Shown = Api.createSignal true
+            })
+
+    let target = host ()
+    loadServed target (Server.render omit measured state)
+
+    let mounted =
+        Hydration.hydrate graph None strict { IdPrefix = "r"; Strict = true } target measured state
+
+    let first = taken ()
+    write graph mounted (fun () -> state.Right.Value <- [||])
+    let pass = taken ()
+    mounted.Dispose ()
+    equal ([], [ "ul before L1R1"; "ul after L1" ]) (first, pass)
+
 let cases: (string * (unit -> unit)) array =
     strictCases (
         Array.concat
@@ -476,5 +608,15 @@ let cases: (string * (unit -> unit)) array =
                     "a hydrated row's root with an exit is held when its row is retired", adoptedRowsRetire
                 |]
                 templated "moving the mount carries its held roots" moveCarriesHeldRoots
+                templated "a reflow measures before a list pass and after its layout" reflowAroundListPass
+                templated "a reflow measures before an arm pass and after the new arm is placed" reflowAroundArmPass
+                templated "a reflow measures once per flush across the passes under its element" reflowPerFlush
+                [|
+                    "a reflow's After follows the pass's queued commits", reflowAfterQueuedCommits
+                |]
+                templated "a disposed mount's reflow no longer measures" reflowWithdrawnOnDisposal
+                [|
+                    "a reflow skips the hydrating pass and measures later passes", reflowSkipsHydration
+                |]
             ]
     )

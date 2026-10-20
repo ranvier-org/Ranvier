@@ -1357,6 +1357,9 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
     /// <summary>Whether the region's first pass adopts the server rows at the mount's hydration cursor.</summary>
     member val Hydrating = false with get, set
 
+    /// <summary>The commit slot of the region's reflow measurements under queued commits; null until first used.</summary>
+    member val ReflowSlot: Slot = Unchecked.defaultof<_> with get, set
+
     /// <summary>
     /// Re-renders the region after a structural mismatch of its hydrating pass and reports the errors it receives, the
     /// mismatch first; null when a mismatch fails the hydration, and once <c>Settle</c> ends the hydrating pass.
@@ -3130,6 +3133,44 @@ and internal MountState
             Row (first, last, Mount = mounted)
 
     /// <summary>
+    /// Runs the <c>Before</c> of the reflow registered on the region's parent, unless the pass hydrates, and returns the
+    /// parent; null when the pass hydrates or the markers have no parent. A failure is reported with the region's errors.
+    /// </summary>
+    member private _.MeasureBefore(site: RegionSite, regionStart: Node, hydrating: bool) : Node =
+        if hydrating then
+            Unchecked.defaultof<_>
+        else
+            let parent = parentOrNull regionStart
+
+            if not (isNull (box parent)) then
+                try
+                    Departures.before parent
+                with error ->
+                    site.Errors.Report [ error ]
+
+            parent
+
+    /// <summary>
+    /// Posts the <c>After</c> of the reflow measured on <c>parent</c>: under synchronous commits as an untracked core
+    /// effect, which runs after the effects the pass created, and under queued commits on the region's commit slot, after
+    /// the commits enqueued before it.
+    /// </summary>
+    member private this.MeasureAfter(site: RegionSite, parent: Node) =
+        Departures.after parent (fun action ->
+            match scheduling with
+            | Synchronous ->
+                Api.createEffect (fun () ->
+                    try
+                        Api.untrack action
+                    with error ->
+                        site.Errors.Report [ error ])
+            | Queued queue ->
+                if isNull (box site.ReflowSlot) then
+                    site.ReflowSlot <- queue.Reserve this.Scope
+
+                queue.Enqueue (site.ReflowSlot, action))
+
+    /// <summary>
     /// Mounts one row per keyed item between the region's markers, on a core projection that creates new rows before it
     /// retires removed ones. Template rows (<c>rows</c>) are cloned into the region; authored rows (<c>render</c>) are
     /// nested mounts.
@@ -3234,6 +3275,13 @@ and internal MountState
                 started <- true
                 // A hydrating pass adopts its rows in place, without window validation or a flush of released rows.
                 let hydrating = site.Hydrating
+
+                let measured =
+                    if Departures.reflowEnabled then
+                        this.MeasureBefore (site, regionStart, hydrating)
+                    else
+                        Unchecked.defaultof<_>
+
                 let resumed = if hydrating then cursor.Next else Unchecked.defaultof<_>
 
                 if hydrating then
@@ -3550,6 +3598,9 @@ and internal MountState
                             site.Errors.Report recorded
                 )
 
+                if not (isNull (box measured)) then
+                    this.MeasureAfter (site, measured)
+
         site.Own (fun () ->
             version <- Api.createSignal 0
 
@@ -3698,6 +3749,12 @@ and internal MountState
                 armPlacement.Inserted <- started
                 started <- true
 
+                let measured =
+                    if Departures.reflowEnabled then
+                        this.MeasureBefore (site, regionStart, hydrating)
+                    else
+                        Unchecked.defaultof<_>
+
                 if hydrating then
                     cursor.Next <- nextOrNull regionStart
 
@@ -3724,6 +3781,9 @@ and internal MountState
                             cursor.Next <- resumed
 
                 site.Settle (recorded, failure, hydrating, (fun recorded -> site.Errors.Report recorded))
+
+                if not (isNull (box measured)) then
+                    this.MeasureAfter (site, measured)
 
         let updatePayload () =
             let current = items.Value
