@@ -9,11 +9,13 @@ Run from the repository root:
 ```powershell
 rtk npm ci --prefix tools/Ranvier.Dom.Generate --ignore-scripts
 rtk dotnet run --project tools/Ranvier.Dom.Generate/Ranvier.Dom.Generate.fsproj -c Release
-rtk proxy python tools/Ranvier.Dom.Generate/tests.py
-rtk proxy python tools/Ranvier.Dom.Generate/check-types.py
+dotnet fsi tools/Ranvier.Dom.Generate/GeneratorTests.fsx
+dotnet fsi tools/Ranvier.Dom.Generate/CheckTypes.fsx
 ```
 
-The tool's own project restores published Cloudsmith `Xantham.Fable.Core.TS` 0.2.1 and `Xantham.TypeScript.Wire` 0.3.0. Its npm lock pins TypeScript 7.1.0-dev.20260902.1, revision `43a90f4c105bc9db7cb7aa299beddafbabe1d23e`. Generation reads installed packages; it never reads a sibling Xantham checkout. Output is formatted by pinned `Fantomas.Core` 7.0.5 and written as UTF-8 with LF endings. An optional first argument changes the output file, and a second argument selects a directory containing `xantham/catalogue.json` and `xantham/declarations.json.br`, useful for failure tests. An optional third argument, positional after that package root, selects a policy directory holding `attributes.json` and `authoring.json`; it defaults to the tool directory, and `tests.py` uses it to generate from mutated policies.
+`GeneratorTests.fsx` asserts over the generator's output and its rejection of corrupt inputs and policies. `CheckTypes.fsx` builds each case's snippet against the playground's `DomTests.fsproj` and requires a clean build or exactly one expected FS error code; arguments after the script path run only the cases whose names contain one of them. Each script exits non-zero and names the failing assertion or cases. `CheckTypes.fsx` takes about four minutes.
+
+The tool's own project restores published Cloudsmith `Xantham.Fable.Core.TS` 0.2.1 and `Xantham.TypeScript.Wire` 0.3.0. Its npm lock pins TypeScript 7.1.0-dev.20260902.1, revision `43a90f4c105bc9db7cb7aa299beddafbabe1d23e`. Generation reads installed packages; it never reads a sibling Xantham checkout. Output is formatted by pinned `Fantomas.Core` 7.0.5 and written as UTF-8 with LF endings. An optional first argument changes the output file, and a second argument selects a directory containing `xantham/catalogue.json` and `xantham/declarations.json.br`, useful for failure tests. An optional third argument, positional after that package root, selects a policy directory holding `attributes.json` and `authoring.json`; it defaults to the tool directory, and `GeneratorTests.fsx` uses it to generate from mutated policies.
 
 `.gitattributes` checks out `tools/Ranvier.Dom.Generate/*.json` with LF endings, so the policy hashes recorded in coverage reproduce on every checkout. `.fantomasignore` lists `experiments/Ranvier.View.Foundation/Generated/` and `experiments/Ranvier.View.Portable/Generated/`: the generator's pinned Fantomas 7.0.5 output is authoritative, and the repository's Fantomas in the pre-commit hook skips the generated files.
 
