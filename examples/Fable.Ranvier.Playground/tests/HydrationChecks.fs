@@ -1274,6 +1274,88 @@ let private serverErrorRerenders () =
 
     mounted.Dispose ()
 
+let private stateRoundTrip () =
+    let json =
+        "{\"a\":\"</script><!--\",\"b\":\""
+        + string (char 0x2028)
+        + string (char 0x2029)
+        + "\"}"
+
+    let container = host ()
+    attachToBody container
+    container.innerHTML <- Server.stateScript "state" json + "<p>after</p>"
+    let read = Hydration.readState "state"
+
+    let same =
+        read
+        |> Option.map (fun text -> JS.JSON.stringify (JS.JSON.parse text) = JS.JSON.stringify (JS.JSON.parse json))
+
+    let shown = (all container "script").Length, (element container "p").textContent
+    detach container
+    equal ((Some true, None), (1, "after")) ((same, Hydration.readState "absent"), shown)
+
+type private IssuedItems =
+    {
+        RootId: string
+        Live: Signal<int array>
+    }
+
+/// <summary>The structure of <c>identified</c> over a live item signal, which its setup stores in <c>holder</c>.</summary>
+let private liveIdentified (holder: Signal<int array> ref) =
+    Component.define
+        (fun setup (items: int array) ->
+            let id = setup.CreateId ()
+            identityLog.Add id
+            identityLog.Add (setup.CreateId ())
+            holder.Value <- Api.createSignal items
+            { RootId = id; Live = holder.Value })
+        (fun t ->
+            t.div
+                [| t.Attrs.id (fun (r: IssuedItems) -> r.RootId) |]
+                [|
+                    t.render idLeaf ignore
+                    t.ul [||] [| t.each id (fun (r: IssuedItems) -> r.Live.Value) idRow |]
+                    t.render idLeaf ignore
+                    t.matchWith (fun (r: IssuedItems) -> r.Live.Value.Length) (fun count -> t.arm idArm count)
+                |])
+
+let private identityContinues () =
+    let holder = ref Unchecked.defaultof<Signal<int array>>
+    let definition = liveIdentified holder
+    let target = host ()
+    identityLog.Clear ()
+
+    target.innerHTML <- Server.render { omit with IdPrefix = "a" } definition [| 7; 8 |]
+
+    let served = List.sort (List.ofSeq identityLog), domIds target
+    let elements = all target "[id]"
+    identityLog.Clear ()
+    use graph = new Graph ()
+    let options: Hydration.HydrationOptions = { IdPrefix = "a"; Strict = true }
+    let mounted = hydrate graph options target definition [| 7; 8 |]
+
+    let hydrated =
+        List.sort (List.ofSeq identityLog), domIds target, sameNodes elements (all target "[id]")
+
+    identityLog.Clear ()
+    graph.Run (fun () -> holder.Value.Value <- [| 7; 8; 9 |])
+    let continued = List.sort (List.ofSeq identityLog), domIds target
+    mounted.Dispose ()
+
+    let row (index: int) =
+        [
+            sprintf "a-0.r0.%d-0" index
+            sprintf "a-0.r0.%d.c0-0" index
+            sprintf "a-0.r0.%d.r0.0-0" index
+        ]
+
+    let shown (rows: int list) =
+        [ "a-0-0"; "a-0.c0-0" ]
+        @ List.collect row rows
+        @ [ "a-0.c1-0"; "a-0.r1.0-0" ]
+
+    equal ((identityIds "a", shown [ 0; 1 ]), (identityIds "a", shown [ 0; 1 ], true), (row 2, shown [ 0; 1; 2 ])) (served, hydrated, continued)
+
 let private boundaryIdsHydrate () =
     let check ready fails =
         idContentReady <- ready
@@ -2592,6 +2674,8 @@ let cases: (string * (unit -> unit)) array =
             "a mismatch after the first commits leaves the server's text, attributes, live values and raw content in place", strictRestoresValues
             "a widget on a hydrated root moves with its mount and is destroyed without a report", hydratedRootWidgetMoves
             "forms hydrate a leading line feed, checked and selectedIndex without writes, and write the client's differing values", formsHydrate
+            "state script round-trips JSON containing </script> and U+2028", stateRoundTrip
+            "CreateId is equal on server and hydrated client, and rows created after hydration continue their region's counter", identityContinues
         |]
 
 /// <summary>The text and value of the first element matching <c>selector</c> after the browser parses <c>html</c>.</summary>
@@ -2622,7 +2706,134 @@ let private leadingLineFeeds () =
     equal "\nline" (fst (parsed html "pre"))
     equal "\nstatic" (fst (parsed html "pre + pre"))
 
+/// <summary>A hand-built DOM tree: an element with its tag and children, or a text node.</summary>
+type private Shape =
+    | El of string * Shape list
+    | Tx of string
+
+let rec private build (shape: Shape) : Node =
+    match shape with
+    | Tx text -> globalThis.document.createTextNode text :> Node
+    | El (tag, children) ->
+        let created = globalThis.document.createElement tag
+
+        for child in children do
+            created.appendChild (build child) |> ignore
+
+        created :> Node
+
+/// <summary>The template of <c>shape</c>: an element per <c>El</c> and a static text per <c>Tx</c>.</summary>
+let rec private templateOf (t: TemplateBuilder<unit>) (shape: Shape) : TemplateView<unit> =
+    match shape with
+    | Tx text -> t.text text
+    | El (tag, children) -> t.element (HtmlTag tag) [||] [| for child in children -> templateOf t child |]
+
+/// <summary>The body's serialisation after <c>html</c> is parsed as the body of a document, as a served page is.</summary>
+[<Emit("new DOMParser().parseFromString('<!doctype html><body>' + $0, 'text/html').body.innerHTML")>]
+let private documentParsed (html: string) : string = jsNative
+
+/// <summary>The serialisation of <c>shape</c> built node by node, and of that markup parsed as a document body.</summary>
+let private parsedAgain (shape: Shape) =
+    let built = globalThis.document.createElement "div"
+    built.appendChild (build shape) |> ignore
+    built.innerHTML, documentParsed built.innerHTML
+
+/// <summary>
+/// A parser fixture: each content-model rule's shape, built as DOM, serialises to markup the parser restructures, and
+/// the server rejects the same shape as a template with the rule and the element path.
+/// </summary>
+let private rejectedMarkupRestructures () =
+    let shapes =
+        [
+            "table-row", "table/tr", El ("table", [ El ("tr", [ El ("td", []) ]) ])
+            "table-section", "div/tbody", El ("div", [ El ("tbody", []) ])
+            "table-cell", "table/tbody/td", El ("table", [ El ("tbody", [ El ("td", []) ]) ])
+            "table-column", "table/col", El ("table", [ El ("col", []) ])
+            "table-foster", "table/#text", El ("table", [ Tx "x" ])
+            "table-foster", "table/tbody/tr/div", El ("table", [ El ("tbody", [ El ("tr", [ El ("div", []) ]) ]) ])
+            "table-foster", "table/colgroup/div", El ("table", [ El ("colgroup", [ El ("div", []) ]) ])
+            "paragraph-close", "p/span/div", El ("p", [ El ("span", [ El ("div", []) ]) ])
+            "paragraph-close", "p/li", El ("p", [ El ("li", []) ])
+            "nested-anchor", "a/span/a", El ("a", [ El ("span", [ El ("a", []) ]) ])
+            "nested-form", "form/div/form", El ("form", [ El ("div", [ El ("form", []) ]) ])
+            "rcdata-content", "textarea/span", El ("textarea", [ El ("span", []) ])
+            "nested-list-item", "ul/li/li", El ("ul", [ El ("li", [ El ("li", []) ]) ])
+            "nested-list-item", "ul/li/span/li", El ("ul", [ El ("li", [ El ("span", [ El ("li", []) ]) ]) ])
+            "nested-description", "dl/dd/dt", El ("dl", [ El ("dd", [ El ("dt", []) ]) ])
+            "nested-heading", "h1/h2", El ("h1", [ El ("h2", []) ])
+            "nested-button", "button/button", El ("button", [ El ("button", []) ])
+            "nested-button", "button/span/button", El ("button", [ El ("span", [ El ("button", []) ]) ])
+        ]
+
+    let rejection (shape: Shape) =
+        let definition = Component.define (fun _ () -> ()) (fun t -> templateOf t shape)
+
+        (ServerChecks.failure (fun () ->
+            Server.render Server.Options.defaults definition ()
+            |> ignore))
+            .Message
+
+    let outcomes =
+        [
+            for rule, _, shape in shapes ->
+                let built, reparsed = parsedAgain shape
+                rule, built <> reparsed, rejection shape
+        ]
+
+    equal
+        [
+            for rule, path, _ in shapes ->
+                rule,
+                true,
+                "The HTML parser restructures this markup ("
+                + rule
+                + ") at "
+                + path
+        ]
+        outcomes
+
+[<Emit("$0.replace(/<!--.*?-->/g, '')")>]
+let private withoutComments (html: string) : string = jsNative
+
+/// <summary>
+/// Every accepted fixture's server HTML, parsed as a document body and under a div, serialises as the client mount's DOM
+/// does, comments aside.
+/// </summary>
+let private acceptedFixturesParse () =
+    let check (definition: Component<'props>) (props: 'props) =
+        use graph = new Graph ()
+        let html = Server.render omit definition props
+        let parsed = host ()
+        parsed.innerHTML <- html
+        let client = host ()
+        let mounted = mount graph client (Component.render definition props)
+        let shown = withoutComments client.innerHTML
+        mounted.Dispose ()
+        (withoutComments (documentParsed html), withoutComments parsed.innerHTML), (shown, shown)
+
+    let pairs =
+        [
+            check greeting greetingProps
+            check named greetingProps
+            check pair greetingProps
+            check listed listedItems
+            check carded greetingProps
+            check besideText greetingProps
+            check textual "a < b"
+            check emptyText ""
+            check staged (Working 3)
+            check decades 42
+            check staticTemplate ()
+            check keyedPage 3
+        ]
+        @ [ for flags in flagCases -> check flagsTemplate flags ]
+
+    equal [ for _, client in pairs -> client ] [ for served, _ in pairs -> served ]
+
 let browserCases: (string * (unit -> unit)) array =
     [|
         "textarea value and pre text keep a leading line feed after parsing", leadingLineFeeds
+        "each content-model rule's markup parses differently from the client DOM, and the server rejects it with that rule",
+        rejectedMarkupRestructures
+        "every accepted fixture's server HTML parses to the client DOM's serialisation", acceptedFixturesParse
     |]

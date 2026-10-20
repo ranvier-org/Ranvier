@@ -222,6 +222,24 @@ let renderTo (options: Options) (definition: Component<'props>) (props: 'props) 
 
     sink.Segments write
 
+/// <summary>
+/// A <c>&lt;script type="application/json"&gt;</c> element with the escaped <c>id</c>, holding <c>json</c> with each
+/// <c>&lt;</c>, U+2028 and U+2029 written as its six-character JSON escape.
+/// </summary>
+/// <remarks>
+/// The parsed element's text runs to its own end tag, and for valid JSON, <c>JSON.parse</c> of its <c>textContent</c>
+/// returns the value <c>json</c> encodes. <c>Hydration.readState</c> reads the text back.
+/// </remarks>
+let stateScript (id: string) (json: string) : string =
+    let escaped =
+        json.Replace("<", "\\u003c").Replace(string (char 0x2028), "\\u2028").Replace(string (char 0x2029), "\\u2029")
+
+    "<script type=\"application/json\" id=\""
+    + Html.escape true id
+    + "\">"
+    + escaped
+    + "</script>"
+
 /// <summary>A rendered page: the body as <c>render</c> returns it, and the document head entries' HTML.</summary>
 type Page = { Body: string; Head: string }
 

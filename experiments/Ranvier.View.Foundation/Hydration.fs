@@ -222,6 +222,21 @@ let hydrateWith
         served ()
         reraise ()
 
+[<Emit("document.getElementById($0)")>]
+let private elementById (id: string) : Element = jsNative
+
+[<Emit("$0.textContent")>]
+let private textOf (element: Element) : string = jsNative
+
+/// <summary>
+/// The <c>textContent</c> of the document's element with id <c>id</c>, such as the JSON a <c>Server.stateScript</c>
+/// element holds; <c>None</c> when the document has no such element.
+/// </summary>
+let readState (id: string) : string option =
+    let element = elementById id
+
+    if isNull (box element) then None else Some (textOf element)
+
 /// <summary>Hydrates as <c>hydrateWith SynchronousCommits</c> does.</summary>
 let hydrate graph parentOwner report options host (definition: Component<'props>) (props: 'props) : Mounted =
     hydrateWith SynchronousCommits graph parentOwner report options host definition props
