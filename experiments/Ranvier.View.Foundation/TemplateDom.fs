@@ -1099,20 +1099,13 @@ let private bind (services: MountServices) (compiled: Compiled) (state: obj arra
                 && Array.exists (fun (adopted: Node) -> obj.ReferenceEquals (adopted, node)) roots
 
             match kind with
-            | PlacedKind.Exit
-            | PlacedKind.Reflow -> ()
-            | PlacedKind.Motion ->
-                let context =
-                    box
-                        {
-                            Hydrated = not (isNull services.Hydration)
-                            Inserted = services.Placement.Inserted
-                        }
-
-                PlacedHook.register services.Placement services.Scope owner kind node root (fun () ->
-                    unbox (hook.Invoke (instance, box node, context)))
-            | _ ->
+            | PlacedKind.Mounted
+            | PlacedKind.Lent
+            | PlacedKind.Widget ->
                 PlacedHook.register services.Placement services.Scope owner kind node root (fun () -> unbox (hook.Invoke (instance, box node, null)))
+            | _ ->
+                Departures.place services.Placement services.Scope owner kind node root (not (isNull services.Hydration)) (fun argument ->
+                    hook.Invoke (instance, box node, argument))
 
     while head < heads.Length do
         services.Head (headEntry (fst (at heads head)) instance)

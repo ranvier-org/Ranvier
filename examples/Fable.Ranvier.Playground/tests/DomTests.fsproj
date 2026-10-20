@@ -33,6 +33,7 @@
     <Compile Include="RepresentationChecks.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Prepared.fs" Link="Prepared.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Placement.fs" Link="Placement.fs" />
+    <Compile Include="../../../experiments/Ranvier.View.Foundation/Departures.fs" Link="Departures.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/TemplateDom.fs" Link="TemplateDom.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/DocumentHead.fs" Link="DocumentHead.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Foundation/Mounting.fs" Link="Mounting.fs" />

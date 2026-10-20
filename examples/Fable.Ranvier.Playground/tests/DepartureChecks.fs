@@ -165,6 +165,294 @@ let private hydratedThenInserted () =
          [ "span hydrated=false inserted=true" ])
         (first, added, shown)
 
+/// <summary>The finish of each running exit, by its element's text.</summary>
+let private finishes = Collections.Generic.Dictionary<string, unit -> unit>()
+
+let private exitOf (node: HTMLElement) (finish: unit -> unit) =
+    let name = node.textContent
+    log.Add ("exit " + name)
+    finishes[name] <- finish
+    fun () -> log.Add ("cancel " + name)
+
+let private finish (name: string) =
+    let finishing = finishes[name]
+    finishes.Remove name |> ignore
+    finishing ()
+
+/// <summary>A list whose row roots have exits, and an arm switch whose arm roots have exits.</summary>
+let private exiting =
+    Component.template
+        (fun _ (state: Rows) -> state)
+        (div () {
+            ul () {
+                forEach
+                    id
+                    (fun (s: Rows) -> s.Items.Value)
+                    (li (Hooks.exit (fun (_: unit -> int) (node: HTMLLIElement) finish -> exitOf node finish)) {
+                        fun (row: unit -> int) -> string (row ())
+                    })
+            }
+
+            showElse
+                (fun s -> s.Shown.Value)
+                (span (Hooks.exit (fun (_: Rows) (node: HTMLSpanElement) finish -> exitOf node finish)) { "on" })
+                (em (Hooks.exit (fun (_: Rows) (node: HTMLElement) finish -> exitOf node finish)) { "off" })
+        })
+
+/// <summary>A list whose row roots' exits call <c>finish</c> at once.</summary>
+let private immediate =
+    Component.template
+        (fun _ (state: Rows) -> state)
+        (ul () {
+            forEach
+                id
+                (fun (s: Rows) -> s.Items.Value)
+                (li (
+                    Hooks.exit (fun (_: unit -> int) (_: HTMLLIElement) finish ->
+                        finish ()
+                        ignore)
+                ) {
+                    fun (row: unit -> int) -> string (row ())
+                })
+        })
+
+[<Emit("Array.from($0.querySelectorAll($1), n => n.textContent)")>]
+let private textsOf (root: HTMLElement) (selector: string) : string array = jsNative
+
+/// <summary>The text of each child of <c>node</c> that is not a comment.</summary>
+[<Emit("Array.from($0.childNodes).filter(n => n.nodeType !== 8).map(n => n.textContent)")>]
+let private childrenOf (node: Element) : string array = jsNative
+
+let private items (target: HTMLElement) =
+    List.ofArray (textsOf target "li")
+
+let private childrenAt (selector: string) (target: HTMLElement) =
+    List.ofArray (childrenOf (target.querySelector selector |> unbox<Element>))
+
+[<Emit("globalThis.departureTick($0)")>]
+let private tick (milliseconds: int) : unit = jsNative
+
+[<Emit("$0.querySelectorAll('li')[$1]")>]
+let private rowAt (target: HTMLElement) (index: int) : Node = jsNative
+
+/// <summary>Mounts <c>exiting</c> with <c>initial</c> items and the arm shown.</summary>
+let private mountExiting queued (graph: Graph) (initial: int array) =
+    log.Clear ()
+    finishes.Clear ()
+    let state = graph.Run (fun () -> rows initial true)
+    let target = host ()
+
+    let mounted =
+        mountTemplate queued graph strict target (Component.render exiting state)
+
+    mounted.Flush ()
+    state, target, mounted
+
+let private heldUntilFinish queued () =
+    use graph = new Graph ()
+    let state, target, mounted = mountExiting queued graph [| 1; 2; 3 |]
+    write graph mounted (fun () -> state.Items.Value <- [| 1; 3 |])
+    let held = items target, taken ()
+    finish "2"
+    let finished = items target
+    write graph mounted (fun () -> state.Items.Value <- [| 3; 1 |])
+    let reordered = items target
+    mounted.Dispose ()
+    equal ((([ "1"; "2"; "3" ], [ "exit 2" ]), [ "1"; "3" ]), [ "3"; "1" ]) ((held, finished), reordered)
+
+let private reorderAndInsertWhileHeld queued () =
+    use graph = new Graph ()
+    let state, target, mounted = mountExiting queued graph [| 1; 2; 3; 4 |]
+    write graph mounted (fun () -> state.Items.Value <- [| 1; 3; 4 |])
+    write graph mounted (fun () -> state.Items.Value <- [| 4; 5; 3; 1 |])
+    let reordered = childrenAt "ul" target
+    write graph mounted (fun () -> state.Items.Value <- [| 4; 3; 1 |])
+    write graph mounted (fun () -> state.Items.Value <- [| 6; 4; 3; 1; 7 |])
+    let inserted = childrenAt "ul" target
+    finish "2"
+    finish "5"
+    let finished = childrenAt "ul" target
+    mounted.Dispose ()
+
+    equal ([ "4"; "5"; "3"; "1"; "2" ], [ "6"; "4"; "5"; "3"; "1"; "2"; "7" ], [ "6"; "4"; "3"; "1"; "7" ]) (reordered, inserted, finished)
+
+let private clearHoldsEveryRoot queued () =
+    use graph = new Graph ()
+    let state, target, mounted = mountExiting queued graph [| 1; 2; 3 |]
+    write graph mounted (fun () -> state.Items.Value <- [||])
+    let held = childrenAt "ul" target, taken ()
+    write graph mounted (fun () -> state.Items.Value <- [| 4 |])
+    let added = childrenAt "ul" target
+    finish "1"
+    finish "2"
+    finish "3"
+    let finished = childrenAt "ul" target
+    mounted.Dispose ()
+
+    equal (([ "1"; "2"; "3" ], [ "exit 1"; "exit 2"; "exit 3" ]), [ "1"; "2"; "3"; "4" ], [ "4" ]) (held, added, finished)
+
+let private readdedKeyGetsNewRow queued () =
+    use graph = new Graph ()
+    let state, target, mounted = mountExiting queued graph [| 1; 2 |]
+    let original = rowAt target 1
+    write graph mounted (fun () -> state.Items.Value <- [| 1 |])
+    write graph mounted (fun () -> state.Items.Value <- [| 1; 2 |])
+    let readded = items target
+    let fresh = not (obj.ReferenceEquals (rowAt target 2, original))
+    finish "2"
+    let finished = items target
+    let kept = not (obj.ReferenceEquals (rowAt target 1, original))
+    mounted.Dispose ()
+    equal (([ "1"; "2"; "2" ], true), ([ "1"; "2" ], true)) ((readded, fresh), (finished, kept))
+
+let private armSwitchKeepsOrder queued () =
+    use graph = new Graph ()
+    let state, target, mounted = mountExiting queued graph [||]
+    write graph mounted (fun () -> state.Shown.Value <- false)
+    let switched = childrenAt "div" target
+    write graph mounted (fun () -> state.Shown.Value <- true)
+    let back = childrenAt "div" target
+    finish "on"
+    finish "off"
+    let finished = childrenAt "div" target
+    mounted.Dispose ()
+
+    equal ([ ""; "on"; "off" ], [ ""; "on"; "off"; "on" ], [ ""; "on" ]) (switched, back, finished)
+
+let private disposalEndsExits queued () =
+    use graph = new Graph ()
+    let state, target, mounted = mountExiting queued graph [| 1; 2; 3 |]
+    write graph mounted (fun () -> state.Items.Value <- [| 3 |])
+    write graph mounted (fun () -> state.Shown.Value <- false)
+    log.Clear ()
+    mounted.Dispose ()
+    let ended = List.sort (taken ()), target.childNodes.length
+    finish "1"
+    equal (([ "cancel 1"; "cancel 2"; "cancel on" ], 0.), []) (ended, taken ())
+
+let private finishesAfterTimeout queued () =
+    use graph = new Graph ()
+    let state, target, mounted = mountExiting queued graph [| 1; 2 |]
+    write graph mounted (fun () -> state.Items.Value <- [| 1 |])
+    tick (Departures.safetyTimeout - 1)
+    let before = items target
+    tick 1
+    let after = items target
+    finish "2"
+    let finishedLate = items target
+    mounted.Dispose ()
+    equal ([ "1"; "2" ], [ "1" ], [ "1" ]) (before, after, finishedLate)
+
+type Groups =
+    {
+        Outer: Signal<int array>
+        Inner: Signal<int array>
+    }
+
+/// <summary>The inner items of the current <c>grouped</c> case.</summary>
+let mutable private sharedInner: Signal<int array> = Unchecked.defaultof<_>
+
+/// <summary>Outer rows without exits, each holding inner rows with exits.</summary>
+let private grouped =
+    Component.template
+        (fun _ (state: Groups) -> state)
+        (ul () {
+            forEach
+                id
+                (fun (s: Groups) -> s.Outer.Value)
+                (li () {
+                    ol () {
+                        forEach
+                            (fun (pair: int * int) -> pair)
+                            (fun (row: unit -> int) -> [| for inner in sharedInner.Value -> row (), inner |])
+                            (b (Hooks.exit (fun (_: unit -> int * int) (node: HTMLElement) finish -> exitOf node finish)) {
+                                fun (pair: unit -> int * int) -> string (fst (pair ())) + string (snd (pair ()))
+                            })
+                    }
+                })
+        })
+
+let private heldInsideRemovedRow queued () =
+    use graph = new Graph ()
+    log.Clear ()
+    finishes.Clear ()
+
+    let state =
+        graph.Run (fun () ->
+            {
+                Outer = Api.createSignal [| 1; 2 |]
+                Inner = Api.createSignal [| 1; 2 |]
+            })
+
+    sharedInner <- state.Inner
+    let target = host ()
+
+    let mounted =
+        mountTemplate queued graph strict target (Component.render grouped state)
+
+    mounted.Flush ()
+    write graph mounted (fun () -> state.Inner.Value <- [| 1 |])
+    let held = textsOf target "b" |> List.ofArray
+    write graph mounted (fun () -> state.Outer.Value <- [| 2 |])
+    let removed = textsOf target "b" |> List.ofArray
+    finish "12"
+    finish "22"
+    write graph mounted (fun () -> state.Inner.Value <- [| 1; 3 |])
+    let later = textsOf target "b" |> List.ofArray
+    mounted.Dispose ()
+    equal ([ "11"; "12"; "21"; "22" ], [ "21"; "22" ], [ "21"; "23" ]) (held, removed, later)
+
+let private finishedAtOnce queued () =
+    use graph = new Graph ()
+    log.Clear ()
+    let state = graph.Run (fun () -> rows [| 1; 2 |] false)
+    let target = host ()
+
+    let mounted =
+        mountTemplate queued graph strict target (Component.render immediate state)
+
+    mounted.Flush ()
+    write graph mounted (fun () -> state.Items.Value <- [| 2 |])
+    let removed = items target
+    write graph mounted (fun () -> state.Items.Value <- [| 3; 2 |])
+    let added = items target
+    mounted.Dispose ()
+    equal ([ "2" ], [ "3"; "2" ]) (removed, added)
+
+let private adoptedRowsRetire () =
+    use graph = new Graph ()
+    log.Clear ()
+    finishes.Clear ()
+    let state = graph.Run (fun () -> rows [| 1; 2; 3 |] true)
+    let target = host ()
+    loadServed target (Server.render omit exiting state)
+
+    let mounted =
+        Hydration.hydrate graph None strict { IdPrefix = "r"; Strict = true } target exiting state
+
+    write graph mounted (fun () -> state.Items.Value <- [| 1; 3 |])
+    let held = items target, taken ()
+    write graph mounted (fun () -> state.Items.Value <- [| 3; 4; 1 |])
+    let reordered = childrenAt "ul" target
+    finish "2"
+    let finished = childrenAt "ul" target
+    mounted.Dispose ()
+    equal ((([ "1"; "2"; "3" ], [ "exit 2" ]), [ "3"; "4"; "1"; "2" ]), [ "3"; "4"; "1" ]) ((held, reordered), finished)
+
+let private moveCarriesHeldRoots queued () =
+    use graph = new Graph ()
+    let state, target, mounted = mountExiting queued graph [| 1; 2; 3 |]
+    write graph mounted (fun () -> state.Items.Value <- [| 1; 3 |])
+    let destination = host ()
+    mounted.MoveBefore (destination, None)
+    let moved = items destination, items target
+    write graph mounted (fun () -> state.Items.Value <- [| 3; 1 |])
+    let reordered = childrenAt "ul" destination
+    finish "2"
+    let finished = items destination
+    mounted.Dispose ()
+    equal ((([ "1"; "2"; "3" ], []), [ "3"; "1"; "2" ]), [ "3"; "1" ]) ((moved, reordered), finished)
+
 let cases: (string * (unit -> unit)) array =
     strictCases (
         Array.concat
@@ -175,5 +463,18 @@ let cases: (string * (unit -> unit)) array =
                 [|
                     "hydrated rows and arms are hydrated and not inserted; later ones are inserted", hydratedThenInserted
                 |]
+                templated "an exit holds its row's root until finish" heldUntilFinish
+                templated "reorders and inserts validate while roots are held" reorderAndInsertWhileHeld
+                templated "clearing a list with exits holds every root" clearHoldsEveryRoot
+                templated "a key re-added while its old root leaves gets a new row" readdedKeyGetsNewRow
+                templated "an arm switch leaves the old and new arm roots in order" armSwitchKeepsOrder
+                templated "disposing the mount cancels and removes every held root" disposalEndsExits
+                templated "an exit finishes after the safety timeout" finishesAfterTimeout
+                templated "a root held inside a removed row leaves with the row" heldInsideRemovedRow
+                templated "an exit that finishes at once removes its root at once" finishedAtOnce
+                [|
+                    "a hydrated row's root with an exit is held when its row is retired", adoptedRowsRetire
+                |]
+                templated "moving the mount carries its held roots" moveCarriesHeldRoots
             ]
     )
