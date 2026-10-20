@@ -526,8 +526,11 @@ type internal ServerOp =
     /// With <c>marksEmpty</c>, an empty or null value writes <c>&lt;!--_--&gt;</c>; otherwise it writes nothing.
     /// </summary>
     | TextOp of Slot * leadingLineFeed: bool * marksEmpty: bool
-    /// <summary>An attribute slot: <c> name="value"</c> for <c>Some</c>; the attribute is omitted for <c>None</c>.</summary>
-    | AttributeOp of string * Slot
+    /// <summary>
+    /// An attribute slot: <c> name="value"</c> for <c>Some</c>; the attribute is omitted for <c>None</c>. <c>opening</c>
+    /// is <c> name="</c>.
+    /// </summary>
+    | AttributeOp of opening: string * Slot
     /// <summary>A raw-HTML slot's markup, written verbatim; with <c>leadingLineFeed</c>, non-empty markup is written after a line feed, which the HTML parser drops.</summary>
     | ContentOp of Slot * leadingLineFeed: bool
     /// <summary>A document head entry: collected under <c>Server.renderPage</c>; otherwise raises under <c>Reject</c> and is dropped under <c>Omit</c>.</summary>
@@ -1237,7 +1240,7 @@ let private compilePlan (root: TemplateNode) : ServerPlan =
 
             for slot in slots do
                 match slot.Target with
-                | AttributeTarget key -> emit (AttributeOp (key, slot))
+                | AttributeTarget key -> emit (AttributeOp (" " + key + "=\"", slot))
                 | PropertyTarget property ->
                     match property.Html with
                     | AsAttribute _ -> emit (PropertyOp (property, slot))
@@ -1652,9 +1655,12 @@ type internal ServerWriter(backend: HtmlBackend) =
             | TextOp (slot, leadingLineFeed, marksEmpty) ->
                 writeText (slot.Read.Invoke instance) leadingLineFeed marksEmpty
                 index <- index + 1
-            | AttributeOp (key, slot) ->
+            | AttributeOp (opening, slot) ->
                 match unbox<string option>(slot.Read.Invoke instance) with
-                | Some value -> backend.Append (" " + key + "=\"" + Html.escape true value + "\"")
+                | Some value ->
+                    backend.Append opening
+                    backend.Append (Html.escape true value)
+                    backend.Append "\""
                 | None -> ()
 
                 index <- index + 1
