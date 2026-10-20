@@ -401,7 +401,7 @@ A flush runs every scheduled pass before the effects the write woke, so an effec
 the keys or a row, and the source, sees both from the same write. A pass that publishes new keys schedules
 the passes of the projections that read them, and those run before the effects as well. Inside a `batch`,
 or in a body after the write, a memo over the keys or a row holds the previous pass's value until the
-flush; `Keys` and `Get` read directly run the pass first.
+flush or a direct read of `Keys` or `Get`. That read runs the pass, and the memo is current from then on.
 
 ## Binding to a UI list
 

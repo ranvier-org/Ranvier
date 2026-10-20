@@ -1579,17 +1579,21 @@ type Graph(options: GraphOptions) =
     let mutable queueHead = 0
 
     /// <summary>
-    /// Queued projection passes and lookup refreshes, a buffer read through a cursor as <c>queue</c> is. A flush runs
-    /// every queued pass before the next <c>queue</c> item.
+    /// Queued projection passes and lookup refreshes, read through <c>passHead</c> and <c>passCount</c> as
+    /// <c>queue</c> is. A flush runs every queued pass before the next <c>queue</c> item.
     /// </summary>
     /// <remarks>
-    /// A pass marks its readers only when it publishes, so a reader run ahead of a queued pass would read the previous
-    /// keys, rows or lookup values.
+    /// A reader run ahead of a queued pass reads the previous keys, rows or lookup values.
     /// </remarks>
     let passes = ResizeArray<IScheduled>()
 
+    /// <summary>
+    /// Entries written to <c>passes</c>. Reset to 0 only when <c>RunPasses</c> drains the buffer, so after a pass
+    /// throws it can be nonzero with nothing left to run.
+    /// </summary>
     let mutable passCount = 0
 
+    /// <summary>Next entry of <c>passes</c> to run.</summary>
     let mutable passHead = 0
 
 #if !FABLE_COMPILER
@@ -2221,7 +2225,7 @@ type Graph(options: GraphOptions) =
 
 
     member internal this.Schedule(item: IScheduled) =
-        Tracer.Schedule (this, item, queueCount - queueHead)
+        Tracer.Schedule (this, item, queueCount - queueHead + passCount - passHead)
 
         if queueCount < queue.Count then
 #if FABLE_COMPILER
@@ -2234,7 +2238,7 @@ type Graph(options: GraphOptions) =
 
         queueCount <- queueCount + 1
 
-    /// <summary>Queues a projection pass or a lookup refresh. A flush runs it before every item <c>Schedule</c> queued.</summary>
+    /// <summary>Queues a projection pass or a lookup refresh. A flush runs it before the next item <c>Schedule</c> queued.</summary>
     member internal this.SchedulePass(item: IScheduled) =
         Tracer.Schedule (this, item, passCount - passHead)
 
@@ -2250,7 +2254,7 @@ type Graph(options: GraphOptions) =
         passCount <- passCount + 1
 
     /// <summary>True while a pass or an item is queued.</summary>
-    member private _.HasQueued = queueHead < queueCount || passCount <> 0
+    member private _.HasQueued = queueHead < queueCount || passHead < passCount
 
     /// <summary>Runs the queued passes, including those queued by a pass, and empties the pass buffer.</summary>
     member private this.RunPasses() =
@@ -2287,7 +2291,8 @@ type Graph(options: GraphOptions) =
             let previousAmbient = this.EnterAmbient ()
 
             try
-                // `passCount` is 0 whenever no pass is queued.
+                // `passCount` is 0 after every drained `RunPasses`. A nonzero count with nothing queued runs an empty
+                // `RunPasses`, which resets it.
                 while queueHead < queueCount || passCount <> 0 do
                     if passCount <> 0 then
                         this.RunPasses ()
@@ -3765,8 +3770,9 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
                         graph.Schedule (this :> IScheduled)
 
     /// <summary>
-    /// Set on an effect whose readers are marked only when its body writes, such as a lookup's refresh. A flush runs
-    /// the effect with the projection passes, ahead of every other queued effect.
+    /// Set on an effect whose readers are marked only when its body writes, such as a lookup's refresh. Every run
+    /// queued after the flag is set runs with the projection passes, ahead of every other queued effect. The first
+    /// run, queued at creation, is on the main queue.
     /// </summary>
     member internal _.Publishes
         with set value = publishes <- value
