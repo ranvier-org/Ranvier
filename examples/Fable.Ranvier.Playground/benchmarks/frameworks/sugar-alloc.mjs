@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 const cwd = fileURLToPath(new URL("../../", import.meta.url));
 const argument = (name, fallback) => process.argv.find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
-const output = argument("out", fileURLToPath(new URL("../../../../docs/research/framework-performance/investigation/view-sugar/", import.meta.url)));
+const output = argument("out", fileURLToPath(new URL("../../../../docs/research/framework-performance/investigation/view-sugar-v2/", import.meta.url)));
 const label = argument("label", "alloc-template-row");
 const processes = Number(argument("processes", 3)), mounts = Number(argument("mounts", 10)), width = Number(argument("width", 128));
 const modes = ["ranvier-template", "ranvier-template-sugar", "ranvier-template-members", "ranvier-template-class"];

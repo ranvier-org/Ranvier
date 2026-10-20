@@ -1,6 +1,7 @@
 // Range comparison of the sugared adapters with their explicit twins.
 // Usage: node benchmarks/frameworks/sugar-compare.mjs template|keyed|heap|alloc <result.json>...
 import { readFileSync } from "node:fs";
+import { sugarFrame } from "./sugar-frames.mjs";
 
 const [kind, ...files] = process.argv.slice(2);
 const load = file => JSON.parse(readFileSync(file, "utf8"));
@@ -43,7 +44,6 @@ for (const file of files) {
   if (kind === "alloc")
     for (const sample of data.allocations.filter(sample => /-(sugar|members|class)$/.test(sample.mode))) {
       // Every sampled function is searched; the benchmark adapter entries are excluded.
-      const sugarFrame = /\b(Element|VoidElement|ComponentTag)\$\d|(^|[^A-Za-z0-9_$])[a-z][a-z0-9]*(\$0027)?\$1(_|\b)|Builders_|Sugar|Delay/;
       const named = sample.self.filter(row => sugarFrame.test(row.name) && !/^mountTemplate(Sugar|Members|Class) /.test(row.name));
       const twin = data.allocations.find(other => other.mode === sample.mode.replace(/-(sugar|members|class)$/, "") && other.operation === sample.operation && other.process === sample.process);
       if (named.length) failed++;
