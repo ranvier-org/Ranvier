@@ -31,11 +31,17 @@ type private ListenerWatch =
 [<Emit("(() => { const log = []; const proto = window.EventTarget.prototype; const original = proto.addEventListener; proto.addEventListener = function (type, ...rest) { log.push([this, type]); return original.call(this, type, ...rest); }; return { under: (root) => log.filter(([target]) => target instanceof Node && root.contains(target)).length, stop: () => { proto.addEventListener = original; } }; })()")>]
 let private watchListeners () : ListenerWatch = jsNative
 
-/// <summary>The graph counters as name-value pairs; empty without <c>RANVIER_COUNTERS</c>.</summary>
+[<Emit("globalThis.ranvierExpectCounters === true")>]
+let private countersExpected () : bool = jsNative
+
+/// <summary>The graph counters as name-value pairs; empty without <c>RANVIER_COUNTERS</c> unless the run expects counters, which fails.</summary>
 let private tally () : (string * float) list =
 #if RANVIER_COUNTERS
     [ for name, value in Counters.Snapshot () -> name, float value ]
 #else
+    if countersExpected () then
+        failwith "The run expects counters; compile with RanvierCounters=true"
+
     []
 #endif
 
@@ -46,105 +52,108 @@ let private click (selector: string) (root: HTMLElement) =
     (root.querySelector selector |> unbox<HTMLElement>).click()
 
 /// <summary>
-/// What a twin pair did: markup, reports, counter deltas of the mount, the steps that act on one side and the disposal,
-/// listener registrations per host, and native writes per step.
+/// One twin's run: markup, reports, counter deltas, listener registrations under the host and native writes after the
+/// mount and each step, plus the counter delta and writes of the disposal.
 /// </summary>
 type private Trace =
     {
-        Shots: (string * string) list
-        LeftReports: string list list
-        RightReports: string list list
-        Counts: ((string * float) list * (string * float) list) list
-        Listeners: int * int
-        Writes: (string array * string array) list
+        Shots: string list
+        Reports: string list list
+        Counts: (string * float) list list
+        Listeners: int list
+        Writes: string array list
     }
 
-/// <summary>Both hosts' behaviour across the mount, each step and the disposal.</summary>
-let private twins queued (graph: Graph) (explicitView: Program.View) (sugarView: Program.View) (steps: Step list) =
-    let left, right = host (), host ()
-    let leftReports, rightReports = ResizeArray<exn list>(), ResizeArray<exn list>()
-    let leftWrites, rightWrites = watchWrites left, watchWrites right
+/// <summary>
+/// Mounts <c>view</c> on a graph and state of its own, runs <c>steps</c> and disposes. Counters are read around the
+/// mount, each step and the disposal, so every difference between twins belongs to one twin.
+/// </summary>
+let private run queued (make: Graph -> 'state) (view: 'state -> Program.View) (steps: 'state -> Step list) =
+    use graph = new Graph ()
+    let state = make graph
+    let target = host ()
+    let reports = ResizeArray<exn list>()
+    let writes = watchWrites target
     let listeners = watchListeners ()
 
     try
-        let counts = ResizeArray ()
-        let writes = ResizeArray ()
+        let shots, counts, registrations, native =
+            ResizeArray (), ResizeArray (), ResizeArray (), ResizeArray ()
 
-        let mount target (reports: ResizeArray<exn list>) view =
-            let before = tally ()
-            let mounted = mountTemplate queued graph reports.Add target view
-            mounted.Flush ()
-            mounted, delta before (tally ())
-
-        let explicitMount, explicitCounts = mount left leftReports explicitView
-        let sugarMount, sugarCounts = mount right rightReports sugarView
-        counts.Add ((explicitCounts, sugarCounts))
-
-        let shot () =
-            explicitMount.Flush ()
-            sugarMount.Flush ()
-            writes.Add ((leftWrites.drain (), rightWrites.drain ()))
-            left.innerHTML, right.innerHTML
-
-        let measured (flush: unit -> unit) (act: unit -> unit) =
+        let measured (act: unit -> unit) =
             let before = tally ()
             act ()
-            flush ()
-            delta before (tally ())
+            counts.Add (delta before (tally ()))
 
-        let shots = ResizeArray [ shot () ]
+        let mounted = ref Unchecked.defaultof<_>
 
-        for step in steps do
-            match step with
-            | Write write -> graph.Run write
-            | Each act ->
-                let explicitDelta = measured explicitMount.Flush (fun () -> act left)
-                let sugarDelta = measured sugarMount.Flush (fun () -> act right)
-                counts.Add ((explicitDelta, sugarDelta))
+        measured (fun () ->
+            mounted.Value <- mountTemplate queued graph reports.Add target (view state)
+            mounted.Value.Flush ())
 
-            shots.Add (shot ())
+        let record () =
+            shots.Add target.innerHTML
+            registrations.Add (listeners.under target)
+            native.Add (writes.drain ())
 
-        let explicitDelta = measured ignore explicitMount.Dispose
-        let sugarDelta = measured ignore sugarMount.Dispose
-        counts.Add ((explicitDelta, sugarDelta))
-        writes.Add ((leftWrites.drain (), rightWrites.drain ()))
-        shots.Add ((left.innerHTML, right.innerHTML))
+        record ()
+
+        for step in steps state do
+            measured (fun () ->
+                match step with
+                | Write write -> graph.Run write
+                | Each act -> act target
+
+                mounted.Value.Flush ())
+
+            record ()
+
+        measured mounted.Value.Dispose
+        shots.Add target.innerHTML
+        native.Add (writes.drain ())
 
         {
             Shots = List.ofSeq shots
-            LeftReports = messages leftReports
-            RightReports = messages rightReports
+            Reports = messages reports
             Counts = List.ofSeq counts
-            Listeners = listeners.under left, listeners.under right
-            Writes = List.ofSeq writes
-        }
+            Listeners = List.ofSeq registrations
+            Writes = List.ofSeq native
+        },
+        state
     finally
-        leftWrites.stop ()
-        rightWrites.stop ()
+        writes.stop ()
         listeners.stop ()
 
-let private same (trace: Trace) =
-    for index, (left, right) in List.indexed trace.Shots do
+/// <summary>Runs the explicit twin, then the sugared twin, each on its own graph and state.</summary>
+let private twins queued make explicitView sugarView steps =
+    let explicitTrace, explicitState = run queued make explicitView steps
+    let sugarTrace, sugarState = run queued make sugarView steps
+    (explicitTrace, sugarTrace), (explicitState, sugarState)
+
+let private same (explicitTrace: Trace, sugarTrace: Trace) =
+    equal explicitTrace.Shots sugarTrace.Shots
+    equal explicitTrace.Reports sugarTrace.Reports
+
+    for index, (left, right) in List.indexed (List.zip explicitTrace.Counts sugarTrace.Counts) do
         equal (index, left) (index, right)
 
-    equal trace.LeftReports trace.RightReports
+    equal explicitTrace.Listeners sugarTrace.Listeners
 
-    for index, (explicitCounts, sugarCounts) in List.indexed trace.Counts do
-        equal (index, explicitCounts) (index, sugarCounts)
-
-    equal (fst trace.Listeners) (snd trace.Listeners)
-
-    for index, (left, right) in List.indexed trace.Writes do
+    for index, (left, right) in List.indexed (List.zip explicitTrace.Writes sugarTrace.Writes) do
         equal (index, left) (index, right)
+
+let private pair queued make explicitView sugarView steps =
+    same (fst (twins queued make explicitView sugarView steps))
 
 let private benchClicks queued () =
-    use graph = new Graph ()
-    same (twins queued graph (Component.render benchExplicit 3) (Component.render benchSugar 3) [ Each (click "button"); Each (click "button") ])
+    pair queued (fun _ -> ()) (fun () -> Component.render benchExplicit 3) (fun () -> Component.render benchSugar 3) (fun () ->
+        [ Each (click "button"); Each (click "button") ])
 
 let private textUpdates queued () =
-    use graph = new Graph ()
-    let name = graph.Run (fun () -> Api.createSignal "a")
-    same (twins queued graph (Component.render textsExplicit name) (Component.render textsSugar name) [ Write (fun () -> name.Value <- "b") ])
+    let make (graph: Graph) =
+        graph.Run (fun () -> Api.createSignal "a")
+
+    pair queued make (Component.render textsExplicit) (Component.render textsSugar) (fun name -> [ Write (fun () -> name.Value <- "b") ])
 
 let private keyedSteps (rows: Signal<KeyedItem array>) =
     let removed = ref Unchecked.defaultof<KeyedItem>
@@ -169,15 +178,14 @@ let private keyedSteps (rows: Signal<KeyedItem array>) =
         Write (fun () -> rows.Value <- [||])
     ]
 
+let private keyedRows (graph: Graph) =
+    graph.Run (fun () -> Api.createSignal (keyedItems ()))
+
 let private keyedLive queued () =
-    use graph = new Graph ()
-    let rows = graph.Run (fun () -> Api.createSignal (keyedItems ()))
-    same (twins queued graph (Component.render keyedLiveExplicit rows) (Component.render keyedLiveSugar rows) (keyedSteps rows))
+    pair queued keyedRows (Component.render keyedLiveExplicit) (Component.render keyedLiveSugar) keyedSteps
 
 let private keyedFixed queued () =
-    use graph = new Graph ()
-    let rows = graph.Run (fun () -> Api.createSignal (keyedItems ()))
-    same (twins queued graph (Component.render keyedFixedExplicit rows) (Component.render keyedFixedSugar rows) (keyedSteps rows))
+    pair queued keyedRows (Component.render keyedFixedExplicit) (Component.render keyedFixedSugar) keyedSteps
 
 let private liveSourceFollowsReplacement queued () =
     use graph = new Graph ()
@@ -214,68 +222,67 @@ let private liveSourceFollowsReplacement queued () =
     mounted.Dispose ()
 
 let private arms queued () =
-    use graph = new Graph ()
-    let rows = graph.Run (fun () -> Api.createSignal (armItems ()))
-
-    same (
-        twins
-            queued
-            graph
-            (Component.render armsExplicit rows)
-            (Component.render armsSugar rows)
+    pair
+        queued
+        (fun (graph: Graph) -> graph.Run (fun () -> Api.createSignal (armItems ())))
+        (Component.render armsExplicit)
+        (Component.render armsSugar)
+        (fun rows ->
             [
                 Write (fun () -> rows.Value[0].Mode.Value <- Counted 1)
                 Write (fun () -> rows.Value[0].Mode.Value <- Counted 2)
                 Write (fun () -> rows.Value[1].Mode.Value <- Plain)
                 Write (fun () -> rows.Value <- Array.rev rows.Value)
-            ]
-    )
+            ])
 
-/// <summary>The twins of a <c>Toggle</c> fixture: each side has its own log, and both read the same signals.</summary>
+/// <summary>The twins of a <c>Toggle</c> fixture: each has its own signals and log.</summary>
 let private toggled queued (explicitDefinition: Component<Toggle>) (sugarDefinition: Component<Toggle>) () =
-    use graph = new Graph ()
-    let left = graph.Run (fun () -> toggle true)
-    let right = { left with Log = ResizeArray () }
-
-    let trace =
+    let traces, (explicitState, sugarState) =
         twins
             queued
-            graph
-            (Component.render explicitDefinition left)
-            (Component.render sugarDefinition right)
-            [
-                Write (fun () -> left.On.Value <- false)
-                Write (fun () -> left.Name.Value <- "m")
-                Write (fun () -> left.On.Value <- true)
-                Write (fun () -> left.On.Value <- false)
-            ]
+            (fun (graph: Graph) -> graph.Run (fun () -> toggle true))
+            (Component.render explicitDefinition)
+            (Component.render sugarDefinition)
+            (fun state ->
+                [
+                    Write (fun () -> state.On.Value <- false)
+                    Write (fun () -> state.Name.Value <- "m")
+                    Write (fun () -> state.On.Value <- true)
+                    Write (fun () -> state.On.Value <- false)
+                ])
 
-    same trace
-    equal (List.ofSeq left.Log) (List.ofSeq right.Log)
-    equal [ "mounted"; "cleanup"; "mounted"; "cleanup" ] (List.ofSeq right.Log)
+    same traces
+    equal (List.ofSeq explicitState.Log) (List.ofSeq sugarState.Log)
+    equal [ "mounted"; "cleanup"; "mounted"; "cleanup" ] (List.ofSeq sugarState.Log)
 
 let private nested queued () =
-    use graph = new Graph ()
-    let state = graph.Run board
+    pair queued (fun (graph: Graph) -> graph.Run board) (Component.render nestedExplicit) (Component.render nestedSugar) (fun state ->
+        [
+            Write (fun () -> state.Entries.Value[0].Open.Value <- true)
+            Write (fun () -> state.Entries.Value <- Array.rev state.Entries.Value)
+            Write (fun () -> state.Listing.Value <- false)
+            Write (fun () -> state.Listing.Value <- true)
+            Write (fun () -> state.Entries.Value[1].Open.Value <- false)
+        ])
 
-    same (
-        twins
-            queued
-            graph
-            (Component.render nestedExplicit state)
-            (Component.render nestedSugar state)
+/// <summary>A live <c>forEach</c> in a <c>matchWith</c> arm: the twins agree on markup, resources and the order of row mounts and cleanups.</summary>
+let private nestedLive queued () =
+    let traces, (explicitState, sugarState) =
+        twins queued (fun (graph: Graph) -> graph.Run lined) (Component.render nestedLiveExplicit) (Component.render nestedLiveSugar) (fun state ->
             [
-                Write (fun () -> state.Entries.Value[0].Open.Value <- true)
-                Write (fun () -> state.Entries.Value <- Array.rev state.Entries.Value)
-                Write (fun () -> state.Listing.Value <- false)
-                Write (fun () -> state.Listing.Value <- true)
-                Write (fun () -> state.Entries.Value[1].Open.Value <- false)
-            ]
-    )
+                Write (fun () -> state.Lines.Value <- Array.rev state.Lines.Value)
+                Write (fun () -> state.Lines.Value <- state.Lines.Value[1..])
+                Write (fun () -> state.Shown.Value <- false)
+                Write (fun () -> state.Shown.Value <- true)
+                Write (fun () -> state.Lines.Value[0].Label.Value <- "relabelled")
+            ])
+
+    same traces
+    equal (List.ofSeq explicitState.Trail) (List.ofSeq sugarState.Trail)
+    equal false (explicitState.Trail.Count = 0)
 
 let private bounded queued () =
-    use graph = new Graph ()
-    same (twins queued graph (Component.render boundedExplicit ()) (Component.render boundedSugar ()) [])
+    pair queued (fun _ -> ()) (fun () -> Component.render boundedExplicit ()) (fun () -> Component.render boundedSugar ()) (fun () -> [])
 
 [<Emit("(() => { const w = document.createTreeWalker($0, 0xFFFFFFFF); const a = []; while (w.nextNode()) a.push(w.currentNode); return a; })()")>]
 let private nodesOf (root: Node) : Node array = jsNative
@@ -292,8 +299,8 @@ let private strictOptions: Hydration.HydrationOptions =
     { IdPrefix = "r"; Strict = true }
 
 /// <summary>
-/// Hydrates the explicit and the sugared definition from the server HTML of <c>served</c>; both adopt the same number of
-/// server nodes and show the same markup after hydration, each write and disposal.
+/// Hydrates the explicit and the sugared definition from the server HTML of <c>served</c>. Both adopt exactly
+/// <c>adopts</c> server nodes, keep the same nodes after each write, and show the same markup after hydration, each write and disposal.
 /// </summary>
 let private hydratedTwins
     (served: Component<'props>)
@@ -301,6 +308,7 @@ let private hydratedTwins
     (sugarDefinition: Component<'props>)
     (props: 'props)
     (writes: (unit -> unit) list)
+    (adopts: int)
     (graph: Graph)
     =
     let html = Server.render omit served props
@@ -320,11 +328,13 @@ let private hydratedTwins
         |> Array.filter (fun node -> within node root)
         |> Array.length
 
-    equal (adopted leftNodes left) (adopted rightNodes right)
+    equal adopts (adopted leftNodes left)
+    equal adopts (adopted rightNodes right)
     equal left.innerHTML right.innerHTML
 
     for write in writes do
         graph.Run write
+        equal (adopted leftNodes left) (adopted rightNodes right)
         equal left.innerHTML right.innerHTML
 
     explicitMount.Dispose ()
@@ -339,7 +349,7 @@ let private hydration () =
         let pick (explicitDefinition: Component<'p>) (sugarDefinition: Component<'p>) =
             if fromSugar then sugarDefinition else explicitDefinition
 
-        hydratedTwins (pick benchExplicit benchSugar) benchExplicit benchSugar 3 [] graph
+        hydratedTwins (pick benchExplicit benchSugar) benchExplicit benchSugar 3 [] 6 graph
         let rows = graph.Run (fun () -> Api.createSignal (keyedItems ()))
 
         hydratedTwins
@@ -348,10 +358,11 @@ let private hydration () =
             keyedLiveSugar
             rows
             [ fun () -> rows.Value <- Array.rev rows.Value ]
+            6
             graph
 
         let armed = graph.Run (fun () -> Api.createSignal (armItems ()))
-        hydratedTwins (pick armsExplicit armsSugar) armsExplicit armsSugar armed [ fun () -> armed.Value[1].Mode.Value <- Plain ] graph
+        hydratedTwins (pick armsExplicit armsSugar) armsExplicit armsSugar armed [ fun () -> armed.Value[1].Mode.Value <- Plain ] 6 graph
         let state = graph.Run (fun () -> toggle false)
 
         hydratedTwins
@@ -360,6 +371,7 @@ let private hydration () =
             showSugar
             state
             [ (fun () -> state.On.Value <- true); (fun () -> state.On.Value <- false) ]
+            7
             graph
 
         let listed = graph.Run board
@@ -370,6 +382,7 @@ let private hydration () =
             nestedSugar
             listed
             [ fun () -> listed.Entries.Value[0].Open.Value <- true ]
+            5
             graph
 
 let cases: (string * (unit -> unit)) array =
@@ -385,6 +398,7 @@ let cases: (string * (unit -> unit)) array =
                 templated "show toggles with cleanups like its twin" (fun queued -> toggled queued showExplicit showSugar)
                 templated "showElse toggles with cleanups like its twin" (fun queued -> toggled queued showElseExplicit showElseSugar)
                 templated "show in forEachFixed in an armOf arm updates like its twin" nested
+                templated "a live forEach in an armOf arm mounts and cleans up rows like its twin" nestedLive
                 templated "a boundary around sugared content renders like its twin" bounded
                 [| "sugared and explicit twins hydrate each other's server HTML", hydration |]
             ]

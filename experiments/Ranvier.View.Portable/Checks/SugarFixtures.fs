@@ -497,6 +497,85 @@ let nestedSugar =
                 | Choice2Of2 () -> t.arm hidden ())
         })
 
+type Line =
+    {
+        Id: int
+        Label: Signal<string>
+        Trail: ResizeArray<string>
+    }
+
+type Lined =
+    {
+        Shown: Signal<bool>
+        Lines: Signal<Line array>
+        Trail: ResizeArray<string>
+    }
+
+let lined () =
+    let trail = ResizeArray ()
+
+    let line id label =
+        {
+            Line.Id = id
+            Label = Api.createSignal label
+            Trail = trail
+        }
+
+    {
+        Lined.Shown = Api.createSignal true
+        Lines = Api.createSignal [| line 1 "a"; line 2 "b"; line 3 "c" |]
+        Trail = trail
+    }
+
+/// <summary>Logs a line's mount and cleanup in its trail.</summary>
+let private trailed (row: unit -> Line) (_: Dom.HTMLSpanElement) =
+    let line = row ()
+    line.Trail.Add (sprintf "mounted %d" line.Id)
+    fun () -> line.Trail.Add (sprintf "cleanup %d" line.Id)
+
+let private liveLine =
+    Component.define (fun _ (row: unit -> Line) -> row) (fun t ->
+        t.li
+            [||]
+            [|
+                t.span [| t.Hooks.mounted trailed |] [| t.text (t.from (fun (row: unit -> Line) -> (row ()).Label)) |]
+            |])
+
+let private linesArm =
+    Component.define (fun _ (current: unit -> Lined) -> current) (fun t ->
+        t.ul
+            [||]
+            [|
+                t.each (fun (line: Line) -> line.Id) (fun (current: unit -> Lined) -> (current ()).Lines.Value) liveLine
+            |])
+
+let nestedLiveExplicit =
+    Component.define (fun _ (state: Lined) -> state) (fun t ->
+        t.div
+            [||]
+            [|
+                t.matchWith (fun (s: Lined) -> if s.Shown.Value then Choice1Of2 s else Choice2Of2 ()) (function
+                    | Choice1Of2 s -> t.arm linesArm s
+                    | Choice2Of2 () -> t.arm hiddenBoardArm ())
+            |])
+
+let nestedLiveSugar =
+    Component.define (fun _ (state: Lined) -> state) (fun t ->
+        let listing =
+            t.armOf (fun (a: TemplateBuilder<unit -> Lined>) ->
+                a.Ul () {
+                    a.forEach (fun (line: Line) -> line.Id) (fun (current: unit -> Lined) -> (current ()).Lines.Value) (fun r ->
+                        r.Li () { r.Span (r.Hooks.mounted trailed) { r.from (fun (row: unit -> Line) -> (row ()).Label) } })
+                })
+
+        let hidden = t.armOf (fun (a: TemplateBuilder<unit -> unit>) -> a.P () { "hidden" })
+
+        t.Div () {
+            t.matchWith (fun (s: Lined) -> if s.Shown.Value then Choice1Of2 s else Choice2Of2 ()) (function
+                | Choice1Of2 s -> t.arm listing s
+                | Choice2Of2 () -> t.arm hidden ())
+        })
+
 let private pendingView =
     Component.define (fun _ () -> ()) (fun t -> t.span [||] [| t.text "loading" |])
 

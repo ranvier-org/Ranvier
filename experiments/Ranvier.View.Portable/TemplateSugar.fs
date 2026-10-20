@@ -48,7 +48,7 @@ module Builders =
         static let mutable shared: Component<unit -> unit> = Unchecked.defaultof<_>
 
         static member Get() =
-            // The first read is deliberately unsynchronised: a stale null only sends the caller into the locked re-check.
+            // Reads shared without the lock; null re-checks under the lock.
             if isNull (box shared) then
 #if FABLE_COMPILER
                 shared <- Component.define (fun _ (_: unit -> unit) -> ()) (fun t -> t.fragment [||])

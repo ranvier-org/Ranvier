@@ -59,7 +59,7 @@ let private omit =
 /// </summary>
 let private definitionsBuiltOncePerCall () =
     use graph = new Graph ()
-    let shownBuilds, elseBuilds, rowBuilds = ref 0, ref 0, ref 0
+    let shownBuilds, elseBuilds, rowBuilds, liveBuilds = ref 0, ref 0, ref 0, ref 0
 
     let flow =
         Component.define (fun _ (state: Toggle) -> state) (fun t ->
@@ -86,15 +86,24 @@ let private definitionsBuiltOncePerCall () =
                     r.Span () { "r" })
             })
 
-    equal (1, 2, 1) (shownBuilds.Value, elseBuilds.Value, rowBuilds.Value)
+    let liveRows =
+        Component.define (fun _ (items: KeyedItem array) -> items) (fun t ->
+            t.Div () {
+                t.forEach (fun (row: KeyedItem) -> row.Id) (fun items -> items) (fun r ->
+                    liveBuilds.Value <- liveBuilds.Value + 1
+                    r.Span () { "l" })
+            })
+
+    equal (1, 2, 1, 1) (shownBuilds.Value, elseBuilds.Value, rowBuilds.Value, liveBuilds.Value)
     let items = graph.Run keyedItems
 
     for on in [ true; false; true; false ] do
         let state = graph.Run (fun () -> toggle on)
         Server.render omit flow state |> ignore
         Server.render omit rows items |> ignore
+        Server.render omit liveRows items |> ignore
 
-    equal (1, 2, 1) (shownBuilds.Value, elseBuilds.Value, rowBuilds.Value)
+    equal (1, 2, 1, 1) (shownBuilds.Value, elseBuilds.Value, rowBuilds.Value, liveBuilds.Value)
 
 #if !FABLE_COMPILER
 let private emptyArmField () =
@@ -116,7 +125,7 @@ let private emptyArmField () =
 let private showTakesEmptyArmOnce () =
     let field = emptyArmField ()
     let original = field.GetValue null
-    let graph = new Graph ()
+    use graph = new Graph ()
     let hidden = graph.Run (fun () -> toggle false)
 
     try
