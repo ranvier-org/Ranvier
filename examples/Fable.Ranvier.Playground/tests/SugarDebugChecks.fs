@@ -67,7 +67,7 @@ let private bound =
 
 let private propertyLog = ResizeArray<string>()
 
-/// <summary>An arm read from a static property: every read of the getter creates a definition.</summary>
+/// <summary>A static property whose getter creates a definition on each read.</summary>
 type private ArmHolder =
     static member Arm: Component<unit -> unit> =
         armOf (span (Hooks.mounted (noting propertyLog)) { "held" })
@@ -76,17 +76,22 @@ type private ArmHolder =
 let private propertyHazard =
     Component.template (fun _ (picked: Picked) -> picked) (div () { matchWith (fun (p: Picked) -> p.Pick.Value) (fun _ -> arm ArmHolder.Arm ()) })
 
+/// <summary>The setups run by <c>ArmRecord.Create</c> and the <c>ArmClass</c> constructor: one per mount.</summary>
+let mutable private armSetups = 0
+
 type ArmRecord =
     {
         Read: unit -> int
     }
 
     static member Create(_: Setup, read: unit -> int) =
+        armSetups <- armSetups + 1
         { Read = read }
 
     static member View = i () { fun a -> string (a.Read ()) }
 
-type ArmClass(setup: Setup, read: unit -> int) =
+type ArmClass(_setup: Setup, read: unit -> int) =
+    do armSetups <- armSetups + 1
     member _.Read = read
     static member View: TemplateView<ArmClass> = i () { fun (a: ArmClass) -> string (a.Read ()) }
 
@@ -223,16 +228,20 @@ let private staticMemberArmRemountsInRelease () =
     propertyLog.Clear ()
     equal 3 (picks propertyHazard propertyLog)
 
-/// <summary>The host's text after the picks 2 and 3: the arm shows the last payload.</summary>
-let private shown (definition: Component<Picked>) =
-    picking definition (ResizeArray ()) (fun target -> target.textContent)
+/// <summary>The arm setups and the host's text after the picks 2 and 3.</summary>
+let private remounts (definition: Component<Picked>) =
+    armSetups <- 0
+    let text = picking definition (ResizeArray ()) (fun target -> target.textContent)
+    armSetups, text
 
 let cases: (string * (unit -> unit)) array =
     [|
         "a definition created in an arms function remounts on every update in Release", armInArmsRemountsInRelease
         "an arm bound outside the arms function mounts once in Release", boundArmMountsOnce
         "a static member arm remounts on every update in Release", staticMemberArmRemountsInRelease
-        "Component.ofMembers in an arms function mounts and follows the payload in Release", (fun () -> equal "3" (shown membersHazard))
-        "Component.ofClass in an arms function mounts and follows the payload in Release", (fun () -> equal "3" (shown classHazard))
+        "Component.ofMembers in an arms function remounts on every update and shows the last payload in Release",
+        (fun () -> equal (3, "3") (remounts membersHazard))
+        "Component.ofClass in an arms function remounts on every update and shows the last payload in Release",
+        (fun () -> equal (3, "3") (remounts classHazard))
     |]
 #endif
