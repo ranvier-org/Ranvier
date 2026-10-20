@@ -49,9 +49,10 @@ let private clearAfter (start: Node) (finish: Node) =
 /// <remarks>
 /// <para>Nodes outside a closed root marker pair stay in place and outside the mount's range.</para>
 /// <para>
-/// A structural mismatch inside a list region is passed to <c>report</c> once, first in a list with the pass's other
-/// failures; the server nodes between the list's markers are removed and the list mounts fresh. The nearest enclosing
-/// list handles the mismatch, and the rest of the hydration continues.
+/// A structural mismatch inside a list or arm region re-renders the innermost such region containing it, and the rest
+/// of the hydration continues. The mismatch is passed to <c>report</c> once, first in a list with the pass's other
+/// failures; the server nodes between the region's markers are removed and the region mounts fresh. A failure of that
+/// fresh mount is a failure of the hydration attempt.
 /// </para>
 /// <para>
 /// A structural mismatch outside every list region is passed to <c>report</c> once, first in a list that also holds the

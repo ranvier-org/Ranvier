@@ -439,9 +439,9 @@ let private listsHydrate () =
     graph.Run (fun () -> liveItems.Value <- [| b; a |])
     equal ("ba", true) ((element host "ul").textContent, sameNodes [| second; first |] (all host "li"))
     graph.Run (fun () -> liveItems.Value <- [| b; a; c |])
-    equal "bac" (element host "ul").textContent
+    equal ("bac", true) ((element host "ul").textContent, sameNodes [| second; first |] ((all host "li")[0..1]))
     graph.Run (fun () -> liveItems.Value <- [| b; c |])
-    equal "bc" (element host "ul").textContent
+    equal ("bc", true) ((element host "ul").textContent, obj.ReferenceEquals (second, (all host "li")[0]))
     graph.Run (fun () -> liveItems.Value <- [||])
     equal "<!--[--><!--]-->" (element host "ul").innerHTML
     mounted.Dispose ()
@@ -543,6 +543,26 @@ let private zeroRootRows () =
 
     mounted.Dispose ()
 
+type private TrackedRow = { Item: unit -> Listed; Id: string }
+
+let private rowCleanups = ResizeArray<string>()
+
+let private trackedRow =
+    Component.define
+        (fun setup (item: unit -> Listed) ->
+            let text = (item ()).Text
+            setup.OnCleanup (fun () -> rowCleanups.Add text)
+            { Item = item; Id = setup.CreateId () })
+        (fun t -> t.li [| t.Attrs.id (fun (row: TrackedRow) -> Some row.Id) |] [| t.text (fun row -> (row.Item ()).Text) |])
+
+let private trackedList =
+    Component.define (fun _ (items: Listed array) -> live items) (fun t ->
+        t.ul
+            [||]
+            [|
+                t.each (fun (item: Listed) -> item.Id) (fun (items: Signal<Listed array>) -> items.Value) trackedRow
+            |])
+
 let private rowCountMismatch () =
     for serverItems, clientItems in [ [| a; b |], [| a; b; c |]; [| a; b; c |], [| a |] ] do
         use graph = new Graph ()
@@ -566,6 +586,18 @@ let private rowCountMismatch () =
         graph.Run (fun () -> liveItems.Value <- [| c; a |])
         equal "ca" list.textContent
         mounted.Dispose ()
+
+    // Recovered rows continue the row counter after the hydrating pass's rows 0 to 2.
+    use graph = new Graph ()
+    let host = serve trackedList [| a; b |]
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        Hydration.hydrate graph None reports.Add lenientOptions host trackedList [| a; b; c |]
+
+    equal (true, [ "r-0.r0.3-0"; "r-0.r0.4-0"; "r-0.r0.5-0" ], "abc") (singleMismatch reports, domIds host, (element host "ul").textContent)
+
+    mounted.Dispose ()
 
     use graph = new Graph ()
     let host = serve liveList [| a; b |]
@@ -975,26 +1007,6 @@ let private nestedRowMismatch () =
 
     equal (mismatch, before, true) (error.Message, host.innerHTML, sameNodes nodes (nodesOf host))
 
-type private TrackedRow = { Item: unit -> Listed; Id: string }
-
-let private rowCleanups = ResizeArray<string>()
-
-let private trackedRow =
-    Component.define
-        (fun setup (item: unit -> Listed) ->
-            let text = (item ()).Text
-            setup.OnCleanup (fun () -> rowCleanups.Add text)
-            { Item = item; Id = setup.CreateId () })
-        (fun t -> t.li [| t.Attrs.id (fun (row: TrackedRow) -> Some row.Id) |] [| t.text (fun row -> (row.Item ()).Text) |])
-
-let private trackedList =
-    Component.define (fun _ (items: Listed array) -> live items) (fun t ->
-        t.ul
-            [||]
-            [|
-                t.each (fun (item: Listed) -> item.Id) (fun (items: Signal<Listed array>) -> items.Value) trackedRow
-            |])
-
 let private adoptedRowsKeepCleanupsAndIds () =
     let served = servedIds trackedList [| a; b |]
     use graph = new Graph ()
@@ -1057,6 +1069,127 @@ let private rowFailureRestores () =
                 holeFails <- false
 
         equal ("boom", before, true) (error.Message, host.innerHTML, sameNodes nodes (nodesOf host))
+
+/// <summary>
+/// A list of characters at the root, and a list whose rows hold a list of their item's characters; a character's cell
+/// setup raises <c>"cell " + character</c> while <c>fails character</c> holds.
+/// </summary>
+let private characterLists (fails: string -> bool) =
+    let cell =
+        Component.define
+            (fun _ (text: unit -> string) ->
+                if fails (text ()) then
+                    failwith ("cell " + text ())
+
+                text)
+            (fun t -> t.element (HtmlTag "b") [||] [| t.text (fun text -> text ()) |])
+
+    let row =
+        Component.define (fun _ (item: unit -> Listed) -> item) (fun t ->
+            t.li
+                [||]
+                [|
+                    t.each id (fun (item: unit -> Listed) -> [| for ch in (item ()).Text -> string ch |]) cell
+                |])
+
+    let flat =
+        Component.define (fun _ (items: string array) -> items) (fun t -> t.div [||] [| t.each id id cell |])
+
+    let nested =
+        Component.define (fun _ (items: Listed array) -> items) (fun t -> t.ul [||] [| t.each (fun (item: Listed) -> item.Id) id row |])
+
+    flat, nested
+
+/// <summary>
+/// Requires <c>action</c> to raise <c>message</c> after passing <c>reported</c> to its reporter, with the host's HTML
+/// and nodes as served.
+/// </summary>
+let private failsAsServed (host: HTMLElement) (action: (exn list -> unit) -> unit) (message: string) (reported: string list list) =
+    let before = host.innerHTML
+    let nodes = nodesOf host
+    let reports = ResizeArray<exn list>()
+    let error = ServerChecks.failure (fun () -> action reports.Add)
+    equal (message, reported, before, true) (error.Message, messages reports, host.innerHTML, sameNodes nodes (nodesOf host))
+
+let private recoveryFailureFails () =
+    // The cell "c" raises at its second setup: the fresh mount after the hydrating pass's mismatch.
+    let secondSetup () =
+        let calls = ref 0
+
+        fun (text: string) ->
+            if text = "c" then
+                calls.Value <- calls.Value + 1
+
+            text = "c" && calls.Value = 2
+
+    let mismatch = [ [ "Hydration mismatch at #0: expected <b>, found <!--]-->" ] ]
+    use graph = new Graph ()
+    let flat, _ = characterLists (secondSetup ())
+    let host = serve flat [| "a"; "b" |]
+
+    failsAsServed
+        host
+        (fun report ->
+            Hydration.hydrate graph None report lenientOptions host flat [| "a"; "b"; "c" |]
+            |> ignore)
+        "cell c"
+        mismatch
+
+    let _, nested = characterLists (secondSetup ())
+    let host = serve nested [| { Id = 1; Text = "ab" } |]
+
+    failsAsServed
+        host
+        (fun report ->
+            Hydration.hydrate graph None report lenientOptions host nested [| { Id = 1; Text = "abc" } |]
+            |> ignore)
+        "cell c"
+        mismatch
+
+    let throwingArm =
+        Component.define (fun _ (_: unit -> unit) -> failwith "arm") (fun t -> t.span [||] [| t.text "t" |])
+
+    let picked =
+        Component.define (fun _ (thrown: bool) -> thrown) (fun t ->
+            t.div
+                [||]
+                [|
+                    t.branch (fun (thrown: bool) -> thrown) (fun thrown -> if thrown then t.arm throwingArm () else t.arm yArm ())
+                |])
+
+    let host = serve picked false
+
+    failsAsServed
+        host
+        (fun report ->
+            Hydration.hydrate graph None report lenientOptions host picked true
+            |> ignore)
+        "arm"
+        [
+            [
+                "Hydration mismatch at #0: expected <!--[a:"
+                + structuralHash throwingArm
+                + "-->, found <!--[a:"
+                + structuralHash yArm
+                + "-->"
+            ]
+        ]
+
+let private deferredSetupFailureFails () =
+    for options in [ strictOptions; lenientOptions ] do
+        use graph = new Graph ()
+        let fails = ref false
+        let _, nested = characterLists (fun _ -> fails.Value)
+        let host = serve nested [| { Id = 1; Text = "ab" } |]
+        fails.Value <- true
+
+        failsAsServed
+            host
+            (fun report ->
+                Hydration.hydrate graph None report options host nested [| { Id = 1; Text = "ab" } |]
+                |> ignore)
+            "cell a"
+            []
 
 let private recoveredMountsAreLive () =
     use graph = new Graph ()
@@ -1498,7 +1631,8 @@ let private unclosedRowRegion () =
                 |> Array.exists (fun marker -> obj.ReferenceEquals (marker, node))
             ))
 
-    // The first row's setup removes every end marker in the list, so its first root's region has none.
+    // The re-raise is reachable only through a DOM mutation during hydration.
+    // The first row's setup removes every end marker in the list.
     sabotageOnce <- fun () -> Array.iter detach ends
 
     let error =
@@ -1738,6 +1872,9 @@ let cases: (string * (unit -> unit)) array =
             adoptedRowsKeepCleanupsAndIds
             "a row root's unclosed region raises at the root's position", unclosedRowRegion
             "a row setup failure during hydration propagates and leaves the server rows in place", rowFailureRestores
+            "a failure of a recovered list's or arm's fresh mount raises from hydrate after the mismatch's one report and restores the host",
+            recoveryFailureFails
+            "a setup failure in a nested list's deferred pass raises from hydrate without a report and restores the host", deferredSetupFailureFails
             "a re-rendered root and a fresh mount without a root marker update and dispatch events", recoveredMountsAreLive
             "a re-rendered root issues ids under the hydration's prefix", recoveredIdsUsePrefix
             "a mismatch is found directly and among aggregated inner exceptions at any depth", aggregatedMismatch

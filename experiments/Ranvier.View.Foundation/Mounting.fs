@@ -1328,6 +1328,9 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
     /// </summary>
     member val Recover: exn list -> unit = Unchecked.defaultof<_> with get, set
 
+    /// <summary>Whether the region's next pass is the fresh mount of a <c>Recover</c>; its failure fails the hydration.</summary>
+    member val Recovering = false with get, set
+
     /// <summary>The region's row builder; it adopts at the mount's hydration cursor while <c>Hydrating</c> is set.</summary>
     member this.Builder =
         if isNull (box builder) then
@@ -1491,14 +1494,23 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
     /// </summary>
     /// <remarks>
     /// A failed <c>hydrating</c> pass passes a structural mismatch to <c>Recover</c> when it is set, with the failure's
-    /// other errors and <c>recorded</c>. Any other failure of a hydrating pass fails the mount's hydration; during the
-    /// first pass it is also recorded as the region's setup failure.
+    /// other errors and <c>recorded</c>; a failure of <c>Recover</c> fails the mount's hydration. Any other failure of a
+    /// hydrating pass, and a failure of the pass that follows <c>Recovering</c> being set, fails the mount's hydration;
+    /// while <c>Errors.Initializing</c> is set it is also recorded as the region's setup failure.
     /// </remarks>
     member this.Settle(recorded: exn list, failure: exn option, hydrating: bool, settle: exn list -> unit) =
+        let recovering = this.Recovering
+        this.Recovering <- false
+
         if not (this.Live ()) then
             errors.Report recorded
         else
             match failure with
+            | Some error when recovering ->
+                state.HydrationFailed error
+
+                if errors.Initializing then
+                    errors.Fail (error, error :: recorded)
             | Some error when hydrating ->
                 let recover = this.Recover
 
@@ -3369,6 +3381,7 @@ and internal MountState
                         site.Reset ()
                         clearAdopted regionCursor start finish
                         report errors
+                        site.Recovering <- true
                         Api.runWithOwner enclosing (fun () -> mountRegion site)
 
             mountRegion site
