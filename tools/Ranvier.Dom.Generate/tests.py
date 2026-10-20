@@ -149,6 +149,23 @@ with tempfile.TemporaryDirectory() as folder:
             assert builder == native, name + ": the builder's native type must equal the part's"
         sugared_elements[name.lower()] = (native, result == "TemplateView<'inst>")
     assert len(explicit_elements) == 112 and len(sugared_elements) == 112
+    assert "module Elements =" in stext and "module LegacyElements =" in stext
+    assert coverage["templateTagClassCount"] == 112
+    classes = re.findall(r"type (\w+'?)<'i> private \(ps: Part<(Dom\.\w+), 'i> array, primary: unit\) = inherit (Element<(Dom\.\w+), 'i>|VoidElement<'i>)", sflat)
+    assert len(classes) == 112, "every HTML tag needs one tag class"
+    assert sflat.count("new([<ParamArray>] ps: Part<") == 112, "every tag class needs a public ParamArray constructor"
+    assert {name for name, *_ in classes if name.endswith("'")} == {"base'", "option'"}, "exactly base and option take an apostrophe"
+    for name, native, base, element_native in classes:
+        tag = name.rstrip("'")
+        assert sugared_elements[tag][0] == native, name + ": the class's native type must equal HtmlTemplate.fs's"
+        assert (base == "VoidElement<'i>") == sugared_elements[tag][1], name + ": void form must equal HtmlTemplate.fs's"
+        if element_native:
+            assert element_native == native, name
+    assert "type div<'i> private (ps: Part<Dom.HTMLDivElement, 'i> array, primary: unit) = inherit Element<Dom.HTMLDivElement, 'i>(Div, ps)" in sflat
+    assert "type br<'i> private (ps: Part<Dom.HTMLBRElement, 'i> array, primary: unit) = inherit VoidElement<'i>(TemplateParts.element (HtmlTag \"br\") ps [||])" in sflat
+    handwritten_sugar = (root / "../../experiments/Ranvier.View.Portable/TemplateSugar.fs").read_text(encoding="utf-8")
+    free_names = set(re.findall(r"^    let (?:inline )?(?:internal )?(\w+)", handwritten_sugar, re.M)) | set(re.findall(r"^    type (?:private )?(\w+)", handwritten_sugar, re.M)) | set(re.findall(r"^    module (\w+)", handwritten_sugar, re.M))
+    assert not ({name for name, *_ in classes} & free_names), "a tag class would collide with a Builders name " + repr(sorted({name for name, *_ in classes} & free_names))
     assert sugared_elements == explicit_elements, "sugar members must match HtmlTemplate.fs in native type and void form: " + repr(sorted(set(sugared_elements.items()) ^ set(explicit_elements.items())))
     handwritten = (root / "../../experiments/Ranvier.View.Portable/Template.fs").read_text(encoding="utf-8")
     builder_members = {}

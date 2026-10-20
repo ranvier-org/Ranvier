@@ -23,6 +23,20 @@ assert len(sugar_members) == 112, "the generated sugar file must declare every H
 all_sugar_tags = "\n".join(
     "            t." + name + ("() { }" if kind == "ElementBuilder" else "()") for name, kind in sugar_members
 )
+# The free sugar is opened without Generated.Html.Authoring (spec §4 scope rule).
+sugar_prefix = """module GeneratedTypeCheck
+open Fable.Core.TS
+open Ranvier.View.Foundation
+open Ranvier.View.Foundation.Representation
+open Ranvier.View.Foundation.Template
+open Ranvier.View.Foundation.Sugar
+"""
+tag_classes = re.findall(
+    r"type (\w+'?)<'i> private \(ps: Part<[^>]*>[^)]*\) = inherit (Element|VoidElement)",
+    re.sub(r"\s+", " ", (root / "experiments/Ranvier.View.Portable/Generated/HtmlTemplateSugar.fs").read_text(encoding="utf-8")),
+)
+assert len(tag_classes) == 112, "the generated sugar file must declare a class for every HTML tag"
+all_tag_classes = "\n".join("            " + name + ("() { }" if kind == "Element" else "()") for name, kind in tag_classes)
 examples = [
     ("valid helpers", "let view = H.div Tree.ops [| H.Properties.HTMLElement.titleStatic \"shared\"; H.Events.onClick (fun (_: Dom.PointerEvent) -> ()) |] [| H.input Tree.ops [| H.Input.checkedStatic true |]; H.select Tree.ops [||] [| H.option Tree.ops [||] [||] |]; H.br Tree.ops [||] |]", None),
     ("generic modifiers reject lists", "let view = H.div Tree.ops [] [||]", "FS0001"),
@@ -159,6 +173,18 @@ let view = Component.define (fun _ () -> ()) (fun t -> t.Div() { t.Img() { "x" }
 open Ranvier.View.Foundation.Sugar
 let view = Component.define (fun _ () -> ()) (fun t -> t.Span(t.Props.Input.value "x") { "y" })
 ''', "FS0041"),
+    ("all tag classes", '''
+let view =
+    Component.define (fun _ () -> ()) (fun t ->
+        article (t.Attrs.className "a") {
+''' + all_tag_classes + '''
+        })
+''', None, True),
+    ("option' leaves FSharp.Core option usable", '''
+let c: string option = Some "x"
+let d = defaultArg (None: int option) 1
+let view = Component.define (fun _ () -> ()) (fun _ -> select () { option' () { "one" } })
+''', None, True),
 ]
 
 with tempfile.TemporaryDirectory(prefix="ranvier-generated-types-") as directory:
@@ -174,8 +200,10 @@ with tempfile.TemporaryDirectory(prefix="ranvier-generated-types-") as directory
     restored = subprocess.run(["rtk", "proxy", "dotnet", "restore", str(fsproj), "--configfile", str(root / "NuGet.Config")], capture_output=True, text=True)
     if restored.returncode:
         raise RuntimeError(restored.stdout + restored.stderr)
-    for name, body, diagnostic in examples:
-        check.write_text(prefix + body + "\n", encoding="utf-8")
+    for example in examples:
+        name, body, diagnostic = example[:3]
+        head = sugar_prefix if len(example) > 3 and example[3] else prefix
+        check.write_text(head + body + "\n", encoding="utf-8")
         result = subprocess.run(["rtk", "proxy", "dotnet", "build", str(fsproj), "--no-restore", "--configuration", "Release"], capture_output=True, text=True)
         output = result.stdout + result.stderr
         if diagnostic is None:

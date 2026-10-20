@@ -174,10 +174,38 @@ let definitionCounter = definitionGraph.Run (fun () -> Api.createSignal 1)
 let definitionTimeRead =
     Component.define (fun _ () -> ()) (fun t -> t.Span () { string definitionCounter.Value })
 
+// tagsExplicit and tagsFree: free tags with t. parts, as a ParamArray of two parts, a void tag and option'.
+let tagsExplicit =
+    Component.define (fun _ () -> ()) (fun t ->
+        t.div
+            [| t.Attrs.className "x"; t.Attrs.id "y" |]
+            [|
+                t.span [||] [| t.text "a" |]
+                t.br [||]
+                t.select [||] [| t.option [||] [| t.text "o" |] |]
+            |])
+
+let tagsFree =
+    Component.define (fun _ () -> ()) (fun t ->
+        div (t.Attrs.className "x", t.Attrs.id "y") {
+            span () { "a" }
+            br ()
+            select () { option' () { "o" } }
+        })
+
+// headExplicit and headFree: base' renders a base element.
+let headExplicit =
+    Component.define (fun _ () -> ()) (fun t -> t.head [||] [| t.``base`` [| t.Attrs.attribute ("href", "/") |] |])
+
+let headFree =
+    Component.define (fun _ () -> ()) (fun t -> head () { base' (t.Attrs.attribute ("href", "/")) })
+
 let elementPairs: (string * TemplateComponent * TemplateComponent) array =
     [|
         "benchmark row", benchExplicit, benchSugar
         "text forms and void tags", textsExplicit, textsSugar
+        "free tags with t. parts", tagsExplicit, tagsFree
+        "base' in head", headExplicit, headFree
     |]
 
 let elementServerPairs () : (string * string * string) array =
@@ -187,6 +215,8 @@ let elementServerPairs () : (string * string * string) array =
     [|
         "benchmark row", Server.render omit benchExplicit 3, Server.render omit benchSugar 3
         "text forms and void tags", Server.render omit textsExplicit name, Server.render omit textsSugar name
+        "free tags with t. parts", Server.render omit tagsExplicit (), Server.render omit tagsFree ()
+        "base' in head", Server.render omit headExplicit (), Server.render omit headFree ()
     |]
 
 type KeyedItem = { Id: int; Label: Signal<string> }

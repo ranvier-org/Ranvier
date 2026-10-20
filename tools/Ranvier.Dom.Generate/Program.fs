@@ -359,6 +359,7 @@ let generate compilerRoot policyRoot packageRoot output (templateOutput: string 
     let programElements = ResizeArray<string>()
     let templateTags = ResizeArray<string * string>()
     let sugarTags = ResizeArray<string * string>()
+    let tagClasses = ResizeArray<string * string>()
 
     let templateProperties =
         System.Collections.Generic.SortedDictionary<string, ResizeArray<string * string * string>>()
@@ -527,6 +528,26 @@ let generate compilerRoot policyRoot packageRoot output (templateOutput: string 
                 sugarName,
                 $"        member _.``{sugarName}``([<ParamArray>] parts: Part<{name}, 'inst> array) : ElementBuilder<{name}, 'inst> = ElementBuilder<{name}, 'inst>({expression}, parts)"
             )
+
+        // An F# keyword (base) or an FSharp.Core type of arity 1 (option) takes a trailing apostrophe.
+        let className = if tag = "base" || tag = "option" then tag + "'" else tag
+
+        let classBase =
+            if voidTags.Contains tag then
+                $"VoidElement<'i>(TemplateParts.element {expression} ps [||])"
+            else
+                $"Element<{name}, 'i>({expression}, ps)"
+
+        tagClasses.Add (
+            className,
+            String.concat
+                "\n"
+                [
+                    $"    type {className}<'i> private (ps: Part<{name}, 'i> array, primary: unit) ="
+                    $"        inherit {classBase}"
+                    $"        new([<ParamArray>] ps: Part<{name}, 'i> array) = {className}<'i>(ps, ())"
+                ]
+        )
 
         emit ""
         emit $"module {moduleName tag} ="
@@ -1408,6 +1429,7 @@ let generate compilerRoot policyRoot packageRoot output (templateOutput: string 
             ))
 
     unique "TemplateBuilder (sugar)" (sugarTags |> Seq.map fst)
+    unique "tag classes" (tagClasses |> Seq.map fst)
 
     let sugarSource =
         String.concat
@@ -1423,6 +1445,10 @@ let generate compilerRoot policyRoot packageRoot output (templateOutput: string 
                 ""
                 "[<AutoOpen>]"
                 "module Elements ="
+                yield! Seq.map snd tagClasses
+                ""
+                "[<AutoOpen>]"
+                "module LegacyElements ="
                 "    type TemplateBuilder<'inst> with"
                 yield! Seq.map snd sugarTags
             ]
@@ -1478,6 +1504,7 @@ let generate compilerRoot policyRoot packageRoot output (templateOutput: string 
                 sharedEventCount = sharedEvents.Count
                 templateTagCount = templateTags.Count
                 templateSugarTagCount = sugarTags.Count
+                templateTagClassCount = tagClasses.Count
                 templateAttributeCount = templateAttributes.Count
                 templatePropertyCount = templatePropertyCount
                 templateEventCount = templateEventCount

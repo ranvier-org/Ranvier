@@ -110,3 +110,45 @@ module Builders =
                 (function
                  | Choice1Of2 instance -> t.arm shown instance
                  | Choice2Of2 instance -> t.arm other instance)
+
+    /// <summary>A void element: the element view, with no children.</summary>
+    [<AbstractClass>]
+    type VoidElement<'inst> internal (view: TemplateView<'inst>) =
+        member internal _.View = view
+
+    /// <summary>An element's children, built with its template; <c>Run</c> returns the element.</summary>
+    /// <remarks>
+    /// A string yields static text, an <c>'inst -> string</c> a text slot, a <c>Source</c> a direct text slot, and a
+    /// void element its view. A yielded lambda gets its instance type from its own body.
+    /// </remarks>
+    [<AbstractClass>]
+    type Element<'native, 'inst> internal (tag: Tag, parts: Part<'native, 'inst> array) =
+        member _.Yield(view: TemplateView<'inst>) : TemplateView<'inst> array =
+            [| view |]
+
+        member _.Yield(element: VoidElement<'inst>) : TemplateView<'inst> array =
+            [| element.View |]
+
+        member _.Yield(value: string) : TemplateView<'inst> array =
+            [| TemplateParts.text value |]
+
+        member _.Yield(read: 'inst -> string) : TemplateView<'inst> array =
+            [| TemplateParts.readText read |]
+
+        member _.Yield(source: Source<'inst, string>) : TemplateView<'inst> array =
+            [| TemplateParts.sourceText source |]
+
+        member _.YieldFrom(views: TemplateView<'inst> array) : TemplateView<'inst> array = views
+        member _.Zero() : TemplateView<'inst> array = [||]
+
+        member _.Combine(first: TemplateView<'inst> array, rest: TemplateView<'inst> array) : TemplateView<'inst> array =
+            Array.append first rest
+
+        member _.Delay(body: unit -> TemplateView<'inst> array) : TemplateView<'inst> array = body ()
+
+        /// <summary>Repeats the body for each item while the template is built; the result is static structure.</summary>
+        member _.For(items: seq<'item>, body: 'item -> TemplateView<'inst> array) : TemplateView<'inst> array =
+            items |> Seq.collect body |> Array.ofSeq
+
+        member _.Run(children: TemplateView<'inst> array) : TemplateView<'inst> =
+            TemplateParts.element tag parts children
