@@ -48,64 +48,12 @@ let private showOffMarkup () =
             showSugar
             hidden)
 
+#if !FABLE_COMPILER
 let private omit =
     { Server.Options.defaults with
         Policy = Omit
     }
 
-/// <summary>
-/// Renders each control-flow form on and off several times; its content, fallback and row definitions are built once
-/// per call.
-/// </summary>
-let private definitionsBuiltOncePerCall () =
-    use graph = new Graph ()
-    let shownBuilds, elseBuilds, rowBuilds, liveBuilds = ref 0, ref 0, ref 0, ref 0
-
-    let flow =
-        Component.define (fun _ (state: Toggle) -> state) (fun t ->
-            t.Div () {
-                t.show (fun s -> s.On.Value) (fun c ->
-                    shownBuilds.Value <- shownBuilds.Value + 1
-                    c.Span () { "x" })
-
-                t.showElse
-                    (fun s -> s.On.Value)
-                    (fun c ->
-                        elseBuilds.Value <- elseBuilds.Value + 1
-                        c.Span () { "y" })
-                    (fun c ->
-                        elseBuilds.Value <- elseBuilds.Value + 1
-                        c.Em () { "z" })
-            })
-
-    let rows =
-        Component.define (fun _ (items: KeyedItem array) -> items) (fun t ->
-            t.Div () {
-                t.forEachFixed (fun (row: KeyedItem) -> row.Id) (fun items -> items) (fun r ->
-                    rowBuilds.Value <- rowBuilds.Value + 1
-                    r.Span () { "r" })
-            })
-
-    let liveRows =
-        Component.define (fun _ (items: KeyedItem array) -> items) (fun t ->
-            t.Div () {
-                t.forEach (fun (row: KeyedItem) -> row.Id) (fun items -> items) (fun r ->
-                    liveBuilds.Value <- liveBuilds.Value + 1
-                    r.Span () { "l" })
-            })
-
-    equal (1, 2, 1, 1) (shownBuilds.Value, elseBuilds.Value, rowBuilds.Value, liveBuilds.Value)
-    let items = graph.Run keyedItems
-
-    for on in [ true; false; true; false ] do
-        let state = graph.Run (fun () -> toggle on)
-        Server.render omit flow state |> ignore
-        Server.render omit rows items |> ignore
-        Server.render omit liveRows items |> ignore
-
-    equal (1, 2, 1, 1) (shownBuilds.Value, elseBuilds.Value, rowBuilds.Value, liveBuilds.Value)
-
-#if !FABLE_COMPILER
 let private emptyArmField () =
     let holder =
         typeof<TemplateBuilder<unit>>.Assembly.GetType("Ranvier.View.Foundation.Sugar.Builders+EmptyArm", true)
@@ -184,5 +132,4 @@ let cases: (string * (unit -> unit)) array =
         "control-flow sugar shares its explicit twins' layouts and hashes", sameLayouts flowPairs
         "control-flow sugar renders its explicit twins' server HTML", sameServerHtml flowServerPairs
         "a hidden show writes a zero-root arm marked with the shared empty arm's hash", showOffMarkup
-        "show, showElse, forEach and forEachFixed build their definitions once per call", definitionsBuiltOncePerCall
     |]

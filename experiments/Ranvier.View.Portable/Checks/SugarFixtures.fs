@@ -100,18 +100,12 @@ let benchExplicit =
             |])
 
 let benchSugar =
-    Component.define benchSetup (fun t ->
-        t.Div (
-            t.Attrs.id (fun (r: BenchRow) -> "row-" + string r.Index),
-            t.Attrs.className "panel",
-            t.Attrs.title (t.from (fun (r: BenchRow) -> r.Source))
-        ) {
-            t.Input (t.Props.Input.value (t.from (fun (r: BenchRow) -> r.Source)))
+    Component.template
+        benchSetup
+        (div (Attrs.id (fun r -> "row-" + string r.Index), Attrs.className "panel", Attrs.title (from (fun r -> r.Source))) {
+            input (Props.Input.value (from (fun r -> r.Source)))
 
-            t.Button (
-                t.Props.Button.disabled (t.from (fun (r: BenchRow) -> r.Disabled)),
-                t.Events.onClick (fun (r: BenchRow) _ -> r.Local.Value <- r.Local.Value + 1)
-            ) {
+            button (Props.Button.disabled (from (fun r -> r.Disabled)), Events.onClick (fun r _ -> r.Local.Value <- r.Local.Value + 1)) {
                 fun r -> string r.Local.Value
             }
         })
@@ -131,31 +125,33 @@ let textsExplicit =
             |])
 
 let textsSugar =
-    Component.define (fun _ (name: Signal<string>) -> { Name = name }) (fun t ->
-        t.Div () {
+    Component.template
+        (fun _ (name: Signal<string>) -> { Name = name })
+        (div () {
             "Hello "
             fun (r: Texts) -> r.Name.Value
-            t.from (fun (r: Texts) -> r.Name)
-            t.Br ()
-            t.Span () { }
+            from (fun (r: Texts) -> r.Name)
+            br ()
+            span () { }
         })
 
 let private flags = [ "a"; "b" ]
 
+/// <summary>Document order across for, if, yield! and adjacent texts; the <c>t.text</c> yields mix explicit members into a free body.</summary>
 let semantics =
     Component.define (fun _ () -> ()) (fun t ->
-        t.Div () {
+        div () {
             "start"
 
             for flag in flags do
-                t.Span (t.Attrs.className flag) { flag }
+                span (Attrs.className flag) { flag }
 
             if flags.Length = 2 then
                 "wide"
 
             yield! [| t.text "spliced"; t.text "two" |]
-            t.Span () { () }
-            t.Span () { }
+            span () { () }
+            span () { }
         })
 
 let semanticsMarkup =
@@ -163,16 +159,16 @@ let semanticsMarkup =
 
 /// <summary>A body lambda that ignores its parameter.</summary>
 let ignoredParameter =
-    Component.define (fun _ () -> ()) (fun t -> t.Span () { fun _ -> "x" })
+    Component.template (fun _ () -> ()) (span () { fun _ -> "x" })
 
-let literalText = Component.define (fun _ () -> ()) (fun t -> t.Span () { "x" })
+let literalText = Component.template (fun _ () -> ()) (span () { "x" })
 
 let private definitionGraph = new Graph ()
 let definitionCounter = definitionGraph.Run (fun () -> Api.createSignal 1)
 
 /// <summary>A body line that reads a module-level signal while the definition is built.</summary>
 let definitionTimeRead =
-    Component.define (fun _ () -> ()) (fun t -> t.Span () { string definitionCounter.Value })
+    Component.template (fun _ () -> ()) (span () { string definitionCounter.Value })
 
 // tagsExplicit and tagsFree: free tags with t. parts, as a ParamArray of two parts, a void tag and option'.
 let tagsExplicit =
@@ -253,13 +249,16 @@ let keyedLiveExplicit =
             |])
 
 let keyedLiveSugar =
-    Component.define (fun _ (rows: Signal<KeyedItem array>) -> rows) (fun t ->
-        t.Table () {
-            t.Tbody () {
-                t.forEach (fun (row: KeyedItem) -> row.Id) (fun (rows: Signal<KeyedItem array>) -> rows.Value) (fun r ->
-                    r.Tr () {
-                        r.Td (r.Attrs.className "id") { r.text (fun (row: unit -> KeyedItem) -> string (row ()).Id) }
-                        r.Td () { r.from (fun (row: unit -> KeyedItem) -> (row ()).Label) }
+    Component.template
+        (fun _ (rows: Signal<KeyedItem array>) -> rows)
+        (table () {
+            tbody () {
+                forEach
+                    (fun (row: KeyedItem) -> row.Id)
+                    (fun (rows: Signal<KeyedItem array>) -> rows.Value)
+                    (tr () {
+                        td (Attrs.className "id") { fun (row: unit -> KeyedItem) -> string (row ()).Id }
+                        td () { from (fun (row: unit -> KeyedItem) -> (row ()).Label) }
                     })
             }
         })
@@ -286,13 +285,16 @@ let keyedFixedExplicit =
             |])
 
 let keyedFixedSugar =
-    Component.define (fun _ (rows: Signal<KeyedItem array>) -> rows) (fun t ->
-        t.Table () {
-            t.Tbody () {
-                t.forEachFixed (fun (row: KeyedItem) -> row.Id) (fun (rows: Signal<KeyedItem array>) -> rows.Value) (fun r ->
-                    r.Tr () {
-                        r.Td (r.Attrs.className "id") { r.text (fun (row: KeyedItem) -> string row.Id) }
-                        r.Td () { r.from (fun (row: KeyedItem) -> row.Label) }
+    Component.template
+        (fun _ (rows: Signal<KeyedItem array>) -> rows)
+        (table () {
+            tbody () {
+                forEachFixed
+                    (fun (row: KeyedItem) -> row.Id)
+                    (fun (rows: Signal<KeyedItem array>) -> rows.Value)
+                    (tr () {
+                        td (Attrs.className "id") { fun (row: KeyedItem) -> string row.Id }
+                        td () { from (fun (row: KeyedItem) -> row.Label) }
                     })
             }
         })
@@ -348,24 +350,24 @@ let armsExplicit =
                     |]
             |])
 
+let private plainFree = armOf (span (Attrs.className "a") { "A" })
+let private countedFree = armOf (b () { fun payload -> string (payload ()) })
+
 let armsSugar =
-    Component.define (fun _ (rows: Signal<ArmItem array>) -> rows) (fun t ->
-        let plain =
-            t.armOf (fun (a: TemplateBuilder<unit -> unit>) -> a.Span (a.Attrs.className "a") { "A" })
+    Component.template
+        (fun _ (rows: Signal<ArmItem array>) -> rows)
+        (table () {
+            tbody () {
+                forEachFixed
+                    (fun (row: ArmItem) -> row.Id)
+                    (fun (rows: Signal<ArmItem array>) -> rows.Value)
+                    (tr () {
+                        td () { fun (row: ArmItem) -> string row.Id }
 
-        let counted =
-            t.armOf (fun (a: TemplateBuilder<unit -> int>) -> a.B () { fun payload -> string (payload ()) })
-
-        t.Table () {
-            t.Tbody () {
-                t.forEachFixed (fun (row: ArmItem) -> row.Id) (fun (rows: Signal<ArmItem array>) -> rows.Value) (fun r ->
-                    r.Tr () {
-                        r.Td () { r.text (fun (row: ArmItem) -> string row.Id) }
-
-                        r.Td () {
-                            r.matchWith (fun (row: ArmItem) -> row.Mode.Value) (function
-                                | Plain -> r.arm plain ()
-                                | Counted count -> r.arm counted count)
+                        td () {
+                            matchWith (fun (row: ArmItem) -> row.Mode.Value) (function
+                                | Plain -> arm plainFree ()
+                                | Counted count -> arm countedFree count)
                         }
                     })
             }
@@ -413,10 +415,11 @@ let showExplicit =
             |])
 
 let showSugar =
-    Component.define (fun _ (state: Toggle) -> state) (fun t ->
-        t.Div () {
+    Component.template
+        (fun _ (state: Toggle) -> state)
+        (div () {
             "before"
-            t.show (fun s -> s.On.Value) (fun c -> c.Span (c.Hooks.mounted logged) { c.from (fun (s: Toggle) -> s.Name) })
+            show (fun s -> s.On.Value) (span (Hooks.mounted logged) { from (fun (s: Toggle) -> s.Name) })
             "after"
         })
 
@@ -431,11 +434,9 @@ let showElseExplicit =
             |])
 
 let showElseSugar =
-    Component.define (fun _ (state: Toggle) -> state) (fun t ->
-        t.Div () {
-            t.showElse (fun s -> s.On.Value) (fun c -> c.Span (c.Hooks.mounted logged) { c.from (fun (s: Toggle) -> s.Name) }) (fun c ->
-                c.Em () { "off" })
-        })
+    Component.template
+        (fun _ (state: Toggle) -> state)
+        (div () { showElse (fun s -> s.On.Value) (span (Hooks.mounted logged) { from (fun (s: Toggle) -> s.Name) }) (em () { "off" }) })
 
 type Entry =
     {
@@ -507,24 +508,34 @@ let nestedExplicit =
                     | Choice2Of2 () -> t.arm hiddenBoardArm ())
             |])
 
-let nestedSugar =
-    Component.define (fun _ (state: Board) -> state) (fun t ->
-        let listing =
-            t.armOf (fun (a: TemplateBuilder<unit -> Board>) ->
-                a.Ul () {
-                    a.forEachFixed (fun (e: Entry) -> e.Id) (fun (current: unit -> Board) -> (current ()).Entries.Value) (fun r ->
-                        r.Li () {
-                            r.from (fun (e: Entry) -> e.Label)
-                            r.show (fun e -> e.Open.Value) (fun c -> c.Span () { "open" })
-                        })
+let private listingFree =
+    armOf (
+        ul () {
+            forEachFixed
+                (fun (e: Entry) -> e.Id)
+                (fun (current: unit -> Board) -> (current ()).Entries.Value)
+                (li () {
+                    from (fun (e: Entry) -> e.Label)
+                    show (fun e -> e.Open.Value) (span () { "open" })
                 })
+        }
+    )
 
-        let hidden = t.armOf (fun (a: TemplateBuilder<unit -> unit>) -> a.P () { "hidden" })
+let private hiddenBoardFree = armOf (p () { "hidden" })
 
-        t.Div () {
-            t.matchWith (fun (b: Board) -> if b.Listing.Value then Choice1Of2 b else Choice2Of2 ()) (function
-                | Choice1Of2 b -> t.arm listing b
-                | Choice2Of2 () -> t.arm hidden ())
+let nestedSugar =
+    Component.template
+        (fun _ (state: Board) -> state)
+        (div () {
+            matchWith
+                (fun (board: Board) ->
+                    if board.Listing.Value then
+                        Choice1Of2 board
+                    else
+                        Choice2Of2 ())
+                (function
+                 | Choice1Of2 board -> arm listingFree board
+                 | Choice2Of2 () -> arm hiddenBoardFree ())
         })
 
 type Line =
@@ -589,21 +600,25 @@ let nestedLiveExplicit =
                     | Choice2Of2 () -> t.arm hiddenBoardArm ())
             |])
 
+let private linesFree =
+    armOf (
+        ul () {
+            forEach
+                (fun (line: Line) -> line.Id)
+                (fun (current: unit -> Lined) -> (current ()).Lines.Value)
+                (li () { span (Hooks.mounted trailed) { from (fun (row: unit -> Line) -> (row ()).Label) } })
+        }
+    )
+
+let private hiddenLinesFree = armOf (p () { "hidden" })
+
 let nestedLiveSugar =
-    Component.define (fun _ (state: Lined) -> state) (fun t ->
-        let listing =
-            t.armOf (fun (a: TemplateBuilder<unit -> Lined>) ->
-                a.Ul () {
-                    a.forEach (fun (line: Line) -> line.Id) (fun (current: unit -> Lined) -> (current ()).Lines.Value) (fun r ->
-                        r.Li () { r.Span (r.Hooks.mounted trailed) { r.from (fun (row: unit -> Line) -> (row ()).Label) } })
-                })
-
-        let hidden = t.armOf (fun (a: TemplateBuilder<unit -> unit>) -> a.P () { "hidden" })
-
-        t.Div () {
-            t.matchWith (fun (s: Lined) -> if s.Shown.Value then Choice1Of2 s else Choice2Of2 ()) (function
-                | Choice1Of2 s -> t.arm listing s
-                | Choice2Of2 () -> t.arm hidden ())
+    Component.template
+        (fun _ (state: Lined) -> state)
+        (div () {
+            matchWith (fun (s: Lined) -> if s.Shown.Value then Choice1Of2 s else Choice2Of2 ()) (function
+                | Choice1Of2 s -> arm linesFree s
+                | Choice2Of2 () -> arm hiddenLinesFree ())
         })
 
 let private pendingView =
@@ -616,13 +631,13 @@ let private readyExplicit =
     Component.define (fun _ (status: BoundaryStatus) -> status) (fun t -> t.span [| t.Attrs.className "ready" |] [| t.text "ready" |])
 
 let private readySugar =
-    Component.define (fun _ (status: BoundaryStatus) -> status) (fun t -> t.Span (t.Attrs.className "ready") { "ready" })
+    Component.template (fun _ (status: BoundaryStatus) -> status) (span (Attrs.className "ready") { "ready" })
 
 let boundedExplicit =
     Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.boundary pendingView failedView readyExplicit |])
 
 let boundedSugar =
-    Component.define (fun _ () -> ()) (fun t -> t.Div () { t.boundary pendingView failedView readySugar })
+    Component.template (fun _ () -> ()) (div () { boundary pendingView failedView readySugar })
 
 let flowPairs: (string * TemplateComponent * TemplateComponent) array =
     [|
