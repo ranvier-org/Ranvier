@@ -11,7 +11,7 @@ const argument = (name, fallback) => process.argv.find(arg => arg.startsWith(`--
 const output = argument("out", fileURLToPath(new URL("../../../../docs/research/framework-performance/investigation/view-sugar/", import.meta.url)));
 const label = argument("label", "alloc-template-row");
 const processes = Number(argument("processes", 3)), mounts = Number(argument("mounts", 10)), width = Number(argument("width", 128));
-const modes = ["ranvier-template", "ranvier-template-sugar"];
+const modes = ["ranvier-template", "ranvier-template-sugar", "ranvier-template-members", "ranvier-template-class"];
 const outDir = "generated-keyed-profile";
 const env = { ...process.env, RanvierCounters: "false", RANVIER_PERF_OUTPUT: outDir, RANVIER_PERF_PROFILE: "true" };
 const port = Number(argument("port", 5188));

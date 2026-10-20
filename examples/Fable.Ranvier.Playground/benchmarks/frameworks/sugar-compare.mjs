@@ -15,10 +15,11 @@ const report = (name, explicit, sugar) => {
 for (const file of files) {
   const data = load(file);
   if (kind === "template")
-    for (const row of data.summaries.filter(row => row.mode === "ranvier-template-sugar")) {
-      const twin = data.summaries.find(other => other.mode === "ranvier-template" && other.width === row.width && other.phase === row.phase);
-      report(`${row.phase}@${row.width}`, range(twin.byProcessUs), range(row.byProcessUs));
-    }
+    for (const mode of ["ranvier-template-sugar", "ranvier-template-members", "ranvier-template-class"])
+      for (const row of data.summaries.filter(row => row.mode === mode)) {
+        const twin = data.summaries.find(other => other.mode === "ranvier-template" && other.width === row.width && other.phase === row.phase);
+        report(`${mode} ${row.phase}@${row.width}`, range(twin.byProcessUs), range(row.byProcessUs));
+      }
   if (kind === "keyed")
     for (const row of data.summaries.filter(row => row.mode === "ranvier-sugar")) {
       const twin = data.summaries.find(other => other.mode === "ranvier" && other.operation === row.operation);
@@ -40,12 +41,13 @@ for (const file of files) {
       console.log(`${higher ? "DIFFER  " : lower ? "LOWER   " : "same    "} heap ${rows} rows: explicit ${explicit.join(", ")} B/row, sugar ${sugar.join(", ")} B/row`);
     }
   if (kind === "alloc")
-    for (const sample of data.allocations.filter(sample => sample.mode.endsWith("sugar"))) {
-      // Every sampled function is searched. `mountTemplateSugar` is the benchmark adapter entry and is excluded.
-      const named = sample.self.filter(row => /ElementBuilder|Builders_|Sugar|TemplateBuilder\$1_|Delay/.test(row.name) && !row.name.startsWith("mountTemplateSugar "));
-      const twin = data.allocations.find(other => other.mode === sample.mode.replace(/-sugar$/, "") && other.operation === sample.operation && other.process === sample.process);
+    for (const sample of data.allocations.filter(sample => /-(sugar|members|class)$/.test(sample.mode))) {
+      // Every sampled function is searched; the benchmark adapter entries are excluded.
+      const sugarFrame = /\b(Element|VoidElement|ComponentTag)\$\d|(^|[^A-Za-z0-9_$])[a-z][a-z0-9]*(\$0027)?\$1(_|\b)|Builders_|Sugar|Delay/;
+      const named = sample.self.filter(row => sugarFrame.test(row.name) && !/^mountTemplate(Sugar|Members|Class) /.test(row.name));
+      const twin = data.allocations.find(other => other.mode === sample.mode.replace(/-(sugar|members|class)$/, "") && other.operation === sample.operation && other.process === sample.process);
       if (named.length) failed++;
-      console.log(`${named.length ? "SUGAR   " : "clean   "} ${sample.operation ?? `width ${sample.width}`}${sample.process === undefined ? "" : ` process ${sample.process + 1}`}: ${sample.self.length} functions${twin ? `, ${sample.totalBytes} B against ${twin.totalBytes} B explicit` : ""}${named.length ? ", " + named.map(row => row.name).join(", ") : ""}`);
+      console.log(`${named.length ? "SUGAR   " : "clean   "} ${sample.mode} ${sample.operation ?? `width ${sample.width}`}${sample.process === undefined ? "" : ` process ${sample.process + 1}`}: ${sample.self.length} functions${twin ? `, ${sample.totalBytes} B against ${twin.totalBytes} B explicit` : ""}${named.length ? ", " + named.map(row => row.name).join(", ") : ""}`);
     }
 }
 process.exitCode = failed ? 1 : 0;

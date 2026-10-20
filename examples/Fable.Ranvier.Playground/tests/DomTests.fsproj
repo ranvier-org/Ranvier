@@ -53,6 +53,8 @@
     <Compile Include="AuthoringPerf.fs" />
     <Compile Include="FrameworkPerf.fs" />
     <Compile Include="FrameworkSugarPerf.fs" />
+    <Compile Include="FrameworkMembersPerf.fs" />
+    <Compile Include="FrameworkClassPerf.fs" />
     <Compile Include="KeyedRowsPerf.fs" />
     <Compile Include="KeyedRowsSugarPerf.fs" />
     <Compile Include="BoundaryPerf.fs" />
