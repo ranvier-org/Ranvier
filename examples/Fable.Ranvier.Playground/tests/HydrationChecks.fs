@@ -3245,7 +3245,7 @@ let private recoveryJourney () =
 
     let disposed = logOf journey (fun () -> mounted.Value.Dispose ())
 
-    // Disposing the re-rendered root also removes the root's markers.
+    // Disposing the re-rendered root leaves the host empty, as a clean hydration's disposal does.
     atStep "round 1 dispose" ([ "cleanup narrow"; "cleanup row c"; "cleanup row b"; "cleanup root" ], "", 1) (disposed, host.innerHTML, reports.Count)
 
     // Round 2: a fresh server render on the same host hydrates without a report.
