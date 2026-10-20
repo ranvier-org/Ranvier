@@ -534,12 +534,37 @@ let private withTrailingRoot (definition: Component<'props>) (props: 'props) =
     html.Substring (0, html.Length - 8)
     + "<b></b><!--]-->"
 
+/// <summary>An element whose <c>title</c> and <c>id</c> are written when the props are true.</summary>
+let private attributed =
+    Component.define (fun _ (on: bool) -> on) (fun t ->
+        t.span
+            [|
+                t.Attrs.title (fun (on: bool) -> if on then Some "x" else None)
+                t.Attrs.id (fun (on: bool) -> if on then Some "i" else None)
+            |]
+            [| t.text "s" |])
+
+/// <summary>A template whose only content is <c>definition</c>, inlined inside a <c>div</c>.</summary>
+let private inlined (definition: Component<'props>) =
+    Component.define (fun _ (props: 'props) -> props) (fun t -> t.div [||] [| t.render definition id |])
+
+/// <summary>The textarea value, the checkbox state and the select's selected index.</summary>
+let private formState (host: HTMLElement) =
+    (host.querySelector "textarea"
+     |> unbox<HTMLTextAreaElement>)
+        .value,
+    (input host "input").``checked``,
+    (host.querySelector "select"
+     |> unbox<HTMLSelectElement>)
+        .selectedIndex
+
 let private strictRestoresValues () =
     let check (definition: Component<'props>) (served: 'props) (client: 'props) (shown: HTMLElement -> 'shown) =
         use graph = new Graph ()
         let host = host ()
-        let html = withTrailingRoot definition served
-        host.innerHTML <- html
+        host.innerHTML <- withTrailingRoot definition served
+        // The parsed form of the served HTML: a pre's leading line feed is dropped by parsing.
+        let html = host.innerHTML
         let before = nodesOf host
         let expected = shown host
 
@@ -557,6 +582,13 @@ let private strictRestoresValues () =
     check card "a" "b" cardShown
     check editable "a" "b" (fun host -> (input host "input").value, (all host "input").Length)
     check rawCard "<b>x</b>" "<i>y</i>" (fun host -> (element host "span").innerHTML)
+
+    let served: ServerChecks.FormState = { Text = "x"; On = true; Choice = "b" }
+    let client: ServerChecks.FormState = { Text = "y"; On = false; Choice = "a" }
+    check ServerChecks.formFixture served client formState
+    check (inlined ServerChecks.formFixture) served client formState
+    check attributed true false (fun host -> (element host "span").getAttribute "title")
+    check (inlined attributed) true false (fun host -> (element host "span").getAttribute "id")
 
 let private rootWidget =
     Component.define (fun _ (log: ResizeArray<string>) -> log) (fun t ->

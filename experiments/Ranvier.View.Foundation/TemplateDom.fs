@@ -644,12 +644,15 @@ let private defaultValueDiffers (node: obj) (value: obj) : bool = jsNative
 [<Emit("(() => { const n = $0, d = n.data; return () => { n.data = d; }; })()")>]
 let private keepData (node: obj) : unit -> unit = jsNative
 
-/// <summary>The inverse of a change to the attribute: its value is set back, or it is removed when it was absent.</summary>
-[<Emit("(() => { const n = $0, a = $1, v = n.getAttribute(a); return () => { if (v === null) n.removeAttribute(a); else n.setAttribute(a, v); }; })()")>]
-let private keepAttribute (node: obj) (name: string) : unit -> unit = jsNative
+/// <summary>The inverse of a change to the element's attributes: the attribute set is set back, in its order.</summary>
+[<Emit("(() => { const n = $0, a = Array.from(n.attributes, x => [x.name, x.value]); return () => { for (const x of Array.from(n.attributes)) n.removeAttribute(x.name); for (const [x, y] of a) n.setAttribute(x, y); }; })()")>]
+let private keepAttributes (node: obj) : unit -> unit = jsNative
 
-/// <summary>The inverse of a property write: the element's children, attributes and form state are set back.</summary>
-[<Emit("(() => { const n = $0, c = Array.from(n.childNodes), a = Array.from(n.attributes, x => [x.name, x.value]), v = n.value, k = n.checked, s = n.selected; return () => { n.replaceChildren(...c); for (const x of Array.from(n.attributes)) n.removeAttribute(x.name); for (const [x, y] of a) n.setAttribute(x, y); if ('value' in n) n.value = v; if ('checked' in n) n.checked = k; if ('selected' in n) n.selected = s; }; })()")>]
+/// <summary>
+/// The inverse of a property write: the element's children, its attribute set in order and its form state are set
+/// back. A form value that is already equal is left untouched; a restored one marks its control as edited.
+/// </summary>
+[<Emit("(() => { const n = $0, c = Array.from(n.childNodes), a = Array.from(n.attributes, x => [x.name, x.value]), v = n.value, k = n.checked, s = n.selected; return () => { n.replaceChildren(...c); for (const x of Array.from(n.attributes)) n.removeAttribute(x.name); for (const [x, y] of a) n.setAttribute(x, y); if ('value' in n && n.value !== v) n.value = v; if ('checked' in n && n.checked !== k) n.checked = k; if ('selected' in n && n.selected !== s) n.selected = s; }; })()")>]
 let private keepElement (node: obj) : unit -> unit = jsNative
 
 /// <summary>
@@ -683,7 +686,7 @@ let private writeHydrating (cursor: HydrationCursor) (slot: Slot) (node: obj) (v
     match slot.Target with
     | AttributeTarget name ->
         if attributeDiffers node name value then
-            let inverse = keepAttribute node name
+            let inverse = keepAttributes node
             setAttribute node value name
             cursor.Undo inverse
     | PropertyTarget property -> writeHydratingProperty cursor property node value
