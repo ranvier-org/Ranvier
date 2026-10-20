@@ -457,12 +457,17 @@ let private demoLayout () =
     let state = demoState graph
     equal (Server.render omit PlaygroundSugar.demoExplicit state) (Server.render omit PlaygroundSugar.demoSugar state)
 
+[<Emit("(() => { const field = $2.querySelector($0); field.value = $1; field.dispatchEvent(new Event('input', { bubbles: true })); })()")>]
+let private typeInto (selector: string) (text: string) (root: HTMLElement) : unit = jsNative
+
 let private demoClicks queued () =
     pair queued demoState (Component.render PlaygroundSugar.demoExplicit) (Component.render PlaygroundSugar.demoSugar) (fun state ->
         [
+            Each (click "[data-testid=reset]")
             Each (click "[data-testid=increment]")
             Each (click "[data-testid=burst]")
             Each (click "[data-testid=reset]")
+            Each (typeInto "[data-testid=name]" "Lin")
             Write (fun () -> state.Name.Value <- "Grace")
         ])
 

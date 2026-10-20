@@ -18,6 +18,7 @@ type DemoState =
 type DemoInstance =
     { State: DemoState; Doubled: Memo<int> }
 
+/// <summary>The demo screen of <c>App.fs</c> in the explicit template form.</summary>
 let demoExplicit =
     Component.define
         (fun _ (state: DemoState) ->
@@ -122,6 +123,7 @@ let demoExplicit =
                         |]
                 |])
 
+/// <summary>The setup of <c>demoExplicit</c>, which both screens share.</summary>
 let private demoSetup =
     fun (_: Setup) (state: DemoState) ->
         {
@@ -129,6 +131,7 @@ let private demoSetup =
             Doubled = Api.createMemo (fun _ -> state.Count.Value * 2)
         }
 
+/// <summary>The demo screen of <c>App.fs</c> written with the template sugar.</summary>
 let demoSugar =
     Component.define demoSetup (fun t ->
         t.Section (
