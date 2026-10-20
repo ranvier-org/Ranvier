@@ -196,6 +196,14 @@ jobs:
       - name: Run the view layer representation checks
         run: dotnet run --project experiments/Ranvier.View.Foundation/RepresentationChecks.fsproj -c Release
         working-directory: .
+      # Compiles every F# sample of the Views and Server docs sections and checks the HTML the pages quote.
+      - name: Run the docs view samples
+        run: dotnet run --project docs/samples/view/Ranvier.Docs.ViewSamples.fsproj -c Release
+        working-directory: .
+      # Fails when a committed sample differs from the fsharp blocks of its page.
+      - name: Check the docs view samples against their pages
+        run: dotnet fsi docs/samples/view/Generate.fsx --check
+        working-directory: .
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       # npm test runs the package's whole test chain: the jsdom suites (test:dom, with the view counters defined)
@@ -203,11 +211,75 @@ jobs:
       - name: Run the playground tests
         run: npm test
 
+  # The DOM generator's three script gates: generated usage compiles or fails with the expected FS code
+  # (CheckTypes), the generator's output and corrupt-catalogue rejection (GeneratorTests), and the view sugar
+  # README samples compile (CheckDocs). Each script exits non-zero on failure. CheckTypes and CheckDocs build
+  # DomTests.fsproj, so they run in a job of their own, with the same non-documentation gate as the other jobs.
+  sugar:
+    name: View sugar checks
+    needs: changes
+    if: needs.changes.outputs.docs != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      # GeneratorTests runs the generator, which reads the TypeScript compiler from this directory's node_modules.
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '26'
+          cache: npm
+          cache-dependency-path: tools/Ranvier.Dom.Generate/package-lock.json
+      - name: Install the generator's npm packages
+        run: npm ci
+        working-directory: tools/Ranvier.Dom.Generate
+      - name: Check the generator output (GeneratorTests)
+        run: dotnet fsi tools/Ranvier.Dom.Generate/GeneratorTests.fsx
+      - name: Check the README samples compile (CheckDocs)
+        run: dotnet fsi tools/Ranvier.Dom.Generate/CheckDocs.fsx
+      - name: Check generated usage types (CheckTypes)
+        run: dotnet fsi tools/Ranvier.Dom.Generate/CheckTypes.fsx
+
+  # The Fable.Ranvier.Anime bindings compiled with Fable: the jsdom value checks on a mocked clock, the emit checks of the
+  # bindings and their call sites, and the bindings bundle-size budget (fable/Ranvier.Anime.Tests/size.mjs).
+  anime:
+    name: Anime bindings
+    needs: changes
+    if: needs.changes.outputs.docs != 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: fable/Ranvier.Anime.Tests
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      # The suite requires Node 26 or newer (package.json engines).
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '26'
+          cache: npm
+          cache-dependency-path: fable/Ranvier.Anime.Tests/package-lock.json
+      - name: Install npm packages
+        run: npm ci
+      - name: Restore tools
+        run: dotnet tool restore
+        working-directory: .
+      # npm test compiles the suite, runs the value and emit checks, then the bundle-size check.
+      - name: Run the bindings tests
+        run: npm test
+      # size.mjs rewrites the committed bundle numbers; a difference means they are stale.
+      - name: Check the committed bundle numbers
+        run: git diff --exit-code -- docs/research/motion/bindings-bundle.json
+        working-directory: .
+
   # The one CI check that branch rules require: it fails when any job failed or was cancelled, and passes when the
   # build and test jobs were skipped for a documentation-only change.
   result:
     name: CI result
-    needs: [changes, scripts, dotnet, aot, packages, format, fable, playground]
+    needs: [changes, scripts, dotnet, aot, packages, format, fable, playground, sugar, anime]
     if: always()
     runs-on: ubuntu-latest
     steps:
