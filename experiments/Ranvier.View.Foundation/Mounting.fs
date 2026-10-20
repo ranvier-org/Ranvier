@@ -264,6 +264,17 @@ let private clearAdopted (cursor: TemplateDom.HydrationCursor) (regionStart: Nod
                 parent.insertBefore (removed[index], regionEnd)
                 |> ignore)
 
+/// <summary>The logical position of <c>node</c> among the nodes after <c>regionStart</c>, counting from 0.</summary>
+let private positionAfter (regionStart: Node) (node: Node) =
+    let mutable position = 0
+    let mutable current = nextOrNull regionStart
+
+    while not (same current node) do
+        current <- TemplateDom.logicalNext current
+        position <- position + 1
+
+    position
+
 #if RANVIER_VIEW_COUNTERS
 /// <summary>Counts of keyed-list work, defined only in the DOM test build.</summary>
 module internal ListCounters =
@@ -2755,17 +2766,6 @@ and internal MountState
 
             row
 
-        // The logical position of the node at the cursor, counted from the region's first node.
-        let cursorPosition () =
-            let mutable position = 0
-            let mutable node = nextOrNull regionStart
-
-            while not (same node cursor.Next) do
-                node <- TemplateDom.logicalNext node
-                position <- position + 1
-
-            position
-
         let reconcile () =
             if site.Live () then
                 passPlacement.Begin ()
@@ -2932,7 +2932,13 @@ and internal MountState
                                     && errors.Count = 0
                                     && not (same cursor.Next regionEnd)
                                 then
-                                    errors.Add (TemplateDom.mismatch ("#" + string (cursorPosition ())) "<!--]-->" (TemplateDom.describe cursor.Next))
+                                    errors.Add (
+                                        TemplateDom.mismatch
+                                            ("#"
+                                             + string (positionAfter regionStart cursor.Next))
+                                            "<!--]-->"
+                                            (TemplateDom.describe cursor.Next)
+                                    )
 
                                 if errors.Count = 1 then
                                     raise errors[0]
@@ -3096,11 +3102,17 @@ and internal MountState
     /// under <c>=</c> and receives the item's new value; another key disposes the arm, its cleanups and its nodes, before
     /// the next arm is set up.
     /// </summary>
+    /// <remarks>
+    /// A first selection with <c>site.Hydrating</c> set requires <c>regionStart</c> to be <c>&lt;!--[a:HASH--&gt;</c>,
+    /// with the selected template arm's structural hash, adopts the server arm after it in place, and requires the
+    /// cursor to end at <c>regionEnd</c>; the mount's cursor position is kept. A selected arm whose hash raises is a
+    /// mismatch. The failure is settled by <c>RegionSite.Settle</c>.
+    /// </remarks>
     member private this.ArmRegion
         (
+            site: RegionSite,
             regionStart: Node,
             regionEnd: Node,
-            placement: RegionPlacement,
             read: unit -> obj array,
             render: (unit -> obj) -> Backend -> unit,
             rows: Func<(unit -> obj), TemplateDom.MountServices, int, unit>,
@@ -3108,7 +3120,6 @@ and internal MountState
             region: int,
             parentContainer: Placement
         ) =
-        let site = this.Site (regionStart, regionEnd, placement)
         let mutable items: Memo<obj array> = Unchecked.defaultof<_>
         let mutable selection: Memo<obj> = Unchecked.defaultof<_>
         // The mounted arm's root owner, item signal and key; null while the region is empty.
@@ -3127,9 +3138,30 @@ and internal MountState
                 site.LaidOut.Clear ()
                 Api.batch (fun () -> owner.Dispose ())
 
-        let mountArm (selected: obj) =
+        // Raises a mismatch at `#0` unless the start marker carries the hash of the selected template arm's definition.
+        let checkHash (value: obj) =
+            let compiled = TemplateDom.compiledOf (unbox<Template.Arm> value).Definition
+
+            let expected =
+                try
+                    "<!--[a:" + compiled.Hash.Value + "-->"
+                with error ->
+                    "an arm the server renders ("
+                    + error.Message
+                    + ")"
+
+            let found = TemplateDom.describe regionStart
+
+            if found <> expected then
+                raise (TemplateDom.mismatch "#0" expected found)
+
+        let mountArm (selected: obj) (hydrating: bool) =
             if not (isNull selected) then
                 let key, value = unbox<obj * obj> selected
+
+                if hydrating then
+                    checkHash value
+
                 let item = Api.createSignal value
                 armPlacement.Begin ()
                 let mutable created: Owner = Unchecked.defaultof<_>
@@ -3147,15 +3179,28 @@ and internal MountState
                             let current () =
                                 item.Value
 
-                            row <-
+                            let built =
                                 if isNull rows then
                                     this.MountRow (current, render, boundary, armPlacement.Container, parentPath, region, site.NextRow ())
                                 else
-                                    site.Builder.Build (rows, current, armPlacement, site.NextRow ())))
+                                    site.Builder.Build (rows, current, armPlacement, site.NextRow ())
+
+                            // An adopted arm that fails here keeps its nodes for the restore or the region's re-render.
+                            if hydrating && not (same cursor.Next regionEnd) then
+                                raise (
+                                    TemplateDom.mismatch
+                                        ("#"
+                                         + string (positionAfter regionStart cursor.Next))
+                                        "<!--]-->"
+                                        (TemplateDom.describe cursor.Next)
+                                )
+
+                            row <- built))
 
                     // An arm whose setup disposed the region leaves with the region's owner.
                     if site.Live () then
-                        Row.MoveBefore (row, site.Parent (), regionEnd)
+                        if not hydrating then
+                            Row.MoveBefore (row, site.Parent (), regionEnd)
 
                         if not (isNull (box row.Mount)) then
                             row.Mount.Relocate ()
@@ -3173,20 +3218,35 @@ and internal MountState
 
         let reconcile () =
             if site.Live () then
+                let hydrating = site.Hydrating
+                let resumed = if hydrating then cursor.Next else Unchecked.defaultof<_>
+
+                if hydrating then
+                    cursor.Next <- nextOrNull regionStart
+
                 let recorded, failure =
-                    MountLifetime.Capture (
-                        graph,
-                        report,
-                        fun () ->
-                            let selected = selection.Value
+                    try
+                        MountLifetime.Capture (
+                            graph,
+                            report,
+                            fun () ->
+                                let selected = selection.Value
 
-                            Api.untrack (fun () ->
-                                site.Validate ()
-                                disposeArm ()
-                                mountArm selected)
-                    )
+                                Api.untrack (fun () ->
+                                    if hydrating then
+                                        site.Parent () |> ignore
+                                    else
+                                        site.Validate ()
 
-                site.Settle (recorded, failure, false, (fun recorded -> site.Errors.Report recorded))
+                                    disposeArm ()
+                                    mountArm selected hydrating)
+                        )
+                    finally
+                        if hydrating then
+                            site.Hydrating <- false
+                            cursor.Next <- resumed
+
+                site.Settle (recorded, failure, hydrating, (fun recorded -> site.Errors.Report recorded))
 
         let updatePayload () =
             let current = items.Value
@@ -3267,12 +3327,13 @@ and internal MountState
         site.Own (fun () -> created.Start ())
 
     /// <summary>
-    /// Mounts a region of <c>kind</c> between its markers. With <c>regionCursor</c>, a template list adopts the server
-    /// rows between the markers, and every other region replaces the server nodes between them with a fresh mount.
+    /// Mounts a region of <c>kind</c> between its markers. With <c>regionCursor</c>, a template list or arm adopts the
+    /// server rows between the markers, and every other region replaces the server nodes between them with a fresh
+    /// mount.
     /// </summary>
     /// <remarks>
-    /// A structural mismatch of the list's hydrating pass, unless <c>regionCursor.Strict</c> is set, disposes the rows
-    /// the pass created, removes the server nodes between the markers, reports the mismatch once and mounts the list
+    /// A structural mismatch of the region's hydrating pass, unless <c>regionCursor.Strict</c> is set, disposes the rows
+    /// the pass created, removes the server nodes between the markers, reports the mismatch once and mounts the region
     /// fresh, its rows continuing the region's row counter. Each removal is recorded with the cursor.
     /// </remarks>
     member private this.RegionOf
@@ -3289,8 +3350,14 @@ and internal MountState
             parentContainer: Placement,
             regionCursor: TemplateDom.HydrationCursor
         ) =
+        let mountRegion (site: RegionSite) =
+            match kind with
+            | TemplateDom.ListRows -> this.ListRegion (site, start, finish, items, render, rows, parentPath, region, parentContainer)
+            | _ -> this.ArmRegion (site, start, finish, items.Read, render, rows, parentPath, region, parentContainer)
+
         match kind with
-        | TemplateDom.ListRows when not (isNull regionCursor) && not (isNull rows) ->
+        | TemplateDom.ListRows
+        | TemplateDom.SelectedArm when not (isNull regionCursor) && not (isNull rows) ->
             let site = this.Site (start, finish, placement)
             site.Hydrating <- true
 
@@ -3302,19 +3369,16 @@ and internal MountState
                         site.Reset ()
                         clearAdopted regionCursor start finish
                         report errors
+                        Api.runWithOwner enclosing (fun () -> mountRegion site)
 
-                        Api.runWithOwner enclosing (fun () ->
-                            this.ListRegion (site, start, finish, items, render, rows, parentPath, region, parentContainer))
-
-            this.ListRegion (site, start, finish, items, render, rows, parentPath, region, parentContainer)
+            mountRegion site
         | _ ->
             if not (isNull regionCursor) then
                 clearAdopted regionCursor start finish
 
             match kind with
-            | TemplateDom.ListRows ->
-                this.ListRegion (this.Site (start, finish, placement), start, finish, items, render, rows, parentPath, region, parentContainer)
-            | TemplateDom.SelectedArm -> this.ArmRegion (start, finish, placement, items.Read, render, rows, parentPath, region, parentContainer)
+            | TemplateDom.ListRows
+            | TemplateDom.SelectedArm -> mountRegion (this.Site (start, finish, placement))
             | TemplateDom.ViewHole -> this.HoleRegion (start, finish, placement, items.Read, render, parentPath, region, parentContainer)
             | TemplateDom.BoundaryContent ->
                 let pairs = items.Read ()

@@ -630,6 +630,301 @@ let private reorderedItems () =
 
     mounted.Dispose ()
 
+/// <summary>A stage selector whose setup stores its stage signal in <c>holder</c>.</summary>
+let private liveStaged (holder: Signal<Stage> ref) =
+    Component.define
+        (fun _ (stage: Stage) ->
+            let signal = Api.createSignal stage
+            holder.Value <- signal
+            signal)
+        (fun t ->
+            t.div
+                [||]
+                [|
+                    t.matchWith (fun (stage: Signal<Stage>) -> stage.Value) (function
+                        | Waiting -> t.arm waitingArm ()
+                        | Working progress -> t.arm workingArm progress
+                        | Complete result -> t.arm completeArm result)
+                |])
+
+let private armsHydrate () =
+    use graph = new Graph ()
+    let stage = ref Unchecked.defaultof<Signal<Stage>>
+    let staged = liveStaged stage
+    let host = serve staged (Working 3)
+    let before = nodesOf host
+    let mounted = hydrate graph strictOptions host staged (Working 3)
+    equal (true, "working 3") (sameNodes before (nodesOf host), (element host "div").textContent)
+    let span = host.querySelector "span"
+    graph.Run (fun () -> stage.Value.Value <- Working 4)
+    equal ("working 4", true) ((element host "div").textContent, obj.ReferenceEquals (span, host.querySelector "span"))
+    graph.Run (fun () -> stage.Value.Value <- Complete "x")
+
+    equal ("complete x", 1, false) ((element host "div").textContent, (all host "span").Length, host.contains (unbox<Node> span))
+
+    mounted.Dispose ()
+    equal 0. host.childNodes.length
+
+let private armPayloadCorrected () =
+    use graph = new Graph ()
+    let stage = ref Unchecked.defaultof<Signal<Stage>>
+    let staged = liveStaged stage
+    let host = serve staged (Working 3)
+    let span = host.querySelector "span"
+    let mounted = hydrate graph strictOptions host staged (Working 4)
+    equal ("working 4", true) ((element host "div").textContent, obj.ReferenceEquals (span, host.querySelector "span"))
+    graph.Run (fun () -> stage.Value.Value <- Working 5)
+    equal ("working 5", true) ((element host "div").textContent, obj.ReferenceEquals (span, host.querySelector "span"))
+    mounted.Dispose ()
+
+let private differentArm () =
+    use graph = new Graph ()
+    let stage = ref Unchecked.defaultof<Signal<Stage>>
+    let staged = liveStaged stage
+    let host = serve staged (Working 3)
+    let div = element host "div"
+    let start = div.firstChild.Value
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        Hydration.hydrate graph None reports.Add lenientOptions host staged Waiting
+
+    let mismatch =
+        "Hydration mismatch at #0: expected <!--[a:"
+        + structuralHash waitingArm
+        + "-->, found <!--[a:"
+        + structuralHash workingArm
+        + "-->"
+
+    equal
+        ([ [ mismatch ] ], "waiting", true, true)
+        (messages reports, div.textContent, obj.ReferenceEquals (div, element host "div"), obj.ReferenceEquals (start, div.firstChild.Value))
+
+    graph.Run (fun () -> stage.Value.Value <- Working 5)
+    equal ("working 5", 1) (div.textContent, reports.Count)
+    mounted.Dispose ()
+
+    let host = serve staged (Working 3)
+    let before = host.innerHTML
+    let nodes = nodesOf host
+
+    let error =
+        ServerChecks.failure (fun () ->
+            hydrate graph strictOptions host staged Waiting
+            |> ignore)
+
+    equal (mismatch, before, true) (error.Message, host.innerHTML, sameNodes nodes (nodesOf host))
+
+/// <summary>The server HTML of <c>staged</c> at <c>Working 3</c>, with a <c>b</c> element before the arm's end marker.</summary>
+let private servedWithExtra (staged: Component<Stage>) =
+    let host = serve staged (Working 3)
+    let div = element host "div"
+
+    div.insertBefore (globalThis.document.createElement "b", unbox<Node> div.lastChild)
+    |> ignore
+
+    host
+
+let private armExtraNode () =
+    use graph = new Graph ()
+    let stage = ref Unchecked.defaultof<Signal<Stage>>
+    let staged = liveStaged stage
+    let host = servedWithExtra staged
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        Hydration.hydrate graph None reports.Add lenientOptions host staged (Working 3)
+
+    let mismatch = "Hydration mismatch at #1: expected <!--]-->, found b"
+    equal ([ [ mismatch ] ], "working 3", 0) (messages reports, (element host "div").textContent, (all host "b").Length)
+    graph.Run (fun () -> stage.Value.Value <- Waiting)
+    equal "waiting" (element host "div").textContent
+    mounted.Dispose ()
+
+    let host = servedWithExtra staged
+    let before = host.innerHTML
+    let nodes = nodesOf host
+
+    let error =
+        ServerChecks.failure (fun () ->
+            hydrate graph strictOptions host staged (Working 3)
+            |> ignore)
+
+    equal (mismatch, before, true) (error.Message, host.innerHTML, sameNodes nodes (nodesOf host))
+
+let private xArm =
+    Component.define (fun _ (_: unit -> unit) -> ()) (fun t -> t.span [||] [| t.text "x" |])
+
+let private yArm =
+    Component.define (fun _ (_: unit -> unit) -> ()) (fun t -> t.span [||] [| t.text "y" |])
+
+let private flagged =
+    Component.define (fun _ (flag: bool) -> flag) (fun t ->
+        t.div
+            [||]
+            [|
+                t.branch (fun (flag: bool) -> flag) (fun flag -> if flag then t.arm xArm () else t.arm yArm ())
+            |])
+
+let private equalShapes () =
+    use graph = new Graph ()
+    let host = serve flagged true
+    let served = host.querySelector "span"
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        Hydration.hydrate graph None reports.Add lenientOptions host flagged false
+
+    equal
+        (true, "y", false, 1)
+        (singleMismatch reports, (element host "div").textContent, obj.ReferenceEquals (served, host.querySelector "span"), (all host "span").Length)
+
+    mounted.Dispose ()
+
+let private tableArm =
+    Component.define (fun _ (_: unit -> unit) -> ()) (fun t -> t.table [||] [| t.tr [||] [| t.td [||] [| t.text "row" |] |] |])
+
+let private rejectable =
+    Component.define (fun _ (table: bool) -> table) (fun t ->
+        t.div
+            [||]
+            [|
+                t.branch (fun (table: bool) -> table) (fun table -> if table then t.arm tableArm () else t.arm xArm ())
+            |])
+
+let private rejectedArmHashMismatches () =
+    use graph = new Graph ()
+    let host = serve rejectable false
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        Hydration.hydrate graph None reports.Add lenientOptions host rejectable true
+
+    equal (true, "row", 0, 1) (singleMismatch reports, (element host "div").textContent, (all host "span").Length, (all host "td").Length)
+
+    mounted.Dispose ()
+
+    let host = serve rejectable false
+    let before = host.innerHTML
+    let nodes = nodesOf host
+
+    let error =
+        ServerChecks.failure (fun () ->
+            hydrate graph strictOptions host rejectable true
+            |> ignore)
+
+    equal
+        ("Hydration mismatch at #0: expected an arm the server renders (The HTML parser restructures this markup (table-row) at table/tr), found <!--[a:"
+         + structuralHash xArm
+         + "-->",
+         before,
+         true)
+        (error.Message, host.innerHTML, sameNodes nodes (nodesOf host))
+
+let private armRow =
+    Component.define (fun _ (item: unit -> Listed) -> item) (fun t ->
+        t.li
+            [||]
+            [|
+                t.branch (fun (item: unit -> Listed) -> (item ()).Text = "x") (fun picked -> if picked then t.arm xArm () else t.arm yArm ())
+            |])
+
+let private armList =
+    Component.define (fun _ (items: Listed array) -> live items) (fun t ->
+        t.ul
+            [||]
+            [|
+                t.each (fun (item: Listed) -> item.Id) (fun (items: Signal<Listed array>) -> items.Value) armRow
+            |])
+
+let private armsInRows () =
+    use graph = new Graph ()
+    let host = serve armList [| a; b |]
+    let before = nodesOf host
+    let mounted = hydrate graph strictOptions host armList [| a; b |]
+    equal (true, "yy") (sameNodes before (nodesOf host), (element host "ul").textContent)
+    mounted.Dispose ()
+
+    use graph = new Graph ()
+    let host = serve armList [| a; b |]
+    let rows = all host "li"
+    let spans = all host "span"
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        Hydration.hydrate graph None reports.Add lenientOptions host armList [| { a with Text = "x" }; b |]
+
+    equal
+        (true, "xy", true, false, true)
+        (singleMismatch reports,
+         (element host "ul").textContent,
+         sameNodes rows (all host "li"),
+         obj.ReferenceEquals (spans[0], (all host "span")[0]),
+         obj.ReferenceEquals (spans[1], (all host "span")[1]))
+
+    graph.Run (fun () -> liveItems.Value <- [| b; { a with Text = "y" } |])
+    equal ("yy", true) ((element host "ul").textContent, sameNodes [| rows[1]; rows[0] |] (all host "li"))
+    mounted.Dispose ()
+
+    use graph = new Graph ()
+    let host = serve armList [| a; b |]
+    let before = host.innerHTML
+    let nodes = nodesOf host
+
+    let error =
+        ServerChecks.failure (fun () ->
+            hydrate graph strictOptions host armList [| { a with Text = "x" }; b |]
+            |> ignore)
+
+    equal (true, before, true) (error :? TemplateDom.HydrationMismatchException, host.innerHTML, sameNodes nodes (nodesOf host))
+
+let private viewHolesRerender () =
+    use graph = new Graph ()
+
+    let server =
+        serve
+            holed
+            {
+                Caption = "A"
+                Body = Program.element (HtmlTag "em") [||] [| Program.text "server" |]
+            }
+
+    let serverEm = server.querySelector "em"
+    let div = element server "div"
+
+    let client =
+        {
+            Caption = "A"
+            Body = Program.element (HtmlTag "em") [||] [| Program.text "client" |]
+        }
+
+    let mounted = hydrate graph strictOptions server holed client
+
+    equal
+        ("Aclient", false, false, true)
+        (div.textContent,
+         obj.ReferenceEquals (serverEm, server.querySelector "em"),
+         server.contains (unbox<Node> serverEm),
+         obj.ReferenceEquals (div, element server "div"))
+
+    mounted.Dispose ()
+
+    let host =
+        serve
+            holed
+            {
+                Caption = "A"
+                Body = Program.element (HtmlTag "em") [||] [| Program.text "server" |]
+            }
+
+    let reports = ResizeArray<exn list>()
+
+    let mounted =
+        Hydration.hydrate graph None reports.Add lenientOptions host holed client
+
+    equal ("Aclient", 0) ((element host "div").textContent, reports.Count)
+    mounted.Dispose ()
+
 let private italicCell =
     Component.define (fun _ (text: unit -> string) -> text) (fun t -> t.element (HtmlTag "i") [||] [| t.text (fun text -> text ()) |])
 
@@ -1428,6 +1723,15 @@ let cases: (string * (unit -> unit)) array =
             "a list with fewer or more client items than server rows re-renders the region and reports once", rowCountMismatch
             "a row whose first roots are a region's markers hydrates in place", rowStartsWithRegion
             "a same-count list with reordered items hydrates positionally and later moves keep keyed identity", reorderedItems
+            "arms hydrate under an equal hash and keep their nodes across payload updates", armsHydrate
+            "an arm of the same definition with another payload hydrates in place and corrects its values", armPayloadCorrected
+            "a different selected arm re-renders the region and reports once; Strict raises", differentArm
+            "a node after an adopted arm raises at the arm region's end; the region re-renders and reports once; Strict raises", armExtraNode
+            "two arms with equal shape and different static text are distinguished by hash", equalShapes
+            "a client arm the server plan rejects is a hash mismatch: the region re-renders and reports once; Strict raises",
+            rejectedArmHashMismatches
+            "arms in hydrated rows adopt under an equal hash, and a different arm re-renders only its region; Strict raises", armsInRows
+            "view holes remove the server content and mount the view fresh", viewHolesRerender
             "a mismatch inside a row's nested region re-renders only that region and reports once per region; Strict raises and restores the host",
             nestedRowMismatch
             "adopted rows keep their positional ids and run their cleanups when removed, and later rows continue the row counter",

@@ -1306,6 +1306,13 @@ let private collectAdopted (roots: Node array) (compiled: Compiled) (state: obj 
             store state (StateNodes + count) (box node)
             count <- count + 1
 
+/// <summary>The definition's compiled form, compiling it on first use.</summary>
+let internal compiledOf (definition: TemplateDefinition) : Compiled =
+    if isNull definition.Compiled then
+        definition.Compiled <- box (compile (definition :?> TemplateComponent))
+
+    definition.Compiled :?> Compiled
+
 /// <summary>
 /// Materialises one instance at the position one step of <c>kind</c> below <c>parent</c>: runs setup, clones the
 /// skeleton or, during hydration, adopts the server nodes at the cursor, binds its slots, events, head entries and
@@ -1321,11 +1328,7 @@ let rec internal materialise
     (b: int)
     =
     let template = definition :?> TemplateComponent
-
-    if isNull definition.Compiled then
-        definition.Compiled <- box (compile template)
-
-    let compiled = definition.Compiled :?> Compiled
+    let compiled = compiledOf definition
     let children = compiled.Children
     let identity = services.Identity
     // The instance's path, taken only when a region or an inlined child sits under it.
