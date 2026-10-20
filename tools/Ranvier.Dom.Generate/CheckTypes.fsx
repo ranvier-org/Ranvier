@@ -500,7 +500,7 @@ let view = Component.template (fun _ (p: Props) -> p) (div () { childOf (fun p -
             None
         case "open of Generated.Html" "open Ranvier.View.Foundation.Generated.Html\nlet view = ()" (Some "FS0892")
         free
-            "Authoring opened with the sugar"
+            "the sugar, then Generated.Html.Authoring, collides"
             """
 open Ranvier.View.Foundation.Generated.Html.Authoring
 let view = Component.template (fun _ () -> ()) (div (Attrs.className "x") { "y" })

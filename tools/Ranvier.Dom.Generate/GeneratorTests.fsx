@@ -15,6 +15,7 @@ let check (condition: bool) (message: string) =
         raise (CheckFailed message)
 
 let root = __SOURCE_DIRECTORY__
+let repositoryRoot = Path.GetFullPath (Path.Combine (root, "..", ".."))
 let generatorProject = Path.Combine (root, "Ranvier.Dom.Generate.fsproj")
 
 /// Reads a file as text with LF line endings.
@@ -80,10 +81,17 @@ let run (folder: string) =
         check (code = 0) (stdout + stderr)
 
     check (sameBytes first second) "regeneration must be byte-identical"
+
+    for output, committed in
+        [
+            first, "experiments/Ranvier.View.Foundation/Generated/Html.fs"
+            Path.Combine (folder, "firstTemplate.fs"), "experiments/Ranvier.View.Portable/Generated/HtmlTemplate.fs"
+            Path.Combine (folder, "firstTemplateSugar.fs"), "experiments/Ranvier.View.Portable/Generated/HtmlTemplateSugar.fs"
+        ] do
+        check (readText output = readText (Path.Combine (repositoryRoot, committed))) (committed + " must equal the generator's output")
+
     let text = readText first
-
     check (text.Contains "[<RequireQualifiedAccess>]\nmodule Ranvier.View.Foundation.Generated.Html\n") "Generated.Html requires qualified access"
-
     check (text.Contains "module Authoring =") "generate overloaded authoring helpers"
     check (text.Contains "static member inline") "static member inline in text"
     check (text.Contains "module Program =") "generate the bound Program element authoring surface"
