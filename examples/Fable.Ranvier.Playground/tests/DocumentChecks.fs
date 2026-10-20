@@ -1069,6 +1069,164 @@ let private headRecovered () =
         mounted.Dispose ()
         equal ([ true; true; true ], (false, false), hydratedHead "Desk · Shop", "Desk · Shop", 1) shown)
 
+/// <summary>A description meta without content, then a div whose mounted hook raises.</summary>
+let private contentless =
+    Component.define (fun _ () -> ()) (fun t ->
+        t.fragment
+            [|
+                t.Document.meta
+                    [|
+                        t.Attrs.attribute ("name", "description")
+                        t.Attrs.attribute ("content", (fun (_: unit) -> (None: string option)))
+                    |]
+                t.div [| t.Hooks.mounted (fun _ _ -> raise (InvalidOperationException "hook")) |] [||]
+            |])
+
+let private removedAttributeRestoredInPlace () =
+    withHead (fun () ->
+        use graph = new Graph ()
+
+        let head =
+            "<meta data-ranvier-head=\"meta:name=description\" content=\"server\" name=\"description\">"
+
+        setHead head
+        let target = host ()
+        loadServed target (Server.render omitted contentless ())
+        let served = inHead "meta"
+        let writes = recordWrites ()
+
+        let failed =
+            try
+                Hydration.hydrate graph None strict (hydrationOptions true) target contentless ()
+                |> ignore
+
+                "none"
+            with error ->
+                error.Message
+
+        equal ("hook", true, head, true) (failed, writes () > 0, headHtml (), obj.ReferenceEquals (inHead "meta", served)))
+
+let private freshMountFailureRestoresHead () =
+    withHead (fun () ->
+        use graph = new Graph ()
+        setHead servedHead
+        let served = headElements ()
+        let text = titleText ()
+        let target = host ()
+        let page = Server.render omitted failingShop (shop "Lamp")
+
+        loadServed
+            target
+            (page.Substring (0, page.Length - 8)
+             + "<b></b><!--]-->")
+
+        let reports = ResizeArray<exn list>()
+
+        let failed =
+            try
+                Hydration.hydrate graph None reports.Add (hydrationOptions false) target failingShop (shop "Desk")
+                |> ignore
+
+                "none"
+            with error ->
+                error.Message
+
+        equal
+            ("hook", 1, servedHead, true, true, "Lamp · Shop")
+            (failed, reports.Count, headHtml (), sameNodes served (headElements ()), obj.ReferenceEquals (titleText (), text), title ()))
+
+/// <summary>Changes the href of the head's first link, when the head has one, and adds a media attribute to it.</summary>
+[<Emit("(() => { const link = document.head.querySelector('link'); if (link) { link.setAttribute('href', '/client.css'); link.setAttribute('media', 'print'); } })()")>]
+let private editStylesheet () : unit = jsNative
+
+/// <summary>A div whose setup edits the head's first link and whose mounted hook raises.</summary>
+let private stylesheetEditor =
+    Component.define (fun _ () -> editStylesheet ()) (fun t -> t.div [| t.Hooks.mounted (fun _ _ -> raise (InvalidOperationException "hook")) |] [||])
+
+let private unmarkedEditRestored () =
+    withHead (fun () ->
+        use graph = new Graph ()
+        let target = host ()
+        loadServed target (Server.render omitted stylesheetEditor ())
+        let head = "<link rel=\"stylesheet\" href=\"/served.css\">"
+        setHead head
+
+        let failed =
+            try
+                Hydration.hydrate graph None strict (hydrationOptions true) target stylesheetEditor ()
+                |> ignore
+
+                "none"
+            with error ->
+                error.Message
+
+        equal ("hook", head) (failed, headHtml ()))
+
+[<Emit("document.head.querySelector('link').setAttribute('href', $0)")>]
+let private setStylesheet (href: string) : unit = jsNative
+
+let private plainSpan =
+    Component.define (fun _ () -> ()) (fun t -> t.span [||] [| t.text "page" |])
+
+let private earlierEditsKept () =
+    withHead (fun () ->
+        use graph = new Graph ()
+        let plain = host ()
+        loadServed plain (Server.render omitted plainSpan ())
+        let target = host ()
+        loadServed target (Server.render omitted stylesheetEditor ())
+        setHead "<link rel=\"stylesheet\" href=\"/served.css\">"
+
+        let hydrated =
+            Hydration.hydrate graph None strict (hydrationOptions true) plain plainSpan ()
+
+        setStylesheet "/between.css"
+
+        let failed =
+            try
+                Hydration.hydrate graph None strict (hydrationOptions true) target stylesheetEditor ()
+                |> ignore
+
+                "none"
+            with error ->
+                error.Message
+
+        hydrated.Dispose ()
+        equal ("hook", "<link rel=\"stylesheet\" href=\"/between.css\">") (failed, headHtml ()))
+
+[<Emit("$0.head.innerHTML = $1")>]
+let private setHeadOf (document: Document) (html: string) : unit = jsNative
+
+[<Emit("$0.head.innerHTML")>]
+let private headHtmlOf (document: Document) : string = jsNative
+
+[<Emit("$0.body.appendChild($0.createElement('div'))")>]
+let private hostIn (document: Document) : HTMLElement = jsNative
+
+let private windowlessHeadRestored () =
+    let other = otherDocument "Other"
+    setHeadOf other servedHead
+    let target = hostIn other
+    let page = Server.render omitted (shopPage false) (shop "Lamp")
+
+    loadServed
+        target
+        (page.Substring (0, page.Length - 8)
+         + "<b></b><!--]-->")
+
+    let failed =
+        try
+            use graph = new Graph ()
+
+            Hydration.hydrate graph None strict (hydrationOptions true) target (shopPage false) (shop "Desk")
+            |> ignore
+
+            false
+        with _ ->
+            true
+
+    equal (true, servedHead, "Lamp · Shop") (failed, headHtmlOf other, titleOf other)
+
 let private metaRow =
     Component.define (fun _ (item: unit -> int) -> item) (fun t ->
         t.fragment
@@ -1242,6 +1400,11 @@ let cases: (string * (unit -> unit)) array =
                     pendingHeadAdopted
                     "a failed hydration leaves the head as the server wrote it", headRestoredOnFailure
                     "a hydration that re-renders the root adopts the head as a fresh mount and removes unadopted elements", headRecovered
+                    "a failed hydration puts an attribute the client removed back in its served position", removedAttributeRestoredInPlace
+                    "a re-rendered root whose fresh mount fails leaves the head as the server wrote it", freshMountFailureRestoresHead
+                    "a failed hydration sets back the attributes setup wrote on an unmarked head element", unmarkedEditRestored
+                    "a failed hydration keeps the head edits made after an earlier hydration returned", earlierEditsKept
+                    "a failed hydration in a document without a window leaves its head as the server wrote it", windowlessHeadRestored
                     "a Strict mismatch in a row's nested list leaves the head as the server wrote it, attributes written at bind included",
                     nestedStrictRestoresHead
                     "a re-rendered list region recreates its rows' head elements and unadopted elements are removed once, after hydrate returns",

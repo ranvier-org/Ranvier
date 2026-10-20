@@ -3,6 +3,7 @@
 /// </summary>
 module internal Ranvier.View.Foundation.DocumentHead
 
+open System
 open System.Collections.Generic
 open Fable.Core
 open Fable.Core.TS.Dom
@@ -30,16 +31,102 @@ let private appendToHead (document: Document) (node: Element) : unit = jsNative
 [<Emit("(Array.from($0.head.querySelectorAll('[data-ranvier-head]')).find(node => node.getAttribute('data-ranvier-head') === $1 && !$2.includes(node)) ?? null)")>]
 let private marked (document: Document) (key: string) (claimed: ResizeArray<Element>) : Element = jsNative
 
+/// <summary>Whether the document's head holds a marked element.</summary>
+[<Emit("!!$0.head?.querySelector('[data-ranvier-head]')")>]
+let private hasMarked (document: Document) : bool = jsNative
+
 /// <summary>Removes the marked head elements of the document absent from <c>claimed</c>.</summary>
-[<Emit("Array.from($0.head?.querySelectorAll('[data-ranvier-head]') ?? []).filter(node => !$1.includes(node)).forEach(node => node.remove())")>]
+[<Emit("Array.from($0.head.querySelectorAll('[data-ranvier-head]')).filter(node => !$1.includes(node)).forEach(node => node.remove())")>]
 let private removeUnclaimed (document: Document) (claimed: ResizeArray<Element>) : unit = jsNative
 
+/// <summary>The document's head as it was when <c>keep</c> returned it.</summary>
+type Served =
+    /// <summary>
+    /// Sets the head back: its subtree's child lists, attributes and text, and the attribute order of its marked
+    /// elements. Edits after a <c>Restore</c> are set back by the next one.
+    /// </summary>
+    abstract Restore: unit -> unit
+    /// <summary>Ends the recording of the head's edits.</summary>
+    abstract Release: unit -> unit
+
+// While the document has a window, an observer records the head's edits and `Restore` applies their inverses, newest
+// first; observers return to `idle` at `Release`. Without a window, the head's child list, the attributes of each child
+// element and the children of each title element are copied instead.
+let private keepHead: Func<Document, Served> =
+    JsInterop.emitJsExpr
+        ()
+        """(() => {
+  const idle = [];
+  const watched = { subtree: true, childList: true, attributes: true, attributeOldValue: true, characterData: true, characterDataOldValue: true };
+  const attributesOf = n => Array.from(n.attributes, x => [x.name, x.value]);
+  const setAttributes = (n, x) => {
+    if (n.attributes.length !== x.length || x.some(([k, v], j) => n.attributes[j].name !== k || n.attributes[j].value !== v)) {
+      for (const y of Array.from(n.attributes)) n.removeAttribute(y.name);
+      for (const [k, v] of x) n.setAttribute(k, v);
+    }
+  };
+  const undo = records => {
+    for (let i = records.length - 1; i >= 0; i--) {
+      const m = records[i], e = m.target;
+      if (m.type === 'childList') {
+        for (const n of m.addedNodes) n.remove();
+        const next = m.nextSibling?.parentNode === e ? m.nextSibling : null;
+        for (const n of m.removedNodes) e.insertBefore(n, next);
+      } else if (m.type === 'attributes') {
+        const ns = m.attributeNamespace;
+        if (m.oldValue === null) { if (ns === null) e.removeAttribute(m.attributeName); else e.removeAttributeNS(ns, m.attributeName); }
+        else if (ns === null) e.setAttribute(m.attributeName, m.oldValue);
+        else e.setAttributeNS(ns, m.attributeName, m.oldValue);
+      } else e.data = m.oldValue;
+    }
+  };
+  class Kept {
+    constructor(d) {
+      const h = d.head;
+      this.head = h; this.observer = null; this.marked = null; this.children = null;
+      if (!h) return;
+      const O = d.defaultView?.MutationObserver;
+      if (!O) {
+        const c = Array.from(h.childNodes);
+        this.children = c;
+        this.attributes = c.map(n => n.nodeType === 1 ? attributesOf(n) : null);
+        this.titles = c.map(n => n.nodeName === 'TITLE' ? Array.from(n.childNodes) : null);
+        return;
+      }
+      if (h.querySelector('[data-ranvier-head]')) this.marked = Array.from(h.querySelectorAll('[data-ranvier-head]'), n => [n, attributesOf(n)]);
+      let o = null;
+      for (let i = idle.length - 1; i >= 0; i--) if (idle[i] instanceof O) { o = idle[i]; idle[i] = idle[idle.length - 1]; idle.pop(); break; }
+      this.observer = o ?? new O(() => {});
+      this.observer.observe(h, watched);
+    }
+    Restore() {
+      const h = this.head, o = this.observer;
+      if (o) {
+        undo(o.takeRecords());
+        if (this.marked) for (const [n, x] of this.marked) setAttributes(n, x);
+        o.takeRecords();
+      } else if (this.children) {
+        const c = this.children, a = this.attributes, t = this.titles;
+        c.forEach((n, i) => { if (h.childNodes[i] !== n) h.insertBefore(n, h.childNodes[i] ?? null); });
+        while (h.childNodes.length > c.length) h.lastChild.remove();
+        c.forEach((n, i) => { if (a[i]) setAttributes(n, a[i]); const y = t[i]; if (y && (n.childNodes.length !== y.length || y.some((m, j) => n.childNodes[j] !== m))) n.replaceChildren(...y); });
+      }
+    }
+    Release() {
+      const o = this.observer;
+      if (o) { o.disconnect(); idle.push(o); this.observer = null; }
+    }
+  }
+  return d => new Kept(d);
+})()"""
+
 /// <summary>
-/// The inverse of edits to the document's head: its child list, the attributes of each child element in order and the
-/// children of each <c>title</c> element are set back. Equal parts are left untouched.
+/// The head of the document as it is now. While the document has a window, the head's edits are recorded as they
+/// happen and only the marked elements' attribute lists are copied. Without a window, the head's child list, the
+/// attributes of each child element in order and the children of each <c>title</c> element are copied.
 /// </summary>
-[<Emit("(() => { const h = $0.head; if (!h) return () => {}; const c = Array.from(h.childNodes), a = c.map(n => n.nodeType === 1 ? Array.from(n.attributes, x => [x.name, x.value]) : null), t = c.map(n => n.nodeName === 'TITLE' ? Array.from(n.childNodes) : null); return () => { c.forEach((n, i) => { if (h.childNodes[i] !== n) h.insertBefore(n, h.childNodes[i] ?? null); }); while (h.childNodes.length > c.length) h.lastChild.remove(); c.forEach((n, i) => { const x = a[i]; if (x && (n.attributes.length !== x.length || x.some(([k, v], j) => n.attributes[j].name !== k || n.attributes[j].value !== v))) { for (const y of Array.from(n.attributes)) n.removeAttribute(y.name); for (const [k, v] of x) n.setAttribute(k, v); } const y = t[i]; if (y && (n.childNodes.length !== y.length || y.some((m, j) => n.childNodes[j] !== m))) n.replaceChildren(...y); }); }; })()")>]
-let keep (document: Document) : unit -> unit = jsNative
+let keep (document: Document) : Served =
+    keepHead.Invoke document
 
 [<Emit("$0.title")>]
 let private titleOf (document: Document) : string = jsNative
@@ -171,14 +258,15 @@ let create (document: Document) (kind: HeadKind) (key: string) : Record =
 
 /// <summary>Removes each marked head element of the document not claimed by its registry.</summary>
 let removeUnadopted (document: Document) =
-    let registry = existingRegistry document
+    if hasMarked document then
+        let registry = existingRegistry document
 
-    removeUnclaimed
-        document
-        (if isNull (box registry) then
-             ResizeArray ()
-         else
-             registry.Claimed)
+        removeUnclaimed
+            document
+            (if isNull (box registry) then
+                 ResizeArray ()
+             else
+                 registry.Claimed)
 
 /// <summary>Sets the attribute of a head element to <c>Some</c> value and removes it for <c>None</c>, when it differs.</summary>
 let writeAttribute (element: Element) (name: string) (value: string option) =

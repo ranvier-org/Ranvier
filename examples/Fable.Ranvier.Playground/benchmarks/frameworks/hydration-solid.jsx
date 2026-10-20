@@ -2,10 +2,14 @@ import { hydrate } from "@solidjs/web";
 import { flush } from "solid-js";
 import { componentPage, keyedPage } from "./server-solid.jsx";
 
-// Solid 2 hydrates once per document: a macrotask after a hydration ends, it sets `_$HY.done`, and later hydrate()
-// calls render fresh over the server nodes. Each call here stands for a page's first hydration, so it clears the flag.
+// Solid 2 hydrates once per document: a macrotask after a hydration ends, it sets `_$HY.done`, later hydrate() calls
+// render fresh over the server nodes, and the first hydration's event replay sets `completed` and `events` to null.
+// Each call here stands for a page's first hydration, so it restores the bootstrap's initial `done`, `completed` and
+// `events`.
 const firstHydration = (page, host, rows) => {
   globalThis._$HY.done = false;
+  globalThis._$HY.completed = new WeakSet();
+  globalThis._$HY.events = [];
   return hydrate(() => page(rows), host);
 };
 

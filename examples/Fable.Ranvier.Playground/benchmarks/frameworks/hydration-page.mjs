@@ -1,4 +1,4 @@
-import { serverHtml, hydrateFixture, mountFixture } from "../../generated-tests/HydrationPerf.js";
+import { serverHtml, hydrateFixture, hydrateFixtureLenient, mountFixture } from "../../generated-tests/HydrationPerf.js";
 import { hydrateComponentPage, hydrateKeyedPage, flushSolid } from "./hydration-solid.jsx";
 
 // Solid 2's server HTML for every fixture and row count, with its hydration bootstrap markup, written by
@@ -15,16 +15,15 @@ const load = () => loaded ??= (async () => {
 })();
 
 const ranvierHtml = new Map();
+const servedHtml = (fixture, rows) => {
+  const key = `${fixture}/${rows}`;
+  if (!ranvierHtml.has(key)) ranvierHtml.set(key, serverHtml(fixture, rows));
+  return ranvierHtml.get(key);
+};
 const modes = {
-  "ranvier-hydrate": {
-    html: (fixture, rows) => {
-      const key = `${fixture}/${rows}`;
-      if (!ranvierHtml.has(key)) ranvierHtml.set(key, serverHtml(fixture, rows));
-      return ranvierHtml.get(key);
-    },
-    call: (fixture, host, rows) => hydrateFixture(fixture, host, rows),
-    flush() {}
-  },
+  "ranvier-hydrate": { html: servedHtml, call: (fixture, host, rows) => hydrateFixture(fixture, host, rows), flush() {} },
+  // Hydration.HydrationOptions.defaults: Strict = false. Sampled by the bench's lenient block only.
+  "ranvier-hydrate-lenient": { html: servedHtml, call: (fixture, host, rows) => hydrateFixtureLenient(fixture, host, rows), flush() {} },
   "ranvier-mount": { html: () => null, call: (fixture, host, rows) => mountFixture(fixture, host, rows), flush() {} },
   "solid-hydrate": {
     html: (fixture, rows, solid) => solid.html[fixture][rows],
