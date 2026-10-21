@@ -1,4 +1,4 @@
-/// <summary>The motion seam without anime: motion contexts, exit holds and reflow order, through tests/departures.test.mjs.</summary>
+/// <summary>The motion seam without anime: motion contexts, exit holds and reflow order, on jsdom and the twin.</summary>
 module DepartureChecks
 
 open System
@@ -8,6 +8,7 @@ open Fable.Core.TS.Dom
 open Ranvier.View.Foundation
 open Ranvier.View.Foundation.Representation
 open Ranvier.View.Foundation.Template
+open Ranvier.View.Testing
 open CheckSupport
 open Ranvier.View.Foundation.Sugar
 
@@ -24,15 +25,16 @@ let private rows (items: int array) (shown: bool) =
     }
 
 /// <summary>The entries the hooks of the current case wrote, in the order written.</summary>
-let private log = ResizeArray<string>()
+let private log () =
+    Conformance.local "DepartureChecks.log" (fun () -> ResizeArray<string>())
 
 let private taken () =
-    let entries = List.ofSeq log
-    log.Clear ()
+    let entries = List.ofSeq (log ())
+    (log ()).Clear()
     entries
 
 let private context (name: string) (motion: MotionContext) =
-    log.Add (sprintf "%s hydrated=%b inserted=%b" name motion.Hydrated motion.Inserted)
+    (log ()).Add(sprintf "%s hydrated=%b inserted=%b" name motion.Hydrated motion.Inserted)
 
 let private rowMotion (row: unit -> int) (_: HTMLLIElement) (motion: MotionContext) =
     context ("li " + string (row ())) motion
@@ -83,7 +85,7 @@ let private write (graph: Graph) (mounted: Mounting.Mounted) (action: unit -> un
 
 let private insertedAfterFirstPass queued () =
     use graph = new Graph ()
-    log.Clear ()
+    (log ()).Clear()
     let state = graph.Run (fun () -> rows [| 1; 2 |] false)
 
     let mounted =
@@ -105,7 +107,7 @@ let private insertedAfterFirstPass queued () =
 
 let private shownOnFirstPass queued () =
     use graph = new Graph ()
-    log.Clear ()
+    (log ()).Clear()
     let state = graph.Run (fun () -> rows [||] true)
 
     let mounted =
@@ -118,14 +120,14 @@ let private shownOnFirstPass queued () =
 
 let private nestedRowsDoNotEnter queued () =
     use graph = new Graph ()
-    log.Clear ()
+    (log ()).Clear()
     let state = graph.Run (fun () -> rows [| 1 |] false)
 
     let mounted =
         mountTemplate queued graph strict (host ()) (Component.render nested state)
 
     mounted.Flush ()
-    log.Clear ()
+    (log ()).Clear()
     write graph mounted (fun () -> state.Items.Value <- [| 1; 2 |])
     let added = taken ()
     mounted.Dispose ()
@@ -152,7 +154,7 @@ let private pendingArmMotion (_: 'inst) (_: HTMLSpanElement) (motion: MotionCont
 /// </summary>
 let private pendingFirstPass bounded queued () =
     use graph = new Graph ()
-    log.Clear ()
+    (log ()).Clear()
     let source = graph.Run (fun () -> Api.createSignal (Api.createAsyncSource<int>()))
 
     let inner () : TemplateView<'inst> =
@@ -211,7 +213,7 @@ let private omit =
 
 let private hydratedThenInserted () =
     use graph = new Graph ()
-    log.Clear ()
+    (log ()).Clear()
     let state = graph.Run (fun () -> rows [| 1; 2 |] true)
     let target = host ()
     loadServed target (Server.render omit contexts state)
@@ -238,17 +240,18 @@ let private hydratedThenInserted () =
         (first, added, shown)
 
 /// <summary>The finish of each running exit, by its element's text.</summary>
-let private finishes = Collections.Generic.Dictionary<string, unit -> unit>()
+let private finishes () =
+    Conformance.local "DepartureChecks.finishes" (fun () -> Collections.Generic.Dictionary<string, unit -> unit>())
 
 let private exitOf (node: HTMLElement) (finish: unit -> unit) =
     let name = node.textContent
-    log.Add ("exit " + name)
-    finishes[name] <- finish
-    fun () -> log.Add ("cancel " + name)
+    (log ()).Add("exit " + name)
+    (finishes ())[name] <- finish
+    fun () -> (log ()).Add("cancel " + name)
 
 let private finish (name: string) =
-    let finishing = finishes[name]
-    finishes.Remove name |> ignore
+    let finishing = (finishes ())[name]
+    (finishes ()).Remove name |> ignore
     finishing ()
 
 /// <summary>A list whose row roots have exits, and an arm switch whose arm roots have exits.</summary>
@@ -290,29 +293,56 @@ let private immediate =
                 })
         })
 
+#if FABLE_COMPILER
 [<Emit("Array.from($0.querySelectorAll($1), n => n.textContent)")>]
 let private textsOf (root: HTMLElement) (selector: string) : string array = jsNative
+#else
+let private textsOf (root: HTMLElement) (selector: string) : string array =
+    [|
+        for element in Ranvier.View.Testing.Query.queryAll root selector -> Option.defaultValue "" (element :> Node).textContent
+    |]
+#endif
 
 /// <summary>The text of each child of <c>node</c> that is not a comment.</summary>
+#if FABLE_COMPILER
 [<Emit("Array.from($0.childNodes).filter(n => n.nodeType !== 8).map(n => n.textContent)")>]
 let private childrenOf (node: Element) : string array = jsNative
+#else
+let private childrenOf (node: Element) : string array =
+    [|
+        let mutable child = (node :> Node).firstChild
+
+        while child.IsSome do
+            let current = unbox<Node> child.Value
+
+            if current.nodeType <> 8.0 then
+                Option.defaultValue "" current.textContent
+
+            child <- current.nextSibling
+    |]
+#endif
 
 let private items (target: HTMLElement) =
     List.ofArray (textsOf target "li")
 
 let private childrenAt (selector: string) (target: HTMLElement) =
-    List.ofArray (childrenOf (target.querySelector selector |> unbox<Element>))
+    List.ofArray (childrenOf (target.querySelector selector |> Option.get))
 
-[<Emit("globalThis.departureTick($0)")>]
-let private tick (milliseconds: int) : unit = jsNative
+let private tick (milliseconds: int) : unit =
+    (Conformance.harness ()).AdvanceBy(float milliseconds)
 
+#if FABLE_COMPILER
 [<Emit("$0.querySelectorAll('li')[$1]")>]
 let private rowAt (target: HTMLElement) (index: int) : Node = jsNative
+#else
+let private rowAt (target: HTMLElement) (index: int) : Node =
+    Array.item index (Ranvier.View.Testing.Query.queryAll target "li") :> Node
+#endif
 
 /// <summary>Mounts <c>exiting</c> with <c>initial</c> items and the arm shown.</summary>
 let private mountExiting queued (graph: Graph) (initial: int array) =
-    log.Clear ()
-    finishes.Clear ()
+    (log ()).Clear()
+    (finishes ()).Clear()
     let state = graph.Run (fun () -> rows initial true)
     let target = host ()
 
@@ -334,17 +364,26 @@ let private heldUntilFinish queued () =
     mounted.Dispose ()
     equal ((([ "1"; "2"; "3" ], [ "exit 2" ]), [ "1"; "3" ]), [ "3"; "1" ]) ((held, finished), reordered)
 
+/// <summary>Records the host's markup after a step, an artefact compared across hosts.</summary>
+let private recordStep (step: string) (target: HTMLElement) =
+    Conformance.recordIfRunning step target.innerHTML
+
 let private reorderAndInsertWhileHeld queued () =
     use graph = new Graph ()
     let state, target, mounted = mountExiting queued graph [| 1; 2; 3; 4 |]
     write graph mounted (fun () -> state.Items.Value <- [| 1; 3; 4 |])
+    recordStep "removed 2" target
     write graph mounted (fun () -> state.Items.Value <- [| 4; 5; 3; 1 |])
+    recordStep "reordered" target
     let reordered = childrenAt "ul" target
     write graph mounted (fun () -> state.Items.Value <- [| 4; 3; 1 |])
+    recordStep "removed 5" target
     write graph mounted (fun () -> state.Items.Value <- [| 6; 4; 3; 1; 7 |])
+    recordStep "inserted" target
     let inserted = childrenAt "ul" target
     finish "2"
     finish "5"
+    recordStep "finished" target
     let finished = childrenAt "ul" target
     mounted.Dispose ()
 
@@ -354,12 +393,15 @@ let private clearHoldsEveryRoot queued () =
     use graph = new Graph ()
     let state, target, mounted = mountExiting queued graph [| 1; 2; 3 |]
     write graph mounted (fun () -> state.Items.Value <- [||])
+    recordStep "cleared" target
     let held = childrenAt "ul" target, taken ()
     write graph mounted (fun () -> state.Items.Value <- [| 4 |])
+    recordStep "added" target
     let added = childrenAt "ul" target
     finish "1"
     finish "2"
     finish "3"
+    recordStep "finished" target
     let finished = childrenAt "ul" target
     mounted.Dispose ()
 
@@ -397,9 +439,12 @@ let private disposalEndsExits queued () =
     use graph = new Graph ()
     let state, target, mounted = mountExiting queued graph [| 1; 2; 3 |]
     write graph mounted (fun () -> state.Items.Value <- [| 3 |])
+    recordStep "removed" target
     write graph mounted (fun () -> state.Shown.Value <- false)
-    log.Clear ()
+    recordStep "switched" target
+    (log ()).Clear()
     mounted.Dispose ()
+    recordStep "disposed" target
     let ended = List.sort (taken ()), target.childNodes.length
     finish "1"
     equal (([ "cancel 1"; "cancel 2"; "cancel on" ], 0.), []) (ended, taken ())
@@ -424,7 +469,8 @@ type Groups =
     }
 
 /// <summary>The inner items of the current <c>grouped</c> case.</summary>
-let mutable private sharedInner: Signal<int array> = Unchecked.defaultof<_>
+let private sharedInner () =
+    Conformance.local "DepartureChecks.sharedInner" (fun () -> ref (Unchecked.defaultof<_>: Signal<int array>))
 
 /// <summary>Outer rows without exits, each holding inner rows with exits.</summary>
 let private grouped =
@@ -438,7 +484,7 @@ let private grouped =
                     ol () {
                         forEach
                             (fun (pair: int * int) -> pair)
-                            (fun (row: unit -> int) -> [| for inner in sharedInner.Value -> row (), inner |])
+                            (fun (row: unit -> int) -> [| for inner in (sharedInner ()).Value.Value -> row (), inner |])
                             (b (Hooks.exit (System.Func<_, _, _, _>(fun (_: unit -> int * int) (node: HTMLElement) finish -> exitOf node finish))) {
                                 fun (pair: unit -> int * int) -> string (fst (pair ())) + string (snd (pair ()))
                             })
@@ -448,8 +494,8 @@ let private grouped =
 
 let private heldInsideRemovedRow queued () =
     use graph = new Graph ()
-    log.Clear ()
-    finishes.Clear ()
+    (log ()).Clear()
+    (finishes ()).Clear()
 
     let state =
         graph.Run (fun () ->
@@ -458,7 +504,7 @@ let private heldInsideRemovedRow queued () =
                 Inner = Api.createSignal [| 1; 2 |]
             })
 
-    sharedInner <- state.Inner
+    (sharedInner ()).Value <- state.Inner
     let target = host ()
 
     let mounted =
@@ -481,7 +527,7 @@ let private heldInsideRemovedRow queued () =
 
 let private finishedAtOnce queued () =
     use graph = new Graph ()
-    log.Clear ()
+    (log ()).Clear()
     let state = graph.Run (fun () -> rows [| 1; 2 |] false)
     let target = host ()
 
@@ -498,8 +544,8 @@ let private finishedAtOnce queued () =
 
 let private adoptedRowsRetire () =
     use graph = new Graph ()
-    log.Clear ()
-    finishes.Clear ()
+    (log ()).Clear()
+    (finishes ()).Clear()
     let state = graph.Run (fun () -> rows [| 1; 2; 3 |] true)
     let target = host ()
     loadServed target (Server.render omit exiting state)
@@ -539,8 +585,8 @@ type Pair =
 
 let private measuring (name: string) (node: HTMLElement) =
     {
-        Before = fun () -> log.Add (sprintf "%s before %s" name node.textContent)
-        After = fun () -> log.Add (sprintf "%s after %s" name node.textContent)
+        Before = fun () -> (log ()).Add(sprintf "%s before %s" name node.textContent)
+        After = fun () -> (log ()).Add(sprintf "%s after %s" name node.textContent)
     }
 
 /// <summary>Two lists under one measured element, and an arm switch under another.</summary>
@@ -559,7 +605,7 @@ let private measured =
         })
 
 let private mountMeasured queued (graph: Graph) =
-    log.Clear ()
+    (log ()).Clear()
 
     let state =
         graph.Run (fun () ->
@@ -610,7 +656,7 @@ let private reflowPerFlush queued () =
 /// <summary>Under queued commits, <c>After</c> runs once the pass's rows have their first commits.</summary>
 let private reflowAfterQueuedCommits () =
     use graph = new Graph ()
-    log.Clear ()
+    (log ()).Clear()
     let state = graph.Run (fun () -> rows [| 1 |] false)
 
     let template =
@@ -644,12 +690,13 @@ let private measuredArm =
         })
 
 /// <summary>The measurement step of the current <c>failingMeasure</c> case that raises: "before", "after" or none.</summary>
-let mutable private failingStep = ""
+let private failingStep () =
+    Conformance.local "DepartureChecks.failingStep" (fun () -> ref "")
 
 let private failingMeasure (_: Rows) (_: HTMLUListElement) =
     let fail (step: string) =
-        if failingStep = step then
-            failingStep <- ""
+        if (failingStep ()).Value = step then
+            (failingStep ()).Value <- ""
             raise (InvalidOperationException (step + " failed"))
 
     {
@@ -665,7 +712,7 @@ let private failingReflow =
 
 let private reflowFailuresReported queued () =
     use graph = new Graph ()
-    failingStep <- ""
+    (failingStep ()).Value <- ""
     let state = graph.Run (fun () -> rows [| 1 |] false)
     let target = host ()
     let reports = ResizeArray<exn list>()
@@ -674,10 +721,10 @@ let private reflowFailuresReported queued () =
         mountTemplate queued graph reports.Add target (Component.render failingReflow state)
 
     mounted.Flush ()
-    failingStep <- "before"
+    (failingStep ()).Value <- "before"
     write graph mounted (fun () -> state.Items.Value <- [| 1; 2 |])
     let afterBefore = items target
-    failingStep <- "after"
+    (failingStep ()).Value <- "after"
     write graph mounted (fun () -> state.Items.Value <- [| 1; 2; 3 |])
     let afterAfter = items target
     write graph mounted (fun () -> state.Items.Value <- [| 3; 2; 1 |])
@@ -690,7 +737,7 @@ let private reflowFailuresReported queued () =
 
 let private reflowWithdrawnWithInstance queued () =
     use graph = new Graph ()
-    log.Clear ()
+    (log ()).Clear()
     let state = graph.Run (fun () -> rows [| 1 |] true)
     let target = host ()
 
@@ -698,7 +745,7 @@ let private reflowWithdrawnWithInstance queued () =
         mountTemplate queued graph strict target (Component.render measuredArm state)
 
     mounted.Flush ()
-    let measuredList: Node = unbox (target.querySelector "ul")
+    let measuredList: Node = target.querySelector "ul" |> Option.get :> Node
     let registered = Departures.hasReflow measuredList
     write graph mounted (fun () -> state.Shown.Value <- false)
     let withdrawn = not (Departures.hasReflow measuredList)
@@ -707,7 +754,7 @@ let private reflowWithdrawnWithInstance queued () =
 
 let private reflowSkipsHydration () =
     use graph = new Graph ()
-    log.Clear ()
+    (log ()).Clear()
 
     let state =
         graph.Run (fun () ->
@@ -752,16 +799,29 @@ let private nestedContent =
                 })
         })
 
+#if FABLE_COMPILER
 [<Emit("$0.querySelectorAll('li')[$1].innerHTML")>]
 let private rowMarkup (target: HTMLElement) (index: int) : string = jsNative
+#else
+let private rowMarkup (target: HTMLElement) (index: int) : string =
+    Array.item index (Ranvier.View.Testing.Query.queryAll target "li")
+    |> fun row -> row.innerHTML
+#endif
 
+#if FABLE_COMPILER
 [<Emit("Array.from($0.querySelectorAll('li'), n => n.textContent)")>]
 let private rowTexts (target: HTMLElement) : string array = jsNative
+#else
+let private rowTexts (target: HTMLElement) : string array =
+    [|
+        for element in Ranvier.View.Testing.Query.queryAll target "li" -> Option.defaultValue "" (element :> Node).textContent
+    |]
+#endif
 
 let private heldRootKeepsContent queued () =
     use graph = new Graph ()
-    log.Clear ()
-    finishes.Clear ()
+    (log ()).Clear()
+    (finishes ()).Clear()
     let state = graph.Run (fun () -> rows [| 1; 2 |] true)
     let target = host ()
 
@@ -825,7 +885,7 @@ let private raisingExitKeepsRegion queued () =
 
 let private pendingMotion (row: unit -> int) (_: HTMLElement) (motion: MotionContext) =
     let name = string (row ())
-    fun () -> log.Add (sprintf "cleanup %s exit pending=%b" name (motion.ExitPending ()))
+    fun () -> (log ()).Add(sprintf "cleanup %s exit pending=%b" name (motion.ExitPending ()))
 
 /// <summary>Rows with a motion hook before an exit hook, after it, and without one.</summary>
 let private pendingExits =
@@ -855,8 +915,8 @@ let private pendingExits =
 
 let private motionCleanupSeesExit queued () =
     use graph = new Graph ()
-    log.Clear ()
-    finishes.Clear ()
+    (log ()).Clear()
+    (finishes ()).Clear()
     let state = graph.Run (fun () -> rows [| 1 |] true)
     let target = host ()
 
@@ -914,7 +974,7 @@ let private countersWithoutHooks () =
           || Departures.seam.ReflowEnabled = true))
 #endif
 
-let cases: (string * (unit -> unit)) array =
+let private checks: (string * (unit -> unit)) array =
     strictCases (
         Array.concat
             [
@@ -939,7 +999,7 @@ let cases: (string * (unit -> unit)) array =
                 templated "disposing the mount cancels and removes every held root" disposalEndsExits
                 templated "an exit is cancelled and its node leaves after the safety timeout" finishesAfterTimeout
                 templated "a root held inside a removed row leaves with the row and runs until disposal" heldInsideRemovedRow
-                templated "an exit that finishes at once removes its root at once" finishedAtOnce
+                templated "an exit that (finishes ()) at once removes its root at once" finishedAtOnce
                 [|
                     "a hydrated row's root with an exit is held when its row is retired", adoptedRowsRetire
                 |]
@@ -960,3 +1020,5 @@ let cases: (string * (unit -> unit)) array =
                 |]
             ]
     )
+
+let cases: Conformance.Case array = Conformance.ofChecks checks

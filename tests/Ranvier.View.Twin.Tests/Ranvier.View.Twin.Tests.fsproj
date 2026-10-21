@@ -19,6 +19,7 @@
         <Compile Include="ClockTests.fs" />
         <Compile Include="SessionTests.fs" />
         <Compile Include="AsyncTests.fs" />
+        <Compile Include="DepartureTests.fs" />
         <Compile Include="../../experiments/Ranvier.View.Portable/Checks/ServerFixtures.fs" Link="Checks/ServerFixtures.fs" />
         <Compile Include="../../experiments/Ranvier.View.Portable/Checks/ServerChecks.fs" Link="Checks/ServerChecks.fs" />
         <Compile Include="OracleTests.fs" />
@@ -41,6 +42,7 @@
         <Compile Include="../../examples/Fable.Ranvier.Playground/tests/SugarChecks.fs" Link="Checks/SugarChecks.fs" />
         <Compile Include="../../examples/Fable.Ranvier.Playground/tests/PendingRegionChecks.fs" Link="Checks/PendingRegionChecks.fs" />
         <Compile Include="../../examples/Fable.Ranvier.Playground/tests/OwnedAsyncChecks.fs" Link="Checks/OwnedAsyncChecks.fs" />
+        <Compile Include="../../examples/Fable.Ranvier.Playground/tests/DepartureChecks.fs" Link="Checks/DepartureChecks.fs" />
         <Compile Include="../../examples/Fable.Ranvier.Playground/tests/ConformanceCases.fs" Link="Checks/ConformanceCases.fs" />
         <Compile Include="ServerParityTests.fs" />
         <Compile Include="TwinHarness.fs" />
