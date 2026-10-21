@@ -103,6 +103,8 @@ An exit applies to the root element of a list row or an arm.
   and a separate `exit` stay in flow.
 - **Disposing the mount ends every running exit at once**: the tickable is cancelled and the element
   leaves. An exit still running after 10 s is cancelled and its element leaves.
+- **An exit whose play function raises finishes at once**: its element leaves, and the failure is
+  raised once the row's other nodes are handled.
 - A Debug build raises "An exit hook requires a row or arm root element" for an exit on any other
   element.
 
@@ -114,14 +116,20 @@ Arms switch simultaneously: the new arm is placed while the old one's exit plays
 the container's element children before the first region pass under the container in a flush, and
 animates them from that layout to the new one once the pass's nodes and commits are in place.
 
-- **The rows are the container's direct element children.** A row whose Motion enter or exit is
-  running is left out of the measurements.
-- **The layout moves and resizes only.** Opacity, colours, borders, filters, clip paths and font size
-  stay with the parts that animate them. Name a property in `properties`, `enterFrom`, `leaveTo` or
-  `swapAt` for the layout to animate it.
+- **The rows are the container's direct element children.** A row whose Motion exit has started, or
+  whose Motion enter started in the pass, is left out of that pass's measurements.
+- **Motion parts keep the visual properties.** In a pass where an element under the container carries
+  a Motion part (`on`, `appear`, `follow`, `animateOn`, or a running enter or exit), the layout
+  animates position and size only; opacity, colours, borders, filters, clip paths and font size stay
+  with the parts. In a pass with no such element, anime's default fades apply. A property named in
+  `properties`, `enterFrom`, `leaveTo` or `swapAt` is always the layout's.
 - **The container is positioned.** anime animates moved rows with `position: absolute` and a
   translation through the Web Animations API.
 - A pass with no recorded layout before it, such as the first, does not animate.
+- The parts mark their elements for `flip` until their cleanup, their exit's end or the pass's layout
+  removes the mark. Each flip pass checks every marked element on the page, so its cost grows with
+  the number of marked elements. A mount host emptied by other code without disposing the mount keeps
+  its marked elements reachable: dispose the mount.
 
 ## Reduced motion
 
@@ -142,13 +150,23 @@ template with Motion parts renders the HTML of its twin without them. `taskList`
 Hydration adopts the served elements. `appear` and `enter` leave them as served, and `on` plays.
 `follow` sets its first value at once.
 
+A page whose template holds event handlers renders under `Omit`, since `Reject` refuses listeners and
+hydration attaches them. The story example renders its whole page that way with
+`Server.renderDocument` (see [The page](../server/deployment.md#the-page)).
+
 ## SVG
 
 `draw` and `morph` animate SVG geometry. The SVG tags of the sugar (`svg`, `g`, `path`, `circle`,
 `ellipse`, `line`, `polyline`, `polygon`, `rect`, `text'`, `tspan`, `use'`, `defs`,
 `linearGradient`, `radialGradient`, `stop`, `clipPath`, `mask`, `foreignObject` and `title'`) create
-SVG elements under both commit modes, and a list row or arm rooted at an SVG tag is an SVG element.
-SVG attribute names such as `viewBox` are written as given.
+SVG elements under both commit modes, and a list row or arm rooted at one of them is an SVG element.
+A row or arm rooted at `title'` is the exception: an SVG `title` under queued commits, and an HTML
+`title` under synchronous commits.
+
+Case-sensitive SVG names such as `viewBox`, `preserveAspectRatio` and `linearGradient` are written
+as given; every other tag and attribute name is lowercase. Under Fable the module of the SVG tags
+registers those names when it loads, so a module defining a template with them imports an SVG tag or
+follows a module that does. [Element names](templates.md#element-names) has the full rules.
 
 ## Hooks behind the parts
 
@@ -160,6 +178,8 @@ The parts are written against three hooks of the view, usable without anime:
 | `Hooks.exit (Func<_, _, _, _> (fun inst element finish -> cancel))` | when the row or arm is retired; the element leaves when `finish ()` is called |
 | `Hooks.reflow (fun inst element -> { Before = ...; After = ... })` | on a region's parent: `Before` ahead of the first region pass in a flush, `After` once the pass is in place |
 
+The hooks take `System.Func` delegates. F# converts a lambda to a delegate that returns a function
+only when written `Func<_, _, _, _> (fun ...)`; `reflow` returns a record and takes a plain lambda.
 `Hooks.both (first, second)` combines two hook parts on one element, at most one of them other than
 a motion hook. The server omits all three kinds.
 
@@ -170,10 +190,15 @@ CI test under jsdom and Playwright:
 
 | Page | Shows |
 | --- | --- |
-| [kanban](https://github.com/shayanhabibi/Ranvier/blob/master/examples/Ranvier.Motion/src/Kanban.fs) | `presence` cards, `flip` across columns, `drag` with drop to a column, undo |
+| [kanban](https://github.com/shayanhabibi/Ranvier/blob/master/examples/Ranvier.Motion/src/Kanban.fs) | `presence` cards, `flip` across columns, `drag` with drop to a column and a spring back to the card's slot, undo |
 | [dashboard](https://github.com/shayanhabibi/Ranvier/blob/master/examples/Ranvier.Motion/src/Dashboard.fs) | `follow` gauges, a `draw` and `morph` line chart, a number tween through `Reactive.track`, a boundary skeleton |
-| [story](https://github.com/shayanhabibi/Ranvier/blob/master/examples/Ranvier.Motion/src/Story.fs) | `scroll` timelines, a `split` headline, a staggered grid; rendered on .NET and hydrated |
-| [physics](https://github.com/shayanhabibi/Ranvier/blob/master/examples/Ranvier.Motion/src/Physics.fs) | `drag` with a spring release, chained `follow`, a timeline scrubbed by `Reactive.scrub`, a policy toggle |
+| [story](https://github.com/shayanhabibi/Ranvier/blob/master/examples/Ranvier.Motion/src/Story.fs) | `scroll` timelines, a `split` headline, a staggered grid, `appear` tiles; rendered on .NET as a whole document by `Server.renderDocument` under `Omit`, and hydrated |
+| [physics](https://github.com/shayanhabibi/Ranvier/blob/master/examples/Ranvier.Motion/src/Physics.fs) | a thrown `drag` puck and a spring home, chained `follow`, a timeline scrubbed by `Reactive.scrub`, a policy toggle |
 | [routes](https://github.com/shayanhabibi/Ranvier/blob/master/examples/Ranvier.Motion/src/Routes.fs) | hash routing with `presence` page arms and `flip` on the shell |
+
+An animation started by an event handler, such as the kanban and physics springs, has no part to own
+it. The examples hold it in a small slot type of their own
+([`Page.fs`](https://github.com/shayanhabibi/Ranvier/blob/master/examples/Ranvier.Motion/src/Page.fs)):
+starting an animation cancels the running one, and the instance's disposal cancels the last.
 
 Run them from `examples/Ranvier.Motion` with `npm install`, then `npm run dev`.

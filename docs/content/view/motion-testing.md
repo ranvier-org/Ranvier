@@ -97,10 +97,12 @@ holds these steps.
 
 ## Server checks
 
-A portable template with Motion parts renders on .NET with `Server.render`, under the default
-`Reject` policy. Comparing that HTML with the render of a twin without the parts checks that the parts
-added nothing to the markup, as the [server checks of the Motion parts](https://github.com/shayanhabibi/Ranvier/blob/master/fable/Ranvier.View.Anime.Tests/ServerChecks.fs)
-do.
+A portable template with Motion parts renders on .NET with `Server.render`. Comparing that HTML with
+the render of a twin without the parts checks that the parts added nothing to the markup, as the
+[server checks of the Motion parts](https://github.com/shayanhabibi/Ranvier/blob/master/fable/Ranvier.View.Anime.Tests/ServerChecks.fs)
+do under the default `Reject` policy. A page with event handlers renders under `Omit`: the
+[story example's check](https://github.com/shayanhabibi/Ranvier/blob/master/examples/Ranvier.Motion/Server/Program.fs)
+renders the whole page and its twin with `Server.renderDocument` and fails when the documents differ.
 
 ## Bundle costs
 
@@ -128,15 +130,16 @@ each checked for drift in CI:
 | Entry | Against | Δ gzip | Budget |
 | --- | --- | --: | --: |
 | `Anime.animate (el, Anim (...))` | the same call written in JavaScript | 0 B | 64 B |
-| rows with `Motion.presence` | the same rows with `Hooks.motion` and `Hooks.exit` calling `animate` by hand | +679 B | 900 B |
-| a list with `Motion.flip` | the same list with `Hooks.reflow` calling `createLayout` by hand | +416 B | 600 B |
+| rows with `Motion.presence` | the same rows with `Hooks.motion` and `Hooks.exit` calling `animate` by hand | +732 B | 900 B |
+| a list with `Motion.flip` | the same list with `Hooks.reflow` calling `createLayout` by hand | +503 B | 600 B |
 | the view's motion, exit and reflow hook kinds | the view before them, in a bundle using none of them | +447 B | 450 B |
 
 The last row is the Playground's `sugar-size.mjs` explicit entry, recorded in the
 [motion seam note](https://github.com/shayanhabibi/Ranvier/blob/master/docs/research/2026-10-21-motion-seam.md#bundle-delta):
-every view bundle carries it, with or without animation. SVG element creation for the sugar's SVG tags
-adds about 86 B gzip more on the same entry
-([motion research note](https://github.com/shayanhabibi/Ranvier/blob/master/docs/research/2026-10-21-motion.md#motion-parts-steps-89)).
+every view bundle carries it, with or without animation. SVG element creation, the element-name
+checks and the client element refusals add a few hundred bytes more on the same entry; the
+[motion research note](https://github.com/shayanhabibi/Ranvier/blob/master/docs/research/2026-10-21-motion.md#motion-parts-steps-89)
+records each measurement.
 
 - An entry using one Motion part declares the anime feature classes of the functions that part calls
   and no others: `flip` brings `AutoLayout`, `WAAPIAnimation` and `Timeline`; `scroll`
