@@ -25,6 +25,7 @@
     <Compile Include="../../../src/Ranvier.View/Typed.fs" Link="Typed.fs" />
     <Compile Include="../../../src/Ranvier.View/Departures.fs" Link="Departures.fs" />
     <Compile Include="../../../src/Ranvier.View.Dom/DomEvents.fs" Link="DomEvents.fs" />
+    <Compile Include="../../../src/Ranvier.View/ContentModel.fs" Link="ContentModel.fs" />
     <Compile Include="../../../src/Ranvier.View/Template.fs" Link="Template.fs" />
     <Compile Include="../../../src/Ranvier.View/Generated/HtmlTemplate.fs" Link="Generated/HtmlTemplate.fs" />
     <Compile Include="../../../src/Ranvier.View/TemplateSugar.fs" Link="TemplateSugar.fs" />
