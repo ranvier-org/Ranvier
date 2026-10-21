@@ -27,6 +27,7 @@ cause, its fix and an example.
 | [RAN011](ran011.md) | Async value created and read in the owner that replaces it | Warning |
 | [RAN012](ran012.md) | Reactive read after the first await of an async memo | Warning |
 | [RAN013](ran013.md) | Signal write or Pump on a thread-pool callback | Warning |
+| [RAN020](ran020.md) | Reactive read at template build time | Warning |
 
 ## Running the analyzers
 

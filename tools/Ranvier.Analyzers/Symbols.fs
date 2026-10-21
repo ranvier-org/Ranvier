@@ -329,3 +329,58 @@ module Core =
         | "System.Threading.Tasks.Parallel", "ForEach"
         | "System.Threading.Timer", ".ctor" -> true
         | _ -> false
+
+/// The view layer's builders, sugar and definitions.
+module View =
+    [<Literal>]
+    let Builder = "Ranvier.View.Foundation.Template.TemplateBuilder`1"
+
+    [<Literal>]
+    let Attributes = "Ranvier.View.Foundation.Template.AttributeBuilder`1"
+
+    [<Literal>]
+    let Properties = "Ranvier.View.Foundation.Template.PropertyBuilder`1"
+
+    [<Literal>]
+    let Hooks = "Ranvier.View.Foundation.Template.HookBuilder`1"
+
+    [<Literal>]
+    let Unsafe = "Ranvier.View.Foundation.Template.UnsafeBuilder`1"
+
+    [<Literal>]
+    let Component = "Ranvier.View.Foundation.Template.Component"
+
+    [<Literal>]
+    let ComponentType = "Ranvier.View.Foundation.Template.Component`1"
+
+    [<Literal>]
+    let Sugar = "Ranvier.View.Foundation.Sugar.Builders"
+
+    [<Literal>]
+    let SugarComponent = "Ranvier.View.Foundation.Sugar.Builders.Component"
+
+    [<Literal>]
+    let Element = "Ranvier.View.Foundation.Sugar.Builders.Element`2"
+
+    [<Literal>]
+    let Elements = "Ranvier.View.Foundation.Sugar.Elements"
+
+    [<Literal>]
+    let Source = "Ranvier.View.Foundation.Template.Source`2"
+
+    [<Literal>]
+    let Hydration = "Ranvier.View.Foundation.Hydration"
+
+    [<Literal>]
+    let Microtask = "Ranvier.View.Foundation.Microtask"
+
+    /// Whether argument `index` of a call of `m` is read per region read: the arms of `matchWith` and `branch`, the
+    /// key and items of `each`, `forEach` and `forEachFixed`.
+    let isRegionLambda (m: FSharpMemberOrFunctionOrValue) (index: int) : bool =
+        let entity = enclosing m
+
+        (entity = Builder || entity = Sugar)
+        && (match m.LogicalName, index with
+            | ("matchWith" | "branch"), 1 -> true
+            | ("each" | "forEach" | "forEachFixed"), (0 | 1) -> true
+            | _ -> false)

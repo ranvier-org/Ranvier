@@ -94,6 +94,8 @@ item. See [Lists and keyed rows](collections.md).
 **A child does not follow a parent value.** `render`'s props reader runs once per instance. Pass the
 child a `Signal`, a `Memo` or a reader.
 
+The analyzers report this at build time: [RAN020](../analyzers/ran020.md).
+
 **Several effects run for one click.** Handlers run unbatched. Wrap the handler's writes in
 `Api.batch`. See [Events and hooks](events.md).
 

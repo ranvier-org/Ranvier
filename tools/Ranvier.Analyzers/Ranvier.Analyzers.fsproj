@@ -22,6 +22,7 @@
         <Compile Include="Rule.fs" />
         <Compile Include="Rules/Fable.fs" />
         <Compile Include="Rules/Core.fs" />
+        <Compile Include="Rules/View.fs" />
         <Compile Include="Analyzers.fs" />
     </ItemGroup>
     <ItemGroup>
