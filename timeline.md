@@ -48,6 +48,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 83,052 | 127,131 | 1,734,118 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 82,993 | 127,165 | 1,734,029 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 83,006 | 127,186 | 1,734,155 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 83,006 | 127,142 | 1,734,128 |
 
 ## app-table
 
@@ -97,6 +98,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 4,416,278 | 9,203,988 | 107,451,321 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 4,416,184 | 9,482,482 | 107,429,728 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 4,416,259 | 9,320,392 | 107,580,269 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 4,416,223 | 9,203,595 | 107,451,682 |
 
 ## async-recover
 
@@ -146,6 +148,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 139,040 | 39,722 | 440,652 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 138,908 | 39,667 | 440,646 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 138,908 | 39,726 | 440,641 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 138,908 | 39,724 | 440,640 |
 
 ## async-resolve
 
@@ -195,6 +198,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 2,792,309 | 1,085,567 | 12,317,141 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 2,788,709 | 1,085,426 | 12,314,050 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 2,788,708 | 1,085,476 | 12,314,312 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 2,788,708 | 1,085,588 | 12,317,052 |
 
 ## chain
 
@@ -244,6 +248,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 
 ## chain-affinity
 
@@ -293,6 +298,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 2,549 | 3,067 | 2,496 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 2,549 | 3,067 | 2,496 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 2,549 | 3,067 | 2,496 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 2,549 | 3,067 | 2,496 |
 
 ## control
 
@@ -342,6 +348,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 74,709 | 833,990 | 2,605,118 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 74,709 | 833,964 | 2,605,007 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 74,709 | 833,966 | 2,605,083 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 74,709 | 834,004 | 2,605,080 |
 
 ## create
 
@@ -391,6 +398,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 13,466,120 | 2,859,678 | 2,532,361 | 2,131,031 | 4,004,071 | 34,066,460 | 49,723,523 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 13,450,081 | 2,859,678 | 2,532,361 | 2,131,924 | 4,004,054 | 34,063,483 | 49,723,886 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 13,450,076 | 2,859,678 | 2,532,362 | 2,131,574 | 4,004,174 | 34,066,813 | 49,723,672 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 13,450,056 | 2,859,678 | 2,532,361 | 2,131,490 | 4,004,047 | 34,063,093 | 49,723,513 |
 
 ## create-on
 
@@ -440,6 +448,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 2,926,480 | 4,147,488 | 54,424,555 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 2,926,483 | 4,147,276 | 54,424,664 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 2,910,483 | 4,147,560 | 54,424,712 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 2,910,483 | 4,147,510 | 54,424,652 |
 
 ## cutoff
 
@@ -489,6 +498,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 
 ## derive-effect
 
@@ -538,6 +548,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 765 | 768 | 16,102 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 765 | 768 | 16,102 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 765 | 768 | 16,102 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 765 | 768 | 16,102 |
 
 ## derive-on
 
@@ -587,6 +598,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 737 | 775 | 16,261 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 737 | 775 | 16,261 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 737 | 775 | 16,261 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 737 | 775 | 16,261 |
 
 ## dispose
 
@@ -636,6 +648,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 2,707,645 | 806,291 | 367,497 | 466,146 | 485,190 | 13,192,878 | 9,105,766 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 2,707,643 | 806,291 | 367,497 | 466,161 | 485,312 | 13,195,906 | 9,105,580 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 2,706,243 | 806,291 | 367,497 | 465,939 | 485,409 | 13,192,461 | 9,106,048 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 2,707,643 | 806,291 | 367,497 | 465,989 | 485,057 | 13,195,293 | 9,105,879 |
 
 ## dispose-on
 
@@ -685,6 +698,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 346,497 | 478,514 | 8,902,582 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 346,497 | 478,643 | 8,902,770 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 346,497 | 478,604 | 8,902,544 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 346,497 | 478,438 | 8,902,380 |
 
 ## editable-edit
 
@@ -734,6 +748,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 180,106 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 180,106 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 180,106 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 180,106 |
 
 ## editable-upstream
 
@@ -783,6 +798,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 231,255 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 231,255 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 231,255 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 231,255 |
 
 ## fail-recompute
 
@@ -832,6 +848,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 65,082 | 1,366 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 65,106 | 1,366 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 65,106 | 1,366 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 65,106 | 1,366 |
 
 ## flight
 
@@ -881,6 +898,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 10,995 | 6,215 | 6,216 | 11,316 | 10,763 | 22,343 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 10,995 | 6,215 | 6,216 | 11,316 | 10,763 | 22,341 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 10,995 | 6,215 | 6,216 | 11,316 | 10,763 | 22,341 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 
 ## keyed-insert
 
@@ -930,6 +948,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 1,921,809 | 53,951 | 54,952 | 3,218,744 | 661,701 | 176,618 | 44,849,862 | 2,634,953 | 2,654,174 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 1,921,809 | 53,951 | 54,948 | 3,218,784 | 661,918 | 176,593 | 44,849,854 | 2,634,915 | 2,654,166 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 1,921,825 | 53,951 | 54,960 | 3,218,701 | 661,896 | 176,569 | 44,849,827 | 2,634,913 | 2,654,316 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 1,921,825 | 53,951 | 54,961 | 3,218,690 | 661,901 | 176,511 | 44,849,856 | 2,634,976 | 2,654,203 |
 
 ## keyed-remove
 
@@ -979,6 +998,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 1,920,737 | 43,628 | 45,285 | 3,245,053 | 593,038 | 604,934 | 44,798,145 | 1,924,888 | 1,958,553 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 1,920,740 | 43,628 | 45,285 | 3,244,988 | 593,073 | 605,180 | 44,798,138 | 1,924,879 | 1,958,566 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 1,920,752 | 43,628 | 45,300 | 3,245,009 | 593,223 | 605,048 | 44,798,161 | 1,924,915 | 1,958,567 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 1,920,748 | 43,628 | 45,300 | 3,245,014 | 592,981 | 605,218 | 44,798,135 | 1,924,905 | 1,958,573 |
 
 ## keyed-swap
 
@@ -1028,6 +1048,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 1,973,428 | 46,162 | 46,915 | 3,565,364 | 148,801 | 511,378 | 45,980,639 | 916,505 | 932,899 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 1,973,428 | 46,161 | 46,915 | 3,562,638 | 148,816 | 511,394 | 45,976,612 | 916,412 | 932,865 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 1,973,444 | 46,161 | 46,931 | 3,561,040 | 148,774 | 511,419 | 45,980,255 | 916,495 | 932,920 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 1,973,444 | 46,162 | 46,932 | 3,564,528 | 148,811 | 511,379 | 45,980,641 | 916,502 | 932,916 |
 
 ## mvu-dispatch
 
@@ -1077,6 +1098,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 58,261 | 772 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 58,261 | 772 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 58,261 | 772 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 58,261 | 772 |
 
 ## project-chain
 
@@ -1126,6 +1148,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 1,070,343 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 1,070,241 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 1,070,307 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 1,070,225 |
 
 ## project-churn
 
@@ -1175,6 +1198,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 36,489 | 34,326 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 36,473 | 34,310 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 36,473 | 34,310 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 36,489 | 34,326 |
 
 ## project-edit
 
@@ -1224,6 +1248,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 50,415 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 50,415 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 50,431 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 50,431 |
 
 ## project-reorder
 
@@ -1273,6 +1298,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 779,156 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 779,155 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 779,171 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 779,172 |
 
 ## server-render
 
@@ -1322,6 +1348,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 676,332 | 1,131,668 | 9,832,805 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 676,238 | 1,130,708 | 9,832,837 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 676,302 | 1,131,265 | 9,832,279 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 676,238 | 1,131,336 | 9,833,037 |
 
 ## shape-diamond
 
@@ -1371,6 +1398,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 59,899 | 79,968 | 1,763,357 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 59,899 | 79,968 | 1,763,357 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 59,899 | 79,968 | 1,763,357 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 59,899 | 79,968 | 1,763,357 |
 
 ## shape-dynamic
 
@@ -1420,6 +1448,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 82,921 | 107,033 | 2,006,140 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 82,921 | 107,033 | 2,006,140 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 82,921 | 107,033 | 2,006,144 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 82,921 | 107,033 | 2,006,140 |
 
 ## stream-burst-1
 
@@ -1469,6 +1498,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 1,974 | 1,572 | 2,491 | 4,671 | 3,644 | 13,371 | 47,201 | 45,417 | 55,171 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 1,974 | 1,572 | 2,506 | 4,668 | 3,644 | 13,368 | 47,201 | 45,417 | 55,168 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 1,974 | 1,572 | 2,490 | 4,671 | 3,644 | 13,371 | 47,201 | 45,417 | 55,171 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 1,974 | 1,572 | 2,506 | 4,671 | 3,644 | 13,368 | 47,199 | 45,417 | 55,171 |
 
 ## stream-burst-16
 
@@ -1518,6 +1548,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 5,631 | 25,017 | 5,701 | 9,499 | 49,601 | 8,051 | 120,971 | 714,180 | 113,522 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 5,631 | 25,017 | 5,716 | 9,498 | 49,601 | 8,051 | 120,968 | 714,180 | 113,521 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 5,631 | 25,017 | 5,700 | 9,502 | 49,601 | 8,051 | 120,973 | 714,180 | 113,522 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 5,631 | 25,017 | 5,716 | 9,501 | 49,601 | 8,049 | 120,969 | 714,180 | 113,522 |
 
 ## stream-burst-256
 
@@ -1567,6 +1598,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 64,131 | 400,101 | 57,040 | 127,383 | 787,263 | 74,605 | 1,301,511 | 11,413,287 | 1,046,550 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 64,131 | 400,101 | 57,055 | 127,302 | 787,259 | 74,571 | 1,301,576 | 11,413,288 | 1,046,549 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 64,131 | 400,101 | 57,039 | 127,472 | 787,263 | 74,603 | 1,301,499 | 11,413,287 | 1,046,540 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 64,131 | 400,101 | 57,055 | 127,406 | 787,260 | 74,605 | 1,301,528 | 11,413,287 | 1,046,548 |
 
 ## stream-restart
 
@@ -1616,6 +1648,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 4,188 | 4,976 | 6,106 | 16,360 | 41,493 | 70,403 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 4,188 | 4,991 | 6,101 | 16,353 | 41,498 | 70,403 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 4,188 | 4,975 | 6,106 | 16,360 | 41,495 | 70,406 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 4,187 | 4,991 | 6,104 | 16,356 | 41,499 | 70,403 |
 
 ## timed-admit-both
 
@@ -1665,6 +1698,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 118,591 | 134,964 | 2,679,929 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 118,591 | 134,963 | 2,679,928 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 119,615 | 134,965 | 2,679,929 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 118,591 | 134,965 | 2,679,929 |
 
 ## timed-admit-debounce
 
@@ -1714,6 +1748,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 117,496 | 133,559 | 2,640,272 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 117,496 | 133,556 | 2,640,272 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 118,520 | 133,583 | 2,640,285 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 117,496 | 133,558 | 2,640,272 |
 
 ## timed-admit-first
 
@@ -1763,6 +1798,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 69,479 | 79,053 | 1,611,692 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 69,479 | 79,051 | 1,611,692 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 70,503 | 79,053 | 1,611,692 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 69,479 | 79,053 | 1,611,692 |
 
 ## timed-admit-last
 
@@ -1812,6 +1848,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 117,758 | 133,877 | 2,650,140 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 117,758 | 133,852 | 2,650,141 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 118,782 | 133,854 | 2,650,141 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 117,758 | 133,878 | 2,650,128 |
 
 ## timed-capture-both
 
@@ -1861,6 +1898,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 35,726 | 44,807 | 846,997 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 35,726 | 44,808 | 846,997 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 35,726 | 44,808 | 847,000 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 35,726 | 44,807 | 846,997 |
 
 ## timed-capture-debounce
 
@@ -1910,6 +1948,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 35,598 | 44,104 | 847,375 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 35,598 | 44,104 | 847,375 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 35,598 | 44,104 | 847,375 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 35,598 | 44,104 | 847,375 |
 
 ## timed-capture-first
 
@@ -1959,6 +1998,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 32,078 | 36,612 | 745,371 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 32,078 | 36,612 | 745,372 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 32,078 | 36,612 | 745,372 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 32,078 | 36,612 | 745,370 |
 
 ## timed-capture-last
 
@@ -2008,6 +2048,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 35,534 | 44,040 | 839,503 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 35,534 | 44,040 | 839,503 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 35,534 | 44,040 | 839,503 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 35,534 | 44,040 | 839,503 |
 
 ## update
 
@@ -2057,6 +2098,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 1,087,682 | 38,805 | 82,505 | 263,098 | 151,681 | 3,350,208 | 2,502,803 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 1,087,690 | 38,805 | 82,505 | 262,472 | 151,719 | 3,350,264 | 2,502,780 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 1,087,690 | 38,805 | 82,505 | 262,607 | 151,714 | 3,350,250 | 2,502,787 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 1,087,683 | 38,805 | 82,505 | 262,521 | 151,660 | 3,350,225 | 2,502,762 |
 
 ## update-on
 
@@ -2106,6 +2148,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 93,005 | 165,230 | 2,830,354 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 93,005 | 165,206 | 2,830,335 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 93,005 | 165,209 | 2,830,434 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 93,005 | 165,214 | 2,830,397 |
 
 ## work-form
 
@@ -2155,6 +2198,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 170,300 | 163,392 | 295,967 | 291,425 | 5,349,286 | 5,295,422 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 170,300 | 163,392 | 295,902 | 291,347 | 5,349,235 | 5,295,442 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 170,300 | 163,427 | 295,967 | 291,364 | 5,349,259 | 5,295,445 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 170,300 | 163,392 | 295,899 | 291,430 | 5,349,272 | 5,295,444 |
 
 ## work-status
 
@@ -2204,6 +2248,7 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 100,445 | 78,815 | 264,846 | 152,929 | 2,611,056 | 2,360,860 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 100,445 | 78,815 | 264,855 | 152,961 | 2,611,043 | 2,360,848 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 100,445 | 78,815 | 264,796 | 152,948 | 2,611,019 | 2,360,873 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 100,445 | 78,815 | 264,844 | 152,958 | 2,611,054 | 2,360,876 |
 
 ## work-value
 
@@ -2253,4 +2298,5 @@
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 107,569 | 119,469 | 265,058 | 279,881 | 2,595,669 | 2,920,175 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 107,569 | 119,469 | 265,079 | 279,859 | 2,595,627 | 2,920,219 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 107,569 | 119,469 | 265,105 | 279,902 | 2,595,684 | 2,920,181 |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 107,569 | 119,469 | 265,043 | 279,864 | 2,595,683 | 2,920,202 |
 
