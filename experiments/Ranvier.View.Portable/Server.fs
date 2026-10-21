@@ -234,7 +234,10 @@ let renderTo (options: Options) (definition: Component<'props>) (props: 'props) 
 
     sink.Segments write
 
-/// <summary>The <c>stateScript</c> element with <c>nonce</c>, an attribute string or empty, after its id.</summary>
+/// <summary>
+/// The <c>stateScript</c> element, with <c>nonce</c> (a leading-space attribute string, or empty) written after the id
+/// attribute.
+/// </summary>
 let private stateElement (nonce: string) (id: string) (json: string) : string =
     let escaped =
         json.Replace("<", "\\u003c").Replace(string (char 0x2028), "\\u2028").Replace(string (char 0x2029), "\\u2029")
@@ -297,7 +300,10 @@ let renderPage (options: Options) (definition: Component<'props>) (props: 'props
 /// <summary>A module script of a document, written after the host element and the state elements.</summary>
 [<RequireQualifiedAccess>]
 type ModuleScript =
-    /// <summary><c>&lt;script type="module" src&gt;</c> loading the escaped URL.</summary>
+    /// <summary>
+    /// <c>&lt;script type="module" src&gt;</c> loading the escaped URL. The URL is a trusted author URL, written as given
+    /// apart from escaping.
+    /// </summary>
     | Src of src: string
     /// <summary>
     /// <c>&lt;script type="module"&gt;</c> holding the text as given. Text containing <c>&lt;/script</c> in any ASCII
@@ -308,25 +314,31 @@ type ModuleScript =
 /// <summary>The HTML document <c>renderDocument</c> writes around a component.</summary>
 type DocumentShell =
     {
-        /// <summary>The <c>lang</c> attribute of <c>&lt;html&gt;</c>; <c>None</c> omits it.</summary>
+        /// <summary>The <c>lang</c> attribute of <c>&lt;html&gt;</c>; <c>None</c> or <c>Some null</c> omits it.</summary>
         Lang: string option
         /// <summary>The id of the <c>&lt;div&gt;</c> holding the rendered body.</summary>
         HostId: string
-        /// <summary>The state elements after the host, each an id and its JSON as <c>stateScript</c> takes them.</summary>
+        /// <summary>
+        /// The state elements after the host, each an id and its JSON as <c>stateScript</c> takes them; a null JSON value
+        /// is rejected.
+        /// </summary>
         State: (string * string) list
-        /// <summary>The <c>href</c> of each <c>&lt;link rel="stylesheet"&gt;</c>, written after the head entries.</summary>
+        /// <summary>
+        /// The <c>href</c> of each <c>&lt;link rel="stylesheet"&gt;</c>, written after the head entries. Each is a trusted
+        /// author URL, written as given apart from escaping.
+        /// </summary>
         Stylesheets: string list
         /// <summary>The scripts after the state elements, in order.</summary>
         Scripts: ModuleScript list
         /// <summary>
-        /// The <c>nonce</c> attribute of every script and state element, for a <c>Content-Security-Policy</c>
-        /// <c>script-src 'nonce-...'</c>; <c>None</c> omits it. A nonce holds ASCII letters, digits and
-        /// <c>+ / = - _</c>.
+        /// The <c>nonce</c> attribute of every script, state and stylesheet element, for a
+        /// <c>Content-Security-Policy</c> <c>script-src</c> or <c>style-src 'nonce-...'</c>; <c>None</c> or
+        /// <c>Some null</c> omits it. A nonce holds ASCII letters, digits and <c>+ / = - _</c>.
         /// </summary>
         Nonce: string option
-        /// <summary>The further attributes of <c>&lt;html&gt;</c>, after <c>lang</c>.</summary>
+        /// <summary>The further attributes of <c>&lt;html&gt;</c>, after <c>lang</c>; an <c>id</c> joins the document's ids.</summary>
         HtmlAttributes: (string * string) list
-        /// <summary>The attributes of <c>&lt;body&gt;</c>.</summary>
+        /// <summary>The attributes of <c>&lt;body&gt;</c>; an <c>id</c> joins the document's ids.</summary>
         BodyAttributes: (string * string) list
     }
 
@@ -360,6 +372,28 @@ let private validateId (id: string) =
             ArgumentException (
                 "An element id must be non-empty and contain no ASCII whitespace: \""
                 + id
+                + "\"",
+                "document"
+            )
+        )
+
+/// <summary>Adds a valid <c>id</c> to <c>ids</c>; an invalid id or one already in <c>ids</c> raises.</summary>
+let private addId (ids: ResizeArray<string>) (id: string) =
+    validateId id
+
+    if ids.Contains id then
+        raise (ArgumentException ("The element id " + id + " is written twice", "document"))
+
+    ids.Add id
+
+let private validateName (name: string) =
+    try
+        validateAttribute name
+    with _ ->
+        raise (
+            ArgumentException (
+                "Attribute names must be lowercase and cannot contain event handlers or raw document content: \""
+                + name
                 + "\"",
                 "document"
             )
@@ -408,13 +442,19 @@ let private validateInline (text: string) =
 
         index <- text.IndexOf ('<', index + 1)
 
-/// <summary>The attributes as <c> name="value"</c> pairs; a name repeated or among <c>reserved</c> raises.</summary>
-let private attributes (reserved: string list) (pairs: (string * string) list) : string =
+/// <summary>
+/// The attributes as <c> name="value"</c> pairs; a name repeated or among <c>reserved</c> raises, and an <c>id</c> value
+/// goes through <c>addId</c>.
+/// </summary>
+let private attributes (ids: ResizeArray<string>) (reserved: string list) (pairs: (string * string) list) : string =
     let seen = ResizeArray<string> reserved
 
     pairs
     |> List.map (fun (name, value) ->
-        validateAttribute name
+        validateName name
+
+        if name = "id" then
+            addId ids value
 
         if seen.Contains name then
             raise (ArgumentException ("The attribute " + name + " is written twice", "document"))
@@ -430,32 +470,38 @@ let private attributes (reserved: string list) (pairs: (string * string) list) :
 let private shell (document: DocumentShell) : string * string * string =
     validateId document.HostId
 
+    // Some null reads as None on .NET, as it does under Fable's erased options.
     let nonce =
         match document.Nonce with
-        | Some nonce ->
+        | Some nonce when not (isNull nonce) ->
             validateNonce nonce
             " nonce=\"" + Html.escape true nonce + "\""
-        | None -> ""
+        | _ -> ""
 
     let ids = ResizeArray<string> [ document.HostId ]
 
-    for id, _ in document.State do
-        validateId id
+    for id, json in document.State do
+        addId ids id
 
-        if ids.Contains id then
-            raise (ArgumentException ("The element id " + id + " is written twice", "document"))
-
-        ids.Add id
+        if isNull json then
+            raise (
+                ArgumentException (
+                    "The state element "
+                    + id
+                    + " has a null JSON value",
+                    "document"
+                )
+            )
 
     let lang, reserved =
         match document.Lang with
-        | Some lang -> " lang=\"" + Html.escape true lang + "\"", [ "lang" ]
-        | None -> "", []
+        | Some lang when not (isNull lang) -> " lang=\"" + Html.escape true lang + "\"", [ "lang" ]
+        | _ -> "", []
 
     let start =
         "<!doctype html><html"
         + lang
-        + attributes reserved document.HtmlAttributes
+        + attributes ids reserved document.HtmlAttributes
         + "><head><meta charset=\"utf-8\">"
 
     let middle =
@@ -463,10 +509,12 @@ let private shell (document: DocumentShell) : string * string * string =
          |> List.map (fun href ->
              "<link rel=\"stylesheet\" href=\""
              + Html.escape true href
-             + "\">")
+             + "\""
+             + nonce
+             + ">")
          |> String.concat "")
         + "</head><body"
-        + attributes [] document.BodyAttributes
+        + attributes ids [] document.BodyAttributes
         + "><div id=\""
         + Html.escape true document.HostId
         + "\">"
@@ -510,13 +558,14 @@ let private shell (document: DocumentShell) : string * string * string =
 /// The document is <c>&lt;!doctype html&gt;</c>, then <c>&lt;html&gt;</c> with <c>lang</c> and <c>HtmlAttributes</c>.
 /// Its <c>&lt;head&gt;</c> holds <c>&lt;meta charset="utf-8"&gt;</c>, the page's head entries and the stylesheets.
 /// Its <c>&lt;body&gt;</c> holds the host <c>&lt;div&gt;</c>, whose only content is the page's body, then the state
-/// elements, then the scripts. Each script and state element carries <c>Nonce</c> as its last attribute. Elements
-/// are written without whitespace between them.
+/// elements, then the scripts. Each script, state and stylesheet element carries <c>Nonce</c> as its last
+/// attribute. Elements are written without whitespace between them.
 /// </para>
 /// <para>
 /// Every attribute value is escaped as <c>Html.escape true</c> escapes it. <c>ArgumentException</c> is raised for an
-/// id that is empty or contains ASCII whitespace, an id written twice, an attribute name <c>validateAttribute</c>
-/// rejects, an attribute written twice on an element, a nonce that is empty or holds a character outside ASCII
+/// id that is null, empty or contains ASCII whitespace (space, tab, line feed, form feed, carriage return), an id
+/// written twice among the host, state, <c>&lt;html&gt;</c> and <c>&lt;body&gt;</c> ids, a null state JSON value, an
+/// attribute name <c>validateAttribute</c> rejects, an attribute written twice on an element, a nonce that is empty or holds a character outside ASCII
 /// letters, digits and <c>+ / = - _</c>, and inline module text containing <c>&lt;/script</c> in any ASCII case or
 /// <c>&lt;!--</c>.
 /// </para>

@@ -118,13 +118,24 @@ and writes the whole document around it:
 | `State` | `[]` | One [`stateScript`](state-transfer.md#writing-the-state) element per id and JSON pair. |
 | `Stylesheets` | `[]` | One `<link rel="stylesheet">` per URL, after the head entries. |
 | `Scripts` | `[]` | `Server.ModuleScript.Src src` writes `<script type="module" src>`; `Server.ModuleScript.Inline text` writes the text inside `<script type="module">`. |
-| `Nonce` | `None` | The `nonce` attribute of every script and state element, for a `Content-Security-Policy` of `script-src 'nonce-...'`. |
-| `HtmlAttributes`, `BodyAttributes` | `[]` | Further attributes of `<html>` and `<body>`. |
+| `Nonce` | `None` | The `nonce` attribute of every script, state and stylesheet element, for a `Content-Security-Policy` of `script-src` or `style-src 'nonce-...'`. |
+| `HtmlAttributes`, `BodyAttributes` | `[]` | Further attributes of `<html>` and `<body>`. An `id` among them joins the document's ids. |
 
-Every attribute value is escaped. `renderDocument` raises `ArgumentException` before the render for an
-id that is empty, contains whitespace or is written twice, an attribute name that a template rejects or
-that an element repeats, a nonce that is empty or holds a character other than ASCII letters, digits and
-`+ / = - _`, and inline module text containing `</script` in any letter case or `<!--`.
+Every attribute value is escaped. Script and stylesheet URLs are trusted author URLs, written as given
+apart from escaping: pass only URLs the application controls. `Some null` for `Lang` or `Nonce` writes
+nothing, as `None` does.
+
+`renderDocument` raises `ArgumentException` before the render for:
+
+- an id that is null, empty or contains ASCII whitespace (space, tab, line feed, form feed, carriage
+  return);
+- an id written twice among the host, the state elements and the `id` attributes of `<html>` and
+  `<body>`;
+- a state element whose JSON is null;
+- an attribute name that a template rejects, or one that an element repeats;
+- a nonce that is empty or holds a character other than ASCII letters, digits and `+ / = - _`;
+- inline module text containing `</script` in any letter case, or `<!--`.
+
 A failed render raises as [`renderPage`](rendering.md#failures) does.
 `Server.renderDocumentTo options document definition props write` passes the same document to `write`
 in segments, after a successful render.

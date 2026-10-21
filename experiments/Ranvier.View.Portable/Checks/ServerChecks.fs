@@ -1922,6 +1922,15 @@ let private documentOrder () =
     Server.renderDocumentTo Server.Options.defaults fullDocument documentPage documentProps written.Add
     equal html (String.concat "" written)
 
+    let headless = Component.define (fun _ () -> ()) (fun t -> t.span [||] [||])
+    let streamed = ResizeArray<string>()
+    Server.renderDocumentTo Server.Options.defaults Server.DocumentShell.defaults headless () streamed.Add
+
+    equal
+        ("<!doctype html><html><head><meta charset=\"utf-8\"></head><body><div id=\"app\"><!--[r--><span></span><!--]--></div></body></html>", true)
+        (Server.renderDocument Server.Options.defaults Server.DocumentShell.defaults headless (),
+         Server.renderDocument Server.Options.defaults Server.DocumentShell.defaults headless () = String.concat "" streamed)
+
 let private documentEscapes () =
     let hostile = "\"><script>alert(1)</script>&"
     let escaped = "&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;&amp;"
@@ -2006,6 +2015,12 @@ let private documentRejections () =
                     { Server.DocumentShell.defaults with
                         State = [ "s\n", "1" ]
                     }
+                    { Server.DocumentShell.defaults with
+                        BodyAttributes = [ "id", "a b" ]
+                    }
+                    { Server.DocumentShell.defaults with
+                        HtmlAttributes = [ "id", "" ]
+                    }
                 ] ->
                 let message, same, written, setups = rejected document
                 message.StartsWith (invalidId, StringComparison.Ordinal), same, written, setups
@@ -2014,7 +2029,7 @@ let private documentRejections () =
                 message.StartsWith (invalidInline, StringComparison.Ordinal), same, written, setups
         ]
 
-    equal (List.replicate 13 (true, true, 0, 0)) messages
+    equal (List.replicate 15 (true, true, 0, 0)) messages
 
     let duplicates =
         [
@@ -2031,25 +2046,62 @@ let private documentRejections () =
             { Server.DocumentShell.defaults with
                 BodyAttributes = [ "class", "a"; "class", "b" ]
             }
+            { Server.DocumentShell.defaults with
+                BodyAttributes = [ "id", "app" ]
+            }
+            { Server.DocumentShell.defaults with
+                State = [ "s", "1" ]
+                HtmlAttributes = [ "id", "s" ]
+            }
+            { Server.DocumentShell.defaults with
+                HtmlAttributes = [ "id", "x" ]
+                BodyAttributes = [ "id", "x" ]
+            }
         ]
         |> List.map (fun document ->
             let message, _, written, setups = rejected document
             message.Contains "twice", written, setups)
 
-    equal (List.replicate 4 (true, 0, 0)) duplicates
+    equal (List.replicate 7 (true, 0, 0)) duplicates
 
     let names =
         [ "onclick"; "Class"; ""; "a b" ]
         |> List.map (fun name ->
-            let message, _, written, _ =
+            let message, same, written, setups =
                 rejected
                     { Server.DocumentShell.defaults with
                         BodyAttributes = [ name, "x" ]
                     }
 
-            message.Contains "names must", written)
+            message.Contains "names must", same, written, setups)
 
-    equal (List.replicate 4 (true, 0)) names
+    equal (List.replicate 4 (true, true, 0, 0)) names
+
+    let nullState =
+        let message, same, written, setups =
+            rejected
+                { Server.DocumentShell.defaults with
+                    State = [ "s", null ]
+                }
+
+        message.StartsWith ("The state element s has a null JSON value", StringComparison.Ordinal), same, written, setups
+
+    equal (true, true, 0, 0) nullState
+
+    let hostIds =
+        Server.renderDocument
+            Server.Options.defaults
+            { Server.DocumentShell.defaults with
+                HtmlAttributes = [ "id", "root" ]
+                BodyAttributes = [ "id", "page" ]
+            }
+            documentPage
+            documentProps
+
+    equal
+        true
+        (hostIds.Contains "<html id=\"root\">"
+         && hostIds.Contains "<body id=\"page\"><div id=\"app\">")
 
     let accepted =
         [ "if (a < b) {}"; "</scrip"; "</style>"; "<!-"; "'<\\/script>'"; "" ]
@@ -2066,13 +2118,15 @@ let private documentNonce () =
         }
 
     equal
-        ("<script type=\"application/json\" id=\"page-props\" nonce=\"aB3+/=-_\">{\"title\":\"Tides\"}</script>"
+        ("<link rel=\"stylesheet\" href=\"/site.css\" nonce=\"aB3+/=-_\"></head><body class=\"page\"><div id=\"app\">"
+         + "<!--[r--><div><p>moons</p></div><!--]--></div>"
+         + "<script type=\"application/json\" id=\"page-props\" nonce=\"aB3+/=-_\">{\"title\":\"Tides\"}</script>"
          + "<script type=\"module\" src=\"/main.js\" nonce=\"aB3+/=-_\"></script>"
          + "<script type=\"module\" nonce=\"aB3+/=-_\">start();</script></body></html>")
         (let html =
             Server.renderDocument Server.Options.defaults nonced documentPage documentProps
 
-         html.Substring (html.IndexOf "<script"))
+         html.Substring (html.IndexOf "<link"))
 
     let rejected =
         [ ""; "a b"; "a\"b"; "a'b"; "a<b"; "a&b"; "é"; "a\n" ]
@@ -2087,6 +2141,21 @@ let private documentNonce () =
             error.Message.StartsWith ("A nonce must be non-empty", StringComparison.Ordinal), written.Count, documentLog.Count)
 
     equal (List.replicate 8 (true, 0, 0)) rejected
+
+    let render (document: Server.DocumentShell) =
+        Server.renderDocument Server.Options.defaults document documentPage documentProps
+
+    equal
+        (render
+            { fullDocument with
+                Lang = None
+                Nonce = None
+            })
+        (render
+            { fullDocument with
+                Lang = Some null
+                Nonce = Some null
+            })
 
 let private documentFailures () =
     attemptLog.Clear ()
@@ -2103,17 +2172,36 @@ let private documentFailures () =
     let cleanupFails =
         Component.define (fun setup () -> setup.OnCleanup (fun () -> failwith "cleanup failed")) (fun t -> t.span [||] [||])
 
-    let cleanup =
-        failure (fun () ->
-            Server.renderDocument Server.Options.defaults Server.DocumentShell.defaults cleanupFails ()
-            |> ignore)
+    let cleanupAndSetupFail =
+        Component.define
+            (fun setup () ->
+                setup.OnCleanup (fun () -> failwith "cleanup failed")
+                failwith "setup failed")
+            (fun t -> t.span [||] [||])
+
+    let both (definition: Component<unit>) =
+        let streamed = ResizeArray<string>()
+
+        let direct =
+            failure (fun () ->
+                Server.renderDocument Server.Options.defaults Server.DocumentShell.defaults definition ()
+                |> ignore)
+
+        let viaWrite =
+            failure (fun () -> Server.renderDocumentTo Server.Options.defaults Server.DocumentShell.defaults definition () streamed.Add)
+
+        direct.Message, viaWrite.Message = direct.Message, streamed.Count
+
+    let cleanupMessage, cleanupSame, cleanupWritten = both cleanupFails
+    let failedMessage, failedSame, failedWritten = both cleanupAndSetupFail
 
     equal
-        (true, [ "unguarded cleanup" ], 0, true)
+        (true, [ "unguarded cleanup" ], 0, (true, true, 0), (true, true, 0))
         (isPending,
          List.ofSeq attemptLog,
          written.Count,
-         cleanup.Message.StartsWith ("Server render cleanup failed: cleanup failed", StringComparison.Ordinal))
+         (cleanupMessage.StartsWith ("Server render cleanup failed: cleanup failed", StringComparison.Ordinal), cleanupSame, cleanupWritten),
+         (failedMessage.StartsWith ("Server render failed: setup failed; cleanup failed", StringComparison.Ordinal), failedSame, failedWritten))
 
 let cases: (string * (unit -> unit)) array =
     [|
@@ -2198,10 +2286,12 @@ let cases: (string * (unit -> unit)) array =
         "renderDocument places head entries in the head, only the body in the host, then state, then scripts; renderDocumentTo writes the same document",
         documentOrder
         "renderDocument escapes every attribute value and the state script's id", documentEscapes
-        "renderDocument rejects invalid or repeated ids and attributes and closing inline script text before the render", documentRejections
+        "renderDocument rejects invalid or repeated ids across host, state, html and body, invalid attributes, null state and closing inline script text before the render",
+        documentRejections
         "renderDocument raises ServerPendingException and the cleanup aggregate as renderPage does, and renderDocumentTo writes nothing then",
         documentFailures
-        "renderDocument writes the nonce on every script and state element and rejects an empty or out-of-charset nonce", documentNonce
+        "renderDocument writes the nonce on every script, state and stylesheet element, reads Some null as None and rejects an empty or out-of-charset nonce",
+        documentNonce
     |]
 
 #if !FABLE_COMPILER
@@ -2381,8 +2471,48 @@ let private collectorTruncates () =
     equal (3, "<t1><l1><m1>") (heads.Count, heads.ToString ())
     equal true ((failure (fun () -> heads.Truncate 4)) :? ArgumentException)
 
+let private documentParamNames () =
+    let paramName (document: Server.DocumentShell) =
+        match
+            failure (fun () ->
+                Server.renderDocument Server.Options.defaults document documentPage documentProps
+                |> ignore)
+        with
+        | :? ArgumentException as error -> error.ParamName
+        | error -> error.GetType().Name
+
+    equal
+        (List.replicate 7 "document")
+        [
+            for document in
+                [
+                    { Server.DocumentShell.defaults with
+                        HostId = ""
+                    }
+                    { Server.DocumentShell.defaults with
+                        State = [ "app", "1" ]
+                    }
+                    { Server.DocumentShell.defaults with
+                        State = [ "s", null ]
+                    }
+                    { Server.DocumentShell.defaults with
+                        BodyAttributes = [ "onclick", "x" ]
+                    }
+                    { Server.DocumentShell.defaults with
+                        BodyAttributes = [ "class", "a"; "class", "b" ]
+                    }
+                    { Server.DocumentShell.defaults with
+                        Nonce = Some "a b"
+                    }
+                    { Server.DocumentShell.defaults with
+                        Scripts = [ Server.ModuleScript.Inline "</script>" ]
+                    }
+                ] -> paramName document
+        ]
+
 let dotnetCases: (string * (unit -> unit)) array =
     [|
+        "every renderDocument rejection is an ArgumentException naming the document parameter", documentParamNames
         "escape returns the input string when nothing needs escaping", escapeKeepsReference
         "concurrent first renders publish one plan and one arm reader", concurrentPublication
         "two concurrent requests render their own props", concurrentRequests
