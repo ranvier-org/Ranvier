@@ -216,10 +216,12 @@ let private namesAtDefinition () =
 
     equal (List.replicate 17 true) [ for error in rejected -> error.Message.Contains "names must" ]
 
+#if !FABLE_COMPILER
     let caseTwins =
         failure (define (fun t -> t.element (HtmlTag "svg") [| t.Attrs.attribute ("viewBox", "1"); t.Attrs.attribute ("viewbox", "2") |] [||]))
 
     equal true (caseTwins.Message.Contains "differ only by case")
+#endif
 
     // An SVG tag makes the SVG names available under Fable.
     Ranvier.View.Foundation.Sugar.SvgElements.svg<unit>()

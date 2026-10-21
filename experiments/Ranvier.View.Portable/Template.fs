@@ -330,8 +330,8 @@ let rec private holds (counts: TemplateNode -> bool) (nodes: TemplateNode array)
 
 /// <summary>
 /// The failure of an element that templates reject on both client paths, synchronous and queued: a raw-text element
-/// with children (or <c>plaintext</c>), a <c>template</c> element, a void element with children, or an RCDATA element with
-/// children other than text; null for any other element. The server rejects every raw-text element.
+/// with children (or <c>plaintext</c>), a <c>template</c> element or a void element with children; null for any other
+/// element. The server rejects every raw-text element, and an RCDATA element with element children.
 /// </summary>
 let private refusal tag (children: TemplateNode array) : string =
     let lowered = (name tag).ToLowerInvariant()
@@ -346,11 +346,6 @@ let private refusal tag (children: TemplateNode array) : string =
         "Template elements are not supported in templates"
     elif isVoid tag && holds (fun _ -> true) children then
         "A void element has children"
-    elif
-        isRcdata lowered
-        && holds (fun node -> not (isText node)) children
-    then
-        "An RCDATA element holds text only"
     else
         null
 
@@ -2176,6 +2171,8 @@ let private elementNode tag (parts: Part<'native, 'inst> array) (children: Templ
     if contents > 1 then
         raise (ArgumentException ("An element takes at most one content part", "parts"))
 
+#if !FABLE_COMPILER
+    // Attribute names that differ only by case raise in the server's definition path only.
     let attributeNames = ResizeArray<string>()
 
     for attribute, _ in attributes do
@@ -2205,6 +2202,7 @@ let private elementNode tag (parts: Part<'native, 'inst> array) (children: Templ
                         "parts"
                     )
                 )
+#endif
 
     if contents = 1 && children.Length > 0 then
         raise (ArgumentException ("An element with a content part has no template children", "children"))

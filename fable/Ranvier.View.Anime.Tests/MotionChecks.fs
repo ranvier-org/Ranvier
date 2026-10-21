@@ -1051,12 +1051,33 @@ let private refused: (string * (TemplateBuilder<unit> -> TemplateView<unit>)) li
         "Raw-text", (fun t -> t.element (HtmlTag "iframe") [||] [| t.text "<p>" |])
         "Template elements", (fun t -> t.element (HtmlTag "template") [||] [| t.span [||] [||] |])
         "void element", (fun t -> t.element (HtmlTag "br") [||] [| t.span [||] [||] |])
-        "rcdata", (fun t -> t.element (HtmlTag "textarea") [||] [| t.span [||] [||] |])
-        "rcdata", (fun t -> t.element (HtmlTag "title") [||] [| t.span [||] [||] |])
     ]
 
 [<Emit("globalThis.pwned")>]
 let private pwned () : obj = jsNative
+
+/// <summary>Elements the server rejects and the client mounts as built: RCDATA with element children and case twins.</summary>
+let private clientAccepted: (TemplateBuilder<unit> -> TemplateView<unit>) list =
+    [
+        (fun t -> t.element (HtmlTag "textarea") [||] [| t.span [||] [| t.text "globalThis.pwned = 1" |] |])
+        (fun t -> t.element (HtmlTag "title") [||] [| t.span [||] [||] |])
+        (fun t ->
+            t.element
+                (HtmlTag "svg")
+                [|
+                    t.Attrs.attribute ("viewBox", "0 0 1 1")
+                    t.Attrs.attribute ("viewbox", "0 0 2 2")
+                |]
+                [||])
+    ]
+
+let private clientMountsServerChecks queued (clock: Clock) =
+    let failures =
+        [
+            for view in clientAccepted -> failureOf queued (fun () -> Component.define (fun _ () -> ()) view)
+        ]
+
+    equal (List.replicate clientAccepted.Length "", true) (failures, isNull (pwned ()))
 
 let private refusedElements queued (clock: Clock) =
     let failures =
@@ -1131,7 +1152,8 @@ let cases: (string * (Clock -> unit)) array =
             |]
             [| "anime's layout keeps the property Sets flip edits", layoutFieldsPinned |]
             modes "an attribute name that lowercases to an event handler, or joins listed SVG names, raises" mixedCaseHandlerRaises
-            modes "raw-text, template, void-with-children and RCDATA-with-elements raise on the client" refusedElements
+            modes "raw-text, template and void-with-children elements raise on the client" refusedElements
+            modes "the client mounts RCDATA elements with element children and case-twin attributes without running script" clientMountsServerChecks
             modes "a title row under svg follows the commit mode's documented namespace" titleRows
             modes "flip records before and animates after each pass, without leaving rows, and fades rows with no running Motion part" flipOrder
             [|
