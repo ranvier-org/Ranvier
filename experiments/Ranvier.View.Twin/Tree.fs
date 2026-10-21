@@ -110,6 +110,57 @@ type TwinNode internal (kind: NodeKind, owner: TwinDocument) =
         if not (isNull parent) then
             parent.RemoveChild this |> ignore
 
+    /// <summary>
+    /// The DOM's pre-insertion validity for <c>node</c> as a child of this node; <c>replaced</c> is the child a
+    /// replaceChild removes, which does not count against the document's single element.
+    /// </summary>
+    member internal this.EnsureInsertable(node: TwinNode, replaced: TwinNode) =
+        let hierarchy detail =
+            raise (TwinDomException ("HierarchyRequestError", detail))
+
+        match kind with
+        | NodeKind.Text
+        | NodeKind.Comment -> hierarchy "Text and comment nodes have no children."
+        | _ -> ()
+
+        if node.Contains this then
+            hierarchy "The new child is an ancestor of the parent."
+
+        if node.Kind = NodeKind.Document then
+            hierarchy "A document cannot be inserted."
+
+        if kind = NodeKind.Document then
+            let elements (parent: TwinNode) =
+                parent.Children
+                |> List.filter (fun c ->
+                    c.Kind = NodeKind.Element
+                    && not (obj.ReferenceEquals (c, replaced))
+                    && not (obj.ReferenceEquals (c, node)))
+                |> List.length
+
+            let inserted =
+                if node.Kind = NodeKind.Fragment then
+                    node.Children
+                else
+                    [ node ]
+
+            if
+                inserted
+                |> List.exists (fun c -> c.Kind = NodeKind.Text)
+            then
+                hierarchy "A document cannot hold text."
+
+            let insertedElements =
+                inserted
+                |> List.filter (fun c -> c.Kind = NodeKind.Element)
+                |> List.length
+
+            if
+                insertedElements > 1
+                || (insertedElements = 1 && elements this > 0)
+            then
+                hierarchy "A document holds one element."
+
     member this.InsertBefore(node: TwinNode, reference: TwinNode) : TwinNode =
         if
             not (isNull reference)
@@ -117,15 +168,13 @@ type TwinNode internal (kind: NodeKind, owner: TwinDocument) =
         then
             raise (TwinDomException ("NotFoundError", "The reference node is not a child of this node."))
 
-        if node.Contains this then
-            raise (TwinDomException ("HierarchyRequestError", "The new child is an ancestor of the parent."))
+        this.EnsureInsertable (node, null)
+        this.InsertValidated (node, reference)
 
-        if node.Kind = NodeKind.Document then
-            raise (TwinDomException ("HierarchyRequestError", "A document cannot be inserted."))
-
+    member private this.InsertValidated(node: TwinNode, reference: TwinNode) : TwinNode =
         if node.Kind = NodeKind.Fragment then
             for child in node.Children do
-                this.InsertBefore (child, reference) |> ignore
+                this.InsertValidated (child, reference) |> ignore
 
             node
         else
@@ -167,14 +216,18 @@ type TwinNode internal (kind: NodeKind, owner: TwinDocument) =
         then
             raise (TwinDomException ("NotFoundError", "The node to replace is not a child of this node."))
 
+        this.EnsureInsertable (node, child)
+
         let reference =
             if obj.ReferenceEquals (child.NextSibling, node) then
                 node.NextSibling
             else
                 child.NextSibling
 
-        this.RemoveChild child |> ignore
-        this.InsertBefore (node, reference) |> ignore
+        if not (obj.ReferenceEquals (child, node)) then
+            this.RemoveChild child |> ignore
+            this.InsertValidated (node, reference) |> ignore
+
         child
 
     abstract TextContent: string with get, set
@@ -231,6 +284,37 @@ and [<Sealed; AllowNullLiteral>] TwinFragment internal (owner: TwinDocument) =
 
 and [<Sealed; AllowNullLiteral>] TwinElement internal (owner: TwinDocument, localName: string, ns: string) =
     inherit TwinNode(NodeKind.Element, owner)
+
+    static let inputTypes =
+        HashSet<string>
+            [
+                "hidden"
+                "text"
+                "search"
+                "tel"
+                "url"
+                "email"
+                "password"
+                "date"
+                "month"
+                "week"
+                "time"
+                "datetime-local"
+                "number"
+                "range"
+                "color"
+                "checkbox"
+                "radio"
+                "file"
+                "submit"
+                "image"
+                "reset"
+                "button"
+            ]
+
+    static let defaultValueTypes =
+        HashSet<string> [ "hidden"; "submit"; "image"; "reset"; "button" ]
+
     let attributes = ResizeArray<string * string>()
     let content = if localName = "template" then TwinFragment owner else null
     let mutable dirtyValue: string = null
@@ -274,12 +358,20 @@ and [<Sealed; AllowNullLiteral>] TwinElement internal (owner: TwinDocument, loca
         attributes.RemoveAll (fun (n, _) -> n = name)
         |> ignore
 
+    /// <summary>The input's type keyword; a missing or unknown <c>type</c> attribute reads as <c>text</c>.</summary>
     member internal this.InputType =
         match this.GetAttribute "type" with
         | null -> "text"
-        | t -> t.ToLowerInvariant ()
+        | t ->
+            let keyword = t.ToLowerInvariant ()
+            if inputTypes.Contains keyword then keyword else "text"
 
-    member private this.Options: TwinElement list =
+    // HTML's "default" value mode: value reads and writes the value attribute.
+    member private this.InDefaultValueMode =
+        localName = "input"
+        && defaultValueTypes.Contains this.InputType
+
+    member internal this.Options: TwinElement list =
         let rec walk (node: TwinNode) =
             node.Children
             |> List.collect (fun c ->
@@ -301,6 +393,10 @@ and [<Sealed; AllowNullLiteral>] TwinElement internal (owner: TwinDocument, loca
                 match this.GetAttribute "value" with
                 | null -> "on"
                 | value -> value
+            | "input" when this.InDefaultValueMode ->
+                match this.GetAttribute "value" with
+                | null -> ""
+                | v -> v
             | "input" ->
                 if isNull dirtyValue then
                     (match this.GetAttribute "value" with
@@ -327,6 +423,7 @@ and [<Sealed; AllowNullLiteral>] TwinElement internal (owner: TwinDocument, loca
             | "input" when
                 this.InputType = "checkbox"
                 || this.InputType = "radio"
+                || this.InDefaultValueMode
                 ->
                 this.SetAttribute ("value", value)
             | "input"
@@ -337,7 +434,7 @@ and [<Sealed; AllowNullLiteral>] TwinElement internal (owner: TwinDocument, loca
                 for option in this.Options do
                     let selected = not found && option.Value = value
                     found <- found || selected
-                    option.Selected <- selected
+                    option.SetSelectedness selected
             | "option"
             | "button" -> this.SetAttribute ("value", value)
             | _ -> ()
@@ -394,34 +491,88 @@ and [<Sealed; AllowNullLiteral>] TwinElement internal (owner: TwinDocument, loca
 
                     walk root
 
-    /// <summary>An option's selectedness; a select with no selected option selects its first, as a single-choice select does.</summary>
+    // The option's own selectedness: the written value once written, else the selected attribute.
+    member private this.RawSelected =
+        if dirtySelected then
+            selectedness
+        else
+            this.HasAttribute "selected"
+
+    member private _.SelectedIsDirty = dirtySelected
+
+    /// <summary>The option's select: its parent, or its optgroup's parent.</summary>
+    member private this.SelectOf: TwinElement =
+        let parentElement (node: TwinNode) =
+            match node.Parent with
+            | :? TwinElement as e -> e
+            | _ -> null
+
+        match parentElement this with
+        | null -> null
+        | p when p.LocalName = "select" -> p
+        | p when p.LocalName = "optgroup" ->
+            match parentElement p with
+            | null -> null
+            | s when s.LocalName = "select" -> s
+            | _ -> null
+        | _ -> null
+
+    member private this.OptionDisabled =
+        this.HasAttribute "disabled"
+        || (match this.Parent with
+            | :? TwinElement as group when group.LocalName = "optgroup" -> group.HasAttribute "disabled"
+            | _ -> false)
+
+    // The selected option of a single-choice select, by HTML's selectedness setting algorithm: the last selected
+    // option, or, while no option has a written selectedness, the first enabled option.
+    member internal this.ChosenOption: TwinElement =
+        let options = this.Options
+
+        match options |> List.filter (fun o -> o.RawSelected) with
+        | [] when
+            options
+            |> List.forall (fun o -> not o.SelectedIsDirty)
+            ->
+            options
+            |> List.tryFind (fun o -> not o.OptionDisabled)
+            |> Option.toObj
+        | [] -> null
+        | selected -> List.last selected
+
+    /// <summary>
+    /// An option's selectedness. In a single-choice select one option is selected: the last selected one, or the
+    /// first enabled one when none is; selecting an option deselects the others.
+    /// </summary>
     member this.Selected
         with get () =
             if localName <> "option" then
                 false
-            elif dirtySelected then
-                selectedness
-            elif this.HasAttribute "selected" then
-                true
             else
-                match this.Parent with
-                | :? TwinElement as select when
-                    select.LocalName = "select"
-                    && not (select.HasAttribute "multiple")
-                    ->
-                    let options = select.Options
-
-                    not (
-                        options
-                        |> List.exists (fun o -> o.HasAttribute "selected" || o.SelectedIsDirty)
-                    )
-                    && obj.ReferenceEquals (List.tryHead options |> Option.toObj, this)
-                | _ -> false
+                match this.SelectOf with
+                | null -> this.RawSelected
+                | select when select.HasAttribute "multiple" -> this.RawSelected
+                | select -> obj.ReferenceEquals (select.ChosenOption, this)
         and set (value: bool) =
-            dirtySelected <- true
-            selectedness <- value
+            this.SetSelectedness value
 
-    member internal _.SelectedIsDirty = dirtySelected && selectedness
+            match this.SelectOf with
+            | null -> ()
+            | select when select.HasAttribute "multiple" -> ()
+            | select when value ->
+                for option in select.Options do
+                    if not (obj.ReferenceEquals (option, this)) then
+                        option.SetSelectedness false
+            | _ -> ()
+
+    member internal _.SetSelectedness(value: bool) =
+        dirtySelected <- true
+        selectedness <- value
+
+    // The cloning steps of input and textarea: the value, its dirtiness and the checkedness travel with the copy.
+    member private _.CopyFormState(value: string, isCheckedDirty: bool, isChecked: bool) =
+        dirtyValue <- value
+        dirtyChecked <- isCheckedDirty
+        checkedness <- isChecked
 
     override this.Clone deep =
         let copy = TwinElement (this.Document, localName, ns)
@@ -429,12 +580,8 @@ and [<Sealed; AllowNullLiteral>] TwinElement internal (owner: TwinDocument, loca
         for name, value in attributes do
             copy.SetAttribute (name, value)
 
-        if localName = "input" then
-            if not (isNull dirtyValue) then
-                copy.Value <- dirtyValue
-
-            if dirtyChecked then
-                copy.Checked <- checkedness
+        if localName = "input" || localName = "textarea" then
+            copy.CopyFormState (dirtyValue, dirtyChecked, checkedness)
 
         if deep then
             for child in this.Children do

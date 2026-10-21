@@ -185,4 +185,99 @@ let tests =
                 thread.Join ()
                 Expect.isTrue (failure.Value :? System.InvalidOperationException) "InvalidOperationException"
                 Expect.stringContains failure.Value.Message "belongs to thread" "message"
+
+            testCase "a select's default option is found through an optgroup"
+            <| fun () ->
+                use document = new TwinDocument ()
+                let select = document.CreateElement "select"
+                Html.parseInto select "<optgroup><option>a</option><option>b</option></optgroup>"
+                Expect.equal select.Value "a" "first option"
+
+            testCase "in a single select the last selected option wins"
+            <| fun () ->
+                use document = new TwinDocument ()
+                let select = document.CreateElement "select"
+                Html.parseInto select "<option selected>a</option><option selected>b</option>"
+                Expect.equal select.Value "b" "last selected"
+
+            testCase "a select's default option skips disabled options"
+            <| fun () ->
+                use document = new TwinDocument ()
+                let select = document.CreateElement "select"
+                Html.parseInto select "<option disabled>a</option><optgroup disabled><option>b</option></optgroup><option>c</option>"
+                Expect.equal select.Value "c" "first enabled"
+
+            testCase "selecting an option of a single select deselects the others"
+            <| fun () ->
+                use document = new TwinDocument ()
+                let select = document.CreateElement "select"
+                Html.parseInto select "<option selected>a</option><option>b</option>"
+                let a, b = select.FirstChild :?> TwinElement, select.LastChild :?> TwinElement
+                b.Selected <- true
+                Expect.equal (a.Selected, b.Selected, select.Value) (false, true, "b") "one selected"
+
+            testCase "hidden, submit, reset, button and image inputs write value to the attribute"
+            <| fun () ->
+                use document = new TwinDocument ()
+
+                for kind in [ "hidden"; "submit"; "reset"; "button"; "image" ] do
+                    let input = document.CreateElement "input"
+                    input.SetAttribute ("type", kind)
+                    input.SetAttribute ("value", "a")
+                    input.Value <- "b"
+                    Expect.equal (input.GetAttribute "value", input.Value) ("b", "b") kind
+
+            testCase "an unknown input type reads as text"
+            <| fun () ->
+                use document = new TwinDocument ()
+                let input = document.CreateElement "input"
+                input.SetAttribute ("type", "nonsense")
+                input.Value <- "x"
+                Expect.equal (input.GetAttribute "value", input.Value) (null, "x") "text value mode"
+
+            testCase "cloning a textarea keeps its written value"
+            <| fun () ->
+                use document = new TwinDocument ()
+                let area = document.CreateElement "textarea"
+                area.TextContent <- "default"
+                area.Value <- "typed"
+                let copy = area.Clone true :?> TwinElement
+                Expect.equal (copy.Value, copy.DefaultValue) ("typed", "default") "raw value and dirtiness"
+
+            testCase "a child under text or comment, text under the document and a second document element are rejected"
+            <| fun () ->
+                use document = new TwinDocument ()
+
+                let rejects name (insert: unit -> unit) =
+                    Expect.throwsC insert (fun e ->
+                        match e with
+                        | TwinDomException ("HierarchyRequestError", _) -> ()
+                        | other -> failtestf "%s: expected HierarchyRequestError, got %O" name other)
+
+                let text = document.CreateText "t"
+
+                rejects "under text" (fun () ->
+                    text.AppendChild (document.CreateElement "b")
+                    |> ignore)
+
+                rejects "under comment" (fun () ->
+                    (document.CreateComment "c").AppendChild(document.CreateText "x")
+                    |> ignore)
+
+                rejects "text under the document" (fun () ->
+                    document.AppendChild (document.CreateText "x")
+                    |> ignore)
+
+                rejects "second element" (fun () ->
+                    document.AppendChild (document.CreateElement "html")
+                    |> ignore)
+
+            testCase "a rejected replaceChild leaves the tree unchanged"
+            <| fun () ->
+                use document = new TwinDocument ()
+                let div = document.CreateElement "div"
+                let child = document.CreateElement "b"
+                div.AppendChild child |> ignore
+                Expect.throws (fun () -> div.ReplaceChild (div, child) |> ignore) "an ancestor"
+                Expect.isTrue (obj.ReferenceEquals (child.Parent, div)) "the old child stays"
         ]
