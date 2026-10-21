@@ -101,7 +101,7 @@ Each ruling picks an implementation where the spec leaves one open, or settles a
 7. **`Site` and `Cells` are internal.** `Site.create` takes the internal `Cells` type, so it cannot be public. *If wrong:* none; the spec's API names no caller outside the package.
 8. **Under Fable, an instance type that is a generic parameter passes AM004 at compile time.** Only a concrete type can be judged; `WeakMap.set` raises at mount for a primitive. *If wrong:* a generic helper instantiated at `int` fails at mount instead of at compile.
 9. **The one-lambda compile lands with the .NET lowering (Task 3)**, and the `lowering|` budget is enforced when `RepresentationChecks` runs with `--timing`, which Task 3's steps and the research note use. CI prints the line without failing on it: shared runners are not the budget's machine. *If wrong:* a CI job fails on runner noise.
-10. **The plugin tests are a `dotnet fsi` script** (`PluginTests.fsx`), as the generator's `GeneratorTests.fsx` is. A bad fixture asserts exit code 1, the file, the line and the exact message, and the column (1-based, as Fable prints it) where the range is the identifier or the call: AM001, AM003, AM004. For AM001b the range is the field read, and for AM002 and AM007 the expression Fable holds; those assert the line only. The columns in the plan are the token positions; when Fable reports another column for the same token, the observed one is pinned and ledgered.
+10. **The plugin tests are a `dotnet fsi` script** (`PluginTests.fsx`), as the generator's `GeneratorTests.fsx` is. A bad fixture asserts exit code 1, the file, the line and the exact message, and the column where the range is the identifier or the call: AM001, AM003, AM004 (and the AM001b fixture, which reports AM001; see Ruling 24). Fable prints a plugin error's column 0-based (an FCS error's 1-based: the no-targets FS0101 at `Site.fs(12,13)`). AM002 and AM007 assert the line only.
 11. **A prologue carries the range of the first pattern-variable reference inside its reader.** A Fable `Lambda` has no range of its own.
 12. **The 0 B rule for an app that references the package and calls no `Arms.Match`** is checked as the absence of every `Ranvier.View.Arms` module from that entry's bundle, plus the Playground explicit entry's bytes before (recorded in Task 1) and after. A second Fable compilation without the reference would cost a full compile per size run for the same evidence.
 13. **`DomTests.fsproj` links the `Ranvier.View.Arms` sources** and imports the `.targets`, as it links every other view source; a project reference would bring a second copy of the Portable types.
@@ -110,11 +110,13 @@ Each ruling picks an implementation where the spec leaves one open, or settles a
 16. **The incomplete-match fixture keeps its raising state out of the parity lines**; a check of its own asserts that the site raises for it on each target. The two runtimes' `MatchFailureException` messages differ.
 17. **The twin-trace harness of `SugarChecks.fs` moves to `tests/TwinTrace.fs`**, unchanged, so `ArmsChecks.fs` reuses it.
 18. **A cells entry records the values of each read** (`Last`), and withdrawal keeps the last entry's `Last`. No read happens at setup, so core counters match the twin's.
-19. **A thunk over `unit` is transparent to AM002.** A pattern variable inside `fun () -> ...` (a computation expression's `Delay`, for one) is reported as AM001, read outside a reader, and not as a read inside a lambda over `unit`.
+19. **A thunk over `unit` and a lambda over a compiler-generated parameter are transparent to AM002.** A pattern variable inside `fun () -> ...` (a computation expression's `Delay`) or inside the CE's `fun builder@ -> ...` is reported as AM001, read outside a reader, and not as a read inside a lambda over `unit` or over the element builder.
 20. **AM005 is a compile error at the call** (spec Decision 17, amended). The `.targets` defines `RANVIER_ARMS_PLUGIN`; without it `Arms.fs` compiles an `[<Obsolete(Diagnostics.noPlugin, true)>]` overload, so the call fails with FS0101 and the AM005 text. `Ranvier.View.Arms.fsproj` does not import the `.targets`: Fable compiles referenced sources with the app's references and defines (verified in Phase 1), and the project's own import would define the symbol for an app without the plugin. `Tests/NoTargets` pins the FS0101 outcome. The run-time AM005 remains for a referenced plugin that does not run.
 21. **The .NET lowering rewrites a delegate over the instance** (`NewDelegate`) as a reader, as the plugin rewrites a Fable `Delegate`; `Hooks.exit (Func<_, _, _, _>(fun s node finish -> ...))` is one.
 22. **Fable.AST at graduation** (spec Decision 16, amended): the package declares `Fable.AST` as a NuGet dependency and ships only `Ranvier.View.Arms.FablePlugin.dll` under `fable-plugin/` from an explicit file list. The experiment references the copied `Fable.AST.dll` directly, since no package exists to exercise the dependency form.
 23. **The `.targets` names its plugin folder `RanvierArmsPluginDir`** (default: the Release output) and fails the Fable compile when the plugin assembly is missing there; Fable's cracking runs the check (`BeforeTargets="ResolveAssemblyReferences"`, verified in Phase 1).
+24. **The simple-match AM001b shape does not occur under Fable 5.18.** For `| Loaded (text, _) -> span () { text } | _ -> ...`, FCS hands Fable a bound `text`, so the plugin reports AM001; the `AM001b` fixture asserts that. The AM001b text stays for an inlined `matched.fields[k]` read outside a reader.
+25. **A named arms function arrives eta-expanded.** Fable passes `Arms.Match (read, arms)` as `fun _arg1 -> arms _arg1`, a lambda over a compiler-generated parameter whose body applies a value to it; the plugin reports AM003 for that shape.
 
 ## Review Focus
 
@@ -1613,13 +1615,23 @@ let fableOf (fixtures: string) (name: string) (defines: string list) (extra: str
     let code, log =
         exec
             "dotnet"
-            ([ "fable"; fixtures; "--outDir"; outDir; "--configuration"; "Release"; "--noCache" ]
-             @ (defines |> List.collect (fun define -> [ "--define"; define ]))
+            ([
+                "fable"
+                fixtures
+                "--outDir"
+                outDir
+                "--configuration"
+                "Release"
+                "--noCache"
+             ]
+             @ (defines
+                |> List.collect (fun define -> [ "--define"; define ]))
              @ extra)
 
     code, outDir, log
 
-let fable name defines extra = fableOf project name defines extra
+let fable name defines extra =
+    fableOf project name defines extra
 
 /// <summary>Line endings unified, and each site suffix (L<line>C<column>) replaced by its ordinal in the file.</summary>
 let normalise (text: string) =
@@ -1643,32 +1655,75 @@ if code = 0 then
     let expected = Path.Combine (here, "expected", "Sites.js")
 
     if update then
-        Directory.CreateDirectory (Path.GetDirectoryName expected) |> ignore
+        Directory.CreateDirectory (Path.GetDirectoryName expected)
+        |> ignore
+
         File.WriteAllText (expected, normalise (File.ReadAllText emitted))
         printfn "UPDATED %s" expected
     else
         check
             "the emitted sites equal expected/Sites.js"
-            (File.Exists expected && normalise (File.ReadAllText emitted) = normalise (File.ReadAllText expected))
+            (File.Exists expected
+             && normalise (File.ReadAllText emitted) = normalise (File.ReadAllText expected))
             ("diff " + emitted + " " + expected)
 
     // Each prologue maps back to the line of the reader it opens (spec, IDE experience).
-    let mapped, mapLog = exec "node" [ Path.Combine (here, "sourcemap.mjs"); emitted; Path.Combine (here, "Fixtures", "Sites.fs") ]
+    let mapped, mapLog =
+        exec
+            "node"
+            [
+                Path.Combine (here, "sourcemap.mjs")
+                emitted
+                Path.Combine (here, "Fixtures", "Sites.fs")
+            ]
+
     check "each prologue maps to its reader's source line" (mapped = 0) mapLog
 
 // The reported column is asserted where the range is the identifier or the call (AM001, AM003, AM004); for AM001b it is
 // the field read, and for AM002 and AM007 the expression Fable holds, so only the line is asserted.
 let bad =
     [
-        "BAD_AM001", "AM001.fs", 17, Some 68, "Arms.Match: 'text' is read outside a reader of the instance. Read it inside a lambda over the instance, such as (fun _ -> text)."
-        "BAD_AM001B", "AM001b.fs", 17, None, "Arms.Match: the field 'text' of 'Loaded' is read outside a reader of the instance. Read it inside a lambda over the instance, such as (fun _ -> text)."
-        "BAD_AM002", "AM002.fs", 17, None, "Arms.Match: 'text' is read inside a lambda over 'unit -> string', which is not the instance type 'Signal<Load>'. Pass the value to the nested view through its items or props."
-        "BAD_AM003", "AM003.fs", 16, Some 73, "Arms.Match takes a function literal as its second argument, such as (function | Case x -> ...)."
-        "BAD_AM004_INT", "AM004.fs", 10, Some 63, "Arms.Match: the instance type 'int' is not an object type. An arm site keys each arm's payload by its instance; use a record, class, union or function instance."
-        "BAD_AM004_STRING", "AM004.fs", 13, Some 66, "Arms.Match: the instance type 'string' is not an object type. An arm site keys each arm's payload by its instance; use a record, class, union or function instance."
-        "BAD_AM004_UNIT", "AM004.fs", 16, Some 64, "Arms.Match: the instance type 'unit' is not an object type. An arm site keys each arm's payload by its instance; use a record, class, union or function instance."
-        "BAD_AM004_OPTION", "AM004.fs", 19, Some 70, "Arms.Match: the instance type 'int option' is not an object type. An arm site keys each arm's payload by its instance; use a record, class, union or function instance."
-        "BAD_AM004_STRUCT", "AM004.fs", 22, Some 65, "Arms.Match: the instance type 'Point' is not an object type. An arm site keys each arm's payload by its instance; use a record, class, union or function instance."
+        "BAD_AM001",
+        "AM001.fs",
+        17,
+        Some 67,
+        "Arms.Match: 'text' is read outside a reader of the instance. Read it inside a lambda over the instance, such as (fun _ -> text)."
+        "BAD_AM001B",
+        "AM001b.fs",
+        17,
+        Some 48,
+        "Arms.Match: 'text' is read outside a reader of the instance. Read it inside a lambda over the instance, such as (fun _ -> text)."
+        "BAD_AM002",
+        "AM002.fs",
+        17,
+        None,
+        "Arms.Match: 'text' is read inside a lambda over 'unit -> string', which is not the instance type 'Signal<Load>'. Pass the value to the nested view through its items or props."
+        "BAD_AM003", "AM003.fs", 16, Some 72, "Arms.Match takes a function literal as its second argument, such as (function | Case x -> ...)."
+        "BAD_AM004_INT",
+        "AM004.fs",
+        10,
+        Some 62,
+        "Arms.Match: the instance type 'int' is not an object type. An arm site keys each arm's payload by its instance; use a record, class, union or function instance."
+        "BAD_AM004_STRING",
+        "AM004.fs",
+        13,
+        Some 65,
+        "Arms.Match: the instance type 'string' is not an object type. An arm site keys each arm's payload by its instance; use a record, class, union or function instance."
+        "BAD_AM004_UNIT",
+        "AM004.fs",
+        16,
+        Some 63,
+        "Arms.Match: the instance type 'unit' is not an object type. An arm site keys each arm's payload by its instance; use a record, class, union or function instance."
+        "BAD_AM004_OPTION",
+        "AM004.fs",
+        19,
+        Some 69,
+        "Arms.Match: the instance type 'int option' is not an object type. An arm site keys each arm's payload by its instance; use a record, class, union or function instance."
+        "BAD_AM004_STRUCT",
+        "AM004.fs",
+        22,
+        Some 64,
+        "Arms.Match: the instance type 'Point' is not an object type. An arm site keys each arm's payload by its instance; use a record, class, union or function instance."
         "BAD_AM007", "AM007.fs", 18, None, "Arms.Match: this pattern form is not supported."
     ]
 
@@ -1683,11 +1738,17 @@ let reportedAt (log: string) (file: string) (line: int) (column: int option) (me
         entry.Contains message
         && found.Success
         && found.Groups[1].Value = string line
-        && (column |> Option.forall (fun column -> found.Groups[2].Value = string column)))
+        && (column
+            |> Option.forall (fun column -> found.Groups[2].Value = string column)))
 
 for define, file, line, column, message in bad do
     let code, _, log = fable (define.ToLowerInvariant ()) [ define ] []
-    check (sprintf "%s fails at %s(%d) with its message" define file line) (code = 1 && reportedAt log file line column message) log
+
+    check
+        (sprintf "%s fails at %s(%d) with its message" define file line)
+        (code = 1
+         && reportedAt log file line column message)
+        log
 
 // A project that references Ranvier.View.Arms without importing the .targets fails at its call with AM005.
 let missing, _, missingLog =
@@ -1808,18 +1869,23 @@ let rec show (helper: PluginHelper) (t: Type) : string =
         | NumberKind.Int64 -> "int64"
         | NumberKind.Float32 -> "float32"
         | NumberKind.UInt8 -> "byte"
-        | other -> (string other).ToLowerInvariant ()
+        | other -> (string other).ToLowerInvariant()
     | Type.Option (arg, false) -> atom helper arg + " option"
     | Type.Option (arg, true) -> atom helper arg + " voption"
     | Type.Array (arg, _) -> atom helper arg + " array"
     | Type.List arg -> atom helper arg + " list"
-    | Type.Tuple (args, _) -> args |> List.map (atom helper) |> String.concat " * "
+    | Type.Tuple (args, _) ->
+        args
+        |> List.map (atom helper)
+        |> String.concat " * "
     | Type.LambdaType (domain, range) -> atom helper domain + " -> " + show helper range
     | Type.DeclaredType (ref, []) -> (helper.GetEntity ref).DisplayName
     | Type.DeclaredType (ref, args) ->
         (helper.GetEntity ref).DisplayName
         + "<"
-        + (args |> List.map (show helper) |> String.concat ", ")
+        + (args
+           |> List.map (show helper)
+           |> String.concat ", ")
         + ">"
     | Type.GenericParam (name, _, _) -> "'" + name
     | _ -> "obj"
@@ -1889,7 +1955,12 @@ let mapLeaves (control: Set<string>) (leaf: Ident list -> Expr -> Expr) (tree: E
     let rec walk (control: Set<string>) (bound: Ident list) (expr: Expr) =
         match expr with
         | DecisionTree (decision, targets) ->
-            DecisionTree (decision, [ for ids, body in targets -> ids, walk (control + set [ for id in ids -> id.Name ]) (bound @ ids) body ])
+            DecisionTree (
+                decision,
+                [
+                    for ids, body in targets -> ids, walk (control + set [ for id in ids -> id.Name ]) (bound @ ids) body
+                ]
+            )
         | IfThenElse (condition, whenTrue, whenFalse, r) when Shape.refersOutsideLambdas control condition ->
             let whenTrue = walk control bound whenTrue
             IfThenElse (condition, whenTrue, walk control bound whenFalse, r)
@@ -1918,6 +1989,19 @@ let siteName (ranges: SourceLocation option list) : string option =
     ranges
     |> List.tryPick id
     |> Option.map (fun r -> sprintf "L%dC%d" r.start.line r.start.column)
+
+/// <summary>
+/// Whether a lambda is the compiler's eta-expansion of a function value, <c>fun x -> f x</c>, which Fable passes for a
+/// named arms function (AM003).
+/// </summary>
+let private isEtaExpansion (expr: Expr) =
+    match expr with
+    | Lambda (argument, CurriedApply (f, [ IdentExpr passed ], _, _), _)
+    | Lambda (argument, Call (f, { Args = [ IdentExpr passed ] }, _, _), _) ->
+        argument.IsCompilerGenerated
+        && passed.Name = argument.Name
+        && not (Shape.refersTo (Set.singleton argument.Name) f)
+    | _ -> false
 
 /// <summary>The parameter of a lambda or delegate over the instance type.</summary>
 let private readerArgument (instanceType: Type) (expr: Expr) : Ident option =
@@ -1962,10 +2046,17 @@ let rec private find (names: Set<string>) (over: Type option) (expr: Expr) : Fou
                 Field = None
                 Over = over
             }
-    | Lambda (argument, body, _) when argument.Type = Type.Unit -> find names over body
+    | Lambda (argument, body, _) when
+        argument.Type = Type.Unit
+        || argument.IsCompilerGenerated
+        ->
+        find names over body
+    | Delegate (argument :: _, body, _, _) when argument.IsCompilerGenerated -> find names over body
     | Lambda (argument, body, _) -> find names (Some argument.Type) body
     | Delegate (argument :: _, body, _, _) -> find names (Some argument.Type) body
-    | _ -> fst (Shape.children expr) |> List.tryPick (find names over)
+    | _ ->
+        fst (Shape.children expr)
+        |> List.tryPick (find names over)
 
 /// <summary>Logs AM001, AM001b or AM002 for a reference outside every reader.</summary>
 let private report (helper: PluginHelper) (matched: Ident) (instanceType: Type) (fallback: SourceLocation option) (found: Found) =
@@ -1977,7 +2068,10 @@ let private report (helper: PluginHelper) (matched: Ident) (instanceType: Type) 
     let field =
         match found.Field with
         | Some (info, r) when found.Ident.Name = matched.Name ->
-            let case = (helper.GetEntity info.Entity).UnionCases |> List.item info.CaseIndex
+            let case =
+                (helper.GetEntity info.Entity).UnionCases
+                |> List.item info.CaseIndex
+
             Some ((case.UnionCaseFields |> List.item info.FieldIndex).Name, case.Name, r)
         | _ -> None
 
@@ -1998,6 +2092,9 @@ let site (helper: PluginHelper) (read: Expr) (arms: Expr) (r: SourceLocation opt
     match arms, siteName [ r; arms.Range; read.Range ] with
     | _ when notObject helper instanceType ->
         helper.LogError (Diagnostics.notObject (show helper instanceType), ?range = r)
+        None
+    | _ when isEtaExpansion arms ->
+        helper.LogError (Diagnostics.notLiteral, ?range = r)
         None
     | Lambda _, None ->
         helper.LogError Diagnostics.noRange
@@ -2031,7 +2128,13 @@ let site (helper: PluginHelper) (read: Expr) (arms: Expr) (r: SourceLocation opt
         let valuesFn = ident ("armsValues_" + name) Any
 
         let selectType =
-            Type.Tuple ([ Type.Number (NumberKind.Int32, NumberInfo.Empty); Type.Array (Any, MutableArray) ], false)
+            Type.Tuple (
+                [
+                    Type.Number (NumberKind.Int32, NumberInfo.Empty)
+                    Type.Array (Any, MutableArray)
+                ],
+                false
+            )
 
         let selector =
             let position = ref 0
@@ -2058,7 +2161,11 @@ let site (helper: PluginHelper) (read: Expr) (arms: Expr) (r: SourceLocation opt
                     match readerArgument instanceType expr with
                     | Some argument when Shape.refersTo names (bodyOf expr) ->
                         let inner = bodyOf expr
-                        let used = slots |> List.filter (fun id -> Shape.refersTo (Set.singleton id.Name) inner)
+
+                        let used =
+                            slots
+                            |> List.filter (fun id -> Shape.refersTo (Set.singleton id.Name) inner)
+
                         let fresh = [ for id in used -> id, ident (sprintf "%s_%s" id.Name name) id.Type ]
 
                         let renamed =
@@ -2075,13 +2182,21 @@ let site (helper: PluginHelper) (read: Expr) (arms: Expr) (r: SourceLocation opt
                         let prologue =
                             List.foldBack
                                 (fun (slot: Ident, local: Ident) acc ->
-                                    let position = slots |> List.findIndex (fun s -> s.Name = slot.Name)
+                                    let position =
+                                        slots
+                                        |> List.findIndex (fun s -> s.Name = slot.Name)
+
                                     Let (local, Get (IdentExpr values, ExprGet (int32 position), local.Type, None), acc))
                                 fresh
                                 renamed
 
-                        let range = Shape.firstReference names inner |> Option.bind _.Range
-                        let current = emit "$0($1, $2)" [ IdentExpr valuesFn; IdentExpr argument; int32 target ] range
+                        let range =
+                            Shape.firstReference names inner
+                            |> Option.bind _.Range
+
+                        let current =
+                            emit "$0($1, $2)" [ IdentExpr valuesFn; IdentExpr argument; int32 target ] range
+
                         Some (withBody expr (Let (values, current, prologue)))
                     | _ -> None)
 
@@ -2119,7 +2234,16 @@ let site (helper: PluginHelper) (read: Expr) (arms: Expr) (r: SourceLocation opt
         Some (
             Lambda (
                 valuesFn,
-                Value (NewTuple ([ selector; Value (NewArray (ArrayValues bodies, tree.Type, MutableArray), None) ], false), None),
+                Value (
+                    NewTuple (
+                        [
+                            selector
+                            Value (NewArray (ArrayValues bodies, tree.Type, MutableArray), None)
+                        ],
+                        false
+                    ),
+                    None
+                ),
                 None
             )
         )
