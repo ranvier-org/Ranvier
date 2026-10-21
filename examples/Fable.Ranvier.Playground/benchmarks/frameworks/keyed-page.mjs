@@ -1,6 +1,7 @@
 import { mountKeyed as ranvierKeyed, mountArms as ranvierArmsMount } from "../../generated-tests/KeyedRowsPerf.js";
 import { mountKeyed as sugarKeyed, mountArms as sugarArmsMount } from "../../generated-tests/KeyedRowsSugarPerf.js";
 import { mountArms as armsMatchMount } from "../../generated-tests/KeyedRowsArmsMatchPerf.js";
+import { mountArms as sugarArrayMount } from "../../generated-tests/KeyedRowsSugarArrayPerf.js";
 import { mountKeyed as solidKeyed, mountArms as solidArms } from "./keyed-solid.jsx";
 
 // MEASUREMENT (measure/poc-rerun-2026-10-15): production rows and the production arm adapter against Solid 2.
@@ -29,7 +30,12 @@ const armsMatchArms = host => {
   const ops = armsMatchMount(host);
   return { create: n => ops.Create(n), switch: () => ops.Switch(), payload: () => ops.Payload(), clear: () => ops.Clear(), dispose: () => ops.Dispose() };
 };
-const armAdapters = { ranvier: ranvierArms, "ranvier-sugar": sugarArms, "ranvier-arms-match": armsMatchArms, solid: solidArms };
+// ranvier-sugar-array: the sugared arm fixture with the payload a payload-direct Arms.Match would pass (an array read by index).
+const sugarArrayArms = host => {
+  const ops = sugarArrayMount(host);
+  return { create: n => ops.Create(n), switch: () => ops.Switch(), payload: () => ops.Payload(), clear: () => ops.Clear(), dispose: () => ops.Dispose() };
+};
+const armAdapters = { ranvier: ranvierArms, "ranvier-sugar": sugarArms, "ranvier-arms-match": armsMatchArms, "ranvier-sugar-array": sugarArrayArms, solid: solidArms };
 const adapterFor = (operation, mode) => (operation.fixture === "arms" ? armAdapters : adapters)[mode];
 
 // Each operation: untimed setup on a fresh list, then the timed step, then the expected row count.

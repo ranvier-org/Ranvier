@@ -77,6 +77,7 @@
     <Compile Include="KeyedRowsPerf.fs" />
     <Compile Include="KeyedRowsSugarPerf.fs" />
     <Compile Include="KeyedRowsArmsMatchPerf.fs" />
+    <Compile Include="KeyedRowsSugarArrayPerf.fs" />
     <Compile Include="BoundaryPerf.fs" />
     <Compile Include="PlacementPerf.fs" />
     <Compile Include="DispatchPerf.fs" />

@@ -127,3 +127,49 @@ let plain graph host (state: Signal<Load>) =
         [
             Component.render (Component.template (fun _ (state: Signal<Load>) -> state) (div () { "plain" })) state
         ]
+
+/// <summary>
+/// The payload-direct site shape a redesigned lowering would emit, for the research spike's bundle estimate: one armOf
+/// definition per target over the site's values array, selected by the array's first element.
+/// </summary>
+let private directSite (read: 'inst -> 'u) (select: 'inst -> 'u -> obj array) (definitions: Component<unit -> obj array> array) =
+    matchWith id (fun instance ->
+        let values = select instance (read instance)
+        arm (Fable.Core.JsInterop.emitJsExpr (definitions, values) "$0[$1[0]]") values)
+
+let private arrayLoader () =
+    let definitions =
+        [|
+            armOf (span () { "Not started" })
+            armOf (
+                progress (
+                    Attrs.attribute ("max", "100"),
+                    Attrs.attribute ("value", fun (values: unit -> obj array) -> Some (string (unbox<int> (values ()).[1])))
+                ) {
+                    }
+            )
+            armOf (
+                pre () {
+                    fun (values: unit -> obj array) -> unbox<string> (values ()).[1]
+                    " x"
+                    fun (values: unit -> obj array) -> string (unbox<int> (values ()).[2])
+                }
+            )
+        |]
+
+    Component.template
+        (fun _ (state: Signal<Load>) -> state)
+        (div (Attrs.className "loader") {
+            directSite
+                (fun (state: Signal<Load>) -> state.Value)
+                (fun instance ->
+                    function
+                    | Idle as value -> [| box 0; box value; box instance |]
+                    | Loading percent as value -> [| box 1; box percent; box value; box instance |]
+                    | Loaded (text, count) as value -> [| box 2; box text; box count; box value; box instance |])
+                definitions
+        })
+
+/// <summary>The array-payload loader of the research spike: the bundle a payload-direct Arms.Match would produce.</summary>
+let arrayOne graph host (state: Signal<Load>) =
+    mountAll graph host [ Component.render (arrayLoader ()) state ]

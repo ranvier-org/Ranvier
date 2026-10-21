@@ -202,3 +202,44 @@ After create the gate holds: both counts stay within 10 % of `ranvier-sugar`. Af
 withdrawn entry with its last values; the entry releases the disposed arm's props, so a switch costs about 72 B per
 row more than create, against about 290 B before `945dd4ca` (+17.8 % and +18.1 %). The sugared twin keeps nothing
 after a switch.
+
+## Payload-direct spike
+
+A one-day spike of the redesign the final review estimated: each target an `armOf` definition whose instance is the
+arm's values thunk, the site selecting with one array `[target, pattern variables..., matched value, instance]`, and
+readers reading `p ()[k]`. No plugin work: `tests/KeyedRowsSugarArrayPerf.fs` writes that shape by hand as the
+benchmark mode `ranvier-sugar-array`, and `ArmsSizeEntries.arrayOne` writes the loader that way for the bundle. The
+shipped design is unchanged.
+
+**Chromium.** `keyed-rows.mjs --modes=ranvier-sugar,ranvier-arms-match,ranvier-sugar-array
+--ops=armsCreate1k,armsSwitch1k,armsPayload1k,armsClear1k --processes=3 --rounds=15
+--pairs=ranvier-arms-match:ranvier-sugar,ranvier-sugar-array:ranvier-sugar,ranvier-arms-match:ranvier-sugar-array`, at
+`53fe1d35` plus the spike files, under the locks, after three load readings below 20 %: the CPU load was 7 % at the
+start and 3 % at the end, the first quiet run of this work. Results in `arms-match/arms-spike.json`.
+
+| Operation | sugar median, ms | arms-match | sugar-array | arms-match : sugar (95 %) | sugar-array : sugar (95 %) | arms-match : sugar-array (95 %) |
+|---|---|---|---|---|---|---|
+| armsCreate1k | 10.82 | 11.53 | 10.93 | 1.063 (1.049-1.081) | 1.019 (1.003-1.030) | 1.046 (1.032-1.069) |
+| armsSwitch1k | 5.47 | 6.13 | 5.66 | 1.106 (1.063-1.131) | 1.031 (0.993-1.048) | 1.083 (1.072-1.096) |
+| armsPayload1k | 0.76 | 0.83 | 0.78 | 1.075 (1.053-1.103) | 1.007 (1.000-1.033) | 1.055 (1.024-1.090) |
+| armsClear1k | 1.47 | 1.55 | 1.47 | 1.059 (0.988-1.175) | 1.026 (0.944-1.190) | 1.087 (1.016-1.127) |
+
+On the quiet machine today's `Arms.Match` misses the 1.05 gate on create, switch and payload, and clear is not settled.
+The payload-direct shape holds it on every operation: its switch is 3.1 % over the twin (interval 0.99-1.05) and the
+rest at most 2.6 %. The difference is the cells: today's site is 8.3 % slower than the array shape on switch and 5.5 %
+on payload.
+
+**Heap after a switch** (`keyed-heap.mjs --fixture=arms --after=switch`, `arms-match/arms-spike-heap-switch.json`): the twin 3,511
+and 3,528 B per row at 1,000 and 10,000 rows; the array shape 3,549 and 3,566 (+38 B, +1.1 %); `Arms.Match` 3,959 and
+3,989 (+448 and +461 B, +12.8 % and +13.1 %).
+
+**Bundle.** The array-shape loader costs 31 B gzip over its explicit twin (`Arms.Match`: 371 B), with no AM006 guard
+and no splice adapter in it; the review estimates 15-25 B for the guard and 30-50 B for an adapter.
+
+**Helper splices** (spec, "helper views typed `TemplateView<'inst>` work unchanged inside a body"). In the redesign a
+body's instance is the values thunk, so a helper view of the enclosing instance type needs an adapter: an inlined child
+(`render adapter (fun p -> p ()[n])`) whose instance is the enclosing instance again. A .NET probe
+(`render` of an adapter `Component.define (fun _ s -> s) (fun _ -> helper)` against the helper as the arm's whole view)
+gives the same structural hash (`5f86489d`) and the same server HTML (`arms-match/splice-probe.fsx`), because an inlined child's markup joins the
+template's skeleton. A generic helper over a reader (the `helper` fixture's `labelled`) needs no adapter: its reader is
+rewritten like any other.
