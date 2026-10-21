@@ -5,6 +5,7 @@ import { section$1_$ctor_74B6D47, i$1_$ctor_74B6D47, pre$1_$ctor_Z11E5C9E0, b$1_
 import { Arms_Match_Z9579909 } from "./Ranvier.View.Arms/Arms.js";
 import { Exception, int32ToString } from "./fable_modules/fable-library-js/Util.js";
 import { HookBuilder$1__exit_Z20F364BA } from "./Ranvier.View.Portable/Template.js";
+import { printf, toFail } from "./fable_modules/fable-library-js/String.js";
 
 export function read(state) {
     return Signal$1__get_Value(state);
@@ -132,6 +133,22 @@ export const nested = Component_template((_arg, panel) => panel, (() => {
                 return armsRead_S5[0];
             })))), (builder$0040_3 = span$1_$ctor_659A19AB(), Element$2__Run_Z2BE2850A(builder$0040_3, Element$2__Delay_Z3DB59124(builder$0040_3, () => Element$2__Yield_Z721C83C5(builder$0040_3, "closed"))))]];
         }))))), (builder$0040_4 = span$1_$ctor_659A19AB(), Element$2__Run_Z2BE2850A(builder$0040_4, Element$2__Delay_Z3DB59124(builder$0040_4, () => Element$2__Yield_Z721C83C5(builder$0040_4, "Other"))))]];
+    }))));
+})());
+
+export const failing = Component_template((_arg, state) => state, (() => {
+    const builder$0040 = div$1_$ctor_5298DB1C();
+    return Element$2__Run_Z2BE2850A(builder$0040, Element$2__Delay_Z3DB59124(builder$0040, () => Element$2__Yield_Z38B9F583(builder$0040, Arms_Match_Z9579909(read, null, (armsValues_S7) => {
+        let builder$0040_1;
+        return [(_arg_1) => {
+            if (_arg_1.tag === 2) {
+                toFail(printf("bad %s"))("state");
+                return null;
+            }
+            else {
+                return [0, [_arg_1]];
+            }
+        }, [(builder$0040_1 = span$1_$ctor_659A19AB(), Element$2__Run_Z2BE2850A(builder$0040_1, Element$2__Delay_Z3DB59124(builder$0040_1, () => Element$2__Yield_Z721C83C5(builder$0040_1, "Other"))))]];
     }))));
 })());
 

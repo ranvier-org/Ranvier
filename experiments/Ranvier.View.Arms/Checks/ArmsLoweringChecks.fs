@@ -34,11 +34,29 @@ let private omit =
 let private read (state: Signal<Load>) =
     state.Value
 
-/// <summary>What building a site raised: the kind and variable, and the message after the location prefix.</summary>
+let private sourceLines = File.ReadAllLines here
+
+/// <summary>
+/// What building a site raised: the kind and variable, and the message after the location prefix, which must name this
+/// file and a line holding an <c>Arms.Match</c> call.
+/// </summary>
 let private raised (build: unit -> obj) =
     let unprefixed (message: string) =
-        if message.StartsWith (here + "(") then
-            message.Substring (message.IndexOf "): " + 3)
+        let close = message.IndexOf "): "
+
+        let line =
+            if message.StartsWith (here + "(") && close > 0 then
+                match Int32.TryParse (message.Substring (here.Length + 1, close - here.Length - 1)) with
+                | true, line -> line
+                | _ -> 0
+            else
+                0
+
+        if
+            line > 0
+            && sourceLines[line - 1].Contains "Arms.Match"
+        then
+            message.Substring (close + 3)
         else
             "unprefixed: " + message
 
@@ -90,6 +108,58 @@ let private am002 () =
                         )
                     })
             )))
+
+/// <summary>A wildcard row reader is still a lambda over another type (AM002).</summary>
+let private am002Wildcard () =
+    equal
+        ("BuildTimeRead text",
+         "Arms.Match: 'text' is read inside a lambda over 'unit -> string', which is not the instance type 'Signal<Load>'. Pass the value to the nested view through its items or props.")
+        (raised (fun () ->
+            box (
+                Component.template
+                    (fun _ (state: Signal<Load>) -> state)
+                    (div () {
+                        Arms.Match (
+                            read,
+                            function
+                            | Loaded (text, _) -> ul () { forEach id (fun _ -> [| "a" |]) (li () { fun _ -> text }) }
+                            | _ -> span () { "Other" }
+                        )
+                    })
+            )))
+
+let private namedArms: Load -> TemplateView<Signal<Load>> =
+    function
+    | Idle -> span () { "Idle" }
+    | _ -> span () { "Other" }
+
+/// <summary>A module-level arms function, quoted as an eta-expansion, raises AM003.</summary>
+let private am003Named () =
+    equal
+        ("ArmsMatch", "Arms.Match takes a function literal as its second argument, such as (function | Case x -> ...).")
+        (raised (fun () -> box (Component.template (fun _ (state: Signal<Load>) -> state) (div () { Arms.Match (read, namedArms) }))))
+
+/// <summary>A failwithf leaf builds no arm; the selector raises it at the region read.</summary>
+let private failwithfLeaf () =
+    let built =
+        try
+            box (
+                Component.template
+                    (fun _ (state: Signal<Load>) -> state)
+                    (div () {
+                        Arms.Match (
+                            read,
+                            function
+                            | Loaded _ -> failwithf "bad %s" "state"
+                            | _ -> span () { "Other" }
+                        )
+                    })
+            )
+            |> Some
+        with _ ->
+            None
+
+    equal true built.IsSome
 
 let private am003 () =
     let arms: Load -> TemplateView<Signal<Load>> =
@@ -260,7 +330,21 @@ let private delegateReader () =
                 )
             })
 
-    equal true ((render site (Loaded ("a", 1))).Contains "<span>held</span>")
+    let heldTwin =
+        armOf (span (Hooks.exit (Func<_, _, _, _>(fun (_: unit -> string) (_: Fable.Core.TS.Dom.HTMLSpanElement) _ -> ignore))) { "held" })
+
+    let otherTwin = armOf (span () { "Other" })
+
+    let twin =
+        Component.template
+            (fun _ (state: Signal<Load>) -> state)
+            (div () {
+                matchWith read (function
+                    | Loaded (text, _) -> arm heldTwin text
+                    | _ -> arm otherTwin ())
+            })
+
+    equal (render twin (Loaded ("a", 1))) (render site (Loaded ("a", 1)))
 
 /// <summary>An if and a let at the top of case bodies, and a let of a view.</summary>
 let private bodyForms () =
@@ -336,7 +420,7 @@ let private loweringCost () =
 
 let private loweringBudget () =
     let first, mean = loweringCost ()
-    printfn "lowering|first=%.2fms mean=%.3fms" first mean
+    printfn "lowering|warm-first=%.2fms mean=%.3fms" first mean
 
     if
         Environment.GetCommandLineArgs ()
@@ -348,6 +432,9 @@ let cases: (string * (unit -> unit)) array =
     [|
         "a pattern variable as static text raises AM001 with the call's location", am001
         "a pattern variable in a row reader raises AM002", am002
+        "a pattern variable in a wildcard row reader raises AM002", am002Wildcard
+        "a module-level arms function raises AM003", am003Named
+        "a failwithf case body builds no arm", failwithfLeaf
         "a non-literal arms function raises AM003", am003
         "int, string, unit, option and struct instances raise AM004", am004
         "a decision hidden under a sequence raises AM007", am007

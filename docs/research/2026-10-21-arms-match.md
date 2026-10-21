@@ -1,7 +1,7 @@
 # Arms.Match: measurements
 
 Measurements of the `Arms.Match` implementation ([spec](../superpowers/specs/2026-10-21-arms-match-design.md),
-[plan](../superpowers/plans/2026-10-21-arms-match.md)). Fable 5.18.0, net10.0, Node 26.
+[plan](../superpowers/plans/2026-10-21-arms-match.md)). Fickl 0.3.0 (Fable 5.22), net10.0, Node 26; the Phase 1 discovery ran under Fable 5.18.0 and again under Fickl.
 
 ## Plugin discovery
 
@@ -12,7 +12,7 @@ import of `Ranvier.View.Arms.targets`:
   emitted `Main.js` holds the `armsValues_L…` prologues.
 - **`FABLE_COMPILER` during project cracking:** set; the `.targets` reference is conditional, and a .NET build carries
   no plugin assembly.
-- **netstandard2.0 plugin in Fable 5.18:** loads (Fable.AST 5.0.0 compile reference, FSharp.Core 10.1.203).
+- **netstandard2.0 plugin in Fable 5.18 and Fickl 0.3.0:** loads (Fable.AST 5.0.0 compile reference, FSharp.Core 10.1.203).
 - **Server HTML:** the three states render byte-identical HTML on .NET (quotation path) and under Fable (plugin path).
 - **Fable.AST in the compilation:** the plugin attribute on `Arms.Match` derives from `MemberDeclarationPluginAttribute`,
   so the compilation that holds `Arms.fs` references `Fable.AST.dll` as well; without it Fable reports FS0074 at the
@@ -29,23 +29,43 @@ import of `Ranvier.View.Arms.targets`:
 
 ## .NET lowering cost
 
-`ArmsLoweringChecks` lowers the five-target site of the research (or-pattern, literal pattern, guard) once, then 200
-more times. The selector and the bodies form one LINQ expression, run once through the LINQ interpreter
-(`Compile(preferInterpretation = true)`). Three runs of `RepresentationChecks -- --timing` on the development machine:
+The site's selector and bodies form one LINQ expression. Its construction runs once in the LINQ interpreter
+(`Compile(preferInterpretation = true)`). Each closed lambda inside it that runs per call (the selector, text and
+attribute readers, row readers, event handlers) is a `Hot` function: interpreted for its first 64 calls, then compiled.
+Delegates (hooks) stay interpreted.
 
-| Run | First site (ms) | Mean of 200 (ms) |
+**Cold first site.** `experiments/Ranvier.View.Arms/Checks/DotnetCost` lowers the research's five-target site
+(or-pattern, literal pattern, guard) as the first `Arms.Match` of a fresh process, then 200 more, and renders a 1,000-row
+site against its `armOf` twin. Three processes per row:
+
+| Mode | First site, fresh process (ms) | First site after the view is warm (`--twin-first`, ms) | Mean of 200 (ms) |
+|---|---|---|---|
+| interpreted, hot lambdas compiled after 64 calls (shipped) | 162, 147, 133 | 109, 118, 143 | 1.07-1.36 |
+| all interpreted | 137, 141, 198 | 109, 105, 110 | 1.01-1.04 |
+| all compiled (`preferInterpretation = false`) | 132, 134, 163 | 117, 126, 126 | 9.41-10.11 |
+| hot lambdas compiled at lowering | | 126, 132, 122 | 6.09-6.44 |
+
+Building the `armOf` twin first, cold, takes 29-32 ms (the view's own JIT). The rest of the first `Arms.Match`, about
+75-110 ms in every mode, is the cold start of quotation deserialisation, `LeafExpressionConverter` and
+`System.Linq.Expressions`. No mode meets the spec's 10 ms for the first site of a process; the mean meets the 4 ms
+budget. The mitigation is the spec's start-up advice: bind sites at module level and render once at start-up, before
+the first request. `RepresentationChecks` prints `lowering|warm-first=...` (about 1.5-2.5 ms) for a site lowered after
+earlier ones.
+
+**Server render of 1,000 rows** (the rows fixture against its `armOf` twin, one `li` reader per row, mean of 200 renders
+after 20 warm-up renders, three rounds per process, three processes):
+
+| Mode | Arms.Match (ms) | twin (ms) |
 |---|---|---|
-| 1 | 1.43 | 1.047 |
-| 2 | 1.73 | 0.977 |
-| 3 | 1.39 | 0.932 |
+| interpreted, hot lambdas compiled after 64 calls (shipped) | 0.40-0.86 | 0.29-0.77 |
+| all interpreted | 0.54-1.42 | 0.21-0.73 |
+| all compiled | 0.60-0.77 | 0.52-0.81 |
 
-Budget: ≤ 10 ms first, ≤ 4 ms mean (spec, "The .NET quotation path"). The probe compiled one lambda per body and the
-selector: 9.06 ms first, 8.55 ms mean. Compiling the one expression instead of interpreting it measured 6.73 ms first
-and 6.84 ms mean, of which about 1.2 ms is `Compile` and the rest the first call's JIT of the emitted method.
+All-interpreted readers cost about 0.3-0.6 µs more per row reader and render, roughly twice the twin's time for a
+reader-heavy page. Compiling each per-call lambda after 64 calls matches the twin once warm, and keeps the lowering near
+the all-interpreted cost.
 
-Server render of a two-target site, 5,000 renders per measurement, mean per render: `Arms.Match` 0.0047 ms compiled and
-0.0046-0.0050 ms interpreted, against 0.0035-0.0058 ms for its `armOf` twin; the interpreter adds no measurable cost at
-this size.
+The probe compiled one lambda per body and the selector: 9.06 ms first (warm), 8.55 ms mean.
 
 ## Fickl
 

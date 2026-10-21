@@ -1,5 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- The Fable plugin that lowers Arms.Match calls; it runs inside the dotnet fable process. -->
+  <!-- The Fable plugin that lowers Arms.Match calls; it runs inside the dotnet fickl process. -->
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <IsPackable>false</IsPackable>

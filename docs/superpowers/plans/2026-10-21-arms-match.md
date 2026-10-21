@@ -100,7 +100,7 @@ Each ruling picks an implementation where the spec leaves one open, or settles a
 6. **Two files beyond the spec's list:** `Errors.fs` (the exception types and raise helpers, runtime only) and the plugin's link of `Diagnostics.fs`. Exceptions cannot live in the linked file: the plugin assembly is a reference of every Fable compilation, and two public `ArmsMatchException` types would collide.
 7. **`Site` and `Cells` are internal.** `Site.create` takes the internal `Cells` type, so it cannot be public. *If wrong:* none; the spec's API names no caller outside the package.
 8. **Under Fable, an instance type that is a generic parameter passes AM004 at compile time.** Only a concrete type can be judged; `WeakMap.set` raises at mount for a primitive. *If wrong:* a generic helper instantiated at `int` fails at mount instead of at compile.
-9. **The .NET lowering evaluates the site as one LINQ expression through the interpreter** (`Compile(preferInterpretation = true)`), landing in Task 3. Compiling it measured 6.8 ms mean, most of it the first call's JIT of the emitted method, over the 4 ms budget; the interpreter measures about 1 ms, and server renders show no measurable difference (research note). The `lowering|` budget is enforced when `RepresentationChecks` runs with `--timing`, which Task 3's steps and the research note use. CI prints the line without failing on it: shared runners are not the budget's machine. *If wrong:* a CI job fails on runner noise.
+9. **The .NET lowering runs the site's construction in the LINQ interpreter and compiles each per-call lambda after 64 calls** (`Quoted.Hot`; landed in Task 3, the hot compile in the Phase 2 review fixes). Measured in fresh processes (`Checks/DotnetCost`, research note): all compiled costs 9.4-10.1 ms mean per site, over the 4 ms budget; all interpreted costs 1.0 ms but renders 1,000 row readers in about twice the twin's time; compiling the hot lambdas at lowering costs 6.1-6.4 ms; the shipped mode costs 1.1-1.4 ms and renders within the twin's range once warm. The first site of a fresh process costs 105-160 ms in every mode, so the spec's 10 ms first-call figure is replaced by the start-up advice (spec, "The .NET quotation path"). The `lowering|` budget is enforced when `RepresentationChecks` runs with `--timing`, which Task 3's steps and the research note use. CI prints the line without failing on it: shared runners are not the budget's machine. *If wrong:* a CI job fails on runner noise.
 10. **The plugin tests are a `dotnet fsi` script** (`PluginTests.fsx`), as the generator's `GeneratorTests.fsx` is. A bad fixture asserts exit code 1, the file, the line and the exact message, and the column where the range is the identifier or the call: AM001, AM003, AM004 (and the AM001b fixture, which reports AM001; see Ruling 24). Fable prints a plugin error's column 0-based (an FCS error's 1-based: the no-targets FS0101 at `Site.fs(12,13)`). AM002 and AM007 assert the line only.
 11. **A prologue carries the range of the first pattern-variable reference inside its reader.** A Fable `Lambda` has no range of its own.
 12. **The 0 B rule for an app that references the package and calls no `Arms.Match`** is checked as the absence of every `Ranvier.View.Arms` module from that entry's bundle, plus the Playground explicit entry's bytes before (recorded in Task 1) and after. A second Fable compilation without the reference would cost a full compile per size run for the same evidence.
@@ -110,12 +110,12 @@ Each ruling picks an implementation where the spec leaves one open, or settles a
 16. **The incomplete-match fixture keeps its raising state out of the parity lines**; a check of its own asserts that the site raises for it on each target. The two runtimes' `MatchFailureException` messages differ.
 17. **The twin-trace harness of `SugarChecks.fs` moves to `tests/TwinTrace.fs`**, unchanged, so `ArmsChecks.fs` reuses it.
 18. **A cells entry records the values of each read** (`Last`), and withdrawal keeps the last entry's `Last`. No read happens at setup, so core counters match the twin's.
-19. **A thunk over `unit` and a lambda over a compiler-generated parameter are transparent to AM002.** A pattern variable inside `fun () -> ...` (a computation expression's `Delay`) or inside the CE's `fun builder@ -> ...` is reported as AM001, read outside a reader, and not as a read inside a lambda over `unit` or over the element builder.
+19. **A lambda over `unit` or over a CE builder (`@` in the name; Fable spells it `$0040`) is transparent to AM002.** A pattern variable inside `fun () -> ...` (a computation expression's `Delay`) or inside the CE's `fun builder@ -> ...` is reported as AM001; one inside a user `fun _ ->` row reader is AM002 on both targets (`AM002-wildcard` fixture, `am002Wildcard` check).
 20. **AM005 is a compile error at the call** (spec Decision 17, amended). The `.targets` defines `RANVIER_ARMS_PLUGIN`; without it `Arms.fs` compiles an `[<Obsolete(Diagnostics.noPlugin, true)>]` overload, so the call fails with FS0101 and the AM005 text. `Ranvier.View.Arms.fsproj` does not import the `.targets`: Fable compiles referenced sources with the app's references and defines (verified in Phase 1), and the project's own import would define the symbol for an app without the plugin. `Tests/NoTargets` pins the FS0101 outcome. The run-time AM005 remains for a referenced plugin that does not run.
 21. **The .NET lowering rewrites a delegate over the instance** (`NewDelegate`) as a reader, as the plugin rewrites a Fable `Delegate`; `Hooks.exit (Func<_, _, _, _>(fun s node finish -> ...))` is one.
 22. **Fable.AST at graduation** (spec Decision 16, amended): the package declares `Fable.AST` as a NuGet dependency and ships only `Ranvier.View.Arms.FablePlugin.dll` under `fable-plugin/` from an explicit file list. The experiment references the copied `Fable.AST.dll` directly, since no package exists to exercise the dependency form.
 23. **The `.targets` names its plugin folder `RanvierArmsPluginDir`** (default: the Release output) and fails the Fable compile when the plugin assembly is missing there; Fable's cracking runs the check (`BeforeTargets="ResolveAssemblyReferences"`, verified in Phase 1).
-24. **The simple-match AM001b shape does not occur under Fickl 0.3.0.** For `| Loaded (text, _) -> span () { text } | _ -> ...`, FCS hands Fable a bound `text`, so the plugin reports AM001; the `AM001b` fixture asserts that. The AM001b text stays for an inlined `matched.fields[k]` read outside a reader.
+24. **The simple-match AM001b shape does not occur under Fickl 0.3.0.** For `| Loaded (text, _) -> span () { text } | _ -> ...`, FCS hands Fable a bound `text`, so the plugin reports AM001; the `AM001-simple` fixture (`BAD_AM001_SIMPLE`) asserts that. The AM001b path is unreachable under Fickl 0.3.0 and stays for an FCS that inlines `matched.fields[k]` outside a reader; no fixture reaches it.
 25. **A named arms function arrives eta-expanded.** Fable passes `Arms.Match (read, arms)` as `fun _arg1 -> arms _arg1`, a lambda over a compiler-generated parameter whose body applies a value to it; the plugin reports AM003 for that shape.
 
 ## Review Focus
@@ -168,7 +168,7 @@ Each ruling picks an implementation where the spec leaves one open, or settles a
 | Widened decision rule, throw leaves, `Delegate` readers, AM001b, AM002-AM004, AM007, stable names (Phase 2, Testing 1) | 2 (Fable), 3 (.NET) |
 | Pattern-table fixtures and twins on both targets | 4 |
 | Cells lists, graph tags, withdrawal, locking, last-withdrawn values, AM006 (Decision 7, Phase 3) | 5 |
-| .NET one-lambda compile, `lowering|` budget (Testing 2) | 3 |
+| .NET one-expression lowering, `lowering|` budget (Testing 2) | 3 |
 | Testing 3-7 (mounted traces, twice-shown, events, value payloads, rows) | 5, 6 |
 | Parity guarantees, golden file, hydration (Phase 4) | 4, 7 |
 | Testing 8-10 (Debug, held exits, pending sources) | 8 |
@@ -1249,7 +1249,7 @@ Start of phase: `git fetch origin && git merge origin/master` (message file with
 - Modify: `experiments/Ranvier.View.Arms.FablePlugin/Lower.fs` (replaced whole)
 - Create: `experiments/Ranvier.View.Arms.FablePlugin/Tests/PluginTests.fsx`, `Tests/sourcemap.mjs`
 - Create: `experiments/Ranvier.View.Arms.FablePlugin/Tests/NoTargets/NoTargets.fsproj`, `Tests/NoTargets/Site.fs` (a project without the `.targets`)
-- Create: `experiments/Ranvier.View.Arms.FablePlugin/Tests/Fixtures/PluginFixtures.fsproj`, `Types.fs`, `Sites.fs`, `Bad/AM001.fs`, `Bad/AM001b.fs`, `Bad/AM002.fs`, `Bad/AM003.fs`, `Bad/AM004.fs`, `Bad/AM007.fs`
+- Create: `experiments/Ranvier.View.Arms.FablePlugin/Tests/Fixtures/PluginFixtures.fsproj`, `Types.fs`, `Sites.fs`, `Bad/AM001.fs`, `Bad/AM001-simple.fs`, `Bad/AM002-wildcard.fs`, `Bad/AM003-local.fs`, `Bad/AM002.fs`, `Bad/AM003.fs`, `Bad/AM004.fs`, `Bad/AM007.fs`
 - Create: `experiments/Ranvier.View.Arms.FablePlugin/Tests/expected/Sites.js` (written by `--update`)
 - Modify: `.fantomasignore` (the fixtures keep the line numbers the tests assert, and their emitted names)
 - Test: `experiments/Ranvier.View.Arms.FablePlugin/Tests/PluginTests.fsx`
@@ -1446,7 +1446,7 @@ let site =
 #endif
 ```
 
-`Bad/AM001b.fs`: the same file with `AM001b` in the module name and the define (`#if BAD_AM001B`), and line 17 replaced by
+`Bad/AM001-simple.fs`: the same file with `AM001Simple` in the module name and the define (`#if BAD_AM001_SIMPLE`), and line 17 replaced by
 
 ```fsharp
                 | Loaded (text, _) -> span () { text }
@@ -1671,19 +1671,23 @@ if code = 0 then
             ("diff " + emitted + " " + expected)
 
     // Each prologue maps back to the line of the reader it opens (spec, IDE experience).
-    let mapped, mapLog =
-        exec
-            "node"
-            [
-                Path.Combine (here, "sourcemap.mjs")
-                emitted
-                Path.Combine (here, "Fixtures", "Sites.fs")
-            ]
+    let mapped, mapLog = exec "node" [ Path.Combine (here, "sourcemap.mjs"); emitted ]
 
-    check "each prologue maps to its reader's source line" (mapped = 0) mapLog
+    let prologues = Path.Combine (here, "expected", "prologues.txt")
 
-// The reported column is asserted where the range is the identifier or the call (AM001, AM003, AM004); for AM001b it is
-// the field read, and for AM002 and AM007 the expression Fable holds, so only the line is asserted.
+    if update && mapped = 0 then
+        File.WriteAllText (prologues, normalise mapLog)
+        printfn "UPDATED %s" prologues
+    else
+        check
+            "each prologue maps to the line of its reader's first pattern-variable reference (expected/prologues.txt)"
+            (mapped = 0
+             && File.Exists prologues
+             && normalise mapLog = normalise (File.ReadAllText prologues))
+            mapLog
+
+// The reported column is asserted where the range is the identifier or the call (AM001, AM003, AM004); for AM002 and
+// AM007 the range is the expression Fable holds, so only the line is asserted.
 let bad =
     [
         "BAD_AM001",
@@ -1691,8 +1695,8 @@ let bad =
         17,
         Some 67,
         "Arms.Match: 'text' is read outside a reader of the instance. Read it inside a lambda over the instance, such as (fun _ -> text)."
-        "BAD_AM001B",
-        "AM001b.fs",
+        "BAD_AM001_SIMPLE",
+        "AM001-simple.fs",
         17,
         Some 48,
         "Arms.Match: 'text' is read outside a reader of the instance. Read it inside a lambda over the instance, such as (fun _ -> text)."
@@ -1701,7 +1705,17 @@ let bad =
         17,
         None,
         "Arms.Match: 'text' is read inside a lambda over 'unit -> string', which is not the instance type 'Signal<Load>'. Pass the value to the nested view through its items or props."
+        "BAD_AM002_WILDCARD",
+        "AM002-wildcard.fs",
+        17,
+        None,
+        "Arms.Match: 'text' is read inside a lambda over 'unit -> string', which is not the instance type 'Signal<Load>'. Pass the value to the nested view through its items or props."
         "BAD_AM003", "AM003.fs", 16, Some 72, "Arms.Match takes a function literal as its second argument, such as (function | Case x -> ...)."
+        "BAD_AM003_LOCAL",
+        "AM003-local.fs",
+        19,
+        None,
+        "Arms.Match takes a function literal as its second argument, such as (function | Case x -> ...)."
         "BAD_AM004_INT",
         "AM004.fs",
         10,
@@ -1778,36 +1792,32 @@ if failures.Count > 0 then
 `experiments/Ranvier.View.Arms.FablePlugin/Tests/sourcemap.mjs` (reads `@jridgewell/trace-mapping` from the Playground's `node_modules`; run `npm ci` there first):
 
 ```js
-// Maps each Arms.Match prologue call (armsValues_L<line>C<column>(...)) of an emitted file back to its F# source line,
-// and exits 1 unless every one lands inside a reader: on a line holding "fun" or "Func<", or at most two lines below one.
-// Usage: node sourcemap.mjs <emitted .js> <F# source>   (the .js.map beside the .js; Fable --sourceMaps writes it)
+// Prints, for each Arms.Match prologue call (armsValues_L<line>C<column>(instance, target)) of an emitted file, the
+// site's ordinal in the file, the target and the F# source line the source map gives it:
+// "S<ordinal> <target> <line>". PluginTests.fsx compares the listing with expected/prologues.txt. Exits 1 when the file
+// holds no prologue.
+// Usage: node sourcemap.mjs <emitted .js>   (the .js.map beside the .js; Fable --sourceMaps writes it)
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 
 const require = createRequire(new URL("../../../examples/Fable.Ranvier.Playground/package.json", import.meta.url));
 const { TraceMap, originalPositionFor } = require("@jridgewell/trace-mapping");
-const [emitted, source] = process.argv.slice(2);
+const [emitted] = process.argv.slice(2);
 const map = new TraceMap(readFileSync(emitted + ".map", "utf8"));
-const lines = readFileSync(source, "utf8").split(/\r?\n/);
-const prologue = /armsValues_L\d+C\d+\(/g;
-const opensReader = row => row >= 0 && /\bfun\b|Func</.test(lines[row] ?? "");
-const misplaced = [];
-let checked = 0;
+const ordinals = new Map();
+const prologue = /armsValues_(L\d+C\d+)\([^,()]+, (\d+)\)/g;
+const listing = [];
 
 readFileSync(emitted, "utf8").split("\n").forEach((text, index) => {
   for (const found of text.matchAll(prologue)) {
-    checked++;
+    if (!ordinals.has(found[1])) ordinals.set(found[1], ordinals.size + 1);
     const original = originalPositionFor(map, { line: index + 1, column: found.index });
-    const at = original.line == null ? -1 : original.line - 1;
-    if (![at, at - 1, at - 2].some(opensReader)) misplaced.push(`${index + 1}:${found.index} -> ${original.line}: ${(lines[at] ?? "").trim()}`);
+    listing.push(`S${ordinals.get(found[1])} ${found[2]} ${original.line}`);
   }
 });
 
-console.log(`${checked} prologues checked`);
-if (checked === 0 || misplaced.length > 0) {
-  console.error(checked === 0 ? "no prologue found" : misplaced.join("\n"));
-  process.exit(1);
-}
+console.log(listing.join("\n"));
+if (listing.length === 0) process.exit(1);
 ```
 
 - [ ] **Step 4: Run the plugin tests to verify they fail**
@@ -1922,21 +1932,27 @@ let private raising =
             "Microsoft.FSharp.Core.Operators.failwith"
             "Microsoft.FSharp.Core.Operators.invalidOp"
             "Microsoft.FSharp.Core.Operators.invalidArg"
+            "Microsoft.FSharp.Core.Operators.nullArg"
+            "Microsoft.FSharp.Core.ExtraTopLevelOperators.failwithf"
         ]
 
 /// <summary>Whether a case body is a raised exception, which builds no definition.</summary>
-let private isThrow (helper: PluginHelper) (expr: Expr) =
+let rec private isThrow (helper: PluginHelper) (expr: Expr) =
     match expr with
     | Extended (Throw _, _) -> true
     | Call (_, { MemberRef = Some ref }, _, _) -> raising.Contains (helper.GetMember ref).FullName
+    | Import (info, _, _) -> info.Selector = "toFail"
+    | Let (id, value, _) when id.IsCompilerGenerated -> isThrow helper value
+    | Call (f, _, _, _)
+    | CurriedApply (f, _, _, _)
+    | TypeCast (f, _) -> isThrow helper f
     | _ -> false
 
-/// <summary>A raised exception retyped as the selector's result.</summary>
-let private retype (t: Type) (expr: Expr) =
-    match expr with
+/// <summary>The raising body where the selector returns a target: a throw retyped, any other raise followed by null.</summary>
+let private raiseAs (t: Type) (body: Expr) =
+    match body with
     | Extended (Throw (e, _), r) -> Extended (Throw (e, t), r)
-    | Call (callee, info, _, r) -> Call (callee, info, t, r)
-    | other -> other
+    | _ -> Sequential [ body; Value (Null t, None) ]
 
 /// <summary>Whether <c>value</c> is a field, tuple item or case payload of a controlled identifier.</summary>
 let rec private extracts (control: Set<string>) (value: Expr) =
@@ -1946,7 +1962,10 @@ let rec private extracts (control: Set<string>) (value: Expr) =
     | TypeCast (inner, _) -> extracts control inner
     | _ -> false
 
-/// <summary>Whether a <c>let</c> belongs to the selection (Ruling 2).</summary>
+/// <summary>
+/// Whether a <c>let</c> belongs to the selection: its value refers to a controlled identifier outside every lambda, or,
+/// for a compiler-generated identifier, extracts a part of one.
+/// </summary>
 let private decides (control: Set<string>) (id: Ident) (value: Expr) =
     if id.IsCompilerGenerated then
         extracts control value
@@ -2025,6 +2044,10 @@ let private withBody (expr: Expr) (body: Expr) =
     | Delegate (args, _, n, tags) -> Delegate (args, body, n, tags)
     | other -> other
 
+/// <summary>Whether an identifier is a computation expression's builder binding (<c>builder@</c>).</summary>
+let private isBuilder (id: Ident) =
+    id.Name.Contains "@" || id.Name.Contains "$0040"
+
 /// <summary>A pattern-variable reference left outside every reader, with the lambda it sits in.</summary>
 type private Found =
     {
@@ -2049,12 +2072,7 @@ let rec private find (names: Set<string>) (over: Type option) (expr: Expr) : Fou
                 Field = None
                 Over = over
             }
-    | Lambda (argument, body, _) when
-        argument.Type = Type.Unit
-        || argument.IsCompilerGenerated
-        ->
-        find names over body
-    | Delegate (argument :: _, body, _, _) when argument.IsCompilerGenerated -> find names over body
+    | Lambda (argument, body, _) when argument.Type = Type.Unit || isBuilder argument -> find names over body
     | Lambda (argument, body, _) -> find names (Some argument.Type) body
     | Delegate (argument :: _, body, _, _) -> find names (Some argument.Type) body
     | _ ->
@@ -2147,7 +2165,7 @@ let site (helper: PluginHelper) (read: Expr) (arms: Expr) (r: SourceLocation opt
                 position.Value <- leaf + 1
 
                 match targets[leaf] with
-                | None -> retype selectType body
+                | None -> raiseAs selectType body
                 | Some target ->
                     let values = [ for id in bound @ [ matched ] -> IdentExpr id ]
                     Value (NewTuple ([ int32 target; Value (NewArray (ArrayValues values, Any, MutableArray), None) ], false), None)
@@ -2353,11 +2371,29 @@ let private omit =
 let private read (state: Signal<Load>) =
     state.Value
 
-/// <summary>What building a site raised: the kind and variable, and the message after the location prefix.</summary>
+let private sourceLines = File.ReadAllLines here
+
+/// <summary>
+/// What building a site raised: the kind and variable, and the message after the location prefix, which must name this
+/// file and a line holding an <c>Arms.Match</c> call.
+/// </summary>
 let private raised (build: unit -> obj) =
     let unprefixed (message: string) =
-        if message.StartsWith (here + "(") then
-            message.Substring (message.IndexOf "): " + 3)
+        let close = message.IndexOf "): "
+
+        let line =
+            if message.StartsWith (here + "(") && close > 0 then
+                match Int32.TryParse (message.Substring (here.Length + 1, close - here.Length - 1)) with
+                | true, line -> line
+                | _ -> 0
+            else
+                0
+
+        if
+            line > 0
+            && sourceLines[line - 1].Contains "Arms.Match"
+        then
+            message.Substring (close + 3)
         else
             "unprefixed: " + message
 
@@ -2409,6 +2445,58 @@ let private am002 () =
                         )
                     })
             )))
+
+/// <summary>A wildcard row reader is still a lambda over another type (AM002).</summary>
+let private am002Wildcard () =
+    equal
+        ("BuildTimeRead text",
+         "Arms.Match: 'text' is read inside a lambda over 'unit -> string', which is not the instance type 'Signal<Load>'. Pass the value to the nested view through its items or props.")
+        (raised (fun () ->
+            box (
+                Component.template
+                    (fun _ (state: Signal<Load>) -> state)
+                    (div () {
+                        Arms.Match (
+                            read,
+                            function
+                            | Loaded (text, _) -> ul () { forEach id (fun _ -> [| "a" |]) (li () { fun _ -> text }) }
+                            | _ -> span () { "Other" }
+                        )
+                    })
+            )))
+
+let private namedArms: Load -> TemplateView<Signal<Load>> =
+    function
+    | Idle -> span () { "Idle" }
+    | _ -> span () { "Other" }
+
+/// <summary>A module-level arms function, quoted as an eta-expansion, raises AM003.</summary>
+let private am003Named () =
+    equal
+        ("ArmsMatch", "Arms.Match takes a function literal as its second argument, such as (function | Case x -> ...).")
+        (raised (fun () -> box (Component.template (fun _ (state: Signal<Load>) -> state) (div () { Arms.Match (read, namedArms) }))))
+
+/// <summary>A failwithf leaf builds no arm; the selector raises it at the region read.</summary>
+let private failwithfLeaf () =
+    let built =
+        try
+            box (
+                Component.template
+                    (fun _ (state: Signal<Load>) -> state)
+                    (div () {
+                        Arms.Match (
+                            read,
+                            function
+                            | Loaded _ -> failwithf "bad %s" "state"
+                            | _ -> span () { "Other" }
+                        )
+                    })
+            )
+            |> Some
+        with _ ->
+            None
+
+    equal true built.IsSome
 
 let private am003 () =
     let arms: Load -> TemplateView<Signal<Load>> =
@@ -2579,7 +2667,21 @@ let private delegateReader () =
                 )
             })
 
-    equal true ((render site (Loaded ("a", 1))).Contains "<span>held</span>")
+    let heldTwin =
+        armOf (span (Hooks.exit (Func<_, _, _, _>(fun (_: unit -> string) (_: Fable.Core.TS.Dom.HTMLSpanElement) _ -> ignore))) { "held" })
+
+    let otherTwin = armOf (span () { "Other" })
+
+    let twin =
+        Component.template
+            (fun _ (state: Signal<Load>) -> state)
+            (div () {
+                matchWith read (function
+                    | Loaded (text, _) -> arm heldTwin text
+                    | _ -> arm otherTwin ())
+            })
+
+    equal (render twin (Loaded ("a", 1))) (render site (Loaded ("a", 1)))
 
 /// <summary>An if and a let at the top of case bodies, and a let of a view.</summary>
 let private bodyForms () =
@@ -2655,7 +2757,7 @@ let private loweringCost () =
 
 let private loweringBudget () =
     let first, mean = loweringCost ()
-    printfn "lowering|first=%.2fms mean=%.3fms" first mean
+    printfn "lowering|warm-first=%.2fms mean=%.3fms" first mean
 
     if
         Environment.GetCommandLineArgs ()
@@ -2667,6 +2769,9 @@ let cases: (string * (unit -> unit)) array =
     [|
         "a pattern variable as static text raises AM001 with the call's location", am001
         "a pattern variable in a row reader raises AM002", am002
+        "a pattern variable in a wildcard row reader raises AM002", am002Wildcard
+        "a module-level arms function raises AM003", am003Named
+        "a failwithf case body builds no arm", failwithfLeaf
         "a non-literal arms function raises AM003", am003
         "int, string, unit, option and struct instances raise AM004", am004
         "a decision hidden under a sequence raises AM007", am007
@@ -2674,6 +2779,58 @@ let cases: (string * (unit -> unit)) array =
         "a delegate over the instance reading a pattern variable is a reader", delegateReader
         "if, let and a let of a view at the top of case bodies", bodyForms
         "the lowering of a five-target site stays within its budget", loweringBudget
+    |]
+
+/// <summary>A reader with no arm of its site for its instance raises AM006.</summary>
+let private noArm () =
+    let message =
+        try
+            Ranvier.View.Arms.Cells.values (Ranvier.View.Arms.Cells.create ()) (obj ()) 0
+            |> ignore
+
+            ""
+        with :? ArmsMatchException as error ->
+            error.Message
+
+    equal
+        "Arms.Match: no arm of this site is mounted for the instance this reader received. A lambda over the instance type inside a case body runs with the arm's instance."
+        message
+
+/// <summary>Sixteen threads render one site for one shared instance, each under its own graph, 50 times each (Review Focus 1).</summary>
+let private concurrentRenders () =
+    let score: ArmsFixtures.Score = { Name = "ada"; Points = 5 }
+    let expected = Server.render omit ArmsFixtures.plainScore score
+    let failures = Collections.Concurrent.ConcurrentBag<string>()
+    use barrier = new Threading.Barrier 16
+
+    let threads =
+        [|
+            for _ in 1..16 ->
+                Threading.Thread (fun () ->
+                    barrier.SignalAndWait ()
+
+                    for _ in 1..50 do
+                        try
+                            let html = Server.render omit ArmsFixtures.plainScore score
+
+                            if html <> expected then
+                                failures.Add html
+                        with error ->
+                            failures.Add error.Message)
+        |]
+
+    for thread in threads do
+        thread.Start ()
+
+    for thread in threads do
+        thread.Join ()
+
+    equal ("<!--[r--><div><!--[a:", []) (expected.Substring (0, 21), List.ofSeq failures)
+
+let runtimeCases: (string * (unit -> unit)) array =
+    [|
+        "a reader with no arm for its instance raises AM006", noArm
+        "concurrent server renders of one instance read their own arms", concurrentRenders
     |]
 ```
 
@@ -2816,7 +2973,10 @@ let rec private extracts (control: Set<Var>) (value: Expr) =
     | Coerce (inner, _) -> extracts control inner
     | _ -> false
 
-/// <summary>Whether a <c>let</c> belongs to the selection (Ruling 2): a compiler variable only when it extracts.</summary>
+/// <summary>
+/// Whether a <c>let</c> belongs to the selection: its value refers to a controlled variable outside every lambda, or,
+/// for a compiler-generated variable, extracts a part of one.
+/// </summary>
 let private decides (control: Set<Var>) (var: Var) (value: Expr) =
     if var.Name.Contains "@" then
         extracts control value
@@ -2846,20 +3006,52 @@ let rec private hidden (control: Set<Var>) (expr: Expr) =
     | TryWith (inner, _, _, _, _) -> hidden control inner
     | _ -> false
 
-let private raising = set [ "Raise"; "FailWith"; "InvalidOp"; "InvalidArg" ]
+let private raising =
+    set
+        [
+            "Microsoft.FSharp.Core.Operators.Raise"
+            "Microsoft.FSharp.Core.Operators.FailWith"
+            "Microsoft.FSharp.Core.Operators.InvalidOp"
+            "Microsoft.FSharp.Core.Operators.InvalidArg"
+            "Microsoft.FSharp.Core.Operators.NullArg"
+            "Microsoft.FSharp.Core.ExtraTopLevelOperators.PrintFormatToStringThenFail"
+        ]
 
 /// <summary>Whether a case body is a raised exception, which builds no definition.</summary>
-let private isThrow (expr: Expr) =
+let rec private isThrow (expr: Expr) =
     match expr with
-    | Call (None, info, _) ->
-        info.DeclaringType.FullName = "Microsoft.FSharp.Core.Operators"
-        && raising.Contains info.Name
+    | Call (None, info, _) -> raising.Contains (info.DeclaringType.FullName + "." + info.Name)
+    | Application (f, _) -> isThrow f
+    | Let (_, value, _) -> isThrow value
+    | Coerce (inner, _) -> isThrow inner
     | _ -> false
 
-let private retype (t: Type) (expr: Expr) =
-    match expr with
-    | Call (None, info, args) when info.IsGenericMethod -> Expr.Call (info.GetGenericMethodDefinition().MakeGenericMethod t, args)
-    | other -> other
+/// <summary>The raising body evaluated where the selector returns a target.</summary>
+let private raiseAs (t: Type) (body: Expr) =
+    Expr.Let (Var ("raised", body.Type), body, Expr.Value (null, t))
+
+/// <summary>
+/// Whether <c>arms</c> is the compiler's eta-expansion of a named function, <c>fun x -> f x</c>, which a module-level
+/// arms function is quoted as (AM003).
+/// </summary>
+let private isEtaExpansion (arms: Expr) =
+    match arms with
+    | Lambda (argument, Call (target, _, args)) ->
+        let others =
+            List.truncate (args.Length - 1) args
+            @ Option.toList target
+
+        (match List.tryLast args with
+         | Some (Var passed) -> passed = argument
+         | _ -> false)
+        && not (
+            others
+            |> List.exists (fun e -> e.GetFreeVars () |> Seq.contains argument)
+        )
+    | Lambda (argument, Application (f, Var passed)) ->
+        passed = argument
+        && not (f.GetFreeVars () |> Seq.contains argument)
+    | _ -> false
 
 /// <summary>The first slot variable left free in a lowered body, with the type of the lambda it sits in.</summary>
 let private find (slots: Set<Var>) (expr: Expr) : (Var * Type option) option =
@@ -2874,10 +3066,7 @@ let private find (slots: Set<Var>) (expr: Expr) : (Var * Type option) option =
 
     go None expr
 
-/// <summary>
-/// The expression with each assignment followed by <c>()</c>: LeafExpressionConverter types an assignment by its value,
-/// and a lambda returning it would no longer be <c>unit</c>-valued.
-/// </summary>
+/// <summary>The expression with <c>()</c> after each assignment.</summary>
 let rec private unitAssignments (expr: Expr) : Expr =
     match expr with
     | ExprShape.ShapeVar _ -> expr
@@ -2888,6 +3077,60 @@ let rec private unitAssignments (expr: Expr) : Expr =
         | FieldSet _
         | VarSet _ as assignment -> Expr.Sequential (assignment, Expr.Value (box (), typeof<unit>))
         | rebuilt -> rebuilt
+
+/// <summary>The value of a closed expression, from a delegate compiled or interpreted.</summary>
+let private evaluate (interpret: bool) (expr: Expr) : obj =
+    Linq.Expressions.Expression
+        .Lambda<Func<obj>>(Linq.Expressions.Expression.Convert (LeafExpressionConverter.QuotationToExpression expr, typeof<obj>))
+        .Compile(preferInterpretation = interpret)
+        .Invoke()
+
+/// <summary>The number of calls a per-call lambda runs interpreted before it is compiled.</summary>
+[<Literal>]
+let hotCalls = 64
+
+/// <summary>A function that runs interpreted for its first <c>hotCalls</c> calls, then compiled.</summary>
+[<Sealed>]
+type internal Hot<'a, 'b>(interpreted: 'a -> 'b, compile: unit -> obj) =
+    inherit FSharpFunc<'a, 'b>()
+    let mutable current = interpreted
+    let mutable calls = 0
+
+    override _.Invoke(argument: 'a) : 'b =
+        if calls < hotCalls then
+            calls <- calls + 1
+
+            if calls = hotCalls then
+                current <- unbox<'a -> 'b>(compile ())
+
+        current argument
+
+/// <summary>
+/// The expression with each closed lambda that runs per call (a reader, a row reader, a handler, the selector) replaced
+/// by a <c>Hot</c> function; thunks over <c>unit</c> and computation-expression builder lambdas are descended into, and
+/// delegates stay interpreted; a nested site's quotation is left to its own lowering.
+/// </summary>
+let rec private compileHot (expr: Expr) : Expr =
+    match expr with
+    | NewDelegate _
+    | QuoteTyped _
+    | QuoteRaw _ -> expr
+    | Let (var, value, body) -> Expr.Let (var, compileHot value, compileHot body)
+    | LetRecursive _
+    | ForIntegerRangeLoop _
+    | TryWith _ -> expr
+    | ExprShape.ShapeLambda (var, _) when
+        var.Type <> typeof<unit>
+        && not (var.Name.Contains "@")
+        && Seq.isEmpty (expr.GetFreeVars ())
+        ->
+        let domain, range = FSharpType.GetFunctionElements expr.Type
+        let hot = typedefof<Hot<_, _>>.MakeGenericType [| domain; range |]
+        let compile: unit -> obj = fun () -> evaluate false expr
+        Expr.Value (Activator.CreateInstance (hot, [| evaluate true expr; box compile |]), expr.Type)
+    | ExprShape.ShapeVar _ -> expr
+    | ExprShape.ShapeLambda (var, body) -> Expr.Lambda (var, compileHot body)
+    | ExprShape.ShapeCombination (shape, args) -> ExprShape.RebuildShapeCombination (shape, List.map compileHot args)
 
 let private unboxMethod =
     match <@ unbox<int> null @> with
@@ -2911,7 +3154,7 @@ let private valuesMethod =
 let lower (cells: Cells.Cells) (at: At) (arms: Expr<'u -> TemplateView<'inst>>) : ('u -> int * obj array) * TemplateView<'inst> array =
     let matched, tree =
         match arms with
-        | Lambda (matched, tree) -> matched, tree
+        | Lambda (matched, tree) when not (isEtaExpansion arms) -> matched, tree
         | _ -> raise (ArmsMatchException (located at Diagnostics.notLiteral))
 
     let control = Set.singleton matched
@@ -2947,7 +3190,7 @@ let lower (cells: Cells.Cells) (at: At) (arms: Expr<'u -> TemplateView<'inst>>) 
             position.Value <- leaf + 1
 
             match targets[leaf] with
-            | None -> retype typeof<int * obj array> body
+            | None -> raiseAs typeof<int * obj array> body
             | Some target ->
                 Expr.NewTuple
                     [
@@ -3019,9 +3262,15 @@ let lower (cells: Cells.Cells) (at: At) (arms: Expr<'u -> TemplateView<'inst>>) 
         ]
 
     let site =
-        LeafExpressionConverter.QuotationToExpression (Expr.NewTuple [ selector; Expr.NewArray (typeof<TemplateView<'inst>>, bodies) ])
+        LeafExpressionConverter.QuotationToExpression (
+            Expr.NewTuple
+                [
+                    compileHot selector
+                    Expr.NewArray (typeof<TemplateView<'inst>>, List.map compileHot bodies)
+                ]
+        )
 
-    // The site expression runs once, through the LINQ interpreter.
+    // The construction runs once in the LINQ interpreter; each per-call lambda inside it is compiled after hotCalls calls.
     Linq.Expressions.Expression
         .Lambda<Func<obj>>(Linq.Expressions.Expression.Convert (site, typeof<obj>))
         .Compile(preferInterpretation = true)
@@ -3081,7 +3330,7 @@ git commit -F C:/Users/shaya/.claude/jobs/7fee9ca9/tmp/arms-task-3-commit.txt
 git push origin HEAD:feat/arms-match
 ```
 
-Message subject: `feat(arms): .NET lowering rules, rejections and one-lambda compile`.
+Message subject: `feat(arms): .NET lowering rules, rejections and interpreted evaluation`.
 
 ---
 
@@ -3151,7 +3400,7 @@ type Value =
     | Maybe of maybe: int voption
     | Count of count: int
 
-/// <summary>One state of one fixture: the site, its twin, and their server HTML under given options.</summary>
+/// <summary>A fixture state: the site, its twin, and their server HTML under given options.</summary>
 type Case =
     {
         Fixture: string
@@ -3930,10 +4179,22 @@ let all: Case list =
 
 /// <summary>Whether the incomplete site raises for its unmatched case.</summary>
 let incompleteRaises () =
-    let html =
-        renderWith Server.Options.defaults incomplete (fun () -> Api.createSignal (Loaded ("x", 1)))
+    try
+        use graph = new Graph ()
+        let props = graph.Run (fun () -> Api.createSignal (Loaded ("x", 1)))
 
-    html.StartsWith "raised: "
+        Server.render Server.Options.defaults incomplete props
+        |> ignore
+
+        false
+    with
+#if FABLE_COMPILER
+    | error ->
+        error.Message.StartsWith "Match failure"
+#else
+    | :? MatchFailureException ->
+        true
+#endif
 ```
 
 - [ ] **Step 2: Write the server checks**
@@ -3965,9 +4226,19 @@ let private sameLayouts () =
             (case.Fixture, SugarFixtures.layoutSignature case.Twin.Root, structuralHash case.Twin)
             (case.Fixture, SugarFixtures.layoutSignature case.Site.Root, structuralHash case.Site)
 
+/// <summary>Equal HTML for every fixture state; only the editor's listener under Reject may raise, on both sides alike.</summary>
 let private sameHtml (options: Server.Options) () =
     for case in all do
         let site, twin = case.Render options
+        let mayRaise = options.Policy = Reject && case.Fixture = "editor"
+
+        if
+            not mayRaise
+            && (site.StartsWith "raised: "
+                || twin.StartsWith "raised: ")
+        then
+            failwithf "%s %s raised: site %s; twin %s" case.Fixture case.State site twin
+
         equal (case.Fixture, case.State, twin) (case.Fixture, case.State, site)
 
 let cases: (string * (unit -> unit)) array =
@@ -5952,6 +6223,11 @@ an option, which the site cannot key payloads by. Wrap it in a record or pass a 
 
 **AM007 "Arms.Match: this pattern form is not supported."** An `if`, `match` or `let` over a pattern variable sits under
 a sequence, a type cast or a `try` at the top of a case body. Move the condition into the match, as a case or a guard.
+
+**FS0452 "Quotations cannot contain inline assembly code or pattern matching on arrays", or FS0449 for an object
+expression, at an `Arms.Match` case.** The .NET overload quotes the arms. A Fable-only build accepts the form while the
+IDE and .NET reject it; use a list pattern or a guard (`| xs when xs.Length = 1 ->`), and move an object expression out
+of the case body.
 ```
 
 and at the end of `## Runtime errors`:

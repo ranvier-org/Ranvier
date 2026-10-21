@@ -44,7 +44,7 @@ type Value =
     | Maybe of maybe: int voption
     | Count of count: int
 
-/// <summary>One state of one fixture: the site, its twin, and their server HTML under given options.</summary>
+/// <summary>A fixture state: the site, its twin, and their server HTML under given options.</summary>
 type Case =
     {
         Fixture: string
@@ -823,7 +823,19 @@ let all: Case list =
 
 /// <summary>Whether the incomplete site raises for its unmatched case.</summary>
 let incompleteRaises () =
-    let html =
-        renderWith Server.Options.defaults incomplete (fun () -> Api.createSignal (Loaded ("x", 1)))
+    try
+        use graph = new Graph ()
+        let props = graph.Run (fun () -> Api.createSignal (Loaded ("x", 1)))
 
-    html.StartsWith "raised: "
+        Server.render Server.Options.defaults incomplete props
+        |> ignore
+
+        false
+    with
+#if FABLE_COMPILER
+    | error ->
+        error.Message.StartsWith "Match failure"
+#else
+    | :? MatchFailureException ->
+        true
+#endif

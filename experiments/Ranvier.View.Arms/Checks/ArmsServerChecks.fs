@@ -22,9 +22,19 @@ let private sameLayouts () =
             (case.Fixture, SugarFixtures.layoutSignature case.Twin.Root, structuralHash case.Twin)
             (case.Fixture, SugarFixtures.layoutSignature case.Site.Root, structuralHash case.Site)
 
+/// <summary>Equal HTML for every fixture state; only the editor's listener under Reject may raise, on both sides alike.</summary>
 let private sameHtml (options: Server.Options) () =
     for case in all do
         let site, twin = case.Render options
+        let mayRaise = options.Policy = Reject && case.Fixture = "editor"
+
+        if
+            not mayRaise
+            && (site.StartsWith "raised: "
+                || twin.StartsWith "raised: ")
+        then
+            failwithf "%s %s raised: site %s; twin %s" case.Fixture case.State site twin
+
         equal (case.Fixture, case.State, twin) (case.Fixture, case.State, site)
 
 let cases: (string * (unit -> unit)) array =

@@ -109,7 +109,10 @@ let rec private extracts (control: Set<Var>) (value: Expr) =
     | Coerce (inner, _) -> extracts control inner
     | _ -> false
 
-/// <summary>Whether a <c>let</c> belongs to the selection (Ruling 2): a compiler variable only when it extracts.</summary>
+/// <summary>
+/// Whether a <c>let</c> belongs to the selection: its value refers to a controlled variable outside every lambda, or,
+/// for a compiler-generated variable, extracts a part of one.
+/// </summary>
 let private decides (control: Set<Var>) (var: Var) (value: Expr) =
     if var.Name.Contains "@" then
         extracts control value
@@ -139,20 +142,52 @@ let rec private hidden (control: Set<Var>) (expr: Expr) =
     | TryWith (inner, _, _, _, _) -> hidden control inner
     | _ -> false
 
-let private raising = set [ "Raise"; "FailWith"; "InvalidOp"; "InvalidArg" ]
+let private raising =
+    set
+        [
+            "Microsoft.FSharp.Core.Operators.Raise"
+            "Microsoft.FSharp.Core.Operators.FailWith"
+            "Microsoft.FSharp.Core.Operators.InvalidOp"
+            "Microsoft.FSharp.Core.Operators.InvalidArg"
+            "Microsoft.FSharp.Core.Operators.NullArg"
+            "Microsoft.FSharp.Core.ExtraTopLevelOperators.PrintFormatToStringThenFail"
+        ]
 
 /// <summary>Whether a case body is a raised exception, which builds no definition.</summary>
-let private isThrow (expr: Expr) =
+let rec private isThrow (expr: Expr) =
     match expr with
-    | Call (None, info, _) ->
-        info.DeclaringType.FullName = "Microsoft.FSharp.Core.Operators"
-        && raising.Contains info.Name
+    | Call (None, info, _) -> raising.Contains (info.DeclaringType.FullName + "." + info.Name)
+    | Application (f, _) -> isThrow f
+    | Let (_, value, _) -> isThrow value
+    | Coerce (inner, _) -> isThrow inner
     | _ -> false
 
-let private retype (t: Type) (expr: Expr) =
-    match expr with
-    | Call (None, info, args) when info.IsGenericMethod -> Expr.Call (info.GetGenericMethodDefinition().MakeGenericMethod t, args)
-    | other -> other
+/// <summary>The raising body evaluated where the selector returns a target.</summary>
+let private raiseAs (t: Type) (body: Expr) =
+    Expr.Let (Var ("raised", body.Type), body, Expr.Value (null, t))
+
+/// <summary>
+/// Whether <c>arms</c> is the compiler's eta-expansion of a named function, <c>fun x -> f x</c>, which a module-level
+/// arms function is quoted as (AM003).
+/// </summary>
+let private isEtaExpansion (arms: Expr) =
+    match arms with
+    | Lambda (argument, Call (target, _, args)) ->
+        let others =
+            List.truncate (args.Length - 1) args
+            @ Option.toList target
+
+        (match List.tryLast args with
+         | Some (Var passed) -> passed = argument
+         | _ -> false)
+        && not (
+            others
+            |> List.exists (fun e -> e.GetFreeVars () |> Seq.contains argument)
+        )
+    | Lambda (argument, Application (f, Var passed)) ->
+        passed = argument
+        && not (f.GetFreeVars () |> Seq.contains argument)
+    | _ -> false
 
 /// <summary>The first slot variable left free in a lowered body, with the type of the lambda it sits in.</summary>
 let private find (slots: Set<Var>) (expr: Expr) : (Var * Type option) option =
@@ -167,10 +202,7 @@ let private find (slots: Set<Var>) (expr: Expr) : (Var * Type option) option =
 
     go None expr
 
-/// <summary>
-/// The expression with each assignment followed by <c>()</c>: LeafExpressionConverter types an assignment by its value,
-/// and a lambda returning it would no longer be <c>unit</c>-valued.
-/// </summary>
+/// <summary>The expression with <c>()</c> after each assignment.</summary>
 let rec private unitAssignments (expr: Expr) : Expr =
     match expr with
     | ExprShape.ShapeVar _ -> expr
@@ -181,6 +213,60 @@ let rec private unitAssignments (expr: Expr) : Expr =
         | FieldSet _
         | VarSet _ as assignment -> Expr.Sequential (assignment, Expr.Value (box (), typeof<unit>))
         | rebuilt -> rebuilt
+
+/// <summary>The value of a closed expression, from a delegate compiled or interpreted.</summary>
+let private evaluate (interpret: bool) (expr: Expr) : obj =
+    Linq.Expressions.Expression
+        .Lambda<Func<obj>>(Linq.Expressions.Expression.Convert (LeafExpressionConverter.QuotationToExpression expr, typeof<obj>))
+        .Compile(preferInterpretation = interpret)
+        .Invoke()
+
+/// <summary>The number of calls a per-call lambda runs interpreted before it is compiled.</summary>
+[<Literal>]
+let hotCalls = 64
+
+/// <summary>A function that runs interpreted for its first <c>hotCalls</c> calls, then compiled.</summary>
+[<Sealed>]
+type internal Hot<'a, 'b>(interpreted: 'a -> 'b, compile: unit -> obj) =
+    inherit FSharpFunc<'a, 'b>()
+    let mutable current = interpreted
+    let mutable calls = 0
+
+    override _.Invoke(argument: 'a) : 'b =
+        if calls < hotCalls then
+            calls <- calls + 1
+
+            if calls = hotCalls then
+                current <- unbox<'a -> 'b>(compile ())
+
+        current argument
+
+/// <summary>
+/// The expression with each closed lambda that runs per call (a reader, a row reader, a handler, the selector) replaced
+/// by a <c>Hot</c> function; thunks over <c>unit</c> and computation-expression builder lambdas are descended into, and
+/// delegates stay interpreted; a nested site's quotation is left to its own lowering.
+/// </summary>
+let rec private compileHot (expr: Expr) : Expr =
+    match expr with
+    | NewDelegate _
+    | QuoteTyped _
+    | QuoteRaw _ -> expr
+    | Let (var, value, body) -> Expr.Let (var, compileHot value, compileHot body)
+    | LetRecursive _
+    | ForIntegerRangeLoop _
+    | TryWith _ -> expr
+    | ExprShape.ShapeLambda (var, _) when
+        var.Type <> typeof<unit>
+        && not (var.Name.Contains "@")
+        && Seq.isEmpty (expr.GetFreeVars ())
+        ->
+        let domain, range = FSharpType.GetFunctionElements expr.Type
+        let hot = typedefof<Hot<_, _>>.MakeGenericType [| domain; range |]
+        let compile: unit -> obj = fun () -> evaluate false expr
+        Expr.Value (Activator.CreateInstance (hot, [| evaluate true expr; box compile |]), expr.Type)
+    | ExprShape.ShapeVar _ -> expr
+    | ExprShape.ShapeLambda (var, body) -> Expr.Lambda (var, compileHot body)
+    | ExprShape.ShapeCombination (shape, args) -> ExprShape.RebuildShapeCombination (shape, List.map compileHot args)
 
 let private unboxMethod =
     match <@ unbox<int> null @> with
@@ -204,7 +290,7 @@ let private valuesMethod =
 let lower (cells: Cells.Cells) (at: At) (arms: Expr<'u -> TemplateView<'inst>>) : ('u -> int * obj array) * TemplateView<'inst> array =
     let matched, tree =
         match arms with
-        | Lambda (matched, tree) -> matched, tree
+        | Lambda (matched, tree) when not (isEtaExpansion arms) -> matched, tree
         | _ -> raise (ArmsMatchException (located at Diagnostics.notLiteral))
 
     let control = Set.singleton matched
@@ -240,7 +326,7 @@ let lower (cells: Cells.Cells) (at: At) (arms: Expr<'u -> TemplateView<'inst>>) 
             position.Value <- leaf + 1
 
             match targets[leaf] with
-            | None -> retype typeof<int * obj array> body
+            | None -> raiseAs typeof<int * obj array> body
             | Some target ->
                 Expr.NewTuple
                     [
@@ -312,9 +398,15 @@ let lower (cells: Cells.Cells) (at: At) (arms: Expr<'u -> TemplateView<'inst>>) 
         ]
 
     let site =
-        LeafExpressionConverter.QuotationToExpression (Expr.NewTuple [ selector; Expr.NewArray (typeof<TemplateView<'inst>>, bodies) ])
+        LeafExpressionConverter.QuotationToExpression (
+            Expr.NewTuple
+                [
+                    compileHot selector
+                    Expr.NewArray (typeof<TemplateView<'inst>>, List.map compileHot bodies)
+                ]
+        )
 
-    // The site expression runs once, through the LINQ interpreter.
+    // The construction runs once in the LINQ interpreter; each per-call lambda inside it is compiled after hotCalls calls.
     Linq.Expressions.Expression
         .Lambda<Func<obj>>(Linq.Expressions.Expression.Convert (site, typeof<obj>))
         .Compile(preferInterpretation = true)

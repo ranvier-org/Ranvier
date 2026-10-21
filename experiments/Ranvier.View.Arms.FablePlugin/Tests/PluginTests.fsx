@@ -96,19 +96,23 @@ if code = 0 then
             ("diff " + emitted + " " + expected)
 
     // Each prologue maps back to the line of the reader it opens (spec, IDE experience).
-    let mapped, mapLog =
-        exec
-            "node"
-            [
-                Path.Combine (here, "sourcemap.mjs")
-                emitted
-                Path.Combine (here, "Fixtures", "Sites.fs")
-            ]
+    let mapped, mapLog = exec "node" [ Path.Combine (here, "sourcemap.mjs"); emitted ]
 
-    check "each prologue maps to its reader's source line" (mapped = 0) mapLog
+    let prologues = Path.Combine (here, "expected", "prologues.txt")
 
-// The reported column is asserted where the range is the identifier or the call (AM001, AM003, AM004); for AM001b it is
-// the field read, and for AM002 and AM007 the expression Fable holds, so only the line is asserted.
+    if update && mapped = 0 then
+        File.WriteAllText (prologues, normalise mapLog)
+        printfn "UPDATED %s" prologues
+    else
+        check
+            "each prologue maps to the line of its reader's first pattern-variable reference (expected/prologues.txt)"
+            (mapped = 0
+             && File.Exists prologues
+             && normalise mapLog = normalise (File.ReadAllText prologues))
+            mapLog
+
+// The reported column is asserted where the range is the identifier or the call (AM001, AM003, AM004); for AM002 and
+// AM007 the range is the expression Fable holds, so only the line is asserted.
 let bad =
     [
         "BAD_AM001",
@@ -116,8 +120,8 @@ let bad =
         17,
         Some 67,
         "Arms.Match: 'text' is read outside a reader of the instance. Read it inside a lambda over the instance, such as (fun _ -> text)."
-        "BAD_AM001B",
-        "AM001b.fs",
+        "BAD_AM001_SIMPLE",
+        "AM001-simple.fs",
         17,
         Some 48,
         "Arms.Match: 'text' is read outside a reader of the instance. Read it inside a lambda over the instance, such as (fun _ -> text)."
@@ -126,7 +130,17 @@ let bad =
         17,
         None,
         "Arms.Match: 'text' is read inside a lambda over 'unit -> string', which is not the instance type 'Signal<Load>'. Pass the value to the nested view through its items or props."
+        "BAD_AM002_WILDCARD",
+        "AM002-wildcard.fs",
+        17,
+        None,
+        "Arms.Match: 'text' is read inside a lambda over 'unit -> string', which is not the instance type 'Signal<Load>'. Pass the value to the nested view through its items or props."
         "BAD_AM003", "AM003.fs", 16, Some 72, "Arms.Match takes a function literal as its second argument, such as (function | Case x -> ...)."
+        "BAD_AM003_LOCAL",
+        "AM003-local.fs",
+        19,
+        None,
+        "Arms.Match takes a function literal as its second argument, such as (function | Case x -> ...)."
         "BAD_AM004_INT",
         "AM004.fs",
         10,

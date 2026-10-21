@@ -1,30 +1,26 @@
-// Maps each Arms.Match prologue call (armsValues_L<line>C<column>(...)) of an emitted file back to its F# source line,
-// and exits 1 unless every one lands inside a reader: on a line holding "fun" or "Func<", or at most two lines below one.
-// Usage: node sourcemap.mjs <emitted .js> <F# source>   (the .js.map beside the .js; Fable --sourceMaps writes it)
+// Prints, for each Arms.Match prologue call (armsValues_L<line>C<column>(instance, target)) of an emitted file, the
+// site's ordinal in the file, the target and the F# source line the source map gives it:
+// "S<ordinal> <target> <line>". PluginTests.fsx compares the listing with expected/prologues.txt. Exits 1 when the file
+// holds no prologue.
+// Usage: node sourcemap.mjs <emitted .js>   (the .js.map beside the .js; Fable --sourceMaps writes it)
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 
 const require = createRequire(new URL("../../../examples/Fable.Ranvier.Playground/package.json", import.meta.url));
 const { TraceMap, originalPositionFor } = require("@jridgewell/trace-mapping");
-const [emitted, source] = process.argv.slice(2);
+const [emitted] = process.argv.slice(2);
 const map = new TraceMap(readFileSync(emitted + ".map", "utf8"));
-const lines = readFileSync(source, "utf8").split(/\r?\n/);
-const prologue = /armsValues_L\d+C\d+\(/g;
-const opensReader = row => row >= 0 && /\bfun\b|Func</.test(lines[row] ?? "");
-const misplaced = [];
-let checked = 0;
+const ordinals = new Map();
+const prologue = /armsValues_(L\d+C\d+)\([^,()]+, (\d+)\)/g;
+const listing = [];
 
 readFileSync(emitted, "utf8").split("\n").forEach((text, index) => {
   for (const found of text.matchAll(prologue)) {
-    checked++;
+    if (!ordinals.has(found[1])) ordinals.set(found[1], ordinals.size + 1);
     const original = originalPositionFor(map, { line: index + 1, column: found.index });
-    const at = original.line == null ? -1 : original.line - 1;
-    if (![at, at - 1, at - 2].some(opensReader)) misplaced.push(`${index + 1}:${found.index} -> ${original.line}: ${(lines[at] ?? "").trim()}`);
+    listing.push(`S${ordinals.get(found[1])} ${found[2]} ${original.line}`);
   }
 });
 
-console.log(`${checked} prologues checked`);
-if (checked === 0 || misplaced.length > 0) {
-  console.error(checked === 0 ? "no prologue found" : misplaced.join("\n"));
-  process.exit(1);
-}
+console.log(listing.join("\n"));
+if (listing.length === 0) process.exit(1);

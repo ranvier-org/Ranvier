@@ -104,3 +104,16 @@ let nested =
                 | _ -> span () { "Other" }
             )
         })
+
+/// <summary>A failwithf case body: the selector raises it, and no arm is built for it.</summary>
+let failing =
+    Component.template
+        (fun _ (state: Signal<Load>) -> state)
+        (div () {
+            Arms.Match (
+                read,
+                function
+                | Loaded _ -> failwithf "bad %s" "state"
+                | _ -> span () { "Other" }
+            )
+        })

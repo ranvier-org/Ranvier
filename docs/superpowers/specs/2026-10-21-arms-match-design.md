@@ -116,8 +116,8 @@ its rows and updates them.
     handlers and server renders, where the owner chain is not the arm's. A second view feature that needs owner context
     reopens it.
 14. **The .NET path caches no lowering.** A call-site cache would serve the first call's captured locals to later calls,
-    and module-level sites lower once already. The one-lambda compile (≤ 4 ms mean) and the binding rule in the docs
-    ship instead.
+    and module-level sites lower once already. The one-expression lowering (≤ 4 ms mean) and the binding rule in the
+    docs ship instead.
 15. **No NativeAOT-compatible .NET path.** It would need a build-time lowering, the machinery the plugin avoids. Trimmed
     and NativeAOT apps use `matchWith`, and the annotation says so at publish.
 16. **One package at graduation.** `Ranvier.View.Arms` carries the plugin assembly and an auto-imported `.targets`, so
@@ -168,8 +168,9 @@ inside the app's compilation with the app's references and defines; the `.target
 `compile` scripts and the CI jobs run `dotnet build experiments/Ranvier.View.Arms.FablePlugin -c Release` first.
 Fable sets the `FABLE_COMPILER` MSBuild property during project cracking (verified in phase 1), so .NET builds carry
 no plugin assembly. When the view graduates to a package, one `Ranvier.View.Arms` package ships the plugin assembly
-under `fable-plugin/` with a NuGet dependency on `Fable.AST`, and the `.targets` under `build/`, which NuGet imports
-automatically (decision 16).
+under `fable-plugin/` with a NuGet dependency on `Fable.AST`, and the `.targets` under both `build/` and
+`buildTransitive/`, so an app that references a component library built on `Ranvier.View.Arms` also receives the define
+and the plugin reference; the project passed to `dotnet fickl` is the one whose imports count (decision 16).
 
 ## Public API
 
@@ -284,7 +285,7 @@ plain `match` does, and site build succeeds.
 | Wildcard | `\| _ ->` | one target | probed |
 | Tuple scrutinee | `(s.Value, s.Value = Idle)` with `\| Loaded (t, _), _ ->` | one target per row | probed (no twin) |
 | Record, list, option patterns | `\| { Name = n } ->`, `\| [x] ->`, `\| Some v ->` | one target per row; extracted parts are bound values | fixtures (phase 2) |
-| Array pattern | `\| [\| x \|] ->` | FS0452 "Quotations cannot contain inline assembly code or pattern matching on arrays", in the IDE and on .NET | unsupported (phase 2) |
+| Array pattern | `\| [\| x \|] ->` | FS0452 "Quotations cannot contain inline assembly code or pattern matching on arrays" in the IDE and on .NET; a Fable-only build accepts it, which breaks "builds on one, builds on the other"; use a list pattern or a guard | unsupported (phase 2) |
 | `as` pattern | `\| Loaded _ as whole ->` | one target; `whole` is a bound value | spec; fixture in phase 2 |
 | Type test | `\| :? Item as item ->` (scrutinee `obj`) | one target; `item` is a bound value | spec; fixture in phase 2 |
 | Active pattern, total or partial | `\| Even -> \| Odd ->`, `\| Parse n ->` | the active pattern runs in `select`; one target per row | spec; fixtures in phase 2 |
@@ -292,7 +293,7 @@ plain `match` does, and site build succeeds.
 | `let` over a pattern variable at the top of a body | `\| Loaded (t, _) -> let label = t + "!" in ...` | `label` is a bound value, computed per region read | spec; fixture in phase 2 |
 | Nested `Arms.Match` in a body | inner site reading an outer pattern variable in a reader | inner and outer sites each own their cells | spec; fixture in phase 2 |
 | Incomplete match | missing case, FS0025 warning | `select` raises `MatchFailureException` for unmatched values | spec |
-| Object expression in a body | `{ new IDisposable with ... }` | FS0449 "Quotations cannot contain object expressions", in the IDE and on .NET | probed; unsupported |
+| Object expression in a body | `{ new IDisposable with ... }` | FS0449 "Quotations cannot contain object expressions" in the IDE and on .NET; a Fable-only build accepts it | probed; unsupported |
 | Assignment in a reader | `fun (e: Editor) _ -> e.Saved.Value <- text` | the .NET lowering follows each assignment with `()`, since `LeafExpressionConverter` types an assignment by its value | fixture (phase 2) |
 | `Arms.Match` with a non-literal second argument | `Arms.Match (read, arms)` | AM003 | probed |
 
@@ -353,8 +354,12 @@ through the items reader, which runs over the instance:
 
 **Cost.** 9.06 ms for the first five-target site of a process and 8.55 ms mean over 200 more
 (`results/net.txt:1`); nearly all of it is `LeafExpressionConverter` compiling one LINQ expression per body and one for
-the selector. Phase 3 compiles a site's selector and bodies as one LINQ lambda returning a tuple, and the budget is
-≤ 10 ms per five-target site at the first call and ≤ 4 ms mean, measured by a `lowering|` line in the checks.
+the selector. The shipped lowering forms one LINQ expression per site, runs its construction once in the LINQ
+interpreter, and compiles each per-call lambda (selector, readers, row readers, handlers) after 64 calls; the budget is
+≤ 4 ms mean per five-target site, measured by `Checks/DotnetCost` and the `lowering|` line in the checks. The first site
+of a fresh process costs 105-160 ms in every measured mode, 75-110 ms above the view's own cold start, which the
+≤ 10 ms first-call figure of the draft did not account for; module-level sites and one render at start-up keep it out
+of the first request (research note, ".NET lowering cost").
 
 **When it runs.** Once per evaluation of the call. A site bound at module level, or inside a template's build
 function, lowers once per process, on the first access of its file's values; a server that calls `Server.render` once
@@ -446,8 +451,9 @@ Each item names its suite; the research's unprobed items are marked **(new)**.
 1. **Plugin unit tests** (`experiments/Ranvier.View.Arms.FablePlugin/Tests`, .NET): compile fixture files with
    `dotnet fickl` into a scratch folder and compare the emitted JavaScript of each site with a committed expectation
    (names normalised); one bad-fixture file per diagnostic, asserting exit code 1 and the exact message and range.
-   Emitted names are derived from the enclosing member and a per-member index, so output is stable across files and
-   watch rebuilds (the probe's global counter, `Plugin.fs:161`, is not).
+   Emitted names are derived from the call's source range (`L<line>C<col>`), and the tests normalise them to per-file
+   ordinals, so the expectation changes only when the lowering does (the probe's global counter, `Plugin.fs:161`, is
+   not stable).
 2. **.NET lowering tests** (`RepresentationChecks`): the pattern table's forms lower, AM001-AM004 raise with the exact
    texts, and the `lowering|` timing stays within budget.
 3. **Mounted behaviour** (Playground `tests/arms.test.mjs`, jsdom, `RANVIER_VIEW_COUNTERS`): the probe's nine-step trace
@@ -535,7 +541,7 @@ Each phase lands with its tests green and is reviewable alone.
 2. **Lowering rules.** The widened decision rule on both producers; throw leaves into `select`; `Delegate` readers;
    AM001b field names; AM002-AM004; stable emitted names; the pattern-table fixtures and their twins on both targets.
 3. **Runtime.** `Cells` with per-target live lists, graph tags, withdrawal, locking on .NET, AM006; `Site.create`; the
-   .NET one-lambda compile. Tests: Testing 2-7, the `Twice` scenario, `lowering|` budget.
+   .NET one-expression lowering. Tests: Testing 2-7, the `Twice` scenario, `lowering|` budget.
 4. **Parity.** `ArmsServerChecks.fs`, the golden file, `arms-server.test.mjs`, `arms-hydration.test.mjs`, Debug build,
    held exits, pending sources (Testing 8-10).
 5. **Budgets.** `size.mjs` with the 0 B and per-site rules; the Chromium benchmark mode and heap profile (Testing

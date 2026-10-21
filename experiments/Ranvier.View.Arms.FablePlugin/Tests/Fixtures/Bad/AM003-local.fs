@@ -1,6 +1,6 @@
-module Fixtures.Bad.AM001b
+module Fixtures.Bad.AM003Local
 
-#if BAD_AM001B
+#if BAD_AM003_LOCAL
 open global.Ranvier
 open Ranvier.View.Foundation.Template
 open Ranvier.View.Foundation.Sugar
@@ -11,11 +11,11 @@ let site =
     Component.template
         (fun _ (state: Signal<Load>) -> state)
         (div () {
-            Arms.Match (
-                (fun (state: Signal<Load>) -> state.Value),
+            let arms =
                 function
-                | Loaded (text, _) -> span () { text }
+                | Idle -> span () { "Idle" }
                 | _ -> span () { "Other" }
-            )
+
+            Arms.Match ((fun (state: Signal<Load>) -> state.Value), arms)
         })
 #endif

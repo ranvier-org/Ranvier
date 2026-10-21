@@ -96,21 +96,27 @@ let private raising =
             "Microsoft.FSharp.Core.Operators.failwith"
             "Microsoft.FSharp.Core.Operators.invalidOp"
             "Microsoft.FSharp.Core.Operators.invalidArg"
+            "Microsoft.FSharp.Core.Operators.nullArg"
+            "Microsoft.FSharp.Core.ExtraTopLevelOperators.failwithf"
         ]
 
 /// <summary>Whether a case body is a raised exception, which builds no definition.</summary>
-let private isThrow (helper: PluginHelper) (expr: Expr) =
+let rec private isThrow (helper: PluginHelper) (expr: Expr) =
     match expr with
     | Extended (Throw _, _) -> true
     | Call (_, { MemberRef = Some ref }, _, _) -> raising.Contains (helper.GetMember ref).FullName
+    | Import (info, _, _) -> info.Selector = "toFail"
+    | Let (id, value, _) when id.IsCompilerGenerated -> isThrow helper value
+    | Call (f, _, _, _)
+    | CurriedApply (f, _, _, _)
+    | TypeCast (f, _) -> isThrow helper f
     | _ -> false
 
-/// <summary>A raised exception retyped as the selector's result.</summary>
-let private retype (t: Type) (expr: Expr) =
-    match expr with
+/// <summary>The raising body where the selector returns a target: a throw retyped, any other raise followed by null.</summary>
+let private raiseAs (t: Type) (body: Expr) =
+    match body with
     | Extended (Throw (e, _), r) -> Extended (Throw (e, t), r)
-    | Call (callee, info, _, r) -> Call (callee, info, t, r)
-    | other -> other
+    | _ -> Sequential [ body; Value (Null t, None) ]
 
 /// <summary>Whether <c>value</c> is a field, tuple item or case payload of a controlled identifier.</summary>
 let rec private extracts (control: Set<string>) (value: Expr) =
@@ -120,7 +126,10 @@ let rec private extracts (control: Set<string>) (value: Expr) =
     | TypeCast (inner, _) -> extracts control inner
     | _ -> false
 
-/// <summary>Whether a <c>let</c> belongs to the selection (Ruling 2).</summary>
+/// <summary>
+/// Whether a <c>let</c> belongs to the selection: its value refers to a controlled identifier outside every lambda, or,
+/// for a compiler-generated identifier, extracts a part of one.
+/// </summary>
 let private decides (control: Set<string>) (id: Ident) (value: Expr) =
     if id.IsCompilerGenerated then
         extracts control value
@@ -199,6 +208,10 @@ let private withBody (expr: Expr) (body: Expr) =
     | Delegate (args, _, n, tags) -> Delegate (args, body, n, tags)
     | other -> other
 
+/// <summary>Whether an identifier is a computation expression's builder binding (<c>builder@</c>).</summary>
+let private isBuilder (id: Ident) =
+    id.Name.Contains "@" || id.Name.Contains "$0040"
+
 /// <summary>A pattern-variable reference left outside every reader, with the lambda it sits in.</summary>
 type private Found =
     {
@@ -223,12 +236,7 @@ let rec private find (names: Set<string>) (over: Type option) (expr: Expr) : Fou
                 Field = None
                 Over = over
             }
-    | Lambda (argument, body, _) when
-        argument.Type = Type.Unit
-        || argument.IsCompilerGenerated
-        ->
-        find names over body
-    | Delegate (argument :: _, body, _, _) when argument.IsCompilerGenerated -> find names over body
+    | Lambda (argument, body, _) when argument.Type = Type.Unit || isBuilder argument -> find names over body
     | Lambda (argument, body, _) -> find names (Some argument.Type) body
     | Delegate (argument :: _, body, _, _) -> find names (Some argument.Type) body
     | _ ->
@@ -321,7 +329,7 @@ let site (helper: PluginHelper) (read: Expr) (arms: Expr) (r: SourceLocation opt
                 position.Value <- leaf + 1
 
                 match targets[leaf] with
-                | None -> retype selectType body
+                | None -> raiseAs selectType body
                 | Some target ->
                     let values = [ for id in bound @ [ matched ] -> IdentExpr id ]
                     Value (NewTuple ([ int32 target; Value (NewArray (ArrayValues values, Any, MutableArray), None) ], false), None)
