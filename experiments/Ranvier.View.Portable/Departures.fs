@@ -63,11 +63,74 @@ type Seam =
     /// </summary>
     abstract Parse: System.Action<HTMLTemplateElement, string> with get, set
 
-/// <summary>The seam, an empty object until the first registration; null on .NET.</summary>
+/// <summary>The seam, an empty object until the first registration.</summary>
 #if FABLE_COMPILER
 let seam: Seam = Fable.Core.JsInterop.emitJsExpr () "{}"
 #else
-let seam: Seam = null
+[<Sealed>]
+type private SeamObject() =
+    let mutable enabled = false
+    let mutable reflowEnabled = false
+    let mutable retire: System.Func<Node, ResizeArray<unit -> unit>, bool> = null
+    let mutable nextLive: System.Func<Node, Node> = null
+    let mutable holds: System.Func<Node, Node, bool> = null
+    let mutable within: System.Func<Node, bool> = null
+
+    let mutable finish: System.Action<ResizeArray<unit -> unit>, ResizeArray<exn>, ResizeArray<unit -> unit>> =
+        null
+
+    let mutable before: System.Func<Node, (unit -> unit) -> unit, unit -> unit> = null
+    let mutable createElement: System.Func<Node, string, HTMLElement> = null
+    let mutable nest: System.Action<Node, Node> = null
+    let mutable parse: System.Action<HTMLTemplateElement, string> = null
+
+    interface Seam with
+        member _.Enabled
+            with get () = enabled
+            and set value = enabled <- value
+
+        member _.ReflowEnabled
+            with get () = reflowEnabled
+            and set value = reflowEnabled <- value
+
+        member _.Retire
+            with get () = retire
+            and set value = retire <- value
+
+        member _.NextLive
+            with get () = nextLive
+            and set value = nextLive <- value
+
+        member _.Holds
+            with get () = holds
+            and set value = holds <- value
+
+        member _.Within
+            with get () = within
+            and set value = within <- value
+
+        member _.End
+            with get () = finish
+            and set value = finish <- value
+
+        member _.Before
+            with get () = before
+            and set value = before <- value
+
+        member _.CreateElement
+            with get () = createElement
+            and set value = createElement <- value
+
+        member _.Nest
+            with get () = nest
+            and set value = nest <- value
+
+        member _.Parse
+            with get () = parse
+            and set value = parse <- value
+
+/// <summary>The seam, an empty object until the first registration.</summary>
+let seam: Seam = SeamObject ()
 #endif
 
 #if FABLE_COMPILER

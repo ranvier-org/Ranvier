@@ -272,8 +272,29 @@ let private claim (registry: WeakSet<Node>) (node: Node) : unit =
 let private unclaim (registry: WeakSet<Node>) (node: Node) : unit =
     registry.delete node |> ignore
 
+#if FABLE_COMPILER
 [<Emit("(() => { for (let p = $1; p; p = p.parentNode) { if ($0.has(p)) return true; } if (!$1.firstChild) return false; const pending = Array.from($1.childNodes); while (pending.length) { const n = pending.pop(); if ($0.has(n)) return true; for (let c = n.firstChild; c; c = c.nextSibling) pending.push(c); } return false; })()")>]
 let private overlaps (registry: WeakSet<Node>) (node: Node) : bool = jsNative
+#else
+let private overlaps (registry: WeakSet<Node>) (node: Node) : bool =
+    let mutable found = false
+    let mutable cursor = node
+
+    while not found && not (Native.isNullish cursor) do
+        found <- registry.has cursor
+        cursor <- Native.parentOrNull cursor
+
+    let pending = Collections.Generic.Stack<Node>(Native.childNodesOf node)
+
+    while not found && pending.Count > 0 do
+        let current = pending.Pop ()
+        found <- registry.has current
+
+        for child in Native.childNodesOf current do
+            pending.Push child
+
+    found
+#endif
 
 #if FABLE_COMPILER
 [<Emit("$0.parentNode === $1")>]
@@ -327,8 +348,13 @@ let private clearChildren (parent: Node) : unit =
 #endif
 
 /// <summary>Removes the siblings between <c>first</c> and <c>last</c> in one operation.</summary>
+#if FABLE_COMPILER
 [<Emit("(() => { const range = $0.ownerDocument.createRange(); range.setStartAfter($0); range.setEndBefore($1); range.deleteContents(); })()")>]
 let private deleteBetween (first: Node) (last: Node) : unit = jsNative
+#else
+let private deleteBetween (first: Node) (last: Node) : unit =
+    Native.deleteBetween first last
+#endif
 
 /// <summary>Whether <c>first</c> and <c>last</c> are the first and last children of a document fragment.</summary>
 #if FABLE_COMPILER

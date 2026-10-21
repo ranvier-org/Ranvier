@@ -171,6 +171,46 @@ let private nativeStructureRejects () =
 
     equal 1 (nativeStructure "#if FABLE_COMPILER && X\nlet a = 1\n#endif\n").Length
 
+/// <summary>The lines of <c>text</c> holding an Emit attribute or an <c>emitJsExpr</c> call outside a <c>#if FABLE_COMPILER</c> branch.</summary>
+let unguardedEmits (text: string) : string list =
+    let inFable = ref false
+
+    [
+        for line in text.Split '\n' do
+            let trimmed = line.Trim ()
+
+            if trimmed = "#if FABLE_COMPILER" then
+                inFable.Value <- true
+            elif
+                inFable.Value
+                && (trimmed = "#else" || trimmed = "#endif")
+            then
+                inFable.Value <- false
+            elif
+                not inFable.Value
+                && not (trimmed.StartsWith "//")
+                && (Regex.IsMatch (line, @"\[<\s*(?:[\w.]*\.)?Emit\b")
+                    || line.Contains "emitJsExpr")
+            then
+                trimmed
+    ]
+
+let private guardedEmits () =
+    let offending =
+        [
+            for file in compiled () do
+                if file <> "Native.fs" then
+                    for line in unguardedEmits (File.ReadAllText (Path.Combine (portable, file))) do
+                        file + ": " + line
+        ]
+
+    equal [] offending
+
+let private guardedEmitsRejects () =
+    equal [] (unguardedEmits "#if FABLE_COMPILER\n[<Emit(\"$0.a\")>]\nlet a x = jsNative\n#else\nlet a x = x\n#endif\n")
+    equal 1 (unguardedEmits "let seam: Seam = Fable.Core.JsInterop.emitJsExpr () \"{}\"\n").Length
+    equal 1 (unguardedEmits "[<Emit(\"setTimeout($0, $1)\")>]\nlet startTimer a b = jsNative\n").Length
+
 let cases: (string * (unit -> unit)) array =
     [|
         "the portable project references only src/Ranvier and the Xantham type bindings", browserReferences
@@ -178,4 +218,6 @@ let cases: (string * (unit -> unit)) array =
         browserEmits
         "every Emit of Native.fs sits in a #if FABLE_COMPILER block whose #else defines the same names", nativeBodies
         "the Native.fs shape check rejects an unguarded Emit, a missing .NET body, a block without #else and other guards", nativeStructureRejects
+        "every Emit and emitJsExpr of the portable files other than Native.fs sits in a #if FABLE_COMPILER branch", guardedEmits
+        "the guarded-Emit check rejects an unguarded emitJsExpr and an unguarded Emit", guardedEmitsRejects
     |]

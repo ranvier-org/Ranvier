@@ -255,6 +255,20 @@ and does not raise from it by default, as under jsdom.
 - `Selector.fs` tests options with `match` (Task 11 code amended).
 
 
+**A9. Phase 1 execution rulings.**
+
+- Task 5 ports the two module-level `emitJsExpr` values, the delegated listener (`Mounting.fs`) and `keepHead`
+  (`DocumentHead.fs`), because Foundation's module initialisation on .NET, which Task 5 tests, evaluates them. Task 6
+  keeps `overlaps`, `deleteBetween`, the rollback snapshots, `listenDirect` and the seam.
+- `document.createX (...)` calls go through `Native.createDocumentFragment`, `createComment`, `createTextNode` and
+  `createElement`, whose Emit text is `document.createX($0)`; `(Native.document ()).createX` would emit
+  `(document).createX`. The one call in a conditional arm (`Mounting.fs`, element creation without an SVG seam) keeps a
+  Fable-only `[<Global "document">]` value, because Fable parenthesises an Emit there.
+- The Task 6 divergence case adds its native listener through a check-local Emit (`stopClicks`), because the Xantham
+  `addEventListener` overloads take `Event -> obj`.
+- `Native.setData` and the attribute writers convert values with `Native.jsString`, which follows JavaScript's `String`
+  for the values Fable writes as primitives. `Template.numberText`'s .NET body moved into `Native.numberText`.
+
 ---
 
 ## File structure

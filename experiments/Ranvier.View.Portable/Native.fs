@@ -704,3 +704,21 @@ let createTextNode (data: string) : Text =
 let createElement (tag: string) : HTMLElement =
     (document ()).createElement(tagName = tag)
 #endif
+
+#if !FABLE_COMPILER
+/// <summary>The element's attributes in order, as name and value pairs.</summary>
+let attributesOf (element: Element) : (string * string) array =
+    let attributes = element.attributes
+
+    Array.init (int attributes.length) (fun i ->
+        let attribute = (attributes.item (float i)).Value
+        attribute.name, attribute.value)
+
+/// <summary>Replaces the element's attributes with <c>attributes</c>, in order.</summary>
+let setAttributesBack (element: Element) (attributes: (string * string) array) : unit =
+    for name, _ in attributesOf element do
+        element.removeAttribute name
+
+    for name, value in attributes do
+        element.setAttribute (name, value)
+#endif

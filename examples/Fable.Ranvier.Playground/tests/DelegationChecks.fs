@@ -289,6 +289,29 @@ let private topLevelList () =
     mounted.Dispose ()
     equal 0. second.childNodes.length
 
+/// <summary>Adds a native click listener that stops propagation.</summary>
+[<Emit("$0.addEventListener('click', event => event.stopPropagation())")>]
+let private stopClicks (node: HTMLElement) : unit = jsNative
+
+let private nativeStopBetween () =
+    use graph = new Graph ()
+    let host = element "main"
+    let clicks = ResizeArray<int>()
+
+    let view =
+        H.Program.div [||] [| H.Program.button [| H.Events.onClick (fun _ -> clicks.Add 1) |] [||] |]
+
+    let mounted = mount graph host view
+    let wrapper = host.querySelector "div" |> unbox<HTMLElement>
+    stopClicks wrapper
+
+    (host.querySelector "button"
+     |> unbox<HTMLButtonElement>)
+        .click()
+
+    equal 0 clicks.Count
+    mounted.Dispose ()
+
 /// <summary>Checks delegated event dispatch from mount hosts.</summary>
 let cases =
     [|
@@ -305,4 +328,5 @@ let cases =
         "stopPropagation in an inner host's handler stops the outer mount's handler", fun () -> nestedHosts true
         "moving and disposing a mount with only direct listeners leaves the host's delegated dispatch once", directOnlyMove
         "rows of a top-level keyed list dispatch clicks after attach, an update and a move", topLevelList
+        "a native listener that stops propagation between target and host keeps the delegated handler from running", nativeStopBetween
     |]
