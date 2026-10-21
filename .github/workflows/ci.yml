@@ -313,11 +313,46 @@ jobs:
         run: dotnet run --project fable/Ranvier.View.Anime.Tests/Ranvier.View.Anime.Tests.fsproj -c Release
         working-directory: .
 
+  # The five Motion example pages (examples/Ranvier.Motion): the jsdom page checks on a mocked clock and the Chromium
+  # checks on the page clock (npm test), then the per-page bundle sizes, reported without a budget.
+  motion:
+    name: Motion examples
+    needs: changes
+    if: needs.changes.outputs.docs != 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: examples/Ranvier.Motion
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      # The examples require Node 26 or newer (package.json engines).
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '26'
+          cache: npm
+          cache-dependency-path: examples/Ranvier.Motion/package-lock.json
+      - name: Install npm packages
+        run: npm ci
+      - name: Restore tools
+        run: dotnet tool restore
+        working-directory: .
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      # npm test compiles the page checks and runs them under jsdom (test:dom), then compiles the pages and runs the
+      # Chromium suite against the Vite server on port 5179 (test:browser).
+      - name: Run the Motion example tests
+        run: npm test
+      - name: Report the per-page bundle sizes
+        run: npm run size
+
   # The one CI check that branch rules require: it fails when any job failed or was cancelled, and passes when the
   # build and test jobs were skipped for a documentation-only change.
   result:
     name: CI result
-    needs: [changes, scripts, dotnet, aot, packages, format, fable, playground, sugar, anime, motion-view]
+    needs: [changes, scripts, dotnet, aot, packages, format, fable, playground, sugar, anime, motion-view, motion]
     if: always()
     runs-on: ubuntu-latest
     steps:

@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!-- The five Motion example pages, compiled with Fable (npm run compile) and bundled by Vite. -->
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <OutputType>Library</OutputType>
+        <IsPackable>false</IsPackable>
+        <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="src/Page.fs" />
+        <Compile Include="src/Kanban.fs" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../../experiments/Ranvier.View.Foundation/Ranvier.View.Foundation.fsproj" />
+        <ProjectReference Include="../../experiments/Ranvier.View.Anime/Ranvier.View.Anime.fsproj" />
+        <ProjectReference Include="../../src/Ranvier.Elmish/Ranvier.Elmish.fsproj" />
+        <PackageReference Update="FSharp.Core" Version="10.1.401" />
+    </ItemGroup>
+
+</Project>
