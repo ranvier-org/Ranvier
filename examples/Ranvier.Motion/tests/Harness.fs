@@ -70,6 +70,10 @@ let textOf (element: obj) : string = jsNative
 [<Emit("Object.defineProperty($0, $1, { value: $2, configurable: true })")>]
 let fixProperty (target: obj) (name: string) (value: obj) : unit = jsNative
 
+/// <summary>Runs <c>step</c> after the test's microtasks have drained, inside the same test.</summary>
+[<Emit("globalThis.motionLater.push($0)")>]
+let later (step: unit -> unit) : unit = jsNative
+
 let equal expected actual =
     if expected <> actual then
         failwithf "Expected %A; got %A" expected actual

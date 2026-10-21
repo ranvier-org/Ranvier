@@ -98,7 +98,7 @@ let private armReadPendsBoundary (clock: Clock) =
 /// </summary>
 let private svgCamelCaseAttribute (_: Clock) =
     let chart =
-        Component.define (fun _ () -> ()) (fun t -> t.element (HtmlTag "svg") [| t.Attrs.attribute ("viewBox", "0 0 10 10") |] [||])
+        Component.template (fun _ () -> ()) (svg (Attrs.attribute ("viewBox", "0 0 10 10")) { () })
 
     use graph = new Graph ()
     let target = host ()
@@ -115,12 +115,11 @@ let private namespaceOf (node: obj) : string =
     Fable.Core.Util.jsNative
 
 /// <summary>
-/// An SVG <c>path</c> mounted under queued commits: expected in the SVG namespace, as under synchronous commits. Queued
-/// commits create each element through the mount's backend in the HTML namespace.
+/// A <c>path</c> tag mounted under queued commits is in the SVG namespace, as under synchronous commits. A regression
+/// check of a fixed bug: queued commits created every template element in the HTML namespace.
 /// </summary>
 let private svgUnderQueuedCommits (_: Clock) =
-    let chart =
-        Component.define (fun _ () -> ()) (fun t -> t.element (HtmlTag "svg") [||] [| t.element (HtmlTag "path") [||] [||] |])
+    let chart = Component.template (fun _ () -> ()) (svg () { path () { () } })
 
     use graph = new Graph ()
     let target = host ()
@@ -148,8 +147,5 @@ let cases: Case list =
             "Attrs.attribute rejects upper-case attribute names, SVG's viewBox among them"
             "an SVG camel-case attribute is written as given"
             svgCamelCaseAttribute
-        bug
-            "queued commits create template elements in the HTML namespace, SVG elements among them"
-            "an SVG path mounted under queued commits is in the SVG namespace"
-            svgUnderQueuedCommits
+        case "an SVG path tag mounted under queued commits is in the SVG namespace" svgUnderQueuedCommits
     ]

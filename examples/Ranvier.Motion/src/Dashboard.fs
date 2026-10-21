@@ -178,6 +178,16 @@ type Panel =
         + (tween.To - tween.From)
           * easeOut tween.Progress.Value
 
+[<Emit("$0.setAttribute('viewBox', $1)")>]
+let private setViewBox (element: obj) (box: string) : unit = jsNative
+
+// Attrs.attribute rejects upper-case names, and only the HTML parser maps a lower-case viewbox to viewBox
+// (LibraryRepros: "an SVG camel-case attribute is written as given"); the hook sets it on the placed element.
+let private viewBox (box: string) =
+    Hooks.mounted (fun (_: Panel) element ->
+        setViewBox element box
+        ignore)
+
 let private percent (value: float) =
     sprintf "%.0f%%" (value * 100.)
 
@@ -231,7 +241,7 @@ let private gauge (label: string) (read: Sample -> float) =
     }
 
 let private content (store: Store) =
-    Component.define
+    Component.template
         (fun _ (status: BoundaryStatus) ->
             let latest = Api.createMemo (fun _ -> Array.last store.Samples.Value)
 
@@ -278,109 +288,96 @@ let private content (store: Store) =
                         })
 
             panel)
-        (fun t ->
-            div (Attrs.className "metrics", Attrs.data ("refreshing", fun (panel: Panel) -> if panel.Status.IsPending () then Some "true" else None)) {
-                article (Attrs.className "tile requests") {
-                    h3 () { "Requests / s" }
-                    strong (Attrs.className "counter") { fun (panel: Panel) -> sprintf "%.0f" panel.Shown }
-                    span (Attrs.className "note") { fun (panel: Panel) -> sprintf "sample %d" panel.Latest.Value.Tick }
-                }
+        (div (Attrs.className "metrics", Attrs.data ("refreshing", fun (panel: Panel) -> if panel.Status.IsPending () then Some "true" else None)) {
+            article (Attrs.className "tile requests") {
+                h3 () { "Requests / s" }
+                strong (Attrs.className "counter") { fun (panel: Panel) -> sprintf "%.0f" panel.Shown }
+                span (Attrs.className "note") { fun (panel: Panel) -> sprintf "sample %d" panel.Latest.Value.Tick }
+            }
 
-                article (Attrs.className "tile ring") {
-                    t.element
-                        (HtmlTag "svg")
-                        [| t.Attrs.attribute ("viewbox", "0 0 100 100"); t.Attrs.className "ring-svg" |]
-                        [|
-                            t.element
-                                (HtmlTag "circle")
-                                [|
-                                    t.Attrs.className "ring-track"
-                                    t.Attrs.attribute ("cx", "50")
-                                    t.Attrs.attribute ("cy", "50")
-                                    t.Attrs.attribute ("r", "42")
-                                |]
-                                [||]
-                            t.element
-                                (HtmlTag "circle")
-                                [|
-                                    t.Attrs.className "ring-value"
-                                    t.Attrs.attribute ("cx", "50")
-                                    t.Attrs.attribute ("cy", "50")
-                                    t.Attrs.attribute ("r", "42")
-                                    Motion.draw (AnimatableParams (duration = 700, ease = Ease.outQuart)) (fun panel -> panel.Latest.Value.Cpu)
-                                |]
-                                [||]
-                        |]
+            article (Attrs.className "tile ring") {
+                svg (Attrs.attribute ("class", "ring-svg"), viewBox "0 0 100 100") {
+                    circle (
+                        Attrs.attribute ("class", "ring-track"),
+                        Attrs.attribute ("cx", "50"),
+                        Attrs.attribute ("cy", "50"),
+                        Attrs.attribute ("r", "42")
+                    ) {
+                        ()
+                    }
 
-                    div (Attrs.className "ring-label") {
-                        strong () { fun (panel: Panel) -> percent panel.Latest.Value.Cpu }
-                        span () { "CPU" }
+                    circle (
+                        Attrs.attribute ("class", "ring-value"),
+                        Attrs.attribute ("cx", "50"),
+                        Attrs.attribute ("cy", "50"),
+                        Attrs.attribute ("r", "42"),
+                        Motion.draw (AnimatableParams (duration = 700, ease = Ease.outQuart)) (fun (panel: Panel) -> panel.Latest.Value.Cpu)
+                    ) {
+                        ()
                     }
                 }
 
-                article (Attrs.className "tile gauges") {
-                    gauge "CPU" (fun sample -> sample.Cpu)
-                    gauge "Memory" (fun sample -> sample.Memory)
-                    gauge "Latency" (fun sample -> sample.Latency)
+                div (Attrs.className "ring-label") {
+                    strong () { fun (panel: Panel) -> percent panel.Latest.Value.Cpu }
+                    span () { "CPU" }
+                }
+            }
+
+            article (Attrs.className "tile gauges") {
+                gauge "CPU" (fun sample -> sample.Cpu)
+                gauge "Memory" (fun sample -> sample.Memory)
+                gauge "Latency" (fun sample -> sample.Latency)
+            }
+
+            article (Attrs.className "tile chart") {
+                div (Attrs.className "chart-head") {
+                    h3 () { "CPU, last 24 samples" }
+                    span (Attrs.className "note") { fun (panel: Panel) -> sprintf "%d of %d" panel.Cpu.Value.Length capacity }
                 }
 
-                article (Attrs.className "tile chart") {
-                    div (Attrs.className "chart-head") {
-                        h3 () { "CPU, last 24 samples" }
-                        span (Attrs.className "note") { fun (panel: Panel) -> sprintf "%d of %d" panel.Cpu.Value.Length capacity }
+                svg (Attrs.attribute ("class", "chart-svg"), viewBox "0 0 600 200", Attrs.attribute ("preserveaspectratio", "none")) {
+                    path (
+                        Attrs.attribute ("class", "chart-area"),
+                        Motion.morph (Anim (duration = 700, ease = Ease.outQuart)) (fun (panel: Panel) -> areaPath panel.Cpu.Value)
+                    ) {
+                        ()
                     }
 
-                    t.element
-                        (HtmlTag "svg")
-                        [|
-                            t.Attrs.attribute ("viewbox", "0 0 600 200")
-                            t.Attrs.attribute ("preserveaspectratio", "none")
-                            t.Attrs.className "chart-svg"
-                        |]
-                        [|
-                            t.element
-                                (HtmlTag "path")
-                                [|
-                                    t.Attrs.className "chart-area"
-                                    Motion.morph (Anim (duration = 700, ease = Ease.outQuart)) (fun panel -> areaPath panel.Cpu.Value)
-                                |]
-                                [||]
-                            t.element
-                                (HtmlTag "path")
-                                [|
-                                    t.Attrs.className "chart-line"
-                                    Motion.morph (Anim (duration = 700, ease = Ease.outQuart)) (fun panel -> linePath panel.Cpu.Value)
-                                |]
-                                [||]
-                        |]
+                    path (
+                        Attrs.attribute ("class", "chart-line"),
+                        Motion.morph (Anim (duration = 700, ease = Ease.outQuart)) (fun (panel: Panel) -> linePath panel.Cpu.Value)
+                    ) {
+                        ()
+                    }
                 }
+            }
 
-                show
-                    (fun (panel: Panel) -> panel.Alert.Value)
-                    (div (Attrs.className "alert", Attrs.role "status", Motion.fade) {
-                        strong () { "CPU above 85%" }
-                        span () { fun (panel: Panel) -> sprintf " at sample %d" panel.Latest.Value.Tick }
-                    })
+            show
+                (fun (panel: Panel) -> panel.Alert.Value)
+                (div (Attrs.className "alert", Attrs.role "status", Motion.fade) {
+                    strong () { "CPU above 85%" }
+                    span () { fun (panel: Panel) -> sprintf " at sample %d" panel.Latest.Value.Tick }
+                })
 
-                show
-                    (fun (panel: Panel) -> panel.Store.Details.Value)
-                    (aside (Attrs.className "details", Motion.fade) {
-                        h3 () { "Latest sample" }
+            show
+                (fun (panel: Panel) -> panel.Store.Details.Value)
+                (aside (Attrs.className "details", Motion.fade) {
+                    h3 () { "Latest sample" }
 
-                        dl () {
-                            dt () { "Tick" }
-                            dd () { fun (panel: Panel) -> string panel.Latest.Value.Tick }
-                            dt () { "CPU" }
-                            dd () { fun (panel: Panel) -> percent panel.Latest.Value.Cpu }
-                            dt () { "Memory" }
-                            dd () { fun (panel: Panel) -> percent panel.Latest.Value.Memory }
-                            dt () { "Latency" }
-                            dd () { fun (panel: Panel) -> sprintf "%.0f ms" (panel.Latest.Value.Latency * 400.) }
-                            dt () { "Requests" }
-                            dd () { fun (panel: Panel) -> sprintf "%.0f / s" panel.Latest.Value.Requests }
-                        }
-                    })
-            })
+                    dl () {
+                        dt () { "Tick" }
+                        dd () { fun (panel: Panel) -> string panel.Latest.Value.Tick }
+                        dt () { "CPU" }
+                        dd () { fun (panel: Panel) -> percent panel.Latest.Value.Cpu }
+                        dt () { "Memory" }
+                        dd () { fun (panel: Panel) -> percent panel.Latest.Value.Memory }
+                        dt () { "Latency" }
+                        dd () { fun (panel: Panel) -> sprintf "%.0f ms" (panel.Latest.Value.Latency * 400.) }
+                        dt () { "Requests" }
+                        dd () { fun (panel: Panel) -> sprintf "%.0f / s" panel.Latest.Value.Requests }
+                    }
+                })
+        })
 
 /// <summary>The dashboard's component over <c>store</c>; build it once per store.</summary>
 let view (store: Store) : Component<unit> =
@@ -437,12 +434,12 @@ let private stopAfter (handle: int) : unit = jsNative
 let private stopEvery (handle: int) : unit = jsNative
 
 /// <summary>
-/// The browser entry: mounts the dashboard into <c>#app</c> under synchronous commits, pushes the first sample after
+/// The browser entry: mounts the dashboard into <c>#app</c> under queued commits, pushes the first sample after
 /// 600 ms and one each second while running, and publishes <c>window.__motion</c>.
 /// </summary>
 let start () : unit -> unit =
     let graph = new Graph ()
-    let mounted = mount SynchronousCommits graph Page.report (Page.host ())
+    let mounted = mount Page.browserMode graph Page.report (Page.host ())
     let store = mounted.Store
     let mutable tick = 0
 

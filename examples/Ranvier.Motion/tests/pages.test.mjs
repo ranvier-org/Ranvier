@@ -60,7 +60,14 @@ anime.ScrollObserver.prototype.link = function (...args) {
 const { cases, prepare } = await import("../generated-tests/Checks.js");
 prepare();
 const clock = ms => mock.timers.tick(ms);
+// A check defers its last steps with Harness.later; they run once the microtasks it queued have drained.
+globalThis.motionLater = [];
+const run = async check => {
+  check(clock);
+  for (let turn = 0; turn < 8; turn++) await null;
+  while (globalThis.motionLater.length > 0) globalThis.motionLater.shift()();
+};
 for (const { Name, Check, Bug } of cases) {
-  if (Bug === undefined || Bug === null) test(Name, () => Check(clock));
-  else test(Name, { todo: Bug }, () => Check(clock));
+  if (Bug === undefined || Bug === null) test(Name, () => run(Check));
+  else test(Name, { todo: Bug }, () => run(Check));
 }

@@ -35,21 +35,23 @@ let private pathsHoldCapacity (_: Clock) =
 
     equal (capacity, "M0.0", "L600.0 18.0", true) (points.Length, points[0], line.Substring (line.Length - 11), area.EndsWith "L600 200 L0 200 Z")
 
-let private mounted () =
+let private mounted queued =
     let graph = new Graph ()
     let target = host ()
-    let page = Dashboard.mount SynchronousCommits graph report target
+    let page = Dashboard.mount (modeOf queued) graph report target
+    page.Mount.Flush ()
     graph, target, page
 
 let private push (graph: Graph) (page: Dashboard.Mounted) (sample: Sample) =
     graph.Run (fun () -> page.Store.Feed.Push sample)
+    page.Mount.Flush ()
 
 let private close (graph: Graph) (page: Dashboard.Mounted) =
     page.Mount.Dispose ()
     graph.Dispose ()
 
-let private pendingSkeleton (clock: Clock) =
-    let graph, target, page = mounted ()
+let private pendingSkeleton queued (clock: Clock) =
+    let graph, target, page = mounted queued
     let tile = find target ".skeleton-tile"
     advance clock 0.
     run clock 16. 400.
@@ -66,8 +68,8 @@ let private pendingSkeleton (clock: Clock) =
     close graph page
     equal ((4, 0, 0, 1), (0, 1, false, "sample 1"), true) (waiting, revealed, pulsing <> "" && pulsing <> "1")
 
-let private gaugesFollow (clock: Clock) =
-    let graph, target, page = mounted ()
+let private gaugesFollow queued (clock: Clock) =
+    let graph, target, page = mounted queued
     push graph page (sampleAt 1)
     let fill = find target ".gauge-fill"
     let first = styleOf fill "transform"
@@ -85,8 +87,8 @@ let private gaugesFollow (clock: Clock) =
         (sprintf "scaleX(%g)" (sampleAt 1).Cpu, true, sprintf "scaleX(%g)" next.Cpu, sprintf "%.0f%%" (next.Cpu * 100.))
         (first, moving <> first && moving <> settled, settled, label)
 
-let private chartMorphsAndRingDraws (clock: Clock) =
-    let graph, target, page = mounted ()
+let private chartMorphsAndRingDraws queued (clock: Clock) =
+    let graph, target, page = mounted queued
     push graph page (sampleAt 1)
     let line = find target ".chart-line"
     let ring = find target ".ring-value"
@@ -104,11 +106,16 @@ let private chartMorphsAndRingDraws (clock: Clock) =
         (linePath [| (sampleAt 1).Cpu |], true, true, expected, true)
         (fst first, fst middle <> fst first && fst middle <> expected, snd middle <> snd first, fst settled, snd settled <> snd middle)
 
-let private counterTweens (clock: Clock) =
-    let graph, target, page = mounted ()
+let private counterTweens queued (clock: Clock) =
+    let graph, target, page = mounted queued
     let first = sampleAt 1
     push graph page first
     let counter = find target ".counter"
+
+    let run clock frame total =
+        run clock frame total
+        page.Mount.Flush ()
+
     advance clock 0.
     run clock 16. 300.
     let rising = float (textOf counter)
@@ -130,8 +137,8 @@ let private counterTweens (clock: Clock) =
         (true, sprintf "%.0f" first.Requests, true, sprintf "%.0f" second.Requests)
         (rising > 0. && rising < first.Requests, reached, between > low && between < high, landed)
 
-let private alertFades (clock: Clock) =
-    let graph, target, page = mounted ()
+let private alertFades queued (clock: Clock) =
+    let graph, target, page = mounted queued
     push graph page (sampleAt 1)
     let quiet = countOf target ".alert"
     push graph page (spikeAt 2)
@@ -148,8 +155,8 @@ let private alertFades (clock: Clock) =
     close graph page
     equal (0, true, "1", true, false) (quiet, fading <> "" && fading <> "0" && fading <> "1", shown, held, gone)
 
-let private detailsToggle (clock: Clock) =
-    let graph, target, page = mounted ()
+let private detailsToggle queued (clock: Clock) =
+    let graph, target, page = mounted queued
     push graph page (sampleAt 3)
     let hidden = countOf target ".details"
     write graph page.Mount (fun () -> page.Store.Details.Value <- true)
@@ -161,8 +168,8 @@ let private detailsToggle (clock: Clock) =
     close graph page
     equal (0, "3", 1, 0) (hidden, values[0], leaving, left)
 
-let private reconnectRestarts (clock: Clock) =
-    let graph, target, page = mounted ()
+let private reconnectRestarts queued (clock: Clock) =
+    let graph, target, page = mounted queued
     push graph page (sampleAt 1)
     push graph page (sampleAt 2)
     write graph page.Mount (fun () -> page.Store.Session.Value <- 1)
@@ -172,21 +179,25 @@ let private reconnectRestarts (clock: Clock) =
 
     push graph page (sampleAt 7)
 
-    let resumed =
-        attributeOf (find target ".metrics") "data-refreshing", textOf (find target ".chart .note")
+    // Queued commits reveal the settled status in a microtask.
+    later (fun () ->
+        page.Mount.Flush ()
 
-    close graph page
-    equal (("true", 1), (null, "1 of 24")) (refreshing, resumed)
+        let resumed =
+            attributeOf (find target ".metrics") "data-refreshing", textOf (find target ".chart .note")
+
+        close graph page
+        equal (("true", 1), (null, "1 of 24")) (refreshing, resumed))
 
 let cases: Case list =
     [
         case "samples are seeded and in range, and keep holds the latest 24" samplesAreSeeded
         case "the chart's paths always hold 24 points, padded with the first value" pathsHoldCapacity
-        case "the skeleton pulses while the stream is pending and leaves at the first sample" pendingSkeleton
-        case "gauges set their first value and follow each sample" gaugesFollow
-        case "the chart morphs to each window and the ring draws the CPU load" chartMorphsAndRingDraws
-        case "the request counter tweens to each rate through its tracked animation" counterTweens
-        case "the CPU alert fades in on a spike and out after it" alertFades
-        case "the details panel shows the latest sample and fades out when hidden" detailsToggle
-        case "reconnect restarts the stream: the content dims until the next sample, then starts over" reconnectRestarts
+        yield! modes "the skeleton pulses while the stream is pending and leaves at the first sample" pendingSkeleton
+        yield! modes "gauges set their first value and follow each sample" gaugesFollow
+        yield! modes "the chart morphs to each window and the ring draws the CPU load" chartMorphsAndRingDraws
+        yield! modes "the request counter tweens to each rate through its tracked animation" counterTweens
+        yield! modes "the CPU alert fades in on a spike and out after it" alertFades
+        yield! modes "the details panel shows the latest sample and fades out when hidden" detailsToggle
+        yield! modes "reconnect restarts the stream: the content dims until the next sample, then starts over" reconnectRestarts
     ]
