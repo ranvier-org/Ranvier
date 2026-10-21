@@ -39,7 +39,7 @@ let inlining () =
     let code, log =
         dotnet
             [
-                "fable"
+                "fickl"
                 "tools/Ranvier.Analyzers.Truth/Inlining"
                 "-c"
                 "Release"
@@ -56,42 +56,56 @@ let inlining () =
         else
             ""
 
-    check "Fable compiles the inlining fixture" (code = 0) log
+    check "Fickl compiles the inlining fixture" (code = 0) log
 
     check
-        "RAN001: Fable Release inlines each single-use snapshot (snapshot, closure, tuple)"
+        "RAN001: Fickl Release (Fable 5.22) inlines each single-use snapshot (snapshot, closure, tuple)"
         (Regex.Matches(js, Regex.Escape "childSetups() - childSetups()").Count
          >= 3)
         js
 
-    check "RAN001: Fable keeps a let mutable snapshot" (js.Contains "let held = childSetups()") js
+    check "RAN001: Fickl keeps a let mutable snapshot" (js.Contains "let held = childSetups()") js
 
-/// Precompiles the fixture project `name` with Fable; the exit code and the log.
-let precompileOf (name: string) =
-    dotnet
-        [
-            "fable"
+/// Precompiles the fixture project `name` with `compiler` (the arguments that start the compiler); the exit code and
+/// the log.
+let precompileWith (compiler: string list) (name: string) =
+    dotnet (
+        compiler
+        @ [
             "precompile"
             "tools/Ranvier.Analyzers.Truth/" + name
             "--noCache"
             "-o"
-            Path.Combine (output, name)
+            Path.Combine (output, String.Join ("-", compiler) + "-" + name)
         ]
+    )
+
+/// Fable 5.18.0, the release whose precompile of the library failed (#138), fetched for the run.
+let fable518 = [ "dnx"; "fable@5.18.0"; "--yes"; "--" ]
+
+/// The repository's compiler, from the tool manifest.
+let fickl = [ "fickl" ]
 
 let precompile () =
-    for name, shape in
+    let shapes =
         [
             "Testers", "a public union"
             "InternalTesters", "an internal union"
             "PrivateTesters", "a private union"
             "InternalStructTesters", "an internal struct union"
-        ] do
-        let code, log = precompileOf name
+        ]
 
-        check $"RAN002: the precompile fails on a tester of {shape}" (code <> 0 && log.Contains "MethodDefNotFound") log
+    for name, shape in shapes do
+        let code, log = precompileWith fable518 name
 
-    let generic, genericLog = precompileOf "GenericTesters"
-    check "the docs' generic-union claim holds: the precompile accepts a generic union tester" (generic = 0) genericLog
+        check $"RAN002: the Fable 5.18 precompile fails on a tester of {shape}" (code <> 0 && log.Contains "MethodDefNotFound") log
+
+    let generic, genericLog = precompileWith fable518 "GenericTesters"
+    check "the docs' generic-union claim holds: the Fable 5.18 precompile accepts a generic union tester" (generic = 0) genericLog
+
+    for name, shape in shapes do
+        let code, log = precompileWith fickl name
+        check $"Fickl precompiles a tester of {shape}" (code = 0) log
 
 let build () =
     let analyzerCode, analyzerLog =

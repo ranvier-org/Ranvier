@@ -68,7 +68,9 @@ to a docs page with the cause, the fix and a before/after example.
 9. **RAN002 covers every union declared in the analyzed assembly, at Warning.** `dotnet fable precompile` (Fable
    5.18.0) on a fixture library fails with `MethodDefNotFound` for a tester of a public, an internal and a private
    non-generic union. Testers of generic unions, struct or reference, precompile; RAN002 still reports them, since
-   the `match` costs nothing and a later Fable can change the generic case. The fixture is RAN002's truth test.
+   the `match` costs nothing and a later Fable can change the generic case. The fixture is RAN002's truth test. Since #152 the
+   repository compiles with Fickl 0.3.0 (Fable 5.22), whose precompile declares the testers of every shape; the truth
+   test pins the Fable 5.18.0 failure through `dotnet dnx fable@5.18.0` and records Fickl's acceptance.
 10. **Repository builds do not run the analyzers by default.** `RanvierAnalyze=true`, `build.fsx analyze` and the CI
     job are the entry points.
 11. **The Fable-only projects are not analyzed in phases 0-2.** Their shared sources are analyzed through
