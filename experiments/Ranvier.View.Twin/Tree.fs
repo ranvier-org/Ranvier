@@ -458,6 +458,12 @@ and [<Sealed; AllowNullLiteral>] TwinDocument() as this =
     member _.OwnerThread = ownerThread
     member val ActiveElement: TwinElement = null with get, set
 
+    /// <summary>The exceptions raised by listeners during dispatches, in order; a dispatch continues past each.</summary>
+    member val ListenerErrors = ResizeArray<exn>()
+
+    /// <summary>Whether a dispatch raises its first listener exception once the dispatch ends.</summary>
+    member val RaiseListenerErrors = false with get, set
+
     member this.CreateElement(tag: string) =
         TwinElement (this, tag.ToLowerInvariant ())
 

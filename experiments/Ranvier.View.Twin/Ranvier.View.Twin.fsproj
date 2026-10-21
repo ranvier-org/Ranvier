@@ -9,11 +9,13 @@
         <Compile Include="Tree.fs" />
         <Compile Include="Html.fs" />
         <Compile Include="Bridge.fs" />
+        <Compile Include="Events.fs" />
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="../../src/Ranvier/Ranvier.fsproj" />
         <ProjectReference Include="../Ranvier.View.Portable/Ranvier.View.Portable.fsproj" />
         <ProjectReference Include="../Ranvier.View.Foundation/Ranvier.View.Foundation.fsproj" />
+        <ProjectReference Include="../Ranvier.View.Testing/Ranvier.View.Testing.fsproj" />
         <InternalsVisibleTo Include="Ranvier.View.Twin.Tests" />
     </ItemGroup>
 </Project>

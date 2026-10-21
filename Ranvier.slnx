@@ -33,6 +33,9 @@
     <Project Path="experiments/Ranvier.View.Foundation/SnapshotBench/SnapshotBench.fsproj" />
     <Project Path="experiments/Ranvier.View.Foundation/AuthoringPerf/AuthoringPerf.fsproj" />
   </Folder>
+  <Folder Name="/experiments/Ranvier.View.Testing/">
+    <Project Path="experiments/Ranvier.View.Testing/Ranvier.View.Testing.fsproj" />
+  </Folder>
   <Folder Name="/experiments/Ranvier.View.Twin/">
     <Project Path="experiments/Ranvier.View.Twin/Ranvier.View.Twin.fsproj" />
   </Folder>
