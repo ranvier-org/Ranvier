@@ -173,3 +173,54 @@ let ran011: Rule =
         Gate = Symbols.Assemblies.Ranvier
         Run = recreated
     }
+
+/// Whether the expression at `path` sits in the continuation of a computation-expression bind inside the compute of
+/// an async value's creator, outside the body of a node created there and outside `untrack`.
+let private afterAwait (path: Step list) : bool =
+    let rec go (awaited: bool) (steps: Step list) =
+        match steps with
+        | [] -> false
+        | Step.Lambda (_, false) :: (Step.Argument (callee, index, count) :: _ as rest) when
+            callee.LogicalName.StartsWith "Bind"
+            && index = count - 1
+            ->
+            go true rest
+        // A node created in the continuation, or `untrack`, owns the reads of its own body.
+        | Step.Lambda (_, false) :: Step.Argument (callee, index, count) :: _ when
+            asyncComputeIndex callee count <> Some index
+            && (isCreator callee
+                || Symbols.isMember Api "untrack" callee)
+            ->
+            false
+        | Step.Argument (callee, index, count) :: rest ->
+            match asyncComputeIndex callee count with
+            | Some compute when compute = index -> awaited
+            | _ -> go awaited rest
+        | _ :: rest -> go awaited rest
+
+    go false path
+
+let private untrackedReads (input: Input) : Message list =
+    [
+        for site in input.Index.Calls do
+            match site.Receiver with
+            | Some receiver when isReactiveRead site.Callee && afterAwait site.Path ->
+                let read = text input site.Range
+                let source = text input receiver.Range
+
+                message
+                    "RAN012"
+                    Severity.Warning
+                    site.Range
+                    $"`{read}` is read after the first `let!`/`do!` of this async memo; a read after an await that suspends is untracked, and a change to `{source}` starts no flight. Read it before the first await and bind it to a local."
+                    []
+            | _ -> ()
+    ]
+
+let ran012: Rule =
+    {
+        Code = "RAN012"
+        Title = "Reactive read after the first await of an async memo"
+        Gate = Symbols.Assemblies.Ranvier
+        Run = untrackedReads
+    }

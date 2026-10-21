@@ -6,7 +6,13 @@ open Ranvier.Analyzers.Rule
 
 /// Every rule, in code order.
 let rules: Rule list =
-    [ Rules.Fable.ran001; Rules.Fable.ran002; Rules.Core.ran010; Rules.Core.ran011 ]
+    [
+        Rules.Fable.ran001
+        Rules.Fable.ran002
+        Rules.Core.ran010
+        Rules.Core.ran011
+        Rules.Core.ran012
+    ]
 
 /// The findings of `rule` in a CLI context; empty when the project lacks the rule's gate reference.
 let runCli (rule: Rule) (context: CliContext) : Message list =
@@ -82,3 +88,11 @@ let ran011Cli: Analyzer<CliContext> =
 [<EditorAnalyzer("RAN011", "Async value created and read in the owner that replaces it", "https://shayanhabibi.github.io/Ranvier/analyzers/ran011/")>]
 let ran011Editor: Analyzer<EditorContext> =
     fun context -> async { return runEditor Rules.Core.ran011 context }
+
+[<CliAnalyzer("RAN012", "Reactive read after the first await of an async memo", "https://shayanhabibi.github.io/Ranvier/analyzers/ran012/")>]
+let ran012Cli: Analyzer<CliContext> =
+    fun context -> async { return runCli Rules.Core.ran012 context }
+
+[<EditorAnalyzer("RAN012", "Reactive read after the first await of an async memo", "https://shayanhabibi.github.io/Ranvier/analyzers/ran012/")>]
+let ran012Editor: Analyzer<EditorContext> =
+    fun context -> async { return runEditor Rules.Core.ran012 context }

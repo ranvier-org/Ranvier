@@ -513,6 +513,8 @@ inside a continuation is untracked.
 
 **Fix.** Read every reactive value before the first `await` and bind it to a local.
 
+The analyzers report this at build time: [RAN012](../analyzers/ran012.md).
+
 `pumpUntil` is the helper defined in [Async and pending](async-memos.md).
 
 :::details Example
