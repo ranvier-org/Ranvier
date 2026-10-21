@@ -1,11 +1,12 @@
 # Arms.Match design: a plain F# `match` as an arm site, opt-in
 
-> **Status 2026-10-21:** draft for review. Written against master at `bcdb561` (motion seam, pending-boundary arm
-> fix, precompile fix, `Server.renderDocument`). Inputs: the research note
+> **Status 2026-10-21:** approved, with the eight open questions decided as recommended (Decisions 11-18). Written
+> against master at `bcdb561`; citations refreshed against master at `5afc604` (PR #140, motion parts and client
+> element refusals). Inputs: the research note
 > [`docs/research/2026-10-21-idiomatic-arms.md`](../../research/2026-10-21-idiomatic-arms.md) and its probes in
 > [`experiments/arms-probes`](../../../experiments/arms-probes), plus one probe added for this spec
-> (`experiments/arms-probes/Twice`, result in `results/twice.txt`). PR #140 (motion parts, client element refusals)
-> touches no file this design changes and can merge in either order.
+> (`experiments/arms-probes/Twice`, result in `results/twice.txt`). The implementation plan is
+> [`docs/superpowers/plans/2026-10-21-arms-match.md`](../plans/2026-10-21-arms-match.md).
 
 Date: 2026-10-21. Toolchain facts: Fable 5.18.0 (`.config/dotnet-tools.json`), whose tool runs on net10.0 and loads
 `Fable.AST` 5.1.0 and FSharp.Core 10.1.203 (assembly version 10.1.0.0) from its own folder; the probe plugin compiled
@@ -17,9 +18,9 @@ Required by `.claude/rules/view-uses-core.md`.
 
 **Core primitives used:**
 
-- The arm memo behind `matchWith` (`Template.fs:2603-2614`): `Arms.Match` lowers to `matchWith` over one definition
+- The arm memo behind `matchWith` (`Template.fs:2715-2729`): `Arms.Match` lowers to `matchWith` over one definition
   per match target. Selection, the owner per selected arm, and remount-versus-update stay with the existing region; the
-  key is the definition (`Template.fs:2609-2610`, `KeyedItems.pairKey`).
+  key is the definition (`Template.fs:2724-2725`, `KeyedItems.pairKey`).
 - `Owner` cleanups through `Setup.OnCleanup` (`Representation.fs:15-17`): an arm withdraws its payload reader from the
   site's cells when its owner is disposed.
 - `Graph.TryCurrent` (`src/Ranvier/Core.fs:1741`): a reader picks the payload readers registered under its own graph,
@@ -30,7 +31,7 @@ from an instance to the payload readers of that instance's mounted arms, one lis
 selection cache: the payload itself stays in the arm memo, and an entry holds only the arm's `unit -> payload` reader
 that the region already hands the arm (`CaseArms.fs:61-64`). The core cannot hold it because a reader receives only the
 instance (`TemplateView<'inst>` readers are `'inst -> 'v`), and the core has no owner-scoped lookup from which a reader
-could find its arm. Open question 3 asks whether the core should gain one.
+could find its arm. Decision 13 keeps the lookup in the view.
 
 ## Goal
 
@@ -63,7 +64,7 @@ its rows and updates them.
 ## Non-goals
 
 - **Changing the standard set.** `armOf`, `arm`, `matchWith`, `branch`, `show` and `showElse`
-  (`TemplateSugar.fs:101-165`) keep their signatures, behaviour, docs and bundle bytes. `Arms.Match` is built on their
+  (`TemplateSugar.fs:99-165`) keep their signatures, behaviour, docs and bundle bytes. `Arms.Match` is built on their
   public surface.
 - **Pattern variables as build-time values.** A case body is built once per target and shared by every instance;
   a pattern variable has a value only per instance, inside a reader.
@@ -82,7 +83,7 @@ its rows and updates them.
    sits on `Arms.Match` itself, so Fable runs its `TransformCall` on each call site (`Plugin.fs:338-340`); user code
    carries no attribute (probe fixture `matchUnmarked`, `Fixtures.fs:184-200`).
 3. **On .NET the argument is a quotation.** The .NET overload takes `[<ReflectedDefinition>] arms: Expr<...>`
-   (`QuotedArms.fs:252`); the lowering runs on it when the call is evaluated.
+   (`QuotedArms.fs:178`); the lowering runs on it when the call is evaluated.
 4. **One lowering contract, two producers.** Both produce `select : 'u -> int * obj array` (target index and bound
    values) and `bodies : TemplateView<'inst> array` (one per target, built once), consumed by one runtime function,
    `Site.create` (the probe's `Lowered.site`, `CaseArms.fs:56-69`). *Parity rests on one runtime path.*
@@ -104,6 +105,26 @@ its rows and updates them.
 10. **Rejections are errors with fixed texts**, compile-time under Fable (plugin `LogError` at the variable's range),
     site-build-time on .NET (an exception from the `Arms.Match` call). Both use the same sentence; .NET prefixes the
     caller's file and line.
+11. **An unsupported tree shape in a decision position is an error, AM007.** A leaf whose root, under a type cast,
+    sequence, `try` or a `let` over an unrelated value, is an `if`, `match` or `let` over the matched value raises
+    "Arms.Match: this pattern form is not supported." at that node's range, so a gap in the walker fails loudly instead
+    of as AM001.
+12. **`if` and `match` at the top of a case body are part of the selection.** Each branch is a target, with the remount
+    rule of guards; the docs state it.
+13. **The core gains no owner-scoped lookup.** The per-target lists meet guarantee 3, and readers also run in event
+    handlers and server renders, where the owner chain is not the arm's. A second view feature that needs owner context
+    reopens it.
+14. **The .NET path caches no lowering.** A call-site cache would serve the first call's captured locals to later calls,
+    and module-level sites lower once already. The one-lambda compile (≤ 4 ms mean) and the binding rule in the docs
+    ship instead.
+15. **No NativeAOT-compatible .NET path.** It would need a build-time lowering, the machinery the plugin avoids. Trimmed
+    and NativeAOT apps use `matchWith`, and the annotation says so at publish.
+16. **One package at graduation.** `Ranvier.View.Arms` carries the plugin assembly and an auto-imported `.targets`, so
+    an app adds one reference and always gets the runtime with the plugin.
+17. **AM005 becomes a compile-time error through the follow-up analyzer.** Until then the `.targets` is part of the
+    opt-in and AM005 at site build is the backstop.
+18. **The instance-type rule rejects `string`.** A JavaScript string is a primitive that `WeakMap` rejects, so accepting
+    it on .NET alone would break "builds on one, builds on the other".
 
 ## Package layout
 
@@ -120,7 +141,7 @@ Versions:
 |---|---|---|
 | `Fable.AST` (plugin, compile reference) | 5.0.0 | the lowest 5.x; Fable 5.18 loads its own 5.1.0, probe-verified |
 | `FSharp.Core` (plugin) | 10.1.203 | the version inside the Fable 5.18 tool folder; the plugin runs in that process |
-| `FSharp.Core` (library) | 10.1.401 | the repo's pin (`Ranvier.View.Portable.fsproj:22`) |
+| `FSharp.Core` (library) | 10.1.401 | the repo's pin (`Ranvier.View.Portable.fsproj:23`) |
 | `FableMinimumVersion` | `"5.0"` | the probe declared `"4.0"` (`Plugin.fs:331`); 4.x is untested |
 
 **Referencing.** The view is unpackaged (`Ranvier.View.Portable.fsproj:5`, `IsPackable=false`), so an app opts in with
@@ -138,7 +159,7 @@ inside the app's compilation, so the app's own references must contain the plugi
 Phase 1 verifies that Fable sets the `FABLE_COMPILER` MSBuild property during project cracking; if it does not, the
 reference is unconditional and .NET builds carry an unused plugin assembly. When the view graduates to a package, one
 `Ranvier.View.Arms` package ships the plugin assembly under `fable-plugin/` and the `.targets` under `build/`, which
-NuGet imports automatically (open question 6).
+NuGet imports automatically (decision 16).
 
 ## Public API
 
@@ -225,7 +246,7 @@ targets. Walking from the top:
 - anything else is a leaf.
 
 The probe accepted only payload extractions (`Get` of a union field, tuple item, record field, option value, list
-head or tail) as decision bindings (`Plugin.fs:126-131`, `QuotedArms.fs:98-104`). The spec widens the rule to any
+head or tail) as decision bindings (`Plugin.fs:126-131`, `QuotedArms.fs:24-30`). The spec widens the rule to any
 value that refers to a controlled identifier, so active-pattern results and user `let`s over pattern variables are part
 of the selection. Both producers apply the same rule; phase 2 checks that FCS hands both the same tree for each fixture.
 
@@ -259,7 +280,7 @@ plain `match` does, and site build succeeds.
 
 In a leaf, every lambda whose first parameter has the instance type and whose body refers to a bound identifier gets a
 prologue `let values = Cells.values cells s k` and reads bound identifier `i` as `unbox values[i]`
-(`Plugin.fs:215-242`, `QuotedArms.fs:188-209`). This covers text and attribute readers, `Hooks` callbacks, and event
+(`Plugin.fs:215-242`, `QuotedArms.fs:114-135`). This covers text and attribute readers, `Hooks` callbacks, and event
 handlers `fun s e -> ...` (a curried lambda over the instance). Under Fable a `Delegate` whose first argument has the
 instance type is rewritten the same way (the probe handled `Lambda` only). An event handler reads the bound values at
 event time, which are the arm's current payload.
@@ -279,11 +300,11 @@ into the bound-values array and unboxed in the prologue, on both targets.
    `results/twice.txt`) each read live values, through the disposal of either.
 4. Case bodies, the selector and the per-target definitions are built once per evaluation of the `Arms.Match` call.
    A Fable Debug build stays silent about "a template definition was created while a region was read"
-   (`Template.fs:2656-2659`), because the definitions are created when the site is built.
+   (`Template.fs:2768-2774`), because the definitions are created when the site is built.
 
 **Enforcement.** A bound identifier left outside every reader is a build-time read. The plugin replaces each reader
 over the instance by a placeholder and searches the rest of the leaf (`Plugin.fs:245-252`); the .NET lowering looks
-for free bound variables after substitution (`QuotedArms.fs:216-221`).
+for free bound variables after substitution (`QuotedArms.fs:142-147`).
 
 | Code | Raised | Fable (compile error at the range) | .NET (exception from the `Arms.Match` call) |
 |---|---|---|---|
@@ -293,6 +314,7 @@ for free bound variables after substitution (`QuotedArms.fs:216-221`).
 | AM003 | second argument not a function literal | `Arms.Match takes a function literal as its second argument, such as (function \| Case x -> ...).` | `ArmsMatchException`, same sentence |
 | AM004 | instance type is a value type, `string`, `unit`, an option or an enum | `Arms.Match: the instance type 'int' is not an object type. An arm site keys each arm's payload by its instance; use a record, class, union or function instance.` | `ArmsMatchException`, same sentence |
 | AM005 | Fable build without the plugin | — | raised at site build under Fable: `Arms.Match needs the Ranvier.View.Arms Fable plugin; import Ranvier.View.Arms.targets in the project compiled by Fable.` |
+| AM007 | a decision node under a wrapper the walker does not decompose (decision 11) | `Arms.Match: this pattern form is not supported.` | `ArmsMatchException`, `<file>(<line>): ` + the same sentence |
 | AM006 | a reader over the instance type receives an instance with no arm of this site, e.g. a row whose item type equals the instance type | `Arms.Match: no arm of this site is mounted for the instance this reader received. A lambda over the instance type inside a case body runs with the arm's instance.` | same, as `ArmsMatchException` at read time |
 
 AM004 is checked from the type, before any instance exists: `WeakMap.set` throws for a JavaScript primitive and a
@@ -320,12 +342,12 @@ at start-up moves the cost out of the first request. A site inside a function ca
 docs page states the binding rule that `armOf` already has (`docs/content/view/arms.md`, "Bind arm definitions with
 `let`").
 
-**Caching.** None in v1 (open question 4). A quotation captures the call's free locals as values, so a cache keyed by
+**Caching.** None in v1 (decision 14). A quotation captures the call's free locals as values, so a cache keyed by
 call site would serve the first call's captures to later calls.
 
 **Thread safety.** The lowering keeps no shared mutable state; each call creates its own cells, definitions and
 compiled delegates, so concurrent calls are independent. The cells' entry lists are locked. Arm readers are installed
-with `Interlocked.CompareExchange` by the existing `arm` (`Template.fs:2223-2233`).
+with `Interlocked.CompareExchange` by the existing `arm` (`Template.fs:2300-2313`).
 
 **Trimming and NativeAOT.** `[<ReflectedDefinition>]` stores the argument as a serialized quotation that FSharp.Core
 resolves by reflection on type and member names, and `LeafExpressionConverter` builds `System.Linq.Expressions` trees
@@ -345,7 +367,7 @@ naming `Arms.Match`, so the annotation stays in place.
 1. **Server HTML is byte-identical** between the .NET render (quotation path) and the Fable render (plugin path), and
    equal to the explicit twin's on each target. The probe showed 54 of 54 lines equal (research, Hybrid).
 2. **Each target's definition has its explicit twin's structural hash and skeleton layout.** The arm marker carries the
-   selected definition's hash (`Template.fs:1814-1817`, `<!--[a:646a1db6-->`); the probe's hashes match for every arm
+   selected definition's hash (`Template.fs:1854-1859`, `<!--[a:646a1db6-->`); the probe's hashes match for every arm
    (`220727aa`, `a8ebc344`, `646a1db6`, `c054a3d7`, `7f75a908`, `789182d0`, `fddcd338`).
 3. **A Fable client hydrates .NET server HTML under `Strict`**, adopts every server node, reports nothing, and updates
    in place (probe `hydrate|` lines, `results/fable-dom.txt:145-149`).
@@ -357,7 +379,7 @@ naming `Arms.Match`, so the annotation stays in place.
 - `Checks/ArmsFixtures.fs`: each fixture of the probe (`Fixtures.fs:35-215`) plus the phase-2 forms of the pattern
   table, each with an explicit `armOf` twin.
 - `Checks/ArmsServerChecks.fs`, compiled into `RepresentationChecks` (.NET) and into the Playground `DomTests.fsproj`
-  (Fable), as `SugarServerChecks.fs` is (`DomTests.fsproj:82-83`, `RepresentationChecks.fsproj:14`): twin layouts and
+  (Fable), as `SugarServerChecks.fs` is (`DomTests.fsproj:83-84`, `RepresentationChecks.fsproj:14`): twin layouts and
   hashes (`layoutSignature`, `structuralHash`), and twin server HTML under the default `Reject` policy and `Omit`.
 - **Cross-runtime golden file** `Checks/arms-server.golden.txt`: the .NET checks write `name|state|hash|html` lines with
   `--update` and compare against the committed file otherwise; `tests/arms-server.test.mjs` compares the Fable lines
@@ -448,7 +470,7 @@ be committed or produced by a separate step.
 
 **CI.** A new `arms` job mirroring `playground` (`ci.yml:172-213`): build the plugin, run `RepresentationChecks` with
 the arms checks, `npm run test:arms` and the arms size script in the Playground, and the trim check; added to
-`result.needs` (`ci.yml:282`). The benchmark and heap profile run on demand, with results recorded in
+`result.needs` (`ci.yml:320`). The benchmark and heap profile run on demand, with results recorded in
 `docs/research/2026-10-21-arms-match.md`.
 
 ## Docs
@@ -481,30 +503,6 @@ the arms checks, `npm run test:arms` and the arms size script in the Playground,
 5. **Plugin compatibility with later Fable 5.x.** The plugin reads `Fable.AST` union cases directly. A new case in a
    minor version compiles against 5.0.0 but is skipped by `Shape.children`, which can hide a pattern variable from the
    search. The arms CI job runs on the repo's pinned Fable; a Fable bump re-runs the plugin tests.
-
-## Open questions
-
-1. **Should one unrecognised tree shape be an error rather than a leaf?** Recommended: yes for shapes in a decision
-   position that read the matched value (report "Arms.Match: this pattern form is not supported" at its range), so a
-   gap in the walker fails loudly instead of as a misleading AM001.
-2. **Should `if` and `match` at the top of a case body be part of the selection?** Recommended: yes, as specified; it
-   follows from the decision rule and gives reactive branching with the same remount rule as guards. The docs state it.
-3. **Should the core gain an owner-scoped lookup, so a reader finds its arm by owner instead of by instance?**
-   Recommended: no for v1. The per-target lists meet guarantee 3, and readers also run in event handlers and server
-   renders, where the owner chain is not the arm's. Revisit if a second view feature needs owner context.
-4. **Should the .NET path cache lowerings per call site?** Recommended: no. Captured locals make a call-site cache
-   unsound without re-binding captures, and module-level sites lower once already. Ship the one-lambda compile
-   (≤ 4 ms mean) and the binding rule in the docs.
-5. **Should there be a NativeAOT-compatible .NET path?** Recommended: not now. It needs a build-time lowering (a source
-   generator or a pre-compile step), which is the machinery the plugin avoids. Trimmed and NativeAOT apps use
-   `matchWith`; the annotation tells them so at publish.
-6. **One package or two at graduation?** Recommended: one `Ranvier.View.Arms` package carrying the plugin assembly and
-   an auto-imported `.targets`, so an app adds one reference and cannot get the runtime without the plugin.
-7. **Should AM005 be a compile-time error?** Recommended: yes, through the follow-up analyzer; until then the `.targets`
-   makes the plugin reference part of the opt-in, and AM005 at site build is the backstop.
-8. **Should the instance-type rule accept `string`?** Recommended: no. A .NET string is an object, but a JavaScript
-   string is a primitive that `WeakMap` rejects; accepting it on .NET only would break the "builds on one, builds on
-   the other" rule.
 
 ## Phased implementation
 
