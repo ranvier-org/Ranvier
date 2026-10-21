@@ -57,6 +57,12 @@ type Seam =
     /// </summary>
     abstract Nest: System.Action<Node, Node> with get, set
 
+    /// <summary>
+    /// Parses the markup into the template's content, in the SVG namespace when the markup's first element is an SVG tag
+    /// other than svg. Null until <c>enableSvg</c>.
+    /// </summary>
+    abstract Parse: System.Action<HTMLTemplateElement, string> with get, set
+
 /// <summary>The seam, an empty object until the first registration; null on .NET.</summary>
 #if FABLE_COMPILER
 let seam: Seam = Fable.Core.JsInterop.emitJsExpr () "{}"
@@ -323,6 +329,10 @@ let private nests = weakMap ()
 [<Emit("((p, tag) => tag === 'svg' || p.namespaceURI === 'http://www.w3.org/2000/svg' && p.localName !== 'foreignObject' ? document.createElementNS('http://www.w3.org/2000/svg', tag) : document.createElement(tag))($2.get($0) || $0, $1)")>]
 let private createUnder (parent: Node) (tag: string) (nested: obj) : HTMLElement = jsNative
 
+// Parses SVG-rooted markup inside an svg element, then lifts the parsed nodes into the template's content.
+[<Emit("((t, m) => { if (/^(?:<!--[^]*?-->)*<(?:g|path|circle|ellipse|line|polyline|polygon|rect)[ >/]/.test(m)) { t.innerHTML = '<svg>' + m + '</svg>'; t.content.replaceChildren(...t.content.firstChild.childNodes); } else t.innerHTML = m; })($0, $1)")>]
+let private parseUnder (template: HTMLTemplateElement) (markup: string) : unit = jsNative
+
 // Records the region start's parent, or the parent recorded for the fragment holding the region start.
 [<Emit("((m, f, s) => { const p = s.parentNode; if (p != null) m.set(f, m.get(p) || p); })($0, $1, $2)")>]
 let private nestUnder (nested: obj) (fragment: Node) (regionStart: Node) : unit = jsNative
@@ -336,6 +346,7 @@ let enableSvg () =
     if isNullish seam.CreateElement then
         seam.CreateElement <- System.Func<_, _, _>(fun parent tag -> createUnder parent tag nests)
         seam.Nest <- System.Action<_, _>(fun fragment regionStart -> nestUnder nests fragment regionStart)
+        seam.Parse <- System.Action<_, _>(fun template markup -> parseUnder template markup)
 #else
     ()
 #endif

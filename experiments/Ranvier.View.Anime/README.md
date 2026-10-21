@@ -232,7 +232,7 @@ let chart =
         })
 ```
 
-A list row whose root is an SVG element is an SVG element under queued commits; under synchronous commits a row template is parsed apart from its list's `svg` parent, and its root is an HTML element.
+A list row or arm rooted at an SVG tag is an SVG element too, under both commit modes.
 
 ## Reduced motion
 

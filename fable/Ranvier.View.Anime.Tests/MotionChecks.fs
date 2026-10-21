@@ -478,6 +478,45 @@ let private svgRows queued (clock: Clock) =
     let svg = "http://www.w3.org/2000/svg"
     equal [ svg + " 250 760"; svg + " 500 510" ] rows
 
+type Curved =
+    {
+        Drawn: Signal<bool>
+        Curve: Signal<string>
+    }
+
+let private curvedArm =
+    Component.template
+        (fun _ (s: Curved) -> s)
+        (svg () {
+            show
+                (fun (s: Curved) -> s.Drawn.Value)
+                (path (Motion.morph (Anim (duration = 1000, ease = Ease.linear)) (fun (s: Curved) -> s.Curve.Value)) { () })
+        })
+
+let private svgArm queued (clock: Clock) =
+    use graph = new Graph ()
+    let target = host ()
+
+    let state =
+        graph.Run (fun () ->
+            {
+                Drawn = Api.createSignal false
+                Curve = Api.createSignal "M0 0 L10 0"
+            })
+
+    let mounted = mountIn queued graph target (Component.render curvedArm state)
+    write graph mounted (fun () -> state.Drawn.Value <- true)
+    let arm = find target "path"
+    let first = namespaceOf arm, attributeOf arm "d"
+    write graph mounted (fun () -> state.Curve.Value <- "M0 10 L10 10")
+    advance clock 0.
+    advance clock 488.
+    let half = attributeOf arm "d"
+    advance clock 600.
+    let reached = attributeOf arm "d"
+    mounted.Dispose ()
+    equal (("http://www.w3.org/2000/svg", "M0 0 L10 0"), true, "M0 10 L10 10") (first, half <> snd first && half <> reached, reached)
+
 type Puck =
     {
         Position: Signal<struct (float * float)>
@@ -634,9 +673,8 @@ let cases: (string * (Clock -> unit)) array =
             modes "under Reduced, enter does not play and exit finishes at once" reducedPolicy
             modes "draw animates the stroke of an SVG path to each fraction" drawReaches
             modes "morph animates an SVG path to each shape and ends on it exactly" morphReaches
-            [|
-                "list rows under an svg element are SVG elements (queued commits)", svgRows true
-            |]
+            modes "list rows under an svg element are SVG elements and draw their strokes" svgRows
+            modes "an arm rooted at an SVG tag under svg is an SVG element and morphs" svgArm
             modes "flip records before and animates after each pass, without leaving rows" flipOrder
             [|
                 "follow sets its first value and animates to each write", followReaches
