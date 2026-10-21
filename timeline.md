@@ -47,6 +47,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 83,306 | 127,188 | 1,734,156 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 83,052 | 127,131 | 1,734,118 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 82,993 | 127,165 | 1,734,029 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 83,006 | 127,186 | 1,734,155 |
 
 ## app-table
 
@@ -95,6 +96,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 4,416,312 | 9,325,388 | 107,415,846 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 4,416,278 | 9,203,988 | 107,451,321 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 4,416,184 | 9,482,482 | 107,429,728 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 4,416,259 | 9,320,392 | 107,580,269 |
 
 ## async-recover
 
@@ -143,6 +145,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 139,040 | 39,714 | 440,649 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 139,040 | 39,722 | 440,652 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 138,908 | 39,667 | 440,646 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 138,908 | 39,726 | 440,641 |
 
 ## async-resolve
 
@@ -191,6 +194,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 2,792,310 | 1,085,311 | 12,314,272 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 2,792,309 | 1,085,567 | 12,317,141 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 2,788,709 | 1,085,426 | 12,314,050 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 2,788,708 | 1,085,476 | 12,314,312 |
 
 ## chain
 
@@ -239,6 +243,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 
 ## chain-affinity
 
@@ -287,6 +292,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 2,549 | 3,067 | 2,496 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 2,549 | 3,067 | 2,496 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 2,549 | 3,067 | 2,496 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 2,549 | 3,067 | 2,496 |
 
 ## control
 
@@ -335,6 +341,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 74,709 | 833,953 | 2,605,077 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 74,709 | 833,990 | 2,605,118 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 74,709 | 833,964 | 2,605,007 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 74,709 | 833,966 | 2,605,083 |
 
 ## create
 
@@ -383,6 +390,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 13,450,057 | 2,859,678 | 2,532,361 | 2,131,518 | 4,003,959 | 34,063,624 | 49,723,566 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 13,466,120 | 2,859,678 | 2,532,361 | 2,131,031 | 4,004,071 | 34,066,460 | 49,723,523 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 13,450,081 | 2,859,678 | 2,532,361 | 2,131,924 | 4,004,054 | 34,063,483 | 49,723,886 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 13,450,076 | 2,859,678 | 2,532,362 | 2,131,574 | 4,004,174 | 34,066,813 | 49,723,672 |
 
 ## create-on
 
@@ -431,6 +439,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 2,926,483 | 4,147,660 | 54,424,821 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 2,926,480 | 4,147,488 | 54,424,555 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 2,926,483 | 4,147,276 | 54,424,664 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 2,910,483 | 4,147,560 | 54,424,712 |
 
 ## cutoff
 
@@ -479,6 +488,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 
 ## derive-effect
 
@@ -527,6 +537,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 765 | 768 | 16,102 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 765 | 768 | 16,102 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 765 | 768 | 16,102 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 765 | 768 | 16,102 |
 
 ## derive-on
 
@@ -575,6 +586,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 737 | 775 | 16,261 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 737 | 775 | 16,261 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 737 | 775 | 16,261 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 737 | 775 | 16,261 |
 
 ## dispose
 
@@ -623,6 +635,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 2,707,641 | 806,291 | 367,497 | 466,091 | 485,125 | 13,195,635 | 9,105,967 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 2,707,645 | 806,291 | 367,497 | 466,146 | 485,190 | 13,192,878 | 9,105,766 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 2,707,643 | 806,291 | 367,497 | 466,161 | 485,312 | 13,195,906 | 9,105,580 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 2,706,243 | 806,291 | 367,497 | 465,939 | 485,409 | 13,192,461 | 9,106,048 |
 
 ## dispose-on
 
@@ -671,6 +684,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 346,497 | 478,565 | 8,901,904 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 346,497 | 478,514 | 8,902,582 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 346,497 | 478,643 | 8,902,770 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 346,497 | 478,604 | 8,902,544 |
 
 ## editable-edit
 
@@ -719,6 +733,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 180,106 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 180,106 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 180,106 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 180,106 |
 
 ## editable-upstream
 
@@ -767,6 +782,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 231,255 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 231,255 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 231,255 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 231,255 |
 
 ## fail-recompute
 
@@ -815,6 +831,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 65,082 | 1,366 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 65,082 | 1,366 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 65,106 | 1,366 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 65,106 | 1,366 |
 
 ## flight
 
@@ -863,6 +880,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 10,995 | 6,215 | 6,216 | 11,316 | 10,763 | 22,343 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 10,995 | 6,215 | 6,216 | 11,316 | 10,763 | 22,343 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 10,995 | 6,215 | 6,216 | 11,316 | 10,763 | 22,341 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 10,995 | 6,215 | 6,216 | 11,316 | 10,763 | 22,341 |
 
 ## keyed-insert
 
@@ -911,6 +929,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 1,921,809 | 53,951 | 54,947 | 3,218,777 | 661,746 | 176,641 | 44,849,870 | 2,634,910 | 2,654,364 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 1,921,809 | 53,951 | 54,952 | 3,218,744 | 661,701 | 176,618 | 44,849,862 | 2,634,953 | 2,654,174 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 1,921,809 | 53,951 | 54,948 | 3,218,784 | 661,918 | 176,593 | 44,849,854 | 2,634,915 | 2,654,166 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 1,921,825 | 53,951 | 54,960 | 3,218,701 | 661,896 | 176,569 | 44,849,827 | 2,634,913 | 2,654,316 |
 
 ## keyed-remove
 
@@ -959,6 +978,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 1,920,739 | 43,628 | 45,285 | 3,244,990 | 593,054 | 605,284 | 44,798,146 | 1,924,864 | 1,958,576 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 1,920,737 | 43,628 | 45,285 | 3,245,053 | 593,038 | 604,934 | 44,798,145 | 1,924,888 | 1,958,553 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 1,920,740 | 43,628 | 45,285 | 3,244,988 | 593,073 | 605,180 | 44,798,138 | 1,924,879 | 1,958,566 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 1,920,752 | 43,628 | 45,300 | 3,245,009 | 593,223 | 605,048 | 44,798,161 | 1,924,915 | 1,958,567 |
 
 ## keyed-swap
 
@@ -1007,6 +1027,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 1,973,428 | 46,161 | 46,915 | 3,564,429 | 148,798 | 511,205 | 45,980,650 | 916,496 | 932,804 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 1,973,428 | 46,162 | 46,915 | 3,565,364 | 148,801 | 511,378 | 45,980,639 | 916,505 | 932,899 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 1,973,428 | 46,161 | 46,915 | 3,562,638 | 148,816 | 511,394 | 45,976,612 | 916,412 | 932,865 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 1,973,444 | 46,161 | 46,931 | 3,561,040 | 148,774 | 511,419 | 45,980,255 | 916,495 | 932,920 |
 
 ## mvu-dispatch
 
@@ -1055,6 +1076,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 58,261 | 772 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 58,261 | 772 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 58,261 | 772 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 58,261 | 772 |
 
 ## project-chain
 
@@ -1103,6 +1125,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 1,070,355 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 1,070,343 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 1,070,241 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 1,070,307 |
 
 ## project-churn
 
@@ -1151,6 +1174,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 36,489 | 34,326 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 36,489 | 34,326 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 36,473 | 34,310 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 36,473 | 34,310 |
 
 ## project-edit
 
@@ -1199,6 +1223,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 50,431 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 50,415 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 50,415 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 50,431 |
 
 ## project-reorder
 
@@ -1247,6 +1272,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 779,170 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 779,156 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 779,155 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 779,171 |
 
 ## server-render
 
@@ -1295,6 +1321,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 676,332 | 1,130,471 | 9,832,698 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 676,332 | 1,131,668 | 9,832,805 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 676,238 | 1,130,708 | 9,832,837 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 676,302 | 1,131,265 | 9,832,279 |
 
 ## shape-diamond
 
@@ -1343,6 +1370,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 59,899 | 79,968 | 1,763,357 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 59,899 | 79,968 | 1,763,357 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 59,899 | 79,968 | 1,763,357 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 59,899 | 79,968 | 1,763,357 |
 
 ## shape-dynamic
 
@@ -1391,6 +1419,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 82,921 | 107,033 | 2,006,140 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 82,921 | 107,033 | 2,006,140 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 82,921 | 107,033 | 2,006,140 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 82,921 | 107,033 | 2,006,144 |
 
 ## stream-burst-1
 
@@ -1439,6 +1468,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 1,974 | 1,572 | 2,491 | 4,672 | 3,644 | 13,369 | 47,201 | 45,417 | 55,169 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 1,974 | 1,572 | 2,491 | 4,671 | 3,644 | 13,371 | 47,201 | 45,417 | 55,171 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 1,974 | 1,572 | 2,506 | 4,668 | 3,644 | 13,368 | 47,201 | 45,417 | 55,168 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 1,974 | 1,572 | 2,490 | 4,671 | 3,644 | 13,371 | 47,201 | 45,417 | 55,171 |
 
 ## stream-burst-16
 
@@ -1487,6 +1517,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 5,631 | 25,017 | 5,701 | 9,501 | 49,601 | 8,051 | 120,969 | 714,180 | 113,520 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 5,631 | 25,017 | 5,701 | 9,499 | 49,601 | 8,051 | 120,971 | 714,180 | 113,522 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 5,631 | 25,017 | 5,716 | 9,498 | 49,601 | 8,051 | 120,968 | 714,180 | 113,521 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 5,631 | 25,017 | 5,700 | 9,502 | 49,601 | 8,051 | 120,973 | 714,180 | 113,522 |
 
 ## stream-burst-256
 
@@ -1535,6 +1566,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 64,131 | 400,101 | 57,040 | 127,452 | 787,223 | 74,603 | 1,301,576 | 11,413,290 | 1,046,484 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 64,131 | 400,101 | 57,040 | 127,383 | 787,263 | 74,605 | 1,301,511 | 11,413,287 | 1,046,550 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 64,131 | 400,101 | 57,055 | 127,302 | 787,259 | 74,571 | 1,301,576 | 11,413,288 | 1,046,549 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 64,131 | 400,101 | 57,039 | 127,472 | 787,263 | 74,603 | 1,301,499 | 11,413,287 | 1,046,540 |
 
 ## stream-restart
 
@@ -1583,6 +1615,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 4,188 | 4,976 | 6,106 | 16,358 | 41,497 | 70,404 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 4,188 | 4,976 | 6,106 | 16,360 | 41,493 | 70,403 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 4,188 | 4,991 | 6,101 | 16,353 | 41,498 | 70,403 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 4,188 | 4,975 | 6,106 | 16,360 | 41,495 | 70,406 |
 
 ## timed-admit-both
 
@@ -1631,6 +1664,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 118,591 | 134,965 | 2,679,928 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 118,591 | 134,964 | 2,679,929 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 118,591 | 134,963 | 2,679,928 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 119,615 | 134,965 | 2,679,929 |
 
 ## timed-admit-debounce
 
@@ -1679,6 +1713,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 117,496 | 133,557 | 2,640,272 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 117,496 | 133,559 | 2,640,272 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 117,496 | 133,556 | 2,640,272 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 118,520 | 133,583 | 2,640,285 |
 
 ## timed-admit-first
 
@@ -1727,6 +1762,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 69,479 | 79,053 | 1,611,692 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 69,479 | 79,053 | 1,611,692 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 69,479 | 79,051 | 1,611,692 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 70,503 | 79,053 | 1,611,692 |
 
 ## timed-admit-last
 
@@ -1775,6 +1811,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 117,758 | 133,853 | 2,650,128 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 117,758 | 133,877 | 2,650,140 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 117,758 | 133,852 | 2,650,141 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 118,782 | 133,854 | 2,650,141 |
 
 ## timed-capture-both
 
@@ -1823,6 +1860,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 35,726 | 44,808 | 846,999 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 35,726 | 44,807 | 846,997 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 35,726 | 44,808 | 846,997 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 35,726 | 44,808 | 847,000 |
 
 ## timed-capture-debounce
 
@@ -1871,6 +1909,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 35,598 | 44,104 | 847,375 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 35,598 | 44,104 | 847,375 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 35,598 | 44,104 | 847,375 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 35,598 | 44,104 | 847,375 |
 
 ## timed-capture-first
 
@@ -1919,6 +1958,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 32,078 | 36,612 | 745,372 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 32,078 | 36,612 | 745,371 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 32,078 | 36,612 | 745,372 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 32,078 | 36,612 | 745,372 |
 
 ## timed-capture-last
 
@@ -1967,6 +2007,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 35,534 | 44,040 | 839,503 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 35,534 | 44,040 | 839,503 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 35,534 | 44,040 | 839,503 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 35,534 | 44,040 | 839,503 |
 
 ## update
 
@@ -2015,6 +2056,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 1,087,683 | 38,805 | 82,505 | 262,463 | 151,710 | 3,350,232 | 2,502,805 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 1,087,682 | 38,805 | 82,505 | 263,098 | 151,681 | 3,350,208 | 2,502,803 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 1,087,690 | 38,805 | 82,505 | 262,472 | 151,719 | 3,350,264 | 2,502,780 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 1,087,690 | 38,805 | 82,505 | 262,607 | 151,714 | 3,350,250 | 2,502,787 |
 
 ## update-on
 
@@ -2063,6 +2105,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 93,005 | 165,219 | 2,830,335 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 93,005 | 165,230 | 2,830,354 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 93,005 | 165,206 | 2,830,335 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 93,005 | 165,209 | 2,830,434 |
 
 ## work-form
 
@@ -2111,6 +2154,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 170,300 | 163,392 | 295,901 | 291,347 | 5,349,287 | 5,295,440 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 170,300 | 163,392 | 295,967 | 291,425 | 5,349,286 | 5,295,422 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 170,300 | 163,392 | 295,902 | 291,347 | 5,349,235 | 5,295,442 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 170,300 | 163,427 | 295,967 | 291,364 | 5,349,259 | 5,295,445 |
 
 ## work-status
 
@@ -2159,6 +2203,7 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 100,445 | 78,815 | 264,817 | 152,938 | 2,611,041 | 2,360,865 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 100,445 | 78,815 | 264,846 | 152,929 | 2,611,056 | 2,360,860 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 100,445 | 78,815 | 264,855 | 152,961 | 2,611,043 | 2,360,848 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 100,445 | 78,815 | 264,796 | 152,948 | 2,611,019 | 2,360,873 |
 
 ## work-value
 
@@ -2207,4 +2252,5 @@
 | `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | 107,569 | 119,471 | 265,066 | 279,870 | 2,595,602 | 2,920,213 |
 | `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | 107,569 | 119,469 | 265,058 | 279,881 | 2,595,669 | 2,920,175 |
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 107,569 | 119,469 | 265,079 | 279,859 | 2,595,627 | 2,920,219 |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 107,569 | 119,469 | 265,105 | 279,902 | 2,595,684 | 2,920,181 |
 
