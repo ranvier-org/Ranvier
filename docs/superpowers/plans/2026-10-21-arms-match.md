@@ -6,7 +6,7 @@
 
 **Architecture:** A runtime project, `experiments/Ranvier.View.Arms`, holds `Arms.Match`, the per-site `Cells` table and `Site.create`, built on the public view API only. Under Fable a plugin project, `experiments/Ranvier.View.Arms.FablePlugin`, rewrites every `Arms.Match` call into a target selector and one case body per target; on .NET the same call receives a quotation and `Quoted.lower` applies the same rules. Both producers feed `Site.create`, so hashes, layouts and server HTML come from one runtime path.
 
-**Tech Stack:** F# 10, FSharp.Core 8.0.100 floor (library) and 10.1.203 (plugin), Fable 5.18.0 with Fable.AST 5.0.0, net10.0 and netstandard2.0, FSharp.Linq `LeafExpressionConverter`, Node 26 with jsdom 30.1.1 (`node --test`), Vite 8.3.2, Playwright Chromium for the benchmark harness.
+**Tech Stack:** F# 10, FSharp.Core 8.0.100 floor (library) and 10.1.203 (plugin), Fickl 0.3.0 (`dotnet fickl`, Fable 5.22) with Fable.AST 5.0.0, net10.0 and netstandard2.0, FSharp.Linq `LeafExpressionConverter`, Node 26 with jsdom 30.1.1 (`node --test`), Vite 8.3.2, Playwright Chromium for the benchmark harness.
 
 **Spec:** [`docs/superpowers/specs/2026-10-21-arms-match-design.md`](../specs/2026-10-21-arms-match-design.md), approved 2026-10-21 with Decisions 11-18 (the former open questions). Read it, and the research note [`docs/research/2026-10-21-idiomatic-arms.md`](../../research/2026-10-21-idiomatic-arms.md), before any task. The probe sources under `experiments/arms-probes` are the starting code.
 
@@ -26,7 +26,7 @@ Required by `.claude/rules/view-uses-core.md`; copied from the spec.
 
 Every task's requirements include this section.
 
-- Toolchain: Fable 5.18.0 (`.config/dotnet-tools.json`), Fantomas 8.0.5, net10.0.
+- Toolchain: Fickl 0.3.0, the Fable compiler of `.config/dotnet-tools.json` since #152 (`dotnet fickl`, Fable 5.22.0, fable-library 5.22), Fantomas 8.0.5, net10.0.
 - `Fable.AST` (plugin, compile reference): 5.0.0. `FSharp.Core` (plugin): 10.1.203. `FSharp.Core` (library): the view projects' 8.0.100 floor (`FSharpCoreImplicitPackageVersion`, no pin). `FableMinimumVersion`: `"5.0"`.
 - Plugin target: netstandard2.0, with `[<assembly: ScanForPlugins>]`. Runtime targets: net10.0;net8.0 (as Portable since #147), Fable sources.
 - `armOf`, `arm`, `matchWith`, `branch`, `show` and `showElse` (`TemplateSugar.fs:101-171`) keep their signatures, behaviour, docs and bundle bytes. No file under `src/`, `experiments/Ranvier.View.Portable/*.fs` or `experiments/Ranvier.View.Foundation/*.fs` changes. A task that finds a change there necessary stops and reports it.
@@ -81,11 +81,11 @@ and, from Task 9 on, `node experiments/Ranvier.View.Arms/Checks/size.mjs` from t
 
 ### Repo hazards
 
-- **Fable 5.18 inlines a single-use immutable `let` snapshot of a module `mutable`.** `let snapshot = counter` followed by one use reads the live value. Use `let mutable snapshot = counter`, or check the emitted JS.
+- **Fable 5.18 inlines a single-use immutable `let` snapshot of a module `mutable`** (observed before #152; assume Fickl does too). `let snapshot = counter` followed by one use reads the live value. Use `let mutable snapshot = counter`, or check the emitted JS.
 - **A union's `.IsCase` properties break Fable precompile.** Write a `match` instead.
 - **No `node_modules` junctions or symlinks.** Run `npm ci` in each package directory of this worktree (`examples/Fable.Ranvier.Playground`, `tools/Ranvier.Dom.Generate`).
 - **Locks.** `browser.lock` (any Chromium or Playwright run) and `bench.lock` (any timed benchmark) are directories under `C:/Users/shaya/.claude/jobs/7fee9ca9/tmp/`: `mkdir` before, waiting while it exists, `rmdir` after. Only the creator removes a lock.
-- **The plugin assembly must exist before `dotnet fable` evaluates a project that imports the `.targets`.** `npm run compile:tests` builds it; any other `dotnet fable` of `DomTests.fsproj` (the counters build, `keyed-rows.mjs --build`) runs after a plugin build. After a plugin change, compile with `--noCache`: Fable's cache does not track the plugin. `dotnet fsi build.fsx -- test` cleans every `bin` folder, the plugin's included, so the plugin build runs after it; a missing plugin assembly fails the Fable compile with "Ranvier.View.Arms.FablePlugin.dll is missing from ..." (the `.targets` check).
+- **The plugin assembly must exist before `dotnet fickl` evaluates a project that imports the `.targets`.** `npm run compile:tests` builds it; any other `dotnet fickl` of `DomTests.fsproj` (the counters build, `keyed-rows.mjs --build`) runs after a plugin build. After a plugin change, compile with `--noCache`: Fable's cache does not track the plugin. `dotnet fsi build.fsx -- test` cleans every `bin` folder, the plugin's included, so the plugin build runs after it; a missing plugin assembly fails the Fable compile with "Ranvier.View.Arms.FablePlugin.dll is missing from ..." (the `.targets` check).
 - Leave untracked `generated-*` directories alone; new output directories (`generated-arms-size`, `Checks/Discovery/out`, `Checks/TrimCallSite/bin`) are git-ignored by the task that creates them.
 
 ## Rulings on the spec
@@ -115,7 +115,7 @@ Each ruling picks an implementation where the spec leaves one open, or settles a
 21. **The .NET lowering rewrites a delegate over the instance** (`NewDelegate`) as a reader, as the plugin rewrites a Fable `Delegate`; `Hooks.exit (Func<_, _, _, _>(fun s node finish -> ...))` is one.
 22. **Fable.AST at graduation** (spec Decision 16, amended): the package declares `Fable.AST` as a NuGet dependency and ships only `Ranvier.View.Arms.FablePlugin.dll` under `fable-plugin/` from an explicit file list. The experiment references the copied `Fable.AST.dll` directly, since no package exists to exercise the dependency form.
 23. **The `.targets` names its plugin folder `RanvierArmsPluginDir`** (default: the Release output) and fails the Fable compile when the plugin assembly is missing there; Fable's cracking runs the check (`BeforeTargets="ResolveAssemblyReferences"`, verified in Phase 1).
-24. **The simple-match AM001b shape does not occur under Fable 5.18.** For `| Loaded (text, _) -> span () { text } | _ -> ...`, FCS hands Fable a bound `text`, so the plugin reports AM001; the `AM001b` fixture asserts that. The AM001b text stays for an inlined `matched.fields[k]` read outside a reader.
+24. **The simple-match AM001b shape does not occur under Fickl 0.3.0.** For `| Loaded (text, _) -> span () { text } | _ -> ...`, FCS hands Fable a bound `text`, so the plugin reports AM001; the `AM001b` fixture asserts that. The AM001b text stays for an inlined `matched.fields[k]` read outside a reader.
 25. **A named arms function arrives eta-expanded.** Fable passes `Arms.Match (read, arms)` as `fun _arg1 -> arms _arg1`, a lambda over a compiler-generated parameter whose body applies a value to it; the plugin reports AM003 for that shape.
 
 ## Review Focus
@@ -311,7 +311,7 @@ Expected: FAIL, the referenced project `../../Ranvier.View.Arms.fsproj` does not
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- The Fable plugin that lowers Arms.Match calls; it runs inside the dotnet fable process. -->
+  <!-- The Fable plugin that lowers Arms.Match calls; it runs inside the dotnet fickl process. -->
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <IsPackable>false</IsPackable>
@@ -719,7 +719,7 @@ type CaseArmsAttribute() =
 ```xml
 <Project>
   <!--
-  The Arms.Match opt-in for a project compiled by Fable. The plugin assembly must exist before `dotnet fable` runs:
+  The Arms.Match opt-in for a project compiled by Fable. The plugin assembly must exist before `dotnet fickl` runs:
   dotnet build experiments/Ranvier.View.Arms.FablePlugin/Ranvier.View.Arms.FablePlugin.fsproj -c Release
   -->
   <PropertyGroup>
@@ -1182,7 +1182,7 @@ Expected: both succeed; `experiments/Ranvier.View.Arms.FablePlugin/bin/Release/n
 
 ```bash
 dotnet run --project experiments/Ranvier.View.Arms/Checks/Discovery/Discovery.fsproj -c Release > C:/Users/shaya/.claude/jobs/7fee9ca9/tmp/arms-discovery-net.txt
-dotnet fable experiments/Ranvier.View.Arms/Checks/Discovery/Discovery.fsproj --outDir experiments/Ranvier.View.Arms/Checks/Discovery/out -c Release --noCache
+dotnet fickl experiments/Ranvier.View.Arms/Checks/Discovery/Discovery.fsproj --outDir experiments/Ranvier.View.Arms/Checks/Discovery/out -c Release --noCache
 node experiments/Ranvier.View.Arms/Checks/Discovery/out/Main.js > C:/Users/shaya/.claude/jobs/7fee9ca9/tmp/arms-discovery-fable.txt
 diff --strip-trailing-cr C:/Users/shaya/.claude/jobs/7fee9ca9/tmp/arms-discovery-net.txt C:/Users/shaya/.claude/jobs/7fee9ca9/tmp/arms-discovery-fable.txt
 rtk grep -c "armsValues_L" experiments/Ranvier.View.Arms/Checks/Discovery/out/Main.js
@@ -1198,7 +1198,7 @@ Loading 40|<!--[r--><div class="loader"><!--[a:a8ebc344--><progress max="100" va
 Loaded done 3|<!--[r--><div class="loader"><!--[a:646a1db6--><pre>done<!--!--> x<!--!-->3</pre><!--]--></div><!--]-->
 ```
 
-and `Main.js` names `armsValues_L` at least once, and the .NET output holds neither the plugin nor `Fable.AST.dll`. If `dotnet fable` fails with FS0101 naming AM005, Fable did not set `FABLE_COMPILER` as an MSBuild property during cracking: remove the `Condition`s from the `.targets` (the spec's fallback), rerun this step, and record it in Step 8. If it fails with a plugin load error, record the message and stop: the netstandard2.0 load is the phase-1 question.
+and `Main.js` names `armsValues_L` at least once, and the .NET output holds neither the plugin nor `Fable.AST.dll`. If `dotnet fickl` fails with FS0101 naming AM005, Fable did not set `FABLE_COMPILER` as an MSBuild property during cracking: remove the `Condition`s from the `.targets` (the spec's fallback), rerun this step, and record it in Step 8. If it fails with a plugin load error, record the message and stop: the netstandard2.0 load is the phase-1 question.
 
 - [ ] **Step 8: Record the discovery results**
 
@@ -1264,7 +1264,7 @@ Start of phase: `git fetch origin && git merge origin/master` (message file with
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- Compiled by PluginTests.fsx with dotnet fable only; each Bad file compiles under its own define. -->
+  <!-- Compiled by PluginTests.fsx with dotnet fickl only; each Bad file compiles under its own define. -->
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <OutputType>Library</OutputType>
@@ -1573,7 +1573,7 @@ experiments/Ranvier.View.Arms.FablePlugin/Tests/NoTargets/
 `experiments/Ranvier.View.Arms.FablePlugin/Tests/PluginTests.fsx`:
 
 ```fsharp
-// Compiles the plugin fixtures with dotnet fable: the emitted sites against expected/Sites.js, and each bad fixture
+// Compiles the plugin fixtures with dotnet fickl: the emitted sites against expected/Sites.js, and each bad fixture
 // against its diagnostic (exit code 1, file, line, exact message). Needs the plugin built in Release.
 //   dotnet fsi experiments/Ranvier.View.Arms.FablePlugin/Tests/PluginTests.fsx            checks
 //   dotnet fsi experiments/Ranvier.View.Arms.FablePlugin/Tests/PluginTests.fsx --update   rewrites expected/Sites.js
@@ -1608,7 +1608,7 @@ let exec (file: string) (args: string list) =
     run.WaitForExit ()
     run.ExitCode, output.Result + errors.Result
 
-/// Runs dotnet fable on a fixtures project with the defines and extra arguments, into its own folder.
+/// Runs dotnet fickl on a fixtures project with the defines and extra arguments, into its own folder.
 let fableOf (fixtures: string) (name: string) (defines: string list) (extra: string list) =
     let outDir = Path.Combine (scratch, name)
 
@@ -1616,7 +1616,7 @@ let fableOf (fixtures: string) (name: string) (defines: string list) (extra: str
         exec
             "dotnet"
             ([
-                "fable"
+                "fickl"
                 fixtures
                 "--outDir"
                 outDir
@@ -1633,12 +1633,15 @@ let fableOf (fixtures: string) (name: string) (defines: string list) (extra: str
 let fable name defines extra =
     fableOf project name defines extra
 
-/// <summary>Line endings unified, and each site suffix (L<line>C<column>) replaced by its ordinal in the file.</summary>
+/// <summary>
+/// Line endings unified, the fable-library folder's version dropped, and each site suffix (L<line>C<column>) replaced
+/// by its ordinal in the file.
+/// </summary>
 let normalise (text: string) =
     let ordinals = Collections.Generic.Dictionary<string, int>()
 
     Regex.Replace (
-        text.Replace ("\r\n", "\n"),
+        Regex.Replace (text.Replace ("\r\n", "\n"), @"fable-library-js\.\d+\.\d+\.\d+", "fable-library-js"),
         @"L\d+C\d+",
         fun found ->
             if not (ordinals.ContainsKey found.Value) then
@@ -3913,11 +3916,11 @@ and before `</Project>`:
 `package.json` scripts: replace `compile:tests` and add `test:arms`:
 
 ```json
-    "compile:tests": "dotnet build ../../experiments/Ranvier.View.Arms.FablePlugin/Ranvier.View.Arms.FablePlugin.fsproj -c Release -v q && dotnet fable tests/DomTests.fsproj --outDir generated-tests --configuration Release",
+    "compile:tests": "dotnet build ../../experiments/Ranvier.View.Arms.FablePlugin/Ranvier.View.Arms.FablePlugin.fsproj -c Release -v q && dotnet fickl tests/DomTests.fsproj --outDir generated-tests --configuration Release",
     "test:arms": "npm run compile:tests -- --define RANVIER_VIEW_COUNTERS && node --test tests/arms-server.test.mjs",
 ```
 
-`tests/sugar-counters-build.mjs`: before the `execFileSync("dotnet", ["fable", ...` call add
+`tests/sugar-counters-build.mjs`: before the `execFileSync("dotnet", ["fickl", ...` call add
 
 ```js
 execFileSync("dotnet", ["build", "../../experiments/Ranvier.View.Arms.FablePlugin/Ranvier.View.Arms.FablePlugin.fsproj", "-c", "Release", "-v", "q"], {
@@ -5610,7 +5613,7 @@ In `.github/workflows/ci.yml`, before the `result:` job, add:
       - name: Run the discovery app on both targets
         run: |
           dotnet run --project experiments/Ranvier.View.Arms/Checks/Discovery/Discovery.fsproj -c Release > discovery-net.txt
-          dotnet fable experiments/Ranvier.View.Arms/Checks/Discovery/Discovery.fsproj --outDir experiments/Ranvier.View.Arms/Checks/Discovery/out -c Release --noCache
+          dotnet fickl experiments/Ranvier.View.Arms/Checks/Discovery/Discovery.fsproj --outDir experiments/Ranvier.View.Arms/Checks/Discovery/out -c Release --noCache
           node experiments/Ranvier.View.Arms/Checks/Discovery/out/Main.js > discovery-fable.txt
           diff --strip-trailing-cr discovery-net.txt discovery-fable.txt
           grep -q armsValues_L experiments/Ranvier.View.Arms/Checks/Discovery/out/Main.js
@@ -5705,7 +5708,7 @@ and under Fable. It lives in its own project; an app opts in with two lines:
 <Import Project="../../experiments/Ranvier.View.Arms/Ranvier.View.Arms.targets" />
 ```
 
-The `.targets` adds the Fable plugin that lowers each call. The plugin assembly must be built before `dotnet fable`
+The `.targets` adds the Fable plugin that lowers each call. The plugin assembly must be built before `dotnet fickl`
 runs: `dotnet build experiments/Ranvier.View.Arms.FablePlugin -c Release`.
 
 ```fsharp
@@ -5800,10 +5803,10 @@ Expected: `Arms.fs` gains `open Ranvier.View.Arms`, `loaderMatch`, `Folder` and 
 
 ```markdown
 **FS0101 "This construct is deprecated. Arms.Match needs the Ranvier.View.Arms Fable plugin" (AM005) at an
-`Arms.Match` call.** The project `dotnet fable` compiles references `Ranvier.View.Arms` without importing
+`Arms.Match` call.** The project `dotnet fickl` compiles references `Ranvier.View.Arms` without importing
 `Ranvier.View.Arms.targets`. Import it.
 
-**"Ranvier.View.Arms.FablePlugin.dll is missing from ..."** when `dotnet fable` starts: the plugin is not built in
+**"Ranvier.View.Arms.FablePlugin.dll is missing from ..."** when `dotnet fickl` starts: the plugin is not built in
 Release. Run `dotnet build experiments/Ranvier.View.Arms.FablePlugin -c Release`, or set `RanvierArmsPluginDir` to the
 folder of another build.
 

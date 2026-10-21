@@ -24,7 +24,7 @@ import of `Ranvier.View.Arms.targets`:
   call with FS0101 and the AM005 text.
 - **MSBuild targets during cracking:** Fable's project cracking runs a target declared
   `BeforeTargets="ResolveAssemblyReferences"`; the `.targets` check for a missing plugin assembly fires under
-  `dotnet fable`.
+  `dotnet fickl`.
 - **`dotnet fsi build.fsx -- test` cleans the plugin's `bin` folder** with every other; the plugin is rebuilt after it.
 
 ## .NET lowering cost
@@ -46,3 +46,10 @@ and 6.84 ms mean, of which about 1.2 ms is `Compile` and the rest the first call
 Server render of a two-target site, 5,000 renders per measurement, mean per render: `Arms.Match` 0.0047 ms compiled and
 0.0046-0.0050 ms interpreted, against 0.0035-0.0058 ms for its `armOf` twin; the interpreter adds no measurable cost at
 this size.
+
+## Fickl
+
+Master replaced `dotnet fable` (Fable 5.18.0) with `dotnet fickl` (Fickl 0.3.0, which reports Fable 5.22.0) in #152.
+Its tool folder holds the same `Fable.AST` 5.1.0 and FSharp.Core 10.1.203, and the plugin loads unchanged: the
+discovery app renders the same HTML on both targets, and the plugin tests pass with the same diagnostics, ranges and
+emitted sites.

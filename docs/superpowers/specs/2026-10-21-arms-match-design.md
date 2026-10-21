@@ -8,9 +8,10 @@
 > (`experiments/arms-probes/Twice`, result in `results/twice.txt`). The implementation plan is
 > [`docs/superpowers/plans/2026-10-21-arms-match.md`](../plans/2026-10-21-arms-match.md).
 
-Date: 2026-10-21. Toolchain facts: Fable 5.18.0 (`.config/dotnet-tools.json`), whose tool runs on net10.0 and loads
-`Fable.AST` 5.1.0 and FSharp.Core 10.1.203 (assembly version 10.1.0.0) from its own folder; the probe plugin compiled
-against `Fable.AST` 5.0.0 and FSharp.Core 10.1.401 loads into it.
+Date: 2026-10-21. Toolchain facts: Fickl 0.3.0 (`.config/dotnet-tools.json` since #152, `dotnet fickl`; it reports
+Fable 5.22.0), whose tool runs on net10.0 and loads `Fable.AST` 5.1.0 and FSharp.Core 10.1.203 (assembly version
+10.1.0.0) from its own folder, as Fable 5.18.0, the probe's compiler, did; the plugin compiled against `Fable.AST`
+5.0.0 and FSharp.Core 10.1.203 loads into both.
 
 ## Core and view state
 
@@ -147,8 +148,8 @@ Versions:
 
 | Package | Version | Reason |
 |---|---|---|
-| `Fable.AST` (plugin, compile reference) | 5.0.0 | the lowest 5.x; Fable 5.18 loads its own 5.1.0, probe-verified |
-| `FSharp.Core` (plugin) | 10.1.203 | the version inside the Fable 5.18 tool folder; the plugin runs in that process |
+| `Fable.AST` (plugin, compile reference) | 5.0.0 | the lowest 5.x; Fickl 0.3.0 and Fable 5.18 load their own 5.1.0, verified |
+| `FSharp.Core` (plugin) | 10.1.203 | the version inside the Fickl 0.3.0 (and Fable 5.18) tool folder; the plugin runs in that process |
 | `FSharp.Core` (library) | 8.0.100 floor (`FSharpCoreImplicitPackageVersion`), targets net10.0;net8.0 | the view projects' floor since #147 (`Ranvier.View.Portable.fsproj:2-6`) |
 | `FableMinimumVersion` | `"5.0"` | the probe declared `"4.0"` (`Plugin.fs:331`); 4.x is untested |
 
@@ -163,7 +164,7 @@ two lines:
 Fable discovers plugins among the compilation's assembly references, and it compiles `Ranvier.View.Arms` from source
 inside the app's compilation with the app's references and defines; the `.targets` adds the plugin assembly,
 `Fable.AST.dll` and the `RANVIER_ARMS_PLUGIN` define.
-`dotnet fable` evaluates the project without building it, so the plugin assembly must exist beforehand: the Playground
+`dotnet fickl` evaluates the project without building it, so the plugin assembly must exist beforehand: the Playground
 `compile` scripts and the CI jobs run `dotnet build experiments/Ranvier.View.Arms.FablePlugin -c Release` first.
 Fable sets the `FABLE_COMPILER` MSBuild property during project cracking (verified in phase 1), so .NET builds carry
 no plugin assembly. When the view graduates to a package, one `Ranvier.View.Arms` package ships the plugin assembly
@@ -427,7 +428,7 @@ The 0 B rules follow from decision 8: no standard file changes, and Vite drops a
   expected is quoted automatically, so the call types and completes as a plain function in every project.
 - Pattern variables have their field types (`text: string`), and hover, rename and go-to-definition work on them.
 - Quotation restrictions (FS0449 for object expressions) appear in the IDE for Fable-only projects too.
-- AM001-AM004 appear in `dotnet fable` output with file and range, and on .NET when the site is built. The IDE shows
+- AM001-AM004 appear in `dotnet fickl` output with file and range, and on .NET when the site is built. The IDE shows
   none of them in this spec; `span () { text }` type-checks because a string yields static text.
 - Source maps: the plugin gives each prologue the range of the reader it opens, so a breakpoint in `fun _ -> string
   percent` stops in the reader.
@@ -441,7 +442,7 @@ the `.targets`. Rider does not host FSharp.Analyzers.SDK analyzers, so Rider use
 Each item names its suite; the research's unprobed items are marked **(new)**.
 
 1. **Plugin unit tests** (`experiments/Ranvier.View.Arms.FablePlugin/Tests`, .NET): compile fixture files with
-   `dotnet fable` into a scratch folder and compare the emitted JavaScript of each site with a committed expectation
+   `dotnet fickl` into a scratch folder and compare the emitted JavaScript of each site with a committed expectation
    (names normalised); one bad-fixture file per diagnostic, asserting exit code 1 and the exact message and range.
    Emitted names are derived from the enclosing member and a per-member index, so output is stable across files and
    watch rebuilds (the probe's global counter, `Plugin.fs:161`, is not).
@@ -482,7 +483,7 @@ Each item names its suite; the research's unprobed items are marked **(new)**.
 
 **Myriad is not needed.** It would generate the lens active patterns or hoisted `armOf` definitions, both of which the
 recommendation rejects, and the plugin and quotation cover both targets from the user's source alone. Myriad also
-generates in an MSBuild target before `CoreCompile`, which `dotnet fable` does not run, so generated files would have to
+generates in an MSBuild target before `CoreCompile`, which `dotnet fickl` does not run, so generated files would have to
 be committed or produced by a separate step.
 
 **CI.** A new `arms` job mirroring `playground` (`ci.yml:172-212`): build the plugin, run `RepresentationChecks` with
@@ -527,7 +528,7 @@ Each phase lands with its tests green and is reviewable alone.
 
 1. **Scaffold and discovery.** Create both projects from the probe (`CaseArms.fs`, `QuotedArms.fs`, `Plugin.fs`),
    rename namespaces to `Ranvier.View.Arms`, add the `.targets`. Verify with a Playground fixture compiled by
-   `dotnet fable`: the plugin is found through the `.targets` and a project reference; `FABLE_COMPILER` as an MSBuild
+   `dotnet fickl`: the plugin is found through the `.targets` and a project reference; `FABLE_COMPILER` as an MSBuild
    property during cracking; netstandard2.0 plugin loads in Fable 5.18. Record results in the research note.
 2. **Lowering rules.** The widened decision rule on both producers; throw leaves into `select`; `Delegate` readers;
    AM001b field names; AM002-AM004; stable emitted names; the pattern-table fixtures and their twins on both targets.

@@ -3,7 +3,7 @@ import { Signal$1__get_Value } from "./src/Ranvier/Core.js";
 import { Hooks, Element$2__Yield_Z5833CC7, Element$2__Yield_Z721C83C5, Element$2__Yield_Z38B9F583, Element$2__Delay_Z3DB59124, Element$2__Run_Z2BE2850A, Component_template } from "./Ranvier.View.Portable/TemplateSugar.js";
 import { section$1_$ctor_74B6D47, i$1_$ctor_74B6D47, pre$1_$ctor_Z11E5C9E0, b$1_$ctor_74B6D47, span$1_$ctor_659A19AB, div$1_$ctor_5298DB1C } from "./Ranvier.View.Portable/Generated/HtmlTemplateSugar.js";
 import { Arms_Match_Z9579909 } from "./Ranvier.View.Arms/Arms.js";
-import { Exception, int32ToString } from "./fable_modules/fable-library-js.5.18.0/Util.js";
+import { Exception, int32ToString } from "./fable_modules/fable-library-js/Util.js";
 import { HookBuilder$1__exit_Z20F364BA } from "./Ranvier.View.Portable/Template.js";
 
 export function read(state) {

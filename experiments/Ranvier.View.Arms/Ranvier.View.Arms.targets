@@ -1,6 +1,6 @@
 <Project>
   <!--
-  The Arms.Match opt-in for a project compiled by Fable. The plugin assembly must exist before `dotnet fable` runs:
+  The Arms.Match opt-in for a project compiled by Fable. The plugin assembly must exist before `dotnet fickl` runs:
   dotnet build experiments/Ranvier.View.Arms.FablePlugin/Ranvier.View.Arms.FablePlugin.fsproj -c Release
   -->
   <PropertyGroup>

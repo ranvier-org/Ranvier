@@ -1,4 +1,4 @@
-// Compiles the plugin fixtures with dotnet fable: the emitted sites against expected/Sites.js, and each bad fixture
+// Compiles the plugin fixtures with dotnet fickl: the emitted sites against expected/Sites.js, and each bad fixture
 // against its diagnostic (exit code 1, file, line, exact message). Needs the plugin built in Release.
 //   dotnet fsi experiments/Ranvier.View.Arms.FablePlugin/Tests/PluginTests.fsx            checks
 //   dotnet fsi experiments/Ranvier.View.Arms.FablePlugin/Tests/PluginTests.fsx --update   rewrites expected/Sites.js
@@ -33,7 +33,7 @@ let exec (file: string) (args: string list) =
     run.WaitForExit ()
     run.ExitCode, output.Result + errors.Result
 
-/// Runs dotnet fable on a fixtures project with the defines and extra arguments, into its own folder.
+/// Runs dotnet fickl on a fixtures project with the defines and extra arguments, into its own folder.
 let fableOf (fixtures: string) (name: string) (defines: string list) (extra: string list) =
     let outDir = Path.Combine (scratch, name)
 
@@ -41,7 +41,7 @@ let fableOf (fixtures: string) (name: string) (defines: string list) (extra: str
         exec
             "dotnet"
             ([
-                "fable"
+                "fickl"
                 fixtures
                 "--outDir"
                 outDir
@@ -58,12 +58,15 @@ let fableOf (fixtures: string) (name: string) (defines: string list) (extra: str
 let fable name defines extra =
     fableOf project name defines extra
 
-/// <summary>Line endings unified, and each site suffix (L<line>C<column>) replaced by its ordinal in the file.</summary>
+/// <summary>
+/// Line endings unified, the fable-library folder's version dropped, and each site suffix (L<line>C<column>) replaced
+/// by its ordinal in the file.
+/// </summary>
 let normalise (text: string) =
     let ordinals = Collections.Generic.Dictionary<string, int>()
 
     Regex.Replace (
-        text.Replace ("\r\n", "\n"),
+        Regex.Replace (text.Replace ("\r\n", "\n"), @"fable-library-js\.\d+\.\d+\.\d+", "fable-library-js"),
         @"L\d+C\d+",
         fun found ->
             if not (ordinals.ContainsKey found.Value) then
