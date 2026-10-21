@@ -3278,7 +3278,6 @@ and internal MountState
 
         let reconcile () =
             if site.Live () then
-                passPlacement.Begin ()
                 // A hydrating pass adopts its rows in place, without window validation or a flush of released rows.
                 let hydrating = site.Hydrating
 
@@ -3327,6 +3326,8 @@ and internal MountState
                             report,
                             fun () ->
                                 let current = site.ReadSource items.Read
+                                // A pass whose source read is pending begins no placement pass.
+                                passPlacement.Begin ()
                                 site.Resume ()
                                 snapshot <- current
                                 Api.untrack (fun () -> version.Value <- version.Value + 1)
@@ -3750,7 +3751,6 @@ and internal MountState
             if site.Live () then
                 let hydrating = site.Hydrating
                 let resumed = if hydrating then cursor.Next else Unchecked.defaultof<_>
-                armPlacement.Begin ()
 
                 let measured =
                     if Departures.seam.ReflowEnabled && not hydrating then
@@ -3768,17 +3768,29 @@ and internal MountState
                             report,
                             fun () ->
                                 let selected = site.ReadSource select
+                                // A pass whose source read is pending begins no placement pass.
+                                armPlacement.Begin ()
 
                                 Api.untrack (fun () ->
                                     site.Resume ()
 
-                                    if hydrating then
-                                        site.Parent () |> ignore
-                                    else
-                                        site.Validate ()
+                                    // A selection read again after a pending or failed read keeps an arm of the same key.
+                                    let kept =
+                                        not hydrating
+                                        && not (isNull selected)
+                                        && not (isNull (box armItem))
+                                        && fst (unbox<obj * obj> selected) = armKey
 
-                                    disposeArm ()
-                                    mountArm selected hydrating)
+                                    if kept then
+                                        armItem.Value <- snd (unbox<obj * obj> selected)
+                                    else
+                                        if hydrating then
+                                            site.Parent () |> ignore
+                                        else
+                                            site.Validate ()
+
+                                        disposeArm ()
+                                        mountArm selected hydrating)
                         )
                     finally
                         if hydrating then
