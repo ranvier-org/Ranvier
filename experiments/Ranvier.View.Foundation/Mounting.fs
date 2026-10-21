@@ -103,26 +103,80 @@ let private createClaims () : WeakSet<Node> =
 
 let private claims = createClaims ()
 
+#if FABLE_COMPILER
 [<Emit("new Set(['beforeinput', 'click', 'contextmenu', 'dblclick', 'focusin', 'focusout', 'input', 'keydown', 'keyup', 'mousedown', 'mousemove', 'mouseout', 'mouseover', 'mouseup', 'pointerdown', 'pointermove', 'pointerout', 'pointerover', 'pointerup', 'touchend', 'touchmove', 'touchstart'])")>]
 let private createDelegatedEvents () : obj = jsNative
+#else
+let private createDelegatedEvents () : obj =
+    let events = Native.newSet ()
+
+    for name in
+        [
+            "beforeinput"
+            "click"
+            "contextmenu"
+            "dblclick"
+            "focusin"
+            "focusout"
+            "input"
+            "keydown"
+            "keyup"
+            "mousedown"
+            "mousemove"
+            "mouseout"
+            "mouseover"
+            "mouseup"
+            "pointerdown"
+            "pointermove"
+            "pointerout"
+            "pointerover"
+            "pointerup"
+            "touchend"
+            "touchmove"
+            "touchstart"
+        ] do
+        Native.add events name
+
+    events
+#endif
 
 /// <summary>Bubbling events dispatched from one listener per mount host.</summary>
 let private delegatedEvents = createDelegatedEvents ()
 
+#if FABLE_COMPILER
 [<Emit("$0.has($1)")>]
 let private isDelegated (events: obj) (eventName: string) : bool = jsNative
+#else
+let private isDelegated (events: obj) (eventName: string) : bool =
+    Native.has events eventName
+#endif
 
+#if FABLE_COMPILER
 [<Emit("$0['$$ranvier:' + $1] = $2")>]
 let private setDelegatedHandler (node: Node) (eventName: string) (handler: obj -> unit) : unit = jsNative
+#else
+let private setDelegatedHandler (node: Node) (eventName: string) (handler: obj -> unit) : unit =
+    Native.setExpando node ("$$ranvier:" + eventName) handler
+#endif
 
+#if FABLE_COMPILER
 [<Emit("new Map()")>]
 let private createSharedListeners () : obj = jsNative
+#else
+let private createSharedListeners () : obj =
+    Native.newMap ()
+#endif
 
 /// <summary>Per event name: the listener shared by every host.</summary>
 let private sharedListeners = createSharedListeners ()
 
+#if FABLE_COMPILER
 [<Emit("new WeakMap()")>]
 let private createHostCounts () : obj = jsNative
+#else
+let private createHostCounts () : obj =
+    Native.newWeakMap ()
+#endif
 
 /// <summary>Per host: the number of mounts using each shared listener.</summary>
 let private hostCounts = createHostCounts ()
@@ -153,11 +207,21 @@ let private isChildOf (node: Node) (parent: Node) : bool = jsNative
 [<Emit("$0.parentNode == null")>]
 let private isDetached (node: Node) : bool = jsNative
 
+#if FABLE_COMPILER
 [<Emit("$0.$$ranvierWidget === true")>]
 let private isWidget (node: Node) : bool = jsNative
+#else
+let private isWidget (node: Node) : bool =
+    Native.expando<bool> node "$$ranvierWidget"
+#endif
 
+#if FABLE_COMPILER
 [<Emit("$0.$$ranvierWidget = true")>]
 let private markWidget (node: Node) : unit = jsNative
+#else
+let private markWidget (node: Node) : unit =
+    Native.setExpando node "$$ranvierWidget" true
+#endif
 
 /// <summary>The node's next sibling, or <c>null</c> after the last child.</summary>
 [<Emit("$0.nextSibling")>]
@@ -180,63 +244,143 @@ let private fillsFragment (first: Node) (last: Node) : bool = jsNative
 let private parentOrNull (node: Node) : Node = jsNative
 
 /// <summary>Reads an element without a bounds check.</summary>
+#if FABLE_COMPILER
 [<Emit("$0[$1]")>]
 let private at (items: ResizeArray<'T>) (index: int) : 'T = jsNative
+#else
+let private at (items: ResizeArray<'T>) (index: int) : 'T =
+    Native.listAt items index
+#endif
 
 /// <summary>Writes an element without a bounds check.</summary>
+#if FABLE_COMPILER
 [<Emit("$0[$1] = $2")>]
 let private setAt (items: ResizeArray<'T>) (index: int) (value: 'T) : unit = jsNative
+#else
+let private setAt (items: ResizeArray<'T>) (index: int) (value: 'T) : unit =
+    Native.listSet items index value
+#endif
 
 /// <summary>Removes the elements from <c>count</c> onwards.</summary>
+#if FABLE_COMPILER
 [<Emit("$0.length = $1")>]
 let private truncate (items: ResizeArray<'T>) (count: int) : unit = jsNative
+#else
+let private truncate (items: ResizeArray<'T>) (count: int) : unit =
+    Native.listTruncate items count
+#endif
 
 /// <summary>Reads an array element without a bounds check.</summary>
+#if FABLE_COMPILER
 [<Emit("$0[$1]")>]
 let private item (items: 'T array) (index: int) : 'T = jsNative
+#else
+let private item (items: 'T array) (index: int) : 'T =
+    Native.arrayAt items index
+#endif
 
 /// <summary>Writes an array element without a bounds check.</summary>
+#if FABLE_COMPILER
 [<Emit("$0[$1] = $2")>]
 let private setItem (items: 'T array) (index: int) (value: 'T) : unit = jsNative
+#else
+let private setItem (items: 'T array) (index: int) (value: 'T) : unit =
+    Native.arraySet items index value
+#endif
 
+#if FABLE_COMPILER
 [<Emit("$0 == null")>]
 let private isNullish (value: 'T) : bool = jsNative
+#else
+let private isNullish (value: 'T) : bool =
+    Native.isNullish value
+#endif
 
+#if FABLE_COMPILER
 [<Emit("$0.slice()")>]
 let private copyRows (rows: 'T array) : 'T array = jsNative
+#else
+let private copyRows (rows: 'T array) : 'T array =
+    Native.arrayCopy rows
+#endif
 
 /// <summary>Replaces <c>count</c> elements from <c>start</c> with <c>inserted</c>.</summary>
+#if FABLE_COMPILER
 [<Emit("$0.splice($1, $2, ...$3)")>]
 let private spliceRows (rows: 'T array) (start: int) (count: int) (inserted: 'T array) : unit = jsNative
+#else
+let private spliceRows (rows: 'T array) (start: int) (count: int) (inserted: 'T array) : unit =
+    raise (System.InvalidOperationException "A .NET array cannot change length; the keyed pass builds a new array on .NET")
+#endif
 
 /// <summary>Replaces <c>count</c> elements from <c>start</c> with <c>inserted</c>.</summary>
+#if FABLE_COMPILER
 [<Emit("$0.splice($1, $2, ...$3)")>]
 let private spliceList (items: ResizeArray<'T>) (start: int) (count: int) (inserted: 'T array) : unit = jsNative
+#else
+let private spliceList (items: ResizeArray<'T>) (start: int) (count: int) (inserted: 'T array) : unit =
+    Native.listSplice items start count inserted
+#endif
 
+#if FABLE_COMPILER
 [<Emit("$0.slice($1, $2)")>]
 let private sliceRows (rows: 'T array) (start: int) (finish: int) : 'T array = jsNative
+#else
+let private sliceRows (rows: 'T array) (start: int) (finish: int) : 'T array =
+    Native.arraySlice rows start finish
+#endif
 
 /// <summary>The largest changed window whose rows a keyed pass splices into a copy of the previous rows.</summary>
 let private smallWindow = 64
 
+#if FABLE_COMPILER
 [<Emit("new Map()")>]
 let private rowMap () : obj = jsNative
+#else
+let private rowMap () : obj =
+    Native.newMap ()
+#endif
 
+#if FABLE_COMPILER
 [<Emit("$0.set($1, $2)")>]
 let private rowMapSet (map: obj) (key: 'T) (value: int) : unit = jsNative
+#else
+let private rowMapSet (map: obj) (key: 'T) (value: int) : unit =
+    Native.set map key value
+#endif
 
 /// <summary>The value stored for <c>key</c>, or -1.</summary>
+#if FABLE_COMPILER
 [<Emit("($0.get($1) ?? -1)")>]
 let private rowMapGet (map: obj) (key: 'T) : int = jsNative
+#else
+let private rowMapGet (map: obj) (key: 'T) : int =
+    Native.getIndex map key
+#endif
 
+#if FABLE_COMPILER
 [<Emit("new Set()")>]
 let private rowSet () : obj = jsNative
+#else
+let private rowSet () : obj =
+    Native.newSet ()
+#endif
 
+#if FABLE_COMPILER
 [<Emit("$0.add($1)")>]
 let private rowSetAdd (set: obj) (value: 'T) : unit = jsNative
+#else
+let private rowSetAdd (set: obj) (value: 'T) : unit =
+    Native.add set value
+#endif
 
+#if FABLE_COMPILER
 [<Emit("$0.has($1)")>]
 let private rowSetHas (set: obj) (value: 'T) : bool = jsNative
+#else
+let private rowSetHas (set: obj) (value: 'T) : bool =
+    Native.has set value
+#endif
 
 let private skip: unit -> unit = ignore
 
@@ -298,17 +442,37 @@ module internal BoundaryCounters =
     let wakes = ref 0
 #endif
 
+#if FABLE_COMPILER
 [<Emit("new Set()")>]
 let private nameSet () : obj = jsNative
+#else
+let private nameSet () : obj =
+    Native.newSet ()
+#endif
 
+#if FABLE_COMPILER
 [<Emit("$0.has($1)")>]
 let private setHas (set: obj) (name: string) : bool = jsNative
+#else
+let private setHas (set: obj) (name: string) : bool =
+    Native.has set name
+#endif
 
+#if FABLE_COMPILER
 [<Emit("$0.add($1)")>]
 let private setAdd (set: obj) (name: string) : unit = jsNative
+#else
+let private setAdd (set: obj) (name: string) : unit =
+    Native.add set name
+#endif
 
+#if FABLE_COMPILER
 [<Emit("$0.forEach($1)")>]
 let private setIter (set: obj) (action: string -> unit) : unit = jsNative
+#else
+let private setIter (set: obj) (action: string -> unit) : unit =
+    Native.forEach set action
+#endif
 
 /// <summary>For each position of <c>sources</c>, whether it belongs to one longest increasing run of its non-negative values.</summary>
 let private increasingRun (sources: int array) : bool array =
@@ -3524,9 +3688,18 @@ and internal MountState
                                             inserted <= smallWindow
                                             && priorRows.Length - removed + inserted = count
                                         then
+#if FABLE_COMPILER
                                             let next = copyRows priorRows
                                             spliceRows next start removed (Array.init inserted (fun offset -> lookup (start + offset)))
                                             next
+#else
+                                            Array.concat
+                                                [|
+                                                    Array.sub priorRows 0 start
+                                                    Array.init inserted (fun offset -> lookup (start + offset))
+                                                    Array.sub priorRows (start + removed) (priorRows.Length - start - removed)
+                                                |]
+#endif
                                         else
                                             let next = Array.zeroCreate count
 

@@ -364,12 +364,22 @@ let walkProgram (paths: int array array) : int array =
     ops.ToArray ()
 
 /// <summary>Marks an event node of a template instance under a boundary with the boundary.</summary>
+#if FABLE_COMPILER
 [<Emit("$0.$$ranvierScope = $1")>]
 let private attachScope (node: obj) (scope: ViewScope) : unit = jsNative
+#else
+let private attachScope (node: obj) (scope: ViewScope) : unit =
+    Native.setExpando node "$$ranvierScope" scope
+#endif
 
 /// <summary>The boundary of an event node, or null outside every boundary.</summary>
+#if FABLE_COMPILER
 [<Emit("$0.$$ranvierScope")>]
 let private scopeOf (node: Node) : ViewScope = jsNative
+#else
+let private scopeOf (node: Node) : ViewScope =
+    Native.expando<ViewScope> node "$$ranvierScope"
+#endif
 
 let private dispatchFor (nodeCount: int) (events: (int * string * Func<obj, obj, unit>) array) (eventNames: string array) =
     Func<obj array, Node, obj, unit>(fun state node event ->
@@ -711,16 +721,31 @@ type internal MountServices =
 let private unset = obj ()
 
 /// <summary>An array of <c>length</c> unassigned elements.</summary>
+#if FABLE_COMPILER
 [<Emit("new Array($0)")>]
 let private allocate (length: int) : obj array = jsNative
+#else
+let private allocate (length: int) : obj array =
+    Native.allocate length
+#endif
 
 /// <summary>Reads the element at an index; an index past the end reads <c>undefined</c>.</summary>
+#if FABLE_COMPILER
 [<Emit("$0[$1]")>]
 let private at (array: 'T array) (index: int) : 'T = jsNative
+#else
+let private at (array: 'T array) (index: int) : 'T =
+    Native.arrayAt array index
+#endif
 
 /// <summary>Writes the element at an index; an index past the end grows the array.</summary>
+#if FABLE_COMPILER
 [<Emit("$0[$1] = $2")>]
 let private store (array: obj array) (index: int) (value: obj) : unit = jsNative
+#else
+let private store (array: obj array) (index: int) (value: obj) : unit =
+    Native.arraySet array index value
+#endif
 
 [<Emit("$0.data = $1 == null ? '' : $1")>]
 let private setData (node: obj) (value: obj) : unit = jsNative
@@ -729,8 +754,13 @@ let private setData (node: obj) (value: obj) : unit = jsNative
 let private setAttribute (node: obj) (value: obj) (name: string) : unit = jsNative
 
 /// <summary>Marks a node as an event node of a template instance.</summary>
+#if FABLE_COMPILER
 [<Emit("$0.$$ranvier = $1")>]
 let attachState (node: obj) (state: obj array) : unit = jsNative
+#else
+let attachState (node: obj) (state: obj array) : unit =
+    Native.setExpando node "$$ranvier" state
+#endif
 
 let private write (slot: Slot) (node: obj) (value: obj) =
     match slot.Target with
