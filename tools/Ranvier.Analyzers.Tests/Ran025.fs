@@ -5,7 +5,7 @@ open Ranvier.Analyzers
 open Ranvier.Analyzers.Tests.Options
 
 let private header =
-    "module Fixture\nopen Ranvier\nopen Ranvier.View\nopen Ranvier.View.Dom.Scheduling\nopen Ranvier.View.Dom.Hydration\nlet hydrated graph host definition (failure: CommitFailure) (post: (unit -> unit) -> unit) =\n"
+    "module Fixture\nopen Ranvier\nopen Ranvier.View\nopen Ranvier.View.Dom\nopen Ranvier.View.Dom.Scheduling\nopen Ranvier.View.Dom.Hydration\nlet hydrated graph host definition (failure: CommitFailure) (post: (unit -> unit) -> unit) =\n"
 
 let private findings (body: string) =
     run Analyzers.ran025Cli (context (ranvier.Force ()) (header + body))
