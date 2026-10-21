@@ -4122,10 +4122,9 @@ open Ranvier.View.Foundation.Sugar
 open Ranvier.View.Arms
 open ArmsFixtures
 
-let private textOf (target: HTMLElement) (selector: string) =
-    match target.querySelector selector with
-    | null -> null
-    | node -> (unbox<HTMLElement> node).textContent
+/// <summary>The text of the first element matching the selector, or null.</summary>
+[<Emit("($0.querySelector($1)?.textContent ?? null)")>]
+let private textOf (target: HTMLElement) (selector: string) : string = jsNative
 
 let private write (graph: Graph) (mounted: Mounting.Mounted list) (change: unit -> unit) =
     graph.Run change
@@ -4171,7 +4170,10 @@ let private remountAfterHide queued () =
             })
 
     let target = host ()
-    let mounted = mountTemplate queued graph strict target (Component.render shownLoader shown)
+
+    let mounted =
+        mountTemplate queued graph strict target (Component.render shownLoader shown)
+
     mounted.Flush ()
     write graph [ mounted ] (fun () -> shown.State.Value <- Loaded ("b", 2))
     write graph [ mounted ] (fun () -> shown.Visible.Value <- false)
@@ -4355,7 +4357,8 @@ let private slotsOf (table: obj) (instance: obj) : Slots =
 #else
 open System.Runtime.CompilerServices
 
-let private newTable () : obj = ConditionalWeakTable<obj, Slots>() :> obj
+let private newTable () : obj =
+    ConditionalWeakTable<obj, Slots>() :> obj
 
 let private tryFind (table: obj) (instance: obj) : Slots =
     match (table :?> ConditionalWeakTable<obj, Slots>).TryGetValue instance with
@@ -4363,7 +4366,7 @@ let private tryFind (table: obj) (instance: obj) : Slots =
     | _ -> null
 
 let private slotsOf (table: obj) (instance: obj) : Slots =
-    (table :?> ConditionalWeakTable<obj, Slots>).GetValue (instance, fun _ -> Slots ())
+    (table :?> ConditionalWeakTable<obj, Slots>).GetValue(instance, fun _ -> Slots ())
 #endif
 
 /// <summary>Runs <c>action</c> holding the instance's lock on .NET; Fable runs it directly.</summary>
@@ -4383,7 +4386,8 @@ let private ambient () : obj =
 type Cells internal (table: obj) =
     member internal _.Table = table
 
-let create () = Cells (newTable ())
+let create () =
+    Cells (newTable ())
 
 /// <summary>Registers the arm's payload reader for the instance and target, and withdraws it on the arm's cleanup.</summary>
 let enter (cells: Cells) (setup: Setup) (instance: obj) (target: int) (values: unit -> obj array) : unit =
@@ -4407,7 +4411,10 @@ let values (cells: Cells) (instance: obj) (target: int) : obj array =
             let mutable first: obj array = null
 
             for entry in slots.Live target do
-                if isNull graph || obj.ReferenceEquals (entry.Graph, graph) then
+                if
+                    isNull graph
+                    || obj.ReferenceEquals (entry.Graph, graph)
+                then
                     let read = entry.Values ()
                     entry.Last <- read
 

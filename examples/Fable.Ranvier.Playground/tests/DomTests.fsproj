@@ -96,6 +96,7 @@
     <Compile Include="PlaygroundSugar.fs" />
     <Compile Include="SugarChecks.fs" />
     <Compile Include="SugarDebugChecks.fs" />
+    <Compile Include="ArmsChecks.fs" />
     <Compile Include="ElmishNested.fs" />
     <Compile Include="ElmishNestedChecks.fs" />
     <Compile Include="HydrationPerf.fs" />

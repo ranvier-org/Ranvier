@@ -356,3 +356,55 @@ let cases: (string * (unit -> unit)) array =
         "if, let and a let of a view at the top of case bodies", bodyForms
         "the lowering of a five-target site stays within its budget", loweringBudget
     |]
+
+/// <summary>A reader with no arm of its site for its instance raises AM006.</summary>
+let private noArm () =
+    let message =
+        try
+            Ranvier.View.Arms.Cells.values (Ranvier.View.Arms.Cells.create ()) (obj ()) 0
+            |> ignore
+
+            ""
+        with :? ArmsMatchException as error ->
+            error.Message
+
+    equal
+        "Arms.Match: no arm of this site is mounted for the instance this reader received. A lambda over the instance type inside a case body runs with the arm's instance."
+        message
+
+/// <summary>Sixteen threads render one site for one shared instance, each under its own graph, 50 times each (Review Focus 1).</summary>
+let private concurrentRenders () =
+    let score: ArmsFixtures.Score = { Name = "ada"; Points = 5 }
+    let expected = Server.render omit ArmsFixtures.plainScore score
+    let failures = Collections.Concurrent.ConcurrentBag<string>()
+    use barrier = new Threading.Barrier 16
+
+    let threads =
+        [|
+            for _ in 1..16 ->
+                Threading.Thread (fun () ->
+                    barrier.SignalAndWait ()
+
+                    for _ in 1..50 do
+                        try
+                            let html = Server.render omit ArmsFixtures.plainScore score
+
+                            if html <> expected then
+                                failures.Add html
+                        with error ->
+                            failures.Add error.Message)
+        |]
+
+    for thread in threads do
+        thread.Start ()
+
+    for thread in threads do
+        thread.Join ()
+
+    equal ("<!--[r--><div><!--[a:", []) (expected.Substring (0, 21), List.ofSeq failures)
+
+let runtimeCases: (string * (unit -> unit)) array =
+    [|
+        "a reader with no arm for its instance raises AM006", noArm
+        "concurrent server renders of one instance read their own arms", concurrentRenders
+    |]

@@ -727,6 +727,47 @@ let private editors =
             : Editor)
     ]
 
+/// <summary>A site whose instance is a plain record, shared by concurrent server renders.</summary>
+let plainScore =
+    Component.template
+        (fun _ (score: Score) -> score)
+        (div () {
+            Arms.Match (
+                id,
+                function
+                | { Points = 0 } -> span () { "no points" }
+                | { Name = name; Points = points } -> pre () { fun _ -> name + ":" + string points }
+            )
+        })
+
+type Shown =
+    {
+        Visible: Signal<bool>
+        State: Signal<Load>
+    }
+
+/// <summary>A site under a <c>show</c>: hiding disposes its arm, showing mounts a new one for the same instance.</summary>
+let shownLoader =
+    Component.template
+        (fun _ (shown: Shown) -> shown)
+        (div () {
+            show
+                (fun (shown: Shown) -> shown.Visible.Value)
+                (div () {
+                    Arms.Match (
+                        (fun (shown: Shown) -> shown.State.Value),
+                        function
+                        | Loaded (text, count) ->
+                            pre () {
+                                fun _ -> text
+                                " x"
+                                fun _ -> string count
+                            }
+                        | _ -> span () { "Other" }
+                    )
+                })
+        })
+
 /// <summary>Every fixture state; the incomplete fixture's unmatched state is checked on its own.</summary>
 let all: Case list =
     List.concat
