@@ -122,53 +122,63 @@ module Compilers =
         | true, version -> Some version
         | _ -> None
 
-    let private manifestIn (directory: string) : (string * Version) option =
-        [
-            Path.Combine (directory, ".config", "dotnet-tools.json")
-            Path.Combine (directory, "dotnet-tools.json")
-        ]
-        |> List.tryFind File.Exists
-        |> Option.bind (fun file ->
-            try
-                use document = JsonDocument.Parse (File.ReadAllText file)
-                let mutable tools = Unchecked.defaultof<JsonElement>
+    let private read (file: string) : (string * Version) option =
+        try
+            use document = JsonDocument.Parse (File.ReadAllText file)
+            let mutable tools = Unchecked.defaultof<JsonElement>
 
-                if document.RootElement.TryGetProperty ("tools", &tools) then
-                    [ Fickl; Fable ]
-                    |> List.tryPick (fun command ->
-                        let mutable tool = Unchecked.defaultof<JsonElement>
-                        let mutable version = Unchecked.defaultof<JsonElement>
+            if document.RootElement.TryGetProperty ("tools", &tools) then
+                [ Fickl; Fable ]
+                |> List.tryPick (fun command ->
+                    let mutable tool = Unchecked.defaultof<JsonElement>
+                    let mutable version = Unchecked.defaultof<JsonElement>
 
-                        if
-                            tools.TryGetProperty (command, &tool)
-                            && tool.TryGetProperty ("version", &version)
-                        then
-                            parse (version.GetString ())
-                            |> Option.map (fun v -> command, v)
-                        else
-                            None)
-                else
-                    None
-            with _ ->
-                None)
+                    if
+                        tools.TryGetProperty (command, &tool)
+                        && tool.TryGetProperty ("version", &version)
+                    then
+                        parse (version.GetString ())
+                        |> Option.map (fun v -> command, v)
+                    else
+                        None)
+            else
+                None
+        with _ ->
+            None
 
-    let private cache = ConcurrentDictionary<string, (string * Version) option>()
+    // Each manifest's parse, keyed by its path and valid while its last write time is unchanged.
+    let private parsed =
+        ConcurrentDictionary<string, DateTime * (string * Version) option>()
 
-    /// The compiler, `fable` or `fickl`, and its version that the tool manifest nearest to `projectFile` declares.
+    let private manifestOf (file: string) : (string * Version) option =
+        let written = File.GetLastWriteTimeUtc file
+
+        match parsed.TryGetValue file with
+        | true, (stamp, result) when stamp = written -> result
+        | _ ->
+            let result = read file
+            parsed[file] <- (written, result)
+            result
+
+    /// The compiler, `fable` or `fickl`, and its version that the nearest tool manifest above `projectFile` declaring one
+    /// names. Every call searches again and re-reads a manifest whose last write time changed.
     let declared (projectFile: string) : (string * Version) option =
         let rec up (directory: string) =
             if String.IsNullOrEmpty directory then
                 None
             else
-                match manifestIn directory with
-                | Some found -> Some found
-                | None -> up (Path.GetDirectoryName directory)
+                [
+                    Path.Combine (directory, ".config", "dotnet-tools.json")
+                    Path.Combine (directory, "dotnet-tools.json")
+                ]
+                |> List.tryFind File.Exists
+                |> Option.bind manifestOf
+                |> Option.orElseWith (fun () -> up (Path.GetDirectoryName directory))
 
         if String.IsNullOrEmpty projectFile then
             None
         else
-            let directory = Path.GetDirectoryName (Path.GetFullPath projectFile)
-            cache.GetOrAdd (directory, (fun d -> up d))
+            up (Path.GetDirectoryName (Path.GetFullPath projectFile))
 
 /// The core node types, their creators and their pure contexts.
 module Core =

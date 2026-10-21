@@ -333,6 +333,24 @@ let queued (bs: Box list) = bs |> List.filter _.Inner.IsQueue\n"
                 Expect.isEmpty (codesWith None) "no Fable compiler declared"
             }
 
+            test "an edited tool manifest takes effect in the same process" {
+                let source =
+                    policy
+                    + "let isQueue (policy: Policy) = policy.IsQueue\n"
+
+                let context =
+                    contextIn (Some (manifest "fable" "5.21.0")) (ranvier.Force ()) [ "Fixture.fs", source ]
+
+                Expect.equal (run Analyzers.ran002Cli context |> List.map _.Code) [ "RAN002" ] "Fable 5.21"
+
+                let file =
+                    System.IO.Path.Combine (System.IO.Path.GetDirectoryName context.ProjectOptions.ProjectFileName, ".config", "dotnet-tools.json")
+
+                System.IO.File.WriteAllText (file, manifest "fickl" "0.3.0")
+                System.IO.File.SetLastWriteTimeUtc (file, System.DateTime.UtcNow.AddMinutes 1.0)
+                Expect.isEmpty (run Analyzers.ran002Cli context) "the manifest now declares Fickl"
+            }
+
             test "a tester inside a quotation is reported" {
                 Expect.equal
                     (findings (
