@@ -38,3 +38,8 @@ let setups = Loops.childSetups
 ```
 
 `ignore-line`, `ignore-region-start`/`ignore-region-end` and `ignore-file` take the same codes.
+
+## Columns
+
+The CLI's console output, and the `dotnet build` warnings made from it, count columns from 0: `B.fs(4,8)` is the
+identifier at the ninth character of line 4. The SARIF report, and the CI annotations made from it, count from 1.

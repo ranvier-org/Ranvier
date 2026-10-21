@@ -615,7 +615,10 @@ instead of an empty clean run.
 - **Mechanisms:** reference gating (Decision 5); one shared traversal per file (Decision 4); generated files excluded
   from the gate (`--exclude-files "**/Generated/**"`, which still counts their type errors).
 - **Check:** the test suite times each rule over `Template.fs` and `Core.fs` and fails above 250 ms per file on the CI
-  runner.
+  runner, and the shared traversal (Decision 4) above 500 ms per file: the traversal materialises the typed tree that
+  every rule reads, which costs more than any one rule. These per-file limits are the budget CI enforces. The 5 % CLI
+  figure is measured by hand on a quiet machine against a run with the rules excluded; CI does not measure it. Both
+  analyzer jobs carry `timeout-minutes: 8` as a guard against a runaway run.
 - `FSharpAnalyzersAlwaysRunAfterBuild` stays unset: a no-op build re-emits no compiler warnings and no analyzer
   warnings either (Decision 16).
 

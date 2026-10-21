@@ -26,6 +26,30 @@ let display (m: FSharpMemberOrFunctionOrValue) : string =
 [<Literal>]
 let Operators = "Microsoft.FSharp.Core.Operators"
 
+[<Literal>]
+let PipeRight = "op_PipeRight"
+
+[<Literal>]
+let PipeLeft = "op_PipeLeft"
+
+[<Literal>]
+let CompilerGenerated = "System.Runtime.CompilerServices.CompilerGeneratedAttribute"
+
+/// The prefix of a generated union case tester's getter: `get_IsQueue` tests `Queue`.
+[<Literal>]
+let TesterPrefix = "get_Is"
+
+/// The names of the equality, hashing and comparison members the compiler generates for a type.
+let generatedComparisons = set [ "CompareTo"; "Equals"; "GetHashCode" ]
+
+/// The logical path of a module, namespace or type: its access path and its display name.
+let pathOf (entity: FSharpEntity) : string =
+    match entity.AccessPath with
+    | null
+    | ""
+    | "global" -> entity.DisplayName
+    | access -> access + "." + entity.DisplayName
+
 let private referencedFiles (options: AnalyzerProjectOptions) : string seq =
     options.OtherOptions
     |> Seq.choose (fun option ->

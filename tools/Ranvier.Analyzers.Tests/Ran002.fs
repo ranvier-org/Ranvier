@@ -7,6 +7,22 @@ open Ranvier.Analyzers.Tests.Options
 let private findings (source: string) =
     run Analyzers.ran002Cli (context (ranvier.Force ()) source)
 
+/// The findings in the last of `files`, and that file's source with the first finding's fix applied, re-checked.
+let private fixedIn (files: (string * string) list) =
+    let messages = run Analyzers.ran002Cli (contextOf (ranvier.Force ()) files)
+    let name, source = List.last files
+    let repaired = applyFix source (messages.Head.Fixes |> List.exactlyOne)
+
+    let after =
+        run
+            Analyzers.ran002Cli
+            (contextOf
+                (ranvier.Force ())
+                (List.take (files.Length - 1) files
+                 @ [ name, repaired ]))
+
+    messages, repaired, after
+
 let private policy =
     """
 module Fixture
@@ -103,6 +119,172 @@ let drop (policy: FlightPolicy) graph id gen owed = trace (graph, id, gen, owed,
                     + "let isQueue (policy: Policy) = policy.IsQueue\n"
 
                 Expect.isEmpty (run Analyzers.ran002Cli (context (plain.Force ()) source)) "no Fable.Core reference"
+            }
+
+            test "the finding's range is the tester call" {
+                let messages =
+                    findings (
+                        policy
+                        + "let isQueue (policy: Policy) = policy.IsQueue\n"
+                    )
+
+                let range = messages.Head.Range
+                Expect.equal (range.StartLine, range.StartColumn, range.EndColumn) (7, 31, 45) "policy.IsQueue"
+            }
+
+            test "a union in a nested module, used inside the module and from a sibling" {
+                let source =
+                    "module Fixture
+module Inner =
+    type Policy =
+        | Queue
+        | Drop of int
+    let inside (p: Policy) = p.IsQueue
+module Other =
+    let outside (p: Inner.Policy) = p.IsDrop
+"
+
+                let messages = findings source
+                Expect.equal messages.Length 2 "both testers"
+                Expect.stringContains messages[0].Message "(match p with Policy.Queue -> true | _ -> false)" "inside"
+                Expect.stringContains messages[1].Message "(match p with Inner.Policy.Drop _ -> true | _ -> false)" "sibling"
+
+                let repaired =
+                    messages
+                    |> List.rev
+                    |> List.fold (fun text m -> applyFix text m.Fixes.Head) source
+
+                Expect.isEmpty (findings repaired) "both fixes compile and clear the findings"
+            }
+
+            test "a namespace-level union used in the same file, after a file that declares the same namespace" {
+                let messages, repaired, after =
+                    fixedIn
+                        [
+                            "Earlier.fs",
+                            "namespace Probe.Ns
+type Other =
+    | A
+    | B
+"
+                            "Fixture.fs",
+                            "namespace Probe.Ns
+type Mode =
+    | Fast
+    | Slow
+module Use =
+    let fast (m: Mode) = m.IsFast
+"
+                        ]
+
+                Expect.stringContains messages.Head.Message "(match m with Mode.Fast -> true | _ -> false)" "namespace scope"
+                Expect.stringContains repaired "Mode.Fast" "fixed"
+                Expect.isEmpty after "the fix compiles and clears the finding"
+            }
+
+            test "a namespace-level union used from a sibling namespace" {
+                let messages, _, after =
+                    fixedIn
+                        [
+                            "Defs.fs",
+                            "namespace Probe.Core
+type Mode =
+    | Fast
+    | Slow
+"
+                            "Fixture.fs",
+                            "namespace Probe.Use
+module Check =
+    let fast (m: Probe.Core.Mode) = m.IsFast
+"
+                        ]
+
+                Expect.stringContains
+                    messages.Head.Message
+                    "(match m with Probe.Core.Mode.Fast -> true | _ -> false)"
+                    "a namespace the code does not open"
+
+                Expect.isEmpty after "the fix compiles and clears the finding"
+            }
+
+            test "a union declared in another file of the project" {
+                let messages, _, after =
+                    fixedIn
+                        [
+                            "Defs.fs",
+                            "module Defs
+type Policy =
+    | Queue
+    | Drop of int
+"
+                            "Fixture.fs",
+                            "module Use
+let queued (p: Defs.Policy) = p.IsQueue
+"
+                        ]
+
+                Expect.stringContains messages.Head.Message "(match p with Defs.Policy.Queue -> true | _ -> false)" "other file"
+                Expect.isEmpty after "the fix compiles and clears the finding"
+            }
+
+            test "the _.IsCase shorthand, fixed with a function" {
+                let source =
+                    policy
+                    + "let queued (ps: Policy list) = ps |> List.filter _.IsQueue
+"
+
+                let messages = findings source
+
+                Expect.equal
+                    (messages |> List.map _.Message)
+                    [
+                        "`Policy.IsQueue` calls a compiler-generated union tester, which a Fable precompiled assembly does not declare. Write `(function Policy.Queue -> true | _ -> false)`."
+                    ]
+                    "the message names the union"
+
+                let repaired = applyFix source messages.Head.Fixes.Head
+                Expect.stringContains repaired "List.filter (function Policy.Queue -> true | _ -> false)" "a function"
+                Expect.isEmpty (findings repaired) "the fix compiles and clears the finding"
+            }
+
+            test "a tester inside a quotation is reported" {
+                Expect.equal
+                    (findings (
+                        policy
+                        + "let quoted = <@ fun (p: Policy) -> p.IsDrop @>
+"
+                     )
+                     |> List.map _.Code)
+                    [ "RAN002" ]
+                    "the quotation's code is compiled with the library"
+            }
+
+            test "the editor entry reports the tester, and an ignore-file comment silences it" {
+                let cli =
+                    context
+                        (ranvier.Force ())
+                        (policy
+                         + "let isQueue (policy: Policy) = policy.IsQueue\n")
+
+                let editor (ignores: Map<string, FSharp.Analyzers.SDK.AnalyzerIgnoreRange list>) : FSharp.Analyzers.SDK.EditorContext =
+                    {
+                        FileName = cli.FileName
+                        SourceText = cli.SourceText
+                        ParseFileResults = cli.ParseFileResults
+                        CheckFileResults = Some cli.CheckFileResults
+                        TypedTree = cli.TypedTree
+                        CheckProjectResults = Some cli.CheckProjectResults
+                        ProjectOptions = cli.ProjectOptions
+                        AnalyzerIgnoreRanges = ignores
+                    }
+
+                let editorRun context =
+                    Analyzers.ran002Editor context
+                    |> Async.RunSynchronously
+
+                Expect.equal (editorRun (editor Map.empty) |> List.map _.Code) [ "RAN002" ] "reported"
+
+                Expect.isEmpty (editorRun (editor (Map [ "RAN002", [ FSharp.Analyzers.SDK.AnalyzerIgnoreRange.File ] ]))) "ignore-file"
             }
 
             test "the fix type-checks and clears the finding" {

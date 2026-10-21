@@ -32,6 +32,9 @@ type CallSite =
         Range: range
         /// The steps from the call to the body of its declaration, innermost first.
         Path: Step list
+        /// The paths whose contents the call's code names unqualified, innermost first: each enclosing module and the
+        /// innermost enclosing namespace.
+        Opened: string list
     }
 
 /// A `let` binding; `Path` is shared, by reference, by every expression of `Body`.
@@ -93,19 +96,15 @@ let private isPipe (name: string) (m: FSharpMemberOrFunctionOrValue) =
     m.LogicalName = name
     && Symbols.enclosing m = Symbols.Operators
 
-/// Whether `value` is the structural equality, hashing or comparison the compiler generates for a type. A class's
-/// `let` functions are compiler-generated too, and are indexed.
+/// Excludes the compiler-generated `CompareTo`, `Equals` and `GetHashCode`.
 let private generatedComparison (value: FSharpMemberOrFunctionOrValue) =
     value.IsCompilerGenerated
-    && (match value.LogicalName with
-        | "CompareTo"
-        | "Equals"
-        | "GetHashCode" -> true
-        | _ -> false)
+    && Symbols.generatedComparisons.Contains value.LogicalName
 
 let private build (file: FSharpImplementationFileContents) : FileIndex =
     let calls = ResizeArray<CallSite>()
     let lets = ResizeArray<LetSite>()
+    let mutable opened: string list = []
 
     let rec call path range receiver (callee: FSharpMemberOrFunctionOrValue) (arguments: FSharpExpr list) =
         calls.Add
@@ -115,6 +114,7 @@ let private build (file: FSharpImplementationFileContents) : FileIndex =
                 Arguments = arguments
                 Range = range
                 Path = path
+                Opened = opened
             }
 
         receiver
@@ -143,8 +143,8 @@ let private build (file: FSharpImplementationFileContents) : FileIndex =
 
     and walk (path: Step list) (expr: FSharpExpr) =
         match expr with
-        | Call (None, pipe, _, _, [ argument; fn ]) when isPipe "op_PipeRight" pipe -> apply path expr fn [ argument ]
-        | Call (None, pipe, _, _, [ fn; argument ]) when isPipe "op_PipeLeft" pipe -> apply path expr fn [ argument ]
+        | Call (None, pipe, _, _, [ argument; fn ]) when isPipe Symbols.PipeRight pipe -> apply path expr fn [ argument ]
+        | Call (None, pipe, _, _, [ fn; argument ]) when isPipe Symbols.PipeLeft pipe -> apply path expr fn [ argument ]
         | Call (receiver, callee, _, _, arguments) -> call path expr.Range receiver callee arguments
         | NewObject (constructor, _, arguments) -> call path expr.Range None constructor arguments
         | Application (fn, _, arguments) -> apply path expr fn arguments
@@ -171,6 +171,17 @@ let private build (file: FSharpImplementationFileContents) : FileIndex =
 
     let rec declaration (item: FSharpImplementationFileDeclaration) =
         match item with
+        | FSharpImplementationFileDeclaration.Entity (entity, items) when entity.IsFSharpModule || entity.IsNamespace ->
+            let outer = opened
+
+            opened <-
+                if entity.IsNamespace then
+                    [ Symbols.pathOf entity ]
+                else
+                    Symbols.pathOf entity :: opened
+
+            List.iter declaration items
+            opened <- outer
         | FSharpImplementationFileDeclaration.Entity (_, items) -> List.iter declaration items
         | FSharpImplementationFileDeclaration.MemberOrFunctionOrValue (value, _, body) ->
             if not (generatedComparison value) then

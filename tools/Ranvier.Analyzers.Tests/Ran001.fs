@@ -83,6 +83,33 @@ let tests =
 
             test "a project without Fable.Core is not analyzed" { Expect.isEmpty (findingsWith (plain.Force ()) snapshot) "no Fable.Core reference" }
 
+            test "the finding's range is the binding identifier" {
+                let range = (findings snapshot).Head.Range
+                Expect.equal (range.StartLine, range.StartColumn, range.EndColumn) (3, 8, 14) "setups"
+            }
+
+            test "a parenthesised pattern is reported without a fix" {
+                let probe =
+                    snapshot.Replace ("let setups = Loops.childSetups", "let (setups: int) = Loops.childSetups")
+
+                let messages = findings probe
+                Expect.equal (messages |> List.map _.Code) [ "RAN001" ] "one finding"
+                Expect.isEmpty messages.Head.Fixes "no fix inside parentheses"
+            }
+
+            test "a value bound by a match case is not reported" {
+                let probe =
+                    "module Probe
+let matched () =
+    match Loops.childSetups with
+    | seen ->
+        Loops.setup ()
+        Loops.childSetups - seen
+"
+
+                Expect.isEmpty (findings probe) "no let binds it"
+            }
+
             test "the fix type-checks and clears the finding" {
                 let fix = (findings snapshot).Head.Fixes |> List.exactlyOne
                 let repaired = applyFix snapshot fix

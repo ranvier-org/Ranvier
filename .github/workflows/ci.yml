@@ -320,6 +320,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.docs != 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
@@ -333,6 +334,10 @@ jobs:
         run: dotnet build Ranvier.slnx -c Release
       - name: Run the analyzers over the repository
         run: dotnet fsi build.fsx -- analyze
+      # SARIF's 1-based columns; the CLI's own GitHub format prints 0-based ones.
+      - name: Annotate the findings
+        if: always()
+        run: node .github/scripts/sarif-annotations.cjs artifacts/analyzers
       - name: Upload the SARIF report
         if: always()
         uses: actions/upload-artifact@v4
@@ -342,12 +347,13 @@ jobs:
 
   # The external facts the analyzers describe: Fable Release's inlining of module-mutable snapshots (RAN001), the Fable
   # precompile failure on union testers (RAN002), and the MSBuild integration. A failure means a rule needs retiring or
-  # rescoping. A job of its own, so the analyzers job keeps to its time budget.
+  # rescoping.
   analyzer-truth:
     name: Analyzer truth fixtures
     needs: changes
     if: needs.changes.outputs.docs != 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6

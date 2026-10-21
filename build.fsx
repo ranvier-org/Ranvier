@@ -461,14 +461,10 @@ module private Analyze =
             "--report"
             report
         ]
-        @ (if System.Environment.GetEnvironmentVariable "GITHUB_ACTIONS" = "true" then
-               [ "--output-format"; "github" ]
-           else
-               [])
 
     /// Builds the analyzers and the analyzed projects outside Ranvier.slnx, then runs the analyzers over
-    /// `Spec.analyzedProjects` with every RAN code an error, writing SARIF reports to artifacts/analyzers. Under GitHub
-    /// Actions the findings also print as annotations. The solution's projects must be built first.
+    /// `Spec.analyzedProjects` with every RAN code an error, writing SARIF reports to artifacts/analyzers. The
+    /// solution's projects must be built first.
     let stage =
         input {
             return
@@ -495,8 +491,8 @@ module private Analyze =
                         )
                     }
 
-                    // The Tracer calls are [<Conditional("RANVIER_TRACE")>] and leave an untraced typed tree, and the docs
-                    // precompile Ranvier traced: the library is checked again with the trace log compiled in.
+                    // Checks the library again with RanvierTrace=true, the configuration of the docs precompile: the
+                    // [<Conditional("RANVIER_TRACE")>] Tracer calls are in the typed tree only then.
                     stage "run analyzers over the traced library" {
                         run (
                             Cmd.ofList

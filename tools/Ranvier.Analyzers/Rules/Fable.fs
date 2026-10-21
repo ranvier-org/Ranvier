@@ -3,6 +3,7 @@ module Ranvier.Analyzers.Rules.Fable
 
 open System
 open System.IO
+open System.Text.RegularExpressions
 open FSharp.Analyzers.SDK
 open FSharp.Compiler.Symbols
 open FSharp.Compiler.Symbols.FSharpExprPatterns
@@ -10,10 +11,6 @@ open FSharp.Compiler.Text
 open Ranvier.Analyzers
 open Ranvier.Analyzers.Index
 open Ranvier.Analyzers.Rule
-
-[<Literal>]
-let private CompilerGenerated =
-    "System.Runtime.CompilerServices.CompilerGeneratedAttribute"
 
 /// The union and case of a compiler-generated `IsCase` getter of a union declared in the analyzed project.
 let private generatedTester (input: Input) (m: FSharpMemberOrFunctionOrValue) : (FSharpEntity * FSharpUnionCase) option =
@@ -25,29 +22,47 @@ let private generatedTester (input: Input) (m: FSharpMemberOrFunctionOrValue) : 
         ->
         let generated =
             m.Attributes
-            |> Seq.exists (fun attribute -> attribute.AttributeType.TryFullName = Some CompilerGenerated)
+            |> Seq.exists (fun attribute -> attribute.AttributeType.TryFullName = Some Symbols.CompilerGenerated)
 
         if generated then
             union.UnionCases
-            |> Seq.tryFind (fun case -> m.LogicalName = "get_Is" + case.Name)
+            |> Seq.tryFind (fun case -> m.LogicalName = Symbols.TesterPrefix + case.Name)
             |> Option.map (fun case -> union, case)
         else
             None
     | _ -> None
 
-/// The pattern of `case` as written in `file`: qualified by the union's name inside the union's own module or
-/// namespace, and by its access path elsewhere. A case with fields takes one wildcard.
-let private casePattern (file: string) (union: FSharpEntity) (case: FSharpUnionCase) : string =
-    let local = union.DisplayName + "." + case.Name
+/// The pattern of `case` written where `opened` names paths unqualified: the union's access path relative to the
+/// innermost of `opened` that contains it, or the whole access path, then the union and the case. A case with fields
+/// takes one wildcard.
+let private casePattern (opened: string list) (union: FSharpEntity) (case: FSharpUnionCase) : string =
+    let access =
+        match union.AccessPath with
+        | null
+        | ""
+        | "global" -> ""
+        | path -> path
+
+    let qualifier =
+        opened
+        |> List.tryPick (fun path ->
+            if access = path then
+                Some ""
+            elif access.StartsWith (path + ".") then
+                Some (access.Substring (path.Length + 1))
+            else
+                None)
+        |> Option.defaultValue access
 
     let name =
-        if
-            file = union.AccessPath
-            || file.StartsWith (union.AccessPath + ".")
-        then
-            local
+        if qualifier = "" then
+            union.DisplayName + "." + case.Name
         else
-            union.AccessPath + "." + local
+            qualifier
+            + "."
+            + union.DisplayName
+            + "."
+            + case.Name
 
     if case.Fields.Count = 0 then name else name + " _"
 
@@ -57,15 +72,22 @@ let private testers (input: Input) : Message list =
             match generatedTester input site.Callee, site.Receiver with
             | Some (union, case), Some receiver ->
                 let receiverText = text input receiver.Range
+                let pattern = casePattern site.Opened union case
 
-                let replacement =
-                    $"(match {receiverText} with {casePattern input.Tree.QualifiedName union case} -> true | _ -> false)"
+                // `_.IsQueue` is a lambda over the receiver; the replacement is a function too.
+                let shorthand = receiverText = "_"
+
+                let tester, replacement =
+                    if shorthand then
+                        $"{union.DisplayName}.Is{case.Name}", $"(function {pattern} -> true | _ -> false)"
+                    else
+                        $"{receiverText}.Is{case.Name}", $"(match {receiverText} with {pattern} -> true | _ -> false)"
 
                 message
                     "RAN002"
                     Severity.Warning
                     site.Range
-                    $"`{receiverText}.Is{case.Name}` calls a compiler-generated union tester, which a Fable precompiled assembly does not declare. Write `{replacement}`."
+                    $"`{tester}` calls a compiler-generated union tester, which a Fable precompiled assembly does not declare. Write `{replacement}`."
                     [ replace site.Range (text input site.Range) replacement ]
             | _ -> ()
     ]
@@ -117,13 +139,18 @@ let private snapshots (input: Input) : Message list =
             then
                 match snapshotOf lets site with
                 | Some (source, fixable) when not (sameFile source.DeclarationLocation.FileName site.Value.DeclarationLocation.FileName) ->
+                    let at = site.Value.DeclarationLocation
+
+                    let before =
+                        (input.Source.GetLineString (at.StartLine - 1)).Substring(0, at.StartColumn)
+
                     match Index.uses site.Value site.Body with
-                    | [ single ] ->
+                    // A `let` on the line, not yet followed by `=`, binds the value; a match case binds it otherwise.
+                    | [ single ] when Regex.IsMatch (before, @"\blet\b[^=]*$") ->
                         let name = site.Value.DisplayName
-                        let at = site.Value.DeclarationLocation
 
                         let fixes =
-                            if fixable then
+                            if fixable && Regex.IsMatch (before, @"\blet\s+$") then
                                 [ replace (Range.mkRange at.FileName at.Start at.Start) "" "mutable " ]
                             else
                                 []

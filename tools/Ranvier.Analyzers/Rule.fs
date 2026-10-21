@@ -19,7 +19,7 @@ type Input =
         Project: FSharpCheckProjectResults option
     }
 
-/// A rule: its code and title, the assembly whose reference enables it, and its findings in a file.
+/// A rule and the assembly whose reference enables it.
 [<NoEquality; NoComparison>]
 type Rule =
     {

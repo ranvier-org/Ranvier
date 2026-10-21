@@ -1,6 +1,7 @@
-// The external facts the analyzers rely on: Fable's inlining of module-mutable snapshots (RAN001) and the Fable
-// precompile failure on generated union testers (RAN002). Exits non-zero when a fact no longer holds: retire or rescope
-// the rule that describes it. Run from any directory: dotnet fsi tools/Ranvier.Analyzers.Truth/Truth.fsx
+// The external facts the analyzers rely on: Fable's inlining of module-mutable snapshots (RAN001), the Fable
+// precompile failure on generated union testers (RAN002), and the MSBuild integration of RanvierAnalyze. Exits
+// non-zero when a fact no longer holds: retire or rescope the rule that describes it. Run from any directory:
+// dotnet fsi tools/Ranvier.Analyzers.Truth/Truth.fsx
 open System
 open System.Diagnostics
 open System.IO
@@ -65,36 +66,32 @@ let inlining () =
 
     check "RAN001: Fable keeps a let mutable snapshot" (js.Contains "let held = childSetups()") js
 
+/// Precompiles the fixture project `name` with Fable; the exit code and the log.
+let precompileOf (name: string) =
+    dotnet
+        [
+            "fable"
+            "precompile"
+            "tools/Ranvier.Analyzers.Truth/" + name
+            "--noCache"
+            "-o"
+            Path.Combine (output, name)
+        ]
+
 let precompile () =
-    let testers, testersLog =
-        dotnet
-            [
-                "fable"
-                "precompile"
-                "tools/Ranvier.Analyzers.Truth/Testers"
-                "--noCache"
-                "-o"
-                Path.Combine (output, "testers")
-            ]
+    for name, shape in
+        [
+            "Testers", "a public union"
+            "InternalTesters", "an internal union"
+            "PrivateTesters", "a private union"
+            "InternalStructTesters", "an internal struct union"
+        ] do
+        let code, log = precompileOf name
 
-    check
-        "RAN002: the precompile fails on a non-generic union tester"
-        (testers <> 0
-         && testersLog.Contains "MethodDefNotFound")
-        testersLog
+        check $"RAN002: the precompile fails on a tester of {shape}" (code <> 0 && log.Contains "MethodDefNotFound") log
 
-    let generic, genericLog =
-        dotnet
-            [
-                "fable"
-                "precompile"
-                "tools/Ranvier.Analyzers.Truth/GenericTesters"
-                "--noCache"
-                "-o"
-                Path.Combine (output, "generic-testers")
-            ]
-
-    check "RAN002: the precompile accepts a generic union tester" (generic = 0) genericLog
+    let generic, genericLog = precompileOf "GenericTesters"
+    check "the docs' generic-union claim holds: the precompile accepts a generic union tester" (generic = 0) genericLog
 
 let build () =
     let analyzerCode, analyzerLog =
@@ -129,12 +126,16 @@ let build () =
                 "-c"
                 "Release"
                 "--no-incremental"
+                "-v"
+                "d"
                 "-p:MSBuildWarningsAsMessages=RAN001"
             ]
 
+    // At detailed verbosity the demoted finding prints as `message RAN001`: the analyzers ran and reported no warning.
     check
         "MSBuildWarningsAsMessages demotes RAN001"
         (quiet = 0
+         && quietLog.Contains "B.fs(4,8): message RAN001"
          && not (quietLog.Contains "warning RAN001"))
         quietLog
 
