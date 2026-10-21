@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
       - run: node --test .github/scripts/*.test.cjs
@@ -114,7 +114,7 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
       - name: Pack and dry-publish
@@ -146,7 +146,7 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
       - name: Install npm packages
@@ -183,7 +183,7 @@ jobs:
         with:
           global-json-file: global.json
       # The playground requires Node 26 or newer (package.json engines).
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: '26'
           cache: npm
@@ -226,7 +226,7 @@ jobs:
         with:
           global-json-file: global.json
       # GeneratorTests runs the generator, which reads the TypeScript compiler from this directory's node_modules.
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: '26'
           cache: npm
@@ -257,7 +257,7 @@ jobs:
         with:
           global-json-file: global.json
       # The suite requires Node 26 or newer (package.json engines).
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: '26'
           cache: npm
@@ -292,7 +292,7 @@ jobs:
         with:
           global-json-file: global.json
       # The suite requires Node 26 or newer (package.json engines).
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: '26'
           cache: npm
@@ -312,6 +312,53 @@ jobs:
       - name: Check the server renders against their twins
         run: dotnet run --project fable/Ranvier.View.Anime.Tests/Ranvier.View.Anime.Tests.fsproj -c Release
         working-directory: .
+
+  # The five Motion example pages (examples/Ranvier.Motion): the jsdom page checks on a mocked clock, the story's .NET
+  # server document against its twin without Motion parts, and the Chromium checks on the page clock (npm test), then the
+  # per-page bundle sizes, reported without a budget.
+  motion:
+    name: Motion examples
+    needs: changes
+    if: needs.changes.outputs.docs != 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: examples/Ranvier.Motion
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      # The examples require Node 26 or newer (package.json engines).
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '26'
+          cache: npm
+          cache-dependency-path: examples/Ranvier.Motion/package-lock.json
+      - name: Install npm packages
+        run: npm ci
+      - name: Restore tools
+        run: dotnet tool restore
+        working-directory: .
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      # npm test compiles the page checks and runs them under jsdom (test:dom), then compiles the pages, renders the
+      # story document on .NET (ServerChecks, which fails when it differs from its twin without Motion parts), and runs
+      # the Chromium suite against the Vite server on port 5179 (test:browser).
+      - name: Run the Motion example tests
+        run: npm test
+      # The pages were compiled by npm test; size:only bundles them without compiling again.
+      - name: Report the per-page bundle sizes
+        run: npm run size:only
+      - name: Upload the Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: motion-playwright
+          path: |
+            examples/Ranvier.Motion/playwright-report/
+            examples/Ranvier.Motion/test-results/
+          if-no-files-found: ignore
 
   # Runs the Ranvier analyzers' unit tests, then the analyzers over the repository's projects with every RAN code
   # promoted to an error: any finding fails the job.
@@ -340,7 +387,7 @@ jobs:
         run: node .github/scripts/sarif-annotations.cjs artifacts/analyzers
       - name: Upload the SARIF report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: analyzers-sarif
           path: artifacts/analyzers/
@@ -368,7 +415,7 @@ jobs:
   # build and test jobs were skipped for a documentation-only change.
   result:
     name: CI result
-    needs: [changes, scripts, dotnet, aot, packages, format, fable, playground, sugar, anime, motion-view, analyzers, analyzer-truth]
+    needs: [changes, scripts, dotnet, aot, packages, format, fable, playground, sugar, anime, motion-view, motion, analyzers, analyzer-truth]
     if: always()
     runs-on: ubuntu-latest
     steps:

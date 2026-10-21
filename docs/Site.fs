@@ -128,6 +128,14 @@ let theme =
                         Menu.page "view/authored.md"
                     ]
                 Menu.section
+                    "Motion"
+                    [
+                        Menu.page "view/motion.md"
+                        Menu.page "view/motion-reactive.md"
+                        Menu.page "view/motion-parts.md"
+                        Menu.page "view/motion-testing.md"
+                    ]
+                Menu.section
                     "Running views"
                     [
                         Menu.page "view/lifetimes.md"
@@ -272,6 +280,22 @@ let private csharpGrammar (options: TreeSitterOptions) =
         :: options.Grammars
     )
 
+/// The Motion example pages, served under examples/motion/ from the Vite build that <c>build.fsx docs</c> runs. A build
+/// without that output publishes no example pages.
+let private motionExamples =
+    let dist =
+        Path.Combine (__SOURCE_DIRECTORY__, "../examples/Ranvier.Motion/dist")
+        |> Path.GetFullPath
+
+    Site.plugin
+        { new IPlugin with
+            member _.Name = "motion-examples"
+
+            member _.Configure registry =
+                registry
+                |> Registry.asset (Asset.CopyDirectory (AbsolutePath.create dist, RelativePath.create "examples/motion"))
+        }
+
 let reference =
     FSharpApi.collection "reference" DocFrontMatter.decoder apiOptions
     |> Collection.title _.Title
@@ -290,6 +314,7 @@ let site =
     |> Sitemap.register
     |> FSharpApi.register apiOptions
     |> LinkValidator.register
+    |> motionExamples
     |> SolidExamples.registerWith solidExamples
     |> LiveExample.registerWith (
         LiveExample.preset (
