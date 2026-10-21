@@ -29,6 +29,7 @@ cause, its fix and an example.
 | [RAN013](ran013.md) | Signal write or Pump on a thread-pool callback | Warning |
 | [RAN020](ran020.md) | Reactive read at template build time | Warning |
 | [RAN021](ran021.md) | Unstable list key | Warning / Info |
+| [RAN022](ran022.md) | Definition created on every region read | Warning |
 
 ## Running the analyzers
 

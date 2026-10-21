@@ -2,6 +2,7 @@
 module Ranvier.Analyzers.Rules.View
 
 open FSharp.Analyzers.SDK
+open FSharp.Compiler.CodeAnalysis
 open FSharp.Compiler.Symbols
 open FSharp.Compiler.Symbols.FSharpExprPatterns
 open FSharp.Compiler.Text
@@ -364,4 +365,61 @@ let ran021: Rule =
         Title = "Unstable list key"
         Gate = Symbols.Assemblies.View
         Run = unstableKeys
+    }
+
+let rec private createsDefinition (expr: FSharpExpr) =
+    match expr with
+    | Call (_, m, _, _, _) when isDefinitionCreator m -> true
+    | _ -> List.exists createsDefinition expr.ImmediateSubExpressions
+
+/// Whether the getter `m` is a static `Component` property whose implementation creates a definition.
+let private recreatingProperty (project: FSharpCheckProjectResults option) (m: FSharpMemberOrFunctionOrValue) =
+    m.IsPropertyGetterMethod
+    && not m.IsInstanceMember
+    && m.ReturnParameter.Type.HasTypeDefinition
+    && m.ReturnParameter.Type.TypeDefinition.TryFullName = Some ComponentType
+    && (match project with
+        | Some results ->
+            let rec find (item: FSharpImplementationFileDeclaration) =
+                match item with
+                | FSharpImplementationFileDeclaration.Entity (_, items) -> List.exists find items
+                | FSharpImplementationFileDeclaration.MemberOrFunctionOrValue (value, _, body) ->
+                    value.IsEffectivelySameAs m
+                    && createsDefinition body
+                | FSharpImplementationFileDeclaration.InitAction _ -> false
+
+            results.AssemblyContents.ImplementationFiles
+            |> List.exists (fun file -> List.exists find file.Declarations)
+        | None -> false)
+
+let private regionDefinitions (input: Input) : Message list =
+    [
+        for site in input.Index.Calls do
+            let creator = isDefinitionCreator site.Callee
+
+            let property =
+                not creator
+                && recreatingProperty input.Project site.Callee
+
+            if (creator || property) && inRegion site.Path then
+                let name =
+                    if creator then
+                        site.Callee.DisplayName
+                    else
+                        text input site.Range
+
+                message
+                    "RAN022"
+                    Severity.Warning
+                    site.Range
+                    $"`{name}` runs on every read of this region, so the arm is a new definition each time and remounts. Bind the definition with `let` outside the template."
+                    []
+    ]
+
+let ran022: Rule =
+    {
+        Code = "RAN022"
+        Title = "Definition created on every region read"
+        Gate = Symbols.Assemblies.View
+        Run = regionDefinitions
     }

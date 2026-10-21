@@ -503,6 +503,14 @@ module View =
             | ("each" | "forEach" | "forEachFixed"), (0 | 1) -> true
             | _ -> false)
 
+    /// Whether a call of `m` creates a component definition.
+    let isDefinitionCreator (m: FSharpMemberOrFunctionOrValue) =
+        match enclosing m, m.LogicalName with
+        | Component, "define"
+        | SugarComponent, ("template" | "ofMembers" | "ofClass")
+        | Sugar, ("armOf" | "show" | "showElse") -> true
+        | _ -> false
+
 /// The calls that make a list key unstable.
 module Keys =
     /// Whether a call of `m` in a key function gives a new key on every pass.

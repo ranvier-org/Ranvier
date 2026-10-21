@@ -53,6 +53,8 @@ depends on the target. See [Mismatches](../server/hydration.md#mismatches).
 function"** (Fable Debug builds): a definition (`armOf`, a declaration helper, `Component.define`) is
 created inside an arms function or a list read. Bind it with `let` before the template.
 
+The analyzers report this at build time: [RAN022](../analyzers/ran022.md).
+
 **"Hydration supports synchronous commits only"** (`NotSupportedException`): `hydrateWith` was given
 `QueuedCommits`. Hydrate with `SynchronousCommits`.
 
@@ -86,6 +88,8 @@ Give the content its own element.
 
 **An arm remounts on every update.** Its definition is created inside the arms function or read from a
 `static member` property. Bind it with `let`. See [Conditional arms](arms.md).
+
+The analyzers report this at build time: [RAN022](../analyzers/ran022.md).
 
 **A row keeps showing an old value after its item was replaced.** The list uses `forEachFixed`, whose
 row keeps the item it was created for. Use `forEach`, or hold the changing value in a signal on the

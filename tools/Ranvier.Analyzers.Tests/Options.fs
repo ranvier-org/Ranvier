@@ -163,3 +163,12 @@ let applyFix (source: string) (fix: Fix) : string =
     normal.Substring (0, start)
     + fix.ToText
     + normal.Substring finish
+
+/// The text of `range` in `source`; line ends are normalised to `\n`.
+let textAt (source: string) (range: FSharp.Compiler.Text.range) : string =
+    let lines = source.Replace("\r\n", "\n").Split '\n'
+
+    if range.StartLine = range.EndLine then
+        lines[range.StartLine - 1].Substring(range.StartColumn, range.EndColumn - range.StartColumn)
+    else
+        lines[range.StartLine - 1].Substring range.StartColumn
