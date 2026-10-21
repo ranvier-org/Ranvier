@@ -342,7 +342,7 @@ let private nests = weakMap ()
 let private svgNames () : obj = jsNative
 
 // An SVG element for an SVG name, or under an SVG parent other than a foreignObject; an HTML element otherwise.
-[<Emit("((p, tag, names) => names.has(tag.toLowerCase()) || p.namespaceURI === 'http://www.w3.org/2000/svg' && p.localName !== 'foreignObject' ? document.createElementNS('http://www.w3.org/2000/svg', tag) : document.createElement(tag))($2.get($0) || $0, $1, $3)")>]
+[<Emit("((p, tag, names) => names.has(tag.toLowerCase()) || p.namespaceURI === 'http://www.w3.org/2000/svg' && p.localName !== 'foreignObject' ? p.ownerDocument.createElementNS('http://www.w3.org/2000/svg', tag) : p.ownerDocument.createElement(tag))($2.get($0) || $0, $1, $3)")>]
 let private createUnder (parent: Node) (tag: string) (nested: obj) (names: obj) : HTMLElement = jsNative
 
 // Parses the markup; when its root elements have SVG names, parses it again inside an svg element and lifts the nodes

@@ -22,16 +22,19 @@ let private fireEnter (observer: ScrollObserver) : unit = jsNative
 [<Emit("(() => { const r = $0.ownerDocument.createRange(); r.selectNodeContents($0); $0.replaceChildren(r.createContextualFragment($1)); })()")>]
 let private loadServed (target: obj) (html: string) : unit = jsNative
 
+let private options =
+    { Server.Options.defaults with
+        Policy = Representation.Omit
+    }
+
+// The story's render in a new host, and its head entries in the document's head in place of any earlier ones.
 let private served () =
     let target = host ()
-    loadServed target (Server.render Server.Options.defaults Story.view ignore)
+    let page = Server.renderPage options Story.view ignore
+    Page.document.head.replaceChildren ()
+    loadServed Page.document.head page.Head
+    loadServed target page.Body
     target
-
-let private scrollTo (graph: Graph) (mounted: StoryClient.Mounted) (section: obj) (progress: float) =
-    let observer = observerOf section
-    fixProgress observer progress
-    fireUpdate observer
-    mounted.Mount.Flush ()
 
 let private hydratesStrictly (clock: Clock) =
     use graph = new Graph ()
@@ -85,26 +88,27 @@ let private extrasAppear (clock: Clock) =
     use graph = new Graph ()
     let target = served ()
     let mounted = StoryClient.attach graph target
-    let gallery = find target ".gallery"
-    scrollTo graph mounted gallery 0.4
-    let before = countOf target ".extra", textOf (find target ".gallery-note")
-    scrollTo graph mounted gallery 0.6
+    let toggle = find target ".more-toggle"
+    let before = countOf target ".extra", textOf toggle
+    click toggle
     let tile = find target ".extra"
     advance clock 0.
     run clock 16. 160.
     let popping = styleOf tile "opacity"
     run clock 16. 600.
-    let popped = styleOf tile "opacity", textsOf target ".extra"
-    scrollTo graph mounted gallery 0.3
+    let popped = styleOf tile "opacity", textsOf target ".extra", textOf toggle
+    click toggle
     let after = countOf target ".extra"
     mounted.Mount.Dispose ()
 
-    equal ((0, "Gallery 40%"), true, ("1", Story.extras), 0) (before, popping <> "" && popping <> "0" && popping <> "1", popped, after)
+    equal
+        ((0, "Show the extras"), true, ("1", Story.extras, "Hide the extras"), 0)
+        (before, popping <> "" && popping <> "0" && popping <> "1", popped, after)
 
 let cases: Case list =
     [
         case "the served story hydrates strictly: nodes adopted, appear skipped, the headline split" hydratesStrictly
         case "without a server render the story mounts, and appear plays" mountsWhenNotServed
         case "a chapter's scroll observer writes its progress and in-view state to the rail" scrollWritesProgress
-        case "past half the gallery the client-created tiles appear, and leave before it" extrasAppear
+        case "the hydrated extras button shows the client-created tiles, which appear, and hides them" extrasAppear
     ]

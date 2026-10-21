@@ -171,6 +171,50 @@ let private updatesAndDisposes () =
     button.click ()
     equal "11" button.textContent
 
+/// <summary>
+/// Makes the document parsed from <c>html</c> the global document's element; the returned function restores the
+/// previous element.
+/// </summary>
+[<Emit("(() => { const parsed = new window.DOMParser().parseFromString($0, 'text/html'); const previous = document.documentElement; document.replaceChild(document.importNode(parsed.documentElement, true), previous); return () => { document.replaceChild(previous, document.documentElement); }; })()")>]
+let private loadDocument (html: string) : unit -> unit = jsNative
+
+let private hydratesRenderedDocument () =
+    let json = "{\"title\":\"a\"}"
+
+    let document =
+        { Server.DocumentShell.defaults with
+            Lang = Some "en"
+            State = [ "card-props", json ]
+            Scripts = [ Server.ModuleScript.Src "/main.js" ]
+            Nonce = Some "n0nce"
+        }
+
+    let restore = loadDocument (Server.renderDocument omit document card "a")
+
+    try
+        let host = unbox<HTMLElement>(globalThis.document.getElementById "app")
+        let first = host.firstChild.Value
+
+        let shape =
+            first.nodeType = 8.
+            && (unbox<Comment> first).data = "[r",
+            host.childNodes.length,
+            Hydration.readState "card-props",
+            (all globalThis.document.body "script").Length,
+            obj.ReferenceEquals (host.parentNode.Value, globalThis.document.body)
+
+        use graph = new Graph ()
+        let before = nodesOf host
+        let mounted = hydrate graph strictOptions host card "a"
+        let adopted = sameNodes before (nodesOf host)
+        let button = element host "button"
+        button.click ()
+        let shown = cardShown host, button.textContent
+        mounted.Dispose ()
+        equal ((true, 3., Some json, 2, true), true, ((Some "a", "Title: a1", "a"), "1")) (shape, adopted, shown)
+    finally
+        restore ()
+
 let private matchingValuesWriteNothing () =
     use graph = new Graph ()
     let host = serve card "a"
@@ -2649,7 +2693,9 @@ let private pendingRowsHydrate () =
     let mounted =
         Mounting.mount graph None reports.Add target None (fun context -> Program.run (Component.render definition ()) context.Backend)
 
-    let mountedShown = target.innerHTML, messages reports
+    let mountedPending = (element target "div").innerHTML
+    graph.Run (fun () -> case.Sources[0].Settle "ab")
+    let mountedShown = (element target "div").textContent, messages reports
     mounted.Dispose ()
 
     let host = serveCase case definition (Settles "ab") Pends
@@ -2659,16 +2705,21 @@ let private pendingRowsHydrate () =
     let mounted =
         Hydration.hydrate graph None reports.Add strictOptions host definition ()
 
+    let hydratedPending =
+        (element host "div").textContent, messages reports, List.ofSeq case.Log, host.contains (unbox<Node> list)
+
+    graph.Run (fun () -> case.Sources[0].Settle "cd")
+
     let hydratedShown =
-        (element host "div").innerHTML, messages reports, List.ofSeq case.Log, host.contains (unbox<Node> list)
+        (element host "div").textContent, messages reports, host.contains (unbox<Node> list)
 
     mounted.Dispose ()
 
-    // A mount shows the error view for the pending read of a list's items: the read fails the content's setup.
+    // A mount shows the pending view until the list's items settle; hydration shows the server rows' copy until then.
     equal
-        (("<!--ranvier:start--><div><!--[--><!--ranvier:start--><span></span><!--ranvier:end--><!--]--></div><!--ranvier:end-->", [ [ "" ] ]),
-         ("<!--[c--><!--ranvier:start--><span></span><!--ranvier:end--><!--]-->", [ [ "" ] ], [ "content setup" ], false))
-        (mountedShown, hydratedShown)
+        (("<!--[--><!--ranvier:start--><i>loading</i><!--ranvier:end--><!--]-->", ("ab", [])),
+         (("ab", [], [ "content setup" ], false), ("cd", [], true)))
+        ((mountedPending, mountedShown), (hydratedPending, hydratedShown))
 
 let private rootWidget =
     Component.define (fun _ (log: ResizeArray<string>) -> log) (fun t ->
@@ -3792,6 +3843,7 @@ let cases: (string * (unit -> unit)) array =
             "hydrating server HTML adopts every node", adoptsEveryNode
             "an element with a prefix is a mismatch for a template element of its local name, named at its path", prefixedElementsMismatch
             "a hydrated template updates, dispatches delegated and direct events, and disposes like a mount", updatesAndDisposes
+            "a parsed renderDocument page hydrates its host with the transferred state and handles a click", hydratesRenderedDocument
             "hydration writes no text or attribute when values match", matchingValuesWriteNothing
             "hydration corrects differing values without a report", differingValuesCorrected
             "empty text slots hydrate through their placeholder and update", emptyTextHydrates
@@ -3843,8 +3895,7 @@ let cases: (string * (unit -> unit)) array =
             boundariesInRows
             "boundaries in hydrated rows whose content is ready by the end of hydrate keep their nodes and focus in place", rowBoundariesKeepFocus
             "recovered rows whose read is pending show an empty text, as a client mount's rows do", pendingFreshRowsEmpty
-            "boundaries: a pending read of a list's items in hydrating content goes to the boundary, which shows its error view as in a mount",
-            pendingRowsHydrate
+            "boundaries: a pending read of a list's items waits with the boundary in a mount and in hydrating content", pendingRowsHydrate
             "a mismatch inside a row's nested region re-renders only that region and reports once per region; Strict raises and restores the host",
             nestedRowMismatch
             "adopted rows keep their positional ids and run their cleanups when removed, and later rows continue the row counter",

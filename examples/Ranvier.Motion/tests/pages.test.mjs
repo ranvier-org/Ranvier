@@ -1,7 +1,6 @@
 // The page checks under jsdom on a mocked clock. anime evaluates `isBrowser` and captures `Date.now` when it is first
 // imported, so the DOM globals, the stubs jsdom lacks and the mocked clock are in place before animejs and the compiled
-// checks are imported. A check that reproduces a library bug runs as a todo: it is reported, and fails nothing, while
-// the bug stands.
+// checks are imported.
 import test, { mock } from "node:test";
 import { JSDOM } from "jsdom";
 
@@ -60,14 +59,27 @@ anime.ScrollObserver.prototype.link = function (...args) {
 const { cases, prepare } = await import("../generated-tests/Checks.js");
 prepare();
 const clock = ms => mock.timers.tick(ms);
-// A check defers its last steps with Harness.later; they run once the microtasks it queued have drained.
+// A check defers its last steps with Harness.later; they run once the microtasks it queued have drained (setImmediate,
+// which the mocked timers leave real, runs after them). Mounts registered with Harness.owned are disposed after every
+// check, so a failed check leaves nothing mounted for the next.
 globalThis.motionLater = [];
-const run = async check => {
-  check(clock);
-  for (let turn = 0; turn < 8; turn++) await null;
-  while (globalThis.motionLater.length > 0) globalThis.motionLater.shift()();
+globalThis.motionOpen = [];
+globalThis.motionRelease = () => {
+  const open = globalThis.motionOpen.splice(0).reverse();
+  let failure = null;
+  for (const dispose of open) {
+    try { dispose(); } catch (error) { failure ??= error; }
+  }
+  if (failure) throw failure;
 };
-for (const { Name, Check, Bug } of cases) {
-  if (Bug === undefined || Bug === null) test(Name, () => run(Check));
-  else test(Name, { todo: Bug }, () => run(Check));
-}
+const run = async check => {
+  try {
+    check(clock);
+    await new Promise(resolve => setImmediate(resolve));
+    while (globalThis.motionLater.length > 0) globalThis.motionLater.shift()();
+  } finally {
+    globalThis.motionLater.length = 0;
+    globalThis.motionRelease();
+  }
+};
+for (const { Name, Check } of cases) test(Name, () => run(Check));

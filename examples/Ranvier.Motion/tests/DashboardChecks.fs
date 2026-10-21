@@ -39,6 +39,11 @@ let private mounted queued =
     let graph = new Graph ()
     let target = host ()
     let page = Dashboard.mount (modeOf queued) graph report target
+
+    owned (fun () ->
+        page.Mount.Dispose ()
+        graph.Dispose ())
+
     page.Mount.Flush ()
     graph, target, page
 
@@ -46,9 +51,8 @@ let private push (graph: Graph) (page: Dashboard.Mounted) (sample: Sample) =
     graph.Run (fun () -> page.Store.Feed.Push sample)
     page.Mount.Flush ()
 
-let private close (graph: Graph) (page: Dashboard.Mounted) =
-    page.Mount.Dispose ()
-    graph.Dispose ()
+let private close (_: Graph) (_: Dashboard.Mounted) =
+    release ()
 
 let private pendingSkeleton queued (clock: Clock) =
     let graph, target, page = mounted queued
@@ -189,6 +193,25 @@ let private reconnectRestarts queued (clock: Clock) =
         close graph page
         equal (("true", 1), (null, "1 of 24")) (refreshing, resumed))
 
+let private counterRetargets queued (clock: Clock) =
+    let graph, target, page = mounted queued
+    push graph page (sampleAt 1)
+    let counter = find target ".counter"
+    advance clock 0.
+    run clock 16. 160.
+    page.Mount.Flush ()
+    let midway = float (textOf counter)
+    let second = sampleAt 5
+    push graph page second
+    advance clock 0.
+    page.Mount.Flush ()
+    let restart = float (textOf counter)
+    run clock 16. 1000.
+    page.Mount.Flush ()
+    let landed = textOf counter
+    close graph page
+    equal (true, true, sprintf "%.0f" second.Requests) (midway > 0. && midway < (sampleAt 1).Requests, abs (restart - midway) < 40., landed)
+
 let cases: Case list =
     [
         case "samples are seeded and in range, and keep holds the latest 24" samplesAreSeeded
@@ -197,6 +220,7 @@ let cases: Case list =
         yield! modes "gauges set their first value and follow each sample" gaugesFollow
         yield! modes "the chart morphs to each window and the ring draws the CPU load" chartMorphsAndRingDraws
         yield! modes "the request counter tweens to each rate through its tracked animation" counterTweens
+        yield! modes "a sample mid-tween retargets the counter from the number shown" counterRetargets
         yield! modes "the CPU alert fades in on a spike and out after it" alertFades
         yield! modes "the details panel shows the latest sample and fades out when hidden" detailsToggle
         yield! modes "reconnect restarts the stream: the content dims until the next sample, then starts over" reconnectRestarts

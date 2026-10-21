@@ -34,15 +34,19 @@ let private mounted queued (route: Route) =
     let graph = new Graph ()
     let target = host ()
     let page = Routes.mount (modeOf queued) graph report target route
+
+    owned (fun () ->
+        page.Mount.Dispose ()
+        graph.Dispose ())
+
     page.Mount.Flush ()
     graph, target, page
 
 let private go (graph: Graph) (page: Routes.Mounted) (route: Route) =
     write graph page.Mount (fun () -> page.Shell.Loop.Dispatch (Navigated route))
 
-let private close (graph: Graph) (page: Routes.Mounted) =
-    page.Mount.Dispose ()
-    graph.Dispose ()
+let private close (_: Graph) (_: Routes.Mounted) =
+    release ()
 
 let private switchCrosses queued (clock: Clock) =
     let graph, target, page = mounted queued Home

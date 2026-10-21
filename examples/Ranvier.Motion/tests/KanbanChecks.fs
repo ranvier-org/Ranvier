@@ -15,7 +15,7 @@ let private draggableOf (element: obj) : Draggable = jsNative
 let private grab (draggable: Draggable) : unit = jsNative
 
 [<Emit("$0.onRelease($0)")>]
-let private release (draggable: Draggable) : unit = jsNative
+let private letGo (draggable: Draggable) : unit = jsNative
 
 let private columnsOf (model: Model) =
     model.Cards
@@ -76,15 +76,19 @@ let private mounted queued =
     let graph = new Graph ()
     let target = host ()
     let page = Kanban.mount (modeOf queued) graph report target init
+
+    owned (fun () ->
+        page.Mount.Dispose ()
+        graph.Dispose ())
+
     page.Mount.Flush ()
     graph, target, page
 
 let private dispatch (graph: Graph) (page: Kanban.Mounted) (msg: Msg) =
     write graph page.Mount (fun () -> page.Board.Loop.Dispatch msg)
 
-let private close (graph: Graph) (page: Kanban.Mounted) =
-    page.Mount.Dispose ()
-    graph.Dispose ()
+let private close (_: Graph) (_: Kanban.Mounted) =
+    release ()
 
 let private rendersBoard queued (clock: Clock) =
     let graph, target, page = mounted queued
@@ -172,7 +176,7 @@ let private dragDrops (clock: Clock) =
     grab draggable
     draggable.x <- 310.
     advance clock 16.
-    release draggable
+    letGo draggable
     page.Mount.Flush ()
     let movedTo = columnOf graph page 2
     let reset = struct (draggable.x, draggable.y)
@@ -180,12 +184,31 @@ let private dragDrops (clock: Clock) =
     grab near
     near.x <- 60.
     advance clock 16.
-    release near
+    letGo near
     run clock 16. 2000.
     let stayed = columnOf graph page 1
     let home = struct (near.x, near.y)
     close graph page
     equal (1, struct (0., 0.), 0, struct (0., 0.)) (movedTo, reset, stayed, home)
+
+let private regrabStopsSpring (clock: Clock) =
+    let graph, target, page = mounted false
+    fixProperty (find target ".board") "clientWidth" (box 900.)
+    let near = draggableOf (find target ".card-slot[data-id=\"1\"]")
+    grab near
+    near.x <- 60.
+    advance clock 16.
+    letGo near
+    page.Mount.Flush ()
+    advance clock 0.
+    run clock 16. 80.
+    grab near
+    page.Mount.Flush ()
+    let held = near.x
+    run clock 16. 1500.
+    let after = near.x
+    close graph page
+    equal (true, held) (held > 0. && held < 60., after)
 
 let cases: Case list =
     [
@@ -198,4 +221,5 @@ let cases: Case list =
         yield! modes "add fades and scales the new card in" addEnters
         yield! modes "clear holds every card until its exit, and undo brings them back" clearAndUndo
         case "drag: a release one lane over moves the card, a release in its lane springs home" dragDrops
+        case "drag: a grab while the card springs home cancels the spring" regrabStopsSpring
     ]

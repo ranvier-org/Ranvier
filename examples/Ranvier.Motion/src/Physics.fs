@@ -26,6 +26,8 @@ type Playground =
         Policy: Signal<Reactive.MotionPolicy>
         /// <summary>The scrubbed timeline once placed.</summary>
         Timeline: Timeline ref
+        /// <summary>The spring returning the puck home; a new spring, a grab or the instance's disposal cancels it.</summary>
+        Spring: Page.Slot
     }
 
 /// <summary>The followers' durations: each trails the puck further behind the one before it.</summary>
@@ -39,34 +41,37 @@ let private create () =
         Tips = Api.createSignal false
         Policy = Reactive.policy ()
         Timeline = ref null
+        Spring = Page.ownedSlot ()
     }
 
 let private reduced (playground: Playground) =
     Api.untrack (fun () -> playground.Policy.Value) = Reactive.Reduced
 
 /// <summary>
-/// Returns the puck home along a spring, through the position signal its draggable follows; under the reduced policy it
-/// jumps home.
+/// Returns the puck home along a spring, through the position signal its draggable follows, in place of any running
+/// spring; under the reduced policy it jumps home.
 /// </summary>
 let springHome (playground: Playground) =
     let struct (x, y) = Api.untrack (fun () -> playground.Puck.Value)
 
     if reduced playground then
+        playground.Spring.Stop ()
         playground.Puck.Value <- struct (0., 0.)
     else
         let graph = Graph.Current
         let point = Page.point x y
 
-        Anime.animate (
-            Targets.object point,
-            Anim (
-                x = 0,
-                y = 0,
-                ease = Ease.spring (stiffness = 170., damping = 11.),
-                onUpdate = fun _ -> graph.Batch (fun () -> playground.Puck.Value <- struct (point.x, point.y))
+        playground.Spring.Start (
+            Anime.animate (
+                Targets.object point,
+                Anim (
+                    x = 0,
+                    y = 0,
+                    ease = Ease.spring (stiffness = 170., damping = 11.),
+                    onUpdate = fun _ -> graph.Batch (fun () -> playground.Puck.Value <- struct (point.x, point.y))
+                )
             )
         )
-        |> ignore
 
 let private xOf (playground: Playground) =
     let struct (x, _) = playground.Puck.Value
@@ -114,6 +119,11 @@ let view: Component<Playground -> unit> =
     Component.template
         (fun _ (publish: Playground -> unit) ->
             let playground = create ()
+
+            Api.createEffectOn (fun () -> playground.Dragging.Value) (fun dragging ->
+                if dragging then
+                    playground.Spring.Stop ())
+
             publish playground
             playground)
         (section (Attrs.className "physics") {

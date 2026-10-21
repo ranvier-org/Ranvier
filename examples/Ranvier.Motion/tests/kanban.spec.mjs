@@ -5,9 +5,22 @@ import { cardBox, expectNoErrors, finishAnimations, opacityOf, openPage, scaleOf
 
 const card = id => `.card-slot[data-id="${id}"]`;
 
+// Records each WAAPI animation the page starts, with its target's card id, before the page's scripts run: the layout's
+// animations run on the real clock and can finish before a test reads getAnimations().
 test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__animated = [];
+    const animate = Element.prototype.animate;
+    Element.prototype.animate = function (...args) {
+      const animation = animate.apply(this, args);
+      window.__animated.push({ id: this.dataset?.id ?? null, animation });
+      return animation;
+    };
+  });
   await openPage(page, "/kanban/");
 });
+
+const animatedIds = page => page.evaluate(() => window.__animated.map(entry => entry.id));
 
 test.afterEach(async ({ page }) => expectNoErrors(page));
 
@@ -56,8 +69,7 @@ test("move: FLIP animates the card across lanes and it settles in the next lane"
   await page.click(`${card(1)} button.right`);
   const moved = page.locator(card(1));
   await expect(moved).toHaveAttribute("data-lane", "1");
-  const animations = await page.evaluate(selector => document.querySelector(selector).getAnimations().length, card(1));
-  expect(animations).toBeGreaterThan(0);
+  expect(await animatedIds(page)).toContain("1");
   await finishAnimations(page, ".board");
   await page.clock.runFor(1000);
   const after = await cardBox(page, card(1));
@@ -72,8 +84,7 @@ test("shuffle moves cards with FLIP, and undo restores the board", async ({ page
   await page.click("button.shuffle");
   const shuffled = await page.evaluate(() => window.__motion.cards().map(c => [c.Id, c.Column]));
   expect(shuffled).not.toEqual(start);
-  const running = await page.evaluate(() => document.querySelector(".board").getAnimations({ subtree: true }).length);
-  expect(running).toBeGreaterThan(0);
+  expect((await animatedIds(page)).filter(id => id !== null).length).toBeGreaterThan(0);
   await finishAnimations(page, ".board");
   await page.clock.runFor(1000);
   for (const [id, column] of shuffled) await expect(page.locator(card(id))).toHaveAttribute("data-lane", String(column));

@@ -1,4 +1,4 @@
-/// <summary>The story page's browser entry: hydrates the server's render strictly, or mounts when the page was not served.</summary>
+/// <summary>The story page's browser entry: hydrates the server's document strictly, or mounts when the page was not served.</summary>
 module StoryClient
 
 open Fable.Core
@@ -38,7 +38,16 @@ let attach (graph: Graph) (host: TS.Dom.HTMLElement) : Mounted =
 
     let mounted =
         if hydrated then
-            Hydration.hydrate graph None report { IdPrefix = "r"; Strict = true } host Story.view publish
+            Hydration.hydrate
+                graph
+                None
+                report
+                { Hydration.HydrationOptions.defaults with
+                    Strict = true
+                }
+                host
+                Story.view
+                publish
         else
             Mounting.mount graph None report host None (fun context -> Program.run (Component.render Story.view publish) context.Backend)
 

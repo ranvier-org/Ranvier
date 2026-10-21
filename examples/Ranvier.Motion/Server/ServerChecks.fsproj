@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <!--
-    The story page on .NET: renders it with Server.render under the default Reject policy, checks the render equals its
+    The story page on .NET: renders it with Server.render under its Omit policy, checks the render equals its
     twin without Motion parts, and given a write path writes the render there for the Vite server to serve (npm run server).
     -->
     <PropertyGroup>

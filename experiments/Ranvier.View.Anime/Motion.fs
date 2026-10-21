@@ -42,17 +42,28 @@ type DragBinding =
 [<RequireQualifiedAccess>]
 module Motion =
 #if FABLE_COMPILER
-    [<Emit("new WeakSet()")>]
-    let private weakSet () : obj = jsNative
+    // Sets, not WeakSets: flip scans their members, and every member leaves with its part's cleanup or its exit's end.
+    [<Emit("new Set()")>]
+    let private markSet () : obj = jsNative
 
     // Elements whose Motion exit runs.
-    let private departing = weakSet ()
-    // Elements whose Motion enter runs.
-    let private arriving = weakSet ()
+    let private departing = markSet ()
+    // Elements whose Motion enter started in a pass that has not yet been laid out.
+    let private arriving = markSet ()
+    // Elements whose Motion part animates them.
+    let private animated = markSet ()
 #else
     let private departing: obj = null
     let private arriving: obj = null
+    let private animated: obj = null
 #endif
+
+    [<Emit("$0.size")>]
+    let private sizeOf (set: obj) : int = jsNative
+
+    /// <summary>The number of elements whose Motion exit runs.</summary>
+    let internal departures () =
+        sizeOf departing
 
     [<Emit("$0.add($1)")>]
     let private mark (set: obj) (element: obj) : unit = jsNative
@@ -78,10 +89,16 @@ module Motion =
     [<Emit("Array.prototype.filter.call($0.children, c => !$1.has(c) && !$2.has(c))")>]
     let private liveChildren (root: obj) (leaving: obj) (entering: obj) : TS.Dom.Element array = jsNative
 
-    // Leaves the layout's visual properties (opacity, colours, borders, filters, clip paths, font size) to the parts that
-    // animate them, unless the layout parameters name one.
-    [<Emit("((l, p) => { const named = new Set([...(p.properties || []), ...Object.keys(p.enterFrom || {}), ...Object.keys(p.leaveTo || {}), ...Object.keys(p.swapAt || {})]); for (const n of ['opacity', 'fontSize', 'color', 'backgroundColor', 'borderRadius', 'border', 'filter', 'clipPath']) if (!named.has(n)) { l.properties.delete(n); l.recordedProperties.delete(n); } })($0, $1)")>]
-    let private geometryOnly (layout: AutoLayout) (parameters: LayoutParams) : unit = jsNative
+    // Takes the layout's visual properties (opacity, colours, borders, filters, clip paths, font size) that `parameters`
+    // do not name out of its animated and recorded properties while an element under the root carries a Motion part, and
+    // puts them back otherwise. anime 4.5.0 has no public way to remove them (AutoLayout's `properties` and
+    // `recordedProperties` Sets).
+    [<Emit("((l, p, r, a, b, c) => { if (!l.motionVisual) { const named = new Set([...(p.properties || []), ...Object.keys(p.enterFrom || {}), ...Object.keys(p.leaveTo || {}), ...Object.keys(p.swapAt || {})]); l.motionVisual = ['opacity', 'fontSize', 'color', 'backgroundColor', 'borderRadius', 'border', 'filter', 'clipPath'].filter(n => !named.has(n)); } const owned = [a, b, c].some(s => { for (const n of s) if (r.contains(n)) return true; return false; }); for (const n of l.motionVisual) { if (owned) { l.properties.delete(n); l.recordedProperties.delete(n); } else { l.properties.add(n); l.recordedProperties.add(n); } } })($0, $1, $2, $3, $4, $5)")>]
+    let private leaveVisuals (layout: AutoLayout) (parameters: LayoutParams) (root: obj) (animated: obj) (departing: obj) (arriving: obj) : unit =
+        jsNative
+
+    [<Emit("(r => { for (const c of r.children) $1.delete(c); })($0)")>]
+    let private laidOut (root: obj) (arriving: obj) : unit = jsNative
 
     [<Emit("$0.children = $1")>]
     let private measureChildren (layout: AutoLayout) (children: TS.Dom.Element array) : unit = jsNative
@@ -103,6 +120,10 @@ module Motion =
 
     [<Emit("(d => { d.stop(); d.disable(); d.$target.classList.remove('is-disabled'); d.updateTicker.pause(); d.overshootTicker.pause(); d.resizeTicker.pause(); for (const k in d.animate.animations) d.animate.animations[k].pause(); d.resizeObserver.disconnect(); })($0)")>]
     let private freezeDraggable (draggable: Draggable) : unit = jsNative
+
+    // Runs `after` once each of the draggable's position animations completes, after its last frame.
+    [<Emit("((d, f) => { for (const k of [d.xProp, d.yProp]) { const a = d.animate.animations[k]; if (a) { const p = a.onComplete; a.onComplete = s => { if (p) p(s); f(s); }; } } })($0, $1)")>]
+    let private whenPositioned (draggable: Draggable) (after: obj -> unit) : unit = jsNative
 
     [<Emit("(s => { clearTimeout(s.resizeTimeout); s.resizeObserver.disconnect(); })($0)")>]
     let private freezeSplitter (splitter: TextSplitter) : unit = jsNative
@@ -139,20 +160,29 @@ module Motion =
 
         release
 
+    // Marks the element as animated by a Motion part until `release` runs.
+    let private owning (element: obj) (release: unit -> unit) =
+        mark animated element
+
+        let owned () =
+            forget animated element
+            release ()
+
+        owned
+
     let private entering (play: 'inst -> TS.Dom.Element -> #ITickable) =
         Func<'inst, 'native, MotionContext, unit -> unit>(fun inst node context ->
             if context.Inserted && not (reduced ()) then
                 let element = box node
                 let tickable = play inst (elementOf node) :> ITickable
                 mark arriving element
-                chain tickable "onComplete" (fun _ -> forget arriving element)
                 let stop = settle context tickable
 
                 let release () =
                     forget arriving element
                     stop ()
 
-                release
+                owning element release
             else
                 nothing)
 
@@ -175,7 +205,13 @@ module Motion =
                 if pin then
                     pinOutOfFlow element
 
-                let tickable = play inst (elementOf node) :> ITickable
+                let tickable =
+                    try
+                        play inst (elementOf node) :> ITickable
+                    with _ ->
+                        forget departing element
+                        reraise ()
+
                 chain tickable "onComplete" (fun _ -> finished ())
 
                 let cancel () =
@@ -186,7 +222,7 @@ module Motion =
 
     /// <summary>Plays on every placement, hydration included; the cleanup reverts the animation.</summary>
     let on (play: 'inst -> TS.Dom.Element -> #IRevertible) : Part<'native, 'inst> =
-        Hooks.motion (Func<_, _, _, _>(fun inst node context -> settle context (play inst (elementOf node) :> IRevertible)))
+        Hooks.motion (Func<_, _, _, _>(fun inst node context -> owning (box node) (settle context (play inst (elementOf node) :> IRevertible))))
 
     /// <summary>Plays on every placement of an element created on the client; an element adopted from server HTML stays as served.</summary>
     let appear (play: 'inst -> TS.Dom.Element -> #IRevertible) : Part<'native, 'inst> =
@@ -195,7 +231,7 @@ module Motion =
                 if context.Hydrated then
                     nothing
                 else
-                    settle context (play inst (elementOf node) :> IRevertible))
+                    owning (box node) (settle context (play inst (elementOf node) :> IRevertible)))
         )
 
     /// <summary>
@@ -270,14 +306,13 @@ module Motion =
 
     /// <summary>
     /// FLIP for the rows of every region under the element: anime's <c>createLayout</c> over the element's element
-    /// children whose Motion enter or exit is not running, recorded before each flush's region passes and animated once
-    /// their nodes and commits are in place.
+    /// children, recorded before each flush's region passes and animated once their nodes and commits are in place.
     /// </summary>
     /// <remarks>
-    /// <c>parameters</c> apply to every animation; <c>children</c> is replaced. A row whose Motion enter or exit is running is
-    /// left out of both measurements. The layout moves and resizes rows; their opacity, colours, borders, filters, clip
-    /// paths and font size stay with the parts that animate them, unless <c>parameters</c> name one in <c>properties</c>,
-    /// <c>enterFrom</c>, <c>leaveTo</c> or <c>swapAt</c>.
+    /// <c>parameters</c> apply to every animation; <c>children</c> is replaced. A row whose Motion exit runs, or whose Motion
+    /// enter started in the pass, is left out of the pass's measurements. The layout's opacity, colours, borders, filters,
+    /// clip paths and font size apply to a pass in which no element under the root carries a Motion part; in a pass where
+    /// one does, they are left to the parts.
     /// </remarks>
     let flip (parameters: LayoutParams) : Part<'native, 'inst> =
         Hooks.reflow (fun _ node ->
@@ -297,16 +332,18 @@ module Motion =
                         if recorded.Value then
                             if isNull layout.Value then
                                 layout.Value <- Anime.layout (elementOf node, withKey parameters "children" (liveChildren root departing arriving))
-                                geometryOnly layout.Value parameters
                             else
                                 measureChildren layout.Value (liveChildren root departing arriving)
+                                leaveVisuals layout.Value parameters root animated departing arriving
                                 layout.Value.record () |> ignore
                 After =
                     fun () ->
                         if recorded.Value then
                             recorded.Value <- false
                             measureChildren layout.Value (liveChildren root departing arriving)
+                            leaveVisuals layout.Value parameters root animated departing arriving
                             layout.Value.animate () |> ignore
+                            laidOut root arriving
             })
 
     /// <summary>
@@ -329,7 +366,7 @@ module Motion =
                         first.Value <- false
                         completeProperty animatable property)
 
-                settle context animatable)
+                owning (box node) (settle context animatable))
         )
 
     /// <summary>
@@ -354,7 +391,7 @@ module Motion =
                     if not (isNull current.Value) then
                         settle context current.Value ()
 
-                release)
+                owning (box node) release)
         )
 
     /// <summary>
@@ -461,7 +498,7 @@ module Motion =
         )
 
     /// <summary>
-    /// Makes the element draggable, two-way: dragging, and the settling of a release, write <c>Position</c>, and a write to
+    /// Makes the element draggable, two-way: dragging, and the end of a release's motion, write <c>Position</c>, and a write to
     /// <c>Position</c> from elsewhere moves the element without an update callback, so the write is not echoed back.
     /// </summary>
     /// <remarks>The draggable requires <c>DOMPoint</c>, <c>DOMMatrix</c> and <c>ResizeObserver</c>.</remarks>
@@ -476,7 +513,7 @@ module Motion =
                     graph.Batch (fun () -> binding.Position.Value <- struct (draggable.x, draggable.y))
 
                 chain draggable "onUpdate" publish
-                chain draggable "onSettle" publish
+                whenPositioned draggable publish
 
                 match binding.Dragging with
                 | ValueSome dragging ->

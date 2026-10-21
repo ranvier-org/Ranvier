@@ -1139,7 +1139,7 @@ let generate compilerRoot policyRoot packageRoot output (templateOutput: string 
     let namespaceNeutral (native: string) (attribute: string) =
         if
             native = "Dom.HTMLElement"
-            && (List.contains attribute [ "id"; "class"; "role"; "lang"; "dir" ]
+            && (List.contains attribute [ "id"; "class"; "title"; "role"; "lang"; "dir" ]
                 || attribute.StartsWith "aria-")
         then
             "Dom.Element"

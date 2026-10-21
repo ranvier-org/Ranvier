@@ -8,14 +8,32 @@ const routeOf = page => page.evaluate(() => window.__motion.route());
 
 test.afterEach(async ({ page }) => expectNoErrors(page));
 
-test("the hash selects the first page, and the indicator sits on its tab", async ({ page }) => {
-  await openPage(page, "/routes/#/settings");
-  await expect(pages(page)).toHaveCount(1);
-  await expect(pages(page).first()).toHaveAttribute("data-route", "settings");
-  await page.clock.runFor(600);
-  const indicator = await page.locator(".indicator").evaluate(element => new DOMMatrixReadOnly(getComputedStyle(element).transform).e);
-  expect(indicator).toBeCloseTo(232, 0);
-});
+// The indicator's box and the active tab's box, left edge and width.
+async function boxes(page, route) {
+  const indicator = await page.locator(".indicator").boundingBox();
+  const tab = await page.locator(`.tab[data-route="${route}"]`).boundingBox();
+  return { indicator: [indicator.x, indicator.width], tab: [tab.x, tab.width] };
+}
+
+for (const [label, width] of [["at desktop width", 1180], ["at phone width", 600]]) {
+  test(`the hash selects the first page, and the indicator sits on its tab ${label}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 820 });
+    await openPage(page, "/routes/#/settings");
+    await expect(pages(page)).toHaveCount(1);
+    await expect(pages(page).first()).toHaveAttribute("data-route", "settings");
+    await page.clock.runFor(600);
+    const settings = await boxes(page, "settings");
+    expect(settings.indicator[0]).toBeCloseTo(settings.tab[0], 0);
+    expect(settings.indicator[1]).toBeCloseTo(settings.tab[1], 0);
+    await page.evaluate(() => new Promise(resolve => {
+      addEventListener("hashchange", resolve, { once: true });
+      document.querySelector('.tab[data-route="about"]').click();
+    }));
+    await page.clock.runFor(800);
+    const about = await boxes(page, "about");
+    expect(about.indicator[0]).toBeCloseTo(about.tab[0], 0);
+  });
+}
 
 test("a tab switch pins the leaving page while it fades, and the next page takes its place", async ({ page }) => {
   await openPage(page, "/routes/");

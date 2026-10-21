@@ -600,22 +600,22 @@ type AttributeBuilder<'inst> with
     member _.``className``<'native when 'native :> Dom.Element>(source: Source<'inst, string option>) : Part<'native, 'inst> =
         TemplateParts.sourceAttribute "class" source
 
-    member _.``title``<'native when 'native :> Dom.HTMLElement>(value: string) : Part<'native, 'inst> =
+    member _.``title``<'native when 'native :> Dom.Element>(value: string) : Part<'native, 'inst> =
         TemplateParts.attribute "title" value
 
-    member _.``title``<'native when 'native :> Dom.HTMLElement>(value: string option) : Part<'native, 'inst> =
+    member _.``title``<'native when 'native :> Dom.Element>(value: string option) : Part<'native, 'inst> =
         TemplateParts.optionalAttribute "title" value
 
-    member _.``title``<'native when 'native :> Dom.HTMLElement>(read: 'inst -> string) : Part<'native, 'inst> =
+    member _.``title``<'native when 'native :> Dom.Element>(read: 'inst -> string) : Part<'native, 'inst> =
         TemplateParts.readAttribute "title" (fun instance -> TemplateParts.present (read instance))
 
-    member _.``title``<'native when 'native :> Dom.HTMLElement>(read: 'inst -> string option) : Part<'native, 'inst> =
+    member _.``title``<'native when 'native :> Dom.Element>(read: 'inst -> string option) : Part<'native, 'inst> =
         TemplateParts.readAttribute "title" read
 
-    member _.``title``<'native when 'native :> Dom.HTMLElement>(source: Source<'inst, string>) : Part<'native, 'inst> =
+    member _.``title``<'native when 'native :> Dom.Element>(source: Source<'inst, string>) : Part<'native, 'inst> =
         TemplateParts.sourceAttribute "title" (TemplateParts.mapSource TemplateParts.present source)
 
-    member _.``title``<'native when 'native :> Dom.HTMLElement>(source: Source<'inst, string option>) : Part<'native, 'inst> =
+    member _.``title``<'native when 'native :> Dom.Element>(source: Source<'inst, string option>) : Part<'native, 'inst> =
         TemplateParts.sourceAttribute "title" source
 
     member _.``role``<'native when 'native :> Dom.Element>(value: string) : Part<'native, 'inst> =

@@ -1,7 +1,8 @@
 /// <summary>
 /// A scroll-driven landing page, portable: the .NET server renders it and the browser hydrates it. Scroll timelines write
 /// each section's progress into signals, the headline is split and staggered, the gallery staggers across its grid, and
-/// tiles created on the client appear. The page holds no event listener, so the server renders it under Reject.
+/// tiles created on the client appear. The server renders the whole document under <c>Omit</c>, and the listeners attach
+/// on hydration.
 /// </summary>
 module Story
 
@@ -35,6 +36,8 @@ type Story =
     {
         Chapters: Chapter array
         Gallery: Chapter
+        /// <summary>Whether the tiles created on the client are shown.</summary>
+        More: Signal<bool>
     }
 
 let chapters =
@@ -59,7 +62,7 @@ let chapters =
         }
     |]
 
-/// <summary>The labels of the gallery's tiles, and of the tiles shown once the gallery is half scrolled through.</summary>
+/// <summary>The labels of the gallery's tiles, and of the tiles the extras button shows.</summary>
 let tiles =
     [|
         "Enter"
@@ -89,6 +92,7 @@ let create () : Story =
     {
         Chapters = Array.init chapters.Length (fun _ -> chapter ())
         Gallery = chapter ()
+        More = Api.createSignal false
     }
 
 [<Emit("Array.from($0.querySelectorAll($1))")>]
@@ -166,81 +170,142 @@ let private letters (_: Story) (splitter: TextSplitter) =
 let private popIn (_: string) (element: TS.Dom.Element) =
     Anime.animate (element, Anim (scale = Value.fromTo (0.4, 1), opacity = Value.fromTo (0, 1), duration = 420, ease = Ease.outBack))
 
+/// <summary>
+/// The page around the story's article: the document's title and viewport entries, the site header and the introduction.
+/// </summary>
+let frame (t: TemplateBuilder<Story>) (story: TemplateView<Story>) : TemplateView<Story> =
+    div (Attrs.className "frame") {
+        t.Document.title (fun _ -> "Story · Ranvier Motion")
+
+        t.Document.meta
+            [|
+                t.Attrs.attribute ("name", "viewport")
+                t.Attrs.attribute ("content", "width=device-width, initial-scale=1")
+            |]
+
+        header (Attrs.className "site-header") {
+            a (Attrs.className "brand", Attrs.attribute ("href", "../")) {
+                span (Attrs.className "brand-mark") { () }
+                "Ranvier Motion"
+            }
+
+            nav () {
+                for page, title in
+                    [
+                        "kanban", "Kanban"
+                        "dashboard", "Dashboard"
+                        "story", "Story"
+                        "physics", "Physics"
+                        "routes", "Routes"
+                    ] do
+                    if page = "story" then
+                        a (Attrs.attribute ("href", "../story/"), Attrs.aria ("current", "page")) { title }
+                    else
+                        a (Attrs.attribute ("href", "../" + page + "/")) { title }
+            }
+        }
+
+        section (Attrs.className "intro") {
+            span (Attrs.className "tag") { "SSR · hydrate · scroll · split · stagger · appear" }
+            h1 () { "Story" }
+
+            p () {
+                "Rendered by Server.renderDocument on .NET and hydrated strictly in the browser. Scroll timelines write their progress into signals, the headline is split into letters, and the gallery staggers out from its centre."
+            }
+        }
+
+        story
+    }
+
 /// <summary>The story's component; its props receive each instance once set up.</summary>
 let view: Component<Story -> unit> =
-    Component.template
+    Component.define
         (fun _ (publish: Story -> unit) ->
             let story = create ()
             publish story
             story)
-        (article (Attrs.className "story") {
-            header (Attrs.className "hero") {
-                p (Attrs.className "eyebrow", Motion.appear rise) { "Rendered on .NET · hydrated in the browser" }
-                h1 (Attrs.className "headline", Motion.split (SplitParams (chars = true, words = true)) letters) { "Motion, owned by the view." }
+        (fun t ->
+            frame
+                t
+                (article (Attrs.className "story") {
+                    header (Attrs.className "hero") {
+                        p (Attrs.className "eyebrow", Motion.appear rise) { "Rendered on .NET · hydrated in the browser" }
 
-                p (Attrs.className "lede") {
-                    "Scroll down. Each section below runs an anime.js timeline scrubbed by the scroll, and writes how far it has come into a signal."
-                }
+                        h1 (Attrs.className "headline", Motion.split (SplitParams (chars = true, words = true)) letters) {
+                            "Motion, owned by the view."
+                        }
 
-                div (Attrs.className "cue", Attrs.aria ("hidden", "true"), Motion.on bob) { "↓" }
-            }
+                        p (Attrs.className "lede") {
+                            "Scroll down. Each section below runs an anime.js timeline scrubbed by the scroll, and writes how far it has come into a signal."
+                        }
 
-            nav (Attrs.className "rail", Attrs.aria ("label", "Progress")) {
-                for index in 0 .. chapters.Length - 1 do
-                    div (
-                        Attrs.className (fun (s: Story) ->
-                            if s.Chapters[index].Seen.Value then
-                                "rail-item seen"
-                            else
-                                "rail-item"),
-                        Attrs.attribute ("style", fun (s: Story) -> Some (sprintf "--p:%.3f" s.Chapters[index].Progress.Value))
-                    ) {
-                        span (Attrs.className "rail-mark") { chapters[index].Mark }
-                        span (Attrs.className "rail-title") { chapters[index].Title }
-                        span (Attrs.className "rail-value") { fun (s: Story) -> percent s.Chapters[index].Progress.Value }
-                    }
-            }
-
-            for index in 0 .. chapters.Length - 1 do
-                section (
-                    Attrs.className (if index % 2 = 0 then "chapter" else "chapter flipped"),
-                    Attrs.data ("chapter", string index),
-                    Motion.scroll scrubbed (bound (fun s -> s.Chapters[index])) (chapterTimeline index)
-                ) {
-                    div (Attrs.className "chapter-copy") {
-                        span (Attrs.className "chapter-mark") { chapters[index].Mark }
-                        h2 () { chapters[index].Title }
-                        p () { chapters[index].Text }
+                        div (Attrs.className "cue", Attrs.aria ("hidden", "true"), Motion.on bob) { "↓" }
                     }
 
-                    div (Attrs.className "chapter-art", Attrs.aria ("hidden", "true")) {
-                        div (Attrs.className "orb") { () }
-                        div (Attrs.className "ring") { () }
+                    nav (Attrs.className "rail", Attrs.aria ("label", "Progress")) {
+                        for index in 0 .. chapters.Length - 1 do
+                            div (
+                                Attrs.className (fun (s: Story) ->
+                                    if s.Chapters[index].Seen.Value then
+                                        "rail-item seen"
+                                    else
+                                        "rail-item"),
+                                Attrs.attribute ("style", fun (s: Story) -> Some (sprintf "--p:%.3f" s.Chapters[index].Progress.Value))
+                            ) {
+                                span (Attrs.className "rail-mark") { chapters[index].Mark }
+                                span (Attrs.className "rail-title") { chapters[index].Title }
+                                span (Attrs.className "rail-value") { fun (s: Story) -> percent s.Chapters[index].Progress.Value }
+                            }
                     }
-                }
 
-            section (Attrs.className "gallery", Motion.scroll scrubbed (bound (fun s -> s.Gallery)) galleryTimeline) {
-                h2 () { "Twelve parts, one stagger" }
-                p (Attrs.className "gallery-note") { fun (s: Story) -> "Gallery " + percent s.Gallery.Progress.Value }
+                    for index in 0 .. chapters.Length - 1 do
+                        section (
+                            Attrs.className (if index % 2 = 0 then "chapter" else "chapter flipped"),
+                            Attrs.data ("chapter", string index),
+                            Motion.scroll scrubbed (bound (fun s -> s.Chapters[index])) (chapterTimeline index)
+                        ) {
+                            div (Attrs.className "chapter-copy") {
+                                span (Attrs.className "chapter-mark") { chapters[index].Mark }
+                                h2 () { chapters[index].Title }
+                                p () { chapters[index].Text }
+                            }
 
-                div (Attrs.className "tiles") {
-                    for label in tiles do
-                        div (Attrs.className "tile") { label }
-                }
-            }
+                            div (Attrs.className "chapter-art", Attrs.aria ("hidden", "true")) {
+                                div (Attrs.className "orb") { () }
+                                div (Attrs.className "ring") { () }
+                            }
+                        }
 
-            section (Attrs.className "more") {
-                h2 () { "Four more, created on the client" }
+                    section (Attrs.className "gallery", Motion.scroll scrubbed (bound (fun s -> s.Gallery)) galleryTimeline) {
+                        h2 () { "Twelve parts, one stagger" }
+                        p (Attrs.className "gallery-note") { fun (s: Story) -> "Gallery " + percent s.Gallery.Progress.Value }
 
-                show
-                    (fun (s: Story) -> s.Gallery.Progress.Value > 0.5)
-                    (div (Attrs.className "tiles extras") {
-                        forEachFixed
-                            id
-                            (fun (_: Story) -> extras)
-                            (div (Attrs.className "tile extra", Motion.appear popIn) { fun (label: string) -> label })
-                    })
-            }
+                        div (Attrs.className "tiles") {
+                            for label in tiles do
+                                div (Attrs.className "tile") { label }
+                        }
+                    }
 
-            footer (Attrs.className "story-end") { "Built with Ranvier and anime.js." }
-        })
+                    section (Attrs.className "more") {
+                        h2 () { "Four more, created on the client" }
+
+                        button (Attrs.className "primary more-toggle", Events.onClick (fun (s: Story) _ -> s.More.Value <- not s.More.Value)) {
+                            fun (s: Story) ->
+                                if s.More.Value then
+                                    "Hide the extras"
+                                else
+                                    "Show the extras"
+                        }
+
+                        show
+                            (fun (s: Story) -> s.More.Value)
+                            (div (Attrs.className "tiles extras") {
+                                forEachFixed
+                                    id
+                                    (fun (_: Story) -> extras)
+                                    (div (Attrs.className "tile extra", Motion.appear popIn) { fun (label: string) -> label })
+                            })
+                    }
+
+                    footer (Attrs.className "story-end") { "Built with Ranvier and anime.js." }
+                }))

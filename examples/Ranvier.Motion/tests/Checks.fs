@@ -16,6 +16,5 @@ let cases: Case array =
                 StoryChecks.cases
                 PhysicsChecks.cases
                 RoutesChecks.cases
-                LibraryRepros.cases
             ]
     )

@@ -219,7 +219,6 @@ let private validNameCharacters underscore (value: string) =
 
         valid <-
             (c >= 'a' && c <= 'z')
-            || (index > 0 && c >= 'A' && c <= 'Z')
             || (c >= '0' && c <= '9')
             || c = '-'
             || (underscore && c = '_')
@@ -227,6 +226,42 @@ let private validNameCharacters underscore (value: string) =
         index <- index + 1
 
     valid
+
+/// <summary>
+/// The case-sensitive SVG tag and attribute names accepted besides lowercase names, as the HTML parser's SVG adjustment
+/// tables restore them. On .NET every name is accepted; under Fable, the module of the SVG sugar tags sets them, so a
+/// bundle without an SVG tag accepts lowercase names only.
+/// </summary>
+[<Sealed>]
+type internal SvgNames() =
+#if FABLE_COMPILER
+    /// <summary>A JS Set of the names; null until the SVG sugar tags' module loads.</summary>
+    member val Names: obj = null with get, set
+#else
+    member val Names =
+        System.Collections.Generic.HashSet<string>(
+            "altGlyph altGlyphDef altGlyphItem animateColor animateMotion animateTransform clipPath feBlend feColorMatrix feComponentTransfer feComposite feConvolveMatrix feDiffuseLighting feDisplacementMap feDistantLight feDropShadow feFlood feFuncA feFuncB feFuncG feFuncR feGaussianBlur feImage feMerge feMergeNode feMorphology feOffset fePointLight feSpecularLighting feSpotLight feTile feTurbulence foreignObject glyphRef linearGradient radialGradient textPath attributeName attributeType baseFrequency baseProfile calcMode clipPathUnits diffuseConstant edgeMode filterUnits gradientTransform gradientUnits kernelMatrix kernelUnitLength keyPoints keySplines keyTimes lengthAdjust limitingConeAngle markerHeight markerUnits markerWidth maskContentUnits maskUnits numOctaves pathLength patternContentUnits patternTransform patternUnits pointsAtX pointsAtY pointsAtZ preserveAlpha preserveAspectRatio primitiveUnits refX refY repeatCount repeatDur requiredExtensions requiredFeatures specularConstant specularExponent spreadMethod startOffset stdDeviation stitchTiles surfaceScale systemLanguage tableValues targetX targetY textLength viewBox viewTarget xChannelSelector yChannelSelector zoomAndPan"
+                .Split
+                ' '
+        ) with get, set
+#endif
+
+let internal svgNames = SvgNames ()
+
+#if FABLE_COMPILER
+[<Fable.Core.Emit("($0 != null && $0.has($1))")>]
+let private has (names: obj) (value: string) : bool =
+    Fable.Core.Util.jsNative
+
+// Whether the value is exactly one listed name: ASCII letters only, then a member of the set.
+let private listed (value: string) =
+    validNameCharacters false (value.ToLowerInvariant ())
+    && has svgNames.Names value
+#else
+let private listed (value: string) =
+    validNameCharacters false (value.ToLowerInvariant ())
+    && svgNames.Names.Contains value
+#endif
 
 let name =
     function
@@ -240,14 +275,23 @@ let name =
             System.String.IsNullOrEmpty value
             || value[0] < 'a'
             || value[0] > 'z'
-            || not (validNameCharacters false value)
+            || not (validNameCharacters false value || listed value)
         then
-            invalidArg "tag" "Tag names must start with a lowercase letter and contain letters, digits or hyphens"
+            invalidArg "tag" "Tag names must contain lowercase letters, digits or hyphens, or be a case-sensitive SVG name"
 
         value
 
+/// <summary>The failure of a script element, which no client mount path creates, in either namespace.</summary>
+let internal scriptRefused =
+    "Script elements are not created by templates or typed views; load scripts through the server document shell"
+
+/// <summary>Raises for a script element name, matched case-insensitively.</summary>
+let internal refuseScript (tagName: string) =
+    if tagName.ToLowerInvariant () = "script" then
+        raise (System.InvalidOperationException scriptRefused)
+
 let isVoid tag =
-    match name tag with
+    match (name tag).ToLowerInvariant() with
     | "area"
     | "base"
     | "br"
@@ -264,18 +308,22 @@ let isVoid tag =
     | "wbr" -> true
     | _ -> false
 
-let validateAttribute name =
+let validateAttribute (name: string) =
+    if System.String.IsNullOrEmpty name then
+        raise (System.ArgumentException ("Attribute names must not be empty", "name"))
+
+    let lowered = name.ToLowerInvariant ()
+
     if
-        System.String.IsNullOrEmpty name
-        || name[0] < 'a'
+        name[0] < 'a'
         || name[0] > 'z'
-        || name.StartsWith ("on", System.StringComparison.Ordinal)
-        || name = "srcdoc"
-        || not (validNameCharacters true name)
+        || lowered.StartsWith ("on", System.StringComparison.Ordinal)
+        || lowered = "srcdoc"
+        || not (validNameCharacters true name || listed name)
     then
         raise (
             System.ArgumentException (
-                "Attribute names must start with a lowercase letter and cannot contain event handlers or raw document content",
+                "Attribute names must be lowercase or a case-sensitive SVG name, and cannot contain event handlers or raw document content",
                 "name"
             )
         )
@@ -942,7 +990,7 @@ and [<Sealed>] HtmlBackend(policy: BrowserPolicy, sink: HtmlSink) =
 
     override this.Element(tag, modifiers, children) =
         if
-            match name tag with
+            match (name tag).ToLowerInvariant() with
             | "script"
             | "style"
             | "iframe"

@@ -313,8 +313,8 @@ jobs:
         run: dotnet run --project fable/Ranvier.View.Anime.Tests/Ranvier.View.Anime.Tests.fsproj -c Release
         working-directory: .
 
-  # The five Motion example pages (examples/Ranvier.Motion): the jsdom page checks on a mocked clock and the Chromium
-  # checks on the page clock (npm test), the story's .NET server render against its twin without Motion parts, then the
+  # The five Motion example pages (examples/Ranvier.Motion): the jsdom page checks on a mocked clock, the story's .NET
+  # server document against its twin without Motion parts, and the Chromium checks on the page clock (npm test), then the
   # per-page bundle sizes, reported without a budget.
   motion:
     name: Motion examples
@@ -343,14 +343,22 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       # npm test compiles the page checks and runs them under jsdom (test:dom), then compiles the pages, renders the
-      # story page on .NET for the Vite server, and runs the Chromium suite against it on port 5179 (test:browser).
+      # story document on .NET (ServerChecks, which fails when it differs from its twin without Motion parts), and runs
+      # the Chromium suite against the Vite server on port 5179 (test:browser).
       - name: Run the Motion example tests
         run: npm test
-      - name: Check the story's server render against its twin
-        run: dotnet run --project examples/Ranvier.Motion/Server/ServerChecks.fsproj -c Release
-        working-directory: .
+      # The pages were compiled by npm test; size:only bundles them without compiling again.
       - name: Report the per-page bundle sizes
-        run: npm run size
+        run: npm run size:only
+      - name: Upload the Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: motion-playwright
+          path: |
+            examples/Ranvier.Motion/playwright-report/
+            examples/Ranvier.Motion/test-results/
+          if-no-files-found: ignore
 
   # The one CI check that branch rules require: it fails when any job failed or was cancelled, and passes when the
   # build and test jobs were skipped for a documentation-only change.

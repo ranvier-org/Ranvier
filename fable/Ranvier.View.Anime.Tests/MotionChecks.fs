@@ -336,7 +336,9 @@ let private flipOrder queued (clock: Clock) =
     let reduced = logged ()
     mounted.Dispose ()
 
-    equal ([||], [| "animate 3 1 2" |], [| "record 3 1 2"; "animate 3 1" |], [ "3"; "1"; "2" ], [||]) (mounting, created, removed, held, reduced)
+    equal
+        ([||], [| "animate 3 1 2 fade" |], [| "record 3 1 2 fade"; "animate 3 1" |], [ "3"; "1"; "2" ], [||])
+        (mounting, created, removed, held, reduced)
 
 type Level = { Level: Signal<float> }
 
@@ -971,6 +973,9 @@ let private flipKeepsEnters queued (clock: Clock) =
 
     equal (("1", "1"), ("1", "1")) (ends flippedEnter, ends flippedPresence)
 
+[<Emit("$0.animate[$0.xProp]($1, $2)")>]
+let private releaseTo (draggable: Draggable) (x: float) (duration: float) : unit = jsNative
+
 [<Emit("$0.onSettle($0)")>]
 let private fireSettle (draggable: Draggable) : unit = jsNative
 
@@ -987,14 +992,167 @@ let private dragWritesSettle (clock: Clock) =
 
     let mounted = mountIn false graph target (Component.render dragged puck)
     let draggable = lastDraggable ()
-    draggable.setX (42., true) |> ignore
+    // anime reports the settle while the release animation still runs, then moves the element with no callback.
+    releaseTo draggable 42. 100.
     advance clock 0.
-    advance clock 16.
-    let sets = draggableSets ()
+    advance clock 48.
     fireSettle draggable
-    let settled = graph.Run (fun () -> puck.Position.Value), draggableSets () - sets
+    let early = draggable.x
+    let sets = draggableSets ()
+
+    for _ in 1..10 do
+        advance clock 16.
+
+    let settled =
+        graph.Run (fun () -> puck.Position.Value), draggable.x, draggableSets () - sets
+
     mounted.Dispose ()
-    equal (struct (42., 0.), 0) settled
+    equal (true, (struct (42., 0.), 42., 0)) (early < 42., settled)
+
+[<Emit("(l => [l.properties, l.recordedProperties].every(s => s instanceof Set && s.has('opacity') && s.has('color') && s.has('filter')))($0)")>]
+let private layoutShape (layout: AutoLayout) : bool = jsNative
+
+let private layoutFieldsPinned (clock: Clock) =
+    let root = host ()
+
+    root.appendChild (document.createElement "p")
+    |> ignore
+
+    let layout = Anime.layout root
+    layout.animate () |> ignore
+    let shaped = layoutShape layout
+    layout.revert ()
+    equal true shaped
+
+let private failureOf queued (build: unit -> Component<unit>) =
+    try
+        let view = build ()
+        use graph = new Graph ()
+        (mountIn queued graph (host ()) (Component.render view ())).Dispose()
+        ""
+    with error ->
+        error.Message
+
+let private mixedCaseHandlerRaises queued (clock: Clock) =
+    let failures =
+        [
+            failureOf queued (fun () -> Component.template (fun _ () -> ()) (div (Attrs.attribute ("oNclick", "alert(1)")) { "x" }))
+            failureOf queued (fun () -> Component.template (fun _ () -> ()) (div (Attrs.attribute ("refX refY", "1")) { "x" }))
+            failureOf queued (fun () -> Component.define (fun _ () -> ()) (fun t -> t.element (HtmlTag "feBlend feColorMatrix") [||] [||]))
+        ]
+
+    equal [ true; true; true ] [ for failure in failures -> failure.Contains "names must" ]
+
+/// <summary>Each element templates reject on every path, with the phrase its failure holds.</summary>
+let private refused: (string * (TemplateBuilder<unit> -> TemplateView<unit>)) list =
+    [
+        "Script elements", (fun t -> t.div [||] [| t.element (HtmlTag "script") [||] [| t.text "globalThis.pwned = 1" |] |])
+        "Script elements",
+        (fun t ->
+            t.div
+                [||]
+                [|
+                    t.element (HtmlTag "script") [| t.Attrs.attribute ("src", "data:text/javascript,window.pwnedSrc=1") |] [||]
+                |])
+        "Script elements",
+        (fun t ->
+            t.element
+                (HtmlTag "svg")
+                [||]
+                [|
+                    t.element (HtmlTag "script") [| t.Attrs.attribute ("href", "data:text/javascript,window.pwnedSrc=2") |] [||]
+                |])
+        "Script elements", (fun t -> t.div [||] [| t.script [||] [||] |])
+        "Raw-text", (fun t -> t.element (HtmlTag "style") [||] [| t.text "p {}" |])
+        "Raw-text", (fun t -> t.element (HtmlTag "iframe") [||] [| t.text "<p>" |])
+        "Template elements", (fun t -> t.element (HtmlTag "template") [||] [| t.span [||] [||] |])
+        "void element", (fun t -> t.element (HtmlTag "br") [||] [| t.span [||] [||] |])
+    ]
+
+[<Emit("(globalThis.pwned ?? globalThis.window.pwned ?? globalThis.window.pwnedSrc)")>]
+let private pwned () : obj = jsNative
+
+/// <summary>Elements the server rejects and the client mounts as built: RCDATA with element children and case twins.</summary>
+let private clientAccepted: (TemplateBuilder<unit> -> TemplateView<unit>) list =
+    [
+        (fun t -> t.element (HtmlTag "textarea") [||] [| t.span [||] [| t.text "globalThis.pwned = 1" |] |])
+        (fun t -> t.element (HtmlTag "title") [||] [| t.span [||] [||] |])
+        (fun t ->
+            t.element
+                (HtmlTag "svg")
+                [|
+                    t.Attrs.attribute ("viewBox", "0 0 1 1")
+                    t.Attrs.attribute ("viewbox", "0 0 2 2")
+                |]
+                [||])
+    ]
+
+let private clientMountsServerChecks queued (clock: Clock) =
+    let failures =
+        [
+            for view in clientAccepted -> failureOf queued (fun () -> Component.define (fun _ () -> ()) view)
+        ]
+
+    equal (List.replicate clientAccepted.Length "", true) (failures, isNull (pwned ()))
+
+let private refusedElements queued (clock: Clock) =
+    let failures =
+        [
+            for phrase, view in refused ->
+                let failure = failureOf queued (fun () -> Component.define (fun _ () -> ()) view)
+                failure.ToLowerInvariant().Contains(phrase.ToLowerInvariant ())
+        ]
+
+    equal (List.replicate refused.Length true, true) (failures, isNull (pwned ()))
+
+type Captions = { Captions: Signal<string array> }
+
+let private captioned =
+    Component.template
+        (fun _ (s: Captions) -> s)
+        (svg () { forEach id (fun (s: Captions) -> s.Captions.Value) (title' () { fun (caption: unit -> string) -> caption () }) })
+
+let private titleRows queued (clock: Clock) =
+    use graph = new Graph ()
+    let target = host ()
+
+    let state =
+        {
+            Captions = graph.Run (fun () -> Api.createSignal [| "a" |])
+        }
+
+    let mounted = mountIn queued graph target (Component.render captioned state)
+    let spaces = List.ofArray (namespacesOf target "svg > title")
+    mounted.Dispose ()
+    // A title row is an SVG element when created under its svg parent, and an HTML title when parsed on its own.
+    equal (if queued then [ "svg" ] else [ "html" ]) spaces
+
+let private failingExit =
+    Component.template
+        (fun _ (state: Rows) -> state)
+        (ul () {
+            forEach
+                id
+                (fun (s: Rows) -> s.Items.Value)
+                (li (Motion.exit (fun _ _ -> failwith "play failed")) { fun (row: unit -> int) -> string (row ()) })
+        })
+
+let private failingExitUnmarks queued (clock: Clock) =
+    use graph = new Graph ()
+    let marked = Motion.departures ()
+    let state = graph.Run (fun () -> rows [| 1; 2 |])
+    let target = host ()
+    let mounted = mountIn queued graph target (Component.render failingExit state)
+
+    // The seam finishes the failed exit and reports the failure with the pass.
+    try
+        write graph mounted (fun () -> state.Items.Value <- [| 1 |])
+    with _ ->
+        ()
+
+    let after = Motion.departures () - marked, List.ofArray (textsOf target "li")
+    mounted.Dispose ()
+    equal (0, [ "1" ]) after
 
 let private modes (name: string) (check: bool -> Clock -> unit) =
     [|
@@ -1033,9 +1191,15 @@ let cases: (string * (Clock -> unit)) array =
             |]
             modes "under flip, an opacity enter or presence enter ends at its last frame" flipKeepsEnters
             [|
-                "drag writes its position when a release settles, without echo", dragWritesSettle
+                "drag writes its position once a release's motion ends, without echo", dragWritesSettle
             |]
-            modes "flip records before and animates after each pass, without leaving rows" flipOrder
+            [| "anime's layout keeps the property Sets flip edits", layoutFieldsPinned |]
+            modes "an attribute name that lowercases to an event handler, or joins listed SVG names, raises" mixedCaseHandlerRaises
+            modes "raw-text, template and void-with-children elements raise on the client" refusedElements
+            modes "an exit whose play raises leaves no departing mark" failingExitUnmarks
+            modes "the client mounts RCDATA elements with element children and case-twin attributes without running script" clientMountsServerChecks
+            modes "a title row under svg follows the commit mode's documented namespace" titleRows
+            modes "flip records before and animates after each pass, without leaving rows, and fades rows with no running Motion part" flipOrder
             [|
                 "follow sets its first value and animates to each write", followReaches
                 "animateOn replaces a running animation and settles on the last value", animateOnReplaces

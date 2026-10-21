@@ -3,7 +3,8 @@
 import test, { mock } from "node:test";
 import { JSDOM } from "jsdom";
 
-const dom = new JSDOM("<!doctype html><body></body>");
+// Scripts run, so a check can tell that a refused script element never executed.
+const dom = new JSDOM("<!doctype html><body></body>", { runScripts: "dangerously", resources: "usable" });
 const globals = ["Node", "Element", "HTMLElement", "SVGElement", "NodeList", "HTMLCollection", "getComputedStyle", "Event", "FocusEvent", "MutationObserver"];
 globalThis.window = dom.window;
 globalThis.document = dom.window.document;
@@ -41,11 +42,11 @@ mock.timers.enable({ apis: ["Date", "setTimeout"], now: 1000 });
 const anime = await import("animejs");
 globalThis.motionLog = [];
 globalThis.motionEngine = anime.engine;
-const children = layout => layout.children.map(child => child.textContent).join(" ");
+const children = layout => Array.isArray(layout.children) ? layout.children.map(child => child.textContent).join(" ") : String(layout.children);
 for (const method of ["record", "animate"]) {
   const original = anime.AutoLayout.prototype[method];
   anime.AutoLayout.prototype[method] = function (...args) {
-    globalThis.motionLog.push(`${method} ${children(this)}`);
+    globalThis.motionLog.push(`${method} ${children(this)}${this.properties.has("opacity") ? " fade" : ""}`);
     return original.apply(this, args);
   };
 }
