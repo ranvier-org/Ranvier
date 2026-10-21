@@ -12,6 +12,8 @@
         <Compile Include="src/Page.fs" />
         <Compile Include="src/Kanban.fs" />
         <Compile Include="src/Dashboard.fs" />
+        <Compile Include="src/Story.fs" />
+        <Compile Include="src/StoryClient.fs" />
     </ItemGroup>
 
     <ItemGroup>

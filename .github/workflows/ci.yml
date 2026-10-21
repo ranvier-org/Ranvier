@@ -314,7 +314,8 @@ jobs:
         working-directory: .
 
   # The five Motion example pages (examples/Ranvier.Motion): the jsdom page checks on a mocked clock and the Chromium
-  # checks on the page clock (npm test), then the per-page bundle sizes, reported without a budget.
+  # checks on the page clock (npm test), the story's .NET server render against its twin without Motion parts, then the
+  # per-page bundle sizes, reported without a budget.
   motion:
     name: Motion examples
     needs: changes
@@ -341,10 +342,13 @@ jobs:
         working-directory: .
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      # npm test compiles the page checks and runs them under jsdom (test:dom), then compiles the pages and runs the
-      # Chromium suite against the Vite server on port 5179 (test:browser).
+      # npm test compiles the page checks and runs them under jsdom (test:dom), then compiles the pages, renders the
+      # story page on .NET for the Vite server, and runs the Chromium suite against it on port 5179 (test:browser).
       - name: Run the Motion example tests
         run: npm test
+      - name: Check the story's server render against its twin
+        run: dotnet run --project examples/Ranvier.Motion/Server/ServerChecks.fsproj -c Release
+        working-directory: .
       - name: Report the per-page bundle sizes
         run: npm run size
 

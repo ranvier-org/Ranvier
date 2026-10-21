@@ -22,6 +22,7 @@
   <Folder Name="/examples/Ranvier.Motion/">
     <Project Path="examples/Ranvier.Motion/Motion.fsproj" />
     <Project Path="examples/Ranvier.Motion/tests/MotionTests.fsproj" />
+    <Project Path="examples/Ranvier.Motion/Server/ServerChecks.fsproj" />
   </Folder>
   <Folder Name="/experiments/">
     <File Path="experiments/Ranvier.View.Foundation/Generated/Html.fs" />
