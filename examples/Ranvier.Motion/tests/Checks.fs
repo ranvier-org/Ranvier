@@ -15,6 +15,7 @@ let cases: Case array =
                 DashboardChecks.cases
                 StoryChecks.cases
                 PhysicsChecks.cases
+                RoutesChecks.cases
                 LibraryRepros.cases
             ]
     )

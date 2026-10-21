@@ -15,6 +15,7 @@
         <Compile Include="src/Story.fs" />
         <Compile Include="src/StoryClient.fs" />
         <Compile Include="src/Physics.fs" />
+        <Compile Include="src/Routes.fs" />
     </ItemGroup>
 
     <ItemGroup>
