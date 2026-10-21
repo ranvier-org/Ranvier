@@ -14,6 +14,7 @@ let cases: Case array =
                 KanbanChecks.cases
                 DashboardChecks.cases
                 StoryChecks.cases
+                PhysicsChecks.cases
                 LibraryRepros.cases
             ]
     )

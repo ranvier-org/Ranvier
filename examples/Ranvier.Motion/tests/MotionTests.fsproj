@@ -17,6 +17,7 @@
         <Compile Include="KanbanChecks.fs" />
         <Compile Include="DashboardChecks.fs" />
         <Compile Include="StoryChecks.fs" />
+        <Compile Include="PhysicsChecks.fs" />
         <Compile Include="Checks.fs" />
     </ItemGroup>
 
