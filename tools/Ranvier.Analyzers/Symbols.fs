@@ -452,6 +452,11 @@ module Core =
 module View =
     open FSharp.Compiler.Symbols.FSharpExprPatterns
 
+    /// Raises `InvalidOperationException` when the HTML parser restructures `tag` under `ancestors` (nearest first, lower
+    /// case): the view's own rule, from experiments/Ranvier.View.Portable/ContentModel.fs compiled into the analyzers.
+    let checkNesting (ancestors: string list) (tag: string) : unit =
+        Ranvier.View.Foundation.ContentModel.check ancestors tag
+
     [<Literal>]
     let Builder = "Ranvier.View.Foundation.Template.TemplateBuilder`1"
 

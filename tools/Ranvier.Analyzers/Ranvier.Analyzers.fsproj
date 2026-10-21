@@ -17,6 +17,8 @@
         <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);_RanvierAnalyzerInPackage</TargetsForTfmSpecificContentInPackage>
     </PropertyGroup>
     <ItemGroup>
+        <!-- The view's HTML nesting rules, shared so the diagnostic and the server refusal agree. -->
+        <Compile Include="../../experiments/Ranvier.View.Portable/ContentModel.fs" Link="Rules/ContentModel.fs" />
         <Compile Include="Symbols.fs" />
         <Compile Include="Index.fs" />
         <Compile Include="Rule.fs" />

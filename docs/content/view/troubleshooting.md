@@ -44,6 +44,8 @@ the read under a [boundary](boundaries.md).
 the browser's parser rebuilds. Write the parser's structure, here `table`, `tbody`, `tr`. See
 [Markup the parser would change](../server/rendering.md#markup-the-parser-would-change).
 
+The analyzers report this at build time: [RAN024](../analyzers/ran024.md).
+
 **"Hydration mismatch at 0/1: expected &lt;button&gt;, found span"** (`HydrationMismatchException`,
 under `Strict`, or reported otherwise): the server HTML differs from the client's template. Check that
 the client hydrates the same definition with the server's props, the same `IdPrefix`, and no `if` that

@@ -569,3 +569,40 @@ let ran023: Rule =
         Gate = Symbols.Assemblies.View
         Run = invalidContent
     }
+
+let private refused (element: ElementSite) : string option =
+    match element.Tag with
+    | "script" ->
+        Some
+            "`script` is refused by every render (\"Script elements are not created by templates or typed views\"). Load scripts through the server document shell, for example `Server.Page` scripts."
+    | "template" ->
+        Some
+            "`template` is refused by every render (\"Template elements are not supported in templates\"). Build the content with a component instead."
+    | tag when Symbols.View.rawTextTags.Contains tag ->
+        Some
+            $"`{tag}` is a raw-text element, which the server render refuses (\"Raw-text elements require an explicit HTML serialization policy\"). Write it outside the template."
+    | _ -> None
+
+let private restructured (element: ElementSite) : string option =
+    try
+        Symbols.View.checkNesting element.Ancestors element.Tag
+        None
+    with :? System.InvalidOperationException as failure ->
+        Some $"{failure.Message}, which the server render refuses at its first render. Nest the elements as the HTML parser builds them."
+
+let private serverRefusals (input: Input) : Message list =
+    [
+        for element in elements input do
+            match refused element, restructured element with
+            | Some text, _
+            | None, Some text -> message "RAN024" Severity.Warning element.Range text []
+            | None, None -> ()
+    ]
+
+let ran024: Rule =
+    {
+        Code = "RAN024"
+        Title = "Markup the server render refuses"
+        Gate = Symbols.Assemblies.View
+        Run = serverRefusals
+    }
