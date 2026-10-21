@@ -29,16 +29,21 @@ let private parameterAt (m: FSharpMemberOrFunctionOrValue) (index: int) : FSharp
     |> Seq.concat
     |> Seq.tryItem index
 
+/// The full name of `t`'s type definition, through abbreviations such as `string`.
+let private typeName (t: FSharpType) : string option =
+    let t = t.StripAbbreviations ()
+
+    if t.HasTypeDefinition then
+        t.TypeDefinition.TryFullName
+    else
+        None
+
 let private isString (t: FSharpType) =
-    t.HasTypeDefinition
-    && t.TypeDefinition.TryFullName = Some "System.String"
+    typeName t = Some "System.String"
 
 let private isStatic (t: FSharpType) =
-    not t.IsFunctionType
-    && not (
-        t.HasTypeDefinition
-        && t.TypeDefinition.TryFullName = Some Source
-    )
+    not (t.StripAbbreviations ()).IsFunctionType
+    && typeName t <> Some Source
 
 /// The build-time site that argument `index` of a call of `m` is.
 let private buildSite (m: FSharpMemberOrFunctionOrValue) (index: int) : BuildSite option =

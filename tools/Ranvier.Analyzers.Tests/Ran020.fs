@@ -28,6 +28,13 @@ let tests =
                     "one message"
             }
 
+            test "the finding's range is the read" {
+                let range =
+                    (findings "let c = Component.template (fun _ () -> ()) (div () { string count.Value })\n").Head.Range
+
+                Expect.equal (range.StartLine, range.StartColumn, range.EndColumn) (8, 61, 72) "count.Value"
+            }
+
             test "t.text with a string" {
                 Expect.equal
                     (codes "let c = Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.text (string count.Value) |])\n")
