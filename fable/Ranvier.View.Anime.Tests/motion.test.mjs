@@ -41,11 +41,11 @@ mock.timers.enable({ apis: ["Date", "setTimeout"], now: 1000 });
 const anime = await import("animejs");
 globalThis.motionLog = [];
 globalThis.motionEngine = anime.engine;
-const children = layout => layout.children.map(child => child.textContent).join(" ");
+const children = layout => Array.isArray(layout.children) ? layout.children.map(child => child.textContent).join(" ") : String(layout.children);
 for (const method of ["record", "animate"]) {
   const original = anime.AutoLayout.prototype[method];
   anime.AutoLayout.prototype[method] = function (...args) {
-    globalThis.motionLog.push(`${method} ${children(this)}`);
+    globalThis.motionLog.push(`${method} ${children(this)}${this.properties.has("opacity") ? " fade" : ""}`);
     return original.apply(this, args);
   };
 }
