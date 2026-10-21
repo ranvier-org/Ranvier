@@ -5,7 +5,7 @@ open Fable.Core.TS.Dom
 
 /// <summary>
 /// The host-specific operations a case uses: the document, the clock, interception and the artefact sink. Both hosts
-/// give each case a fresh document and the same clock: the view's queued microtasks and <c>Post</c> share one queue
+/// give each case an empty document and the same clock: the view's queued microtasks and <c>Post</c> share one queue
 /// that only <c>RunMicrotasks</c> drains, and timers and animation frames run only in <c>AdvanceBy</c>.
 /// </summary>
 type Harness =

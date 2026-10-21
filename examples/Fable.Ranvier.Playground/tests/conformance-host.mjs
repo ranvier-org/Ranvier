@@ -107,3 +107,42 @@ export function runOnPage(window, create, run) {
     clock.restore();
   }
 }
+
+// Records the listeners added to the window, its document and the document's html, head and body. leftovers ()
+// describes and removes those still live and the view's $$ranvier expandos on the same five, as a case must leave
+// none: the twin starts each case on a fresh document. jsdom's selector engine adds its own window listeners on its
+// first query, so the record starts after one.
+export function trackShared(window) {
+  const document = window.document;
+  document.querySelectorAll("*");
+  document.body.matches(":hover");
+  const shared = () => [["window", window], ["document", document], ["html", document.documentElement], ["head", document.head], ["body", document.body]];
+  const live = [];
+  const prototype = window.EventTarget.prototype;
+  const add = prototype.addEventListener, remove = prototype.removeEventListener;
+  const captureOf = options => typeof options === "boolean" ? options : Boolean(options?.capture);
+  prototype.addEventListener = function (type, listener, options) {
+    if (shared().some(([, target]) => target === this)) live.push({ target: this, type, listener, capture: captureOf(options) });
+    return add.call(this, type, listener, options);
+  };
+  prototype.removeEventListener = function (type, listener, options) {
+    const index = live.findIndex(l => l.target === this && l.type === type && l.listener === listener && l.capture === captureOf(options));
+    if (index >= 0) live.splice(index, 1);
+    return remove.call(this, type, listener, options);
+  };
+  return {
+    leftovers: () => {
+      const left = [];
+      for (const l of live.splice(0)) {
+        left.push(`${shared().find(([, target]) => target === l.target)[0]} '${l.type}' listener`);
+        remove.call(l.target, l.type, l.listener, l.capture);
+      }
+      for (const [label, target] of shared())
+        for (const key of Object.getOwnPropertyNames(target).filter(key => key.startsWith("$$ranvier"))) {
+          left.push(`${label} expando ${key}`);
+          delete target[key];
+        }
+      return left;
+    },
+  };
+}

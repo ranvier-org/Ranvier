@@ -9,6 +9,33 @@ let tests =
     testList
         "Testing API"
         [
+            testCase "a conformance case that leaves a listener on the body fails"
+            <| fun () ->
+                let scratch =
+                    System.IO.Path.Combine (
+                        System.IO.Path.GetTempPath (),
+                        "ranvier-leftover-"
+                        + string (System.Guid.NewGuid ())
+                    )
+
+                let leaking =
+                    Conformance.ofChecks
+                        [|
+                            "leaks",
+                            fun () ->
+                                let body = (Conformance.document ()).body
+                                body.addEventListener ("click", listener = Fable.Core.U2.Case1 (fun (_: Fable.Core.TS.Dom.Event) -> ()))
+                        |]
+                    |> Array.head
+                    |> snd
+
+                try
+                    Expect.throwsC (fun () -> ConformanceTests.runIn scratch leaking) (fun e ->
+                        Expect.stringContains e.Message "body 'click' listener" "named")
+                finally
+                    if System.IO.Directory.Exists scratch then
+                        System.IO.Directory.Delete (scratch, true)
+
             testCase "disposing an event source out of order or on another thread raises"
             <| fun () ->
                 let source =

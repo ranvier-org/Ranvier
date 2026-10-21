@@ -174,6 +174,17 @@ module Events =
         let entry = listenEntry node eventType capture once passive callback
         fun () -> remove node entry
 
+    /// <summary>The event types of the node's live listeners, one entry per listener.</summary>
+    let listenerTypesOn (node: TwinNode) : string list =
+        match listeners.TryGetValue node with
+        | true, list ->
+            [
+                for entry in list do
+                    if not entry.Removed then
+                        entry.Type
+            ]
+        | false, _ -> []
+
     let listen (node: TwinNode) (eventType: string) (capture: bool) (callback: obj -> unit) : unit -> unit =
         listenWith node eventType capture false false callback
 

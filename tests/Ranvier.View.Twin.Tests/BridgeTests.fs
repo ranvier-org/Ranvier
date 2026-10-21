@@ -148,6 +148,23 @@ let tests =
                 div.innerHTML <- "<b></b><i></i>"
                 Expect.equal div.childNodes.length 2.0 "live"
 
+            testCase "addEventListener and removeEventListener serve the event-handler mixins of an element"
+            <| fun () ->
+                use document = new TwinDocument ()
+                let button = document.CreateElement "button"
+                document.Body.AppendChild button |> ignore
+                let native = button.Native :?> HTMLButtonElement
+                let clicks = ref 0
+                // A ref cell keeps one listener object: the optimiser may otherwise rebuild the closure at each use.
+                let listener =
+                    ref (Fable.Core.U2.Case1 (fun (_: Event) -> clicks.Value <- clicks.Value + 1))
+
+                native.addEventListener ("click", listener = listener.Value)
+                native.click ()
+                native.removeEventListener ("click", listener = listener.Value)
+                native.click ()
+                Expect.equal clicks.Value 1 "added, then removed"
+
             testCase "event and selector members serve a document created without a host"
             <| fun () ->
                 use document = new TwinDocument ()

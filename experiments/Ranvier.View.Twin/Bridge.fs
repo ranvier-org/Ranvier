@@ -382,10 +382,21 @@ module Bridge =
         let set = HashSet<string> names
         fun t -> set.Contains (BridgeCore.NameOf t)
 
-    /// <summary>Accepts the members of <c>EventTarget</c> and of every interface that extends it.</summary>
+    /// <summary>Accepts the members of <c>EventTarget</c>, of every interface that extends it, and of the event-handler mixins.</summary>
     let eventTargets: Type -> bool =
         let target = lazy (BridgeCore.Interface "EventTarget")
-        fun t -> target.Value.IsAssignableFrom t
+        // The event-handler mixins redeclare the listener methods without extending EventTarget.
+        let mixins =
+            HashSet<string>
+                [
+                    "GlobalEventHandlers"
+                    "WindowEventHandlers"
+                    "DocumentAndElementEventHandlers"
+                ]
+
+        fun t ->
+            target.Value.IsAssignableFrom t
+            || mixins.Contains (BridgeCore.NameOf t)
 
     /// <summary>Registers an implementation of the member <c>name</c> with <c>arity</c> arguments for the accepted interfaces.</summary>
     let registerMember (accepts: Type -> bool) (name: string) (arity: int) (implementation: TwinNode -> obj array -> obj) =

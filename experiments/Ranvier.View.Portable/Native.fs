@@ -705,6 +705,20 @@ let newNodeWeakSet () : Fable.Core.TS.Es.WeakSet<Node> =
 #endif
 
 #if !FABLE_COMPILER
+/// <summary>The names of the expandos set on <c>target</c> whose value is not null.</summary>
+let expandoNames (target: obj) : string list =
+    let mutable slots = null
+
+    if expandos.TryGetValue (target, &slots) then
+        [
+            for pair in slots do
+                if not (isNull pair.Value) then
+                    pair.Key
+        ]
+        |> List.sort
+    else
+        []
+
 let listen (target: obj) (eventName: string) (listener: obj -> unit) : unit -> unit =
     (host ()).Listen(target, eventName, listener)
 

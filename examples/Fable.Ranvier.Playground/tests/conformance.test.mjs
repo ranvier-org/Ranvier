@@ -9,7 +9,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { create } from "../generated-tests/JsdomHarness.js";
 import { modules } from "../generated-tests/ConformanceCases.js";
 import { skippedOn } from "../generated-tests/experiments/Ranvier.View.Testing/Conformance.js";
-import { makeClock, interceptIn } from "./conformance-host.mjs";
+import { makeClock, interceptIn, trackShared } from "./conformance-host.mjs";
 
 const globals = ["window", "document", "Event", "MouseEvent", "PointerEvent", "KeyboardEvent", "InputEvent", "FocusEvent"];
 
@@ -30,6 +30,9 @@ const dom = new JSDOM("<!doctype html><html><head></head><body></body></html>", 
 globalThis.window = dom.window;
 for (const name of globals.slice(1)) globalThis[name] = name === "document" ? dom.window.document : dom.window[name];
 after(() => { dom.window.close(); for (const name of globals) delete globalThis[name]; });
+
+// The listeners and expandos a case leaves on the shared window, document, html, head and body fail it.
+const { leftovers } = trackShared(dom.window);
 
 // The document as a new one has it: empty head and body without attributes, and nothing focused.
 function resetDocument() {
@@ -61,13 +64,24 @@ for (const [moduleName, cases] of modules) {
           writeFileSync(new URL(`${String(++count).padStart(2, "0")}-${slug(artefact)}.txt`, directory), text);
         },
         errors: () => listenerErrors.splice(0),
-        intercept: interceptIn(dom.window),
+        intercept: (target, member, wrap) => {
+          const restore = intercept(target, member, wrap);
+          let restored = false;
+          const once = () => { if (!restored) { restored = true; restore(); } };
+          restores.push(once);
+          return once;
+        },
       };
+      const intercept = interceptIn(dom.window);
+      const restores = [];
       try { run(create(dom.window.document, host)); }
       finally {
+        for (const restore of restores.reverse()) restore();
         clock.restore();
         mock.timers.reset();
       }
+      const left = leftovers();
+      if (left.length > 0) throw new Error(`The case left state on the shared document: ${left.join("; ")}`);
     });
   }
 }
