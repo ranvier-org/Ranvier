@@ -1,0 +1,12 @@
+<Project>
+  <!--
+  Fable discovers plugins among the compilation's assembly references. `dotnet fable` evaluates projects without
+  building them, so the plugin assembly is built beforehand:
+  dotnet build experiments/Ranvier.View.Arms.FablePlugin/Ranvier.View.Arms.FablePlugin.fsproj -c Release
+  -->
+  <ItemGroup Condition="'$(FABLE_COMPILER)' == 'true'">
+    <Reference Include="$(MSBuildThisFileDirectory)../Ranvier.View.Arms.FablePlugin/bin/Release/netstandard2.0/Ranvier.View.Arms.FablePlugin.dll" />
+    <!-- The plugin attribute on Arms.Match derives from a Fable.AST type, so the compilation references Fable.AST too. -->
+    <Reference Include="$(MSBuildThisFileDirectory)../Ranvier.View.Arms.FablePlugin/bin/Release/netstandard2.0/Fable.AST.dll" />
+  </ItemGroup>
+</Project>

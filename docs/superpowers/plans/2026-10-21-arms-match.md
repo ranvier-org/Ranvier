@@ -241,6 +241,8 @@ Expected: exit 0; the copied file holds an `explicit` object with `raw`, `gzip` 
 
 ```
 out/
+# Fable writes the referenced Ranvier.View.Arms modules beside the project.
+*.js
 ```
 
 `experiments/Ranvier.View.Arms/Checks/Discovery/Main.fs`:
