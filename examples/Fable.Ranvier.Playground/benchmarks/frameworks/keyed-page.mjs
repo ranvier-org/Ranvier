@@ -114,7 +114,7 @@ window.keyedPerf = {
   /// Mounts an empty list and returns its create and release steps; used by the heap-snapshot diff.
   mounted(mode, fixture) {
     const node = host(), list = (fixture === "arms" ? armAdapters : adapters)[mode](node);
-    return { create: count => list.create(count), release: () => { list.dispose(); node.remove(); } };
+    return { create: count => list.create(count), switch: () => list.switch(), release: () => { list.dispose(); node.remove(); } };
   },
   /// Counts DOM calls made by the timed step.
   domCalls(mode, name) {

@@ -264,7 +264,7 @@ let collectHots (build: unit -> 'r) : 'r * IHot list =
 /// A function that runs interpreted until its <c>hotCalls</c>-th call queues its compilation on the thread pool, and
 /// runs the compiled delegate once that is published. Safe for concurrent calls: exactly one call queues the compile,
 /// calls before the publication run interpreted, and a failed compile leaves the function interpreted and writes a
-/// <c>Trace</c> warning.
+/// <c>Trace</c> warning. A compile returning null leaves it interpreted without a warning.
 /// </summary>
 [<Sealed>]
 type internal Hot<'a, 'b>(interpreted: 'a -> 'b, compile: unit -> obj) =
@@ -291,15 +291,18 @@ type internal Hot<'a, 'b>(interpreted: 'a -> 'b, compile: unit -> obj) =
 
         if not (isNull (box compile)) then
             try
-                current <- unbox<'a -> 'b>(compile ())
-                compiled <- true
+                match compile () with
+                | null -> failed <- true
+                | compiledDelegate ->
+                    current <- unbox<'a -> 'b> compiledDelegate
+                    compiled <- true
             with error ->
-                failed <- true
-
                 Diagnostics.Trace.TraceWarning (
                     "Arms.Match: a per-call lambda stays interpreted: "
                     + error.Message
                 )
+
+                failed <- true
 
     override this.Invoke(argument: 'a) : 'b =
         if
@@ -320,17 +323,34 @@ type internal Hot<'a, 'b>(interpreted: 'a -> 'b, compile: unit -> obj) =
 
 /// <summary>
 /// A function from the values of a lambda's let-bound free variables to a <c>Hot</c> function over the lambda. The
-/// compiled factory is built once, by the first compile among its <c>Hot</c> functions.
+/// compiled factory is built once, by the first compile among its <c>Hot</c> functions; when that fails, it writes one
+/// <c>Trace</c> warning and every <c>Hot</c> of the factory stays interpreted.
 /// </summary>
 [<Sealed>]
 type internal HotFactory<'t, 'a, 'b>(interpreted: 't -> 'a -> 'b, compile: unit -> obj) =
     inherit FSharpFunc<'t, 'a -> 'b>()
 
-    let compiled = lazy (unbox<'t -> 'a -> 'b>(compile ()))
+    let compiled =
+        lazy
+            (try
+                unbox<'t -> 'a -> 'b>(compile ())
+             with error ->
+                 Diagnostics.Trace.TraceWarning (
+                     "Arms.Match: a per-call lambda stays interpreted: "
+                     + error.Message
+                 )
+
+                 Unchecked.defaultof<_>)
 
     override _.Invoke(values: 't) : 'a -> 'b =
         let hot =
-            Hot<'a, 'b>(interpreted values, (fun () -> box (compiled.Force () values)))
+            Hot<'a, 'b>(
+                interpreted values,
+                fun () ->
+                    match box (compiled.Force ()) with
+                    | null -> null
+                    | _ -> box (compiled.Force () values)
+            )
 
         track hot
         hot |> box |> unbox<'a -> 'b>
@@ -350,21 +370,41 @@ let private factoryOf (free: Var list) (lambda: Expr) : Expr * Expr =
 
 /// <summary>
 /// The expression with each lambda that runs per call (a reader, a row reader, a handler, the selector) replaced by a
-/// <c>Hot</c> function when it is closed, or by a <c>HotFactory</c> applied to its free variables when each is bound by
-/// an enclosing <c>let</c>; thunks over <c>unit</c> and computation-expression builder lambdas are descended into, and
-/// delegates stay interpreted; a nested site's quotation is left to its own lowering.
+/// <c>Hot</c> function when it is closed, or, outside lambdas that run per call, by a <c>HotFactory</c> applied to its
+/// free variables when each is bound by an enclosing <c>let</c>. Thunks over <c>unit</c>, computation-expression builder
+/// lambdas, <c>For</c> bodies and lambdas left open are descended into; delegates stay interpreted; a nested site's
+/// quotation is left to its own lowering.
 /// </summary>
-let private compileHot (expr: Expr) : Expr =
-    let rec go (bound: Set<Var>) (expr: Expr) =
+let private compileHot (at: At) (expr: Expr) : Expr =
+    let located (compile: unit -> obj) () : obj =
+        try
+            compile ()
+        with error ->
+            raise (InvalidOperationException (sprintf "%s(%d): %s" at.File at.Line error.Message, error))
+
+    // once: the expression runs once per site construction, so a let inside it, or a For body's item, binds one value
+    // per site and item.
+    let rec go (once: bool) (bound: Set<Var>) (expr: Expr) =
         match expr with
         | NewDelegate _
         | QuoteTyped _
         | QuoteRaw _ -> expr
-        | Let (var, value, body) -> Expr.Let (var, go bound value, go (bound.Add var) body)
+        | Let (var, value, body) -> Expr.Let (var, go once bound value, go once (if once then bound.Add var else bound) body)
         | LetRecursive _
         | ForIntegerRangeLoop _
         | TryWith _ -> expr
-        | ExprShape.ShapeLambda (var, _) when
+        | Call (Some builder, info, [ Lambda (var, body) ]) when info.Name = "Delay" ->
+            Expr.Call (go once bound builder, info, [ Expr.Lambda (var, go once bound body) ])
+        | Call (Some builder, info, [ items; Lambda (var, body) ]) when info.Name = "For" ->
+            Expr.Call (
+                go once bound builder,
+                info,
+                [
+                    go once bound items
+                    Expr.Lambda (var, go once (if once then bound.Add var else bound) body)
+                ]
+            )
+        | ExprShape.ShapeLambda (var, body) when
             var.Type <> typeof<unit>
             && not (var.Name.Contains "@")
             ->
@@ -372,16 +412,16 @@ let private compileHot (expr: Expr) : Expr =
             let domain, range = FSharpType.GetFunctionElements expr.Type
 
             if free.IsEmpty then
-                let compile: unit -> obj = fun () -> evaluate false expr
+                let compile = located (fun () -> evaluate false expr)
 
                 let hot =
                     Activator.CreateInstance (typedefof<Hot<_, _>>.MakeGenericType [| domain; range |], [| evaluate true expr; box compile |])
 
                 track (hot :?> IHot)
                 Expr.Value (hot, expr.Type)
-            elif free |> List.forall bound.Contains then
+            elif once && free |> List.forall bound.Contains then
                 let factory, argument = factoryOf free expr
-                let compile: unit -> obj = fun () -> evaluate false factory
+                let compile = located (fun () -> evaluate false factory)
 
                 let hotFactory =
                     Activator.CreateInstance (
@@ -391,12 +431,12 @@ let private compileHot (expr: Expr) : Expr =
 
                 Expr.Application (Expr.Value (hotFactory, factory.Type), argument)
             else
-                expr
+                Expr.Lambda (var, go false bound body)
         | ExprShape.ShapeVar _ -> expr
-        | ExprShape.ShapeLambda (var, body) -> Expr.Lambda (var, go bound body)
-        | ExprShape.ShapeCombination (shape, args) -> ExprShape.RebuildShapeCombination (shape, List.map (go bound) args)
+        | ExprShape.ShapeLambda (var, body) -> Expr.Lambda (var, go (once && var.Name.Contains "@") bound body)
+        | ExprShape.ShapeCombination (shape, args) -> ExprShape.RebuildShapeCombination (shape, List.map (go once bound) args)
 
-    go Set.empty expr
+    go true Set.empty expr
 
 let private unboxMethod =
     match <@ unbox<int> null @> with
@@ -531,8 +571,8 @@ let lower (cells: Cells.Cells) (at: At) (arms: Expr<'u -> TemplateView<'inst>>) 
         LeafExpressionConverter.QuotationToExpression (
             Expr.NewTuple
                 [
-                    compileHot selector
-                    Expr.NewArray (typeof<TemplateView<'inst>>, List.map compileHot bodies)
+                    compileHot at selector
+                    Expr.NewArray (typeof<TemplateView<'inst>>, List.map (compileHot at) bodies)
                 ]
         )
 

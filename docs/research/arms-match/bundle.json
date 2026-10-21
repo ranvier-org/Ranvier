@@ -1,4 +1,5 @@
 {
+  "defines": [],
   "sizes": {
     "explicitOne": {
       "raw": 207850,
@@ -6,9 +7,9 @@
       "brotli": 52828
     },
     "matchOne": {
-      "raw": 209050,
-      "gzip": 60698,
-      "brotli": 53170
+      "raw": 208666,
+      "gzip": 60572,
+      "brotli": 53130
     },
     "explicitTwo": {
       "raw": 208693,
@@ -16,9 +17,9 @@
       "brotli": 52980
     },
     "matchTwo": {
-      "raw": 209895,
-      "gzip": 60890,
-      "brotli": 53345
+      "raw": 209511,
+      "gzip": 60759,
+      "brotli": 53313
     },
     "plain": {
       "raw": 205886,
@@ -27,12 +28,12 @@
     }
   },
   "one": {
-    "deltaGzip": 496,
-    "budgetGzip": 250,
-    "withinBudget": false
+    "deltaGzip": 370,
+    "budgetGzip": 400,
+    "withinBudget": true
   },
   "perSite": {
-    "deltaGzip": -17,
+    "deltaGzip": -22,
     "budgetGzip": 60,
     "withinBudget": true
   },
@@ -46,12 +47,7 @@
     "withinBudget": true
   },
   "helpers": {
-    "counts": {
-      "experiments/Ranvier.View.Arms/Cells.js": 0,
-      "experiments/Ranvier.View.Arms/Site.js": 0,
-      "experiments/Ranvier.View.Arms/Arms.js": 0,
-      "ArmsSizeEntries.js": 0
-    },
+    "count": 0,
     "withinBudget": true
   }
 }

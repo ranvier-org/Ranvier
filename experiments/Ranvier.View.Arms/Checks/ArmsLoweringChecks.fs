@@ -547,6 +547,41 @@ let private letBoundSite, private letBoundHots =
                 )
             }))
 
+/// <summary>A site whose case body holds readers inside a computation-expression <c>for</c>, and its <c>Hot</c> functions.</summary>
+let private forBodySite, private forBodyHots =
+    Ranvier.View.Arms.Quoted.collectHots (fun () ->
+        Component.template
+            (fun _ (state: Signal<Load>) -> state)
+            (div () {
+                Arms.Match (
+                    read,
+                    function
+                    | Loaded (text, _) ->
+                        ul () {
+                            for label in [ "a"; "b" ] do
+                                li () { fun _ -> text + label }
+                        }
+                    | _ -> span () { "other" }
+                )
+            }))
+
+/// <summary>Readers inside a computation-expression <c>for</c> body compile after <c>hotCalls</c> renders and keep their output.</summary>
+let private forBodyCompiles () =
+    let html () =
+        render forBodySite (Loaded ("t", 1))
+
+    let before =
+        [
+            for _ in 1 .. Ranvier.View.Arms.Quoted.hotCalls + 1 -> (html ()).Contains "<li>ta</li><li>tb</li>"
+        ]
+
+    let compiled =
+        eventually (fun () ->
+            forBodyHots
+            |> List.forall (fun hot -> hot.Compiled))
+
+    equal (true, true, true, true) (forBodyHots.Length >= 3, List.forall id before, compiled, (html ()).Contains "<li>ta</li><li>tb</li>")
+
 /// <summary>A reader over let-bound case-body values compiles after <c>hotCalls</c> renders and keeps its output.</summary>
 let private letBoundCompiles () =
     let html () =
@@ -587,8 +622,22 @@ let private hotDoesNotBlock () =
     let compiled = eventually (fun () -> state.Compiled)
     equal (true, 2, 1, true, 3) (elapsed < 1000, interpreted, queued, compiled, call 1)
 
-/// <summary>A hot lambda whose compile fails keeps running interpreted.</summary>
+/// <summary>The messages written to it, in order.</summary>
+type private Recorder() =
+    inherit Diagnostics.TraceListener()
+    member val Lines = Collections.Concurrent.ConcurrentQueue<string>()
+
+    override this.Write(message: string) =
+        this.Lines.Enqueue message
+
+    override this.WriteLine(message: string) =
+        this.Lines.Enqueue message
+
+/// <summary>A hot lambda whose compile fails keeps running interpreted and writes one Trace warning naming the failure.</summary>
 let private hotCompileFailure () =
+    let recorder = new Recorder ()
+    Diagnostics.Trace.Listeners.Add recorder |> ignore
+
     let compile () : obj =
         failwith "compile failed"
 
@@ -597,7 +646,16 @@ let private hotCompileFailure () =
     let call = hot |> box |> unbox<int -> int>
     let results = [ for _ in 1..200 -> call 1 ]
     let failed = eventually (fun () -> state.Failed)
-    equal (true, true, false, 1, 2) (results |> List.forall ((=) 2), failed, state.Compiled, state.Queued, call 1)
+    Diagnostics.Trace.Listeners.Remove recorder
+
+    let warnings =
+        [
+            for line in recorder.Lines do
+                if line.Contains "Arms.Match: a per-call lambda stays interpreted: compile failed" then
+                    line
+        ]
+
+    equal (true, true, false, 1, 2, 1) (results |> List.forall ((=) 2), failed, state.Compiled, state.Queued, call 1, warnings.Length)
 
 /// <summary>Sixteen threads calling one hot lambda at once queue its compile exactly once.</summary>
 let private hotCompilesOnce () =
@@ -685,6 +743,7 @@ let runtimeCases: (string * (unit -> unit)) array =
         "a reader with no arm for its instance raises AM006", noArm
         "concurrent server renders of one shared instance read their own graph's payload", concurrentRenders
         "a reader over let-bound case-body values compiles", letBoundCompiles
+        "readers inside a computation-expression for body compile", forBodyCompiles
         "the 64th call of a hot lambda does not wait for its compile", hotDoesNotBlock
         "a hot lambda whose compile fails keeps running interpreted", hotCompileFailure
         "concurrent calls of a hot lambda compile it once", hotCompilesOnce

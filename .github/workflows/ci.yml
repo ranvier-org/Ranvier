@@ -360,14 +360,15 @@ jobs:
             examples/Ranvier.Motion/test-results/
           if-no-files-found: ignore
 
-  # Arms.Match (experiments/Ranvier.View.Arms): the Fable plugin's tests, the .NET lowering, fixture, golden and runtime
-  # checks inside the representation checks, the jsdom suites (test:arms), the bundle budget, Arms.Prepare on both
-  # runtime targets, and the trim annotation.
+  # Arms.Match (experiments/Ranvier.View.Arms): the Fable plugin's tests, the discovery app, the jsdom suites (test:arms),
+  # the bundle budget, Arms.Prepare on both runtime targets, and the trim annotation. The .NET lowering, fixture, golden
+  # and runtime checks run inside the representation checks of the playground job.
   arms:
     name: Arms.Match
     needs: changes
     if: needs.changes.outputs.docs != 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
       # global.json pins the SDK; DotnetCost also runs on net8.0, the library's other target, which needs the .NET 8 runtime.
@@ -402,11 +403,10 @@ jobs:
           grep -q armsValues_L experiments/Ranvier.View.Arms/Checks/Discovery/out/Main.js
           test ! -e experiments/Ranvier.View.Arms/Checks/Discovery/bin/Release/net10.0/Ranvier.View.Arms.FablePlugin.dll
           test ! -e experiments/Ranvier.View.Arms/Checks/Discovery/bin/Release/net10.0/Fable.AST.dll
-      - name: Run the representation checks with the arms checks
-        run: dotnet run --project experiments/Ranvier.View.Foundation/RepresentationChecks.fsproj -c Release
       - name: Run the arms suites
         run: npm run test:arms
         working-directory: examples/Fable.Ranvier.Playground
+      # size.mjs compiles its own Release build with no defines, so the counters build of test:arms does not reach it.
       - name: Check the bundle budget
         run: node experiments/Ranvier.View.Arms/Checks/size.mjs
       # size.mjs rewrites the committed bundle numbers; a difference means they are stale.

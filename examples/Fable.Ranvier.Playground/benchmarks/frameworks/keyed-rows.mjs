@@ -2,7 +2,7 @@
 // Usage: node benchmarks/frameworks/keyed-rows.mjs [--build|--bundle] [--profile [--repeats=10]] [--ops=a,b] [--modes=a,b] [--pairs=a:b,c:d] [--shuffle] [--pin] [--label=<name>] [--processes=3] [--rounds=15]
 import { chromium } from "@playwright/test";
 import { spawn, execFileSync } from "node:child_process";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import os from "node:os";
@@ -183,22 +183,33 @@ try {
       return { replicate: row.replicate, ratio: row.ms / other.ms };
     });
     const sorted = pairs.map(pair => pair.ratio).sort((a, b) => a - b);
-    return { operation: name, numerator: top, denominator: bottom, medianRatio: median(sorted), q1: sorted[Math.floor(sorted.length / 4)], q3: sorted[Math.floor(3 * sorted.length / 4)], byProcess: [...Array(processes).keys()].map(r => median(pairs.filter(pair => pair.replicate === r).map(pair => pair.ratio))) };
+    // A percentile bootstrap of the median ratio: 10,000 resamples from a fixed seed, so a rerun of the same samples
+    // gives the same interval.
+    let seed = 0x9e3779b9;
+    const random = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32;
+    const medians = Array.from({ length: 10000 }, () => median(Array.from(sorted, () => sorted[Math.floor(random() * sorted.length)]))).sort((a, b) => a - b);
+    return { operation: name, numerator: top, denominator: bottom, pairs: sorted.length, medianRatio: median(sorted), ci95: [medians[249], medians[9750]], numeratorSlowerIn: sorted.filter(ratio => ratio > 1).length, q1: sorted[Math.floor(sorted.length / 4)], q3: sorted[Math.floor(3 * sorted.length / 4)], byProcess: [...Array(processes).keys()].map(r => median(pairs.filter(pair => pair.replicate === r).map(pair => pair.ratio))) };
   }));
   const files = ["benchmarks/frameworks/keyed-rows.mjs", "benchmarks/frameworks/keyed-page.mjs", "benchmarks/frameworks/keyed-solid.jsx", "benchmarks/frameworks/vite.config.mjs", "tests/KeyedRowsPerf.fs", "package-lock.json",
-    ...["Lifetime.fs", "Representation.fs", "Template.fs"].map(path => `../../experiments/Ranvier.View.Portable/${path}`), ...["TemplateDom.fs", "Mounting.fs"].map(path => `../../experiments/Ranvier.View.Foundation/${path}`), "../../src/Ranvier/Core.fs", "../../src/Ranvier/Projections.fs", "../../src/Ranvier/Api.fs", "../../src/Ranvier/Combinators.fs"];
+    ...["Lifetime.fs", "Representation.fs", "Template.fs"].map(path => `../../experiments/Ranvier.View.Portable/${path}`), ...["TemplateDom.fs", "Mounting.fs"].map(path => `../../experiments/Ranvier.View.Foundation/${path}`), "../../src/Ranvier/Core.fs", "../../src/Ranvier/Projections.fs", "../../src/Ranvier/Api.fs", "../../src/Ranvier/Combinators.fs",
+    "tests/KeyedRowsSugarPerf.fs", "tests/KeyedRowsArmsMatchPerf.fs", ...["Arms.fs", "Cells.fs", "Site.fs", "Errors.fs", "Diagnostics.fs"].map(path => `../../experiments/Ranvier.View.Arms/${path}`),
+    "../../experiments/Ranvier.View.Arms.FablePlugin/Lower.fs"];
+  const fickl = JSON.parse(await readFile(new URL("../../../../.config/dotnet-tools.json", import.meta.url), "utf8")).tools.fickl.version;
+  const fableLibrary = (await readdir(new URL("../../generated-tests/fable_modules/", import.meta.url))).find(name => name.startsWith("fable-library-js."));
   const result = {
     measuredAt: new Date().toISOString(),
     commit: execFileSync("git", ["rev-parse", "HEAD"], { cwd, encoding: "utf8" }).trim(),
     dirty: execFileSync("git", ["status", "--porcelain"], { cwd, encoding: "utf8" }).trim().split("\n").filter(Boolean),
     node: process.version, chromium: chromiumVersion, cpu: os.cpus()[0].model, cores: os.cpus().length, memoryGb: Math.round(os.totalmem() / 2 ** 30), platform: `${os.platform()} ${os.release()}`,
-    production: true, minified: !profile, fable: "5.18.0", packages: { solid: "2.0.0-rc.14", solidWeb: "2.0.0-rc.14", solidCompiler: "2.0.0-rc.14" },
+    production: true, minified: !profile, fickl, fable: fableLibrary?.slice("fable-library-js.".length), packages: { solid: "2.0.0-rc.14", solidWeb: "2.0.0-rc.14", solidCompiler: "2.0.0-rc.14" },
     processes, warmups, rounds, shuffle, pin, unit: "milliseconds per operation",
     notes: [
       "Each sample mounts a fresh list, runs the untimed setup, forces GC through CDP, then times one synchronous operation including its DOM commit; layout and paint are excluded.",
       "Modes alternate within each round and the starting mode rotates per round and process; ratios divide each Ranvier sample by the Solid sample of the same round.",
       "Rows follow js-framework-benchmark keyed: id text, label signal in an anchor, a remove anchor with a span, an empty cell; two click handlers per row. Solid's For keys by row identity, Ranvier's t.each by row id.",
-      "Retained heap is GC-stabilized JavaScript heap per row of a mounted list, excluding DOM node memory outside the V8 heap."
+      "Retained heap is GC-stabilized JavaScript heap per row of a mounted list, excluding DOM node memory outside the V8 heap.",
+      "pairRatios divide each numerator sample by the denominator sample of the same process and round; ci95 is a percentile bootstrap of their median.",
+      ...(argument("note") ? [argument("note")] : [])
     ],
     sourceHashes: Object.fromEntries(await Promise.all(files.map(async path => [path, await sha(path)]))),
     modes, operations: names, summaries, ratios, pairRatios, heaps, domCalls, samples, profiles, allocations

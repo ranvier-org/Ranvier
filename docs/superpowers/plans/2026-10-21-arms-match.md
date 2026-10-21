@@ -35,7 +35,7 @@ Every task's requirements include this section.
 - Diagnostic texts are fixed (spec, "The payload rule"); they live once, in `experiments/Ranvier.View.Arms/Diagnostics.fs`, which the plugin links. .NET prefixes `<file>(<line>): ` to every site-build-time message.
 - Bundle budget: `Arms.Match` entry vs its explicit twin ≤ 400 B gzip (Ruling 34); each further site ≤ 60 B gzip; an app without `Arms.Match` 0 B; the Playground `sugar-size.mjs` explicit entry 0 B before and after; no `quotation` code in an `Arms.Match` entry; 0 `curry`, `uncurry`, `partialApply` in the emitted `Ranvier.View.Arms` modules and prologues.
 - .NET lowering budget: ≤ 4 ms mean over 200 lowerings of a five-target site. The first site of a fresh process is measured by `Checks/DotnetCost` and recorded, not budgeted (spec, "The .NET quotation path": 125-146 ms cold, 9-12 ms after `Arms.Prepare ()`, 7 ms after both `Prepare` and a ReadyToRun publish).
-- Chromium gate: each of `armsCreate1k`, `armsSwitch1k`, `armsPayload1k`, `armsClear1k` within 5 % of `ranvier-sugar` by median, or the ranges overlap. Heap: retained bytes per row within 10 % of `ranvier-sugar` plus the cells entries.
+- Chromium gate: for each of `armsCreate1k`, `armsSwitch1k`, `armsPayload1k`, `armsClear1k`, the paired ratio (each `ranvier-arms-match` sample over the `ranvier-sugar` sample of the same process and round, `--pairs=ranvier-arms-match:ranvier-sugar`) has a median of at most 1.05; its 95 % bootstrap interval is reported, and an interval entirely above 1.05 is a miss (Ruling 35). Heap: retained bytes per row within 10 % of `ranvier-sugar` plus the cells entries.
 - Work in `C:\Users\shaya\RiderProjects\Ranvier-arms-research` on branch `feat/arms-match`. Merge `origin/master` (never rebase) at the start of each phase; a parallel effort (`feat/dom-twin`, adding `Native.fs` in Portable and a .NET DOM twin) may land first, and every task that edits `DomTests.fsproj`, `RepresentationChecks.fsproj` or `RepresentationChecks.fsx` (Tasks 3-8, 10) merges master before it starts.
 - Commits: one conventional line, a blank line, then exactly:
   ```
@@ -126,6 +126,8 @@ Each ruling picks an implementation where the spec leaves one open, or settles a
 32. **The Fable cells hold a target's single live entry without an array, and an entry keeps the arm's `current`** (Task 10): slots are a plain object with the live entry (or, once two are live, an array) of target t at key t and the withdrawn entry at key ~t; an entry reads `current()[1]` instead of a values thunk. The first cells cost +14.2-14.5 % heap per row and +18.6 % on armsSwitch1k; these cost +9.6-9.9 % heap (the gate holds) and 66 B more bundle. `keyed-rows.mjs` measures the rows heap only for modes with a rows adapter, since `ranvier-arms-match` has the arm fixture only.
 33. **The trim check sets `ILLinkWarningLevel` 5 and starts clean** (Task 11): an F# project has no `EffectiveAnalysisLevel`, so ILLink runs at warning level 0 and reports no IL2026; an up-to-date publish skips ILLink, so `check.sh` removes `bin` and `obj` first and matches the IL2026 at `Main.fs`. The CI job uses `actions/setup-node@v7` like the other jobs, installs the .NET 8 runtime, and runs `DotnetCost --prepare` on net10.0 and net8.0.
 34. **The first-site budget is 400 B, and a Release Fable build raises AM006 as a code and docs anchor** (coordinator's ruling, overriding Ruling 31's budget and texts): a Release Fable build raises `Ranvier AM006: https://shayanhabibi.github.io/Ranvier/view/arms/#am006`; Debug and .NET keep the full text. The Fable `Arms.Match` holds no run-time AM005 branch: the FS0101 overload and the `.targets` error cover a missing plugin, and a referenced plugin that does not run fails at site build with a `TypeError`. `Cells.enter` and `Cells.values` are `inline` under Fable, so the site holds them as closures over its cells; `serves` is one local closure; lists and the site's arms are indexed without bounds checks. Measured 370 B gzip (the method resolves about ±20 B), so the budget is 400 B; the second site stays at 60 B.
+35. **The Chromium gate is a paired ratio** (Phase 5 review I3): the median of each `ranvier-arms-match` sample over the `ranvier-sugar` sample of the same process and round must be at most 1.05; `keyed-rows.mjs` reports a percentile-bootstrap 95 % interval (10,000 resamples, fixed seed), the count of slower pairs, the Fickl and Fable versions and hashes of the Arms sources and fixtures, and a `--note` (the CPU load). An interval entirely above 1.05 is a miss to report. `keyed-heap.mjs --after=switch` measures the arm fixture after one switch.
+36. **Phase 5 review fixes** (I1, I2, M1-M9): `size.mjs` compiles DomTests itself (Release, no defines, `--noCache`, into the git-ignored `generated-size-tests`) and records `defines` in `bundle.json`; it counts helpers from the first `Ranvier.View.Arms` region of the unminified entry to its end, and fails with a message when that region is missing. `compileHot` descends into a lambda it leaves open, descends into `Delay` and `For` bodies (binding the `For` item once per item), and lifts let-bound values into a `HotFactory` only outside lambdas that run per call. A failed compile names the site's file and line; a factory warns once. The CI job has a 45-minute timeout and leaves the representation checks to the playground job.
 
 ## Review Focus
 
@@ -6371,14 +6373,15 @@ export default {
 `experiments/Ranvier.View.Arms/Checks/size.mjs`:
 
 ```js
-// Bundle budget of Arms.Match (spec, "Bundle budget"), over the ArmsSizeEntries functions in the Playground's
-// generated-tests (run npm run compile:tests there first), bundled by the Playground's Vite with minification, gzip
-// level 9 and Brotli quality 11:
-// - one: the Arms.Match loader against its explicit twin, at most 250 B gzip;
+// Bundle budget of Arms.Match (spec, "Bundle budget"), over the ArmsSizeEntries functions of the Playground's DomTests,
+// compiled by this script in Release with no defines into generated-size-tests (ARMS_SIZE_REUSE=1 reuses that output),
+// bundled by the Playground's Vite with minification, gzip level 9 and Brotli quality 11:
+// - one: the Arms.Match loader against its explicit twin, at most 400 B gzip;
 // - perSite: a second site's delta (two sites minus one) against its twin's, at most 60 B gzip;
 // - plain: an entry calling no Arms.Match holds no Ranvier.View.Arms module (Ruling 12);
 // - quotation: the unminified Arms.Match entry holds no quotation code;
-// - helpers: the emitted Ranvier.View.Arms modules and ArmsSizeEntries.js hold no curry, uncurry or partialApply.
+// - helpers: the unminified Arms.Match entry, from its first Ranvier.View.Arms module to its end (the entry module), holds
+//   no curry, uncurry or partialApply.
 // Exits 1 on a breach. Writes docs/research/arms-match/bundle.json.
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -6386,14 +6389,21 @@ import { gzipSync, brotliCompressSync, constants } from "node:zlib";
 
 const here = new URL("./", import.meta.url);
 const playground = new URL("../../../examples/Fable.Ranvier.Playground/", here);
-const generated = new URL("generated-tests/", playground);
+const generated = "generated-size-tests";
+const defines = [];
 const output = new URL("../../../docs/research/arms-match/bundle.json", here);
 const pathOf = url => decodeURIComponent(url.pathname).replace(/^\/([A-Za-z]:)/, "$1");
 mkdirSync(new URL("generated-size/", here), { recursive: true });
 
+if (process.env.ARMS_SIZE_REUSE !== "1") {
+  const run = args => execFileSync("dotnet", args, { cwd: pathOf(playground), stdio: ["ignore", 2, 2], windowsHide: true });
+  run(["build", "../../experiments/Ranvier.View.Arms.FablePlugin/Ranvier.View.Arms.FablePlugin.fsproj", "-c", "Release", "-v", "q"]);
+  run(["fickl", "tests/DomTests.fsproj", "--outDir", generated, "--configuration", "Release", "--noCache", ...defines.flatMap(name => ["--define", name])]);
+}
+
 const build = (name, minify) => {
   writeFileSync(new URL(`generated-size/entry-${name}.mjs`, here),
-    `export { ${name} as mount } from "../../../../examples/Fable.Ranvier.Playground/generated-tests/ArmsSizeEntries.js";\n`);
+    `export { ${name} as mount } from "../../../../examples/Fable.Ranvier.Playground/${generated}/ArmsSizeEntries.js";\n`);
   execFileSync(process.execPath, [pathOf(new URL("node_modules/vite/bin/vite.js", playground)), "build", "--config", "size.config.mjs"], {
     cwd: pathOf(here), stdio: ["ignore", 2, 2], windowsHide: true, env: { ...process.env, ARMS_SIZE_ENTRY: name, ARMS_SIZE_MINIFY: String(minify) }
   });
@@ -6413,17 +6423,19 @@ const armsModule = /Ranvier\.View\.Arms\//;
 const matchUnminified = build("matchOne", false).toString();
 const plainHoldsArms = armsModule.test(build("plain", false).toString());
 const quotation = /quotation/i.test(matchUnminified);
-const helperFiles = ["experiments/Ranvier.View.Arms/Cells.js", "experiments/Ranvier.View.Arms/Site.js", "experiments/Ranvier.View.Arms/Arms.js", "ArmsSizeEntries.js"];
-const helpers = Object.fromEntries(helperFiles.map(file =>
-  [file, (readFileSync(new URL(file, generated), "utf8").match(/\b(curry\d*|uncurry\d*|partialApply)\b/g) ?? []).length]));
+// The entry module carries no region of its own: the bundle ends with it, after the Ranvier.View.Arms regions.
+const firstArms = matchUnminified.search(/\/\/#region [^\n]*Ranvier\.View\.Arms\//);
+if (firstArms < 0) throw Error("The unminified Arms.Match entry holds no Ranvier.View.Arms region");
+const helpers = { count: (matchUnminified.slice(firstArms).match(/\b(curry\d*|uncurry\d*|partialApply)\b/g) ?? []).length };
 
 const result = {
+  defines,
   sizes,
-  one: { deltaGzip: one, budgetGzip: 250, withinBudget: one <= 250 },
+  one: { deltaGzip: one, budgetGzip: 400, withinBudget: one <= 400 },
   perSite: { deltaGzip: perSite, budgetGzip: 60, withinBudget: perSite <= 60 },
   plain: { matchEntryHoldsArmsModule: armsModule.test(matchUnminified), plainHoldsArmsModule: plainHoldsArms, withinBudget: armsModule.test(matchUnminified) && !plainHoldsArms },
   quotation: { present: quotation, withinBudget: !quotation },
-  helpers: { counts: helpers, withinBudget: Object.values(helpers).every(count => count === 0) }
+  helpers: { ...helpers, withinBudget: helpers.count === 0 }
 };
 mkdirSync(new URL("./", output), { recursive: true });
 writeFileSync(output, JSON.stringify(result, null, 2) + "\n");
@@ -6662,13 +6674,13 @@ Expected: exit 0; the harness's per-operation `verify` reports equal row texts f
 - [ ] **Step 4: Run the timed benchmark and the heap profile, then release the locks**
 
 ```bash
-node benchmarks/frameworks/keyed-rows.mjs --bundle --modes=ranvier-sugar,ranvier-arms-match --ops=armsCreate1k,armsSwitch1k,armsPayload1k,armsClear1k --processes=3 --rounds=15 --label=arms-match --out=../../docs/research/arms-match/
+node benchmarks/frameworks/keyed-rows.mjs --bundle --modes=ranvier-sugar,ranvier-arms-match --ops=armsCreate1k,armsSwitch1k,armsPayload1k,armsClear1k --processes=3 --rounds=15 --pairs=ranvier-arms-match:ranvier-sugar --label=arms-match --out=../../docs/research/arms-match/
 node benchmarks/frameworks/keyed-heap.mjs --modes=ranvier-sugar,ranvier-arms-match --fixture=arms --counts=1000,10000 --label=arms-match-heap --out=../../docs/research/arms-match/
 rmdir C:/Users/shaya/.claude/jobs/7fee9ca9/tmp/browser.lock
 rmdir C:/Users/shaya/.claude/jobs/7fee9ca9/tmp/bench.lock
 ```
 
-Expected: both exit 0 and write JSON files under `docs/research/arms-match/`. Gates (Global Constraints): each operation's `ranvier-arms-match` median within 5 % of `ranvier-sugar`, or their ranges overlap; retained bytes per row within 10 % of `ranvier-sugar` plus one `WeakMap` entry and one entry list per row instance. A miss is a spec conflict: report the table, do not tune the benchmark.
+Expected: both exit 0 and write JSON files under `docs/research/arms-match/`. Gates (Global Constraints): each operation's paired median ratio at most 1.05 (Ruling 35); retained bytes per row within 10 % of `ranvier-sugar` plus one `WeakMap` entry and one entry list per row instance. A miss is a spec conflict: report the table, do not tune the benchmark.
 
 - [ ] **Step 5: Record the results**
 
@@ -6819,14 +6831,15 @@ Expected: exit 0, the log holds `IL2026` naming `Ranvier.View.Arms.Arms.Match`. 
 In `.github/workflows/ci.yml`, before the `result:` job, add:
 
 ```yaml
-  # Arms.Match (experiments/Ranvier.View.Arms): the Fable plugin's tests, the .NET lowering, fixture, golden and runtime
-  # checks inside the representation checks, the jsdom suites (test:arms), the bundle budget, Arms.Prepare on both
-  # runtime targets, and the trim annotation.
+  # Arms.Match (experiments/Ranvier.View.Arms): the Fable plugin's tests, the discovery app, the jsdom suites (test:arms),
+  # the bundle budget, Arms.Prepare on both runtime targets, and the trim annotation. The .NET lowering, fixture, golden
+  # and runtime checks run inside the representation checks of the playground job.
   arms:
     name: Arms.Match
     needs: changes
     if: needs.changes.outputs.docs != 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
       # global.json pins the SDK; DotnetCost also runs on net8.0, the library's other target, which needs the .NET 8 runtime.
@@ -6861,11 +6874,10 @@ In `.github/workflows/ci.yml`, before the `result:` job, add:
           grep -q armsValues_L experiments/Ranvier.View.Arms/Checks/Discovery/out/Main.js
           test ! -e experiments/Ranvier.View.Arms/Checks/Discovery/bin/Release/net10.0/Ranvier.View.Arms.FablePlugin.dll
           test ! -e experiments/Ranvier.View.Arms/Checks/Discovery/bin/Release/net10.0/Fable.AST.dll
-      - name: Run the representation checks with the arms checks
-        run: dotnet run --project experiments/Ranvier.View.Foundation/RepresentationChecks.fsproj -c Release
       - name: Run the arms suites
         run: npm run test:arms
         working-directory: examples/Fable.Ranvier.Playground
+      # size.mjs compiles its own Release build with no defines, so the counters build of test:arms does not reach it.
       - name: Check the bundle budget
         run: node experiments/Ranvier.View.Arms/Checks/size.mjs
       # size.mjs rewrites the committed bundle numbers; a difference means they are stale.

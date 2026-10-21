@@ -496,9 +496,9 @@ Each item names its suite; the research's unprobed items are marked **(new)**.
 11. **Chromium benchmark (new)**: a `ranvier-arms-match` mode beside `ranvier-sugar` in
     `benchmarks/frameworks/keyed-page.mjs` (`armAdapters`, line 26), with the arm list of `KeyedRowsSugarPerf.fs:98-119`
     written as `Arms.Match`; run `keyed-rows.mjs --modes=ranvier-sugar,ranvier-arms-match
-    --ops=armsCreate1k,armsSwitch1k,armsPayload1k,armsClear1k --processes=3 --rounds=15` under `bench.lock`
-    (`mkdir C:/Users/shaya/.claude/jobs/7fee9ca9/tmp/bench.lock` before, `rmdir` after) and the browser lock. Gate: each
-    operation's median within 5 % of `ranvier-sugar`, or the ranges overlap.
+    --ops=armsCreate1k,armsSwitch1k,armsPayload1k,armsClear1k --processes=3 --rounds=15 --pairs=ranvier-arms-match:ranvier-sugar` under `bench.lock`
+    (`mkdir C:/Users/shaya/.claude/jobs/7fee9ca9/tmp/bench.lock` before, `rmdir` after) and the browser lock. Gate, per
+    operation: the paired ratio (each `ranvier-arms-match` sample over the `ranvier-sugar` sample of the same process and round, `--pairs=ranvier-arms-match:ranvier-sugar`) has a median of at most 1.05; its 95 % bootstrap interval is reported, and an interval entirely above 1.05 is a miss. Runs record the CPU load in `notes`.
 12. **Heap profile (new)**: `keyed-heap.mjs` with the new mode at 1,000 and 10,000 rows; retained bytes per row within
     10 % of `ranvier-sugar` plus the cells entries (one `WeakMap` entry and one list per row instance).
 13. **Docs samples**: the `arms.md` samples compile in `docs/samples/view` (.NET, quotation path) and their quoted HTML
