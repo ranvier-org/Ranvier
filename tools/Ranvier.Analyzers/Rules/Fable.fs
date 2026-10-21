@@ -1,9 +1,14 @@
 /// RAN001 and RAN002: code that a Fable build compiles to different behaviour, or fails to precompile.
 module Ranvier.Analyzers.Rules.Fable
 
+open System
+open System.IO
 open FSharp.Analyzers.SDK
 open FSharp.Compiler.Symbols
+open FSharp.Compiler.Symbols.FSharpExprPatterns
+open FSharp.Compiler.Text
 open Ranvier.Analyzers
+open Ranvier.Analyzers.Index
 open Ranvier.Analyzers.Rule
 
 [<Literal>]
@@ -71,4 +76,72 @@ let ran002: Rule =
         Title = "Generated union case tester in a Fable library"
         Gate = Symbols.Assemblies.Fable
         Run = testers
+    }
+
+/// The module-level `let mutable` that `expr` reads bare.
+let private moduleMutable (expr: FSharpExpr) : FSharpMemberOrFunctionOrValue option =
+    match expr with
+    | Call (None, value, [], [], []) when value.IsMutable && value.IsModuleValueOrMember -> Some value
+    | _ -> None
+
+let private sameFile (left: string) (right: string) =
+    String.Equals (Path.GetFullPath left, Path.GetFullPath right, StringComparison.OrdinalIgnoreCase)
+
+/// The mutable a binding snapshots, and whether a fix can make the binding mutable: false for a tuple pattern.
+let private snapshotOf (lets: LetSite array) (site: LetSite) : (FSharpMemberOrFunctionOrValue * bool) option =
+    match moduleMutable site.Bound, site.Bound with
+    | Some source, _ -> Some (source, true)
+    | None, TupleGet (_, item, Value tuple) ->
+        lets
+        |> Array.tryPick (fun outer ->
+            match outer.Bound with
+            | NewTuple (_, elements) when outer.Value = tuple && item < elements.Length ->
+                moduleMutable elements[item]
+                |> Option.map (fun source -> source, false)
+            | _ -> None)
+    | None, _ -> None
+
+let private qualified (source: FSharpMemberOrFunctionOrValue) =
+    match source.ApparentEnclosingEntity with
+    | Some entity -> entity.DisplayName + "." + source.DisplayName
+    | None -> source.DisplayName
+
+let private snapshots (input: Input) : Message list =
+    let lets = input.Index.Lets
+
+    [
+        for site in lets do
+            if
+                not site.Value.IsMutable
+                && not site.Value.IsCompilerGenerated
+            then
+                match snapshotOf lets site with
+                | Some (source, fixable) when not (sameFile source.DeclarationLocation.FileName site.Value.DeclarationLocation.FileName) ->
+                    match Index.uses site.Value site.Body with
+                    | [ single ] ->
+                        let name = site.Value.DisplayName
+                        let at = site.Value.DeclarationLocation
+
+                        let fixes =
+                            if fixable then
+                                [ replace (Range.mkRange at.FileName at.Start at.Start) "" "mutable " ]
+                            else
+                                []
+
+                        message
+                            "RAN001"
+                            Severity.Warning
+                            at
+                            $"Fable Release compiles `{name}` as a second read of `{qualified source}` at its single use (line {single.StartLine}), so writes between the two lines change it. Declare it `let mutable {name}` to keep the snapshot."
+                            fixes
+                    | _ -> ()
+                | _ -> ()
+    ]
+
+let ran001: Rule =
+    {
+        Code = "RAN001"
+        Title = "Fable inlines a snapshot of a module mutable"
+        Gate = Symbols.Assemblies.Fable
+        Run = snapshots
     }

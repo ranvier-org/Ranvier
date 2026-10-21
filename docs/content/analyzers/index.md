@@ -12,6 +12,7 @@ cause, its fix and an example.
 
 | Code | Title | Severity |
 |---|---|---|
+| [RAN001](ran001.md) | Fable inlines a snapshot of a module mutable | Warning |
 | [RAN002](ran002.md) | Generated union case tester in a Fable library | Warning |
 
 ## Running the analyzers

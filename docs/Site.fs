@@ -186,7 +186,13 @@ let theme =
         >> Theme.menu
             "analyzers"
             [
-                Menu.section "Analyzers" [ Menu.page "analyzers/index.md"; Menu.page "analyzers/ran002.md" ]
+                Menu.section
+                    "Analyzers"
+                    [
+                        Menu.page "analyzers/index.md"
+                        Menu.page "analyzers/ran001.md"
+                        Menu.page "analyzers/ran002.md"
+                    ]
             ]
         >> Theme.menu
             "blog"
