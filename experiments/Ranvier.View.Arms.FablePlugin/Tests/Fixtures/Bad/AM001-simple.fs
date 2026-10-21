@@ -2,8 +2,8 @@ module Fixtures.Bad.AM001Simple
 
 #if BAD_AM001_SIMPLE
 open global.Ranvier
-open Ranvier.View.Foundation.Template
-open Ranvier.View.Foundation.Sugar
+open Ranvier.View.Template
+open Ranvier.View.Sugar
 open Ranvier.View.Arms
 open Fixtures.Types
 

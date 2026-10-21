@@ -4,7 +4,7 @@ title: Troubleshooting views
 
 Each entry gives a message or symptom, its cause and the fix. Compile errors of the sugar are listed in
 [Sugar](sugar.md) and the
-[view sugar README](https://github.com/shayanhabibi/Ranvier/blob/master/experiments/Ranvier.View.Portable/README.md).
+[view sugar README](https://github.com/shayanhabibi/Ranvier/blob/master/src/Ranvier.View/README.md).
 
 ## Compile errors
 
@@ -24,11 +24,12 @@ used outside an element body, for example as a template root or as `show` conten
 
 **FS0003 on a tag.** A local value has the tag's name, often `p`, `a` or `b`. Rename the value.
 
-**FS0892 on `open Ranvier.View.Foundation.Generated.Html`.** The module requires qualified access.
-Alias it: `module H = Ranvier.View.Foundation.Generated.Html`.
+**FS0892 on `open Ranvier.View.Dom.Generated.Html`.** The module requires qualified access.
+Alias it: `module H = Ranvier.View.Dom.Generated.Html`.
 
 **FS0039: `TemplateBuilder` or `AttributeBuilder` does not define `div` or `className`.** The generated
-members come from `open Ranvier.View.Foundation`. Add it to the file's opens.
+members come from `open Ranvier.View`. Add it to the file's opens.
+
 **FS0101 "This construct is deprecated. Arms.Match needs the Ranvier.View.Arms Fable plugin" (AM005) at an
 `Arms.Match` call.** The project `dotnet fickl` compiles references `Ranvier.View.Arms` without importing
 `Ranvier.View.Arms.targets`. Import it. See [AM005](arms.md#am005).
@@ -45,7 +46,7 @@ defining the symbol.
 A pattern variable is used as a build-time value, for example as static text or as the argument of a helper that takes
 a value. Read it inside a lambda over the instance: `fun _ -> x`, or pass a reader to the helper.
 
-**"Arms.Match: the field 'x' of 'Case' is read outside a reader of the instance"** (.NET). The same rule, where the
+**"Arms.Match: the field 'x' of 'Case' is read outside a reader of the instance"** (Fable, when the compiler inlines the field). The same rule, where the
 compiler replaced the pattern variable by a read of the case field. Read it inside `fun _ -> x`.
 
 **AM002 "Arms.Match: 'x' is read inside a lambda over 'T', which is not the instance type".** A pattern variable is
@@ -80,6 +81,8 @@ the read under a [boundary](boundaries.md).
 the browser's parser rebuilds. Write the parser's structure, here `table`, `tbody`, `tr`. See
 [Markup the parser would change](../server/rendering.md#markup-the-parser-would-change).
 
+The analyzers report this at build time: [RAN024](../analyzers/ran024.md).
+
 **"Hydration mismatch at 0/1: expected &lt;button&gt;, found span"** (`HydrationMismatchException`,
 under `Strict`, or reported otherwise): the server HTML differs from the client's template. Check that
 the client hydrates the same definition with the server's props, the same `IdPrefix`, and no `if` that
@@ -89,8 +92,12 @@ depends on the target. See [Mismatches](../server/hydration.md#mismatches).
 function"** (Fable Debug builds): a definition (`armOf`, a declaration helper, `Component.define`) is
 created inside an arms function or a list read. Bind it with `let` before the template.
 
+The analyzers report this at build time: [RAN022](../analyzers/ran022.md).
+
 **"Hydration supports synchronous commits only"** (`NotSupportedException`): `hydrateWith` was given
 `QueuedCommits`. Hydrate with `SynchronousCommits`.
+
+The analyzers report this at build time: [RAN025](../analyzers/ran025.md).
 
 **`InvalidOperationException` from `CreateId`**: the id was requested after the instance's setup
 returned. Call `setup.CreateId ()` in setup and store the id in the instance.
@@ -117,6 +124,7 @@ Move it to the root. See [Leaving](motion-parts.md#leaving).
 **"An element takes at most one content part"** or **"An element with a content part has no template
 children"**: an element has two of `Unsafe.html` and `Hooks.widget`, or one of them with children.
 Give the content its own element.
+
 Shared code that catches an `Arms.Match` rejection catches `InvalidOperationException`: `BuildTimeReadException` and
 `ArmsMatchException` exist on .NET only, and Fable raises `InvalidOperationException` with the same texts.
 
@@ -127,10 +135,14 @@ for example under a Fable version below its `FableMinimumVersion`. Use Fable 5. 
 in a Release Fable build: a lambda over the instance type inside a case body received another value of that type, as
 a row whose item type equals the instance type does. Give the row a type of its own. See [AM006](arms.md#am006).
 
+The analyzers report this at build time: [RAN023](../analyzers/ran023.md).
+
 ## Symptoms
 
 **An arm remounts on every update.** Its definition is created inside the arms function or read from a
 `static member` property. Bind it with `let`. See [Conditional arms](arms.md).
+
+The analyzers report this at build time: [RAN022](../analyzers/ran022.md).
 
 **A row keeps showing an old value after its item was replaced.** The list uses `forEachFixed`, whose
 row keeps the item it was created for. Use `forEach`, or hold the changing value in a signal on the
@@ -138,6 +150,8 @@ item. See [Lists and keyed rows](collections.md).
 
 **A child does not follow a parent value.** `render`'s props reader runs once per instance. Pass the
 child a `Signal`, a `Memo` or a reader.
+
+The analyzers report this at build time: [RAN020](../analyzers/ran020.md).
 
 **Several effects run for one click.** Handlers run unbatched. Wrap the handler's writes in
 `Api.batch`. See [Events and hooks](events.md).

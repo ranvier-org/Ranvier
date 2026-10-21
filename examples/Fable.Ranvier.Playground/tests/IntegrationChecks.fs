@@ -4,11 +4,9 @@ open System
 open Ranvier
 open Fable.Core
 open Fable.Core.TS.Dom
-open Ranvier.View.Foundation
-open Ranvier.View.Foundation.Representation
-open Ranvier.View.Foundation.Scheduling
-open Ranvier.View.Foundation.Mounting
-open Ranvier.View.Foundation.Template
+open Ranvier.View
+open Ranvier.View.Dom.Scheduling
+open Ranvier.View.Dom.Mounting
 open CheckSupport
 
 let private raisesArgument (action: unit -> unit) =
@@ -80,6 +78,8 @@ let private widgetChildrenAtDefinition () =
     equal
         (true, true)
         (raisesArgument (fun () ->
+            // Asserts that the definition refuses the content parts.
+            // fsharpanalyzer: ignore-line-next RAN023
             Component.define (fun _ () -> ()) (fun t -> t.div [| t.Hooks.widget (fun _ (_: HTMLDivElement) -> ignore) |] [| t.text "child" |])
             |> ignore),
          raisesArgument (fun () ->
@@ -87,6 +87,8 @@ let private widgetChildrenAtDefinition () =
                  t.div
                      [|
                          t.Hooks.widget (fun _ (_: HTMLDivElement) -> ignore)
+                         // Asserts that the definition refuses the content parts.
+                         // fsharpanalyzer: ignore-line-next RAN023
                          t.Hooks.widget (fun _ (_: HTMLDivElement) -> ignore)
                      |]
                      [||])

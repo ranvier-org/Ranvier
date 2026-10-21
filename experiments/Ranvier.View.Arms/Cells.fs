@@ -2,7 +2,7 @@
 module internal Ranvier.View.Arms.Cells
 
 open global.Ranvier
-open Ranvier.View.Foundation.Representation
+open Ranvier.View.Representation
 #if FABLE_COMPILER
 open Fable.Core
 

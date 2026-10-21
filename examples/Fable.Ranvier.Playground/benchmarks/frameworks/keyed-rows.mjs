@@ -191,7 +191,7 @@ try {
     return { operation: name, numerator: top, denominator: bottom, pairs: sorted.length, medianRatio: median(sorted), ci95: [medians[249], medians[9750]], numeratorSlowerIn: sorted.filter(ratio => ratio > 1).length, q1: sorted[Math.floor(sorted.length / 4)], q3: sorted[Math.floor(3 * sorted.length / 4)], byProcess: [...Array(processes).keys()].map(r => median(pairs.filter(pair => pair.replicate === r).map(pair => pair.ratio))) };
   }));
   const files = ["benchmarks/frameworks/keyed-rows.mjs", "benchmarks/frameworks/keyed-page.mjs", "benchmarks/frameworks/keyed-solid.jsx", "benchmarks/frameworks/vite.config.mjs", "tests/KeyedRowsPerf.fs", "package-lock.json",
-    ...["Lifetime.fs", "Representation.fs", "Template.fs"].map(path => `../../experiments/Ranvier.View.Portable/${path}`), ...["TemplateDom.fs", "Mounting.fs"].map(path => `../../experiments/Ranvier.View.Foundation/${path}`), "../../src/Ranvier/Core.fs", "../../src/Ranvier/Projections.fs", "../../src/Ranvier/Api.fs", "../../src/Ranvier/Combinators.fs",
+    ...["Lifetime.fs", "Representation.fs", "Template.fs"].map(path => `../../src/Ranvier.View/${path}`), ...["TemplateDom.fs", "Mounting.fs"].map(path => `../../src/Ranvier.View.Dom/${path}`), "../../src/Ranvier/Core.fs", "../../src/Ranvier/Projections.fs", "../../src/Ranvier/Api.fs", "../../src/Ranvier/Combinators.fs",
     "tests/KeyedRowsSugarPerf.fs", "tests/KeyedRowsArmsMatchPerf.fs", ...["Arms.fs", "Cells.fs", "Site.fs", "Errors.fs", "Diagnostics.fs"].map(path => `../../experiments/Ranvier.View.Arms/${path}`),
     "../../experiments/Ranvier.View.Arms.FablePlugin/Lower.fs"];
   const fickl = JSON.parse(await readFile(new URL("../../../../.config/dotnet-tools.json", import.meta.url), "utf8")).tools.fickl.version;

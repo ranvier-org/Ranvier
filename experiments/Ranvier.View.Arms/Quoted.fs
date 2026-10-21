@@ -8,7 +8,7 @@ open Microsoft.FSharp.Quotations
 open Microsoft.FSharp.Quotations.Patterns
 open Microsoft.FSharp.Reflection
 open Microsoft.FSharp.Linq.RuntimeHelpers
-open Ranvier.View.Foundation.Template
+open Ranvier.View.Template
 
 /// <summary>The call site of an Arms.Match call, prefixed to its exception messages.</summary>
 type At = { File: string; Line: int }

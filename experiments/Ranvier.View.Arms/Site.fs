@@ -1,8 +1,8 @@
 /// <summary>The runtime shape every Arms.Match site lowers to, on both targets.</summary>
 module internal Ranvier.View.Arms.Site
 
-open Ranvier.View.Foundation.Template
-open Ranvier.View.Foundation.Sugar
+open Ranvier.View.Template
+open Ranvier.View.Sugar
 
 /// <summary>
 /// One arm per body, built when the site is built. The same target keeps its arm and replaces its bound values;

@@ -1,5 +1,9 @@
 // The packages `build.fsx -- publish` pushes: for each src/<Name>/<Name>.fsproj, `<PackageId>` and `<PackageId>.Traced`
-// at the project's `<Version>`, each with a lib/<tfm>/<AssemblyName>.dll per `<TargetFrameworks>` entry.
+// at the project's `<Version>`, each with a lib/<tfm>/<AssemblyName>.dll per `<TargetFrameworks>` entry. A traced package
+// depends on the traced packages of other src projects and an untraced one on their untraced packages. The projects
+// with `<RanvierExactSiblingVersions>true</RanvierExactSiblingVersions>` share one version and depend on each other at
+// exactly that version.
+// Each analyzer project passed on the command line packs once, with its assembly under analyzers/dotnet/fs.
 const fs = require('node:fs');
 const path = require('node:path');
 const zlib = require('node:zlib');
@@ -20,6 +24,7 @@ function projectPackage(xml, name) {
     version: property(xml, 'Version'),
     assembly: property(xml, 'AssemblyName') ?? name,
     frameworks: (frameworks ?? '').split(';').map(f => f.trim()).filter(Boolean).sort(),
+    exactSiblings: property(xml, 'RanvierExactSiblingVersions') === 'true',
   };
 }
 
@@ -58,8 +63,19 @@ function zipEntries(buffer) {
   return entries;
 }
 
-// The problems of one .nupkg against its expected package; empty when it matches.
-function checkPackage(buffer, expected) {
+// The id and version range of each `<dependency>` of a nuspec, across its framework groups.
+function dependencies(manifest) {
+  const found = new Map();
+  for (const [element] of manifest.matchAll(/<dependency\b[^>]*>/g)) {
+    const id = /\bid="([^"]+)"/.exec(element);
+    const version = /\bversion="([^"]+)"/.exec(element);
+    if (id) found.set(id[1], version ? version[1] : null);
+  }
+  return found;
+}
+
+// The problems of one .nupkg against its expected package and the src projects it may depend on; empty when it matches.
+function checkPackage(buffer, expected, projects = []) {
   const problems = [];
   const entries = zipEntries(buffer);
   const nuspec = [...entries.keys()].find(name => !name.includes('/') && name.endsWith('.nuspec'));
@@ -72,6 +88,16 @@ function checkPackage(buffer, expected) {
   if (frameworks.join(';') !== expected.frameworks.join(';')) {
     problems.push(`${expected.id}: lib frameworks are [${frameworks}], expected [${expected.frameworks}]`);
   }
+  for (const [id, version] of dependencies(manifest)) {
+    const base = id.endsWith('.Traced') ? id.slice(0, -'.Traced'.length) : id;
+    const sibling = projects.find(project => project.id === base);
+    if (!sibling) continue;
+    const wanted = expected.traced ? `${base}.Traced` : base;
+    if (id !== wanted) problems.push(`${expected.id}: depends on ${id}, expected ${wanted}`);
+    if (expected.exactSiblings && sibling.exactSiblings && version !== `[${sibling.version}]`) {
+      problems.push(`${expected.id}: depends on ${id} ${version}, expected [${sibling.version}]`);
+    }
+  }
   for (const framework of expected.frameworks) {
     const dll = `lib/${framework}/${expected.assembly}.dll`;
     if (!entries.has(dll)) {
@@ -83,35 +109,66 @@ function checkPackage(buffer, expected) {
   return problems;
 }
 
-// The problems of a package directory against the packable projects under src; empty when it holds exactly the expected
-// packages.
-function check(packagesDirectory, sourceDirectory) {
+// The problems of an analyzer .nupkg: no lib/ entries, the assembly under analyzers/dotnet/fs, and the build assets.
+function checkAnalyzerPackage(buffer, expected) {
+  const problems = [];
+  const entries = zipEntries(buffer);
+  const nuspec = [...entries.keys()].find(name => !name.includes('/') && name.endsWith('.nuspec'));
+  if (!nuspec) return [`${expected.id}: no .nuspec`];
+  const manifest = entries.get(nuspec)().toString('utf8');
+  if (property(manifest, 'id') !== expected.id) problems.push(`${expected.id}: nuspec id is ${property(manifest, 'id')}`);
+  if (property(manifest, 'version') !== expected.version) problems.push(`${expected.id}: nuspec version is ${property(manifest, 'version')}`);
+  if ([...entries.keys()].some(name => name.startsWith('lib/'))) problems.push(`${expected.id}: has lib/ entries`);
+  for (const file of [`analyzers/dotnet/fs/${expected.assembly}.dll`, `build/${expected.id}.props`, `build/${expected.id}.targets`]) {
+    if (!entries.has(file)) problems.push(`${expected.id}: missing ${file}`);
+  }
+  return problems;
+}
+
+// One problem when the exact-sibling projects declare more than one version, listing each project's version.
+function siblingVersionProblems(projects) {
+  const siblings = projects.filter(project => project.exactSiblings);
+  if (new Set(siblings.map(project => project.version)).size <= 1) return [];
+  return [`exact-sibling projects have different versions: ${siblings.map(project => `${project.id} ${project.version}`).join(', ')}`];
+}
+
+// The problems of a package directory against the packable projects under src and the analyzer projects; empty when
+// it holds exactly the expected packages.
+function check(packagesDirectory, sourceDirectory, analyzerProjects = []) {
   const projects = fs.readdirSync(sourceDirectory, { withFileTypes: true })
     .filter(entry => entry.isDirectory() && fs.existsSync(path.join(sourceDirectory, entry.name, `${entry.name}.fsproj`)))
     .map(entry => ({ name: entry.name, xml: fs.readFileSync(path.join(sourceDirectory, entry.name, `${entry.name}.fsproj`), 'utf8') }))
     .filter(({ xml }) => property(xml, 'IsPackable') !== 'false')
     .map(({ name, xml }) => projectPackage(xml, name));
   if (projects.length === 0) return [`no project under ${sourceDirectory}`];
+  const problems = siblingVersionProblems(projects);
   const expected = expectedPackages(projects);
+  const analyzers = new Map(analyzerProjects.map(file => {
+    const pkg = { ...projectPackage(fs.readFileSync(file, 'utf8'), path.basename(file, '.fsproj')), analyzer: true };
+    return [`${pkg.id}.${pkg.version}.nupkg`, pkg];
+  }));
   const files = fs.existsSync(packagesDirectory) ? fs.readdirSync(packagesDirectory) : [];
-  const problems = [];
-  for (const file of files.filter(f => f.endsWith('.nupkg') && !expected.has(f))) problems.push(`unexpected package ${file}`);
+  for (const file of files.filter(f => f.endsWith('.nupkg') && !expected.has(f) && !analyzers.has(f))) problems.push(`unexpected package ${file}`);
   for (const [file, pkg] of expected) {
     if (!files.includes(file)) {
       problems.push(`missing package ${file}`);
       continue;
     }
-    problems.push(...checkPackage(fs.readFileSync(path.join(packagesDirectory, file)), pkg));
+    problems.push(...checkPackage(fs.readFileSync(path.join(packagesDirectory, file)), pkg, projects));
+  }
+  for (const [file, pkg] of analyzers) {
+    if (!files.includes(file)) problems.push(`missing package ${file}`);
+    else problems.push(...checkAnalyzerPackage(fs.readFileSync(path.join(packagesDirectory, file)), pkg));
   }
   return problems;
 }
 
-module.exports = { traceMarker, projectPackage, expectedPackages, zipEntries, checkPackage, check };
+module.exports = { traceMarker, projectPackage, expectedPackages, zipEntries, dependencies, siblingVersionProblems, checkPackage, checkAnalyzerPackage, check };
 
 if (require.main === module) {
-  // node packages.cjs <packages directory> <src directory>: exits non-zero listing each problem.
-  const [packagesDirectory = 'bin', sourceDirectory = 'src'] = process.argv.slice(2);
-  const problems = check(packagesDirectory, sourceDirectory);
+  // node packages.cjs <packages directory> <src directory> [analyzer .fsproj ...]: exits non-zero listing each problem.
+  const [packagesDirectory = 'bin', sourceDirectory = 'src', ...analyzerProjects] = process.argv.slice(2);
+  const problems = check(packagesDirectory, sourceDirectory, analyzerProjects);
   for (const problem of problems) console.error(problem);
   if (problems.length > 0) process.exit(1);
   console.log(`Packages in ${packagesDirectory} match the projects in ${sourceDirectory}.`);

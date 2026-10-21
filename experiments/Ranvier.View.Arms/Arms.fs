@@ -2,7 +2,7 @@ namespace Ranvier.View.Arms
 
 open System
 open System.Diagnostics.CodeAnalysis
-open Ranvier.View.Foundation.Template
+open Ranvier.View.Template
 #if !FABLE_COMPILER
 open Microsoft.FSharp.Quotations
 
@@ -70,17 +70,17 @@ type Arms =
                 Arms.Match (
                     (fun (warmup: Warmup) -> warmup.Text),
                     function
-                    | Some text -> Ranvier.View.Foundation.Sugar.Elements.b () { fun _ -> text }
-                    | None -> Ranvier.View.Foundation.Sugar.Elements.span () { "none" }
+                    | Some text -> Ranvier.View.Sugar.Elements.b () { fun _ -> text }
+                    | None -> Ranvier.View.Sugar.Elements.span () { "none" }
                 ))
 
         let omit =
-            { Ranvier.View.Foundation.Server.Options.defaults with
-                Policy = Ranvier.View.Foundation.Representation.Omit
+            { Ranvier.View.Server.Options.defaults with
+                Policy = Ranvier.View.Representation.Omit
             }
 
         for text in [ Some "a"; None ] do
-            Ranvier.View.Foundation.Server.render omit site { Text = text }
+            Ranvier.View.Server.render omit site { Text = text }
             |> ignore
 
         Quoted.warmCompile ()

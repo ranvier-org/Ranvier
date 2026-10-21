@@ -2,9 +2,9 @@
 module ArmsServerChecks
 
 open global.Ranvier
-open Ranvier.View.Foundation
-open Ranvier.View.Foundation.Representation
-open Ranvier.View.Foundation.Template
+open Ranvier.View
+open Ranvier.View.Representation
+open Ranvier.View.Template
 open ArmsFixtures
 
 let private equal expected actual =

@@ -2,8 +2,8 @@ module Fixtures.Bad.AM002Wildcard
 
 #if BAD_AM002_WILDCARD
 open global.Ranvier
-open Ranvier.View.Foundation.Template
-open Ranvier.View.Foundation.Sugar
+open Ranvier.View.Template
+open Ranvier.View.Sugar
 open Ranvier.View.Arms
 open Fixtures.Types
 

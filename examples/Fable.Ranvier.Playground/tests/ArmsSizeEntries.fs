@@ -3,10 +3,11 @@ module ArmsSizeEntries
 
 open global.Ranvier
 open Fable.Core.TS.Dom
-open Ranvier.View.Foundation
-open Ranvier.View.Foundation.Representation
-open Ranvier.View.Foundation.Template
-open Ranvier.View.Foundation.Sugar
+open Ranvier.View
+open Ranvier.View.Dom
+open Ranvier.View.Representation
+open Ranvier.View.Template
+open Ranvier.View.Sugar
 open Ranvier.View.Arms
 
 type Load =

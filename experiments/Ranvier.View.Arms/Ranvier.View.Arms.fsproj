@@ -13,7 +13,7 @@
     <Compile Include="Site.fs" />
     <Compile Include="Quoted.fs" />
     <Compile Include="Arms.fs" />
-    <ProjectReference Include="../Ranvier.View.Portable/Ranvier.View.Portable.fsproj" />
+    <ProjectReference Include="../../src/Ranvier.View/Ranvier.View.fsproj" />
     <InternalsVisibleTo Include="RepresentationChecks" />
   </ItemGroup>
 </Project>
