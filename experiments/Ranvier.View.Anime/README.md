@@ -107,15 +107,16 @@ let toasts =
 
 - **Enter plays for rows and arms created after the region's first pass.** Rows of the first pass, hydrated rows and rows nested inside an entering row stay still; an arm shown by `show` turning true enters.
 - **An exit applies to a row or arm root element.** The retired row's element stays in place, with its content, until the exit's tickable completes, and then leaves. Reorders and inserts while it plays place the live rows around it. A Debug build raises "An exit hook requires a row or arm root element" for an exit elsewhere.
-- **The exit starts from the current values.** The instance is disposed before its row's nodes leave. On an element whose exit follows, `on`, `appear`, `enter` and the reactive parts pause their tickables, and leave their other anime objects in place, instead of reverting them; anime's default composition, `replace`, then hands each animated property to the exit. A paused animation leaves anime's engine on its next tick.
-- **Disposing the mount ends every running exit** at once: the exit's tickable is cancelled and the element leaves. A held exit that never completes is finished after 10 s.
+- **The exit starts from the current values.** The instance is disposed before its row's nodes leave. On an element whose exit follows, and on every element inside it, `on`, `appear`, `enter` and the reactive parts pause their animations instead of reverting them; anime's default composition, `replace`, then hands each animated property to the exit. `drag` disables its draggable and `split` and `scroll` stop their observers, so nothing of the row stays live once it leaves.
+- **Disposing the mount ends every running exit** at once: the exit's tickable is cancelled and the element leaves. An exit that has not completed after 10 s is cancelled and its element leaves.
 - **`presence` pins the leaving element** with `position: absolute` at its current box, its offset box, with no margin, so the rows after it close the gap while it plays. The box is relative to the element's offset parent: give the list's container `position: relative`. `collapse` and a separate `exit` stay in flow.
 
 ## FLIP
 
 `Motion.flip parameters` on a list's container wraps anime's `createLayout`. Before the first region pass under the container in a flush it records the layout of the container's element children, and once the pass's nodes and commits are in place it animates them from the recorded layout to the new one. A pass with no recorded layout before it, such as the first, does not animate.
 
-- **The rows are the container's direct element children.** `parameters`' `children` is replaced by those children, measured at both moments. A row whose Motion exit has started is left out, so the layout neither moves nor fades it while its exit plays.
+- **The rows are the container's direct element children.** `parameters`' `children` is replaced by those children, measured at both moments. A row whose Motion enter or exit is running is left out, so the layout neither moves nor fades it while that plays.
+- **The layout moves and resizes; Motion parts keep the visual properties.** Opacity, colours, borders, filters, clip paths and font size of every element under the container stay with the parts that animate them (an opacity `enter` or `presence` under `flip` ends at its last frame). Name a property in `properties`, `enterFrom`, `leaveTo` or `swapAt` to have the layout animate it.
 - **The container is positioned.** anime animates moved rows with `position: absolute` and a translation through the Web Animations API during the animation.
 - **The layout is created on the first recording,** and reverted with the instance.
 
@@ -210,7 +211,7 @@ let story =
 
 **`split` takes static text.** A text slot or region inside the split element stops updating once its text is split. `splitText`, `onScroll` and `createDraggable` require `ResizeObserver`, and the draggable `DOMPoint` and `DOMMatrix`.
 
-**`draw` and `morph` need SVG elements.** The SVG tags of the sugar (`svg`, `g`, `path`, `circle`, `ellipse`, `line`, `polyline`, `polygon`, `rect`) create their elements, and every element under an `svg` element, in the SVG namespace under both commit modes:
+**`draw` and `morph` need SVG elements.** The SVG tags of the sugar (`svg`, `g`, `path`, `circle` and the others listed in the [sugar reference](../Ranvier.View.Portable/README.md#tags)) create SVG elements under both commit modes:
 
 ```fsharp
 type Chart =
@@ -232,7 +233,7 @@ let chart =
         })
 ```
 
-A list row or arm rooted at an SVG tag is an SVG element too, under both commit modes.
+A list row or arm rooted at an SVG tag is an SVG element too, under both commit modes, and SVG names such as `viewBox` are written as given.
 
 ## Reduced motion
 
@@ -248,8 +249,8 @@ The three hook kinds behind the parts (motion, exit and reflow) add no markup, a
 
 | Entry | Against | Δ gzip | Budget |
 |---|---|--:|--:|
-| rows with `Motion.presence` | the same rows with `Hooks.motion` and `Hooks.exit` calling `animate` by hand | +586 B | 900 B |
-| a list with `Motion.flip` | the same list with `Hooks.reflow` calling `createLayout` by hand | +337 B | 600 B |
+| rows with `Motion.presence` | the same rows with `Hooks.motion` and `Hooks.exit` calling `animate` by hand | +679 B | 900 B |
+| a list with `Motion.flip` | the same list with `Hooks.reflow` calling `createLayout` by hand | +416 B | 600 B |
 
 An entry using one Motion part declares no anime feature class (`AutoLayout`, `Draggable`, `ScrollObserver`, `TextSplitter`, `WAAPIAnimation`, `Timeline`) beyond those of the anime functions that part calls. The emitted module holds no `curry`, `uncurry`, `partialApply` or `createObj`.
 

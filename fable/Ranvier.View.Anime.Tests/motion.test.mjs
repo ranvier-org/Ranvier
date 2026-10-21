@@ -17,7 +17,13 @@ class DOMMatrix {
   inverse() { return new DOMMatrix(); }
   preMultiplySelf() { return this; }
 }
-class ResizeObserver { observe() {} unobserve() {} disconnect() {} }
+// The observers observing at least one target.
+globalThis.motionObservers = new Set();
+class ResizeObserver {
+  observe() { globalThis.motionObservers.add(this); }
+  unobserve() {}
+  disconnect() { globalThis.motionObservers.delete(this); }
+}
 for (const [name, value] of Object.entries({ DOMPoint, DOMMatrix, ResizeObserver })) globalThis[name] = dom.window[name] = value;
 dom.window.document.fonts = { status: "loaded", ready: Promise.resolve() };
 globalThis.matchMedia = dom.window.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
@@ -34,6 +40,7 @@ mock.timers.enable({ apis: ["Date", "setTimeout"], now: 1000 });
 // The checks read the layout calls, the latest draggable and its position writes, and the latest scroll observer.
 const anime = await import("animejs");
 globalThis.motionLog = [];
+globalThis.motionEngine = anime.engine;
 const children = layout => layout.children.map(child => child.textContent).join(" ");
 for (const method of ["record", "animate"]) {
   const original = anime.AutoLayout.prototype[method];

@@ -48,6 +48,15 @@ let private lastDraggable () : Draggable = jsNative
 [<Emit("globalThis.motionSets")>]
 let private draggableSets () : int = jsNative
 
+[<Emit("globalThis.motionObservers.size")>]
+let private liveObservers () : int = jsNative
+
+[<Emit("(e => { let n = 0; for (let c = e._head; c; c = c._next) n++; return n; })(globalThis.motionEngine)")>]
+let private engineChildren () : int = jsNative
+
+[<Emit("$0.reverted")>]
+let private reverted (observer: ScrollObserver) : bool = jsNative
+
 [<Emit("globalThis.motionObserver")>]
 let private lastObserver () : ScrollObserver = jsNative
 
@@ -311,6 +320,7 @@ let private flipped =
         })
 
 let private flipOrder queued (clock: Clock) =
+    logged () |> ignore
     use graph = new Graph ()
     let state = graph.Run (fun () -> rows [| 1; 2; 3 |])
     let target = host ()
@@ -564,7 +574,7 @@ let private dragEchoGuard (clock: Clock) =
         draggableSets () - initial, graph.Run (fun () -> puck.Position.Value)
 
     mounted.Dispose ()
-    equal ((2, struct (100., 50.), struct (100., 50.)), (3, struct (30., 50.))) (moved, afterDrag)
+    equal ((2, struct (100., 50.), struct (100., 50.)), (3, struct (30., 50.)), false) (moved, afterDrag, draggable.enabled)
 
 type Scrolled =
     {
@@ -606,7 +616,7 @@ let private scrollWrites (clock: Clock) =
     fireEnter observer
     let written = graph.Run (fun () -> state.Progress.Value, state.InView.Value)
     mounted.Dispose ()
-    equal (0.25, true) written
+    equal ((0.25, true), true) (written, reverted observer)
 
 let private splitted =
     Component.template
@@ -621,11 +631,12 @@ let private splitted =
 let private splitReverts (clock: Clock) =
     use graph = new Graph ()
     let target = host ()
+    let observing = liveObservers ()
     let mounted = mountIn false graph target (Component.render splitted ())
     let heading = find target "h1"
     let parts = countOf heading "*"
     mounted.Dispose ()
-    equal (true, "Hi") (parts >= 2, heading.innerHTML)
+    equal (true, "Hi", observing) (parts >= 2, heading.innerHTML, liveObservers ())
 
 let private appeared =
     Component.template
@@ -649,6 +660,341 @@ let private appearSkipsHydrated (clock: Clock) =
     let created = styleOf (find fresh "p") "opacity"
     mounted.Dispose ()
     equal ("", "0") (adopted, created)
+
+type Lane = { Lanes: Signal<int array> }
+
+let private lanes (items: int array) =
+    { Lanes = Api.createSignal items }
+
+let private livelyRows =
+    Component.template
+        (fun _ (s: Lane) -> s)
+        (ul () {
+            forEach
+                id
+                (fun (s: Lane) -> s.Lanes.Value)
+                (li (
+                    Motion.exit fadeOut,
+                    Motion.drag (DraggableParams ()) (fun (_: unit -> int) ->
+                        {
+                            Position = Api.createSignal (struct (0., 0.))
+                            Dragging = ValueNone
+                        })
+                ) {
+                    span (
+                        Motion.split (SplitParams (chars = true)) (fun _ split ->
+                            Anime.animate (split.chars, Anim (opacity = Value.fromTo (0, 1), duration = 100)))
+                    ) {
+                        "ab"
+                    }
+
+                    b (Motion.follow "opacity" (AnimatableParams (duration = 100)) (fun (_: unit -> int) -> 0.5)) { "f" }
+                })
+        })
+
+let private nothingLiveAfterExit queued (clock: Clock) =
+    use graph = new Graph ()
+    let observing = liveObservers ()
+    let state = graph.Run (fun () -> lanes [| 1; 2 |])
+    let target = host ()
+    let mounted = mountIn queued graph target (Component.render livelyRows state)
+    let draggable = lastDraggable ()
+    let perRow = (liveObservers () - observing) / 2
+    advance clock 0.
+    advance clock 300.
+    write graph mounted (fun () -> state.Lanes.Value <- [| 1 |])
+    advance clock 0.
+    advance clock 1100.
+
+    for _ in 1..50 do
+        advance clock 1.
+
+    let afterExit =
+        countOf target "li", draggable.enabled, liveObservers () - observing, engineChildren ()
+
+    mounted.Dispose ()
+    equal ((1, false, perRow, 0), observing) (afterExit, liveObservers ())
+
+type Panel =
+    {
+        Rows: Signal<int array>
+        Open: Signal<bool>
+    }
+
+let private guardedRows =
+    Component.template
+        (fun _ (s: Panel) -> s)
+        (div () {
+            ul () {
+                forEach
+                    id
+                    (fun (s: Panel) -> s.Rows.Value)
+                    (li (Motion.presence fadeIn fadeOut) {
+                        b (Motion.follow "opacity" (AnimatableParams (duration = 1000)) (fun (_: unit -> int) -> 0.3)) { "f" }
+                        i (Motion.on (fun _ el -> Anime.animate (el, Anim (opacity = 0.5, duration = 1000, ease = Ease.linear)))) { "o" }
+
+                        em (
+                            Motion.animateOn (fun (_: unit -> int) -> 0.7) (fun _ el value ->
+                                Anime.animate (el, Anim (opacity = value, duration = 100)))
+                        ) {
+                            "a"
+                        }
+                    })
+            }
+
+            show
+                (fun (s: Panel) -> s.Open.Value)
+                (section (Motion.fade) { b (Motion.follow "opacity" (AnimatableParams (duration = 1000)) (fun (_: Panel) -> 0.3)) { "g" } })
+        })
+
+let private descendantsPause queued (clock: Clock) =
+    use graph = new Graph ()
+
+    let state =
+        graph.Run (fun () ->
+            {
+                Rows = Api.createSignal [| 1; 2 |]
+                Open = Api.createSignal true
+            })
+
+    let target = host ()
+    let mounted = mountIn queued graph target (Component.render guardedRows state)
+    let row = rowOf target 2
+    let gauge = find target "section b"
+    advance clock 0.
+    advance clock 488.
+    write graph mounted (fun () -> state.Rows.Value <- [| 1 |])
+    write graph mounted (fun () -> state.Open.Value <- false)
+
+    let kept =
+        styleOf (find row "b") "opacity", styleOf (find row "i") "opacity", styleOf (find row "em") "opacity", styleOf gauge "opacity"
+
+    let held = connected row, connected gauge
+    mounted.Dispose ()
+    equal (("0.3", "0.75", "0.7", "0.3"), (true, true)) (kept, held)
+
+/// <summary>The entries the <c>Hooks.both</c> fixtures wrote, in order.</summary>
+let private bothLog = ResizeArray<string>()
+
+let private logged' () =
+    let entries = List.ofSeq bothLog
+    bothLog.Clear ()
+    entries
+
+let private named (name: string) : Part<'native, 'inst> =
+    Hooks.motion (
+        System.Func<_, _, _, _>(fun _ _ _ ->
+            bothLog.Add (name + " run")
+            fun () -> bothLog.Add (name + " cleanup"))
+    )
+
+let private mountBoth (part: Part<HTMLDivElement, unit>) =
+    use graph = new Graph ()
+    let target = host ()
+    let view = Component.template (fun _ () -> ()) (div part { "x" })
+
+    let failure =
+        try
+            let mounted = mountIn false graph target (Component.render view ())
+
+            try
+                mounted.Dispose ()
+                ""
+            with error ->
+                error.Message
+        with error ->
+            error.Message
+
+    failure, logged' ()
+
+let private bothRules (clock: Clock) =
+    bothLog.Clear ()
+    let ordered = mountBoth (Hooks.both (named "first", named "second"))
+
+    let secondRaises =
+        mountBoth (Hooks.both (named "first", Hooks.motion (System.Func<_, _, _, _>(fun _ _ _ -> failwith "second failed"))))
+
+    let cleanupRaises =
+        mountBoth (Hooks.both (named "first", Hooks.motion (System.Func<_, _, _, _>(fun _ _ _ -> fun () -> failwith "cleanup failed"))))
+
+    let rejected =
+        try
+            Hooks.both (Hooks.mounted (fun _ (_: HTMLDivElement) -> ignore), Hooks.lend (fun _ (_: HTMLDivElement) -> ignore))
+            |> ignore
+
+            "accepted"
+        with error when error.Message.Contains "Hooks.both combines" ->
+            "rejected"
+
+    equal
+        (("", [ "first run"; "second run"; "second cleanup"; "first cleanup" ]),
+         [ "first run"; "first cleanup" ],
+         [ "first run"; "first cleanup" ],
+         "rejected")
+        (ordered, snd secondRaises, snd cleanupRaises, rejected)
+
+    if not ((fst secondRaises).Contains "second failed") then
+        failwithf "Expected the hook failure; got %s" (fst secondRaises)
+
+type Plot = { Ticks: Signal<int array> }
+
+let private plotted =
+    Component.template
+        (fun _ (s: Plot) -> s)
+        (div () {
+            svg (Attrs.attribute ("viewBox", "0 0 10 10"), Attrs.className "chart") {
+                g (Attrs.className "axis", Events.onClick (fun (_: Plot) _ -> ())) {
+                    forEach id (fun (s: Plot) -> s.Ticks.Value) (text' () { fun (tick: unit -> int) -> string (tick ()) })
+                }
+
+                forEach id (fun (s: Plot) -> s.Ticks.Value) (fragment [| text (fun (tick: unit -> int) -> "t" + string (tick ())); path () { () } |])
+
+                foreignObject () { p () { "html" } }
+            }
+
+            ol () { forEach id (fun (s: Plot) -> s.Ticks.Value) (g () { () }) }
+        })
+
+[<Emit("Array.from($0.querySelectorAll($1), n => n.namespaceURI === 'http://www.w3.org/2000/svg' ? 'svg' : 'html')")>]
+let private namespacesOf (root: obj) (selector: string) : string array = jsNative
+
+let private svgAuthoring queued (clock: Clock) =
+    use graph = new Graph ()
+    let target = host ()
+
+    let state =
+        {
+            Ticks = graph.Run (fun () -> Api.createSignal [| 1 |])
+        }
+
+    let mounted = mountIn queued graph target (Component.render plotted state)
+    write graph mounted (fun () -> state.Ticks.Value <- [| 1; 2 |])
+    let chart = find target "svg"
+
+    let read =
+        attributeOf chart "viewBox",
+        attributeOf (find chart "g") "class",
+        List.ofArray (namespacesOf chart "text, path, foreignObject"),
+        List.ofArray (namespacesOf chart "foreignObject p"),
+        List.ofArray (namespacesOf target "ol > g")
+
+    mounted.Dispose ()
+
+    equal ("0 0 10 10", "axis", [ "svg"; "svg"; "svg"; "svg"; "svg" ], [ "html" ], [ "svg"; "svg" ]) read
+
+let private mixedRoots =
+    Component.template (fun _ (s: Plot) -> s) (svg () { forEach id (fun (s: Plot) -> s.Ticks.Value) (fragment [| g () { () }; p () { "p" } |]) })
+
+let private mixedRootsRaise (clock: Clock) =
+    use graph = new Graph ()
+    let target = host ()
+
+    let state =
+        {
+            Ticks = graph.Run (fun () -> Api.createSignal [| 1 |])
+        }
+
+    let failure =
+        try
+            (mountIn false graph target (Component.render mixedRoots state)).Dispose()
+            ""
+        with error ->
+            error.Message
+
+    if not (failure.Contains "mixes SVG and HTML root elements") then
+        failwithf "Expected the mixed-root failure; got %s" failure
+
+let private svgCleanupRestores (clock: Clock) =
+    use graph = new Graph ()
+    let target = host ()
+
+    let drawn =
+        {
+            Level = graph.Run (fun () -> Api.createSignal 0.25)
+        }
+
+    let mounted = mountIn false graph target (Component.render stroked drawn)
+    let stroke = find target "path"
+    let drawing = attributeOf stroke "pathLength"
+    mounted.Dispose ()
+
+    let morphedState =
+        {
+            Shape = graph.Run (fun () -> Api.createSignal "M0 0 L10 0")
+        }
+
+    let shapes = host ()
+    let morphing = mountIn false graph shapes (Component.render morphed morphedState)
+    let shape = find shapes "path"
+    let first = attributeOf shape "d"
+    morphing.Dispose ()
+
+    equal
+        (("1000", true, true), ("M0 0 L10 0", true))
+        ((drawing, isNull (attributeOf stroke "pathLength"), isNull (attributeOf stroke "stroke-dasharray")), (first, isNull (attributeOf shape "d")))
+
+let private enteringUnderFlip (enter: Part<HTMLLIElement, unit -> int>) =
+    Component.template
+        (fun _ (state: Rows) -> state)
+        (ul (Motion.flip (LayoutParams (duration = 300, ease = Ease.linear))) {
+            forEach id (fun (s: Rows) -> s.Items.Value) (li enter { fun (row: unit -> int) -> string (row ()) })
+        })
+
+let private opacityEnter (_: unit -> int) (node: Element) =
+    Anime.animate (node, Anim (opacity = Value.fromTo (0, 1), duration = 100, ease = Ease.linear))
+
+let private flippedEnter = enteringUnderFlip (Motion.enter opacityEnter)
+
+let private flippedPresence =
+    enteringUnderFlip (Motion.presence opacityEnter fadeOut)
+
+let private flipKeepsEnters queued (clock: Clock) =
+    let ends (view: Component<Rows>) =
+        use graph = new Graph ()
+        let state = graph.Run (fun () -> rows [| 1 |])
+        let target = host ()
+        let mounted = mountIn queued graph target (Component.render view state)
+        write graph mounted (fun () -> state.Items.Value <- [| 1; 2 |])
+        let row = rowOf target 2
+
+        for _ in 1..10 do
+            advance clock 16.
+
+        let entered = styleOf row "opacity"
+
+        for _ in 1..15 do
+            advance clock 16.
+
+        let settled = styleOf row "opacity"
+        mounted.Dispose ()
+        entered, settled
+
+    equal (("1", "1"), ("1", "1")) (ends flippedEnter, ends flippedPresence)
+
+[<Emit("$0.onSettle($0)")>]
+let private fireSettle (draggable: Draggable) : unit = jsNative
+
+let private dragWritesSettle (clock: Clock) =
+    use graph = new Graph ()
+    let target = host ()
+
+    let puck =
+        graph.Run (fun () ->
+            {
+                Position = Api.createSignal (struct (0., 0.))
+                Dragging = Api.createSignal false
+            })
+
+    let mounted = mountIn false graph target (Component.render dragged puck)
+    let draggable = lastDraggable ()
+    draggable.setX (42., true) |> ignore
+    advance clock 0.
+    advance clock 16.
+    let sets = draggableSets ()
+    fireSettle draggable
+    let settled = graph.Run (fun () -> puck.Position.Value), draggableSets () - sets
+    mounted.Dispose ()
+    equal (struct (42., 0.), 0) settled
 
 let private modes (name: string) (check: bool -> Clock -> unit) =
     [|
@@ -675,6 +1021,20 @@ let cases: (string * (Clock -> unit)) array =
             modes "morph animates an SVG path to each shape and ends on it exactly" morphReaches
             modes "list rows under an svg element are SVG elements and draw their strokes" svgRows
             modes "an arm rooted at an SVG tag under svg is an SVG element and morphs" svgArm
+            modes "after a row's exit completes, none of its drag, split or follow objects is live" nothingLiveAfterExit
+            modes "parts inside an exiting row or a fading arm keep their values while it leaves" descendantsPause
+            [|
+                "Hooks.both runs hooks in order, cleanups in reverse, and keeps the first cleanup on a failure", bothRules
+            |]
+            modes "SVG tags take camelCase attributes, shared parts, text rows and foreignObject content" svgAuthoring
+            [| "a synchronous row mixing SVG and HTML roots raises", mixedRootsRaise |]
+            [|
+                "draw and morph cleanups restore the element's attributes", svgCleanupRestores
+            |]
+            modes "under flip, an opacity enter or presence enter ends at its last frame" flipKeepsEnters
+            [|
+                "drag writes its position when a release settles, without echo", dragWritesSettle
+            |]
             modes "flip records before and animates after each pass, without leaving rows" flipOrder
             [|
                 "follow sets its first value and animates to each write", followReaches
