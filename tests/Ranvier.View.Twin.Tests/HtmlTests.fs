@@ -91,9 +91,54 @@ let tests =
             testCase "text inside a table is rejected as foster parenting"
             <| fun () -> rejects "<table>x</table>" "foster parenting"
 
-            testCase "a named reference outside the set is rejected"
-            <| fun () -> rejects "<p>&copy;</p>" "&copy;"
-
             testCase "a mismatched end tag is rejected"
             <| fun () -> rejects "<b><i>x</b></i>" "end tag </b>"
+
+            testCase "the full named reference table decodes, legacy names included"
+            <| fun () ->
+                Expect.equal (roundTrip "<p>&copy; &hellip; &copy</p>") "<p>© … ©</p>" "named"
+
+                Expect.equal
+                    (roundTrip "<p>&zzz; &notin; &notx;</p>")
+                    "<p>&amp;zzz; ∉ ¬x;</p>"
+                    "unknown names stay literal; the longest legacy prefix decodes"
+
+            testCase "an ampersand before = or an alphanumeric in an attribute stays literal"
+            <| fun () -> Expect.equal (roundTrip "<a href=\"?a=1&b=2&copy=3\"></a>") "<a href=\"?a=1&amp;b=2&amp;copy=3\"></a>" "attribute"
+
+            testCase "numeric references in the C1 range map as the HTML parser maps them"
+            <| fun () -> Expect.equal (roundTrip "<p>&#128;&#x9f;</p>") "<p>€Ÿ</p>" "windows-1252"
+
+            testCase "SVG tag and attribute names keep their case"
+            <| fun () ->
+                let html =
+                    "<svg viewBox=\"0 0 1 1\" preserveAspectRatio=\"none\"><linearGradient gradientUnits=\"x\"></linearGradient></svg>"
+
+                Expect.equal (roundTrip (html.ToLowerInvariant ())) html "adjusted"
+
+            testCase "a self-closing SVG child closes itself"
+            <| fun () -> Expect.equal (roundTrip "<svg><path d=\"M0\"/><g></g></svg>") "<svg><path d=\"M0\"></path><g></g></svg>" "foreign />"
+
+            testCase "a comment ending in --!> ends there"
+            <| fun () -> Expect.equal (roundTrip "<!--x--!><!--[-->y") "<!--x--><!--[-->y" "comment end"
+
+            testCase "table parts outside a table are rejected and allowed in a template"
+            <| fun () ->
+                rejects "<div><col></div>" "table part (<col>)"
+                rejects "<tr><td>a</td></tr>" "table part (<tr>)"
+                Expect.equal (roundTrip "<template><tr><td>a</td></tr></template>") "<template><tr><td>a</td></tr></template>" "template"
+
+            testCase "a document shell parses into the document's own elements"
+            <| fun () ->
+                use document = new TwinDocument ()
+
+                Html.parseDocument document "<!doctype html><html lang=\"en\"><head><title>T</title></head><body class=\"b\"><p>x</p></body></html>"
+
+                Expect.equal (document.Html.GetAttribute "lang") "en" "html attributes"
+                Expect.equal (Html.inner document.Head) "<title>T</title>" "head"
+                Expect.equal (Html.inner document.Body) "<p>x</p>" "body"
+                Expect.equal (document.Body.GetAttribute "class") "b" "body attributes"
+
+            testCase "document-level tags outside a document parse are rejected"
+            <| fun () -> rejects "<body><p>x</p></body>" "document-level tag <body>"
         ]

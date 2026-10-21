@@ -320,7 +320,11 @@ module Bridge =
 
     let private nodeName (node: TwinNode) =
         match node with
-        | :? TwinElement as e -> e.LocalName.ToUpperInvariant ()
+        | :? TwinElement as e ->
+            if e.Namespace = "html" then
+                e.LocalName.ToUpperInvariant ()
+            else
+                e.LocalName
         | _ ->
             match node.Kind with
             | NodeKind.Text -> "#text"
@@ -412,7 +416,16 @@ module Bridge =
                  null)
              // Element
              getter "localName" (fun n -> box (element n).LocalName)
-             getter "tagName" (fun n -> box ((element n).LocalName.ToUpperInvariant()))
+             getter "tagName" (fun n -> box (nodeName n))
+
+             getter "namespaceURI" (fun n ->
+                 box (
+                     match (element n).Namespace with
+                     | "svg" -> "http://www.w3.org/2000/svg"
+                     | "math" -> "http://www.w3.org/1998/Math/MathML"
+                     | _ -> "http://www.w3.org/1999/xhtml"
+                 ))
+
              getter "prefix" (fun _ -> null)
              getter "id" (fun n -> box (text ((element n).GetAttribute "id")))
              setter "id" (fun n v -> (element n).SetAttribute("id", text v))

@@ -229,7 +229,7 @@ and [<Sealed; AllowNullLiteral>] TwinFragment internal (owner: TwinDocument) =
 
         copy
 
-and [<Sealed; AllowNullLiteral>] TwinElement internal (owner: TwinDocument, localName: string) =
+and [<Sealed; AllowNullLiteral>] TwinElement internal (owner: TwinDocument, localName: string, ns: string) =
     inherit TwinNode(NodeKind.Element, owner)
     let attributes = ResizeArray<string * string>()
     let content = if localName = "template" then TwinFragment owner else null
@@ -240,11 +240,19 @@ and [<Sealed; AllowNullLiteral>] TwinElement internal (owner: TwinDocument, loca
     let mutable dirtySelected = false
 
     member _.LocalName = localName
+
+    /// <summary>The element's namespace: <c>html</c>, <c>svg</c> or <c>math</c>.</summary>
+    member _.Namespace = ns
+
+    /// <summary>An attribute name as the element stores it: lowercased for an HTML element, as written for SVG and MathML.</summary>
+    member private _.Key(name: string) =
+        if ns = "html" then name.ToLowerInvariant () else name
+
     member _.Attributes: (string * string) list = List.ofSeq attributes
     member _.Content: TwinNode = content
 
-    member _.GetAttribute(name: string) : string =
-        let name = name.ToLowerInvariant ()
+    member this.GetAttribute(name: string) : string =
+        let name = this.Key name
 
         match attributes |> Seq.tryFind (fun (n, _) -> n = name) with
         | Some (_, value) -> value
@@ -253,15 +261,15 @@ and [<Sealed; AllowNullLiteral>] TwinElement internal (owner: TwinDocument, loca
     member this.HasAttribute(name: string) =
         not (isNull (this.GetAttribute name))
 
-    member _.SetAttribute(name: string, value: string) =
-        let name = name.ToLowerInvariant ()
+    member this.SetAttribute(name: string, value: string) =
+        let name = this.Key name
 
         match attributes.FindIndex (fun (n, _) -> n = name) with
         | -1 -> attributes.Add ((name, value))
         | index -> attributes[index] <- (name, value)
 
-    member _.RemoveAttribute(name: string) =
-        let name = name.ToLowerInvariant ()
+    member this.RemoveAttribute(name: string) =
+        let name = this.Key name
 
         attributes.RemoveAll (fun (n, _) -> n = name)
         |> ignore
@@ -416,7 +424,7 @@ and [<Sealed; AllowNullLiteral>] TwinElement internal (owner: TwinDocument, loca
     member internal _.SelectedIsDirty = dirtySelected && selectedness
 
     override this.Clone deep =
-        let copy = TwinElement (this.Document, localName)
+        let copy = TwinElement (this.Document, localName, ns)
 
         for name, value in attributes do
             copy.SetAttribute (name, value)
@@ -443,9 +451,9 @@ and [<Sealed; AllowNullLiteral>] TwinDocument() as this =
     inherit TwinNode(NodeKind.Document, null)
     let ownerThread = Environment.CurrentManagedThreadId
     let disposals = ResizeArray<unit -> unit>()
-    let html = TwinElement (this, "html")
-    let head = TwinElement (this, "head")
-    let body = TwinElement (this, "body")
+    let html = TwinElement (this, "html", "html")
+    let head = TwinElement (this, "head", "html")
+    let body = TwinElement (this, "body", "html")
 
     do
         this.AppendChild html |> ignore
@@ -470,7 +478,11 @@ and [<Sealed; AllowNullLiteral>] TwinDocument() as this =
     member val internal DispatchDepth = 0 with get, set
 
     member this.CreateElement(tag: string) =
-        TwinElement (this, tag.ToLowerInvariant ())
+        TwinElement (this, tag.ToLowerInvariant (), "html")
+
+    /// <summary>An element of <c>ns</c> (<c>html</c>, <c>svg</c> or <c>math</c>) whose local name keeps the case given.</summary>
+    member this.CreateElementIn(ns: string, localName: string) =
+        TwinElement (this, localName, ns)
 
     member this.CreateText(data: string) =
         TwinCharacterData (NodeKind.Text, this, data)

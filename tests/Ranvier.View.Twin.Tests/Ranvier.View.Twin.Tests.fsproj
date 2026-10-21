@@ -18,10 +18,14 @@
         <Compile Include="Fixtures.fs" />
         <Compile Include="ClockTests.fs" />
         <Compile Include="SessionTests.fs" />
+        <Compile Include="../../experiments/Ranvier.View.Portable/Checks/ServerFixtures.fs" Link="Checks/ServerFixtures.fs" />
+        <Compile Include="OracleTests.fs" />
         <Compile Include="Main.fs" />
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="Expecto" Version="11.0.0-alpha8" />
+        <!-- A test-only oracle for the twin parser and serialiser (spec decision 2); never a dependency of Ranvier.View.Twin. -->
+        <PackageReference Include="AngleSharp" Version="1.8.5" />
         <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.5" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.4.0" />
     </ItemGroup>

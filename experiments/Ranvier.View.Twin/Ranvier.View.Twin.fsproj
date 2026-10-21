@@ -7,6 +7,7 @@
     </PropertyGroup>
     <ItemGroup>
         <Compile Include="Tree.fs" />
+        <Compile Include="Generated/Entities.fs" />
         <Compile Include="Html.fs" />
         <Compile Include="Bridge.fs" />
         <Compile Include="Events.fs" />

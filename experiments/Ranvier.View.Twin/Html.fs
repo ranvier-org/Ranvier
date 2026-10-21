@@ -75,6 +75,9 @@ let private selfClosing =
 
 let private documentLevel = HashSet<string> [ "html"; "head"; "body" ]
 
+let private tableParts =
+    HashSet<string> [ "caption"; "colgroup"; "col"; "thead"; "tbody"; "tfoot"; "tr"; "td"; "th" ]
+
 let private tableContent =
     dict
         [
@@ -90,14 +93,162 @@ let private tableContent =
                     "script"
                     "style"
                 ]
+            "colgroup", set [ "col"; "template" ]
             "tbody", set [ "tr"; "template"; "script"; "style" ]
             "thead", set [ "tr"; "template"; "script"; "style" ]
             "tfoot", set [ "tr"; "template"; "script"; "style" ]
             "tr", set [ "td"; "th"; "template"; "script"; "style" ]
         ]
 
-let private named =
-    dict [ "amp", "&"; "lt", "<"; "gt", ">"; "quot", "\""; "apos", "'"; "nbsp", " " ]
+let private adjusted (names: string list) =
+    let table = Dictionary<string, string>()
+
+    for name in names do
+        table[name.ToLowerInvariant ()] <- name
+
+    table
+
+/// <summary>The SVG element names the HTML parser writes in mixed case.</summary>
+let private svgTags =
+    adjusted
+        [
+            "altGlyph"
+            "altGlyphDef"
+            "altGlyphItem"
+            "animateColor"
+            "animateMotion"
+            "animateTransform"
+            "clipPath"
+            "feBlend"
+            "feColorMatrix"
+            "feComponentTransfer"
+            "feComposite"
+            "feConvolveMatrix"
+            "feDiffuseLighting"
+            "feDisplacementMap"
+            "feDistantLight"
+            "feDropShadow"
+            "feFlood"
+            "feFuncA"
+            "feFuncB"
+            "feFuncG"
+            "feFuncR"
+            "feGaussianBlur"
+            "feImage"
+            "feMerge"
+            "feMergeNode"
+            "feMorphology"
+            "feOffset"
+            "fePointLight"
+            "feSpecularLighting"
+            "feSpotLight"
+            "feTile"
+            "feTurbulence"
+            "foreignObject"
+            "glyphRef"
+            "linearGradient"
+            "radialGradient"
+            "textPath"
+        ]
+
+/// <summary>The SVG attribute names the HTML parser writes in mixed case.</summary>
+let private svgAttributes =
+    adjusted
+        [
+            "attributeName"
+            "attributeType"
+            "baseFrequency"
+            "baseProfile"
+            "calcMode"
+            "clipPathUnits"
+            "diffuseConstant"
+            "edgeMode"
+            "filterUnits"
+            "glyphRef"
+            "gradientTransform"
+            "gradientUnits"
+            "kernelMatrix"
+            "kernelUnitLength"
+            "keyPoints"
+            "keySplines"
+            "keyTimes"
+            "lengthAdjust"
+            "limitingConeAngle"
+            "markerHeight"
+            "markerUnits"
+            "markerWidth"
+            "maskContentUnits"
+            "maskUnits"
+            "numOctaves"
+            "pathLength"
+            "patternContentUnits"
+            "patternTransform"
+            "patternUnits"
+            "pointsAtX"
+            "pointsAtY"
+            "pointsAtZ"
+            "preserveAlpha"
+            "preserveAspectRatio"
+            "primitiveUnits"
+            "refX"
+            "refY"
+            "repeatCount"
+            "repeatDur"
+            "requiredExtensions"
+            "requiredFeatures"
+            "specularConstant"
+            "specularExponent"
+            "spreadMethod"
+            "startOffset"
+            "stdDeviation"
+            "stitchTiles"
+            "surfaceScale"
+            "systemLanguage"
+            "tableValues"
+            "targetX"
+            "targetY"
+            "textLength"
+            "viewBox"
+            "viewTarget"
+            "xChannelSelector"
+            "yChannelSelector"
+            "zoomAndPan"
+        ]
+
+let private mathAttributes = adjusted [ "definitionURL" ]
+
+/// <summary>The characters that numeric references in the 0x80-0x9F range stand for, as the HTML parser maps them.</summary>
+let private windows1252 =
+    dict
+        [
+            0x80, 0x20AC
+            0x82, 0x201A
+            0x83, 0x0192
+            0x84, 0x201E
+            0x85, 0x2026
+            0x86, 0x2020
+            0x87, 0x2021
+            0x88, 0x02C6
+            0x89, 0x2030
+            0x8A, 0x0160
+            0x8B, 0x2039
+            0x8C, 0x0152
+            0x8E, 0x017D
+            0x91, 0x2018
+            0x92, 0x2019
+            0x93, 0x201C
+            0x94, 0x201D
+            0x95, 0x2022
+            0x96, 0x2013
+            0x97, 0x2014
+            0x98, 0x02DC
+            0x99, 0x2122
+            0x9A, 0x0161
+            0x9B, 0x203A
+            0x9C, 0x0153
+            0x9E, 0x017E
+            0x9F, 0x0178
+        ]
 
 type private Reader(text: string) =
     let mutable index = 0
@@ -107,6 +258,12 @@ type private Reader(text: string) =
 
     member _.PeekAt k =
         if index + k < text.Length then text[index + k] else '\000'
+
+    member _.Slice(start: int, length: int) =
+        if index + start + length <= text.Length then
+            text.Substring (index + start, length)
+        else
+            null
 
     member _.Advance n =
         index <- index + n
@@ -140,8 +297,12 @@ let private isAsciiLetter c =
 let private isSpace c =
     c = ' ' || c = '\t' || c = '\n' || c = '\f'
 
-/// <summary>Reads a character reference at <c>&amp;</c>; a bare <c>&amp;</c> stays literal.</summary>
-let private reference (reader: Reader) (out: StringBuilder) =
+/// <summary>
+/// Reads a character reference at <c>&amp;</c>, as the HTML tokenizer does: the longest named reference that prefixes
+/// the input, or a numeric reference; anything else, and a legacy name followed by <c>=</c> or an alphanumeric inside an
+/// attribute value, stays a literal <c>&amp;</c>.
+/// </summary>
+let private reference (reader: Reader) (out: StringBuilder) (inAttribute: bool) =
     let codePoint (value: int) =
         if
             value = 0
@@ -149,10 +310,14 @@ let private reference (reader: Reader) (out: StringBuilder) =
             || (value >= 0xD800 && value <= 0xDFFF)
         then
             "�"
-        elif value >= 0x80 && value <= 0x9F then
-            reader.Fail $"the numeric reference &#{value}; in the C1 range"
         else
-            Char.ConvertFromUtf32 value
+            match windows1252.TryGetValue value with
+            | true, mapped -> Char.ConvertFromUtf32 mapped
+            | false, _ -> Char.ConvertFromUtf32 value
+
+    let literal () =
+        out.Append '&' |> ignore
+        reader.Advance 1
 
     if reader.PeekAt 1 = '#' then
         let hex = reader.PeekAt 2 = 'x' || reader.PeekAt 2 = 'X'
@@ -167,35 +332,57 @@ let private reference (reader: Reader) (out: StringBuilder) =
             digits.Append (reader.PeekAt k) |> ignore
             k <- k + 1
 
-        if digits.Length = 0 || reader.PeekAt k <> ';' then
-            reader.Fail "a numeric reference without digits or a semicolon"
+        if digits.Length = 0 then
+            literal ()
+        else
+            let value =
+                if digits.Length > 8 then
+                    0x110000
+                else
+                    Convert.ToInt32 (digits.ToString (), (if hex then 16 else 10))
 
-        let value = Convert.ToInt32 (digits.ToString (), if hex then 16 else 10)
-        out.Append (codePoint value) |> ignore
-        reader.Advance (k + 1)
-    elif isAsciiLetter (reader.PeekAt 1) then
-        let name = StringBuilder ()
-        let mutable k = 1
+            out.Append (codePoint value) |> ignore
+            reader.Advance (if reader.PeekAt k = ';' then k + 1 else k)
+    elif Char.IsAsciiLetterOrDigit (reader.PeekAt 1) then
+        let mutable length = 0
 
-        while Char.IsAsciiLetterOrDigit (reader.PeekAt k) do
-            name.Append (reader.PeekAt k) |> ignore
-            k <- k + 1
+        while length < 32
+              && Char.IsAsciiLetterOrDigit (reader.PeekAt (1 + length)) do
+            length <- length + 1
 
-        let name = name.ToString ()
+        let candidate =
+            reader.Slice (1, length)
+            + (if reader.PeekAt (1 + length) = ';' then ";" else "")
 
-        match named.TryGetValue name with
-        | true, value when reader.PeekAt k = ';' ->
-            out.Append value |> ignore
-            reader.Advance (k + 1)
-        | _ -> reader.Fail $"&{name};"
+        let mutable size = candidate.Length
+        let mutable found = null
+
+        while isNull found && size > 0 do
+            match Entities.table.TryGetValue (candidate.Substring (0, size)) with
+            | true, value -> found <- value
+            | false, _ -> size <- size - 1
+
+        if isNull found then
+            literal ()
+        else
+            let next = reader.PeekAt (1 + size)
+
+            if
+                inAttribute
+                && not (candidate.Substring(0, size).EndsWith ";")
+                && (next = '=' || Char.IsAsciiLetterOrDigit next)
+            then
+                literal ()
+            else
+                out.Append found |> ignore
+                reader.Advance (1 + size)
     else
-        out.Append '&' |> ignore
-        reader.Advance 1
+        literal ()
 
 let private normalise (html: string) =
     html.Replace("\r\n", "\n").Replace('\r', '\n')
 
-let private parseNodes (parent: TwinNode) (html: string) =
+let private parseNodes (parent: TwinNode) (html: string) (documentMode: bool) =
     let document = parent.Document
     let reader = Reader (normalise html)
     let stack = Stack<TwinNode>()
@@ -206,10 +393,33 @@ let private parseNodes (parent: TwinNode) (html: string) =
         | :? TwinElement as e when e.LocalName = "template" -> e.Content
         | _ -> node
 
-    let currentName () =
+    let current () =
         match stack.Peek () with
-        | :? TwinElement as e -> e.LocalName
-        | _ -> ""
+        | :? TwinElement as e -> e
+        | _ -> null
+
+    let currentName () =
+        match current () with
+        | null -> ""
+        | e -> e.LocalName
+
+    /// The namespace of an element named <c>name</c> started under the current element.
+    let namespaceFor (name: string) =
+        match current () with
+        | _ when name = "svg" -> "svg"
+        | _ when name = "math" -> "math"
+        | null -> "html"
+        | e when
+            e.Namespace = "svg"
+            && e.LocalName <> "foreignObject"
+            ->
+            "svg"
+        | e when
+            e.Namespace = "math"
+            && e.LocalName <> "annotation-xml"
+            ->
+            "math"
+        | _ -> "html"
 
     let append (node: TwinNode) =
         (container (stack.Peek ())).AppendChild node
@@ -217,8 +427,17 @@ let private parseNodes (parent: TwinNode) (html: string) =
 
     let appendText (text: string) =
         if text.Length > 0 then
+            let blank = text |> Seq.forall isSpace
+
             match tableContent.TryGetValue (currentName ()) with
-            | true, _ when text |> Seq.exists (isSpace >> not) -> reader.Fail "foster parenting (text inside a table)"
+            | true, _ when not blank -> reader.Fail "foster parenting (text inside a table)"
+            | _ when
+                documentMode
+                && blank
+                && (obj.ReferenceEquals (stack.Peek (), document.Html)
+                    || obj.ReferenceEquals (stack.Peek (), document))
+                ->
+                ()
             | _ ->
                 match (container (stack.Peek ())).LastChild with
                 | :? TwinCharacterData as last when last.Kind = NodeKind.Text -> last.Data <- last.Data + text
@@ -232,7 +451,7 @@ let private parseNodes (parent: TwinNode) (html: string) =
 
         while not (reader.AtEnd || reader.StartsWithIgnoreCase stop) do
             if decode && reader.Peek = '&' then
-                reference reader out
+                reference reader out false
             else
                 out.Append reader.Peek |> ignore
                 reader.Advance 1
@@ -273,7 +492,7 @@ let private parseNodes (parent: TwinNode) (html: string) =
 
             while not (reader.AtEnd || reader.Peek = quote) do
                 if reader.Peek = '&' then
-                    reference reader out
+                    reference reader out true
                 else
                     out.Append reader.Peek |> ignore
                     reader.Advance 1
@@ -289,42 +508,17 @@ let private parseNodes (parent: TwinNode) (html: string) =
                 || reader.Peek = '>'
             ) do
                 if reader.Peek = '&' then
-                    reference reader out
+                    reference reader out true
                 else
                     out.Append reader.Peek |> ignore
                     reader.Advance 1
 
         out.ToString ()
 
-    let appendRaw (element: TwinElement) (text: string) =
-        if text.Length > 0 then
-            element.AppendChild (document.CreateText text)
-            |> ignore
-
-    let startTag () =
-        reader.Advance 1
-        let name = readName ()
-
-        if documentLevel.Contains name then
-            reader.Fail $"the document-level tag <{name}>"
-
-        let current = currentName ()
-
-        if current = "p" && closesParagraph.Contains name then
-            reader.Fail $"an implied end tag (<p> closed by <{name}>)"
-
-        if selfClosing.Contains name && current = name then
-            reader.Fail $"an implied end tag (<{name}> inside <{name}>)"
-
-        match tableContent.TryGetValue current with
-        | true, allowed when not (allowed.Contains name) ->
-            if current = "table" && name = "tr" then
-                reader.Fail "a <table> without <tbody>"
-            else
-                reader.Fail $"foster parenting (<{name}> inside <{current}>)"
-        | _ -> ()
-
-        let element = document.CreateElement name
+    /// The attributes up to the end of the tag, in order, the first of a repeated name winning; and whether the tag
+    /// ends with <c>/></c>.
+    let readAttributes (name: string) =
+        let attributes = ResizeArray<string * string>()
         skipSpace ()
 
         while not (
@@ -344,37 +538,132 @@ let private parseNodes (parent: TwinNode) (html: string) =
                     ""
 
             if attribute.Length = 0 then
-                reader.Fail "an empty attribute name"
-
-            if not (element.HasAttribute attribute) then
-                element.SetAttribute (attribute, value)
+                if reader.Peek = '/' then
+                    reader.Advance 1
+                else
+                    reader.Fail "an empty attribute name"
+            elif not (attributes.Exists (fun (n, _) -> n = attribute)) then
+                attributes.Add ((attribute, value))
 
             skipSpace ()
 
         if reader.AtEnd then
             reader.Fail $"an unterminated <{name}> tag"
 
-        reader.Advance (if reader.Peek = '/' then 2 else 1)
-        append element
+        let selfClosed = reader.Peek = '/'
+        reader.Advance (if selfClosed then 2 else 1)
+        attributes, selfClosed
 
-        if rawText.Contains name then
-            appendRaw element (readUntil $"</{name}" false false)
-            reader.Advance (name.Length + 2)
-            skipSpace ()
-            reader.Advance 1
-        elif escapableRaw.Contains name then
-            appendRaw element (readUntil $"</{name}" true (name = "textarea"))
-            reader.Advance (name.Length + 2)
-            skipSpace ()
-            reader.Advance 1
-        elif not (voids.Contains name) then
-            stack.Push element
+    let appendRaw (element: TwinElement) (text: string) =
+        if text.Length > 0 then
+            element.AppendChild (document.CreateText text)
+            |> ignore
 
-            if
-                leadingLineFeed.Contains name
-                && reader.Peek = '\n'
-            then
+    let documentTag (name: string) =
+        let attributes, _ = readAttributes name
+
+        let target: TwinElement =
+            match name with
+            | "html" -> document.Html
+            | "head" -> document.Head
+            | _ -> document.Body
+
+        for attribute, value in attributes do
+            if not (target.HasAttribute attribute) then
+                target.SetAttribute (attribute, value)
+
+        match name with
+        | "html" -> ()
+        | _ -> stack.Push target
+
+    let startTag () =
+        reader.Advance 1
+        let name = readName ()
+
+        if documentLevel.Contains name then
+            if documentMode then
+                documentTag name
+            else
+                reader.Fail $"the document-level tag <{name}> outside a document parse"
+        else
+            let ns = namespaceFor name
+            let parentName = currentName ()
+
+            if ns = "html" then
+                if parentName = "p" && closesParagraph.Contains name then
+                    reader.Fail $"an implied end tag (<p> closed by <{name}>)"
+
+                if selfClosing.Contains name && parentName = name then
+                    reader.Fail $"an implied end tag (<{name}> inside <{name}>)"
+
+                match tableContent.TryGetValue parentName with
+                | true, allowed when not (allowed.Contains name) ->
+                    if parentName = "table" && name = "tr" then
+                        reader.Fail "a <table> without <tbody>"
+                    else
+                        reader.Fail $"foster parenting (<{name}> inside <{parentName}>)"
+                | true, _ -> ()
+                | false, _ ->
+                    if
+                        tableParts.Contains name
+                        && parentName <> "template"
+                    then
+                        reader.Fail $"a table part (<{name}>) outside a table"
+
+            let localName =
+                match ns with
+                | "svg" ->
+                    match svgTags.TryGetValue name with
+                    | true, mixed -> mixed
+                    | false, _ -> name
+                | _ -> name
+
+            let element =
+                if ns = "html" then
+                    document.CreateElement name
+                else
+                    document.CreateElementIn (ns, localName)
+
+            let attributes, selfClosed = readAttributes name
+
+            for attribute, value in attributes do
+                let attribute =
+                    match ns with
+                    | "svg" ->
+                        match svgAttributes.TryGetValue attribute with
+                        | true, mixed -> mixed
+                        | false, _ -> attribute
+                    | "math" ->
+                        match mathAttributes.TryGetValue attribute with
+                        | true, mixed -> mixed
+                        | false, _ -> attribute
+                    | _ -> attribute
+
+                element.SetAttribute (attribute, value)
+
+            append element
+
+            if ns <> "html" then
+                if not selfClosed then
+                    stack.Push element
+            elif rawText.Contains name then
+                appendRaw element (readUntil $"</{name}" false false)
+                reader.Advance (name.Length + 2)
+                skipSpace ()
                 reader.Advance 1
+            elif escapableRaw.Contains name then
+                appendRaw element (readUntil $"</{name}" true (name = "textarea"))
+                reader.Advance (name.Length + 2)
+                skipSpace ()
+                reader.Advance 1
+            elif not (voids.Contains name) then
+                stack.Push element
+
+                if
+                    leadingLineFeed.Contains name
+                    && reader.Peek = '\n'
+                then
+                    reader.Advance 1
 
     let endTag () =
         reader.Advance 2
@@ -386,13 +675,22 @@ let private parseNodes (parent: TwinNode) (html: string) =
 
         reader.Advance 1
 
-        if voids.Contains name then
-            reader.Fail $"the end tag </{name}> of a void element"
+        if documentMode && documentLevel.Contains name then
+            if name <> "html" && currentName () = name then
+                stack.Pop () |> ignore
+            elif name <> "html" then
+                reader.Fail $"the end tag </{name}> that does not close <{currentName ()}>"
+        else
+            if voids.Contains name then
+                reader.Fail $"the end tag </{name}> of a void element"
 
-        if stack.Count = 1 || currentName () <> name then
-            reader.Fail $"the end tag </{name}> that does not close <{currentName ()}>"
+            if
+                stack.Count = 1
+                || not (String.Equals (currentName (), name, StringComparison.OrdinalIgnoreCase))
+            then
+                reader.Fail $"the end tag </{name}> that does not close <{currentName ()}>"
 
-        stack.Pop () |> ignore
+            stack.Pop () |> ignore
 
     let comment () =
         reader.Advance 4
@@ -402,14 +700,18 @@ let private parseNodes (parent: TwinNode) (html: string) =
 
         let out = StringBuilder ()
 
-        while not (reader.AtEnd || reader.StartsWith "-->") do
+        while not (
+            reader.AtEnd
+            || reader.StartsWith "-->"
+            || reader.StartsWith "--!>"
+        ) do
             out.Append reader.Peek |> ignore
             reader.Advance 1
 
         if reader.AtEnd then
             reader.Fail "an unclosed comment"
 
-        reader.Advance 3
+        reader.Advance (if reader.StartsWith "--!>" then 4 else 3)
         append (document.CreateComment (out.ToString ()))
 
     let text = StringBuilder ()
@@ -439,7 +741,7 @@ let private parseNodes (parent: TwinNode) (html: string) =
             flush ()
             startTag ()
         elif reader.Peek = '&' then
-            reference reader text
+            reference reader text false
         else
             text.Append reader.Peek |> ignore
             reader.Advance 1
@@ -451,12 +753,26 @@ let private parseNodes (parent: TwinNode) (html: string) =
 
 /// <summary>Appends the nodes of <c>html</c> to <c>parent</c>, or to its content when <c>parent</c> is a template.</summary>
 let parseInto (parent: TwinNode) (html: string) : unit =
-    parseNodes parent html
+    parseNodes parent html false
 
 let parse (document: TwinDocument) (html: string) : TwinFragment =
     let fragment = document.CreateFragment ()
-    parseNodes fragment html
+    parseNodes fragment html false
     fragment
+
+/// <summary>
+/// Parses a whole document, such as Server's document shell, into <c>document</c>: the attributes of
+/// <c>&lt;html&gt;</c>, <c>&lt;head&gt;</c> and <c>&lt;body&gt;</c> go to the document's own elements, and their
+/// contents replace the head's and the body's children.
+/// </summary>
+let parseDocument (document: TwinDocument) (html: string) : unit =
+    for child in document.Head.Children do
+        document.Head.RemoveChild child |> ignore
+
+    for child in document.Body.Children do
+        document.Body.RemoveChild child |> ignore
+
+    parseNodes document.Html html true
 
 let private jsdomText (text: string) =
     text.Replace("&", "&amp;").Replace(" ", "&nbsp;").Replace("<", "&lt;").Replace(">", "&gt;")
