@@ -5,8 +5,8 @@ Measurements of the `Arms.Match` implementation ([spec](../superpowers/specs/202
 
 **Summary.** The plugin is found through a project reference and the `.targets`. On .NET a site lowers in about
 1.1-1.4 ms once the process is warm; the first five-target site of a process costs 125-146 ms, 9-12 ms after
-`Arms.Prepare ()` and about 7 ms with ReadyToRun as well. Under Fable the first `Arms.Match` site costs 394 B gzip over
-its twin (budget 400 B) and each further site -25 B (budget 60 B). The retained heap per row is within 10 % of
+`Arms.Prepare ()` and about 7 ms with ReadyToRun as well. Under Fable the first `Arms.Match` site costs 371 B gzip over
+its twin (budget 400 B) and each further site 12 B (budget 60 B). The retained heap per row is within 10 % of
 `ranvier-sugar` after create and about 12 % above it after a switch. In Chromium, create holds its gate; switch (about
 12 %) and payload (about 13 %) are slower than the sugared twin (misses), and clear is not settled.
 
@@ -130,12 +130,13 @@ numbers are in [`arms-match/bundle.json`](arms-match/bundle.json).
 
 | Entry | raw | gzip | Brotli |
 |---|---|---|---|
-| explicit loader | 207,850 | 60,202 | 52,828 |
-| Arms.Match loader | 208,637 | 60,596 | 53,182 |
-| two explicit sites | 208,693 | 60,411 | 52,980 |
-| two Arms.Match sites | 209,482 | 60,780 | 53,314 |
+| explicit loader | 206,791 | 60,147 | 52,825 |
+| Arms.Match loader | 207,533 | 60,518 | 53,136 |
+| two explicit sites | 207,634 | 60,337 | 52,937 |
+| two Arms.Match sites | 208,378 | 60,720 | 53,306 |
 
-The first site costs 394 B gzip over its twin (budget 400 B) and the second -25 B (budget 60 B). The method is a
+The first site costs 371 B gzip over its twin (budget 400 B) and the second 12 B (budget 60 B), after the view's
+graduation to `src/Ranvier.View` (#155). The method is a
 whole-bundle gzip difference, so it resolves about ±20 B: a build with `RANVIER_VIEW_COUNTERS` moves the first figure by
 19 B and the second by 25 B without touching `Ranvier.View.Arms`. An entry that calls no `Arms.Match` holds no
 `Ranvier.View.Arms` module, the `Arms.Match` entry holds no quotation code and no curry helper, and `Arms.Prepare ()`
@@ -150,8 +151,9 @@ How the first-site cost came down from 771 B:
 | a target's single live entry held without an array (Task 10, for the heap) | 496 |
 | AM006 as a code and docs anchor in Release; no run-time AM005 branch; `enter` and `values` inlined into `Arms.Match` as closures; one `serves` closure; unchecked indexing | 370 |
 | live entries linked through the entries; the withdrawn entry reused by the next arm of its target; one withdrawal per entry (for the switch); the short text without the URL scheme | 394 |
+| after #155; entries seeded with their mount-time values and refreshed on withdrawal (final review I1); withdrawn entries kept in the chain and rebound in place | 371 |
 
-The remaining cost is the cells' code: entry registration, reuse and withdrawal, the read over live and withdrawn
+The remaining cost is the cells' code: entry registration, rebinding and withdrawal, the read over live and withdrawn
 entries with graph tags, and the site's arm table. Dropping graph tags under Fable would save about 36 B and let a
 reader under one graph read another graph's arm.
 

@@ -65,7 +65,7 @@ let rec show (t: Type) : string =
             + (args |> Array.map show |> String.concat ", ")
             + ">"
     else
-        t.Name
+        Diagnostics.numberName t.Name
 
 and private atom (t: Type) =
     if FSharpType.IsFunction t || FSharpType.IsTuple t then
@@ -382,8 +382,8 @@ let private compileHot (at: At) (expr: Expr) : Expr =
         with error ->
             raise (InvalidOperationException (sprintf "%s(%d): %s" at.File at.Line error.Message, error))
 
-    // once: the expression runs once per site construction, so a let inside it, or a For body's item, binds one value
-    // per site and item.
+    // once: the expression runs once per site construction. A let in it, or a For body's item, binds one value per site
+    // and item.
     let rec go (once: bool) (bound: Set<Var>) (expr: Expr) =
         match expr with
         | NewDelegate _

@@ -6,10 +6,10 @@ open Ranvier.View.Representation
 #if FABLE_COMPILER
 open Fable.Core
 
-// An entry is { g: graph, c: the arm's current props, l: last values, n: the next live entry, w: its withdrawal }. An
-// instance's slots hold the first live entry of target t at key t, the others linked through n in mount order, and the
-// target's last withdrawn entry at key ~t. A withdrawn entry keeps its values only, and the next arm of its target on the
-// instance reuses it.
+// An entry is { g: graph, c: the arm's current props, l: last values (from mount on), n: the next entry, w: its
+// withdrawal }. An instance's slots hold the first entry of target t at key t, the others linked through n in mount
+// order. A withdrawn entry stays in the chain with c null and its last values; the next arm of its target on the
+// instance rebinds it, so a target holds no more entries than it had live arms at once.
 
 /// <summary>The site's WeakMap from an instance to its slots.</summary>
 type Cells = obj
@@ -31,33 +31,19 @@ let slotsOf (cells: Cells) (instance: obj) : obj = jsNative
 [<Emit("$0.get($1)")>]
 let tryFind (cells: Cells) (instance: obj) : obj = jsNative
 
-[<Emit("{ g: $0, c: $1 }")>]
-let entry (graph: obj) (current: obj) : obj = jsNative
+[<Emit("{ g: $0, c: $1, l: $2 }")>]
+let entry (graph: obj) (current: obj) (values: obj array) : obj = jsNative
 
-/// <summary>Binds a withdrawn entry to the graph and the arm's props, with no values read and no next entry.</summary>
-[<Emit("($0.g = $1, $0.c = $2, $0.l = $0.n = null)")>]
-let rebind (entry: obj) (graph: obj) (current: obj) : unit = jsNative
+/// <summary>Binds a withdrawn entry to the graph, the arm's props and its mount-time values.</summary>
+[<Emit("($0.g = $1, $0.c = $2, $0.l = $3)")>]
+let rebind (entry: obj) (graph: obj) (current: obj) (values: obj array) : unit = jsNative
 
-/// <summary>The first live entry of the target, or null.</summary>
+/// <summary>The first entry of the target, or null.</summary>
 [<Emit("($0 && $0[$1])")>]
-let live (slots: obj) (target: obj) : obj = jsNative
-
-/// <summary>The first live entry of the target in existing slots, or null.</summary>
-[<Emit("$0[$1]")>]
-let liveIn (slots: obj) (target: obj) : obj = jsNative
+let first (slots: obj) (target: obj) : obj = jsNative
 
 [<Emit("$0[$1] = $2")>]
-let setLive (slots: obj) (target: obj) (entry: obj) : unit = jsNative
-
-[<Emit("($0 && $0[~$1])")>]
-let withdrawn (slots: obj) (target: obj) : obj = jsNative
-
-/// <summary>The target's withdrawn entry in existing slots, or null.</summary>
-[<Emit("$0[~$1]")>]
-let withdrawnIn (slots: obj) (target: obj) : obj = jsNative
-
-[<Emit("$0[~$1] = null")>]
-let clearWithdrawn (slots: obj) (target: obj) : unit = jsNative
+let setFirst (slots: obj) (target: obj) (entry: obj) : unit = jsNative
 
 [<Emit("$0.n")>]
 let next (entry: obj) : obj = jsNative
@@ -65,19 +51,26 @@ let next (entry: obj) : obj = jsNative
 [<Emit("$0.n = $1")>]
 let setNext (entry: obj) (next: obj) : unit = jsNative
 
+/// <summary>Whether the entry belongs to a live arm.</summary>
+[<Emit("$0.c")>]
+let isLive (entry: obj) : bool = jsNative
+
 /// <summary>The entry's withdrawal, created once per entry.</summary>
 [<Emit("($0.w || ($0.w = $1))")>]
 let withdrawalOf (entry: obj) (withdraw: unit -> unit) : unit -> unit = jsNative
 
-/// <summary>Keeps the entry as the target's withdrawn entry when it holds values, and releases the arm's props.</summary>
-[<Emit("($2.l && ($0[~$1] = $2), $2.c = null)")>]
-let retire (slots: obj) (target: obj) (entry: obj) : unit = jsNative
+/// <summary>Records the arm's last values on the entry and releases the arm's props, which withdraws the entry.</summary>
+[<Emit("($0.l = $0.c()[1], $0.c = null)")>]
+let retire (entry: obj) : unit = jsNative
 
-[<Emit("$0 == null")>]
-let absent (value: obj) : bool = jsNative
+[<Emit("$0.g")>]
+let graphOf (entry: obj) : obj = jsNative
 
 [<Emit("$0 === $1")>]
 let same (a: obj) (b: obj) : bool = jsNative
+
+[<Emit("$0 == null")>]
+let absent (value: obj) : bool = jsNative
 
 [<Emit("null")>]
 let unread () : obj array = jsNative
@@ -92,90 +85,86 @@ let read (entry: obj) : obj array = jsNative
 let last (entry: obj) : obj array = jsNative
 
 /// <summary>
-/// Registers the arm's current props (the instance and its bound values) for the instance and target, and withdraws them
-/// on the arm's cleanup.
+/// Registers the arm's current props (the instance and its bound values) and its mount-time values for the instance and
+/// target, and withdraws them on the arm's cleanup. A withdrawn entry of the target is rebound in place, one tagged with
+/// the ambient graph first.
 /// </summary>
-let inline enter (cells: Cells) (setup: Setup) (instance: obj) (target: obj) (current: unit -> obj * obj array) : unit =
+let inline enter (cells: Cells) (setup: Setup) (instance: obj) (target: obj) (current: unit -> obj * obj array) (values: obj array) : unit =
     let slots = slotsOf cells instance
     let graph = tag Graph.TryCurrent
-    let held = withdrawnIn slots target
+    let mutable candidate = first slots target
+    let mutable tail: obj = null
+    let mutable withdrawn: obj = null
+
+    // The first withdrawn entry, preferring one tagged with the ambient graph.
+    while not (absent candidate) do
+        if
+            not (isLive candidate)
+            && (absent withdrawn
+                || (same (graphOf candidate) graph
+                    && not (same (graphOf withdrawn) graph)))
+        then
+            withdrawn <- candidate
+
+        tail <- candidate
+        candidate <- next candidate
 
     let registered =
-        if absent held then
-            entry graph current
-        else
-            clearWithdrawn slots target
-            rebind held graph current
-            held
+        if absent withdrawn then
+            let created = entry graph current values
 
-    let mutable tail = liveIn slots target
-
-    if absent tail then
-        setLive slots target registered
-    else
-        while not (absent (next tail)) do
-            tail <- next tail
-
-        setNext tail registered
-
-    setup.OnCleanup (
-        withdrawalOf registered (fun () ->
-            let mutable previous = liveIn slots target
-
-            if same previous registered then
-                setLive slots target (next registered)
+            if absent tail then
+                setFirst slots target created
             else
-                while not (same (next previous) registered) do
-                    previous <- next previous
+                setNext tail created
 
-                setNext previous (next registered)
+            created
+        else
+            rebind withdrawn graph current values
+            withdrawn
 
-            retire slots target registered)
-    )
+    setup.OnCleanup (withdrawalOf registered (fun () -> retire registered))
 
 /// <summary>
 /// The bound values of the reader's own arm: the pattern variables, then the matched value. Reads every live entry
-/// serving the ambient graph and returns the first; with none, the values held by the target's last withdrawn entry
-/// when it serves the ambient graph. A withdrawal under another graph replaces the target's withdrawn entry; a held read
-/// under the first graph then raises AM006.
+/// serving the ambient graph and returns the first; with none, the last values of the first withdrawn entry serving the
+/// ambient graph.
 /// </summary>
 let inline values (cells: Cells) (instance: obj) (target: obj) : obj array =
     let slots = tryFind cells instance
     let graph = tag Graph.TryCurrent
-    let serves = fun (entry: obj) -> servesUnder graph entry
-    let mutable candidate = live slots target
-    let mutable first = unread ()
+    let mutable candidate = first slots target
+    let mutable found = unread ()
+    let mutable held = unread ()
 
     while not (absent candidate) do
-        if serves candidate then
-            let values = read candidate
+        if servesUnder graph candidate then
+            if isLive candidate then
+                let values = read candidate
 
-            if absent first then
-                first <- values
+                if absent found then
+                    found <- values
+            elif absent held then
+                held <- last candidate
 
         candidate <- next candidate
 
-    if not (absent first) then
-        first
-    else
-        let held = withdrawn slots target
-
-        if not (absent held) && serves held then
-            last held
-        else
-            Errors.noArm ()
+    if not (absent found) then found
+    elif not (absent held) then held
+    else Errors.noArm ()
 #else
 let private ambient () : obj =
     match Graph.TryCurrent with
     | ValueSome graph -> box graph
     | ValueNone -> null
 
-/// <summary>A mounted arm's payload reader, the graph its setup ran under, and the values of its latest read.</summary>
+/// <summary>A mounted arm's payload reader, the graph its setup ran under, and its values, from mount on.</summary>
 [<AllowNullLiteral>]
-type Entry(graph: obj, values: unit -> obj array) =
+type Entry(graph: obj, values: unit -> obj array, initial: obj array) =
     member _.Graph = graph
-    member _.Values = values
-    member val Last: obj array = null with get, set
+    /// <summary>The payload reader; null once the entry is withdrawn.</summary>
+    member val Values = values with get, set
+    member val Last = initial with get, set
 
 /// <summary>Whether an entry serves a read under the graph: a null graph or a null tag matches any.</summary>
 let private serves (graph: obj) (entry: Entry) =
@@ -185,7 +174,7 @@ let private serves (graph: obj) (entry: Entry) =
 
 /// <summary>
 /// The live entries of an instance per target, as arrays replaced on each change, and each target's last withdrawn
-/// entry that held values.
+/// entry.
 /// </summary>
 [<AllowNullLiteral>]
 type Slots() =
@@ -212,9 +201,7 @@ type Slots() =
             |> Array.filter (fun other -> not (obj.ReferenceEquals (other, entry)))
 
         live <- next
-
-        if not (isNull entry.Last) then
-            withdrawn[target] <- entry
+        withdrawn[target] <- entry
 
     /// <summary>The live entries of the target, as an immutable array.</summary>
     member _.Live(target: int) : Entry array =
@@ -249,12 +236,19 @@ type Cells internal (table: obj) =
 let create () =
     Cells (newTable ())
 
-/// <summary>Registers the arm's payload reader for the instance and target, and withdraws it on the arm's cleanup.</summary>
-let enter (cells: Cells) (setup: Setup) (instance: obj) (target: int) (values: unit -> obj array) : unit =
+/// <summary>
+/// Registers the arm's payload reader and mount-time values for the instance and target; on the arm's cleanup, records its
+/// last values, drops the reader and withdraws the entry.
+/// </summary>
+let enter (cells: Cells) (setup: Setup) (instance: obj) (target: int) (values: unit -> obj array) (initial: obj array) : unit =
     let slots = slotsOf cells.Table instance
-    let entry = Entry (ambient (), values)
+    let entry = Entry (ambient (), values, initial)
     guarded slots (fun () -> slots.Add (target, entry))
-    setup.OnCleanup (fun () -> guarded slots (fun () -> slots.Withdraw (target, entry)))
+
+    setup.OnCleanup (fun () ->
+        entry.Last <- entry.Values ()
+        entry.Values <- Unchecked.defaultof<_>
+        guarded slots (fun () -> slots.Withdraw (target, entry)))
 
 /// <summary>
 /// The bound values of the reader's own arm: the pattern variables, then the matched value. Reads every live entry

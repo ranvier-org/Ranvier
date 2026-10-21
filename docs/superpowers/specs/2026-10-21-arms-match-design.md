@@ -28,9 +28,9 @@ Required by `.claude/rules/view-uses-core.md`.
   so concurrent server renders (one request graph each, `Server.fs:136`, `Server.fs:217`) stay apart.
 
 **View-owned state (new):** one table per site, `Cells`: a `WeakMap` under Fable, a `ConditionalWeakTable` on .NET,
-from an instance to the payload readers of that instance's mounted arms, one list per target. It is a lookup, not a
-selection cache: the payload itself stays in the arm memo, and an entry holds only the arm's `unit -> payload` reader
-that the region already hands the arm (`CaseArms.fs:61-64`). The core cannot hold it because a reader receives only the
+from an instance to the entries of that instance's mounted arms, per target. It is a lookup, not a selection cache: the
+payload itself stays in the arm memo; an entry holds the arm's props accessor, which the region already hands the arm
+(`CaseArms.fs:61-64`), its graph and its last values, seeded at mount (plan Rulings 28, 32 and 37). The core cannot hold it because a reader receives only the
 instance (`TemplateView<'inst>` readers are `'inst -> 'v`), and the core has no owner-scoped lookup from which a reader
 could find its arm. Decision 13 keeps the lookup in the view.
 
@@ -131,7 +131,12 @@ its rows and updates them.
     dependency, so NuGet unifies it with the `Fable.AST` of other plugin packages (a .NET build carries an unused
     compile reference), and ships only `Ranvier.View.Arms.FablePlugin.dll` under `fable-plugin/`, from an explicit file
     list: the `FSharp.Core.dll` the plugin build copies stays out. The experiment references the copied
-    `Fable.AST.dll` directly until the package exists; the pack work belongs to graduation.
+    `Fable.AST.dll` directly until the package exists; the pack work belongs to graduation. Fable needs the runtime's F#
+    sources in the package (`fable/` with `Diagnostics.fs`, `Errors.fs`, `Cells.fs`, `Site.fs`, `Quoted.fs`, `Arms.fs`
+    and the project file). The `Fable.AST` dependency is declared with `ExcludeAssets="runtime"` (nuspec
+    `exclude="Runtime"`), so a .NET app's output holds no `Fable.AST.dll`. The packaged `.targets` sets
+    `RanvierArmsPluginDir` to `$(MSBuildThisFileDirectory)../fable-plugin/` and drops its `Fable.AST.dll` reference,
+    which the dependency supplies.
 17. **AM005 is a compile-time error at the call.** The `.targets` defines `RANVIER_ARMS_PLUGIN` under Fable; without it,
     Fable compiles an `Arms.Match` marked `[<Obsolete(..., true)>]`, so a project that references `Ranvier.View.Arms`
     without importing the `.targets` fails with FS0101 "This construct is deprecated. Arms.Match needs the
@@ -146,9 +151,9 @@ its rows and updates them.
 
 | Project | Target | Contents |
 |---|---|---|
-| `experiments/Ranvier.View.Arms/Ranvier.View.Arms.fsproj` | net10.0, Fable sources | `Cells.fs`, `Site.fs`, `Quoted.fs` (.NET only), `Arms.fs`, `Diagnostics.fs`; references `Ranvier.View.Portable` |
+| `experiments/Ranvier.View.Arms/Ranvier.View.Arms.fsproj` | net10.0;net8.0, Fable sources | `Cells.fs`, `Site.fs`, `Quoted.fs` (.NET only), `Arms.fs`, `Diagnostics.fs`, `Errors.fs`; references `src/Ranvier.View` |
 | `experiments/Ranvier.View.Arms.FablePlugin/Ranvier.View.Arms.FablePlugin.fsproj` | netstandard2.0 | `Shape.fs`, `Lower.fs`, `Plugin.fs`: the probe's `Plugin.fs` split by role; `[<assembly: ScanForPlugins>]` |
-| `experiments/Ranvier.View.Arms/Ranvier.View.Arms.targets` | MSBuild | when `'$(FABLE_COMPILER)' == 'true'`: defines `RANVIER_ARMS_PLUGIN`, adds the plugin assembly and `Fable.AST.dll` (the base type of the plugin attribute) as `Reference`s, and fails the build when the plugin assembly is missing; `RanvierArmsPluginDir` overrides its folder |
+| `experiments/Ranvier.View.Arms/Ranvier.View.Arms.targets` | MSBuild | when `'$(FABLE_COMPILER)' == 'true'`: defines `RANVIER_ARMS_PLUGIN`, adds the plugin assembly and `Fable.AST.dll` (the base type of the plugin attribute) as `Reference`s, builds the plugin in Release when its assembly is missing from the default folder, and fails the build when it is still missing; `RanvierArmsPluginDir` overrides its folder |
 | `experiments/Ranvier.View.Arms/Checks/` | both | fixtures, explicit twins, server checks, the golden server HTML |
 
 Versions:
@@ -171,8 +176,8 @@ two lines:
 Fable discovers plugins among the compilation's assembly references, and it compiles `Ranvier.View.Arms` from source
 inside the app's compilation with the app's references and defines; the `.targets` adds the plugin assembly,
 `Fable.AST.dll` and the `RANVIER_ARMS_PLUGIN` define.
-`dotnet fickl` evaluates the project without building it, so the plugin assembly must exist beforehand: the Playground
-`compile` scripts and the CI jobs run `dotnet build experiments/Ranvier.View.Arms.FablePlugin -c Release` first.
+`dotnet fickl` evaluates the project without building it; the `.targets` builds the plugin in Release during that
+evaluation when its assembly is missing (plan Ruling 37).
 Fable sets the `FABLE_COMPILER` MSBuild property during project cracking (verified in phase 1), so .NET builds carry
 no plugin assembly. When the view graduates to a package, one `Ranvier.View.Arms` package ships the plugin assembly
 under `fable-plugin/` with a NuGet dependency on `Fable.AST`, and the `.targets` under both `build/` and
@@ -255,10 +260,10 @@ helper views typed `TemplateView<'inst>` work unchanged inside a body.
 
 `Cells.values cells s k` reads every live entry of `(s, k)` registered under the ambient graph (all entries when no
 graph is ambient), which subscribes the reader to each of those arms' payloads, and returns the first entry's values.
-With no live entry it returns the values that the last withdrawn entry of `(s, k)` held, so a reader that runs while
+With no live entry it returns the last values of a withdrawn entry of `(s, k)` (under Fable the first in mount order serving the graph; on .NET the last withdrawn), so a reader that runs while
 its arm's nodes are held by an exit (`Departures.fs`) still reads its own case. Entries of one site, instance and target
-belong to arms of the same case of the same instance, so they hold equal values once a flush settles; the .NET table
-locks the entry list on `enter`, withdrawal and `values`.
+belong to arms of the same case of the same instance, so they hold equal values once a flush settles. The .NET table
+changes an instance's entry lists under its lock and reads them without it (plan Ruling 28).
 
 ## The lowering
 
@@ -436,7 +441,7 @@ through `Mounting.mountWith`.
 
 | Check | Budget |
 |---|---|
-| `Arms.Match` entry vs its explicit `armOf` + `matchWith` twin | ≤ 400 B gzip (measured 370 B before the entry reuse and 394 B after it, rounded up to the next 50 B: the AM006 code and anchor text, cells with per-target entries and graph tags inlined into `Arms.Match`; the method resolves about ±20 B) |
+| `Arms.Match` entry vs its explicit `armOf` + `matchWith` twin | ≤ 400 B gzip (measured 371 B, rounded up to the next 50 B: the AM006 code and anchor text, cells with per-target entries and graph tags inlined into `Arms.Match`; the method resolves about ±20 B) |
 | Each further site in the same bundle, against its twin | ≤ 60 B gzip per site |
 | An app that references `Ranvier.View.Arms` and calls no `Arms.Match`, vs the same app without the reference | 0 B (byte-identical bundle) |
 | The Playground `sugar-size.mjs` explicit entry before and after this work | 0 B |

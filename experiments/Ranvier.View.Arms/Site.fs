@@ -14,11 +14,12 @@ let inline create (cells: Cells.Cells) (read: 'inst -> 'u) (select: 'u -> int * 
         |> Array.mapi (fun target body ->
             Component.define
                 (fun setup (current: unit -> 'inst * obj array) ->
-                    let instance = fst (current ())
+                    let props = current ()
+                    let instance = fst props
 #if FABLE_COMPILER
-                    Cells.enter cells setup (box instance) target (unbox<unit -> obj * obj array>(box current))
+                    Cells.enter cells setup (box instance) target (unbox<unit -> obj * obj array>(box current)) (snd props)
 #else
-                    Cells.enter cells setup (box instance) target (fun () -> snd (current ()))
+                    Cells.enter cells setup (box instance) target (fun () -> snd (current ())) (snd props)
 #endif
                     instance)
                 (fun _ -> body))

@@ -39,14 +39,17 @@ let rec show (helper: PluginHelper) (t: Type) : string =
     | Type.Char -> "char"
     | Type.String -> "string"
     | Type.Number (kind, _) ->
-        match kind with
-        | NumberKind.Int32 -> "int"
-        | NumberKind.Float64 -> "float"
-        | NumberKind.Decimal -> "decimal"
-        | NumberKind.Int64 -> "int64"
-        | NumberKind.Float32 -> "float32"
-        | NumberKind.UInt8 -> "byte"
-        | other -> (string other).ToLowerInvariant()
+        Diagnostics.numberName (
+            match kind with
+            | NumberKind.Int8 -> "SByte"
+            | NumberKind.UInt8 -> "Byte"
+            | NumberKind.BigInt -> "BigInteger"
+            | NumberKind.NativeInt -> "IntPtr"
+            | NumberKind.UNativeInt -> "UIntPtr"
+            | NumberKind.Float32 -> "Single"
+            | NumberKind.Float64 -> "Double"
+            | other -> string other
+        )
     | Type.Option (arg, false) -> atom helper arg + " option"
     | Type.Option (arg, true) -> atom helper arg + " voption"
     | Type.Array (arg, _) -> atom helper arg + " array"

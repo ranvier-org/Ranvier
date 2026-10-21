@@ -1,7 +1,7 @@
 <Project>
   <!--
-  The Arms.Match opt-in for a project compiled by Fable. The plugin assembly must exist before `dotnet fickl` runs:
-  dotnet build experiments/Ranvier.View.Arms.FablePlugin/Ranvier.View.Arms.FablePlugin.fsproj -c Release
+  The Arms.Match opt-in for a project compiled by Fable. When the plugin assembly is missing from the default folder, the
+  first compile builds Ranvier.View.Arms.FablePlugin in Release.
   -->
   <PropertyGroup>
     <RanvierArmsPluginDir Condition="'$(RanvierArmsPluginDir)' == ''">$(MSBuildThisFileDirectory)../Ranvier.View.Arms.FablePlugin/bin/Release/netstandard2.0/</RanvierArmsPluginDir>
@@ -16,6 +16,9 @@
     <Reference Include="$(RanvierArmsPluginDir)Fable.AST.dll" />
   </ItemGroup>
   <Target Name="RanvierArmsPluginExists" BeforeTargets="ResolveAssemblyReferences" Condition="'$(FABLE_COMPILER)' == 'true'">
+    <!-- Restore runs in an evaluation of its own (the extra property), so Build sees the restored assets. -->
+    <MSBuild Condition="!Exists('$(RanvierArmsPluginDir)Ranvier.View.Arms.FablePlugin.dll') and '$(RanvierArmsPluginDir)' == '$(MSBuildThisFileDirectory)../Ranvier.View.Arms.FablePlugin/bin/Release/netstandard2.0/'" Projects="$(MSBuildThisFileDirectory)../Ranvier.View.Arms.FablePlugin/Ranvier.View.Arms.FablePlugin.fsproj" Targets="Restore" Properties="Configuration=Release;DesignTimeBuild=false;SkipCompilerExecution=false;ProvideCommandLineArgs=false;BuildingProject=true;FABLE_COMPILER=;RanvierArmsPluginRestore=true" RemoveProperties="TargetFramework;TargetFrameworks;RuntimeIdentifier" />
+    <MSBuild Condition="!Exists('$(RanvierArmsPluginDir)Ranvier.View.Arms.FablePlugin.dll') and '$(RanvierArmsPluginDir)' == '$(MSBuildThisFileDirectory)../Ranvier.View.Arms.FablePlugin/bin/Release/netstandard2.0/'" Projects="$(MSBuildThisFileDirectory)../Ranvier.View.Arms.FablePlugin/Ranvier.View.Arms.FablePlugin.fsproj" Targets="Build" Properties="Configuration=Release;DesignTimeBuild=false;SkipCompilerExecution=false;ProvideCommandLineArgs=false;BuildingProject=true;FABLE_COMPILER=" RemoveProperties="TargetFramework;TargetFrameworks;RuntimeIdentifier" />
     <Error Condition="!Exists('$(RanvierArmsPluginDir)Ranvier.View.Arms.FablePlugin.dll')" Text="Ranvier.View.Arms.FablePlugin.dll is missing from $(RanvierArmsPluginDir). Build the plugin first: dotnet build experiments/Ranvier.View.Arms.FablePlugin/Ranvier.View.Arms.FablePlugin.fsproj -c Release" />
   </Target>
 </Project>

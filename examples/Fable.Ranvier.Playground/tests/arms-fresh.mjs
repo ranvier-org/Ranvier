@@ -1,7 +1,6 @@
 // Runs a dotnet fickl compile of DomTests into the output folder, adding --noCache when the folder's Arms.js is missing
-// or older than a source it inlines (Cells.fs, Site.fs, Errors.fs, Diagnostics.fs). Fable recompiles a file only when
-// its own source changed, so without the flag it keeps an Arms.js that holds the previous Cells.enter, Cells.values and
-// Site.create. Usage: node tests/arms-fresh.mjs <outDir> <configuration> [fickl arguments...]
+// or older than a source it inlines (Cells.fs, Site.fs, Errors.fs, Diagnostics.fs). Fable keeps an Arms.js whose inlined
+// Cells and Site code is stale. Usage: node tests/arms-fresh.mjs <outDir> <configuration> [fickl arguments...]
 import { execFileSync } from "node:child_process";
 import { existsSync, statSync, utimesSync } from "node:fs";
 

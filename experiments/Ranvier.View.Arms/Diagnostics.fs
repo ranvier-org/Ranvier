@@ -66,3 +66,22 @@ let unsupported = "Arms.Match: this pattern form is not supported."
 [<Literal>]
 let noRange =
     "Arms.Match: the call has no source location; the plugin derives the names of a site's emitted locals from it."
+
+/// <summary>The F# abbreviation of a .NET numeric type name (<c>SByte</c> is <c>sbyte</c>), or the name itself.</summary>
+let numberName (dotnetName: string) =
+    match dotnetName with
+    | "SByte" -> "sbyte"
+    | "Byte" -> "byte"
+    | "Int16" -> "int16"
+    | "UInt16" -> "uint16"
+    | "Int32" -> "int"
+    | "UInt32" -> "uint32"
+    | "Int64" -> "int64"
+    | "UInt64" -> "uint64"
+    | "IntPtr" -> "nativeint"
+    | "UIntPtr" -> "unativeint"
+    | "BigInteger" -> "bigint"
+    | "Single" -> "float32"
+    | "Double" -> "float"
+    | "Decimal" -> "decimal"
+    | other -> other

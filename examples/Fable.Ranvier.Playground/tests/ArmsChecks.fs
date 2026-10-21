@@ -650,6 +650,170 @@ let private pendingSource queued () =
     equal ((1, 0, null), (0, 0, "2"), (0, 1, null), [ "lost" ]) (states.Head, states[1], List.last states, List.distinct reports)
     equal twin (boundaryStates queued bounded)
 
+let private exitOnlyReads = ResizeArray<string>()
+
+/// <summary>A site whose Loaded body reads its pattern variables only in its exit, which finishes at once.</summary>
+let private exitOnly =
+    Component.template
+        (fun _ (state: Signal<Load>) -> state)
+        (div () {
+            Arms.Match (
+                (fun (state: Signal<Load>) -> state.Value),
+                function
+                | Loaded (text, count) ->
+                    pre (
+                        Hooks.exit (
+                            Func<_, _, _, _>(fun (_: Signal<Load>) (_: HTMLPreElement) finish ->
+                                exitOnlyReads.Add (sprintf "%s %d" text count)
+                                finish ()
+                                ignore)
+                        )
+                    ) {
+                        "held"
+                    }
+                | _ -> span () { "Other" }
+            )
+        })
+
+let private exitOnlyLoaded =
+    armOf (
+        pre (
+            Hooks.exit (
+                Func<_, _, _, _>(fun (payload: unit -> string * int) (_: HTMLPreElement) finish ->
+                    let text, count = payload ()
+                    exitOnlyReads.Add (sprintf "%s %d" text count)
+                    finish ()
+                    ignore)
+            )
+        ) {
+            "held"
+        }
+    )
+
+let private exitOnlyOther = armOf (span () { "Other" })
+
+let private exitOnlyTwin =
+    Component.template
+        (fun _ (state: Signal<Load>) -> state)
+        (div () {
+            matchWith (fun (state: Signal<Load>) -> state.Value) (function
+                | Loaded (text, count) -> arm exitOnlyLoaded (text, count)
+                | _ -> arm exitOnlyOther ())
+        })
+
+/// <summary>The exit reads of the definition over a payload change with no read, two departures and a remount.</summary>
+let private exitReadsOf queued (definition: Component<Signal<Load>>) =
+    exitOnlyReads.Clear ()
+    use graph = new Graph ()
+    let state = graph.Run (fun () -> Api.createSignal (Loaded ("a", 1)))
+    let target = host ()
+
+    let mounted =
+        mountTemplate queued graph strict target (Component.render definition state)
+
+    mounted.Flush ()
+
+    for step in [ Loaded ("b", 2); Idle; Loaded ("c", 3); Idle ] do
+        write graph [ mounted ] (fun () -> state.Value <- step)
+
+    mounted.Dispose ()
+    List.ofSeq exitOnlyReads
+
+/// <summary>An arm whose only readers are in its exit reads its own case's latest values, as its twin does (Testing 9).</summary>
+let private exitOnlyReadsOwnCase queued () =
+    let twin = exitReadsOf queued exitOnlyTwin
+    equal [ "b 2"; "c 3" ] twin
+    equal twin (exitReadsOf queued exitOnly)
+
+let private handlerClicks = ResizeArray<string>()
+let private handlerHolds = ResizeArray<unit -> unit>()
+
+[<Emit("$0.querySelectorAll('button').forEach(b => b.click())")>]
+let private clickAll (target: HTMLElement) : unit = jsNative
+
+/// <summary>A site whose Loaded body reads its pattern variables only in a click handler, its root held by its exit.</summary>
+let private handlerOnly =
+    Component.template
+        (fun _ (state: Signal<Load>) -> state)
+        (div () {
+            Arms.Match (
+                (fun (state: Signal<Load>) -> state.Value),
+                function
+                | Loaded (text, count) ->
+                    button (
+                        Events.onClick (fun (_: Signal<Load>) _ -> handlerClicks.Add (sprintf "%s %d" text count)),
+                        Hooks.exit (
+                            Func<_, _, _, _>(fun (_: Signal<Load>) (_: HTMLButtonElement) finish ->
+                                handlerHolds.Add finish
+                                ignore)
+                        )
+                    ) {
+                        "go"
+                    }
+                | _ -> span () { "Other" }
+            )
+        })
+
+let private handlerLoaded =
+    armOf (
+        button (
+            Events.onClick (fun (payload: unit -> string * int) _ ->
+                let text, count = payload ()
+                handlerClicks.Add (sprintf "%s %d" text count)),
+            Hooks.exit (
+                Func<_, _, _, _>(fun (_: unit -> string * int) (_: HTMLButtonElement) finish ->
+                    handlerHolds.Add finish
+                    ignore)
+            )
+        ) {
+            "go"
+        }
+    )
+
+let private handlerTwin =
+    Component.template
+        (fun _ (state: Signal<Load>) -> state)
+        (div () {
+            matchWith (fun (state: Signal<Load>) -> state.Value) (function
+                | Loaded (text, count) -> arm handlerLoaded (text, count)
+                | _ -> arm exitOnlyOther ())
+        })
+
+/// <summary>The clicks recorded by every button after each step: held, remounted on the same target, held again.</summary>
+let private clicksOf queued (definition: Component<Signal<Load>>) =
+    handlerClicks.Clear ()
+    handlerHolds.Clear ()
+    use graph = new Graph ()
+    let state = graph.Run (fun () -> Api.createSignal (Loaded ("a", 1)))
+    let target = host ()
+
+    let mounted =
+        mountTemplate queued graph strict target (Component.render definition state)
+
+    mounted.Flush ()
+    let shots = ResizeArray<string list>()
+
+    for step in [ Idle; Loaded ("b", 2); Idle ] do
+        write graph [ mounted ] (fun () -> state.Value <- step)
+        handlerClicks.Clear ()
+        clickAll target
+        shots.Add (List.sort (List.ofSeq handlerClicks))
+
+    for finish in List.ofSeq handlerHolds do
+        finish ()
+
+    mounted.Dispose ()
+    List.ofSeq shots
+
+/// <summary>
+/// An arm whose only readers are a click handler reads its own case's values after a remount of the same target on the
+/// instance; a held root's handlers no longer run, as with its twin.
+/// </summary>
+let private handlerOnlyReadsOwnCase queued () =
+    let twin = clicksOf queued handlerTwin
+    equal [ []; [ "b 2" ]; [] ] twin
+    equal twin (clicksOf queued handlerOnly)
+
 let cases: (string * (unit -> unit)) array =
     strictCases (
         Array.concat
@@ -667,5 +831,7 @@ let cases: (string * (unit -> unit)) array =
                 templated "a batch that leaves a target and returns to it shows the last payload" switchBackInOneBatch
                 templated "an outgoing arm's exit reads its own case's values after the arm's cleanup" heldExit
                 templated "a source read inside a boundary pends, settles and fails as its twin does" pendingSource
+                templated "an arm read only by its exit reads its own case's latest values" exitOnlyReadsOwnCase
+                templated "an arm read only by a click handler reads its own case's values through a remount" handlerOnlyReadsOwnCase
             ]
     )
