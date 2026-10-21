@@ -8,9 +8,9 @@ which is the runnable reference for everything in this section.
 
 ## Project
 
-Reference the `Ranvier.View.Dom` package; it brings in `Ranvier.View` and `Ranvier`. Its
-`Xantham.Fable.Core.TS` dependency restores from a second package source for now; add it as
-[Installation](../guide/installation.md#views) shows.
+Reference the `Ranvier.View.Dom` package; it brings in `Ranvier.View` and `Ranvier`. The view packages
+are not on nuget.org yet; [Installation](../guide/installation.md#views) shows the local feed and
+the `nuget.config` that restore them.
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">

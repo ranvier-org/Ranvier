@@ -379,9 +379,10 @@ module Stage =
                 }
         }
 
-    /// Pushes every package in the output directory to NuGet, with the key masked in every printed form of the step.
-    /// `--dry-publish` lists them instead, fails when there are none, and pushes nothing, whatever key is set. Without
-    /// a key or `--dry-publish`, the stage is inactive and fails the pipeline.
+    /// Pushes the packages of the output directory whose dependencies all resolve on nuget.org or in the same push, with
+    /// the key masked in every printed form of the step, then fails naming each package it held back.
+    /// `--dry-publish` lists the packages and what a push would accept or refuse, fails when there are none, and pushes
+    /// nothing, whatever key is set. Without a key or `--dry-publish`, the stage is inactive and fails the pipeline.
     let publish =
         input {
             let! apiKey = Options.apiKey
@@ -389,6 +390,8 @@ module Stage =
 
             let directory = Repo.VirtualFileSystem.bin.ToString ()
             let packages = System.IO.Path.Combine (directory, "*.nupkg")
+            // The packages .github/scripts/feed.cjs refuses: a dependency resolves neither on nuget.org nor in this push.
+            let refused = System.IO.Path.Combine (directory, "refused")
 
             return
                 stage "publish" {
@@ -407,15 +410,34 @@ module Stage =
                                     failwith $"No package matches {packages}."
 
                                 for file in files do
-                                    printfn $"Would push {System.IO.Path.GetFileName file}")
+                                    printfn $"Packed {System.IO.Path.GetFileName file}")
+
+                            run "node" $".github/scripts/feed.cjs {directory} --dry"
                         }
                     else
                         whenSome apiKey (fun key ->
                             stage "push" {
+                                run (fun _ ->
+                                    if System.IO.Directory.Exists refused then
+                                        System.IO.Directory.Delete (refused, true))
+
+                                run "node" $".github/scripts/feed.cjs {directory} --refuse {refused}"
+
                                 run (
                                     cmd $"dotnet nuget push {packages} -s https://api.nuget.org/v3/index.json --skip-duplicate"
                                     |> Cmd.secretOption "-k" key
                                 )
+
+                                run (fun _ ->
+                                    let held =
+                                        if System.IO.Directory.Exists refused then
+                                            System.IO.Directory.GetFiles (refused, "*.nupkg")
+                                            |> Array.map System.IO.Path.GetFileName
+                                        else
+                                            [||]
+
+                                    if not (Array.isEmpty held) then
+                                        failwith $"""Not pushed, a dependency is missing from nuget.org: {String.concat ", " held}""")
                             })
                 }
         }

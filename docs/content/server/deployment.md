@@ -77,8 +77,8 @@ The `Ranvier.View` package holds `Server` and every template type; `Ranvier.View
 </Project>
 ```
 
-The view packages restore `Xantham.Fable.Core.TS` from a second package source for now; the app's
-`nuget.config` adds it as [Installation](../guide/installation.md#views) shows.
+The view packages are not on nuget.org yet; the app's `nuget.config` restores them from a local feed,
+as [Installation](../guide/installation.md#views) shows.
 
 ## The page
 
