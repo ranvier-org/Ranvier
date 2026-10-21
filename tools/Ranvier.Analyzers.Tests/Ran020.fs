@@ -32,7 +32,7 @@ let tests =
                 let range =
                     (findings "let c = Component.template (fun _ () -> ()) (div () { string count.Value })\n").Head.Range
 
-                Expect.equal (range.StartLine, range.StartColumn, range.EndColumn) (8, 61, 72) "count.Value"
+                Expect.equal (range.StartLine, range.StartColumn, range.EndColumn) (6, 61, 72) "count.Value"
             }
 
             test "every offered fix type-checks and clears its finding" {

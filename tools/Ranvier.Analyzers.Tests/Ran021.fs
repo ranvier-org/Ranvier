@@ -34,7 +34,7 @@ let tests =
 
             test "the finding's range is the key function" {
                 let range = (findings "fun (_: Todo) -> Guid.NewGuid ()").Head.Range
-                Expect.equal (range.StartLine, range.StartColumn, range.EndColumn) (13, 68, 100) "the key lambda"
+                Expect.equal (range.StartLine, range.StartColumn, range.EndColumn) (11, 68, 100) "the key lambda"
             }
 
             test "Array.findIndex is positional" {
