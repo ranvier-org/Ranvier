@@ -81,7 +81,7 @@ type Session internal (host: TwinHost, element: TwinElement, graph: Graph, polic
         match policy with
         | Reports.Collect ->
             for error in host.Document.ListenerErrors do
-                collected.Add [ TwinListenerException ("listener", error) ]
+                collected.Add [ error ]
 
             host.Document.ListenerErrors.Clear ()
         | Reports.Raise -> ()
@@ -110,11 +110,14 @@ type Session internal (host: TwinHost, element: TwinElement, graph: Graph, polic
 
     interface IDisposable with
         member _.Dispose() =
-            if not (isNull (box mounted)) then
-                mounted.Dispose ()
-
-            (graph :> IDisposable).Dispose()
-            (host.Document :> IDisposable).Dispose()
+            try
+                try
+                    if not (isNull (box mounted)) then
+                        mounted.Dispose ()
+                finally
+                    (graph :> IDisposable).Dispose()
+            finally
+                (host.Document :> IDisposable).Dispose()
 
 [<RequireQualifiedAccess>]
 module Twin =

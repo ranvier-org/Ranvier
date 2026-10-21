@@ -9,6 +9,32 @@ let tests =
     testList
         "Testing API"
         [
+            testCase "disposing an event source out of order or on another thread raises"
+            <| fun () ->
+                let source =
+                    { new EventSpec.IEventSource with
+                        member _.Create _ =
+                            Unchecked.defaultof<_>
+                    }
+
+                let first = EventSpec.install source
+                let second = EventSpec.install source
+                Expect.throwsT<System.InvalidOperationException> (fun () -> first.Dispose ()) "out of order"
+                let failure = ref null
+
+                let thread =
+                    System.Threading.Thread (fun () ->
+                        try
+                            second.Dispose ()
+                        with e ->
+                            failure.Value <- e)
+
+                thread.Start ()
+                thread.Join ()
+                Expect.isTrue (failure.Value :? System.InvalidOperationException) "another thread"
+                second.Dispose ()
+                first.Dispose ()
+
             testCase "check clicks only when the state differs"
             <| fun () ->
                 let host = TwinHost.Create ()

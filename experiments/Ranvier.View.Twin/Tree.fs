@@ -464,7 +464,19 @@ and [<Sealed; AllowNullLiteral>] TwinDocument() as this =
     member _.Head = head
     member _.Body = body
     member _.OwnerThread = ownerThread
-    member val ActiveElement: TwinElement = null with get, set
+    member val private Focused: TwinElement = null with get, set
+
+    /// <summary>The focused element; null when nothing is focused or the focused element has left the document.</summary>
+    member this.ActiveElement
+        with get (): TwinElement =
+            if
+                not (isNull this.Focused)
+                && this.Focused.IsConnected
+            then
+                this.Focused
+            else
+                null
+        and set (value: TwinElement) = this.Focused <- value
 
     /// <summary>The exceptions raised by listeners during dispatches, in order; a dispatch continues past each.</summary>
     member val ListenerErrors = ResizeArray<exn>()
@@ -472,7 +484,7 @@ and [<Sealed; AllowNullLiteral>] TwinDocument() as this =
     /// <summary>Whether a dispatch raises its first listener exception once the dispatch ends.</summary>
     member val RaiseListenerErrors = false with get, set
 
-    /// <summary>Runs when the outermost dispatch, click, focus or blur returns; a session settles and checks reports here.</summary>
+    /// <summary>Runs when the outermost dispatch, click, focus or blur returns; a session settles its clock and raises pending reports in it.</summary>
     member val internal AfterDispatch: unit -> unit = ignore with get, set
 
     member val internal DispatchDepth = 0 with get, set

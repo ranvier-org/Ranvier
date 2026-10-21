@@ -36,7 +36,14 @@ let create (host: TwinHost) (directory: string) : Harness =
             host.Clock.AdvanceBy milliseconds
 
         member _.ListenerErrors() =
-            let messages = [ for error in host.Document.ListenerErrors -> error.Message ]
+            let messages =
+                [
+                    for error in host.Document.ListenerErrors ->
+                        match error with
+                        | TwinListenerException (_, inner) -> inner.Message
+                        | other -> other.Message
+                ]
+
             host.Document.ListenerErrors.Clear ()
             messages
 

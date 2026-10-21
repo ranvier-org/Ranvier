@@ -23,6 +23,8 @@ type TwinEvent(eventType: string, kind: EventKind, bubbles: bool, cancelable: bo
     member val PropagationStopped = false with get, set
     member val ImmediateStopped = false with get, set
     member val DefaultPrevented = false with get, set
+    /// <summary>True while a passive listener runs; its <c>preventDefault</c> has no effect.</summary>
+    member val InPassiveListener = false with get, set
 
     member this.StopPropagation() =
         this.PropagationStopped <- true
@@ -32,7 +34,7 @@ type TwinEvent(eventType: string, kind: EventKind, bubbles: bool, cancelable: bo
         this.ImmediateStopped <- true
 
     member this.PreventDefault() =
-        if cancelable then
+        if cancelable && not this.InPassiveListener then
             this.DefaultPrevented <- true
 
 type EventProxy() =
@@ -96,6 +98,8 @@ module Events =
         {
             Type: string
             Capture: bool
+            Once: bool
+            Passive: bool
             Callback: obj -> unit
             mutable Removed: bool
         }
@@ -141,24 +145,40 @@ module Events =
     let eventOf (value: obj) : TwinEvent =
         (value :?> EventProxy).Event
 
-    let listen (node: TwinNode) (eventType: string) (capture: bool) (callback: obj -> unit) : unit -> unit =
-        let list = listeners.GetValue (node, fun _ -> ResizeArray ())
-
+    /// <summary>
+    /// Adds a listener with the DOM's capture, once and passive flags; the result removes it. A once listener is removed
+    /// before its first call, and a passive listener's <c>preventDefault</c> has no effect.
+    /// </summary>
+    let private listenEntry (node: TwinNode) (eventType: string) (capture: bool) (once: bool) (passive: bool) (callback: obj -> unit) : Listener =
         let entry =
             {
                 Type = eventType
                 Capture = capture
+                Once = once
+                Passive = passive
                 Callback = callback
                 Removed = false
             }
 
-        list.Add entry
+        listeners.GetValue(node, fun _ -> ResizeArray ()).Add entry
+        entry
 
-        fun () ->
-            entry.Removed <- true
-            list.Remove entry |> ignore
+    let private remove (node: TwinNode) (entry: Listener) =
+        entry.Removed <- true
 
-    let private invoke (node: TwinNode) (event: TwinEvent) (phase: int) (failures: ResizeArray<exn>) =
+        match listeners.TryGetValue node with
+        | true, list -> list.Remove entry |> ignore
+        | false, _ -> ()
+
+    let listenWith (node: TwinNode) (eventType: string) (capture: bool) (once: bool) (passive: bool) (callback: obj -> unit) : unit -> unit =
+        let entry = listenEntry node eventType capture once passive callback
+        fun () -> remove node entry
+
+    let listen (node: TwinNode) (eventType: string) (capture: bool) (callback: obj -> unit) : unit -> unit =
+        listenWith node eventType capture false false callback
+
+    // Runs the node's listeners of the event's type whose capture flag is `capture`, in registration order.
+    let private invoke (node: TwinNode) (event: TwinEvent) (phase: int) (capture: bool) (failures: ResizeArray<exn>) =
         match listeners.TryGetValue node with
         | true, list ->
             event.CurrentTarget <- node
@@ -168,20 +188,34 @@ module Events =
                 let applies =
                     entry.Type = event.Type
                     && not entry.Removed
-                    && (phase = 2 || (phase = 1) = entry.Capture)
+                    && entry.Capture = capture
 
                 if applies && not event.ImmediateStopped then
+                    if entry.Once then
+                        entry.Removed <- true
+                        list.Remove entry |> ignore
+
+                    event.InPassiveListener <- entry.Passive
+
                     try
-                        entry.Callback (proxyOf event)
-                    with error ->
-                        failures.Add error
+                        try
+                            entry.Callback (proxyOf event)
+                        with error ->
+                            failures.Add (TwinListenerException (event.Type, error))
+                    finally
+                        event.InPassiveListener <- false
         | false, _ -> ()
 
     /// <summary>
     /// Runs an interaction: once the outermost dispatch, click, focus or blur of the document returns, the document's
     /// <c>AfterDispatch</c> runs.
     /// </summary>
+    /// <remarks>
+    /// Under <c>RaiseListenerErrors</c>, the first listener failure of the interaction raises when the outermost
+    /// returns, after <c>AfterDispatch</c>.
+    /// </remarks>
     let private outermost (document: TwinDocument) (action: unit -> 'T) : 'T =
+        let before = document.ListenerErrors.Count
         document.DispatchDepth <- document.DispatchDepth + 1
 
         let result =
@@ -191,7 +225,19 @@ module Events =
                 document.DispatchDepth <- document.DispatchDepth - 1
 
         if document.DispatchDepth = 0 then
+            let failure =
+                if document.ListenerErrors.Count > before then
+                    document.ListenerErrors[before]
+                else
+                    null
+
             document.AfterDispatch ()
+
+            if
+                not (isNull failure)
+                && document.RaiseListenerErrors
+            then
+                raise failure
 
         result
 
@@ -207,30 +253,27 @@ module Events =
 
         let failures = ResizeArray<exn>()
 
+        // The capturing pass ends at the target's capture listeners; the bubbling pass starts at its other listeners,
+        // whether or not the event bubbles.
         for i in path.Count - 1 .. -1 .. 0 do
             if not event.PropagationStopped then
-                invoke path[i] event 1 failures
+                invoke path[i] event 1 true failures
 
         if not event.PropagationStopped then
-            invoke target event 2 failures
+            invoke target event 2 true failures
+
+        if not event.PropagationStopped then
+            invoke target event 2 false failures
 
         if event.Bubbles then
             for node in path do
                 if not event.PropagationStopped then
-                    invoke node event 3 failures
+                    invoke node event 3 false failures
 
         event.Phase <- 0
         event.CurrentTarget <- null
         event.CurrentTargetOverride <- Unchecked.defaultof<_>
-
         target.Document.ListenerErrors.AddRange failures
-
-        if
-            failures.Count > 0
-            && target.Document.RaiseListenerErrors
-        then
-            raise (TwinListenerException (event.Type, failures[0]))
-
         not event.DefaultPrevented
 
     /// <summary>Dispatches <c>event</c> at <c>target</c> through the capture, target and bubble phases; false when cancelled.</summary>
@@ -282,19 +325,45 @@ module Events =
             find label |> Option.toObj
         | id -> label.Document.ElementById id
 
-    /// <summary>The <c>click ()</c> of HTML: activation behaviour around a bubbling, cancelable click.</summary>
-    let rec private clickNow (element: TwinElement) : unit =
-        if not (isDisabled element) then
+    let private activates (e: TwinElement) =
+        match e.LocalName with
+        | "input" -> List.contains e.InputType [ "checkbox"; "radio"; "submit" ]
+        | "button"
+        | "label" -> true
+        | _ -> false
+
+    // The click's activation target: the clicked element or its nearest ancestor with activation behaviour.
+    let private activationTargetOf (clicked: TwinElement) : TwinElement =
+        let mutable cursor: TwinNode = clicked
+        let mutable found: TwinElement = null
+
+        while isNull found && not (isNull cursor) do
+            match cursor with
+            | :? TwinElement as e when activates e -> found <- e
+            | _ -> ()
+
+            cursor <- cursor.Parent
+
+        if not (isNull found) && isDisabled found then
+            null
+        else
+            found
+
+    let rec private clickNow (clicked: TwinElement) : unit =
+        if not (isDisabled clicked) then
+            let element = activationTargetOf clicked
+
             let kind =
-                if element.LocalName = "input" then
-                    match element.GetAttribute "type" with
-                    | null -> "text"
-                    | t -> t.ToLowerInvariant ()
+                if
+                    not (isNull element)
+                    && element.LocalName = "input"
+                then
+                    element.InputType
                 else
                     ""
 
             let toggles = kind = "checkbox" || kind = "radio"
-            let before = element.Checked
+            let before = not (isNull element) && element.Checked
 
             let group =
                 if kind = "radio" then
@@ -325,9 +394,11 @@ module Events =
             if kind = "radio" then
                 element.Checked <- true
 
-            let accepted = fire element "click" true true
+            let accepted = fire clicked "click" true true
 
-            if toggles then
+            if isNull element then
+                ()
+            elif toggles then
                 if not accepted then
                     if kind = "checkbox" then
                         element.Checked <- before
@@ -396,8 +467,22 @@ module Events =
         outermost element.Document (fun () -> blurNow element)
 
     // Per node: the listeners added through addEventListener, by type and callback object, with their removal.
+    // Per node: the listeners added through addEventListener, keyed as the DOM keys them by type, callback object
+    // and capture, with the entry that runs them.
     let private added =
-        ConditionalWeakTable<TwinNode, ResizeArray<string * obj * (unit -> unit)>>()
+        ConditionalWeakTable<TwinNode, ResizeArray<string * obj * bool * Listener>>()
+
+    // The flags of addEventListener's third argument: a boolean capture flag or an options object.
+    let private flagsOf (options: obj) : bool * bool * bool =
+        match options with
+        | :? bool as capture -> capture, false, false
+        | :? Fable.Core.TS.Dom.AddEventListenerOptions as o ->
+            if o.signal.IsSome then
+                raise (NotSupportedException "The DOM twin does not implement AddEventListenerOptions.signal")
+
+            Option.defaultValue false o.capture, Option.defaultValue false o.once, Option.defaultValue false o.passive
+        | :? Fable.Core.TS.Dom.EventListenerOptions as o -> Option.defaultValue false o.capture, false, false
+        | _ -> false, false, false
 
     let private registered =
         lazy
@@ -405,11 +490,7 @@ module Events =
 
              Bridge.registerMember Bridge.eventTargets "addEventListener" 3 (fun node args ->
                  let eventType, callback = string args[0], args[1]
-
-                 let capture =
-                     match args[2] with
-                     | :? bool as b -> b
-                     | _ -> false
+                 let capture, once, passive = flagsOf args[2]
 
                  let invoke =
                      match callback with
@@ -419,23 +500,36 @@ module Events =
 
                  let list = added.GetValue (node, fun _ -> ResizeArray ())
 
-                 if not (list.Exists (fun (t, c, _) -> t = eventType && obj.ReferenceEquals (c, callback))) then
-                     list.Add ((eventType, callback, listen node eventType capture invoke))
+                 list.RemoveAll (fun (_, _, _, entry) -> entry.Removed)
+                 |> ignore
+
+                 if
+                     not (
+                         list.Exists (fun (t, c, k, _) ->
+                             t = eventType
+                             && obj.ReferenceEquals (c, callback)
+                             && k = capture)
+                     )
+                 then
+                     list.Add ((eventType, callback, capture, listenEntry node eventType capture once passive invoke))
 
                  null)
 
              Bridge.registerMember Bridge.eventTargets "removeEventListener" 3 (fun node args ->
+                 let capture, _, _ = flagsOf args[2]
+
                  match added.TryGetValue node with
                  | true, list ->
                      match
-                         list.FindIndex (fun (t, c, _) ->
+                         list.FindIndex (fun (t, c, k, _) ->
                              t = string args[0]
-                             && obj.ReferenceEquals (c, args[1]))
+                             && obj.ReferenceEquals (c, args[1])
+                             && k = capture)
                      with
                      | -1 -> ()
                      | index ->
-                         let _, _, remove = list[index]
-                         remove ()
+                         let _, _, _, entry = list[index]
+                         remove node entry
                          list.RemoveAt index
                  | false, _ -> ()
 

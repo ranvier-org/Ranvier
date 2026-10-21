@@ -56,17 +56,44 @@ module EventSpec =
         [<System.ThreadStatic; DefaultValue>]
         static val mutable private current: IEventSource
 
+        [<System.ThreadStatic; DefaultValue>]
+        static val mutable private depth: int
+
         static member Current
             with get () = Slot.current
             and set (value: IEventSource) = Slot.current <- value
 
+        static member Depth
+            with get () = Slot.depth
+            and set (value: int) = Slot.depth <- value
+
+    /// <summary>
+    /// Installs <c>source</c> for the current thread until the returned value is disposed. Disposal restores the
+    /// previous source; it raises <c>InvalidOperationException</c> on another thread or while a later installation is
+    /// current.
+    /// </summary>
     let install (source: IEventSource) : System.IDisposable =
         let previous = Slot.Current
+        let thread = System.Environment.CurrentManagedThreadId
         Slot.Current <- source
+        Slot.Depth <- Slot.Depth + 1
+        let depth = Slot.Depth
+        let disposed = ref false
 
         { new System.IDisposable with
             member _.Dispose() =
-                Slot.Current <- previous
+                if not disposed.Value then
+                    let current = System.Environment.CurrentManagedThreadId
+
+                    if current <> thread then
+                        raise (System.InvalidOperationException $"An event source installed on thread {thread} was disposed on thread {current}")
+
+                    if Slot.Depth <> depth then
+                        raise (System.InvalidOperationException "An event source was disposed while a later installation is current")
+
+                    disposed.Value <- true
+                    Slot.Depth <- depth - 1
+                    Slot.Current <- previous
         }
 
     let create (_: Document) (spec: EventSpec) : Event =

@@ -189,6 +189,28 @@ let tests =
                 Expect.equal (List.ofSeq log) [ "blur:input"; "focusout:input"; "focus:input"; "focusin:input" ] "order"
                 Expect.equal document.ActiveElement b "active"
 
+            testCase "activeElement is the body when nothing is focused or the focused element leaves the document"
+            <| fun () ->
+                Events.ensure ()
+                use document = new TwinDocument ()
+                let native = document.Native :?> Document
+                let body = document.Body.Native
+                Expect.isTrue (obj.ReferenceEquals (native.activeElement.Value, body)) "nothing focused"
+                let a, b = document.CreateElement "input", document.CreateElement "input"
+                document.Body.AppendChild a |> ignore
+                document.Body.AppendChild b |> ignore
+                Events.focus a
+                Expect.isTrue (obj.ReferenceEquals (native.activeElement.Value, a.Native)) "focused"
+                let blurred = ref false
+
+                Events.listen a "blur" false (fun _ -> blurred.Value <- true)
+                |> ignore
+
+                a.Remove ()
+                Expect.isTrue (obj.ReferenceEquals (native.activeElement.Value, body)) "focus fixup"
+                Events.focus b
+                Expect.isFalse blurred.Value "a removed element is not blurred"
+
             testCase "a click arrives as a PointerEvent proxy"
             <| fun () ->
                 let document, _, inner = setup ()
@@ -230,10 +252,161 @@ let tests =
 
                 Expect.equal
                     (document.ListenerErrors
-                     |> Seq.map (fun e -> e.Message)
+                     |> Seq.map (fun e ->
+                         match e with
+                         | TwinListenerException (eventType, inner) -> eventType, inner.Message
+                         | other -> "?", other.Message)
                      |> List.ofSeq)
-                    [ "boom" ]
-                    "collected"
+                    [ "x", "boom" ]
+                    "collected with the event type"
+
+            testCase "a failure in a nested dispatch is recorded once and raised when the outermost dispatch ends"
+            <| fun () ->
+                let document, outer, inner = setup ()
+                use _ = document
+                document.RaiseListenerErrors <- true
+
+                Events.listen inner "inner" false (fun _ -> failwith "boom")
+                |> ignore
+
+                Events.listen outer "outer" false (fun _ ->
+                    Events.dispatch inner (plain "inner" true)
+                    |> ignore)
+                |> ignore
+
+                Expect.throwsT<TwinListenerException>
+                    (fun () ->
+                        Events.dispatch outer (plain "outer" true)
+                        |> ignore)
+                    "raised"
+
+                Expect.equal document.ListenerErrors.Count 1 "recorded once"
+
+            testCase "a click whose listener raises still runs the activation behaviour"
+            <| fun () ->
+                Events.ensure ()
+                use document = new TwinDocument ()
+                document.RaiseListenerErrors <- true
+                let box = document.CreateElement "input"
+                box.SetAttribute ("type", "checkbox")
+                document.Body.AppendChild box |> ignore
+                let changed = ref false
+
+                Events.listen box "click" false (fun _ -> failwith "boom")
+                |> ignore
+
+                Events.listen box "change" false (fun _ -> changed.Value <- true)
+                |> ignore
+
+                Expect.throwsT<TwinListenerException> (fun () -> Events.click box) "raised after the click"
+                Expect.equal (box.Checked, changed.Value) (true, true) "toggled and changed"
+
+            testCase "on the target, capture listeners run before non-capture ones"
+            <| fun () ->
+                let document, _, inner = setup ()
+                use _ = document
+                let log = ResizeArray<string>()
+
+                Events.listen inner "x" false (fun _ -> log.Add "target-bubble")
+                |> ignore
+
+                Events.listen inner "x" true (fun _ -> log.Add "target-capture")
+                |> ignore
+
+                Events.dispatch inner (plain "x" false) |> ignore
+                Expect.equal (List.ofSeq log) [ "target-capture"; "target-bubble" ] "capture first"
+
+            testCase "stopPropagation in a target capture listener skips the target's other listeners"
+            <| fun () ->
+                let document, _, inner = setup ()
+                use _ = document
+                let log = ResizeArray<string>()
+
+                Events.listen inner "x" true (fun e ->
+                    log.Add "cap"
+                    (Events.eventOf e).StopPropagation())
+                |> ignore
+
+                Events.listen inner "x" false (fun _ -> log.Add "bub")
+                |> ignore
+
+                Events.dispatch inner (plain "x" true) |> ignore
+                Expect.equal (List.ofSeq log) [ "cap" ] "stopped"
+
+            testCase "clicking inside a label clicks its control"
+            <| fun () ->
+                Events.ensure ()
+                use document = new TwinDocument ()
+                let label = document.CreateElement "label"
+                let span = document.CreateElement "span"
+                let box = document.CreateElement "input"
+                box.SetAttribute ("type", "checkbox")
+                label.AppendChild span |> ignore
+                label.AppendChild box |> ignore
+                document.Body.AppendChild label |> ignore
+                Events.click span
+                Expect.isTrue box.Checked "checked through the label"
+
+            testCase "clicking inside a submit button submits its form"
+            <| fun () ->
+                Events.ensure ()
+                use document = new TwinDocument ()
+                let form = document.CreateElement "form"
+                let button = document.CreateElement "button"
+                let span = document.CreateElement "span"
+                button.AppendChild span |> ignore
+                form.AppendChild button |> ignore
+                document.Body.AppendChild form |> ignore
+                let submitted = ref false
+
+                Events.listen form "submit" false (fun _ -> submitted.Value <- true)
+                |> ignore
+
+                Events.click span
+                Expect.isTrue submitted.Value "submitted"
+
+            testCase "addEventListener reads capture, once and passive from an options object and keys by capture"
+            <| fun () ->
+                let document, outer, inner = setup ()
+                use _ = document
+                let log = ResizeArray<string>()
+
+                let options capture once passive =
+                    { new AddEventListenerOptions with
+                        member _.capture
+                            with get () = Some capture
+                            and set _ = ()
+
+                        member _.once
+                            with get () = Some once
+                            and set _ = ()
+
+                        member _.passive
+                            with get () = Some passive
+                            and set _ = ()
+
+                        member _.signal
+                            with get () = None
+                            and set _ = ()
+                    }
+
+                let listener: Event -> unit = fun _ -> log.Add "outer"
+                let native = outer.Native
+                native.addEventListener ("x", Fable.Core.U2.Case1 listener, Fable.Core.U2.Case2 (options true true false))
+                native.addEventListener ("x", Fable.Core.U2.Case1 listener, Fable.Core.U2.Case1 false)
+
+                let passive: Event -> unit = fun e -> e.preventDefault ()
+                native.addEventListener ("x", Fable.Core.U2.Case1 passive, Fable.Core.U2.Case2 (options false false true))
+
+                Expect.isTrue (Events.dispatch inner (plain "x" true)) "a passive listener cannot cancel"
+                Expect.equal (List.ofSeq log) [ "outer"; "outer" ] "capture and non-capture are two listeners"
+                log.Clear ()
+                Events.dispatch inner (plain "x" true) |> ignore
+                Expect.equal (List.ofSeq log) [ "outer" ] "the once listener is gone"
+                native.removeEventListener ("x", Fable.Core.U2.Case1 listener, Fable.Core.U2.Case1 false)
+                log.Clear ()
+                Events.dispatch inner (plain "x" true) |> ignore
+                Expect.equal (List.ofSeq log) [] "removed by capture"
 
             testCase "every listener of one dispatch receives the same event object"
             <| fun () ->

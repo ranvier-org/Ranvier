@@ -657,7 +657,12 @@ module Bridge =
 
              method [ "Document"; "NonElementParentNode" ] "getElementById" 1 (fun n a -> box ((n :?> TwinDocument).ElementById(string a[0])))
 
-             getter [ "DocumentOrShadowRoot" ] "activeElement" (fun n -> box (n :?> TwinDocument).ActiveElement))
+             getter [ "DocumentOrShadowRoot" ] "activeElement" (fun n ->
+                 let document = n :?> TwinDocument
+
+                 match document.ActiveElement with
+                 | null -> box document.Body
+                 | active -> box active))
 
     // The event and selector members live in later files; they register through their own ensure, found by name.
     let private extensions =

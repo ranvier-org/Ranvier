@@ -88,10 +88,9 @@ let tests =
                     |> unbox<HTMLElement>
 
                 Expect.throwsC (fun () -> button.click ()) (fun e ->
-                    Expect.isTrue
-                        (e :? TwinReportException
-                         || e :? TwinListenerException)
-                        "raised")
+                    match e with
+                    | TwinListenerException (eventType, _) -> Expect.equal eventType "click" "the click's listener"
+                    | other -> failtestf "expected TwinListenerException, got %O" other)
 
             testCase "Collect keeps the reports on the session"
             <| fun () ->
@@ -110,6 +109,10 @@ let tests =
                 button.click ()
                 Expect.equal session.Reports.Length 1 "one report, and the click returned"
                 Expect.stringContains (session.Reports |> List.concat |> List.head).Message "handler failed" "the handler's error"
+
+                match session.Reports |> List.concat |> List.head with
+                | TwinListenerException (eventType, _) -> Expect.equal eventType "click" "the event type is kept"
+                | other -> failtestf "expected TwinListenerException, got %O" other
 
             testCase "queued commits apply when the session settles"
             <| fun () ->
