@@ -1,9 +1,9 @@
 module Ranvier.View.Twin.Tests.Fixtures
 
 open Ranvier
-open Ranvier.View.Foundation
-open Ranvier.View.Foundation.Representation
-open Ranvier.View.Foundation.Template
+open Ranvier.View
+open Ranvier.View.Representation
+open Ranvier.View.Template
 
 type CounterState = { Count: Signal<int> }
 

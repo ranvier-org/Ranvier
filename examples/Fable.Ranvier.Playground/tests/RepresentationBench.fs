@@ -4,8 +4,9 @@ open Ranvier
 open Fable.Core
 open Fable.Core.TS.Dom
 open Fable.Ranvier
-open Ranvier.View.Foundation
-open Ranvier.View.Foundation.Representation
+open Ranvier.View
+open Ranvier.View.Checks
+open Ranvier.View.Representation
 
 let private now () : float =
     globalThis.performance.now ()

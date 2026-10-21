@@ -1,8 +1,8 @@
 /// The F# samples of docs/content/view/testing.md, in page order; a sample that is an excerpt is wrapped in a function.
 module CounterHtml
 
-open Ranvier.View.Foundation
-open Ranvier.View.Foundation.Representation
+open Ranvier.View
+open Ranvier.View.Representation
 open Counter
 
 let private omit = { Server.Options.defaults with Policy = Omit }

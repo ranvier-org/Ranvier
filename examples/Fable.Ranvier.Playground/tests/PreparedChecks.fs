@@ -4,10 +4,11 @@ open System
 open Ranvier
 open Fable.Core
 open Fable.Core.TS.Dom
-open Ranvier.View.Foundation
-open Ranvier.View.Foundation.Representation
+open Ranvier.View
+open Ranvier.View.Dom
+open Ranvier.View.Representation
 
-module H = Ranvier.View.Foundation.Generated.Html
+module H = Ranvier.View.Dom.Generated.Html
 
 [<Global "document">]
 let private document: Document = jsNative

@@ -3,10 +3,10 @@ module Boundaries
 
 open Fable.Core.TS
 open global.Ranvier
-open Ranvier.View.Foundation
-open Ranvier.View.Foundation.Representation
-open Ranvier.View.Foundation.Template
-open Ranvier.View.Foundation.Sugar
+open Ranvier.View
+open Ranvier.View.Representation
+open Ranvier.View.Template
+open Ranvier.View.Sugar
 
 type ProfileStore = { Name: AsyncSource<string> }
 

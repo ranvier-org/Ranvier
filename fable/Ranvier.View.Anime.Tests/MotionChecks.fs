@@ -5,11 +5,12 @@ open Fable.Core
 open Fable.Core.TS.Dom
 open global.Ranvier
 open Ranvier.Anime
-open Ranvier.View.Foundation
-open Ranvier.View.Foundation.Representation
-open Ranvier.View.Foundation.Template
-open Ranvier.View.Foundation.Scheduling
-open Ranvier.View.Foundation.Sugar
+open Ranvier.View
+open Ranvier.View.Dom
+open Ranvier.View.Representation
+open Ranvier.View.Template
+open Ranvier.View.Dom.Scheduling
+open Ranvier.View.Sugar
 open Ranvier.View.Anime
 
 /// <summary>Advances the mocked <c>Date</c> and timers by the given milliseconds.</summary>

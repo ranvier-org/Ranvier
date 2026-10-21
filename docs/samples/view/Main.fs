@@ -4,9 +4,10 @@ module Main
 open Fable.Core
 open Fable.Core.TS.Dom
 open global.Ranvier
-open Ranvier.View.Foundation
-open Ranvier.View.Foundation.Representation
-open Ranvier.View.Foundation.Template
+open Ranvier.View
+open Ranvier.View.Dom
+open Ranvier.View.Representation
+open Ranvier.View.Template
 open Counter
 
 [<Global "document">]

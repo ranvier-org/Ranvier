@@ -4,7 +4,7 @@ const docsPatterns = [
   /^docs\/(?!maps\/)/,
   /^brand\//,
   /^\.claude\//,
-  /^(?!experiments\/Ranvier\.View\.Portable\/README\.md$).*\.md$/i,
+  /^(?!src\/Ranvier\.View\/README\.md$).*\.md$/i,
   /^LICENSE[^/]*$/,
   /^\.github\/FUNDING\.yml$/,
 ];

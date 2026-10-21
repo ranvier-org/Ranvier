@@ -3,10 +3,10 @@ module MotionParts
 
 open global.Ranvier
 open Ranvier.Anime
-open Ranvier.View.Foundation
-open Ranvier.View.Foundation.Representation
-open Ranvier.View.Foundation.Template
-open Ranvier.View.Foundation.Sugar
+open Ranvier.View
+open Ranvier.View.Representation
+open Ranvier.View.Template
+open Ranvier.View.Sugar
 open Ranvier.View.Anime
 
 type Task = { Id: int; Title: string }

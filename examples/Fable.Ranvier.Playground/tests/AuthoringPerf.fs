@@ -2,8 +2,9 @@ module AuthoringPerf
 
 open global.Ranvier
 open Fable.Core.TS.Dom
-open Ranvier.View.Foundation
-open Ranvier.View.Foundation.Representation
+open Ranvier.View
+open Ranvier.View.Dom
+open Ranvier.View.Representation
 
 let private snapshot () =
 #if RANVIER_COUNTERS
