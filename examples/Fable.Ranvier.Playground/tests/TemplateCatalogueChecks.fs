@@ -5,8 +5,6 @@ open Fable.Core
 open Fable.Core.TS.Dom
 open Ranvier.View
 open Ranvier.View.Dom
-open Ranvier.View.Representation
-open Ranvier.View.Template
 
 module G = Ranvier.View.Dom.Generated.Html
 

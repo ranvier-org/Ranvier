@@ -4,8 +4,6 @@ module Collections
 open Fable.Core.TS
 open global.Ranvier
 open Ranvier.View
-open Ranvier.View.Representation
-open Ranvier.View.Template
 open Ranvier.View.Sugar
 
 type Todo = { Id: int; Label: Signal<string>; Done: Signal<bool> }

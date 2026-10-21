@@ -12,7 +12,6 @@ The samples check the counter from [Getting started](getting-started.md).
 
 ```fsharp
 open Ranvier.View
-open Ranvier.View.Representation
 open Counter
 
 let private omit = { Server.Options.defaults with Policy = Omit }
@@ -44,8 +43,6 @@ open Fable.Core.TS.Dom
 open global.Ranvier
 open Ranvier.View
 open Ranvier.View.Dom
-open Ranvier.View.Representation
-open Ranvier.View.Template
 open Counter
 
 [<Global "document">]

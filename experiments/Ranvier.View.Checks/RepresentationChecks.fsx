@@ -5,7 +5,7 @@
 #load "Fixtures.fs"
 #endif
 
-open Ranvier.View.Representation
+open Ranvier.View
 
 let equal expected actual =
     if expected <> actual then
@@ -180,7 +180,6 @@ then
 #endif
 
 open Ranvier.View
-open Ranvier.View.Template
 
 type GreetingProps = { Title: string; Name: string }
 

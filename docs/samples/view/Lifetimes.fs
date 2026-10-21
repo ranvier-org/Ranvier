@@ -5,8 +5,6 @@ open Fable.Core.TS
 open global.Ranvier
 open Ranvier.View
 open Ranvier.View.Dom
-open Ranvier.View.Representation
-open Ranvier.View.Template
 open Ranvier.View.Sugar
 open Counter
 

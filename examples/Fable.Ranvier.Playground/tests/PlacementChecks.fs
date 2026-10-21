@@ -6,10 +6,8 @@ open Fable.Core.TS.Dom
 open Ranvier.View.Testing
 open Ranvier.View
 open Ranvier.View.Dom
-open Ranvier.View.Representation
 open Ranvier.View.Dom.Scheduling
 open Ranvier.View.Dom.Mounting
-open Ranvier.View.Template
 open CheckSupport
 
 /// <summary>A div whose mounted hook records whether the div is in the host when the hook and its cleanup run.</summary>

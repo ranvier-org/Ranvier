@@ -5,7 +5,7 @@ open Expecto
 open Fable.Core.TS.Dom
 open Ranvier
 open Ranvier.View.Twin
-open Ranvier.View.Representation
+open Ranvier.View
 open Ranvier.View.Twin.Tests.Fixtures
 
 let private items (session: Session) =

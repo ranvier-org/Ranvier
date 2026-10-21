@@ -86,7 +86,6 @@ as [Installation](../guide/installation.md#views) shows.
 module ServerPage
 
 open Ranvier.View
-open Ranvier.View.Representation
 open Counter
 open Shared
 

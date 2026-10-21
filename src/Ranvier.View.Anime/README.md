@@ -14,13 +14,11 @@ npm install animejs@4.5.0
 open global.Ranvier
 open Ranvier.Anime
 open Ranvier.View
-open Ranvier.View.Representation
-open Ranvier.View.Template
 open Ranvier.View.Sugar
 open Ranvier.View.Anime
 ```
 
-Every sample on this page assumes these lines; the [view sugar reference](https://github.com/shayanhabibi/Ranvier/blob/master/src/Ranvier.View/README.md) covers the first six. `Motion` requires qualified access: its `exit` would otherwise shadow FSharp.Core's.
+Every sample on this page assumes these lines; the [view sugar reference](https://github.com/shayanhabibi/Ranvier/blob/master/src/Ranvier.View/README.md) covers `Ranvier.View` and `Ranvier.View.Sugar`, and `Ranvier.Anime` holds the bindings. `Motion` requires qualified access: its `exit` would otherwise shadow FSharp.Core's.
 
 **A play function receives the element as `Element`.** `Targets` converts from `Element` and `Element array` only, so a play function written `fun _ el -> Anime.animate (el, Anim (...))` type-checks on every tag.
 

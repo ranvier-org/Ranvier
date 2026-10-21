@@ -3,8 +3,6 @@ module Counter
 
 open global.Ranvier
 open Ranvier.View
-open Ranvier.View.Representation
-open Ranvier.View.Template
 open Ranvier.View.Sugar
 
 type CounterProps = { Start: int; Label: string }

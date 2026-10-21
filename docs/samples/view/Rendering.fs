@@ -3,8 +3,6 @@ module Rendering
 
 open global.Ranvier
 open Ranvier.View
-open Ranvier.View.Representation
-open Ranvier.View.Template
 open Ranvier.View.Sugar
 open Counter
 

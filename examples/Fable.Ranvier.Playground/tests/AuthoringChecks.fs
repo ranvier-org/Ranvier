@@ -5,7 +5,6 @@ open Fable.Core.TS.Dom
 open Fable.Ranvier
 open Ranvier.View
 open Ranvier.View.Dom
-open Ranvier.View.Representation
 open Ranvier.View.Dom.Components
 open Ranvier.View.Dom.Authoring
 open Ranvier.View.Dom.Generated.Html.Authoring

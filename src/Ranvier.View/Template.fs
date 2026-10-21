@@ -1,3 +1,4 @@
+[<AutoOpen>]
 module Ranvier.View.Template
 
 open System

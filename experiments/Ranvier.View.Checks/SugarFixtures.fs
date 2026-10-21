@@ -5,8 +5,6 @@ open System
 open global.Ranvier
 open Fable.Core.TS
 open Ranvier.View
-open Ranvier.View.Representation
-open Ranvier.View.Template
 open Ranvier.View.Sugar
 
 let private slotText (slot: Slot) =

@@ -15,7 +15,7 @@ branches and boundaries.
 
 ```fsharp
 open global.Ranvier
-open Ranvier.View.Representation
+open Ranvier.View
 open Ranvier.View.Dom.Authoring
 
 module H = Ranvier.View.Dom.Generated.Html
@@ -70,7 +70,6 @@ A template embeds a `Program.View` through a view hole, `t.view`:
 
 ```fsharp
 open Ranvier.View
-open Ranvier.View.Template
 open Ranvier.View.Sugar
 
 type Card = { Caption: string; Body: Program.View }

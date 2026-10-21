@@ -3,8 +3,6 @@ module ServerFixtures
 
 open global.Ranvier
 open Ranvier.View
-open Ranvier.View.Representation
-open Ranvier.View.Template
 
 type GreetingProps = { Title: string; Name: string }
 

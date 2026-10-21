@@ -2,7 +2,6 @@
 module ServerPage
 
 open Ranvier.View
-open Ranvier.View.Representation
 open Counter
 open Shared
 

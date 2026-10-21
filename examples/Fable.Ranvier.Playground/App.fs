@@ -5,8 +5,6 @@ open Fable.Core
 open Fable.Core.TS.Dom
 open global.Ranvier
 open Ranvier.View
-open Ranvier.View.Representation
-open Ranvier.View.Template
 
 module FoundationMounting = Ranvier.View.Dom.Mounting
 module FoundationProgram = Ranvier.View.Representation.Program

@@ -5,8 +5,6 @@ open Ranvier
 open Ranvier.View
 open Ranvier.View.Dom
 open Ranvier.View.Dom.Scheduling
-open Ranvier.View.Template
-open Ranvier.View.Representation
 
 [<RequireQualifiedAccess>]
 type Commits =

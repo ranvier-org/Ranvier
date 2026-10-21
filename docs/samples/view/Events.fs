@@ -4,8 +4,6 @@ module Events
 open Fable.Core.TS
 open global.Ranvier
 open Ranvier.View
-open Ranvier.View.Representation
-open Ranvier.View.Template
 open Ranvier.View.Sugar
 
 type Basket = { Items: Signal<int>; Total: Signal<decimal> }

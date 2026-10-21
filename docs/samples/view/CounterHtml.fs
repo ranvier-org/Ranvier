@@ -2,7 +2,6 @@
 module CounterHtml
 
 open Ranvier.View
-open Ranvier.View.Representation
 open Counter
 
 let private omit = { Server.Options.defaults with Policy = Omit }

@@ -74,7 +74,7 @@ let tests =
                     index
                         """
 module Fixture
-open Ranvier.View.Template
+open Ranvier.View
 open Ranvier.View.HtmlTemplate
 let view = Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.text "x" |])
 """

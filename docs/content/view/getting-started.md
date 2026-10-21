@@ -44,8 +44,6 @@ module Counter
 
 open global.Ranvier
 open Ranvier.View
-open Ranvier.View.Representation
-open Ranvier.View.Template
 open Ranvier.View.Sugar
 
 type CounterProps = { Start: int; Label: string }
@@ -76,9 +74,9 @@ let counter = Component.ofMembers<Counter, _> ()
   instance and re-runs when a signal it read changes.
 - `Events.onClick` receives the instance and the event.
 
-The five open lines are the same in every view file. `Ranvier.View.Sugar` provides the
-lowercase tags, `Attrs`, `Events` and `Component.ofMembers`; [Sugar](sugar.md) describes that
-vocabulary and its rules.
+The three open lines are the same in every view file: `Ranvier` for signals, `Ranvier.View` for the
+template types, and `Ranvier.View.Sugar` for the lowercase tags, `Attrs`, `Events` and
+`Component.ofMembers`. [Sugar](sugar.md) describes that vocabulary and its rules.
 
 :::details The same component without the sugar
 Every sugar form lowers to `Component.define setup build`, where `build` receives a
@@ -119,8 +117,6 @@ open Fable.Core.TS.Dom
 open global.Ranvier
 open Ranvier.View
 open Ranvier.View.Dom
-open Ranvier.View.Representation
-open Ranvier.View.Template
 open Counter
 
 [<Global "document">]

@@ -8,8 +8,6 @@ open Ranvier.View.Testing
 open Ranvier.View
 open Ranvier.View.Dom
 open Ranvier.View.Checks
-open Ranvier.View.Representation
-open Ranvier.View.Template
 
 #if FABLE_COMPILER
 [<Global>]

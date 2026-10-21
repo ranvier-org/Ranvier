@@ -4,8 +4,6 @@ module ServerChecks
 open System
 open global.Ranvier
 open Ranvier.View
-open Ranvier.View.Representation
-open Ranvier.View.Template
 open ServerFixtures
 
 let equal expected actual =

@@ -2,7 +2,7 @@ module ComponentPortableChecks
 
 open System
 open global.Ranvier
-open global.Ranvier.View.Representation
+open global.Ranvier.View
 open global.Ranvier.View.Dom.Components
 
 let private equal expected actual =

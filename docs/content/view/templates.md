@@ -14,8 +14,6 @@ end of the page builds the same trees. Every sample on this page compiles with t
 open Fable.Core.TS
 open global.Ranvier
 open Ranvier.View
-open Ranvier.View.Representation
-open Ranvier.View.Template
 open Ranvier.View.Sugar
 ```
 

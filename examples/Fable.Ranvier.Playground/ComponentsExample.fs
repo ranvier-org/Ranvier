@@ -3,7 +3,7 @@ module ComponentsExample
 open global.Ranvier
 open Ranvier.View.Dom.Authoring
 open Ranvier.View.Dom.Components
-open Ranvier.View.Representation
+open Ranvier.View
 open Ranvier.View.Dom.Generated.Html.Authoring
 open Fable.Core.TS.Dom
 

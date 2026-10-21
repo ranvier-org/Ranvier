@@ -18,13 +18,11 @@ which holds every form, its compile errors and its costs.
 ```fsharp
 open global.Ranvier
 open Ranvier.View
-open Ranvier.View.Representation
-open Ranvier.View.Template
 open Ranvier.View.Sugar
 ```
 
-`open Ranvier.View` brings in the generated members of `Attrs`, `Props` and `Events`, and
-`global.Ranvier` brings in `Signal`, `Memo` and `Api`. Two scope rules hold in a file that opens the
+`open Ranvier.View` brings in the template types and the generated members of `Attrs`, `Props` and
+`Events`, and `global.Ranvier` brings in `Signal`, `Memo` and `Api`. Two scope rules hold in a file that opens the
 sugar:
 
 - **A file uses either the sugar or `Generated.Html.Authoring`.** Both declare `Attrs` and `Props`.

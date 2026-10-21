@@ -8,7 +8,6 @@ open Fable.Ranvier
 open Ranvier.View
 open Ranvier.View.Dom
 open Ranvier.View.Checks
-open Ranvier.View.Representation
 open Ranvier.View.Dom.Components
 
 let private equal expected actual =

@@ -4,8 +4,6 @@ module ElmishNested
 open global.Ranvier
 open Ranvier.Elmish
 open Ranvier.View
-open Ranvier.View.Representation
-open Ranvier.View.Template
 open Ranvier.View.Sugar
 
 type ParentMsg =

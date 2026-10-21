@@ -13,8 +13,6 @@ documents every part with a sample; this page covers the rules they share.
 open global.Ranvier
 open Ranvier.Anime
 open Ranvier.View
-open Ranvier.View.Representation
-open Ranvier.View.Template
 open Ranvier.View.Sugar
 open Ranvier.View.Anime
 

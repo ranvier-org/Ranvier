@@ -4,8 +4,6 @@ module SugarAllocControl
 open global.Ranvier
 open Fable.Core.TS.Dom
 open Ranvier.View
-open Ranvier.View.Representation
-open Ranvier.View.Template
 open Ranvier.View.Sugar
 open FrameworkPerf
 open FrameworkMembersPerf

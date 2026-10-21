@@ -4,8 +4,6 @@ module PlaygroundSugar
 open global.Ranvier
 open Fable.Core.TS.Dom
 open Ranvier.View
-open Ranvier.View.Representation
-open Ranvier.View.Template
 open Ranvier.View.Sugar
 
 /// <summary>The demo's state, kept on the app's graph so a remount keeps it.</summary>

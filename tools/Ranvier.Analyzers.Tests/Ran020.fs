@@ -5,7 +5,7 @@ open Ranvier.Analyzers
 open Ranvier.Analyzers.Tests.Options
 
 let private header =
-    "module Fixture\nopen Ranvier\nopen Ranvier.View\nopen Ranvier.View.Representation\nopen Ranvier.View.Template\nopen Ranvier.View.Sugar\nlet count = createSignal 0\n"
+    "module Fixture\nopen Ranvier\nopen Ranvier.View\nopen Ranvier.View.Sugar\nlet count = createSignal 0\n"
 
 let private findings (body: string) =
     run Analyzers.ran020Cli (context (ranvier.Force ()) (header + body))

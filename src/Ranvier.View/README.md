@@ -1,21 +1,25 @@
-# View sugar
+# Ranvier.View
 
-`Ranvier.View.Sugar` is the short spelling of the template path: free lowercase tags, control flow over views, and component declarations that keep setup and view together. Every form lowers to one `Component.define` call and the `TemplateBuilder` operations, so the explicit form is the documented equivalent of each, and `Mounting.mount`, `Hydration.hydrate` and `Server.render` accept the result unchanged on .NET and under Fable. The design and its measurements are in the [view sugar v2 spec](https://github.com/shayanhabibi/Ranvier/blob/master/docs/superpowers/specs/2026-10-20-view-sugar-v2-design.md).
+Template components for [Ranvier](https://www.nuget.org/packages/Ranvier), on .NET and under Fable: typed templates, the view sugar, keyed lists, arms and boundaries, and `Server.render`, which writes a component as HTML. The browser side is the companion package [Ranvier.View.Dom](https://www.nuget.org/packages/Ranvier.View.Dom): `Mounting.mount` and `Hydration.hydrate` take the components of this package unchanged, and its `Generated.Html` module holds the authored layer that some samples below alias. A server, or code shared between server and browser, references this package alone.
+
+The view packages depend on `Xantham.Fable.Core.TS` 0.2.1, which the Xantham Cloudsmith feed carries; the [installation guide](https://shayanhabibi.github.io/Ranvier/guide/installation/#views) gives the `nuget.config`.
+
+## View sugar
+
+`Ranvier.View.Sugar` is the short spelling of the template path: free lowercase tags, control flow over views, and component declarations that keep setup and view together. Every form lowers to one `Component.define` call and the `TemplateBuilder` operations, so the explicit form is the documented equivalent of each, and `Server.render` here and `Mounting.mount` and `Hydration.hydrate` in Ranvier.View.Dom accept the result unchanged on .NET and under Fable. The design and its measurements are in the [view sugar v2 spec](https://github.com/shayanhabibi/Ranvier/blob/master/docs/superpowers/specs/2026-10-20-view-sugar-v2-design.md).
 
 ## Opening the sugar
 
 ```fsharp
 open global.Ranvier
 open Ranvier.View
-open Ranvier.View.Representation
-open Ranvier.View.Template
 open Ranvier.View.Sugar
 
 let note =
     Component.template (fun _ () -> ()) (div (Attrs.className "x") { span () { "hi" } })
 ```
 
-Every sample on this page assumes these five `open` lines. `open Ranvier.View` brings in the generated members of `Attrs`, `Props` and `Events` (`HtmlTemplate`, auto-opened), and `global.Ranvier` brings in `Signal`, `Memo` and `Api`. The sugar namespace holds two auto-opened modules: `Builders` (the entry points, control flow, `render`, `renderOf`, `ComponentTag` and the `Component` declaration helpers) and `Elements` (one class per HTML tag).
+Every sample on this page assumes these three `open` lines. `global.Ranvier` brings in `Signal`, `Memo` and `Api`. `open Ranvier.View` brings in the template types, `Component.define` and the builders (`Representation` and `Template`, auto-opened) and the generated members of `Attrs`, `Props` and `Events` (`HtmlTemplate`, auto-opened). The sugar namespace holds two auto-opened modules: `Builders` (the entry points, control flow, `render`, `renderOf`, `ComponentTag` and the `Component` declaration helpers) and `Elements` (one class per HTML tag).
 
 **`Generated.Html` requires qualified access.** `open Ranvier.View.Dom.Generated.Html` is a compile error (FS0892). The authored path is reached through a module alias or a qualified path, and an alias compiles beside the sugar's tags in one file:
 

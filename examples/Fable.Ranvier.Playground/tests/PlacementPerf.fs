@@ -5,8 +5,6 @@ open global.Ranvier
 open Fable.Core.TS.Dom
 open Ranvier.View
 open Ranvier.View.Dom
-open Ranvier.View.Representation
-open Ranvier.View.Template
 
 let private hookedRow =
     Component.define (fun _ (index: unit -> int) -> index) (fun t ->

@@ -17,12 +17,10 @@ let readme =
 let project =
     Path.Combine(root, "examples/Fable.Ranvier.Playground/tests/DomTests.fsproj").Replace('\\', '/')
 
-// The five open lines the docs page assumes for every sample.
+// The open lines the docs page assumes for every sample.
 let opens =
     """open global.Ranvier
 open Ranvier.View
-open Ranvier.View.Representation
-open Ranvier.View.Template
 open Ranvier.View.Sugar
 """
 

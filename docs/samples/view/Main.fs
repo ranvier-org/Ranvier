@@ -6,8 +6,6 @@ open Fable.Core.TS.Dom
 open global.Ranvier
 open Ranvier.View
 open Ranvier.View.Dom
-open Ranvier.View.Representation
-open Ranvier.View.Template
 open Counter
 
 [<Global "document">]

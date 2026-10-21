@@ -7,7 +7,6 @@ open Fable.Core.TS.Dom
 open Ranvier.View.Testing
 open Fable.Ranvier
 open Ranvier.View
-open Ranvier.View.Representation
 open Ranvier.View.Dom.Mounting
 
 /// <summary>The elements the range checks build, created in the running case's document.</summary>

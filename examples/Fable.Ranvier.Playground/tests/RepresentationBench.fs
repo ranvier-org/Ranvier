@@ -6,7 +6,6 @@ open Fable.Core.TS.Dom
 open Fable.Ranvier
 open Ranvier.View
 open Ranvier.View.Checks
-open Ranvier.View.Representation
 
 let private now () : float =
     globalThis.performance.now ()

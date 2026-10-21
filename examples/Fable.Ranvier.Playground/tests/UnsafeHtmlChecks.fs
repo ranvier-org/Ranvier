@@ -5,8 +5,6 @@ open Ranvier
 open Fable.Core
 open Fable.Core.TS.Dom
 open Ranvier.View
-open Ranvier.View.Representation
-open Ranvier.View.Template
 open CheckSupport
 
 let private raisesArgument (action: unit -> unit) =

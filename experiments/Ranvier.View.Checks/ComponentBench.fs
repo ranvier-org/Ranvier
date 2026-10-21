@@ -1,6 +1,6 @@
 module ComponentBench
 
-open global.Ranvier.View.Representation
+open global.Ranvier.View
 open global.Ranvier.View.Dom.Components
 
 type Props = { Title: Prop<string> }

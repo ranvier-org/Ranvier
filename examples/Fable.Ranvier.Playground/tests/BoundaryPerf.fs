@@ -5,7 +5,6 @@ open global.Ranvier
 open Fable.Core.TS.Dom
 open Ranvier.View
 open Ranvier.View.Dom
-open Ranvier.View.Representation
 
 /// <summary>Mounts <c>width</c> rows reading one pending source under a boundary, settles the source, and returns the disposal.</summary>
 let mountReveal (host: HTMLElement) (width: int) : unit -> unit =

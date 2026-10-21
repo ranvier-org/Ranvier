@@ -1,6 +1,6 @@
 module Ranvier.View.Checks.Fixtures
 
-open Ranvier.View.Representation
+open Ranvier.View
 
 let create (ops: Operations<'view>) workload sugar read =
     let width =

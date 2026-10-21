@@ -3,7 +3,6 @@ module AuthoringPerfFixtures
 open global.Ranvier
 open Ranvier.View
 open Ranvier.View.Dom.Authoring
-open Ranvier.View.Representation
 open Ranvier.View.Dom.Generated.Html.Authoring
 
 module H = Ranvier.View.Dom.Generated.Html

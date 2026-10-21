@@ -25,7 +25,6 @@ let prefix =
     """module GeneratedTypeCheck
 open Fable.Core.TS
 open Ranvier.View
-open Ranvier.View.Representation
 module H = Ranvier.View.Dom.Generated.Html
 open Ranvier.View.Dom.Generated.Html.Authoring
 open Ranvier.View.Template
@@ -36,8 +35,6 @@ let sugarPrefix =
     """module GeneratedTypeCheck
 open Fable.Core.TS
 open Ranvier.View
-open Ranvier.View.Representation
-open Ranvier.View.Template
 open Ranvier.View.Sugar
 """
 
