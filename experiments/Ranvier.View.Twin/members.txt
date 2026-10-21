@@ -1,3 +1,5 @@
+ARIAMixin.ariaAtomic
+ARIAMixin.ariaLabel
 Attr.name
 Attr.value
 CharacterData.data

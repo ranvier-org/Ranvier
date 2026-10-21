@@ -772,6 +772,22 @@ module Bridge =
                  match v with
                  | null -> (element n).RemoveAttribute "popover"
                  | value -> (element n).SetAttribute("popover", string value))
+             // ARIAMixin: each string aria* property reflects its aria-* attribute; null removes it.
+             for property in typeof<Fable.Core.TS.Dom.ARIAMixin>.GetProperties() do
+                 let name = property.Name
+
+                 if
+                     name.StartsWith "aria"
+                     && (property.PropertyType = typeof<string>
+                         || property.PropertyType = typeof<string option>)
+                 then
+                     let attribute = "aria-" + name.Substring(4).ToLowerInvariant()
+                     getter [ "ARIAMixin" ] name (fun n -> box ((element n).GetAttribute attribute))
+
+                     setter [ "ARIAMixin" ] name (fun n v ->
+                         match v with
+                         | null -> (element n).RemoveAttribute attribute
+                         | value -> (element n).SetAttribute(attribute, string value))
              // Document
              getter documents "head" (fun n -> box (n :?> TwinDocument).Head)
              getter documents "body" (fun n -> box (n :?> TwinDocument).Body)

@@ -39,6 +39,17 @@ let tests =
                 Expect.equal other.title "Other" "titled"
                 Expect.isFalse (obj.ReferenceEquals (other.head, native.head)) "its own head"
 
+            testCase "aria properties reflect their aria attributes and null removes them"
+            <| fun () ->
+                use document = new TwinDocument ()
+                let div = document.CreateElement "div"
+                let native = div.Native :?> ARIAMixin
+                native.ariaRowIndexText <- Some "two"
+                Expect.equal (div.GetAttribute "aria-rowindextext") "two" "written"
+                Expect.equal native.ariaRowIndexText (Some "two") "read"
+                native.ariaRowIndexText <- None
+                Expect.isFalse (div.HasAttribute "aria-rowindextext") "removed"
+
             testCase "selectedIndex reads and selects an option by position"
             <| fun () ->
                 use document = new TwinDocument ()
