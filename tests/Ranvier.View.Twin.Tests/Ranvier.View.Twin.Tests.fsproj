@@ -8,6 +8,7 @@
     </PropertyGroup>
     <ItemGroup>
         <Compile Include="NativeTests.fs" />
+        <Compile Include="ModuleInitTests.fs" />
         <Compile Include="Main.fs" />
     </ItemGroup>
     <ItemGroup>

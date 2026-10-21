@@ -134,20 +134,45 @@ let private isNullish (value: 'T) : bool =
     Native.isNullish value
 #endif
 
+#if FABLE_COMPILER
 [<Emit("$0.nextSibling")>]
 let private nextOrNull (node: Node) : Node = jsNative
+#else
+let private nextOrNull (node: Node) : Node =
+    Native.nextOrNull node
+#endif
 
+#if FABLE_COMPILER
 [<Emit("$0.parentNode")>]
 let private parentOf (node: Node) : Node = jsNative
+#else
+let private parentOf (node: Node) : Node =
+    Native.parentOrNull node
+#endif
 
+#if FABLE_COMPILER
 [<Emit("$0.parentNode != null && $0.parentNode.removeChild($0)")>]
 let private detach (node: Node) : unit = jsNative
+#else
+let private detach (node: Node) : unit =
+    Native.detach node
+#endif
 
+#if FABLE_COMPILER
 [<Emit("setTimeout($0, $1)")>]
 let private startTimer (action: unit -> unit) (milliseconds: int) : obj = jsNative
+#else
+let private startTimer (action: unit -> unit) (milliseconds: int) : obj =
+    Native.setTimeout action milliseconds
+#endif
 
+#if FABLE_COMPILER
 [<Emit("clearTimeout($0)")>]
 let private stopTimer (timer: obj) : unit = jsNative
+#else
+let private stopTimer (timer: obj) : unit =
+    Native.clearTimeout timer
+#endif
 
 /// <summary>The milliseconds after which a held exit is finished.</summary>
 let safetyTimeout = 10000

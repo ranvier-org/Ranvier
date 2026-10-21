@@ -13,20 +13,22 @@ type NativeOwnership =
     | Owned
     | Borrowed
 
+#if FABLE_COMPILER
 [<Global>]
 let private globalThis: GlobalThis = jsNative
 
 [<Global "document">]
 let private document: Document = jsNative
+#endif
 
 let private fragment () =
-    document.createDocumentFragment ()
+    Native.createDocumentFragment ()
 
 let private comment (value: string) =
-    document.createComment (value)
+    Native.createComment value
 
 let private text (value: string) =
-    document.createTextNode (value)
+    Native.createTextNode value
 
 let private propertyEquals = Func<obj, obj, bool>(fun left right -> left = right)
 
@@ -99,7 +101,11 @@ let rec private walkPrepared visit (node: Node) =
         walkPrepared visit current
 
 let private createClaims () : WeakSet<Node> =
+#if FABLE_COMPILER
     globalThis.WeakSet.Create ()
+#else
+    Native.newNodeWeakSet ()
+#endif
 
 let private claims = createClaims ()
 
@@ -181,6 +187,7 @@ let private createHostCounts () : obj =
 /// <summary>Per host: the number of mounts using each shared listener.</summary>
 let private hostCounts = createHostCounts ()
 
+#if FABLE_COMPILER
 // The listener runs with its host as `this` and walks from the target to that host, presenting each handled node as currentTarget. A node with a handler runs it; for a template event node, `TemplateDom.dispatch` receives its instance state. An inner host records itself on the event, so an outer host resumes above it.
 let private delegateFrom: Func<Node, string, unit> =
     JsInterop.emitJsExpr
@@ -191,6 +198,73 @@ let private undelegateFrom: Func<Node, string, unit> =
     JsInterop.emitJsExpr
         (sharedListeners, hostCounts)
         """(host, eventName) => { const counts = $1.get(host); const count = counts ? counts.get(eventName) | 0 : 0; if (count === 1) host.removeEventListener(eventName, $0.get(eventName)); if (count > 0) counts.set(eventName, count - 1); }"""
+#else
+type private HostListeners = Collections.Generic.Dictionary<string, struct (int * (unit -> unit))>
+
+// Walks from the event's target, or from above the inner host recorded on the event, to `host`, presenting each node
+// as currentTarget: a node's direct handler runs, a template event node dispatches with its instance state, and
+// `cancelBubble` ends the walk.
+let private walk (host: Node) (eventName: string) (event: obj) =
+    let key = "$$ranvier:" + eventName
+    let inner: Node = Native.expando event "$$ranvierHost"
+
+    let mutable node: Node =
+        if Native.isNullish inner then
+            unbox<Node>(Option.toObj (unbox<Event> event).target)
+        else
+            Native.parentOrNull inner
+
+    Native.overrideCurrentTarget event (fun () -> box node)
+    let mutable going = true
+
+    while going && not (Native.isNullish node) do
+        let handler: obj -> unit = Native.expando node key
+
+        if not (Native.isNullish handler) then
+            handler event
+            going <- not (unbox<Event> event).cancelBubble
+        else
+            let state: obj array = Native.expando node "$$ranvier"
+
+            if not (Native.isNullish state) then
+                TemplateDom.dispatch.Invoke (state, node, event)
+                going <- not (unbox<Event> event).cancelBubble
+
+        if going then
+            if obj.ReferenceEquals (node, host) then
+                going <- false
+            else
+                node <- Native.parentOrNull node
+
+    Native.setExpando event "$$ranvierHost" host
+
+let private listenersOf (host: Node) : HostListeners =
+    match Native.get<Node, HostListeners> hostCounts host with
+    | null ->
+        let created = HostListeners ()
+        Native.set hostCounts host created
+        created
+    | existing -> existing
+
+let private delegateFrom: Func<Node, string, unit> =
+    Func<Node, string, unit>(fun host eventName ->
+        let listeners = listenersOf host
+
+        match listeners.TryGetValue eventName with
+        | true, struct (count, remove) -> listeners[eventName] <- struct (count + 1, remove)
+        | false, _ -> listeners[eventName] <- struct (1, Native.listen host eventName (walk host eventName)))
+
+let private undelegateFrom: Func<Node, string, unit> =
+    Func<Node, string, unit>(fun host eventName ->
+        let listeners = listenersOf host
+
+        match listeners.TryGetValue eventName with
+        | true, struct (1, remove) ->
+            remove ()
+            listeners.Remove eventName |> ignore
+        | true, struct (count, remove) -> listeners[eventName] <- struct (count - 1, remove)
+        | false, _ -> ())
+#endif
 
 let private claim (registry: WeakSet<Node>) (node: Node) : unit =
     registry.add node |> ignore
@@ -201,11 +275,21 @@ let private unclaim (registry: WeakSet<Node>) (node: Node) : unit =
 [<Emit("(() => { for (let p = $1; p; p = p.parentNode) { if ($0.has(p)) return true; } if (!$1.firstChild) return false; const pending = Array.from($1.childNodes); while (pending.length) { const n = pending.pop(); if ($0.has(n)) return true; for (let c = n.firstChild; c; c = c.nextSibling) pending.push(c); } return false; })()")>]
 let private overlaps (registry: WeakSet<Node>) (node: Node) : bool = jsNative
 
+#if FABLE_COMPILER
 [<Emit("$0.parentNode === $1")>]
 let private isChildOf (node: Node) (parent: Node) : bool = jsNative
+#else
+let private isChildOf (node: Node) (parent: Node) : bool =
+    obj.ReferenceEquals (Native.parentOrNull node, parent)
+#endif
 
+#if FABLE_COMPILER
 [<Emit("$0.parentNode == null")>]
 let private isDetached (node: Node) : bool = jsNative
+#else
+let private isDetached (node: Node) : bool =
+    Native.isNullish (Native.parentOrNull node)
+#endif
 
 #if FABLE_COMPILER
 [<Emit("$0.$$ranvierWidget === true")>]
@@ -224,24 +308,49 @@ let private markWidget (node: Node) : unit =
 #endif
 
 /// <summary>The node's next sibling, or <c>null</c> after the last child.</summary>
+#if FABLE_COMPILER
 [<Emit("$0.nextSibling")>]
 let private nextOrNull (node: Node) : Node = jsNative
+#else
+let private nextOrNull (node: Node) : Node =
+    Native.nextOrNull node
+#endif
 
 let private nextNode = System.Func<Node, Node>(fun node -> nextOrNull node)
 
+#if FABLE_COMPILER
 [<Emit("$0.textContent = ''")>]
 let private clearChildren (parent: Node) : unit = jsNative
+#else
+let private clearChildren (parent: Node) : unit =
+    parent.textContent <- Some ""
+#endif
 
 /// <summary>Removes the siblings between <c>first</c> and <c>last</c> in one operation.</summary>
 [<Emit("(() => { const range = $0.ownerDocument.createRange(); range.setStartAfter($0); range.setEndBefore($1); range.deleteContents(); })()")>]
 let private deleteBetween (first: Node) (last: Node) : unit = jsNative
 
 /// <summary>Whether <c>first</c> and <c>last</c> are the first and last children of a document fragment.</summary>
+#if FABLE_COMPILER
 [<Emit("$0.parentNode != null && $0.parentNode.nodeType === 11 && $0.parentNode.firstChild === $0 && $0.parentNode.lastChild === $1")>]
 let private fillsFragment (first: Node) (last: Node) : bool = jsNative
+#else
+let private fillsFragment (first: Node) (last: Node) : bool =
+    let parent = Native.parentOrNull first
 
+    not (Native.isNullish parent)
+    && parent.nodeType = 11.0
+    && obj.ReferenceEquals (Native.firstChildOf parent, first)
+    && obj.ReferenceEquals (Native.lastChildOf parent, last)
+#endif
+
+#if FABLE_COMPILER
 [<Emit("$0.parentNode")>]
 let private parentOrNull (node: Node) : Node = jsNative
+#else
+let private parentOrNull (node: Node) : Node =
+    Native.parentOrNull node
+#endif
 
 /// <summary>Reads an element without a bounds check.</summary>
 #if FABLE_COMPILER
@@ -384,14 +493,33 @@ let private rowSetHas (set: obj) (value: 'T) : bool =
 
 let private skip: unit -> unit = ignore
 
+#if FABLE_COMPILER
 [<Emit("$0 != null && $0.nodeType === 8 && $0.data === '!'")>]
 let private isSeparator (node: Node) : bool = jsNative
+#else
+let private isSeparator (node: Node) : bool =
+    not (Native.isNullish node)
+    && node.nodeType = 8.0
+    && Native.dataOf node = "!"
+#endif
 
+#if FABLE_COMPILER
 [<Emit("$0 != null && $0.nodeType === 8 && $0.data === 'ranvier:row'")>]
 let private isRowMarker (node: Node) : bool = jsNative
+#else
+let private isRowMarker (node: Node) : bool =
+    not (Native.isNullish node)
+    && node.nodeType = 8.0
+    && Native.dataOf node = "ranvier:row"
+#endif
 
+#if FABLE_COMPILER
 [<Emit("$0.data")>]
 let private commentData (node: Node) : string = jsNative
+#else
+let private commentData (node: Node) : string =
+    Native.dataOf node
+#endif
 
 /// <summary>Removes the server nodes between a region's markers and records their reinsertion before <c>regionEnd</c>.</summary>
 let private clearAdopted (cursor: TemplateDom.HydrationCursor) (regionStart: Node) (regionEnd: Node) =
@@ -2556,7 +2684,11 @@ and internal MountState
 
         let node =
             if isNullish create then
+#if FABLE_COMPILER
                 document.createElement tagName
+#else
+                Native.createElement tagName
+#endif
             else
                 create.Invoke ((if isNull (box target) then host else target), tagName)
 

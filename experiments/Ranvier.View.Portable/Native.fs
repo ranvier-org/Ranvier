@@ -428,3 +428,279 @@ let setExpando (target: obj) (name: string) (value: 'T) : unit =
 
     slots[name] <- box value
 #endif
+
+#if !FABLE_COMPILER
+// .NET bodies of the node, document, timer and microtask helpers the view files keep under a local `#if`.
+
+let parentOrNull (node: Node) : Node =
+    orNull node.parentNode
+
+let lastChildOf (node: Node) : Node =
+    orNull node.lastChild
+
+let dataOf (node: Node) : string =
+    (unbox<CharacterData> node).data
+
+let localNameOf (node: Node) : string =
+    (unbox<Element> node).localName
+
+let prefixOf (node: Node) : string =
+    Option.toObj (unbox<Element> node).prefix
+
+/// <summary>The ECMAScript Number::toString form of <c>value</c>.</summary>
+let numberText (value: float) : string =
+    if System.Double.IsNaN value then
+        "NaN"
+    elif System.Double.IsPositiveInfinity value then
+        "Infinity"
+    elif System.Double.IsNegativeInfinity value then
+        "-Infinity"
+    elif value = 0.0 then
+        "0"
+    else
+        let roundTrip =
+            (abs value).ToString("R", System.Globalization.CultureInfo.InvariantCulture)
+
+        let mantissa, exponent =
+            match roundTrip.IndexOf 'E' with
+            | -1 -> roundTrip, 0
+            | at -> roundTrip.Substring (0, at), int (roundTrip.Substring (at + 1))
+
+        let whole, fraction =
+            match mantissa.IndexOf '.' with
+            | -1 -> mantissa, ""
+            | at -> mantissa.Substring (0, at), mantissa.Substring (at + 1)
+
+        // The value is 0.digits × 10^point.
+        let mutable digits = whole + fraction
+        let mutable point = whole.Length + exponent
+
+        while digits.Length > 1 && digits[0] = '0' do
+            digits <- digits.Substring 1
+            point <- point - 1
+
+        digits <- digits.TrimEnd '0'
+        let k = digits.Length
+        let n = point
+
+        let body =
+            if k <= n && n <= 21 then
+                digits + System.String ('0', n - k)
+            elif 0 < n && n <= 21 then
+                digits.Substring (0, n) + "." + digits.Substring n
+            elif -6 < n && n <= 0 then
+                "0." + System.String ('0', -n) + digits
+            else
+                let power = n - 1
+                let sign = if power >= 0 then "+" else "-"
+
+                let significand =
+                    if k = 1 then
+                        digits
+                    else
+                        digits.Substring (0, 1) + "." + digits.Substring 1
+
+                significand + "e" + sign + string (abs power)
+
+        if value < 0.0 then "-" + body else body
+
+/// <summary>The value as JavaScript's <c>String</c> writes it, for the values Fable writes as primitives.</summary>
+let jsString (value: obj) : string =
+    match value with
+    | null -> "null"
+    | :? string as s -> s
+    | :? bool as b -> if b then "true" else "false"
+    | :? char as c -> string c
+    | :? int8
+    | :? uint8
+    | :? int16
+    | :? uint16
+    | :? int32
+    | :? uint32
+    | :? float32
+    | :? float -> numberText (System.Convert.ToDouble value)
+    | other -> string other
+
+let setData (node: obj) (value: obj) : unit =
+    (unbox<CharacterData> node).data <- (if isNull value then "" else jsString value)
+
+let detach (node: Node) : unit =
+    let parent = parentOrNull node
+
+    if not (isNull (box parent)) then
+        parent.removeChild node |> ignore
+
+let appendNode (parent: Node) (node: Node) : unit =
+    parent.appendChild node |> ignore
+
+let replaceNode (existing: Node) (replacement: Node) (replaced: Node) : unit =
+    (parentOrNull existing).replaceChild(replacement, replaced)
+    |> ignore
+
+let importDeep (node: Node) : Node =
+    (document ()).importNode(node, Fable.Core.U2.Case1 true)
+
+let setAttributeOrRemove (node: obj) (value: obj) (name: string) : unit =
+    let element = unbox<Element> node
+
+    if isNull value then
+        element.removeAttribute name
+    else
+        element.setAttribute (name, jsString value)
+
+let defaultValueOf (node: obj) : string =
+    (unbox<HTMLInputElement> node).defaultValue
+
+let createElementIn (owner: Document) (tag: string) : Element =
+    owner.createElement (tagName = tag) :> Element
+
+let documentOf (node: Node) : Document =
+    match node.ownerDocument with
+    | Some owner -> owner
+    | None -> document ()
+
+let headOf (owner: Document) : Node =
+    owner.head :> Node
+
+let replaceWith (node: Element) (next: Element) : unit =
+    (unbox<ChildNode> node).replaceWith [| Fable.Core.U2.Case1 (unbox next) |]
+
+/// <summary>The elements of the document's head that carry <c>data-ranvier-head</c>, in document order.</summary>
+let markedIn (owner: Document) : Element array =
+    let found = ResizeArray<Element>()
+
+    let rec walk (node: Node) =
+        let mutable child = firstChildOf node
+
+        while not (isNullish child) do
+            if child.nodeType = 1.0 then
+                let element = unbox<Element> child
+
+                if (element.getAttribute "data-ranvier-head").IsSome then
+                    found.Add element
+
+                walk child
+
+            child <- nextOrNull child
+
+    let head = headOf owner
+
+    if not (isNullish head) then
+        walk head
+
+    found.ToArray ()
+
+let setTimeout (action: unit -> unit) (milliseconds: int) : obj =
+    (host ()).SetTimeout(action, milliseconds)
+
+let clearTimeout (timer: obj) : unit =
+    (host ()).ClearTimeout timer
+
+let queueMicrotask (callback: unit -> unit) : unit =
+    (host ()).QueueMicrotask callback
+
+/// <summary>A JavaScript <c>WeakSet</c> of nodes.</summary>
+[<Sealed>]
+type private NodeWeakSet() =
+    let held = System.Runtime.CompilerServices.ConditionalWeakTable<Node, obj>()
+
+    interface Fable.Core.TS.Es.WeakSet<Node> with
+        member this.add value =
+            held.AddOrUpdate (value, null)
+            this :> _
+
+        member _.delete value =
+            held.Remove value
+
+        member _.has value =
+            let mutable found = null
+            held.TryGetValue (value, &found)
+
+let newNodeWeakSet () : Fable.Core.TS.Es.WeakSet<Node> =
+    NodeWeakSet ()
+#endif
+
+#if !FABLE_COMPILER
+let listen (target: obj) (eventName: string) (listener: obj -> unit) : unit -> unit =
+    (host ()).Listen(target, eventName, listener)
+
+let overrideCurrentTarget (event: obj) (read: unit -> obj) : unit =
+    (host ()).OverrideCurrentTarget(event, read)
+
+let deleteBetween (first: Node) (last: Node) : unit =
+    (host ()).DeleteBetween(first, last)
+
+let childNodesOf (node: Node) : Node array =
+    let children = ResizeArray<Node>()
+    let mutable child = firstChildOf node
+
+    while not (isNullish child) do
+        children.Add child
+        child <- nextOrNull child
+
+    children.ToArray ()
+
+/// <summary>The form state <c>keepElement</c> snapshots: <c>value</c>, <c>checked</c> and <c>selected</c>, null or false where the element has none.</summary>
+let formStateOf (node: obj) : string * bool * bool =
+    match node with
+    | :? HTMLInputElement as input -> input.value, input.``checked``, false
+    | :? HTMLTextAreaElement as area -> area.value, false, false
+    | :? HTMLSelectElement as select -> select.value, false, false
+    | :? HTMLOptionElement as option -> option.value, false, option.selected
+    | :? HTMLButtonElement as button -> button.value, false, false
+    | _ -> null, false, false
+
+/// <summary>Writes back each part of a <c>formStateOf</c> snapshot that differs from the element's current state.</summary>
+let restoreFormState (node: obj) (value: string) (isChecked: bool) (selected: bool) : unit =
+    match node with
+    | :? HTMLInputElement as input ->
+        if input.value <> value then
+            input.value <- value
+
+        if input.``checked`` <> isChecked then
+            input.``checked`` <- isChecked
+    | :? HTMLTextAreaElement as area ->
+        if area.value <> value then
+            area.value <- value
+    | :? HTMLSelectElement as select ->
+        if select.value <> value then
+            select.value <- value
+    | :? HTMLOptionElement as option ->
+        if option.value <> value then
+            option.value <- value
+
+        if option.selected <> selected then
+            option.selected <- selected
+    | :? HTMLButtonElement as button ->
+        if button.value <> value then
+            button.value <- value
+    | _ -> ()
+#endif
+
+// Node creation in the global document.
+
+#if FABLE_COMPILER
+[<Emit("document.createDocumentFragment()")>]
+let createDocumentFragment () : DocumentFragment = jsNative
+
+[<Emit("document.createComment($0)")>]
+let createComment (data: string) : Comment = jsNative
+
+[<Emit("document.createTextNode($0)")>]
+let createTextNode (data: string) : Text = jsNative
+
+[<Emit("document.createElement($0)")>]
+let createElement (tag: string) : HTMLElement = jsNative
+#else
+let createDocumentFragment () : DocumentFragment =
+    (document ()).createDocumentFragment()
+
+let createComment (data: string) : Comment =
+    (document ()).createComment data
+
+let createTextNode (data: string) : Text =
+    (document ()).createTextNode data
+
+let createElement (tag: string) : HTMLElement =
+    (document ()).createElement(tagName = tag)
+#endif
