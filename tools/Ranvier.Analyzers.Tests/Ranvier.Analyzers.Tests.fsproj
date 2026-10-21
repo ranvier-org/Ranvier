@@ -20,6 +20,7 @@
         <Compile Include="Ran022.fs" />
         <Compile Include="Ran023.fs" />
         <Compile Include="Ran024.fs" />
+        <Compile Include="Ran025.fs" />
         <Compile Include="DocsExamples.fs" />
         <Compile Include="Budget.fs" />
         <Compile Include="Main.fs" />

@@ -606,3 +606,38 @@ let ran024: Rule =
         Gate = Symbols.Assemblies.View
         Run = serverRefusals
     }
+
+let rec private queuedMode (lets: LetSite array) (expr: FSharpExpr) : bool =
+    match expr with
+    | NewUnionCase (_, case, _) -> Symbols.View.isQueuedCommits case
+    | Call (None, m, _, _, _) when Symbols.View.isQueuedModeFunction m -> true
+    | Value value ->
+        lets
+        |> Array.exists (fun site -> site.Value = value && queuedMode lets site.Bound)
+    | Coerce (_, inner) -> queuedMode lets inner
+    | _ -> false
+
+let private queuedHydration (input: Input) : Message list =
+    [
+        for site in input.Index.Calls do
+            match site.Arguments with
+            | mode :: _ when
+                Symbols.View.isHydrateWith site.Callee
+                && queuedMode input.Index.Lets mode
+                ->
+                message
+                    "RAN025"
+                    Severity.Error
+                    mode.Range
+                    "Hydration supports synchronous commits only, so this call raises. Pass `SynchronousCommits`, or call `hydrate`."
+                    []
+            | _ -> ()
+    ]
+
+let ran025: Rule =
+    {
+        Code = "RAN025"
+        Title = "hydrateWith with queued commits"
+        Gate = Symbols.Assemblies.Foundation
+        Run = queuedHydration
+    }

@@ -32,6 +32,7 @@ cause, its fix and an example.
 | [RAN022](ran022.md) | Definition created on every region read | Warning |
 | [RAN023](ran023.md) | Invalid content parts on an element | Error |
 | [RAN024](ran024.md) | Markup the server render refuses | Warning |
+| [RAN025](ran025.md) | hydrateWith with queued commits | Error |
 
 ## Running the analyzers
 

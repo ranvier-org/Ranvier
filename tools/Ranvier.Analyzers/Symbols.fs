@@ -559,6 +559,20 @@ module View =
                 "plaintext"
             ]
 
+    /// Whether `case` is the queued commit mode, which hydration refuses.
+    let isQueuedCommits (case: FSharpUnionCase) : bool =
+        case.Name = "QueuedCommits"
+        && case.ReturnType.HasTypeDefinition
+        && case.ReturnType.TypeDefinition.TryFullName = Some "Ranvier.View.Foundation.Scheduling.CommitMode"
+
+    /// Whether `m` returns a queued commit mode: `Microtask.mode`.
+    let isQueuedModeFunction (m: FSharpMemberOrFunctionOrValue) : bool =
+        isMember Microtask "mode" m
+
+    /// Whether `m` is `Hydration.hydrateWith`, whose first argument is the commit mode.
+    let isHydrateWith (m: FSharpMemberOrFunctionOrValue) : bool =
+        isMember Hydration "hydrateWith" m
+
 /// The calls that make a list key unstable.
 module Keys =
     /// Whether a call of `m` in a key function gives a new key on every pass.

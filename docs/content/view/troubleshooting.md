@@ -60,6 +60,8 @@ The analyzers report this at build time: [RAN022](../analyzers/ran022.md).
 **"Hydration supports synchronous commits only"** (`NotSupportedException`): `hydrateWith` was given
 `QueuedCommits`. Hydrate with `SynchronousCommits`.
 
+The analyzers report this at build time: [RAN025](../analyzers/ran025.md).
+
 **`InvalidOperationException` from `CreateId`**: the id was requested after the instance's setup
 returned. Call `setup.CreateId ()` in setup and store the id in the instance.
 
