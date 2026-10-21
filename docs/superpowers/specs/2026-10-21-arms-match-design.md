@@ -18,9 +18,9 @@ Required by `.claude/rules/view-uses-core.md`.
 
 **Core primitives used:**
 
-- The arm memo behind `matchWith` (`Template.fs:2715-2729`): `Arms.Match` lowers to `matchWith` over one definition
+- The arm memo behind `matchWith` (`Template.fs:2721-2734`): `Arms.Match` lowers to `matchWith` over one definition
   per match target. Selection, the owner per selected arm, and remount-versus-update stay with the existing region; the
-  key is the definition (`Template.fs:2724-2725`, `KeyedItems.pairKey`).
+  key is the definition (`Template.fs:2731`, `KeyedItems.pairKey`).
 - `Owner` cleanups through `Setup.OnCleanup` (`Representation.fs:15-17`): an arm withdraws its payload reader from the
   site's cells when its owner is disposed.
 - `Graph.TryCurrent` (`src/Ranvier/Core.fs:1741`): a reader picks the payload readers registered under its own graph,
@@ -64,7 +64,7 @@ its rows and updates them.
 ## Non-goals
 
 - **Changing the standard set.** `armOf`, `arm`, `matchWith`, `branch`, `show` and `showElse`
-  (`TemplateSugar.fs:99-165`) keep their signatures, behaviour, docs and bundle bytes. `Arms.Match` is built on their
+  (`TemplateSugar.fs:101-171`) keep their signatures, behaviour, docs and bundle bytes. `Arms.Match` is built on their
   public surface.
 - **Pattern variables as build-time values.** A case body is built once per target and shared by every instance;
   a pattern variable has a value only per instance, inside a reader.
@@ -149,7 +149,7 @@ Versions:
 |---|---|---|
 | `Fable.AST` (plugin, compile reference) | 5.0.0 | the lowest 5.x; Fable 5.18 loads its own 5.1.0, probe-verified |
 | `FSharp.Core` (plugin) | 10.1.203 | the version inside the Fable 5.18 tool folder; the plugin runs in that process |
-| `FSharp.Core` (library) | 10.1.401 | the repo's pin (`Ranvier.View.Portable.fsproj:23`) |
+| `FSharp.Core` (library) | 8.0.100 floor (`FSharpCoreImplicitPackageVersion`), targets net10.0;net8.0 | the view projects' floor since #147 (`Ranvier.View.Portable.fsproj:2-6`) |
 | `FableMinimumVersion` | `"5.0"` | the probe declared `"4.0"` (`Plugin.fs:331`); 4.x is untested |
 
 **Referencing.** The view is unpackaged (`Ranvier.View.Portable.fsproj:5`, `IsPackable=false`), so an app opts in with
@@ -317,7 +317,7 @@ into the bound-values array and unboxed in the prologue, on both targets.
    `results/twice.txt`) each read live values, through the disposal of either.
 4. Case bodies, the selector and the per-target definitions are built once per evaluation of the `Arms.Match` call.
    A Fable Debug build stays silent about "a template definition was created while a region was read"
-   (`Template.fs:2768-2774`), because the definitions are created when the site is built.
+   (`Template.fs:2776-2780`), because the definitions are created when the site is built.
 
 **Enforcement.** A bound identifier left outside every reader is a build-time read. The plugin replaces each reader
 over the instance by a placeholder and searches the rest of the leaf (`Plugin.fs:245-252`); the .NET lowering looks
@@ -364,7 +364,7 @@ call site would serve the first call's captures to later calls.
 
 **Thread safety.** The lowering keeps no shared mutable state; each call creates its own cells, definitions and
 compiled delegates, so concurrent calls are independent. The cells' entry lists are locked. Arm readers are installed
-with `Interlocked.CompareExchange` by the existing `arm` (`Template.fs:2300-2313`).
+with `Interlocked.CompareExchange` by the existing `arm` (`Template.fs:2307-2319`).
 
 **Trimming and NativeAOT.** `[<ReflectedDefinition>]` stores the argument as a serialized quotation that FSharp.Core
 resolves by reflection on type and member names, and `LeafExpressionConverter` builds `System.Linq.Expressions` trees
@@ -384,7 +384,7 @@ naming `Arms.Match`, so the annotation stays in place.
 1. **Server HTML is byte-identical** between the .NET render (quotation path) and the Fable render (plugin path), and
    equal to the explicit twin's on each target. The probe showed 54 of 54 lines equal (research, Hybrid).
 2. **Each target's definition has its explicit twin's structural hash and skeleton layout.** The arm marker carries the
-   selected definition's hash (`Template.fs:1854-1859`, `<!--[a:646a1db6-->`); the probe's hashes match for every arm
+   selected definition's hash (`Template.fs:1860-1865`, `<!--[a:646a1db6-->`); the probe's hashes match for every arm
    (`220727aa`, `a8ebc344`, `646a1db6`, `c054a3d7`, `7f75a908`, `789182d0`, `fddcd338`).
 3. **A Fable client hydrates .NET server HTML under `Strict`**, adopts every server node, reports nothing, and updates
    in place (probe `hydrate|` lines, `results/fable-dom.txt:145-149`).

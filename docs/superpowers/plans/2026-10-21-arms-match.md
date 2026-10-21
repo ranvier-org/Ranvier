@@ -6,7 +6,7 @@
 
 **Architecture:** A runtime project, `experiments/Ranvier.View.Arms`, holds `Arms.Match`, the per-site `Cells` table and `Site.create`, built on the public view API only. Under Fable a plugin project, `experiments/Ranvier.View.Arms.FablePlugin`, rewrites every `Arms.Match` call into a target selector and one case body per target; on .NET the same call receives a quotation and `Quoted.lower` applies the same rules. Both producers feed `Site.create`, so hashes, layouts and server HTML come from one runtime path.
 
-**Tech Stack:** F# 10, FSharp.Core 10.1.401 (library) and 10.1.203 (plugin), Fable 5.18.0 with Fable.AST 5.0.0, net10.0 and netstandard2.0, FSharp.Linq `LeafExpressionConverter`, Node 26 with jsdom 30.1.1 (`node --test`), Vite 8.3.2, Playwright Chromium for the benchmark harness.
+**Tech Stack:** F# 10, FSharp.Core 8.0.100 floor (library) and 10.1.203 (plugin), Fable 5.18.0 with Fable.AST 5.0.0, net10.0 and netstandard2.0, FSharp.Linq `LeafExpressionConverter`, Node 26 with jsdom 30.1.1 (`node --test`), Vite 8.3.2, Playwright Chromium for the benchmark harness.
 
 **Spec:** [`docs/superpowers/specs/2026-10-21-arms-match-design.md`](../specs/2026-10-21-arms-match-design.md), approved 2026-10-21 with Decisions 11-18 (the former open questions). Read it, and the research note [`docs/research/2026-10-21-idiomatic-arms.md`](../../research/2026-10-21-idiomatic-arms.md), before any task. The probe sources under `experiments/arms-probes` are the starting code.
 
@@ -16,7 +16,7 @@ Required by `.claude/rules/view-uses-core.md`; copied from the spec.
 
 **Core primitives used:**
 
-- The arm memo behind `matchWith` (`Template.fs:2715-2729`): `Arms.Match` lowers to `matchWith` over one definition per match target. Selection, the owner per selected arm and remount-versus-update stay with the existing region; the key is the definition (`KeyedItems.pairKey`).
+- The arm memo behind `matchWith` (`Template.fs:2721-2734`): `Arms.Match` lowers to `matchWith` over one definition per match target. Selection, the owner per selected arm and remount-versus-update stay with the existing region; the key is the definition (`KeyedItems.pairKey`).
 - `Owner` cleanups through `Setup.OnCleanup` (`Representation.fs:15-17`): an arm withdraws its payload reader from the site's cells when its owner is disposed.
 - `Graph.TryCurrent` (`src/Ranvier/Core.fs:1741`): a reader picks the payload readers registered under its own graph, so concurrent server renders stay apart.
 
@@ -27,9 +27,9 @@ Required by `.claude/rules/view-uses-core.md`; copied from the spec.
 Every task's requirements include this section.
 
 - Toolchain: Fable 5.18.0 (`.config/dotnet-tools.json`), Fantomas 8.0.5, net10.0.
-- `Fable.AST` (plugin, compile reference): 5.0.0. `FSharp.Core` (plugin): 10.1.203. `FSharp.Core` (library): 10.1.401. `FableMinimumVersion`: `"5.0"`.
-- Plugin target: netstandard2.0, with `[<assembly: ScanForPlugins>]`. Runtime target: net10.0, Fable sources.
-- `armOf`, `arm`, `matchWith`, `branch`, `show` and `showElse` (`TemplateSugar.fs:99-165`) keep their signatures, behaviour, docs and bundle bytes. No file under `src/`, `experiments/Ranvier.View.Portable/*.fs` or `experiments/Ranvier.View.Foundation/*.fs` changes. A task that finds a change there necessary stops and reports it.
+- `Fable.AST` (plugin, compile reference): 5.0.0. `FSharp.Core` (plugin): 10.1.203. `FSharp.Core` (library): the view projects' 8.0.100 floor (`FSharpCoreImplicitPackageVersion`, no pin). `FableMinimumVersion`: `"5.0"`.
+- Plugin target: netstandard2.0, with `[<assembly: ScanForPlugins>]`. Runtime targets: net10.0;net8.0 (as Portable since #147), Fable sources.
+- `armOf`, `arm`, `matchWith`, `branch`, `show` and `showElse` (`TemplateSugar.fs:101-171`) keep their signatures, behaviour, docs and bundle bytes. No file under `src/`, `experiments/Ranvier.View.Portable/*.fs` or `experiments/Ranvier.View.Foundation/*.fs` changes. A task that finds a change there necessary stops and reports it.
 - The runtime uses only public view API (`Component.define`, `matchWith`, `arm`, `Setup.OnCleanup`): an app that does not reference the package gets 0 B and 0 code-path changes.
 - The .NET `Arms.Match` carries `[<RequiresUnreferencedCode>]` and `[<RequiresDynamicCode>]` with the text `"Arms.Match lowers a quotation through reflection and System.Linq.Expressions. Use matchWith with armOf in trimmed or NativeAOT apps."`. `tests/Ranvier.AotSmoke` is unchanged.
 - Diagnostic texts are fixed (spec, "The payload rule"); they live once, in `experiments/Ranvier.View.Arms/Diagnostics.fs`, which the plugin links. .NET prefixes `<file>(<line>): ` to every site-build-time message.
@@ -693,9 +693,10 @@ type CaseArmsAttribute() =
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFrameworks>net10.0;net8.0</TargetFrameworks>
     <OutputType>Library</OutputType>
     <IsPackable>false</IsPackable>
+    <FSharpCoreImplicitPackageVersion>8.0.100</FSharpCoreImplicitPackageVersion>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
@@ -706,7 +707,6 @@ type CaseArmsAttribute() =
     <Compile Include="Quoted.fs" />
     <Compile Include="Arms.fs" />
     <ProjectReference Include="../Ranvier.View.Portable/Ranvier.View.Portable.fsproj" />
-    <PackageReference Update="FSharp.Core" Version="10.1.401" />
     <InternalsVisibleTo Include="RepresentationChecks" />
   </ItemGroup>
 </Project>
