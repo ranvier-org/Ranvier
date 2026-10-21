@@ -8,4 +8,4 @@ let prepare () =
     Harness.prepare ()
 
 let cases: Case array =
-    Array.ofList (List.concat [ KanbanChecks.cases; LibraryRepros.cases ])
+    Array.ofList (List.concat [ KanbanChecks.cases; DashboardChecks.cases; LibraryRepros.cases ])

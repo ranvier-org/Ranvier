@@ -15,6 +15,7 @@
         <Compile Include="Harness.fs" />
         <Compile Include="LibraryRepros.fs" />
         <Compile Include="KanbanChecks.fs" />
+        <Compile Include="DashboardChecks.fs" />
         <Compile Include="Checks.fs" />
     </ItemGroup>
 

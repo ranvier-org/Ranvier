@@ -11,6 +11,7 @@
     <ItemGroup>
         <Compile Include="src/Page.fs" />
         <Compile Include="src/Kanban.fs" />
+        <Compile Include="src/Dashboard.fs" />
     </ItemGroup>
 
     <ItemGroup>

@@ -5,13 +5,15 @@ import { mkdirSync } from "node:fs";
 
 const shots = process.env.MOTION_SHOTS;
 
-// Installs the page clock before the page's scripts run, so anime captures the controlled Date and frame callback, and
-// fails the test on any page error.
+// Installs the page clock, paused, before the page's scripts run, so anime captures the controlled Date and frame
+// callback and time moves only through runFor; records page errors for expectNoErrors.
 export async function openPage(page, path) {
   const errors = [];
   page.on("pageerror", error => errors.push(error.message));
   page.errors = errors;
-  await page.clock.install({ time: new Date("2026-10-21T09:00:00Z") });
+  const start = new Date("2026-10-21T09:00:00Z").getTime();
+  await page.clock.install({ time: start });
+  await page.clock.pauseAt(start + 1);
   await page.goto(path);
   await page.waitForFunction(() => window.__motion);
   await page.clock.runFor(16);
