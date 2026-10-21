@@ -8,8 +8,9 @@ which is the runnable reference for everything in this section.
 
 ## Project
 
-The view projects are consumed from a checkout of the repository. Reference
-`Ranvier.View.Foundation`; it brings in `Ranvier.View.Portable`, `Fable.Ranvier` and `Ranvier`.
+Reference the `Ranvier.View.Dom` package; it brings in `Ranvier.View` and `Ranvier`. Its
+`Xantham.Fable.Core.TS` dependency restores from a second package source for now; add it as
+[Installation](../guide/installation.md#views) shows.
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
@@ -21,7 +22,7 @@ The view projects are consumed from a checkout of the repository. Reference
     <Compile Include="Main.fs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../Ranvier/experiments/Ranvier.View.Foundation/Ranvier.View.Foundation.fsproj" />
+    <PackageReference Include="Ranvier.View.Dom" Version="0.1.0-alpha.1" />
     <PackageReference Update="FSharp.Core" Version="10.1.401" />
   </ItemGroup>
 </Project>
@@ -42,10 +43,10 @@ dotnet tool install fable --version 5.18.0
 module Counter
 
 open global.Ranvier
-open Ranvier.View.Foundation
-open Ranvier.View.Foundation.Representation
-open Ranvier.View.Foundation.Template
-open Ranvier.View.Foundation.Sugar
+open Ranvier.View
+open Ranvier.View.Representation
+open Ranvier.View.Template
+open Ranvier.View.Sugar
 
 type CounterProps = { Start: int; Label: string }
 
@@ -75,7 +76,7 @@ let counter = Component.ofMembers<Counter, _> ()
   instance and re-runs when a signal it read changes.
 - `Events.onClick` receives the instance and the event.
 
-The five open lines are the same in every view file. `Ranvier.View.Foundation.Sugar` provides the
+The five open lines are the same in every view file. `Ranvier.View.Sugar` provides the
 lowercase tags, `Attrs`, `Events` and `Component.ofMembers`; [Sugar](sugar.md) describes that
 vocabulary and its rules.
 
@@ -116,9 +117,10 @@ module Main
 open Fable.Core
 open Fable.Core.TS.Dom
 open global.Ranvier
-open Ranvier.View.Foundation
-open Ranvier.View.Foundation.Representation
-open Ranvier.View.Foundation.Template
+open Ranvier.View
+open Ranvier.View.Dom
+open Ranvier.View.Representation
+open Ranvier.View.Template
 open Counter
 
 [<Global "document">]
