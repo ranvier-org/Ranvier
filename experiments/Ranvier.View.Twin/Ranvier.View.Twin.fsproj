@@ -10,6 +10,7 @@
         <Compile Include="Html.fs" />
         <Compile Include="Bridge.fs" />
         <Compile Include="Events.fs" />
+        <Compile Include="SelectorMembers.fs" />
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="../../src/Ranvier/Ranvier.fsproj" />

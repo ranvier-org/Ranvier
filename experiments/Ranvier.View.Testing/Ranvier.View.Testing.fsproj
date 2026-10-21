@@ -7,6 +7,7 @@
     </PropertyGroup>
     <ItemGroup>
         <Compile Include="EventSpec.fs" />
+        <Compile Include="Selector.fs" />
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="../Ranvier.View.Foundation/Ranvier.View.Foundation.fsproj" />
