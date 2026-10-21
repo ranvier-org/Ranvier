@@ -804,8 +804,8 @@ in review.
   first byte difference, printing a unified diff.
 - **Divergence cases** named for each hand-ported block: delegated dispatch with nested hosts, `stopPropagation` in a
   handler and in a native listener between target and host (`docs/content/view/events.md:57-68`); head restore after a
-  failed hydration (`keepHead`); held exits across reorder, clear and disposal; SameValueZero keys with structurally
-  equal records.
+  failed hydration (`keepHead`); held exits across reorder, clear and disposal; structurally equal
+  record keys, which are one key under `=` (`docs/content/view/collections.md:61`): a duplicate on both hosts.
 - **Platform-specific cases** carry a `[jsdom]` or `[twin]` tag in their name and are skipped on the other host, with
   the reason in the case; the list is reviewed with each phase.
 

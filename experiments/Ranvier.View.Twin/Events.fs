@@ -262,7 +262,7 @@ module Events =
             path.Add cursor
             cursor <- cursor.Parent
 
-        // Each failure is recorded as it happens, so a nested dispatch's follow the outer ones before them.
+        // Failures are recorded in the order they occur, across nested dispatches.
         let failures = target.Document.ListenerErrors
 
         // The capturing pass ends at the target's capture listeners; the bubbling pass starts at its other listeners,

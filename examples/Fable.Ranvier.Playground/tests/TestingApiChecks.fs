@@ -158,11 +158,164 @@ let private selectorsAgree () =
         if engine <> expected || native <> expected then
             failwithf "%s: expected %A, engine %A, querySelectorAll %A" selector expected engine native
 
+let private values () =
+    let host = (Conformance.document ()).createElement "main"
+
+    (Conformance.document ()).body.appendChild host
+    |> ignore
+
+    host.innerHTML <- "<textarea></textarea><select><option value=\"a\">A</option><option value=\"b\">B</option></select>"
+    let root = host :> Node
+    Interact.input root "textarea" "typed"
+    Expect.value root "textarea" "typed"
+    Interact.select root "select" "b"
+    Expect.value root "select" "b"
+    host.remove ()
+
+let private fixtureHost (html: string) =
+    let host = (Conformance.document ()).createElement "main"
+
+    (Conformance.document ()).body.appendChild host
+    |> ignore
+
+    host.innerHTML <- html
+    host
+
+let private failureOf (attempt: unit -> unit) : string =
+    try
+        attempt ()
+        "no failure"
+    with
+    | Expect.ExpectationException message -> message
+    | Query.QueryException (selector, count, _) -> $"query '{selector}' matched {count}"
+
+// Each failure message is an artefact, so the diff shows the texts are equal on both hosts.
+let private failureMessages () =
+    let host =
+        fixtureHost "<p class=\"x\">a</p><p class=\"x\">a</p><input value=\"v\"><span title=\"t\">s</span>"
+
+    let root = host :> Node
+
+    let messages =
+        [
+            "text", (fun () -> Expect.text root "span" "nope")
+            "count", (fun () -> Expect.count root "p" 3)
+            "absent attribute", (fun () -> Expect.attribute root "span" "lang" (Some "en"))
+            "present attribute", (fun () -> Expect.attribute root "span" "title" None)
+            "value", (fun () -> Expect.value root "input" "w")
+            "html", (fun () -> Expect.html root "<b></b>")
+            "no match", (fun () -> Query.get root "li" |> ignore)
+            "two matches", (fun () -> Query.get root "p" |> ignore)
+            "ambiguous text", (fun () -> Query.byText root "a" |> ignore)
+        ]
+        |> List.map (fun (name, attempt) ->
+            let message = failureOf attempt
+            Conformance.recordIfRunning ("failure: " + name) message
+            name, message)
+
+    let has name (part: string) =
+        let message = snd (List.find (fun (n, _) -> n = name) messages)
+
+        if not (message.Contains part) then
+            failwithf "%s: %s does not hold %s" name message part
+
+    has "text" "expected \"nope\", actual \"s\""
+    has "count" "expected 3, actual 2"
+    has "absent attribute" "expected en, actual (absent)"
+    has "present attribute" "expected (absent), actual t"
+    has "value" "expected \"w\", actual \"v\""
+    has "html" "html: expected <b></b>"
+    has "no match" "query 'li' matched 0"
+    has "two matches" "query 'p' matched 2"
+    has "ambiguous text" "matched 2"
+    host.remove ()
+
+let private unreachableStates () =
+    let host =
+        fixtureHost "<select><option value=\"a\">A</option></select><input type=\"radio\" name=\"r\" checked>"
+
+    let root = host :> Node
+    let events = ResizeArray<string>()
+    let select = Query.get root "select"
+
+    for name in [ "input"; "change" ] do
+        select.addEventListener (name, listener = Fable.Core.U2.Case1 (fun (_: Event) -> events.Add name))
+
+    let unknown = failureOf (fun () -> Interact.select root "select" "zzz")
+    let radio = failureOf (fun () -> Interact.check root "input" false)
+
+    if not (unknown.Contains "no option with the value \"zzz\"") then
+        failwithf "select: %s" unknown
+
+    if not (radio.Contains "cannot be unchecked") then
+        failwithf "check: %s" radio
+
+    if events.Count <> 0 then
+        failwithf "select fired %A" (List.ofSeq events)
+
+    host.remove ()
+
+let private textAndEvents () =
+    let host =
+        fixtureHost "<p>  two\n   words </p><input class=\"k\"><button>b</button>"
+
+    let root = host :> Node
+
+    if (Query.byText root "two words").localName <> "p" then
+        failwith "byText normalises whitespace"
+
+    let keys = ResizeArray<string>()
+    let input = Query.get root "input.k"
+
+    for name in [ "keydown"; "keyup" ] do
+        input.addEventListener (name, listener = Fable.Core.U2.Case1 (fun (e: Event) -> keys.Add (e.``type`` + ":" + (unbox<KeyboardEvent> e).key)))
+
+    Interact.key root "input.k" "a"
+
+    if List.ofSeq keys <> [ "keydown:a"; "keyup:a" ] then
+        failwithf "keys %A" (List.ofSeq keys)
+
+    let button = Query.get root "button"
+    button.addEventListener ("custom", listener = Fable.Core.U2.Case1 (fun (e: Event) -> e.preventDefault ()))
+
+    let cancelled =
+        Interact.dispatch
+            root
+            "button"
+            {
+                Type = "custom"
+                Kind = EventKind.Plain
+                Bubbles = true
+                Cancelable = true
+                Init = []
+            }
+
+    let accepted =
+        Interact.dispatch
+            root
+            "button"
+            {
+                Type = "other"
+                Kind = EventKind.Plain
+                Bubbles = true
+                Cancelable = true
+                Init = []
+            }
+
+    if (cancelled, accepted) <> (false, true) then
+        failwithf "dispatch returned %A" (cancelled, accepted)
+
+    host.remove ()
+
 let cases: Conformance.Case array =
     Conformance.ofChecks
         [|
             "interactions drive input, check and key and the expectations read the result", interactions
             "a query or expectation that fails raises with the selector", failures
             "byText returns the innermost element with the text", byText
+            "input, select and value read and write textareas and selects", values
+            "each expectation and query failure names what it expected and found", failureMessages
+            "select with an unknown value and unchecking a radio raise", unreachableStates
+            "byText normalises whitespace; key fires keydown and keyup; dispatch returns whether the event was accepted", textAndEvents
             "the selector engine and querySelectorAll agree on child and descendant combinators", selectorsAgree
         |]

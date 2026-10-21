@@ -37,7 +37,7 @@ test("an interception of every node wraps the prototypes until it is restored", 
   const dom = new JSDOM("<!doctype html><body></body>");
   const document = dom.window.document;
   let count = 0;
-  const restore = interceptIn(dom.window)(null, "remove", (original, args) => { count++; return original(args); });
+  const restore = interceptIn(dom.window)(null, "remove", (original, self, args) => { count++; return original(args); });
   document.createElement("i").remove();
   document.createTextNode("t").remove();
   restore();
@@ -69,5 +69,17 @@ test("a listener added to the shared document outside a case, as jsdom adds its 
   begin();
   document.body.addEventListener("click", () => {});
   assert.deepEqual(leftovers(), ["body 'click' listener"]);
+  dom.window.close();
+});
+
+test("an interception of every node reaches a member that only an element interface declares, and an unknown member raises", () => {
+  const dom = new JSDOM("<!doctype html><body><select><option>a</option></select></body>");
+  const document = dom.window.document;
+  let count = 0;
+  const restore = interceptIn(dom.window)(null, "remove", (original, self, args) => { count++; return original(args); });
+  document.querySelector("select").remove();
+  restore();
+  assert.equal(count, 1);
+  assert.throws(() => interceptIn(dom.window)(null, "noSuchMember", (original, self, args) => original(args)), /noSuchMember/);
   dom.window.close();
 });

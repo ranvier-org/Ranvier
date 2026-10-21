@@ -10,6 +10,29 @@ let tests =
     testList
         "Bridge"
         [
+            testCase "meter high clamps to the maximum and the low boundary"
+            <| fun () ->
+                use document = new TwinDocument ()
+                let meter = document.CreateElement "meter"
+                let native = meter.Native :?> HTMLMeterElement
+                meter.SetAttribute ("max", "0.5")
+                meter.SetAttribute ("high", "2")
+                Expect.equal native.high 0.5 "clamped to max"
+                meter.SetAttribute ("low", "0.4")
+                meter.SetAttribute ("high", "0.1")
+                Expect.equal native.high 0.4 "raised to low"
+
+            testCase "SVG and MathML elements take their namespace's interfaces"
+            <| fun () ->
+                use document = new TwinDocument ()
+                let svg = document.CreateElement "div"
+                Html.parseInto svg "<svg><g></g><a></a></svg><math><mi>x</mi></math>"
+                let g = svg.FirstChild.FirstChild
+                Expect.isTrue (g.Native :? SVGGElement) "svg g"
+                Expect.isFalse (g.Native :? HTMLElement) "not an HTML element"
+                Expect.isTrue (svg.FirstChild.LastChild.Native :? SVGAElement) "svg a"
+                Expect.isTrue (svg.LastChild.FirstChild.Native :? MathMLElement) "math mi"
+
             testCase "meter high and popover reflect their attributes"
             <| fun () ->
                 use document = new TwinDocument ()
@@ -54,12 +77,12 @@ let tests =
                     |> ignore
 
                 let list = div.Native.childNodes
-                let watch = System.Diagnostics.Stopwatch.StartNew ()
+                let before = ListBuilds.Count
 
                 for i in 0 .. int list.length - 1 do
                     list.item (float i) |> ignore
 
-                Expect.isLessThan watch.ElapsedMilliseconds 200L "indexed iteration is linear"
+                Expect.equal (ListBuilds.Count - before) 1 "one build for the whole iteration"
 
                 div.AppendChild (document.CreateElement "b")
                 |> ignore
@@ -171,7 +194,7 @@ let tests =
                 let seen = ResizeArray<string>()
 
                 let wrap label =
-                    Func<Func<obj array, obj>, obj array, obj>(fun original args ->
+                    Func<Func<obj array, obj>, obj, obj array, obj>(fun original _ args ->
                         seen.Add (label + ":" + (unbox<Node> args[0]).nodeName)
                         original.Invoke args)
 

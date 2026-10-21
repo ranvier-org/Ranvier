@@ -30,7 +30,7 @@ let attribute (root: Node) (selector: string) (name: string) (expected: string o
         fail root $"'{selector}' [{name}]: expected {show expected}, actual {show actual}"
 
 let value (root: Node) (selector: string) (expected: string) : unit =
-    let actual = (unbox<HTMLInputElement>(Query.get root selector)).value
+    let actual = Query.valueOf (Query.get root selector)
 
     if actual <> expected then
         fail root $"'{selector}' value: expected \"{expected}\", actual \"{actual}\""

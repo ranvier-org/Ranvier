@@ -16,7 +16,7 @@ type internal Interception =
     {
         Target: TwinNode
         Name: string
-        Wrap: Func<Func<obj array, obj>, obj array, obj>
+        Wrap: Func<Func<obj array, obj>, obj, obj array, obj>
     }
 
 /// <summary>The members served on the current thread while a recording is open.</summary>
@@ -28,6 +28,16 @@ type internal ServedOnThread =
     static member Recording
         with get () = ServedOnThread.recording
         and set (value: HashSet<string>) = ServedOnThread.recording <- value
+
+/// <summary>The live-list rebuilds on the current thread.</summary>
+[<Sealed; AbstractClass>]
+type internal ListBuilds =
+    [<ThreadStatic; DefaultValue>]
+    static val mutable private count: int
+
+    static member Count
+        with get () = ListBuilds.count
+        and set (value: int) = ListBuilds.count <- value
 
 /// <summary>
 /// A live list of twin nodes, which the bridge presents as the declared list interface. <c>Key</c> names the list on
@@ -47,6 +57,7 @@ type internal ListValue(owner: obj, key: string, nodes: unit -> TwinNode seq, ve
         if isNull items || current <> itemsVersion then
             items <- Array.ofSeq (nodes ())
             itemsVersion <- current
+            ListBuilds.Count <- ListBuilds.Count + 1
 
         items
 
@@ -146,10 +157,15 @@ and internal BridgeCore private () =
         | :? TwinCharacterData as c when c.Kind = NodeKind.Text -> BridgeCore.Interface "Text"
         | :? TwinCharacterData -> BridgeCore.Interface "Comment"
         | :? TwinElement as e ->
-            let map = BridgeCore.Interface "HTMLElementTagNameMap"
+            // The tag map and base interface of the element's namespace.
+            let map, fallback =
+                match e.Namespace with
+                | "svg" -> "SVGElementTagNameMap", "SVGElement"
+                | "math" -> "MathMLElementTagNameMap", "MathMLElement"
+                | _ -> "HTMLElementTagNameMap", "HTMLElement"
 
-            match map.GetProperty e.LocalName with
-            | null -> BridgeCore.Interface "HTMLElement"
+            match (BridgeCore.Interface map).GetProperty e.LocalName with
+            | null -> BridgeCore.Interface fallback
             | property -> property.PropertyType
         | _ -> BridgeCore.Interface "Node"
 
@@ -354,7 +370,10 @@ and internal BridgeCore private () =
                 // A later interception wraps the earlier ones, as a later patch of a JavaScript method does.
                 let call =
                     applying
-                    |> List.fold (fun (inner: obj array -> obj) i -> fun (a: obj array) -> i.Wrap.Invoke (Func<obj array, obj> inner, a)) original
+                    |> List.fold
+                        (fun (inner: obj array -> obj) i ->
+                            fun (a: obj array) -> i.Wrap.Invoke (Func<obj array, obj> inner, BridgeCore.ProxyOf node, a))
+                        original
 
                 // The wrappers see the arguments as DOM objects: nodes as their proxies, options and unions unwrapped.
                 let visible =
@@ -369,7 +388,9 @@ and internal BridgeCore private () =
         | None -> raise (BridgeCore.Unsupported targetMethod)
 
     /// <summary>Routes calls of the method <c>name</c> on <c>target</c>, or on every node of <c>document</c> when null, through <c>wrap</c>.</summary>
-    static member Intercept(document: TwinDocument, target: TwinNode, name: string, wrap: Func<Func<obj array, obj>, obj array, obj>) : unit -> unit =
+    static member Intercept
+        (document: TwinDocument, target: TwinNode, name: string, wrap: Func<Func<obj array, obj>, obj, obj array, obj>)
+        : unit -> unit =
         let list = interceptions.GetValue (document, fun _ -> ResizeArray ())
 
         let interception =
@@ -425,7 +446,7 @@ module Bridge =
     /// <c>target</c> is null, through <c>wrap</c> until the returned function runs. <c>wrap</c> receives the original
     /// method and the call's arguments, and its result is the call's result.
     /// </summary>
-    let intercept (document: TwinDocument) (target: TwinNode) (name: string) (wrap: Func<Func<obj array, obj>, obj array, obj>) =
+    let intercept (document: TwinDocument) (target: TwinNode) (name: string) (wrap: Func<Func<obj array, obj>, obj, obj array, obj>) =
         BridgeCore.Intercept (document, target, name, wrap)
 
     /// <summary>The members served on the calling thread while <c>run</c> runs, sorted.</summary>
@@ -696,7 +717,7 @@ module Bridge =
                      (element n).SetAttribute("disabled", "")
                  else
                      (element n).RemoveAttribute "disabled")
-             // HTMLMeterElement.high, reflecting its attribute; without one it is the maximum, 1 by default.
+             // HTMLMeterElement.high, reflecting its attribute clamped as HTML clamps it; without one it is the maximum.
              getter [ "HTMLMeterElement" ] "high" (fun n ->
                  let number name fallback =
                      match
@@ -709,7 +730,11 @@ module Bridge =
                      | true, value -> value
                      | false, _ -> fallback
 
-                 box (number "high" (number "max" 1.0)))
+                 // HTML's clamping: max at least min, low within [min, max], high within [low, max].
+                 let minimum = number "min" 0.0
+                 let maximum = max minimum (number "max" 1.0)
+                 let low = min maximum (max minimum (number "low" minimum))
+                 box (min maximum (max low (number "high" maximum))))
 
              setter [ "HTMLMeterElement" ] "high" (fun n v ->
                  (element n).SetAttribute("high", Convert.ToDouble(v).ToString(Globalization.CultureInfo.InvariantCulture)))

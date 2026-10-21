@@ -8,6 +8,7 @@ Document.createElement
 Document.createTextNode
 Document.head
 Document.importNode
+Element.addEventListener
 Element.getAttribute
 Element.innerHTML
 Element.localName
@@ -19,6 +20,7 @@ Element.tagName
 Element.textContent
 Event.cancelBubble
 Event.currentTarget
+Event.preventDefault
 Event.stopPropagation
 Event.target
 Event.type
@@ -33,7 +35,9 @@ HTMLElement.title
 HTMLInputElement.checked
 HTMLInputElement.value
 HTMLMeterElement.high
+HTMLSelectElement.value
 HTMLTemplateElement.content
+HTMLTextAreaElement.value
 KeyboardEvent.key
 Node.appendChild
 Node.childNodes

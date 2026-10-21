@@ -3818,7 +3818,7 @@ let private referenceKeyed =
                 t.each (fun (item: Listed) -> item) (fun items -> items.Value) referenceRow
             |])
 
-// Keys compare by F# equality on both hosts: two equal records are one key, so the second is a duplicate.
+// Keys compare by F# equality on both hosts: two equal records are one key, a duplicate.
 let private structurallyEqualKeys () =
     use graph = new Graph ()
 

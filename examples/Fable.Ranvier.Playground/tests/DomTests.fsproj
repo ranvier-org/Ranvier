@@ -44,8 +44,8 @@
     <Compile Include="../../../experiments/Ranvier.View.Testing/Selector.fs" Link="Testing/Selector.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Testing/Conformance.fs" Link="Testing/Conformance.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Testing/Query.fs" Link="Testing/Query.fs" />
-    <Compile Include="../../../experiments/Ranvier.View.Testing/Interact.fs" Link="Testing/Interact.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Testing/Expect.fs" Link="Testing/Expect.fs" />
+    <Compile Include="../../../experiments/Ranvier.View.Testing/Interact.fs" Link="Testing/Interact.fs" />
     <Compile Include="JsdomHarness.fs" />
     <Compile Include="RangeChecks.fs" />
     <Compile Include="BindingChecks.fs" />

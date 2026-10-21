@@ -25,10 +25,28 @@ type private WriteWatch =
 [<Emit("(() => { const o = new MutationObserver(() => {}); o.observe($0, { attributes: true, childList: true, characterData: true, subtree: true }); return { drain: () => o.takeRecords().map(r => r.type + ':' + (r.attributeName ?? '') + ':' + r.addedNodes.length + ':' + r.removedNodes.length), stop: () => o.disconnect() }; })()")>]
 let private watchWrites (root: HTMLElement) : WriteWatch = jsNative
 #else
-// The DOM writes made through the bridge since the last drain, by member: the twin's counterpart of the
-// MutationObserver record, compared between twins on one host.
+// The writes to nodes under the root since the last drain, one entry per DOM call: the member, then the attribute
+// name or the number of nodes inserted.
 let private watchWrites (root: HTMLElement) : WriteWatch =
     let log = ResizeArray<string>()
+
+    let under (target: obj) =
+        match target with
+        | :? Node as node -> root.contains node
+        | _ -> false
+
+    let inserted (node: obj) =
+        match node with
+        | :? DocumentFragment as fragment -> string fragment.childNodes.length
+        | _ -> "1"
+
+    let detail (name: string) (args: obj array) =
+        match name with
+        | "setAttribute"
+        | "removeAttribute" -> name + ":" + string args[0]
+        | "appendChild" -> name + ":" + inserted args[0]
+        | "insertBefore" -> name + ":" + inserted args[0]
+        | _ -> name
 
     let restores =
         [
@@ -45,12 +63,20 @@ let private watchWrites (root: HTMLElement) : WriteWatch =
                     "removeAttribute"
                     "set_data"
                     "set_textContent"
+                    "set_innerHTML"
                     "set_className"
+                    "set_id"
+                    "set_title"
+                    "set_disabled"
+                    "set_popover"
+                    "set_high"
                     "set_value"
                     "set_checked"
                 ] ->
-                Conformance.intercept null name (fun original args ->
-                    log.Add name
+                Conformance.interceptOn null name (fun original target args ->
+                    if under target then
+                        log.Add (detail name args)
+
                     original args)
         ]
 
@@ -75,19 +101,23 @@ type private ListenerWatch =
 [<Emit("(() => { const log = []; const proto = window.EventTarget.prototype; const original = proto.addEventListener; proto.addEventListener = function (type, ...rest) { log.push([this, type]); return original.call(this, type, ...rest); }; return { under: (root) => log.filter(([target]) => target instanceof Node && root.contains(target)).length, stop: () => { proto.addEventListener = original; } }; })()")>]
 let private watchListeners () : ListenerWatch = jsNative
 #else
-// Every addEventListener call since the watch began: the twin's interception carries no target, and one mount is
-// in flight per run.
+// The addEventListener calls since the watch began whose target is under the root when counted.
 let private watchListeners () : ListenerWatch =
-    let count = ref 0
+    let targets = ResizeArray<obj>()
 
     let restore =
-        Conformance.intercept null "addEventListener" (fun original args ->
-            count.Value <- count.Value + 1
+        Conformance.interceptOn null "addEventListener" (fun original target args ->
+            targets.Add target
             original args)
 
     { new ListenerWatch with
-        member _.under _ =
-            count.Value
+        member _.under root =
+            targets
+            |> Seq.filter (fun target ->
+                match target with
+                | :? Node as node -> root.contains node
+                | _ -> false)
+            |> Seq.length
 
         member _.stop() =
             restore ()

@@ -22,8 +22,7 @@ let private raisesArgument (action: unit -> unit) =
 [<Emit("(() => { const records = []; const observer = new ($0.ownerDocument.defaultView.MutationObserver)(items => records.push(...items)); observer.observe($0, { childList: true, subtree: true }); return () => { records.push(...observer.takeRecords()); observer.disconnect(); return records.length; }; })()")>]
 let private observeChildList (node: Node) : unit -> int = jsNative
 #else
-// The child-list writes made through the bridge until the result is called: the twin's counterpart of the
-// MutationObserver records, one per insertion or removal call.
+// The child-list writes to the node and its subtree until the result is called, one per insertion or removal call.
 let private observeChildList (node: Node) : unit -> int =
     let count = ref 0
 
@@ -40,8 +39,11 @@ let private observeChildList (node: Node) : unit -> int =
                     "replaceChildren"
                     "set_innerHTML"
                 ] ->
-                Conformance.intercept null name (fun original args ->
-                    count.Value <- count.Value + 1
+                Conformance.interceptOn null name (fun original target args ->
+                    match target with
+                    | :? Node as touched when node.contains touched -> count.Value <- count.Value + 1
+                    | _ -> ()
+
                     original args)
         ]
 

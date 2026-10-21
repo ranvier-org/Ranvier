@@ -1,6 +1,6 @@
 // jsdom (parse5) restructures every fixture the DOM twin's parser rejects as restructured markup
-// (tests/Ranvier.View.Twin.Tests/restructured.json): its innerHTML differs from the input, or, in a MathML text
-// integration point, an element moves to the HTML namespace.
+// (tests/Ranvier.View.Twin.Tests/restructured.json): it gives the fixture's recorded HTML, which differs from the input
+// or, in a MathML text integration point, moves an element to the HTML namespace.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -10,18 +10,17 @@ const fixtures = JSON.parse(readFileSync(new URL("../../../tests/Ranvier.View.Tw
 const document = new JSDOM("<!doctype html><body></body>").window.document;
 const html = "http://www.w3.org/1999/xhtml";
 
-for (const [markup, construct] of fixtures) {
+for (const [markup, construct, parsed] of fixtures) {
   test(`jsdom restructures ${markup} (${construct})`, () => {
     const div = document.createElement("div");
     div.innerHTML = markup;
+    assert.equal(div.innerHTML, parsed);
 
     if (construct.includes("integration point")) {
-      const elements = [...div.querySelectorAll("*")];
-      const point = elements.find(e => ["mi", "mo", "mn", "ms", "mtext"].includes(e.localName));
-      assert.ok(point, "the integration point parses");
+      const point = [...div.querySelectorAll("*")].find(e => ["mi", "mo", "mn", "ms", "mtext"].includes(e.localName));
       assert.equal(point.firstElementChild.namespaceURI, html, "its child is an HTML element");
     } else {
-      assert.notEqual(div.innerHTML, markup);
+      assert.notEqual(parsed, markup);
     }
   });
 }

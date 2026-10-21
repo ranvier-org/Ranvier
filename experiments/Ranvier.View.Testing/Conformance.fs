@@ -29,7 +29,7 @@ type Harness =
     /// <c>target</c> is null, through <c>wrap</c> until the returned function runs. <c>wrap</c> receives the original
     /// method and the call's arguments, and its result is the call's result.
     /// </summary>
-    abstract Intercept: target: obj * memberName: string * wrap: System.Func<System.Func<obj array, obj>, obj array, obj> -> (unit -> unit)
+    abstract Intercept: target: obj * memberName: string * wrap: System.Func<System.Func<obj array, obj>, obj, obj array, obj> -> (unit -> unit)
 
 type Case = string * (Harness -> unit)
 
@@ -129,7 +129,11 @@ let local (key: string) (create: unit -> 'T) : 'T =
 
 /// <summary>The running case's <c>Harness.Intercept</c>, with <c>wrap</c> taking the original method and the arguments.</summary>
 let intercept (target: obj) (name: string) (wrap: (obj array -> obj) -> obj array -> obj) : unit -> unit =
-    (harness ()).Intercept(target, name, System.Func<_, _, _>(fun original args -> wrap original.Invoke args))
+    (harness ()).Intercept(target, name, System.Func<_, _, _, _>(fun original _ args -> wrap original.Invoke args))
+
+/// <summary>The running case's <c>Harness.Intercept</c>, with <c>wrap</c> taking the original method, the call's target and the arguments.</summary>
+let interceptOn (target: obj) (name: string) (wrap: (obj array -> obj) -> obj -> obj array -> obj) : unit -> unit =
+    (harness ()).Intercept(target, name, System.Func<_, _, _, _>(fun original self args -> wrap original.Invoke self args))
 
 /// <summary>Records a named artefact with the running case's harness; outside a case it does nothing.</summary>
 let recordIfRunning (name: string) (text: string) : unit =

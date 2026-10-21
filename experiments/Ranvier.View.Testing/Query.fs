@@ -1,46 +1,41 @@
 module Ranvier.View.Testing.Query
 
+open Fable.Core
 open Fable.Core.TS.Dom
+
+#if FABLE_COMPILER
+/// <summary>The value of a form control: an input, a textarea or a select.</summary>
+[<Emit("$0.value")>]
+let internal valueOf (element: Element) : string = jsNative
+
+/// <summary>Writes the value of a form control: an input, a textarea or a select.</summary>
+[<Emit("$0.value = $1")>]
+let internal setValue (element: Element) (value: string) : unit = jsNative
+#else
+/// <summary>The value of a form control: an input, a textarea or a select.</summary>
+let internal valueOf (element: Element) : string =
+    match box element with
+    | :? HTMLInputElement as input -> input.value
+    | :? HTMLTextAreaElement as area -> area.value
+    | :? HTMLSelectElement as select -> select.value
+    | _ -> raise (System.NotSupportedException $"A <{element.localName}> has no value")
+
+/// <summary>Writes the value of a form control: an input, a textarea or a select.</summary>
+let internal setValue (element: Element) (value: string) : unit =
+    match box element with
+    | :? HTMLInputElement as input -> input.value <- value
+    | :? HTMLTextAreaElement as area -> area.value <- value
+    | :? HTMLSelectElement as select -> select.value <- value
+    | _ -> raise (System.NotSupportedException $"A <{element.localName}> has no value")
+#endif
 
 /// <summary>A query that requires one match found <c>count</c>; <c>excerpt</c> is a dump of the root.</summary>
 exception QueryException of selector: string * count: int * excerpt: string with
     override this.Message =
         $"Expected one match for '{this.selector}', found {this.count}.{this.excerpt}"
 
-#if FABLE_COMPILER
-let mutable private excerpt: Node -> string = Unchecked.defaultof<_>
-
-let private readExcerpt () = excerpt
-
-let private writeExcerpt (value: Node -> string) =
-    excerpt <- value
-#else
-// Per thread, as the conformance harness and the twin documents are.
-[<Sealed; AbstractClass>]
-type private ExcerptSlot =
-    [<System.ThreadStatic; DefaultValue>]
-    static val mutable private current: Node -> string
-
-    static member Current
-        with get () = ExcerptSlot.current
-        and set (value: Node -> string) = ExcerptSlot.current <- value
-
-let private readExcerpt () =
-    ExcerptSlot.Current
-
-let private writeExcerpt (value: Node -> string) =
-    ExcerptSlot.Current <- value
-#endif
-
-/// <summary>Sets the dump excerpt appended to query and expectation failures on this thread.</summary>
-let internal setExcerpt (excerptOf: Node -> string) =
-    writeExcerpt excerptOf
-
-/// <summary>The dump excerpt of <c>root</c> appended to query and expectation failures; empty until one is set.</summary>
-let internal excerptOf (root: Node) : string =
-    match box (readExcerpt ()) with
-    | null -> ""
-    | _ -> (readExcerpt ()) root
+/// <summary>The dump excerpt appended to query and expectation failures: empty in this build.</summary>
+let internal excerptOf (_: Node) : string = ""
 
 let query (root: Node) (selector: string) : Element option =
     Selector.query root selector

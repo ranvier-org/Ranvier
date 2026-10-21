@@ -60,7 +60,8 @@ let strict (errors: exn list) =
 /// <summary>
 /// The cases, each failing when its run passes any report to <c>strict</c>. A case also fails, without running, when
 /// <c>strict</c> received a report after the previous case returned. A final case, "no late report", fails when
-/// <c>strict</c> received a report after the last case returned.
+/// <c>strict</c> received a report after the last case returned. These late-report checks apply on a page run; a
+/// conformance case keeps its reports per case and fails instead when it leaves work queued on the harness clock.
 /// </summary>
 let strictCases (cases: (string * (unit -> unit)) array) =
     let lateReport (message: string) =

@@ -50,6 +50,12 @@ export function makeClock(targets, onAdvance = () => {}) {
   return {
     post: callback => { queue.push(callback); },
     runMicrotasks: drain,
+    // The work still queued, described: empty when nothing waits.
+    pending: () => [
+      ...(queue.length > 0 ? [`${queue.length} queued microtask(s)`] : []),
+      ...(timers.length > 0 ? [`${timers.length} pending timer(s)`] : []),
+      ...(frames.length > 0 ? [`${frames.length} pending animation frame(s)`] : []),
+    ],
     advanceBy: milliseconds => {
       if (milliseconds < 0) throw new RangeError("The harness clock does not move backwards");
       const target = now + milliseconds;
@@ -81,19 +87,29 @@ export function makeClock(targets, onAdvance = () => {}) {
   };
 }
 
+// The prototypes of the window's EventTarget interfaces: EventTarget itself and every interface that extends it.
+const nodePrototypes = window => {
+  const prototypes = [];
+  for (const key of Object.getOwnPropertyNames(window)) {
+    let value;
+    try { value = window[key]; } catch { continue; }
+    if (typeof value === "function" && value.prototype
+        && (value === window.EventTarget || window.EventTarget.prototype.isPrototypeOf(value.prototype)))
+      prototypes.push(value.prototype);
+  }
+  return prototypes;
+};
+
 // Routes calls of the method `name` on `target`, or on every node of the window's document when target is null,
 // through `wrap(original, args)` until the returned function runs.
 export function interceptIn(window) {
   return (target, name, wrap) => {
-    const owners = target == null
-      ? [window.EventTarget, window.Node, window.CharacterData, window.Element, window.HTMLElement, window.Document, window.DocumentFragment, window.Text, window.Comment]
-          .map(type => type.prototype)
-          .filter(prototype => Object.prototype.hasOwnProperty.call(prototype, name))
-      : [target];
+    const owners = target == null ? nodePrototypes(window).filter(prototype => Object.prototype.hasOwnProperty.call(prototype, name)) : [target];
+    if (owners.length === 0) throw new Error(`No node interface of the window declares ${name}`);
     const saved = owners.map(owner => [owner, Object.getOwnPropertyDescriptor(owner, name)]);
     for (const owner of owners) {
       const original = owner[name];
-      owner[name] = function (...args) { return wrap(callArgs => original.apply(this, callArgs), args); };
+      owner[name] = function (...args) { return wrap(callArgs => original.apply(this, callArgs), this, args); };
     }
     return () => {
       for (const [owner, descriptor] of saved.reverse()) { if (descriptor) Object.defineProperty(owner, name, descriptor); else delete owner[name]; }
@@ -119,7 +135,7 @@ export function runOnPage(window, create, run) {
 
 // Records the listeners a case adds to the window, its document and the document's html, head and body: those added
 // between begin () and leftovers (). leftovers () describes and removes those still live and the view's $$ranvier
-// expandos on the same five, as a case must leave none: the twin starts each case on a fresh document. Listeners added
+// expandos on the same five; a case leaves the five as it found them, as a fresh twin document starts. Listeners added
 // outside a case are jsdom's own, such as the document's load listener jsdom adds on a later tick and its selector
 // engine's window listeners, and stay.
 export function trackShared(window) {

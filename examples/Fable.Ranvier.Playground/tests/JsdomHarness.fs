@@ -13,7 +13,7 @@ type HostSide =
     abstract advanceBy: float -> unit
     abstract record: string * string -> unit
     abstract errors: unit -> string array
-    abstract intercept: obj * string * System.Func<System.Func<obj array, obj>, obj array, obj> -> (unit -> unit)
+    abstract intercept: obj * string * System.Func<System.Func<obj array, obj>, obj, obj array, obj> -> (unit -> unit)
 
 /// <summary>A harness over a jsdom or browser document whose clock and interception <c>host</c> provides.</summary>
 let create (document: Document) (host: HostSide) : Harness =

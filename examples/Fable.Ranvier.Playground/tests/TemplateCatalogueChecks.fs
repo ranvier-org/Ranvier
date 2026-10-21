@@ -650,10 +650,7 @@ let cases: Conformance.Case array =
     Conformance.ofChecks
         [|
             "a template lambda types against the instance when another record shares the field name", labelInference
-            Conformance.platformOnly
-                "jsdom"
-                "Html.Program renders a reader's Some null as an empty attribute on .NET and omits it under Fable; reported"
-                ("reader attributes render the same markup as Html.Program, including null and absent values", readerParity)
+            "reader attributes render the same markup as Html.Program, including null and absent values", readerParity
             "static attributes render the same markup as Html.Program", staticParity
             "an option reader on a string attribute removes the attribute on None", optionReaderRemoval
             "static bool option ARIA and aria static and reader forms render the same markup as Html.Attrs", ariaParity

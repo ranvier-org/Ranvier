@@ -17,7 +17,7 @@ let tests =
 
                 Expect.throwsT<System.NotSupportedException>
                     (fun () ->
-                        harness.Intercept (box "a window", "addEventListener", System.Func<_, _, _>(fun original args -> original.Invoke args))
+                        harness.Intercept (box "a window", "addEventListener", System.Func<_, _, _, _>(fun original _ args -> original.Invoke args))
                         |> ignore)
                     "not a node"
 

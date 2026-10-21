@@ -12,12 +12,28 @@ let repository () =
     | "" -> Path.GetFullPath (Path.Combine (__SOURCE_DIRECTORY__, "..", ".."))
     | root -> root
 
+// FNV-1a over the name's UTF-16 code units, as hex: conformance.test.mjs computes the same.
+let private nameHash (name: string) =
+    let mutable hash = 2166136261u
+
+    for c in name do
+        hash <- (hash ^^^ uint32 c) * 16777619u
+
+    hash.ToString "x8"
+
+/// <summary>A case's artefact directory: its name in lower-case words, cut to 71 characters plus the name's hash when longer than 80.</summary>
 let slug (name: string) =
     let text =
         Text.RegularExpressions.Regex.Replace (name.ToLowerInvariant (), "[^a-z0-9]+", "-")
 
     let text = text.Trim '-'
-    if text.Length > 80 then text.Substring (0, 80) else text
+
+    if text.Length > 80 then
+        text.Substring(0, 71).TrimEnd '-'
+        + "-"
+        + nameHash name
+    else
+        text
 
 let create (host: TwinHost) (directory: string) : Harness =
     let mutable count = 0

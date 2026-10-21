@@ -15,7 +15,18 @@ const globals = ["window", "document", "Event", "MouseEvent", "PointerEvent", "K
 
 const root = new URL("../generated-conformance/jsdom/", import.meta.url);
 rmSync(root, { recursive: true, force: true });
-export const slug = name => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80);
+// FNV-1a over the name's UTF-16 code units, as hex: TwinHarness.slug computes the same.
+const nameHash = name => {
+  let hash = 2166136261;
+  for (let i = 0; i < name.length; i++) hash = Math.imul(hash ^ name.charCodeAt(i), 16777619) >>> 0;
+  return hash.toString(16).padStart(8, "0");
+};
+// A case's artefact directory: its name in lower-case words, cut to 71 characters plus the name's hash when longer
+// than 80.
+export const slug = name => {
+  const text = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return text.length > 80 ? text.slice(0, 71).replace(/-+$/, "") + "-" + nameHash(name) : text;
+};
 
 // Listener failures reach the virtual console, as they would a browser's; jsdom's "Not implemented" notices (form
 // submission, navigation) have no twin counterpart and stay out of the listener failures.
@@ -43,6 +54,16 @@ function resetDocument() {
     for (const attribute of [...element.attributes]) element.removeAttribute(attribute.name);
   }
   for (const attribute of [...document.documentElement.attributes]) document.documentElement.removeAttribute(attribute.name);
+}
+
+// Each case writes under its own directory: a slug that two case names share would mix their artefacts.
+for (const [moduleName, cases] of modules) {
+  const slugs = new Map();
+  for (const [name] of cases) {
+    const directory = slug(name);
+    if (slugs.has(directory)) throw new Error(`${moduleName}: "${name}" and "${slugs.get(directory)}" share the artefact directory ${directory}`);
+    slugs.set(directory, name);
+  }
 }
 
 for (const [moduleName, cases] of modules) {
@@ -76,11 +97,14 @@ for (const [moduleName, cases] of modules) {
       const intercept = interceptIn(dom.window);
       const restores = [];
       let left = [];
+      let pending = [];
       try {
         const result = run(create(dom.window.document, host));
+        const awaits = result && typeof result.then === "function";
+        if (!awaits) pending = clock.pending();
         // A case that returns a promise awaits JavaScript promise delivery: the real timer and microtask functions
         // return, with the work queued so far, before the await.
-        if (result && typeof result.then === "function") {
+        if (awaits) {
           mock.timers.reset();
           clock.handOff();
           await result;
@@ -93,6 +117,7 @@ for (const [moduleName, cases] of modules) {
         left = leftovers();
       }
       if (left.length > 0) throw new Error(`The case left state on the shared document: ${left.join("; ")}`);
+      if (pending.length > 0) throw new Error(`The case left work queued on the harness clock: ${pending.join("; ")}`);
     });
   }
 }

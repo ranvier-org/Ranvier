@@ -2243,8 +2243,26 @@ let private documentFailures () =
          (cleanupMessage.StartsWith ("Server render cleanup failed: cleanup failed", StringComparison.Ordinal), cleanupSame, cleanupWritten),
          (failedMessage.StartsWith ("Server render failed: setup failed; cleanup failed", StringComparison.Ordinal), failedSame, failedWritten))
 
+let private someNullOmitted () =
+    let rendered =
+        Html.render
+            Omit
+            (Program.run (
+                Program.element
+                    Div
+                    [|
+                        OptionalAttribute ("title", Some null)
+                        ReactiveAttribute ("id", (fun () -> Some null))
+                        OptionalAttribute ("lang", Some "en")
+                    |]
+                    [||]
+            ))
+
+    equal "<div lang=\"en\"></div>" rendered
+
 let cases: (string * (unit -> unit)) array =
     [|
+        "an optional or reactive attribute of Some null is omitted, as None is", someNullOmitted
         "CreateId numbers inlined children in pre-order and puts an inlined child's rows under its path", nestedIdentity
         "each view row counts its authored steps from 0 and the enclosing row resumes its count after it", holesIdentity
         "a Setup kept from one setup raises when called during another instance's setup", createIdInLaterSetup
