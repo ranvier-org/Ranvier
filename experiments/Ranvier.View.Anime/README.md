@@ -242,7 +242,7 @@ A list row or arm rooted at an SVG tag is an SVG element too, under both commit 
 An animation a handler or an effect starts, such as a spring home on a click or after a release, belongs to no part. `Motion.slot ()`, called in the instance's setup, returns a `MotionSlot` owned by the instance:
 
 - **`slot.Play (fun () -> animation)`** cancels the running animation, then plays the one the function creates; a cancelled animation stops at its current values and calls none of its callbacks again.
-- **`slot.Stop ()`** cancels the running animation; `slot.Playing` is true while the latest one has neither completed nor been cancelled.
+- **`slot.Stop ()`** cancels the running animation; `slot.Running` is the latest animation played (null after a stop), and `slot.Playing` is true while it has neither completed nor been cancelled.
 - **The instance's disposal cancels the running animation,** and a later `Play` does not call its function.
 - **A grab cancels it.** Given as a `DragBinding`'s `Slot`, the slot's running animation is cancelled when the draggable is grabbed, so a spring returning the element home lets go of it.
 

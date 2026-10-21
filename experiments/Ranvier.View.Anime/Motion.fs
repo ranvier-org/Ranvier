@@ -29,6 +29,9 @@ type MotionSlot internal () =
     let mutable running: ITickable = null
     let mutable closed = false
 
+    /// <summary>The latest animation played, or null before the first play and after a stop.</summary>
+    member _.Running = running
+
     /// <summary>Whether the latest animation plays: started, neither completed nor cancelled.</summary>
     member _.Playing =
         not (isNull running)
