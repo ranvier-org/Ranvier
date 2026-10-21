@@ -1,7 +1,8 @@
 module Ranvier.View.Twin.Tests.ServerParityTests
 
 open Expecto
-open Ranvier.View.Foundation
+open Ranvier.View
+open Ranvier.View.Dom
 open Ranvier.View.Twin
 
 // Browser-only parts render under Omit.
@@ -104,7 +105,7 @@ let tests =
                     (fun () ->
                         Twin.hydrateHtml
                             { TwinMount.defaults with
-                                Commits = Commits.Queued Ranvier.View.Foundation.Scheduling.CollectAndContinue
+                                Commits = Commits.Queued Ranvier.View.Dom.Scheduling.CollectAndContinue
                             }
                             Hydration.HydrationOptions.defaults
                             ""

@@ -2,9 +2,8 @@ module Ranvier.View.Twin.Tests.DepartureTests
 
 open Expecto
 open Ranvier
-open Ranvier.View.Foundation
-open Ranvier.View.Foundation.Representation
-open Ranvier.View.Foundation.Template
+open Ranvier.View
+open Ranvier.View.Dom
 open Ranvier.View.Twin
 
 // A row root whose exit never calls finish: the row leaves at the safety timeout.

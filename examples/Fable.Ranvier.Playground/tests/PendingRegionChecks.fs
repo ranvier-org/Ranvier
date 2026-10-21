@@ -3,12 +3,11 @@ module PendingRegionChecks
 
 open global.Ranvier
 open Fable.Core.TS.Dom
+open Ranvier.View
+open Ranvier.View.Dom
+open Ranvier.View.Dom.Scheduling
+open Ranvier.View.Sugar
 open Ranvier.View.Testing
-open Ranvier.View.Foundation
-open Ranvier.View.Foundation.Representation
-open Ranvier.View.Foundation.Template
-open Ranvier.View.Foundation.Scheduling
-open Ranvier.View.Foundation.Sugar
 
 let private equal expected actual =
     if expected <> actual then

@@ -3,9 +3,8 @@ module Ranvier.View.Twin.Tests.AsyncTests
 open System.Threading.Tasks
 open Expecto
 open Ranvier
+open Ranvier.View
 open Ranvier.View.Twin
-open Ranvier.View.Foundation.Representation
-open Ranvier.View.Foundation.Template
 
 type private Loaded = { Result: AsyncMemo<string> }
 
@@ -29,7 +28,7 @@ let private loader (source: TaskCompletionSource<string>) =
 
 let private queued =
     { TwinMount.defaults with
-        Commits = Commits.Queued Ranvier.View.Foundation.Scheduling.CollectAndContinue
+        Commits = Commits.Queued Ranvier.View.Dom.Scheduling.CollectAndContinue
     }
 
 [<Tests>]

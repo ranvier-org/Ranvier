@@ -5,10 +5,9 @@ open System
 open global.Ranvier
 open Fable.Core
 open Fable.Core.TS.Dom
+open Ranvier.View
+open Ranvier.View.Dom
 open Ranvier.View.Testing
-open Ranvier.View.Foundation
-open Ranvier.View.Foundation.Representation
-open Ranvier.View.Foundation.Template
 open CheckSupport
 open SugarFixtures
 
@@ -650,7 +649,7 @@ let private handlerSites (root: HTMLElement) : string =
     Query.queryAll root "*"
     |> Array.mapi (fun index node ->
         index,
-        Ranvier.View.Foundation.Native.expandoNames (box node)
+        Ranvier.View.Native.expandoNames (box node)
         |> List.filter (fun name -> name.StartsWith "$$ranvier")
         |> String.concat ",")
     |> Array.filter (fun (_, keys) -> keys <> "")

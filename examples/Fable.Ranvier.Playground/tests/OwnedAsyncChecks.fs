@@ -5,10 +5,9 @@ open System.Threading.Tasks
 open global.Ranvier
 open Fable.Core
 open Fable.Core.TS.Dom
+open Ranvier.View
+open Ranvier.View.Dom
 open Ranvier.View.Testing
-open Ranvier.View.Foundation
-open Ranvier.View.Foundation.Representation
-open Ranvier.View.Foundation.Template
 
 #if FABLE_COMPILER
 [<Global>]

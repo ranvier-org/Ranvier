@@ -3,9 +3,8 @@ module Ranvier.View.Twin.Tests.HeadTests
 open System.Threading.Tasks
 open Expecto
 open Ranvier
-open Ranvier.View.Foundation
-open Ranvier.View.Foundation.Representation
-open Ranvier.View.Foundation.Template
+open Ranvier.View
+open Ranvier.View.Dom
 open Ranvier.View.Twin
 
 let private described =

@@ -3,10 +3,9 @@ module SugarDebugChecks
 
 open global.Ranvier
 open Fable.Core.TS.Dom
-open Ranvier.View.Foundation
-open Ranvier.View.Foundation.Representation
-open Ranvier.View.Foundation.Template
-open Ranvier.View.Foundation.Sugar
+open Ranvier.View
+open Ranvier.View.Dom
+open Ranvier.View.Sugar
 
 type private Picked =
     {
@@ -25,6 +24,8 @@ let private hazard =
         (fun _ (picked: Picked) -> picked)
         (div () {
             matchWith (fun (p: Picked) -> p.Pick.Value, p.Log) (fun (_, log) ->
+                // Asserts the Debug failure of a definition created during a region read.
+                // fsharpanalyzer: ignore-line-next RAN022
                 let created = armOf (span (Hooks.mounted (noting log)) { "arm" })
                 arm created ())
         })
@@ -35,6 +36,8 @@ let private branchHazard =
         (fun _ (picked: Picked) -> picked)
         (div () {
             branch (fun (p: Picked) -> p.Pick.Value) (fun _ ->
+                // Asserts the Debug failure of a definition created during a region read.
+                // fsharpanalyzer: ignore-line-next RAN022
                 let created = armOf (span () { "arm" })
                 arm created ())
         })
@@ -50,6 +53,8 @@ let private eachHazard =
             each
                 id
                 (fun (p: Picked) ->
+                    // Asserts the Debug failure of a definition created during a region read.
+                    // fsharpanalyzer: ignore-line-next RAN022
                     Component.template (fun _ () -> ()) (span () { "hidden" })
                     |> ignore
 
@@ -74,6 +79,8 @@ type private ArmHolder =
 
 /// <summary>Reads <c>ArmHolder.Arm</c> inside the arms function, once per selector evaluation.</summary>
 let private propertyHazard =
+    // Asserts the Debug failure of a definition created during a region read.
+    // fsharpanalyzer: ignore-line-next RAN022
     Component.template (fun _ (picked: Picked) -> picked) (div () { matchWith (fun (p: Picked) -> p.Pick.Value) (fun _ -> arm ArmHolder.Arm ()) })
 
 /// <summary>The setups run by <c>ArmRecord.Create</c> and the <c>ArmClass</c> constructor: one per mount.</summary>
@@ -99,12 +106,16 @@ type ArmClass(_setup: Setup, read: unit -> int) =
 let private membersHazard =
     Component.template
         (fun _ (picked: Picked) -> picked)
+        // Asserts the Debug failure of a definition created during a region read.
+        // fsharpanalyzer: ignore-line-next RAN022
         (div () { matchWith (fun (p: Picked) -> p.Pick.Value) (fun v -> arm (Component.ofMembers<ArmRecord, _>()) v) })
 
 /// <summary>Calls <c>Component.ofClass</c> inside the arms function, once per selector evaluation.</summary>
 let private classHazard =
     Component.template
         (fun _ (picked: Picked) -> picked)
+        // Asserts the Debug failure of a definition created during a region read.
+        // fsharpanalyzer: ignore-line-next RAN022
         (div () { matchWith (fun (p: Picked) -> p.Pick.Value) (fun v -> arm (Component.ofClass ArmClass) v) })
 
 // Opened after the fixtures: CheckSupport.span shadows the span tag.
