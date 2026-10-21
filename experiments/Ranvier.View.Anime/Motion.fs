@@ -32,7 +32,11 @@ type MotionSlot internal () =
     /// <summary>The latest animation played, or null before the first play and after a stop.</summary>
     member _.Running = running
 
-    /// <summary>Whether the latest animation plays: started, neither completed nor cancelled.</summary>
+    /// <summary>
+    /// Whether the latest animation is live: played, and not yet completed or cancelled. A delayed or paused animation
+    /// is live.
+    /// </summary>
+    /// <remarks>A WAAPI animation reports completion only, so it stays live after an outside cancel.</remarks>
     member _.Playing =
         not (isNull running)
         && not running.completed
@@ -42,11 +46,23 @@ type MotionSlot internal () =
     /// Cancels the running animation, then plays the one <c>start</c> creates while the instance is live; after its
     /// disposal the slot is closed and <c>Play</c> only cancels.
     /// </summary>
+    /// <remarks>
+    /// The slot holds the animation <c>start</c> returns; one that <c>start</c> plays through the same slot is
+    /// cancelled.
+    /// </remarks>
     member this.Play(start: unit -> #ITickable) =
         this.Stop ()
 
         if not closed then
-            running <- start () :> ITickable
+            let next = start () :> ITickable
+
+            if
+                not (isNull running)
+                && not (obj.ReferenceEquals (running, next))
+            then
+                running.cancel ()
+
+            running <- next
 
     /// <summary>Cancels the running animation at its current values.</summary>
     member _.Stop() =
@@ -154,7 +170,7 @@ module Motion =
     let private startFrom (layout: AutoLayout) (children: TS.Dom.Element array) : unit = jsNative
 
     // The parameters without the shared unit, which anime would read as a property, and with the property's own entry,
-    // which takes the shared unit when it names none.
+    // which takes the shared unit when it sets none.
     [<Emit("(({unit, ...p}, k) => { const e = p[k]; p[k] = Object.assign({unit}, typeof e === 'number' ? {duration: e} : e); return p; })($0, $1)")>]
     let private withUnit (parameters: AnimatableParams) (property: string) : AnimatableParams = jsNative
 
@@ -411,10 +427,14 @@ module Motion =
     /// </summary>
     /// <remarks>
     /// Call before the change that moves the row, and before the drag position is reset, as for a card dropped into
-    /// another lane. The FLIP keeps the recorded size; only the position moves.
+    /// another lane. The FLIP keeps the recorded size; only the position moves. The box stays on the element until the
+    /// next pass that measures it as a row; under the ambient graph's <c>Reactive.policy</c> <c>Reduced</c>, where flip
+    /// stays still, the call returns at once.
     /// </remarks>
     let flipFrom (element: TS.Dom.Element) : unit =
-        keepBox element
+        match Graph.TryCurrent with
+        | ValueSome _ when reduced () -> ()
+        | _ -> keepBox element
 
     /// <summary>
     /// A slot for the animations the current instance starts outside its parts, from a handler or an effect; call it in
@@ -432,7 +452,7 @@ module Motion =
     /// </summary>
     /// <remarks>
     /// <c>parameters</c> without an entry for <c>property</c> give it the shared defaults; the shared <c>unit</c> applies
-    /// to <c>property</c> unless its entry names its own.
+    /// to <c>property</c> unless its entry sets its own <c>unit</c>.
     /// </remarks>
     let follow (property: string) (parameters: AnimatableParams) (read: 'inst -> float) : Part<'native, 'inst> =
         Hooks.motion (

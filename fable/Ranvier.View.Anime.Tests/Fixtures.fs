@@ -159,6 +159,9 @@ let chart =
             path (Motion.morph (Anim (duration = 300)) (fun c -> c.Line.Value)) { () }
         })
 
+/// <summary>A point anime tweens in place.</summary>
+type Point = { mutable x: float; mutable y: float }
+
 type Tile =
     {
         Offset: Signal<struct (float * float)>
@@ -168,7 +171,7 @@ type Tile =
 let springHome (tile: Tile) =
     let graph = Graph.Current
     let struct (x, y) = Api.untrack (fun () -> tile.Offset.Value)
-    let point = {| x = x; y = y |}
+    let point = { x = x; y = y }
 
     tile.Spring.Play (fun () ->
         Anime.animate (

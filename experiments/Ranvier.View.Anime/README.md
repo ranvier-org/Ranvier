@@ -119,7 +119,7 @@ let toasts =
 - **Motion parts keep the visual properties.** In a pass where an element under the container carries a Motion part, the layout animates position and size only, and the opacity, colours, borders, filters, clip paths and font size stay with the parts (an opacity `enter` or `presence` under `flip` ends at its last frame). In a pass with no such element, anime's default fades apply. A property named in `properties`, `enterFrom`, `leaveTo` or `swapAt` is always the layout's.
 - **The container is positioned.** anime animates moved rows with `position: absolute` and a translation through the Web Animations API during the animation.
 - **The layout is created on the first recording,** and reverted with the instance.
-- **A dropped row starts from where it was dropped.** The recording measures each row with its transforms off, so a row dragged into another place would start its FLIP from its old slot. `Motion.flipFrom element`, called before the change that moves the row and before the drag position is reset, keeps the element's current visual box, drag transform included; the next pass that measures the element as a row starts its FLIP there, with the recorded size, and drops the box. The element comes from the handler's event or from `Hooks.mounted`.
+- **A dropped row starts from where it was dropped.** `Motion.flipFrom element` starts the element's next FLIP from its current visual box, drag transform included, in place of the transform-free box the recording measures. Call it before the change that moves the row and before the drag position is reset. The box stays on the element until the next pass that measures the element as a row, which starts its FLIP there, with the recorded size, and drops the box; under `Reduced`, where flip stays still, the call returns at once. The element comes from the handler's event or from `Hooks.mounted`.
 
 ## Reactive parts
 
@@ -158,7 +158,7 @@ let gauge =
         })
 ```
 
-`follow`'s `parameters` without an entry for `property` give the property the shared duration and ease, and the shared `unit` applies to `property` unless its entry names its own: `Motion.follow "x" (AnimatableParams (unit = "%", duration = 420))` moves the element by percentages of its width.
+`follow`'s `parameters` without an entry for `property` give the property the shared duration and ease, and the shared `unit` applies to `property` unless its entry sets its own `unit`: `Motion.follow "x" (AnimatableParams (unit = "%", duration = 420))` moves the element by percentages of its width.
 
 ```fsharp
 type Story =
@@ -239,14 +239,17 @@ A list row or arm rooted at an SVG tag is an SVG element too, under both commit 
 
 ## Animations from handlers
 
-An animation a handler or an effect starts, such as a spring home on a click or after a release, belongs to no part. `Motion.slot ()`, called in the instance's setup, returns a `MotionSlot` owned by the instance:
+An animation started by a handler or an effect, such as a spring home on a click or after a release, belongs to a `MotionSlot`. `Motion.slot ()`, called in the instance's setup, returns one owned by the instance:
 
-- **`slot.Play (fun () -> animation)`** cancels the running animation, then plays the one the function creates; a cancelled animation stops at its current values and calls none of its callbacks again.
-- **`slot.Stop ()`** cancels the running animation; `slot.Running` is the latest animation played (null after a stop), and `slot.Playing` is true while it has neither completed nor been cancelled.
-- **The instance's disposal cancels the running animation,** and a later `Play` does not call its function.
-- **A grab cancels it.** Given as a `DragBinding`'s `Slot`, the slot's running animation is cancelled when the draggable is grabbed, so a spring returning the element home lets go of it.
+- **`slot.Play (fun () -> animation)`** cancels the running animation, then plays the one the function creates; a cancelled animation stops at its current values, its callbacks muted. The slot holds the animation the function returns, and cancels one the function plays through the same slot.
+- **`slot.Stop ()`** cancels the running animation; `slot.Running` is the latest animation played (null after a stop), and `slot.Playing` is true while it is live, played and not yet completed or cancelled (a WAAPI animation reports completion only).
+- **The instance's disposal cancels the running animation** and closes the slot: a later `Play` only cancels.
+- **A grab cancels it.** Given as a `DragBinding`'s `Slot`, a grab cancels the slot's running animation, such as a spring returning the element home.
 
 ```fsharp
+/// <summary>A point anime tweens in place.</summary>
+type Point = { mutable x: float; mutable y: float }
+
 type Tile =
     {
         Offset: Signal<struct (float * float)>
@@ -256,7 +259,7 @@ type Tile =
 let springHome (tile: Tile) =
     let graph = Graph.Current
     let struct (x, y) = Api.untrack (fun () -> tile.Offset.Value)
-    let point = {| x = x; y = y |}
+    let point = { x = x; y = y }
 
     tile.Spring.Play (fun () ->
         Anime.animate (
