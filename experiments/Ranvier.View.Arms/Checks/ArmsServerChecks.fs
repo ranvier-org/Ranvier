@@ -49,6 +49,17 @@ let private failwithfRaisesAtRead () =
 
     equal (true, "raised: bad state") ((render Idle).Contains "<span>Other</span>", render (Loaded ("x", 1)))
 
+/// <summary>A case body's <c>let</c> of a raising expression raises when the site is built.</summary>
+let private letThrowRaisesAtBuild () =
+    let built =
+        try
+            letThrowing () |> ignore
+            "built"
+        with error ->
+            "raised: " + error.Message
+
+    equal "raised: a" built
+
 let cases: (string * (unit -> unit)) array =
     [|
         "Arms.Match fixtures share their twins' layouts and hashes", sameLayouts
@@ -56,6 +67,7 @@ let cases: (string * (unit -> unit)) array =
         "Arms.Match fixtures render their twins' server HTML under Omit", sameHtml omit
         "an incomplete Arms.Match raises for its unmatched case", (fun () -> equal true (incompleteRaises ()))
         "a failwithf case body raises its message at the region read", failwithfRaisesAtRead
+        "a case body's raising let raises when the site is built", letThrowRaisesAtBuild
     |]
 
 /// <summary>One line per fixture state: fixture, state, the site's structural hash and its server HTML under Omit.</summary>

@@ -70,7 +70,8 @@ let enter (cells: Cells) (setup: Setup) (instance: obj) (target: int) (values: u
 /// <summary>
 /// The bound values of the reader's own arm: the pattern variables, then the matched value. Reads every live entry
 /// serving the ambient graph and returns the first; with none, the values held by the target's last withdrawn entry
-/// when it serves the ambient graph.
+/// when it serves the ambient graph. A withdrawal under another graph replaces the target's withdrawn entry; a held read
+/// under the first graph then raises AM006.
 /// </summary>
 let values (cells: Cells) (instance: obj) (target: int) : obj array =
     let slots = tryFind cells instance
@@ -148,7 +149,7 @@ type Slots() =
         if not (isNull entry.Last) then
             withdrawn[target] <- entry
 
-    /// <summary>The live entries of the target; the array is never changed after it is returned.</summary>
+    /// <summary>The live entries of the target, as an immutable array.</summary>
     member _.Live(target: int) : Entry array =
         let current = live
         if target < current.Length then current[target] else [||]
@@ -191,7 +192,8 @@ let enter (cells: Cells) (setup: Setup) (instance: obj) (target: int) (values: u
 /// <summary>
 /// The bound values of the reader's own arm: the pattern variables, then the matched value. Reads every live entry
 /// serving the ambient graph and returns the first; with none, the values held by the target's last withdrawn entry
-/// when it serves the ambient graph. Reads run outside the instance's lock.
+/// when it serves the ambient graph. A withdrawal under another graph replaces the target's withdrawn entry; a held read
+/// under the first graph then raises AM006. Reads run outside the instance's lock.
 /// </summary>
 let values (cells: Cells) (instance: obj) (target: int) : obj array =
     match tryFind cells.Table instance with

@@ -94,6 +94,7 @@ let private explicitRich () =
         })
 
 let matchOne graph host (state: Signal<Load>) =
+    Arms.Prepare ()
     mountAll graph host [ Component.render (matchLoader ()) state ]
 
 let explicitOne graph host (state: Signal<Load>) =

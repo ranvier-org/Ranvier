@@ -77,7 +77,7 @@ git checkout -- ../../docs/research/framework-performance/investigation/view-sug
 
 The explicit entry's bytes equal the record Task 1 Step 1 takes before any change (Ruling 12); the regenerated file is not committed. When a merge of `origin/master` changes a file the explicit entry compiles (anything under `experiments/Ranvier.View.Portable`, `experiments/Ranvier.View.Foundation` or `src/`), retake the record from the merged master: `git worktree add C:/Users/shaya/.claude/jobs/7fee9ca9/tmp/arms-baseline origin/master`, run Task 1 Step 1 there (its own `npm ci`), copy the file, then `git worktree remove C:/Users/shaya/.claude/jobs/7fee9ca9/tmp/arms-baseline`.
 
-and, from Task 9 on, `node experiments/Ranvier.View.Arms/Checks/size.mjs` and `dotnet run --project experiments/Ranvier.View.Arms/Checks/DotnetCost/DotnetCost.fsproj -c Release -- --timing` (the mean budget, and the cold figures for the research note) from the worktree root. The PluginTests line applies from Task 2 on; `npm run test:arms` from Task 4 on.
+and, from Task 9 on, `node experiments/Ranvier.View.Arms/Checks/size.mjs` and `dotnet run --project experiments/Ranvier.View.Arms/Checks/DotnetCost/DotnetCost.fsproj -c Release -f net10.0 -- --timing` (the mean budget, and the cold figures for the research note), and the same with `-- --prepare --timing` under `-f net10.0` and `-f net8.0` (the first site after `Arms.Prepare ()`, and `Prepare` run twice and on four threads at once) from the worktree root. The PluginTests line applies from Task 2 on; `npm run test:arms` from Task 4 on.
 
 ### Repo hazards
 
@@ -120,6 +120,8 @@ Each ruling picks an implementation where the spec leaves one open, or settles a
 26. **`Quoted.Hot` compiles on the thread pool** (Phase 3 review I1): an `Interlocked` call count; exactly the 64th call queues the compile with `ThreadPool.UnsafeQueueUserWorkItem`; calls keep running interpreted until the compiled delegate is published through a volatile field; a compile failure leaves the lambda interpreted; the compile closure is dropped once taken. Tests: `hotDoesNotBlock`, `hotCompileFailure`, `hotCompilesOnce`.
 27. **`Arms.Prepare ()`** (Phase 3 review, cold start): a public static member that lowers, renders and compiles a built-in site on .NET and does nothing under Fable. It cuts the first user site from 125-146 ms to 9-12 ms (7 ms with ReadyToRun). The direct `Expr` evaluator the review costed is not built: after `Prepare` and ReadyToRun the remaining first-site cost is about 7 ms, inside the draft's 10 ms.
 28. **`Cells` reads without the lock** (Phase 3 review M2/M3): each target's entries are an array replaced under the instance's lock and read without it, so readers run outside every monitor; a withdrawal records its entry only when it holds values; an entry or withdrawn entry with a null graph serves any graph, and a withdrawn entry serves only its own graph otherwise.
+29. **A per-call lambda over let-bound case-body values compiles too** (Phase 4 review M1-M3): `compileHot` replaces such a lambda by a `HotFactory` applied to its free variables, a closed lambda over them interpreted once per site construction and compiled once, on the thread pool, by the first of its `Hot` functions to reach 64 calls. Lambdas over lambda-bound variables stay interpreted. Each `Hot` exposes `IHot` (`Compiled`, `Failed`, `Queued`) and writes a `Trace` warning when its compile fails; `Quoted.collectHots` returns the `Hot` functions created while a site is built, so the checks wait on compile completion instead of sleeping and assert that a lowered site's functions compile.
+30. **Hydration parity covers every golden line, the fallback and the Strict mismatch** (Phase 4 review I2, M4, M5): `ArmsFixtures.Case.Run` runs a site and its twin under a `Runner`; `ArmsChecks.hydrations` takes the golden lines and returns `strictCases` that hydrate each line under Strict (served root adopted, no node inserted, markup equal to the twin's), and for each Load fixture the writes after hydration, the non-Strict fallback from a client at `Idle` (reports, markup and writes equal to the twin's) and the Strict mismatch (the twin's message, host left as served). `heldExit` reads its pattern variables in the exit callback, so the withdrawn read runs; `pendingSource` runs pending, settle, re-pend, settle and fail against a `matchWith` twin. `Arms.Prepare ()` runs in `ArmsLoweringChecks.runtimeCases`, in `DotnetCost --prepare` on net10.0 and net8.0 (twice, then on four threads with a site lowered on each), and in a Fable check.
 
 ## Review Focus
 
@@ -5723,51 +5725,198 @@ test("the Fable server HTML of every fixture equals the golden file", () => {
 In `tests/ArmsChecks.fs`, insert before `let cases`:
 
 ```fsharp
+/// <summary>The texts of the elements matching the selector, in document order.</summary>
+[<Emit("Array.from($0.querySelectorAll($1), e => e.textContent)")>]
+let private textsOf (target: HTMLElement) (selector: string) : string array = jsNative
+
 [<Emit("$0.firstElementChild")>]
 let private firstElement (target: HTMLElement) : obj = jsNative
 
+/// <summary>The records of child-list writes that inserted nodes, from a write watch's drain.</summary>
+let private insertions (watch: WriteWatch) =
+    [
+        for record in watch.drain () do
+            if
+                record.StartsWith "childList:"
+                && not (record.Split(':').[2] = "0")
+            then
+                record
+    ]
+
 /// <summary>
-/// Each Load fixture hydrates the served HTML of its <c>Loaded done 3</c> state under Strict, then three writes; the
-/// site's markup after each, and whether the served root element was adopted, equal its twin's from the same HTML.
+/// Hydrates the served HTML under Strict; the lines are whether the served root element was adopted, the markup, and
+/// the node insertions made by the hydration.
 /// </summary>
-let hydrations: (string * (string -> unit)) array =
-    [|
-        for name, site, twin in
+let private strictRunner (served: string) =
+    { new Runner with
+        member _.Run(definition, make) =
+            use graph = new Graph ()
+            let props = graph.Run make
+            let target = host ()
+            loadServed target served
+            let root = firstElement target
+            let watch = watchWrites target
+
+            let mounted =
+                Hydration.hydrate
+                    graph
+                    None
+                    strict
+                    { Hydration.HydrationOptions.defaults with
+                        Strict = true
+                    }
+                    target
+                    definition
+                    props
+
+            let inserted = insertions watch
+            watch.stop ()
+
+            let lines =
+                [
+                    sprintf "adopted=%b" (obj.ReferenceEquals (root, firstElement target))
+                    target.innerHTML
+                    sprintf "insertions=%A" inserted
+                ]
+
+            mounted.Dispose ()
+            lines
+    }
+
+/// <summary>
+/// Each golden line's fixture state hydrates its .NET server HTML under Strict: the site adopts the served root, inserts
+/// no node, and leaves the markup its twin leaves.
+/// </summary>
+let private hydratesLine (fixture: string) (state: string) (served: string) () =
+    let case =
+        all
+        |> List.find (fun case -> case.Fixture = fixture && case.State = state)
+
+    let site, twin = case.Run (strictRunner served)
+    equal [ "adopted=true"; "insertions=[]" ] [ twin.Head; List.last twin ]
+    equal twin site
+
+let private loadFixtures =
+    [
+        "loader", loader, loaderTwin
+        "rich", rich, richTwin
+        "rows", rows, rowsTwin
+        "rowsTuple", rowsTuple, rowsTupleTwin
+        "tupled", tupled, tupledTwin
+        "whole", whole, wholeTwin
+        "helper", helper, helperTwin
+    ]
+
+let private laterWrites = [ Loaded ("later", 4); Loading 5; Loaded ("again", 1) ]
+
+/// <summary>
+/// Hydrates the served HTML with the client at <c>initial</c>, then the three later writes; the lines are the reports,
+/// whether the served root element was adopted, and the markup after the hydration and after each write.
+/// </summary>
+let private hydrateLoad (options: Hydration.HydrationOptions) (served: string) (initial: Load) (definition: Component<Signal<Load>>) =
+    use graph = new Graph ()
+    let state = graph.Run (fun () -> Api.createSignal initial)
+    let target = host ()
+    loadServed target served
+    let root = firstElement target
+    let reports = ResizeArray<string>()
+
+    let report (errors: exn list) =
+        for error in errors do
+            reports.Add error.Message
+
+    let mounted = Hydration.hydrate graph None report options target definition state
+
+    let shots =
+        ResizeArray
             [
-                "loader", loader, loaderTwin
-                "rich", rich, richTwin
-                "rows", rows, rowsTwin
-                "rowsTuple", rowsTuple, rowsTupleTwin
-                "tupled", tupled, tupledTwin
-                "whole", whole, wholeTwin
-                "helper", helper, helperTwin
-            ] ->
-            name,
-            fun (served: string) ->
-                let shots (definition: Component<Signal<Load>>) =
-                    use graph = new Graph ()
-                    let state = graph.Run (fun () -> Api.createSignal (Loaded ("done", 3)))
-                    let target = host ()
-                    loadServed target served
-                    let root = firstElement target
+                sprintf "reports=%A" (List.ofSeq reports)
+                sprintf "adopted=%b %s" (obj.ReferenceEquals (root, firstElement target)) target.innerHTML
+            ]
 
-                    let mounted =
-                        Hydration.hydrate graph None strict { Hydration.HydrationOptions.defaults with Strict = true } target definition state
+    for step in laterWrites do
+        graph.Run (fun () -> state.Value <- step)
+        mounted.Flush ()
+        shots.Add target.innerHTML
 
-                    let shots = ResizeArray [ sprintf "adopted=%b %s" (obj.ReferenceEquals (root, firstElement target)) target.innerHTML ]
+    mounted.Dispose ()
+    shots.Add (sprintf "reports=%A" (List.ofSeq reports))
+    List.ofSeq shots
 
-                    for step in [ Loaded ("later", 4); Loading 5; Loaded ("again", 1) ] do
-                        graph.Run (fun () -> state.Value <- step)
-                        mounted.Flush ()
-                        shots.Add target.innerHTML
+let private strictOptions =
+    { Hydration.HydrationOptions.defaults with
+        Strict = true
+    }
 
-                    mounted.Dispose ()
-                    List.ofSeq shots
+/// <summary>A Load fixture hydrates its served <c>Loaded done 3</c> under Strict, then three writes, as its twin does.</summary>
+let private hydratesThenWrites (site: Component<Signal<Load>>) (twin: Component<Signal<Load>>) (served: string) () =
+    let twinShots = hydrateLoad strictOptions served (Loaded ("done", 3)) twin
+    equal true (twinShots[1].StartsWith "adopted=true")
+    equal twinShots (hydrateLoad strictOptions served (Loaded ("done", 3)) site)
 
-                let twinShots = shots twin
-                equal true (twinShots.Head.StartsWith "adopted=true")
-                equal twinShots (shots site)
-    |]
+/// <summary>
+/// A Load fixture hydrates its served <c>Loaded done 3</c> with the client at <c>Idle</c> and Strict off: the reports, the
+/// markup and the three later writes equal its twin's.
+/// </summary>
+let private fallsBack (site: Component<Signal<Load>>) (twin: Component<Signal<Load>>) (served: string) () =
+    let twinShots = hydrateLoad Hydration.HydrationOptions.defaults served Idle twin
+    equal false (twinShots.Head = "reports=[]")
+    equal twinShots (hydrateLoad Hydration.HydrationOptions.defaults served Idle site)
+
+/// <summary>The message of the mismatch raised by a Strict hydration with the client at <c>Idle</c>, and the host's markup after it.</summary>
+let private strictMismatch (served: string) (definition: Component<Signal<Load>>) =
+    use graph = new Graph ()
+    let state = graph.Run (fun () -> Api.createSignal Idle)
+    let target = host ()
+    loadServed target served
+    let before = target.innerHTML
+
+    let raised =
+        try
+            Hydration.hydrate graph None strict strictOptions target definition state
+            |> ignore
+
+            "none"
+        with TemplateDom.HydrationMismatchException _ as error ->
+            error.Message
+
+    raised, target.innerHTML = before
+
+/// <summary>Under Strict, the site and its twin raise the same mismatch for a client at <c>Idle</c> and leave the host as served.</summary>
+let private raisesMismatch (site: Component<Signal<Load>>) (twin: Component<Signal<Load>>) (served: string) () =
+    let twinRaised = strictMismatch served twin
+    equal (false, true) (fst twinRaised = "none", snd twinRaised)
+    equal twinRaised (strictMismatch served site)
+
+/// <summary>
+/// The hydration cases over the golden lines (fixture, state, served HTML): every line under Strict, and for each Load
+/// fixture's <c>Loaded done 3</c> the writes after hydration, the non-Strict fallback and the Strict mismatch.
+/// </summary>
+let hydrations (lines: (string * string * string) array) =
+    let servedOf fixture =
+        lines
+        |> Array.pick (fun (f, state, served) ->
+            if f = fixture && state = "Loaded done 3" then
+                Some served
+            else
+                None)
+
+    strictCases (
+        Array.concat
+            [
+                [|
+                    for fixture, state, served in lines ->
+                        sprintf "%s %s hydrates its .NET server HTML under Strict like its twin" fixture state, hydratesLine fixture state served
+                |]
+                [|
+                    for name, site, twin in loadFixtures do
+                        let served = servedOf name
+                        sprintf "%s hydrates Loaded done 3 under Strict and updates like its twin" name, hydratesThenWrites site twin served
+                        sprintf "%s falls back from a mismatch and updates like its twin" name, fallsBack site twin served
+                        sprintf "%s raises the twin's mismatch under Strict" name, raisesMismatch site twin served
+                |]
+            ]
+    )
 ```
 
 `tests/arms-hydration.test.mjs`:
@@ -5786,11 +5935,8 @@ after(() => { dom.window.close(); for (const name of names) delete globalThis[na
 const golden = readFileSync(new URL("../../../experiments/Ranvier.View.Arms/Checks/arms-server.golden.txt", import.meta.url), "utf8")
   .replace(/\r\n/g, "\n").replace(/\n+$/, "").split("\n").map(line => line.split("|"));
 
-for (const [name, check] of hydrations)
-  test(`${name} hydrates its .NET server HTML under Strict and updates like its twin`, () => {
-    const line = golden.find(([fixture, state]) => fixture === name && state === "Loaded done 3");
-    check(line.slice(3).join("|"));
-  });
+for (const [name, check] of hydrations(golden.map(([fixture, state, , ...html]) => [fixture, state, html.join("|")])))
+  test(name, check);
 ```
 
 `package.json`: in `test:arms`, `node --test tests/arms-server.test.mjs tests/arms.test.mjs` becomes `node --test tests/arms-server.test.mjs tests/arms.test.mjs tests/arms-hydration.test.mjs`.
@@ -5852,8 +5998,9 @@ In `tests/ArmsChecks.fs`, insert before `let cases`:
 
 ```fsharp
 let private finishes = ResizeArray<unit -> unit>()
+let private exitReads = ResizeArray<string * int>()
 
-/// <summary>A site whose Loaded body holds its root on exit until <c>finish</c> runs.</summary>
+/// <summary>A site whose Loaded body holds its root on exit until <c>finish</c> runs; the exit records its pattern variables.</summary>
 let private held =
     Component.template
         (fun _ (state: Signal<Load>) -> state)
@@ -5865,6 +6012,7 @@ let private held =
                     pre (
                         Hooks.exit (
                             Func<_, _, _, _>(fun (_: Signal<Load>) (_: HTMLPreElement) finish ->
+                                exitReads.Add (text, count)
                                 finishes.Add finish
                                 ignore)
                         )
@@ -5877,18 +6025,24 @@ let private held =
             )
         })
 
-/// <summary>The outgoing arm, held by its exit, keeps its own case's values until finish (Testing 9).</summary>
+/// <summary>
+/// The exit of an outgoing arm, run after the arm's cleanup, reads its own case's values, also while another arm of the
+/// same target is live (Testing 9).
+/// </summary>
 let private heldExit queued () =
     finishes.Clear ()
+    exitReads.Clear ()
     use graph = new Graph ()
     let state = graph.Run (fun () -> Api.createSignal (Loaded ("a", 1)))
     let target = host ()
     let mounted = mountTemplate queued graph strict target (Component.render held state)
     mounted.Flush ()
     write graph [ mounted ] (fun () -> state.Value <- Idle)
-    equal ("a x1", "Other") (textOf target "pre", textOf target "span")
+    equal ([ "a", 1 ], [| "a x1" |], "Other") (List.ofSeq exitReads, textsOf target "pre", textOf target "span")
+    write graph [ mounted ] (fun () -> state.Value <- Loaded ("b", 2))
+    equal ([ "a", 1 ], [| "a x1"; "b x2" |]) (List.ofSeq exitReads, Array.sort (textsOf target "pre"))
     write graph [ mounted ] (fun () -> state.Value <- Loading 3)
-    equal ("a x1", "Other") (textOf target "pre", textOf target "span")
+    equal ([ "a", 1; "b", 2 ], [| "a x1"; "b x2" |], "Other") (List.ofSeq exitReads, Array.sort (textsOf target "pre"), textOf target "span")
     let pending = List.ofSeq finishes
     finishes.Clear ()
 
@@ -5924,29 +6078,69 @@ let private bounded (flight: Signal<AsyncSource<int>>) =
 
     Component.template (fun _ () -> ()) (section () { boundary pendingView failedView content })
 
-/// <summary>A pending read waits with the boundary, as matchWith does (Testing 10).</summary>
-let private pendingSource queued () =
+/// <summary>The armOf twin of <c>bounded</c>.</summary>
+let private boundedTwin (flight: Signal<AsyncSource<int>>) =
+    let none = armOf (em () { "none" })
+    let some = armOf (b () { fun (payload: unit -> int) -> string (payload ()) })
+
+    let content =
+        Component.template
+            (fun _ (status: BoundaryStatus) -> status)
+            (div (Attrs.className "level") {
+                matchWith (fun (_: BoundaryStatus) -> flight.Value.Value) (function
+                    | 0 -> arm none ()
+                    | n -> arm some n)
+            })
+
+    Component.template (fun _ () -> ()) (section () { boundary pendingView failedView content })
+
+/// <summary>
+/// The pending, failed and level states of a boundary around the view after each step: pending, settled, a new source
+/// pending, settled to the other target, and a new source failed; the reported messages; the host's text after disposal.
+/// </summary>
+let private boundaryStates queued (view: Signal<AsyncSource<int>> -> Component<unit>) =
     use graph = new Graph ()
     let flight = graph.Run (fun () -> Api.createSignal (Api.createAsyncSource<int>()))
     let target = host ()
+    let reports = ResizeArray<string>()
+
+    let report (errors: exn list) =
+        for error in errors do
+            reports.Add error.Message
 
     let mounted =
-        Mounting.mountWith (modeOf queued) graph None strict target None (fun context ->
-            Program.run (Component.render (bounded flight) ()) context.Backend)
+        Mounting.mountWith (modeOf queued) graph None report target None (fun context ->
+            Program.run (Component.render (view flight) ()) context.Backend)
 
     let state () =
         mounted.Flush ()
         mounted.Flush ()
         countOf target ".pending", countOf target ".failed", textOf target ".level"
 
-    equal (1, 0, null) (state ())
-    graph.Run (fun () -> flight.Value.Settle 2)
-    equal (0, 0, "2") (state ())
-    graph.Run (fun () -> flight.Value <- Api.createAsyncSource<int>())
-    graph.Run (fun () -> flight.Value.Settle 0)
-    equal (0, 0, "none") (state ())
+    let states =
+        [
+            state ()
+            (graph.Run (fun () -> flight.Value.Settle 2)
+             state ())
+            (graph.Run (fun () -> flight.Value <- Api.createAsyncSource<int>())
+             state ())
+            (graph.Run (fun () -> flight.Value.Settle 0)
+             state ())
+            (graph.Run (fun () -> flight.Value <- Api.createAsyncSource<int>())
+             state ())
+            (graph.Run (fun () -> flight.Value.Fail (exn "lost"))
+             state ())
+        ]
+
     mounted.Dispose ()
-    equal "" target.textContent
+    states, List.ofSeq reports, target.textContent
+
+/// <summary>A read of a pending, settled or failed source behaves with the boundary as its matchWith twin does (Testing 10).</summary>
+let private pendingSource queued () =
+    let twin = boundaryStates queued boundedTwin
+    let states, reports, _ = twin
+    equal ((1, 0, null), (0, 0, "2"), (0, 1, null), [ "lost" ]) (states.Head, states[1], List.last states, List.distinct reports)
+    equal twin (boundaryStates queued bounded)
 ```
 
 and add to the `Array.concat` list of `cases`:
@@ -5975,7 +6169,7 @@ for (const [name, check] of cases) test(`debug: ${name}`, () => check());
 - [ ] **Step 2: Run the checks**
 
 From `examples/Fable.Ranvier.Playground`: `npm run test:arms && npm run test:sugar-debug`
-Expected: PASS. The Debug suite runs every arms case, so "a template definition was created while a region was read" in any report fails it; such a failure means a definition is built inside a region read, which `Site.create` must not do. If `heldExit` sees `textOf target "pre"` change to another case's text, a held arm's reader read the next case: `Cells.values` must return the withdrawn values when the target has no live entry. If `pendingSource` reports a failure instead of waiting, check `Site.create`'s selector runs inside `matchWith`'s region read, where #137's pending handling applies.
+Expected: PASS. The Debug suite runs every arms case, so "a template definition was created while a region was read" in any report fails it; such a failure means a definition is built inside a region read, which `Site.create` must not do. A held root's instance is disposed, so its text bindings do not run again; the exit callback is the reader that runs after the arm's cleanup. If `heldExit` records other values than `("a", 1)` then `("b", 2)`, or raises AM006, `Cells.values` must return the withdrawn entry's values when the target has no live entry serving the graph. If `pendingSource` differs from its `matchWith` twin, check `Site.create`'s selector runs inside `matchWith`'s region read, where #137's pending handling applies.
 
 - [ ] **Step 3: Run the phase gates, format and commit**
 
@@ -6522,7 +6716,7 @@ Message subject: `perf(arms): Chromium arm benchmark mode and heap profile`.
 </Project>
 ```
 
-`Main.fs`:
+`experiments/Ranvier.View.Arms/Checks/TrimCallSite/Main.fs`:
 
 ```fsharp
 /// <summary>One Arms.Match call, for the trimmed publish of check.sh.</summary>
@@ -6555,7 +6749,7 @@ let main _ =
     0
 ```
 
-`check.sh`:
+`experiments/Ranvier.View.Arms/Checks/TrimCallSite/check.sh`:
 
 ```bash
 #!/usr/bin/env bash

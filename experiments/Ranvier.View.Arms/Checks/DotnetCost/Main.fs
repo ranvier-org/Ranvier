@@ -3,7 +3,9 @@
 /// Arms.Match runs, the mean of 200 more, and server renders of a 1,000-row site against its armOf twin.
 /// </summary>
 /// <remarks>
-/// <c>--timing</c> fails the run when the mean lowering exceeds 4 ms. <c>--prepare</c> calls <c>Arms.Prepare</c> first.
+/// <c>--timing</c> fails the run when the mean lowering exceeds 4 ms. <c>--prepare</c> calls <c>Arms.Prepare</c> first,
+/// and after the measurements twice more and on four threads at once, each thread also lowering and rendering a site;
+/// the run fails when one raises or renders other HTML.
 /// <c>--twin-first</c> builds the armOf twin before the first lowering, so the first figure excludes the view's own
 /// cold start.
 /// </remarks>
@@ -99,6 +101,44 @@ let private renderCost (site: Component<Signal<Load>>) (renders: int) =
 
     watch.Elapsed.TotalMilliseconds / float renders
 
+/// <summary>The failures of four threads each calling <c>Arms.Prepare</c> at once, then lowering and rendering a 3-row site.</summary>
+let private preparedConcurrently () =
+    Arms.Prepare ()
+    Arms.Prepare ()
+
+    let html (site: Component<Signal<Load>>) =
+        use graph = new Graph ()
+        let state = graph.Run (fun () -> Api.createSignal (Loaded ("r", 3)))
+        Server.render omit site state
+
+    let expected = html (rowsTwin ())
+    let failures = Collections.Concurrent.ConcurrentBag<string>()
+    use barrier = new Threading.Barrier 4
+
+    let threads =
+        [|
+            for _ in 1..4 ->
+                Threading.Thread (fun () ->
+                    barrier.SignalAndWait ()
+
+                    try
+                        Arms.Prepare ()
+                        let rendered = html (rowsSite ())
+
+                        if rendered <> expected then
+                            failures.Add rendered
+                    with error ->
+                        failures.Add error.Message)
+        |]
+
+    for thread in threads do
+        thread.Start ()
+
+    for thread in threads do
+        thread.Join ()
+
+    List.ofSeq failures
+
 [<EntryPoint>]
 let main args =
     if args |> Array.contains "--twin-first" then
@@ -133,7 +173,18 @@ let main args =
     for round in 1..3 do
         printfn "render1000|round=%d arms=%.3fms twin=%.3fms" round (renderCost site 200) (renderCost twin 200)
 
-    if args |> Array.contains "--timing" && mean > 4.0 then
+    let prepareFailures =
+        if args |> Array.contains "--prepare" then
+            let failures = preparedConcurrently ()
+            printfn "prepare-concurrent|failures=%d" failures.Length
+            failures
+        else
+            []
+
+    if not prepareFailures.IsEmpty then
+        eprintfn "Arms.Prepare failed: %A" prepareFailures
+        1
+    elif args |> Array.contains "--timing" && mean > 4.0 then
         eprintfn "lowering over budget: mean %.3f ms (budget 4)" mean
         1
     else

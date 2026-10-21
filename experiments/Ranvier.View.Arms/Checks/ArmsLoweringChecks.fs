@@ -459,25 +459,30 @@ let private noArm () =
         "Arms.Match: no arm of this site is mounted for the instance this reader received. A lambda over the instance type inside a case body runs with the arm's instance."
         message
 
-/// <summary>The payload each thread's renders read for the shared instance.</summary>
+/// <summary>The payload read by each thread's renders of the shared instance.</summary>
 let private perThread = new Threading.ThreadLocal<int> ()
 
-/// <summary>A site over a shared instance whose payload is the reading thread's number.</summary>
-let private perThreadSite =
-    Component.template
-        (fun _ (score: ArmsFixtures.Score) -> score)
-        (div () {
-            Arms.Match (
-                (fun (score: ArmsFixtures.Score) -> { score with Points = perThread.Value }),
-                function
-                | { Points = 0 } -> span () { "no points" }
-                | { Name = name; Points = points } -> pre () { fun _ -> name + ":" + string points }
-            )
-        })
+/// <summary>A site over a shared instance whose payload is the reading thread's number, and its <c>Hot</c> functions.</summary>
+let private perThreadSite, private perThreadHots =
+    Ranvier.View.Arms.Quoted.collectHots (fun () ->
+        Component.template
+            (fun _ (score: ArmsFixtures.Score) -> score)
+            (div () {
+                Arms.Match (
+                    (fun (score: ArmsFixtures.Score) -> { score with Points = perThread.Value }),
+                    function
+                    | { Points = 0 } -> span () { "no points" }
+                    | { Name = name; Points = points } -> pre () { fun _ -> name + ":" + string points }
+                )
+            }))
+
+/// <summary>Waits up to ten seconds for the condition; whether it holds.</summary>
+let private eventually (condition: unit -> bool) =
+    Threading.SpinWait.SpinUntil ((fun () -> condition ()), 10000)
 
 /// <summary>
 /// Sixteen threads render one site for one shared instance, each under its own graph with a payload of its own; each
-/// response shows its own thread's payload (Review Focus 1).
+/// response shows its own thread's payload (Review Focus 1), and every <c>Hot</c> function of the site compiles.
 /// </summary>
 let private concurrentRenders () =
     let score: ArmsFixtures.Score = { Name = "ada"; Points = 5 }
@@ -516,7 +521,50 @@ let private concurrentRenders () =
 
     equal [] (List.ofSeq failures |> List.truncate 3)
 
-/// <summary>The 64th call of a hot lambda queues its compile and returns without waiting for it.</summary>
+    equal
+        (true, true, false)
+        (not perThreadHots.IsEmpty,
+         eventually (fun () ->
+             perThreadHots
+             |> List.forall (fun hot -> hot.Compiled)),
+         perThreadHots
+         |> List.exists (fun hot -> hot.Failed))
+
+/// <summary>A site whose case body binds values with <c>let</c> and reads them in a reader, and its <c>Hot</c> functions.</summary>
+let private letBoundSite, private letBoundHots =
+    Ranvier.View.Arms.Quoted.collectHots (fun () ->
+        Component.template
+            (fun _ (state: Signal<Load>) -> state)
+            (div () {
+                Arms.Match (
+                    read,
+                    function
+                    | Loaded (text, count) ->
+                        let suffix = "!"
+                        let scale = 10
+                        pre () { fun _ -> text + suffix + string (count * scale) }
+                    | _ -> span () { "other" }
+                )
+            }))
+
+/// <summary>A reader over let-bound case-body values compiles after <c>hotCalls</c> renders and keeps its output.</summary>
+let private letBoundCompiles () =
+    let html () =
+        render letBoundSite (Loaded ("a", 2))
+
+    let before =
+        [
+            for _ in 1 .. Ranvier.View.Arms.Quoted.hotCalls + 1 -> (html ()).Contains "<pre>a!20</pre>"
+        ]
+
+    let compiled =
+        eventually (fun () ->
+            letBoundHots
+            |> List.forall (fun hot -> hot.Compiled))
+
+    equal (true, true, true, true) (letBoundHots.Length >= 2, List.forall id before, compiled, (html ()).Contains "<pre>a!20</pre>")
+
+/// <summary>The 64th call of a hot lambda queues its compile and returns before the compile completes.</summary>
 let private hotDoesNotBlock () =
     use release = new Threading.ManualResetEventSlim false
 
@@ -524,39 +572,32 @@ let private hotDoesNotBlock () =
         release.Wait 10000 |> ignore
         box (fun (x: int) -> x + 2)
 
-    let hot =
-        Ranvier.View.Arms.Quoted.Hot<int, int>((fun x -> x + 1), compile)
-        |> box
-        |> unbox<int -> int>
-
+    let hot = Ranvier.View.Arms.Quoted.Hot<int, int>((fun x -> x + 1), compile)
+    let state = hot :> Ranvier.View.Arms.Quoted.IHot
+    let call = hot |> box |> unbox<int -> int>
     let watch = Diagnostics.Stopwatch.StartNew ()
 
     for _ in 1 .. Ranvier.View.Arms.Quoted.hotCalls do
-        hot 1 |> ignore
+        call 1 |> ignore
 
     let elapsed = watch.ElapsedMilliseconds
-    let interpreted = hot 1
+    let interpreted = call 1
+    let queued = state.Queued
     release.Set ()
-    let deadline = Diagnostics.Stopwatch.StartNew ()
-
-    while hot 1 = 2 && deadline.ElapsedMilliseconds < 10000 do
-        Threading.Thread.Sleep 10
-
-    equal (true, 2, 3) (elapsed < 1000, interpreted, hot 1)
+    let compiled = eventually (fun () -> state.Compiled)
+    equal (true, 2, 1, true, 3) (elapsed < 1000, interpreted, queued, compiled, call 1)
 
 /// <summary>A hot lambda whose compile fails keeps running interpreted.</summary>
 let private hotCompileFailure () =
     let compile () : obj =
         failwith "compile failed"
 
-    let hot =
-        Ranvier.View.Arms.Quoted.Hot<int, int>((fun x -> x + 1), compile)
-        |> box
-        |> unbox<int -> int>
-
-    let results = [ for _ in 1..200 -> hot 1 ]
-    Threading.Thread.Sleep 200
-    equal (true, 2) (results |> List.forall ((=) 2), hot 1)
+    let hot = Ranvier.View.Arms.Quoted.Hot<int, int>((fun x -> x + 1), compile)
+    let state = hot :> Ranvier.View.Arms.Quoted.IHot
+    let call = hot |> box |> unbox<int -> int>
+    let results = [ for _ in 1..200 -> call 1 ]
+    let failed = eventually (fun () -> state.Failed)
+    equal (true, true, false, 1, 2) (results |> List.forall ((=) 2), failed, state.Compiled, state.Queued, call 1)
 
 /// <summary>Sixteen threads calling one hot lambda at once queue its compile exactly once.</summary>
 let private hotCompilesOnce () =
@@ -566,13 +607,11 @@ let private hotCompilesOnce () =
         Threading.Interlocked.Increment &compiles.contents
         |> ignore
 
-        box (fun (x: int) -> x + 1)
+        box (fun (x: int) -> x + 2)
 
-    let hot =
-        Ranvier.View.Arms.Quoted.Hot<int, int>((fun x -> x + 1), compile)
-        |> box
-        |> unbox<int -> int>
-
+    let hot = Ranvier.View.Arms.Quoted.Hot<int, int>((fun x -> x + 1), compile)
+    let state = hot :> Ranvier.View.Arms.Quoted.IHot
+    let call = hot |> box |> unbox<int -> int>
     use barrier = new Threading.Barrier 16
 
     let threads =
@@ -582,7 +621,7 @@ let private hotCompilesOnce () =
                     barrier.SignalAndWait ()
 
                     for _ in 1..200 do
-                        hot 1 |> ignore)
+                        call 1 |> ignore)
         |]
 
     for thread in threads do
@@ -591,14 +630,63 @@ let private hotCompilesOnce () =
     for thread in threads do
         thread.Join ()
 
-    Threading.Thread.Sleep 200
-    equal 1 compiles.Value
+    let compiled = eventually (fun () -> state.Compiled)
+    equal (true, 1, 1, 3) (compiled, state.Queued, compiles.Value, call 1)
+
+/// <summary>
+/// <c>Arms.Prepare</c> runs twice, then on four threads at once, each also lowering and rendering a site; nothing raises
+/// and each render shows its payload.
+/// </summary>
+let private prepares () =
+    Arms.Prepare ()
+    Arms.Prepare ()
+    let failures = Collections.Concurrent.ConcurrentBag<string>()
+    use barrier = new Threading.Barrier 4
+
+    let threads =
+        [|
+            for index in 1..4 ->
+                Threading.Thread (fun () ->
+                    barrier.SignalAndWait ()
+
+                    try
+                        Arms.Prepare ()
+
+                        let site =
+                            Component.template
+                                (fun _ (state: Signal<Load>) -> state)
+                                (div () {
+                                    Arms.Match (
+                                        read,
+                                        function
+                                        | Loading percent -> b () { fun _ -> string percent }
+                                        | _ -> span () { "other" }
+                                    )
+                                })
+
+                        let html = render site (Loading index)
+
+                        if not (html.Contains (sprintf "<b>%d</b>" index)) then
+                            failures.Add html
+                    with error ->
+                        failures.Add error.Message)
+        |]
+
+    for thread in threads do
+        thread.Start ()
+
+    for thread in threads do
+        thread.Join ()
+
+    equal [] (List.ofSeq failures)
 
 let runtimeCases: (string * (unit -> unit)) array =
     [|
         "a reader with no arm for its instance raises AM006", noArm
         "concurrent server renders of one shared instance read their own graph's payload", concurrentRenders
+        "a reader over let-bound case-body values compiles", letBoundCompiles
         "the 64th call of a hot lambda does not wait for its compile", hotDoesNotBlock
         "a hot lambda whose compile fails keeps running interpreted", hotCompileFailure
         "concurrent calls of a hot lambda compile it once", hotCompilesOnce
+        "Arms.Prepare runs twice and concurrently with site lowerings", prepares
     |]

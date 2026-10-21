@@ -44,7 +44,11 @@ type Value =
     | Maybe of maybe: int voption
     | Count of count: int
 
-/// <summary>A fixture state: the site, its twin, and their server HTML under given options.</summary>
+/// <summary>A run of a definition over props made by the factory, described as lines.</summary>
+type Runner =
+    abstract Run<'props> : Component<'props> * (unit -> 'props) -> string list
+
+/// <summary>A fixture state: the site, its twin, their server HTML under given options, and their lines under a runner.</summary>
 type Case =
     {
         Fixture: string
@@ -52,6 +56,7 @@ type Case =
         Site: TemplateComponent
         Twin: TemplateComponent
         Render: Server.Options -> string * string
+        Run: Runner -> string list * string list
     }
 
 let private renderWith (options: Server.Options) (definition: Component<'props>) (make: unit -> 'props) =
@@ -71,6 +76,7 @@ let private cases (fixture: string) (site: Component<'props>) (twin: Component<'
                 Site = site :> TemplateComponent
                 Twin = twin :> TemplateComponent
                 Render = fun options -> renderWith options site make, renderWith options twin make
+                Run = fun runner -> runner.Run (site, make), runner.Run (twin, make)
             }
     ]
 
@@ -697,6 +703,21 @@ let failing =
                 read,
                 function
                 | Loaded _ -> failwithf "bad %s" "state"
+                | _ -> span () { "Other" }
+            )
+        })
+
+/// <summary>A site whose Loaded body binds a raising <c>let</c>; building it raises.</summary>
+let letThrowing () =
+    Component.template
+        (fun _ (state: Signal<Load>) -> state)
+        (div () {
+            Arms.Match (
+                read,
+                function
+                | Loaded _ ->
+                    let text: string = failwith "a"
+                    span () { text }
                 | _ -> span () { "Other" }
             )
         })

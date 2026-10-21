@@ -231,10 +231,40 @@ let warmCompile () =
 [<Literal>]
 let hotCalls = 64
 
+/// <summary>The compile state of a <c>Hot</c> function.</summary>
+type internal IHot =
+    /// <summary>Whether calls run the compiled delegate.</summary>
+    abstract Compiled: bool
+    /// <summary>Whether the compile raised; the function then stays interpreted.</summary>
+    abstract Failed: bool
+    /// <summary>The compiles queued: 0 before the <c>hotCalls</c>-th call, 1 from it on.</summary>
+    abstract Queued: int
+
+/// <summary>The list receiving each <c>Hot</c> function created on the thread, while <c>collectHots</c> runs.</summary>
+let private collecting = new ThreadLocal<System.Collections.Generic.List<IHot>> ()
+
+let private track (hot: IHot) =
+    match collecting.Value with
+    | null -> ()
+    | hots -> hots.Add hot
+
+/// <summary>The result of <c>build</c> and the <c>Hot</c> functions created on the calling thread while it ran.</summary>
+let collectHots (build: unit -> 'r) : 'r * IHot list =
+    let outer = collecting.Value
+    let hots = System.Collections.Generic.List<IHot>()
+    collecting.Value <- hots
+
+    try
+        let result = build ()
+        result, List.ofSeq hots
+    finally
+        collecting.Value <- outer
+
 /// <summary>
 /// A function that runs interpreted until its <c>hotCalls</c>-th call queues its compilation on the thread pool, and
 /// runs the compiled delegate once that is published. Safe for concurrent calls: exactly one call queues the compile,
-/// calls keep running interpreted meanwhile, and a failed compile leaves the function interpreted.
+/// calls before the publication run interpreted, and a failed compile leaves the function interpreted and writes a
+/// <c>Trace</c> warning.
 /// </summary>
 [<Sealed>]
 type internal Hot<'a, 'b>(interpreted: 'a -> 'b, compile: unit -> obj) =
@@ -246,7 +276,14 @@ type internal Hot<'a, 'b>(interpreted: 'a -> 'b, compile: unit -> obj) =
     [<VolatileField>]
     let mutable pending = compile
 
+    [<VolatileField>]
+    let mutable compiled = false
+
+    [<VolatileField>]
+    let mutable failed = false
+
     let mutable calls = 0
+    let mutable queued = 0
 
     member private _.Compile() =
         let compile = pending
@@ -255,45 +292,111 @@ type internal Hot<'a, 'b>(interpreted: 'a -> 'b, compile: unit -> obj) =
         if not (isNull (box compile)) then
             try
                 current <- unbox<'a -> 'b>(compile ())
-            with _ ->
-                ()
+                compiled <- true
+            with error ->
+                failed <- true
+
+                Diagnostics.Trace.TraceWarning (
+                    "Arms.Match: a per-call lambda stays interpreted: "
+                    + error.Message
+                )
 
     override this.Invoke(argument: 'a) : 'b =
         if
             Volatile.Read &calls < hotCalls
-            && Threading.Interlocked.Increment &calls = hotCalls
+            && Interlocked.Increment &calls = hotCalls
         then
-            Threading.ThreadPool.UnsafeQueueUserWorkItem ((fun _ -> this.Compile ()), null)
+            Interlocked.Increment &queued |> ignore
+
+            ThreadPool.UnsafeQueueUserWorkItem ((fun _ -> this.Compile ()), null)
             |> ignore
 
         current argument
 
+    interface IHot with
+        member _.Compiled = compiled
+        member _.Failed = failed
+        member _.Queued = Volatile.Read &queued
+
 /// <summary>
-/// The expression with each closed lambda that runs per call (a reader, a row reader, a handler, the selector) replaced
-/// by a <c>Hot</c> function; thunks over <c>unit</c> and computation-expression builder lambdas are descended into, and
+/// A function from the values of a lambda's let-bound free variables to a <c>Hot</c> function over the lambda. The
+/// compiled factory is built once, by the first compile among its <c>Hot</c> functions.
+/// </summary>
+[<Sealed>]
+type internal HotFactory<'t, 'a, 'b>(interpreted: 't -> 'a -> 'b, compile: unit -> obj) =
+    inherit FSharpFunc<'t, 'a -> 'b>()
+
+    let compiled = lazy (unbox<'t -> 'a -> 'b>(compile ()))
+
+    override _.Invoke(values: 't) : 'a -> 'b =
+        let hot =
+            Hot<'a, 'b>(interpreted values, (fun () -> box (compiled.Force () values)))
+
+        track hot
+        hot |> box |> unbox<'a -> 'b>
+
+/// <summary>A closed lambda over the free variables, as one parameter or a tuple, returning the lambda; and its argument.</summary>
+let private factoryOf (free: Var list) (lambda: Expr) : Expr * Expr =
+    match free with
+    | [ var ] -> Expr.Lambda (var, lambda), Expr.Var var
+    | _ ->
+        let values =
+            Var ("values", FSharpType.MakeTupleType [| for var in free -> var.Type |])
+
+        let body =
+            List.foldBack (fun (index, var) body -> Expr.Let (var, Expr.TupleGet (Expr.Var values, index), body)) (List.indexed free) lambda
+
+        Expr.Lambda (values, body), Expr.NewTuple [ for var in free -> Expr.Var var ]
+
+/// <summary>
+/// The expression with each lambda that runs per call (a reader, a row reader, a handler, the selector) replaced by a
+/// <c>Hot</c> function when it is closed, or by a <c>HotFactory</c> applied to its free variables when each is bound by
+/// an enclosing <c>let</c>; thunks over <c>unit</c> and computation-expression builder lambdas are descended into, and
 /// delegates stay interpreted; a nested site's quotation is left to its own lowering.
 /// </summary>
-let rec private compileHot (expr: Expr) : Expr =
-    match expr with
-    | NewDelegate _
-    | QuoteTyped _
-    | QuoteRaw _ -> expr
-    | Let (var, value, body) -> Expr.Let (var, compileHot value, compileHot body)
-    | LetRecursive _
-    | ForIntegerRangeLoop _
-    | TryWith _ -> expr
-    | ExprShape.ShapeLambda (var, _) when
-        var.Type <> typeof<unit>
-        && not (var.Name.Contains "@")
-        && Seq.isEmpty (expr.GetFreeVars ())
-        ->
-        let domain, range = FSharpType.GetFunctionElements expr.Type
-        let hot = typedefof<Hot<_, _>>.MakeGenericType [| domain; range |]
-        let compile: unit -> obj = fun () -> evaluate false expr
-        Expr.Value (Activator.CreateInstance (hot, [| evaluate true expr; box compile |]), expr.Type)
-    | ExprShape.ShapeVar _ -> expr
-    | ExprShape.ShapeLambda (var, body) -> Expr.Lambda (var, compileHot body)
-    | ExprShape.ShapeCombination (shape, args) -> ExprShape.RebuildShapeCombination (shape, List.map compileHot args)
+let private compileHot (expr: Expr) : Expr =
+    let rec go (bound: Set<Var>) (expr: Expr) =
+        match expr with
+        | NewDelegate _
+        | QuoteTyped _
+        | QuoteRaw _ -> expr
+        | Let (var, value, body) -> Expr.Let (var, go bound value, go (bound.Add var) body)
+        | LetRecursive _
+        | ForIntegerRangeLoop _
+        | TryWith _ -> expr
+        | ExprShape.ShapeLambda (var, _) when
+            var.Type <> typeof<unit>
+            && not (var.Name.Contains "@")
+            ->
+            let free = List.ofSeq (expr.GetFreeVars ())
+            let domain, range = FSharpType.GetFunctionElements expr.Type
+
+            if free.IsEmpty then
+                let compile: unit -> obj = fun () -> evaluate false expr
+
+                let hot =
+                    Activator.CreateInstance (typedefof<Hot<_, _>>.MakeGenericType [| domain; range |], [| evaluate true expr; box compile |])
+
+                track (hot :?> IHot)
+                Expr.Value (hot, expr.Type)
+            elif free |> List.forall bound.Contains then
+                let factory, argument = factoryOf free expr
+                let compile: unit -> obj = fun () -> evaluate false factory
+
+                let hotFactory =
+                    Activator.CreateInstance (
+                        typedefof<HotFactory<_, _, _>>.MakeGenericType [| argument.Type; domain; range |],
+                        [| evaluate true factory; box compile |]
+                    )
+
+                Expr.Application (Expr.Value (hotFactory, factory.Type), argument)
+            else
+                expr
+        | ExprShape.ShapeVar _ -> expr
+        | ExprShape.ShapeLambda (var, body) -> Expr.Lambda (var, go bound body)
+        | ExprShape.ShapeCombination (shape, args) -> ExprShape.RebuildShapeCombination (shape, List.map (go bound) args)
+
+    go Set.empty expr
 
 let private unboxMethod =
     match <@ unbox<int> null @> with

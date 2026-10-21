@@ -18,6 +18,10 @@ open ArmsFixtures
 [<Emit("($0.querySelector($1)?.textContent ?? null)")>]
 let private textOf (target: HTMLElement) (selector: string) : string = jsNative
 
+/// <summary>The texts of the elements matching the selector, in document order.</summary>
+[<Emit("Array.from($0.querySelectorAll($1), e => e.textContent)")>]
+let private textsOf (target: HTMLElement) (selector: string) : string array = jsNative
+
 /// <summary>The first element matching the selector, or null.</summary>
 [<Emit("$0.querySelector($1)")>]
 let private queryNode (target: HTMLElement) (selector: string) : obj = jsNative
@@ -53,6 +57,21 @@ let private twiceShown queued () =
     write graph [ c ] (fun () -> state.Value <- Loaded ("e", 5))
     equal "e x5" (textOf third "pre")
     c.Dispose ()
+
+/// <summary>Under Fable, <c>Arms.Prepare</c> returns and a site mounted after it reads its payload.</summary>
+let private prepares queued () =
+    Arms.Prepare ()
+    Arms.Prepare ()
+    use graph = new Graph ()
+    let state = graph.Run (fun () -> Api.createSignal (Loaded ("a", 1)))
+    let target = host ()
+
+    let mounted =
+        mountTemplate queued graph strict target (Component.render loader state)
+
+    mounted.Flush ()
+    equal "a x1" (textOf target "pre")
+    mounted.Dispose ()
 
 /// <summary>An arm hidden and shown again for the same instance follows later writes (Review Focus 2).</summary>
 let private remountAfterHide queued () =
@@ -282,65 +301,196 @@ let private switchBackInOneBatch queued () =
 [<Emit("$0.firstElementChild")>]
 let private firstElement (target: HTMLElement) : obj = jsNative
 
+/// <summary>The records of child-list writes that inserted nodes, from a write watch's drain.</summary>
+let private insertions (watch: WriteWatch) =
+    [
+        for record in watch.drain () do
+            if
+                record.StartsWith "childList:"
+                && not (record.Split(':').[2] = "0")
+            then
+                record
+    ]
+
 /// <summary>
-/// Each Load fixture hydrates the served HTML of its <c>Loaded done 3</c> state under Strict, then three writes; the
-/// site's markup after each, and whether the served root element was adopted, equal its twin's from the same HTML.
+/// Hydrates the served HTML under Strict; the lines are whether the served root element was adopted, the markup, and
+/// the node insertions made by the hydration.
 /// </summary>
-let hydrations: (string * (string -> unit)) array =
-    [|
-        for name, site, twin in
+let private strictRunner (served: string) =
+    { new Runner with
+        member _.Run(definition, make) =
+            use graph = new Graph ()
+            let props = graph.Run make
+            let target = host ()
+            loadServed target served
+            let root = firstElement target
+            let watch = watchWrites target
+
+            let mounted =
+                Hydration.hydrate
+                    graph
+                    None
+                    strict
+                    { Hydration.HydrationOptions.defaults with
+                        Strict = true
+                    }
+                    target
+                    definition
+                    props
+
+            let inserted = insertions watch
+            watch.stop ()
+
+            let lines =
+                [
+                    sprintf "adopted=%b" (obj.ReferenceEquals (root, firstElement target))
+                    target.innerHTML
+                    sprintf "insertions=%A" inserted
+                ]
+
+            mounted.Dispose ()
+            lines
+    }
+
+/// <summary>
+/// Each golden line's fixture state hydrates its .NET server HTML under Strict: the site adopts the served root, inserts
+/// no node, and leaves the markup its twin leaves.
+/// </summary>
+let private hydratesLine (fixture: string) (state: string) (served: string) () =
+    let case =
+        all
+        |> List.find (fun case -> case.Fixture = fixture && case.State = state)
+
+    let site, twin = case.Run (strictRunner served)
+    equal [ "adopted=true"; "insertions=[]" ] [ twin.Head; List.last twin ]
+    equal twin site
+
+let private loadFixtures =
+    [
+        "loader", loader, loaderTwin
+        "rich", rich, richTwin
+        "rows", rows, rowsTwin
+        "rowsTuple", rowsTuple, rowsTupleTwin
+        "tupled", tupled, tupledTwin
+        "whole", whole, wholeTwin
+        "helper", helper, helperTwin
+    ]
+
+let private laterWrites = [ Loaded ("later", 4); Loading 5; Loaded ("again", 1) ]
+
+/// <summary>
+/// Hydrates the served HTML with the client at <c>initial</c>, then the three later writes; the lines are the reports,
+/// whether the served root element was adopted, and the markup after the hydration and after each write.
+/// </summary>
+let private hydrateLoad (options: Hydration.HydrationOptions) (served: string) (initial: Load) (definition: Component<Signal<Load>>) =
+    use graph = new Graph ()
+    let state = graph.Run (fun () -> Api.createSignal initial)
+    let target = host ()
+    loadServed target served
+    let root = firstElement target
+    let reports = ResizeArray<string>()
+
+    let report (errors: exn list) =
+        for error in errors do
+            reports.Add error.Message
+
+    let mounted = Hydration.hydrate graph None report options target definition state
+
+    let shots =
+        ResizeArray
             [
-                "loader", loader, loaderTwin
-                "rich", rich, richTwin
-                "rows", rows, rowsTwin
-                "rowsTuple", rowsTuple, rowsTupleTwin
-                "tupled", tupled, tupledTwin
-                "whole", whole, wholeTwin
-                "helper", helper, helperTwin
-            ] ->
-            name,
-            fun (served: string) ->
-                let shots (definition: Component<Signal<Load>>) =
-                    use graph = new Graph ()
-                    let state = graph.Run (fun () -> Api.createSignal (Loaded ("done", 3)))
-                    let target = host ()
-                    loadServed target served
-                    let root = firstElement target
+                sprintf "reports=%A" (List.ofSeq reports)
+                sprintf "adopted=%b %s" (obj.ReferenceEquals (root, firstElement target)) target.innerHTML
+            ]
 
-                    let mounted =
-                        Hydration.hydrate
-                            graph
-                            None
-                            strict
-                            { Hydration.HydrationOptions.defaults with
-                                Strict = true
-                            }
-                            target
-                            definition
-                            state
+    for step in laterWrites do
+        graph.Run (fun () -> state.Value <- step)
+        mounted.Flush ()
+        shots.Add target.innerHTML
 
-                    let shots =
-                        ResizeArray
-                            [
-                                sprintf "adopted=%b %s" (obj.ReferenceEquals (root, firstElement target)) target.innerHTML
-                            ]
+    mounted.Dispose ()
+    shots.Add (sprintf "reports=%A" (List.ofSeq reports))
+    List.ofSeq shots
 
-                    for step in [ Loaded ("later", 4); Loading 5; Loaded ("again", 1) ] do
-                        graph.Run (fun () -> state.Value <- step)
-                        mounted.Flush ()
-                        shots.Add target.innerHTML
+let private strictOptions =
+    { Hydration.HydrationOptions.defaults with
+        Strict = true
+    }
 
-                    mounted.Dispose ()
-                    List.ofSeq shots
+/// <summary>A Load fixture hydrates its served <c>Loaded done 3</c> under Strict, then three writes, as its twin does.</summary>
+let private hydratesThenWrites (site: Component<Signal<Load>>) (twin: Component<Signal<Load>>) (served: string) () =
+    let twinShots = hydrateLoad strictOptions served (Loaded ("done", 3)) twin
+    equal true (twinShots[1].StartsWith "adopted=true")
+    equal twinShots (hydrateLoad strictOptions served (Loaded ("done", 3)) site)
 
-                let twinShots = shots twin
-                equal true (twinShots.Head.StartsWith "adopted=true")
-                equal twinShots (shots site)
-    |]
+/// <summary>
+/// A Load fixture hydrates its served <c>Loaded done 3</c> with the client at <c>Idle</c> and Strict off: the reports, the
+/// markup and the three later writes equal its twin's.
+/// </summary>
+let private fallsBack (site: Component<Signal<Load>>) (twin: Component<Signal<Load>>) (served: string) () =
+    let twinShots = hydrateLoad Hydration.HydrationOptions.defaults served Idle twin
+    equal false (twinShots.Head = "reports=[]")
+    equal twinShots (hydrateLoad Hydration.HydrationOptions.defaults served Idle site)
+
+/// <summary>The message of the mismatch raised by a Strict hydration with the client at <c>Idle</c>, and the host's markup after it.</summary>
+let private strictMismatch (served: string) (definition: Component<Signal<Load>>) =
+    use graph = new Graph ()
+    let state = graph.Run (fun () -> Api.createSignal Idle)
+    let target = host ()
+    loadServed target served
+    let before = target.innerHTML
+
+    let raised =
+        try
+            Hydration.hydrate graph None strict strictOptions target definition state
+            |> ignore
+
+            "none"
+        with TemplateDom.HydrationMismatchException _ as error ->
+            error.Message
+
+    raised, target.innerHTML = before
+
+/// <summary>Under Strict, the site and its twin raise the same mismatch for a client at <c>Idle</c> and leave the host as served.</summary>
+let private raisesMismatch (site: Component<Signal<Load>>) (twin: Component<Signal<Load>>) (served: string) () =
+    let twinRaised = strictMismatch served twin
+    equal (false, true) (fst twinRaised = "none", snd twinRaised)
+    equal twinRaised (strictMismatch served site)
+
+/// <summary>
+/// The hydration cases over the golden lines (fixture, state, served HTML): every line under Strict, and for each Load
+/// fixture's <c>Loaded done 3</c> the writes after hydration, the non-Strict fallback and the Strict mismatch.
+/// </summary>
+let hydrations (lines: (string * string * string) array) =
+    let servedOf fixture =
+        lines
+        |> Array.pick (fun (f, state, served) ->
+            if f = fixture && state = "Loaded done 3" then
+                Some served
+            else
+                None)
+
+    strictCases (
+        Array.concat
+            [
+                [|
+                    for fixture, state, served in lines ->
+                        sprintf "%s %s hydrates its .NET server HTML under Strict like its twin" fixture state, hydratesLine fixture state served
+                |]
+                [|
+                    for name, site, twin in loadFixtures do
+                        let served = servedOf name
+                        sprintf "%s hydrates Loaded done 3 under Strict and updates like its twin" name, hydratesThenWrites site twin served
+                        sprintf "%s falls back from a mismatch and updates like its twin" name, fallsBack site twin served
+                        sprintf "%s raises the twin's mismatch under Strict" name, raisesMismatch site twin served
+                |]
+            ]
+    )
 
 let private finishes = ResizeArray<unit -> unit>()
+let private exitReads = ResizeArray<string * int>()
 
-/// <summary>A site whose Loaded body holds its root on exit until <c>finish</c> runs.</summary>
+/// <summary>A site whose Loaded body holds its root on exit until <c>finish</c> runs; the exit records its pattern variables.</summary>
 let private held =
     Component.template
         (fun _ (state: Signal<Load>) -> state)
@@ -352,6 +502,7 @@ let private held =
                     pre (
                         Hooks.exit (
                             Func<_, _, _, _>(fun (_: Signal<Load>) (_: HTMLPreElement) finish ->
+                                exitReads.Add (text, count)
                                 finishes.Add finish
                                 ignore)
                         )
@@ -364,18 +515,24 @@ let private held =
             )
         })
 
-/// <summary>The outgoing arm, held by its exit, keeps its own case's values until finish (Testing 9).</summary>
+/// <summary>
+/// The exit of an outgoing arm, run after the arm's cleanup, reads its own case's values, also while another arm of the
+/// same target is live (Testing 9).
+/// </summary>
 let private heldExit queued () =
     finishes.Clear ()
+    exitReads.Clear ()
     use graph = new Graph ()
     let state = graph.Run (fun () -> Api.createSignal (Loaded ("a", 1)))
     let target = host ()
     let mounted = mountTemplate queued graph strict target (Component.render held state)
     mounted.Flush ()
     write graph [ mounted ] (fun () -> state.Value <- Idle)
-    equal ("a x1", "Other") (textOf target "pre", textOf target "span")
+    equal ([ "a", 1 ], [| "a x1" |], "Other") (List.ofSeq exitReads, textsOf target "pre", textOf target "span")
+    write graph [ mounted ] (fun () -> state.Value <- Loaded ("b", 2))
+    equal ([ "a", 1 ], [| "a x1"; "b x2" |]) (List.ofSeq exitReads, Array.sort (textsOf target "pre"))
     write graph [ mounted ] (fun () -> state.Value <- Loading 3)
-    equal ("a x1", "Other") (textOf target "pre", textOf target "span")
+    equal ([ "a", 1; "b", 2 ], [| "a x1"; "b x2" |], "Other") (List.ofSeq exitReads, Array.sort (textsOf target "pre"), textOf target "span")
     let pending = List.ofSeq finishes
     finishes.Clear ()
 
@@ -411,29 +568,69 @@ let private bounded (flight: Signal<AsyncSource<int>>) =
 
     Component.template (fun _ () -> ()) (section () { boundary pendingView failedView content })
 
-/// <summary>A pending read waits with the boundary, as matchWith does (Testing 10).</summary>
-let private pendingSource queued () =
+/// <summary>The armOf twin of <c>bounded</c>.</summary>
+let private boundedTwin (flight: Signal<AsyncSource<int>>) =
+    let none = armOf (em () { "none" })
+    let some = armOf (b () { fun (payload: unit -> int) -> string (payload ()) })
+
+    let content =
+        Component.template
+            (fun _ (status: BoundaryStatus) -> status)
+            (div (Attrs.className "level") {
+                matchWith (fun (_: BoundaryStatus) -> flight.Value.Value) (function
+                    | 0 -> arm none ()
+                    | n -> arm some n)
+            })
+
+    Component.template (fun _ () -> ()) (section () { boundary pendingView failedView content })
+
+/// <summary>
+/// The pending, failed and level states of a boundary around the view after each step: pending, settled, a new source
+/// pending, settled to the other target, and a new source failed; the reported messages; the host's text after disposal.
+/// </summary>
+let private boundaryStates queued (view: Signal<AsyncSource<int>> -> Component<unit>) =
     use graph = new Graph ()
     let flight = graph.Run (fun () -> Api.createSignal (Api.createAsyncSource<int>()))
     let target = host ()
+    let reports = ResizeArray<string>()
+
+    let report (errors: exn list) =
+        for error in errors do
+            reports.Add error.Message
 
     let mounted =
-        Mounting.mountWith (modeOf queued) graph None strict target None (fun context ->
-            Program.run (Component.render (bounded flight) ()) context.Backend)
+        Mounting.mountWith (modeOf queued) graph None report target None (fun context ->
+            Program.run (Component.render (view flight) ()) context.Backend)
 
     let state () =
         mounted.Flush ()
         mounted.Flush ()
         countOf target ".pending", countOf target ".failed", textOf target ".level"
 
-    equal (1, 0, null) (state ())
-    graph.Run (fun () -> flight.Value.Settle 2)
-    equal (0, 0, "2") (state ())
-    graph.Run (fun () -> flight.Value <- Api.createAsyncSource<int>())
-    graph.Run (fun () -> flight.Value.Settle 0)
-    equal (0, 0, "none") (state ())
+    let states =
+        [
+            state ()
+            (graph.Run (fun () -> flight.Value.Settle 2)
+             state ())
+            (graph.Run (fun () -> flight.Value <- Api.createAsyncSource<int>())
+             state ())
+            (graph.Run (fun () -> flight.Value.Settle 0)
+             state ())
+            (graph.Run (fun () -> flight.Value <- Api.createAsyncSource<int>())
+             state ())
+            (graph.Run (fun () -> flight.Value.Fail (exn "lost"))
+             state ())
+        ]
+
     mounted.Dispose ()
-    equal "" target.textContent
+    states, List.ofSeq reports, target.textContent
+
+/// <summary>A read of a pending, settled or failed source behaves with the boundary as its matchWith twin does (Testing 10).</summary>
+let private pendingSource queued () =
+    let twin = boundaryStates queued boundedTwin
+    let states, reports, _ = twin
+    equal ((1, 0, null), (0, 0, "2"), (0, 1, null), [ "lost" ]) (states.Head, states[1], List.last states, List.distinct reports)
+    equal twin (boundaryStates queued bounded)
 
 let cases: (string * (unit -> unit)) array =
     strictCases (
@@ -441,6 +638,7 @@ let cases: (string * (unit -> unit)) array =
             [
                 templated "one site shown twice for one instance reads live values through either disposal" twiceShown
                 templated "an arm hidden and shown again follows later writes" remountAfterHide
+                templated "Arms.Prepare returns under Fable" prepares
                 templated "each Load fixture's nine-step trace equals its twin's" traces
                 templated "value-type payload fields equal their twin" valueTraces
                 templated "an event handler reads its arm's payload at event time" eventsReadLatest
@@ -448,7 +646,7 @@ let cases: (string * (unit -> unit)) array =
                 templated "rows fed by the items reader keep their elements across payload updates" rowsKeep
                 templated "one site per keyed row follows its own row through a reorder" siteInRows
                 templated "a batch that leaves a target and returns to it shows the last payload" switchBackInOneBatch
-                templated "an outgoing arm held by its exit keeps its own case's values until finish" heldExit
-                templated "a pending source inside a boundary waits with the boundary" pendingSource
+                templated "an outgoing arm's exit reads its own case's values after the arm's cleanup" heldExit
+                templated "a source read inside a boundary pends, settles and fails as its twin does" pendingSource
             ]
     )

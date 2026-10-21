@@ -5,9 +5,8 @@ open System.Diagnostics.CodeAnalysis
 open Ranvier.View.Foundation.Template
 #if !FABLE_COMPILER
 open Microsoft.FSharp.Quotations
-open Ranvier.View.Foundation.Sugar
 
-/// <summary>The instance of the site <c>Arms.Prepare</c> lowers.</summary>
+/// <summary>The instance type of the site lowered by <c>Arms.Prepare</c>.</summary>
 type internal Warmup = { Text: string option }
 #endif
 
@@ -60,9 +59,9 @@ type Arms =
 #endif
 
     /// <summary>
-    /// Lowers, renders and compiles a built-in site on .NET, so the app's first <c>Arms.Match</c> costs a warm lowering.
-    /// Call it at start-up, on the calling thread or on the thread pool; it returns when the warm-up is done. Under
-    /// Fable it does nothing.
+    /// Lowers, renders and compiles a built-in site on .NET; the app's first <c>Arms.Match</c> then costs its own generic
+    /// instantiations (about 10 ms) instead of the quotation machinery's JIT (about 130 ms). Call it at start-up, on the
+    /// calling thread or the thread pool; it returns when done. Under Fable it does nothing.
     /// </summary>
 #if !FABLE_COMPILER
     [<RequiresUnreferencedCode(Diagnostics.reflection); RequiresDynamicCode(Diagnostics.reflection)>]
@@ -74,8 +73,8 @@ type Arms =
                 Arms.Match (
                     (fun (warmup: Warmup) -> warmup.Text),
                     function
-                    | Some text -> b () { fun _ -> text }
-                    | None -> span () { "none" }
+                    | Some text -> Ranvier.View.Foundation.Sugar.Elements.b () { fun _ -> text }
+                    | None -> Ranvier.View.Foundation.Sugar.Elements.span () { "none" }
                 ))
 
         let omit =

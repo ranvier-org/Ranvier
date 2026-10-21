@@ -30,9 +30,9 @@ import of `Ranvier.View.Arms.targets`:
 ## .NET lowering cost
 
 The site's selector and bodies form one LINQ expression. Its construction runs once in the LINQ interpreter
-(`Compile(preferInterpretation = true)`). Each closed lambda inside it that runs per call (the selector, text and
+(`Compile(preferInterpretation = true)`). Each lambda inside it that runs per call (the selector, text and
 attribute readers, row readers, event handlers) is a `Hot` function: interpreted for its first 64 calls, then compiled.
-Delegates (hooks) stay interpreted.
+Delegates (hooks) and lambdas over lambda-bound variables stay interpreted.
 
 **Cold first site.** `experiments/Ranvier.View.Arms/Checks/DotnetCost` lowers the research's five-target site
 (or-pattern, literal pattern, guard) as the first `Arms.Match` of a fresh process, then 200 more, and renders a 1,000-row
@@ -103,8 +103,10 @@ lowering (spec Decision 15).
 **Hot compiles.** A per-call lambda queues its compilation on the thread pool at its 64th call and keeps running
 interpreted until the compiled delegate is published, so no render waits for a compile (the review measured an inline
 compile at 8.2-9.1 ms for the first of a process). `Prepare` compiles one lambda, so the pool's first compile starts warm.
-A lambda that closes over a variable of its case body (`let suffix = "!" in pre () { fun _ -> t + suffix }`) is not
-closed, so it is never compiled and stays interpreted for the life of the site.
+A lambda over `let`-bound values of its case body (`let suffix = "!" in pre () { fun _ -> t + suffix }`) is built by
+a factory over those values: the factory runs interpreted once per site construction, and the first of its `Hot`
+functions to reach 64 calls compiles it once. A failed compile leaves the function interpreted and writes a `Trace`
+warning.
 
 ## Fickl
 
