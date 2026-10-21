@@ -122,6 +122,7 @@ Each ruling picks an implementation where the spec leaves one open, or settles a
 28. **`Cells` reads without the lock** (Phase 3 review M2/M3): each target's entries are an array replaced under the instance's lock and read without it, so readers run outside every monitor; a withdrawal records its entry only when it holds values; an entry or withdrawn entry with a null graph serves any graph, and a withdrawn entry serves only its own graph otherwise.
 29. **A per-call lambda over let-bound case-body values compiles too** (Phase 4 review M1-M3): `compileHot` replaces such a lambda by a `HotFactory` applied to its free variables, a closed lambda over them interpreted once per site construction and compiled once, on the thread pool, by the first of its `Hot` functions to reach 64 calls. Lambdas over lambda-bound variables stay interpreted. Each `Hot` exposes `IHot` (`Compiled`, `Failed`, `Queued`) and writes a `Trace` warning when its compile fails; `Quoted.collectHots` returns the `Hot` functions created while a site is built, so the checks wait on compile completion instead of sleeping and assert that a lowered site's functions compile.
 30. **Hydration parity covers every golden line, the fallback and the Strict mismatch** (Phase 4 review I2, M4, M5): `ArmsFixtures.Case.Run` runs a site and its twin under a `Runner`; `ArmsChecks.hydrations` takes the golden lines and returns `strictCases` that hydrate each line under Strict (served root adopted, no node inserted, markup equal to the twin's), and for each Load fixture the writes after hydration, the non-Strict fallback from a client at `Idle` (reports, markup and writes equal to the twin's) and the Strict mismatch (the twin's message, host left as served). `heldExit` reads its pattern variables in the exit callback, so the withdrawn read runs; `pendingSource` runs pending, settle, re-pend, settle and fail against a `matchWith` twin. `Arms.Prepare ()` runs in `ArmsLoweringChecks.runtimeCases`, in `DotnetCost --prepare` on net10.0 and net8.0 (twice, then on four threads with a site lowered on each), and in a Fable check.
+31. **The Fable cells are JavaScript objects and the first-site budget does not hold** (Task 9): under Fable, `Cells` is a `WeakMap` of `{ l, w }` slots holding `{ g, v, l }` entries through `Emit` helpers, and `Site.create` is `inline`; the F# classes over fable-library arrays cost 771 B gzip. The first site costs 460 B gzip over its twin against 250: the AM006 and AM005 texts cost 141 B and the code 319 B. `size.mjs` exits 1 on the breach, so CI's budget step fails until the budget or the texts change (a spec conflict, reported). The plan's Task 11 labels name the TrimCallSite files by their full paths.
 
 ## Review Focus
 
@@ -6305,20 +6306,38 @@ let private explicitRich () =
         })
 
 let matchOne graph host (state: Signal<Load>) =
+    Arms.Prepare ()
     mountAll graph host [ Component.render (matchLoader ()) state ]
 
 let explicitOne graph host (state: Signal<Load>) =
     mountAll graph host [ Component.render (explicitLoader ()) state ]
 
 let matchTwo graph host (state: Signal<Load>) =
-    mountAll graph host [ Component.render (matchLoader ()) state; Component.render (matchRich ()) state ]
+    mountAll
+        graph
+        host
+        [
+            Component.render (matchLoader ()) state
+            Component.render (matchRich ()) state
+        ]
 
 let explicitTwo graph host (state: Signal<Load>) =
-    mountAll graph host [ Component.render (explicitLoader ()) state; Component.render (explicitRich ()) state ]
+    mountAll
+        graph
+        host
+        [
+            Component.render (explicitLoader ()) state
+            Component.render (explicitRich ()) state
+        ]
 
 /// <summary>An app that compiles the Arms.Match runtime and calls no Arms.Match.</summary>
 let plain graph host (state: Signal<Load>) =
-    mountAll graph host [ Component.render (Component.template (fun _ (state: Signal<Load>) -> state) (div () { "plain" })) state ]
+    mountAll
+        graph
+        host
+        [
+            Component.render (Component.template (fun _ (state: Signal<Load>) -> state) (div () { "plain" })) state
+        ]
 ```
 
 `DomTests.fsproj`: after `<Compile Include="ArmsChecks.fs" />` add `<Compile Include="ArmsSizeEntries.fs" />`.

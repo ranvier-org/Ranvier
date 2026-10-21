@@ -1,0 +1,57 @@
+{
+  "sizes": {
+    "explicitOne": {
+      "raw": 207850,
+      "gzip": 60202,
+      "brotli": 52828
+    },
+    "matchOne": {
+      "raw": 208908,
+      "gzip": 60662,
+      "brotli": 53190
+    },
+    "explicitTwo": {
+      "raw": 208693,
+      "gzip": 60411,
+      "brotli": 52980
+    },
+    "matchTwo": {
+      "raw": 209753,
+      "gzip": 60856,
+      "brotli": 53359
+    },
+    "plain": {
+      "raw": 205886,
+      "gzip": 59629,
+      "brotli": 52332
+    }
+  },
+  "one": {
+    "deltaGzip": 460,
+    "budgetGzip": 250,
+    "withinBudget": false
+  },
+  "perSite": {
+    "deltaGzip": -15,
+    "budgetGzip": 60,
+    "withinBudget": true
+  },
+  "plain": {
+    "matchEntryHoldsArmsModule": true,
+    "plainHoldsArmsModule": false,
+    "withinBudget": true
+  },
+  "quotation": {
+    "present": false,
+    "withinBudget": true
+  },
+  "helpers": {
+    "counts": {
+      "experiments/Ranvier.View.Arms/Cells.js": 0,
+      "experiments/Ranvier.View.Arms/Site.js": 0,
+      "experiments/Ranvier.View.Arms/Arms.js": 0,
+      "ArmsSizeEntries.js": 0
+    },
+    "withinBudget": true
+  }
+}

@@ -114,3 +114,26 @@ Master replaced `dotnet fable` (Fable 5.18.0) with `dotnet fickl` (Fickl 0.3.0, 
 Its tool folder holds the same `Fable.AST` 5.1.0 and FSharp.Core 10.1.203, and the plugin loads unchanged: the
 discovery app renders the same HTML on both targets, and the plugin tests pass with the same diagnostics, ranges and
 emitted sites.
+
+## Bundle
+
+`experiments/Ranvier.View.Arms/Checks/size.mjs`, Vite 8.3.3 with minification, gzip level 9, Brotli quality 11; the
+numbers are in [`arms-match/bundle.json`](arms-match/bundle.json).
+
+| Entry | raw | gzip | Brotli |
+|---|---|---|---|
+| explicit loader | 207,850 | 60,202 | 52,828 |
+| Arms.Match loader | 208,908 | 60,662 | 53,190 |
+| two explicit sites | 208,693 | 60,411 | 52,980 |
+| two Arms.Match sites | 209,753 | 60,856 | 53,359 |
+
+The first site costs 460 B gzip over its twin, against a budget of 250 B; the budget does not hold. The second site
+costs -15 B (budget 60). An entry that calls no `Arms.Match` holds no `Ranvier.View.Arms` module, the `Arms.Match`
+entry holds no quotation code, the emitted modules hold no curry helper, and `Arms.Prepare ()` in the entry adds no
+bytes.
+
+The first-site cost is the runtime shared by every site: the two fixed message texts (AM006 and AM005) cost 141 B, and
+the code costs 319 B (the cells with live lists per target, graph tags and the withdrawn entry; `Site.create`, inlined
+into `Arms.Match`; the AM005 check). The probe's single-slot cells cost 139 B. The Fable cells are plain JavaScript
+objects in a `WeakMap`; the first version, F# classes over fable-library arrays, cost 771 B. With both texts removed,
+the code alone exceeds the budget by 69 B.
