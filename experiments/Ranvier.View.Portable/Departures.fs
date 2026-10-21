@@ -345,9 +345,9 @@ let private svgNames () : obj = jsNative
 [<Emit("((p, tag, names) => names.has(tag.toLowerCase()) || p.namespaceURI === 'http://www.w3.org/2000/svg' && p.localName !== 'foreignObject' ? p.ownerDocument.createElementNS('http://www.w3.org/2000/svg', tag) : p.ownerDocument.createElement(tag))($2.get($0) || $0, $1, $3)")>]
 let private createUnder (parent: Node) (tag: string) (nested: obj) (names: obj) : HTMLElement = jsNative
 
-// Parses the markup; when its root elements have SVG names (title included), parses it again inside an svg element and lifts the nodes
+// Parses the markup; when its root elements have SVG names, parses it again inside an svg element and lifts the nodes
 // into the template's content. Root elements with SVG and HTML names together raise.
-[<Emit("((t, m, names) => { t.innerHTML = m; const roots = Array.from(t.content.children); const svg = roots.filter(r => names.has(r.localName) || r.localName === 'title').length; if (svg > 0) { if (svg < roots.length) throw new Error('A row or arm template mixes SVG and HTML root elements; under synchronous commits wrap them in one element'); t.innerHTML = '<svg>' + m + '</svg>'; t.content.replaceChildren(...t.content.firstChild.childNodes); } })($0, $1, $2)")>]
+[<Emit("((t, m, names) => { t.innerHTML = m; const roots = Array.from(t.content.children); const svg = roots.filter(r => names.has(r.localName)).length; if (svg > 0) { if (svg < roots.length) throw new Error('A row or arm template mixes SVG and HTML root elements; under synchronous commits wrap them in one element'); t.innerHTML = '<svg>' + m + '</svg>'; t.content.replaceChildren(...t.content.firstChild.childNodes); } })($0, $1, $2)")>]
 let private parseUnder (template: HTMLTemplateElement) (markup: string) (names: obj) : unit = jsNative
 
 // Records the region start's parent, or the parent recorded for the fragment holding the region start.
