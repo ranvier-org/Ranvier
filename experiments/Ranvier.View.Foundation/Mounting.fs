@@ -256,14 +256,15 @@ let private delegateFrom: Func<Node, string, unit> =
 
 let private undelegateFrom: Func<Node, string, unit> =
     Func<Node, string, unit>(fun host eventName ->
-        let listeners = listenersOf host
-
-        match listeners.TryGetValue eventName with
-        | true, struct (1, remove) ->
-            remove ()
-            listeners.Remove eventName |> ignore
-        | true, struct (count, remove) -> listeners[eventName] <- struct (count - 1, remove)
-        | false, _ -> ())
+        match Native.get<Node, HostListeners> hostCounts host with
+        | null -> ()
+        | listeners ->
+            match listeners.TryGetValue eventName with
+            | true, struct (1, remove) ->
+                remove ()
+                listeners.Remove eventName |> ignore
+            | true, struct (count, remove) -> listeners[eventName] <- struct (count - 1, remove)
+            | false, _ -> ())
 #endif
 
 let private claim (registry: WeakSet<Node>) (node: Node) : unit =

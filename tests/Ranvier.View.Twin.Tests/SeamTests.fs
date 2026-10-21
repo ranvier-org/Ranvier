@@ -8,18 +8,21 @@ let tests =
     testList
         "Departures seam"
         [
-            testCase "the seam is an object on .NET whose flags start off"
+            testCase "the process seam is an object on .NET"
+            <| fun () -> Expect.isNotNull (box Departures.seam) "seam"
+
+            testCase "a fresh seam starts with every flag off"
             <| fun () ->
-                let seam = Departures.seam
-                Expect.isNotNull (box seam) "seam"
+                let seam = Departures.createSeam ()
                 Expect.isFalse seam.Enabled "exits off"
                 Expect.isFalse seam.ReflowEnabled "reflows off"
+                Expect.isNull (box seam.NextLive) "operations null"
 
-            testCase "the seam's operations are settable"
+            testCase "a fresh seam's operations are settable"
             <| fun () ->
-                let seam = Departures.seam
-                let previous = seam.NextLive
+                let seam = Departures.createSeam ()
                 seam.NextLive <- System.Func<_, _> id
+                seam.Enabled <- true
                 Expect.isNotNull (box seam.NextLive) "set"
-                seam.NextLive <- previous
+                Expect.isTrue seam.Enabled "flag set"
         ]

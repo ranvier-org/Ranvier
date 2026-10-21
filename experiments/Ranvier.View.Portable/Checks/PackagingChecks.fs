@@ -171,29 +171,63 @@ let private nativeStructureRejects () =
 
     equal 1 (nativeStructure "#if FABLE_COMPILER && X\nlet a = 1\n#endif\n").Length
 
-/// <summary>The lines of <c>text</c> holding an Emit attribute or an <c>emitJsExpr</c> call outside a <c>#if FABLE_COMPILER</c> branch.</summary>
+/// <summary>
+/// The violations of the Emit rule in <c>text</c>: an Emit attribute or <c>emitJsExpr</c> call outside the Fable branch
+/// of a <c>#if FABLE_COMPILER</c> block, and a name declared in a Fable branch without an <c>#else</c> that is used outside
+/// every Fable branch, where .NET would reach its Fable-only body.
+/// </summary>
 let unguardedEmits (text: string) : string list =
-    let inFable = ref false
+    let lines = text.Replace("\r", "").Split '\n'
+    // For each line: whether it lies in a Fable branch, and the index of the Fable branch's block when it has no #else.
+    let inFable = Array.zeroCreate<bool> lines.Length
+    let blockOf = Array.create lines.Length -1
+    let elseless = ResizeArray<int>()
+    let mutable openAt = -1
+
+    for i in 0 .. lines.Length - 1 do
+        let trimmed = lines[i].Trim()
+
+        if trimmed = "#if FABLE_COMPILER" then
+            openAt <- i
+        elif openAt >= 0 && trimmed = "#else" then
+            openAt <- -1
+        elif openAt >= 0 && trimmed = "#endif" then
+            elseless.Add openAt
+            openAt <- -1
+        elif openAt >= 0 then
+            inFable[i] <- true
+            blockOf[i] <- openAt
+
+    let emit = Regex (@"\[<\s*(?:[\w.]*\.)?Emit\b|emitJsExpr")
+
+    let declared =
+        Regex (@"^\s*let (?:inline )?(?:private )?(?:internal )?(?:rec )?(\w+)")
+
+    let fableOnly =
+        set
+            [
+                for i in 0 .. lines.Length - 1 do
+                    if inFable[i] && elseless.Contains blockOf[i] then
+                        let found = declared.Match lines[i]
+
+                        if found.Success then
+                            found.Groups[1].Value
+            ]
 
     [
-        for line in text.Split '\n' do
-            let trimmed = line.Trim ()
+        for i in 0 .. lines.Length - 1 do
+            let line = lines[i]
 
-            if trimmed = "#if FABLE_COMPILER" then
-                inFable.Value <- true
-            elif
-                inFable.Value
-                && (trimmed = "#else" || trimmed = "#endif")
-            then
-                inFable.Value <- false
-            elif
-                not inFable.Value
-                && not (trimmed.StartsWith "//")
-                && (Regex.IsMatch (line, @"\[<\s*(?:[\w.]*\.)?Emit\b")
-                    || line.Contains "emitJsExpr")
-            then
-                trimmed
+            if not (line.TrimStart().StartsWith "//") then
+                if not inFable[i] && emit.IsMatch line then
+                    line.Trim ()
+
+                if not inFable[i] then
+                    for name in fableOnly do
+                        if Regex.IsMatch (line, @"(?<![\w.])" + Regex.Escape name + @"\b") then
+                            $"{name} is declared in a Fable branch without #else and used here: {line.Trim ()}"
     ]
+    |> List.distinct
 
 let private guardedEmits () =
     let offending =
@@ -210,6 +244,12 @@ let private guardedEmitsRejects () =
     equal [] (unguardedEmits "#if FABLE_COMPILER\n[<Emit(\"$0.a\")>]\nlet a x = jsNative\n#else\nlet a x = x\n#endif\n")
     equal 1 (unguardedEmits "let seam: Seam = Fable.Core.JsInterop.emitJsExpr () \"{}\"\n").Length
     equal 1 (unguardedEmits "[<Emit(\"setTimeout($0, $1)\")>]\nlet startTimer a b = jsNative\n").Length
+    equal 1 (unguardedEmits "#if FABLE_COMPILER\n[<Emit(\"$0.a\")>]\nlet a x = jsNative\n#endif\nlet b = a 1\n").Length
+
+    equal
+        []
+        (unguardedEmits
+            "#if FABLE_COMPILER\n[<Emit(\"$0.a\")>]\nlet a x = jsNative\n#endif\n#if FABLE_COMPILER\nlet b = a 1\n#else\nlet b = 1\n#endif\n")
 
 let cases: (string * (unit -> unit)) array =
     [|
@@ -218,6 +258,7 @@ let cases: (string * (unit -> unit)) array =
         browserEmits
         "every Emit of Native.fs sits in a #if FABLE_COMPILER block whose #else defines the same names", nativeBodies
         "the Native.fs shape check rejects an unguarded Emit, a missing .NET body, a block without #else and other guards", nativeStructureRejects
-        "every Emit and emitJsExpr of the portable files other than Native.fs sits in a #if FABLE_COMPILER branch", guardedEmits
-        "the guarded-Emit check rejects an unguarded emitJsExpr and an unguarded Emit", guardedEmitsRejects
+        "every Emit and emitJsExpr of the portable files other than Native.fs sits in a Fable branch, and Fable-only helpers stay in Fable branches",
+        guardedEmits
+        "the guarded-Emit check rejects an unguarded emitJsExpr, an unguarded Emit and a Fable-only helper used on .NET", guardedEmitsRejects
     |]

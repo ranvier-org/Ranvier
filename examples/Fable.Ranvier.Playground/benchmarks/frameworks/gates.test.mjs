@@ -48,3 +48,8 @@ test("a file deleted on the branch is reported", () => {
   const result = diffDirectories(tree({ "Mounting.js": "x\n" }), tree({}), defaultAllow);
   assert.deepEqual(result.disallowed, ["Mounting.js"]);
 });
+
+test("carriage returns are ignored", () => {
+  const result = diffDirectories(tree({ "Mounting.js": "a\r\nb\r\n" }), tree({ "Mounting.js": "a\nb\n" }), defaultAllow);
+  assert.deepEqual(result.differing, []);
+});

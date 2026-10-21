@@ -173,20 +173,9 @@ let private keepHead: Func<Document, Served> =
 })()"""
 
 #else
-let private attributesOf (element: Element) : (string * string) array =
-    let attributes = element.attributes
-
-    Array.init (int attributes.length) (fun i ->
-        let attribute = (attributes.item (float i)).Value
-        attribute.name, attribute.value)
-
 let private setAttributes (element: Element) (attributes: (string * string) array) =
-    if attributesOf element <> attributes then
-        for name, _ in attributesOf element do
-            element.removeAttribute name
-
-        for name, value in attributes do
-            element.setAttribute (name, value)
+    if Native.attributesOf element <> attributes then
+        Native.setAttributesBack element attributes
 
 [<Sealed>]
 type private KeptCopy(document: Document) =
@@ -202,7 +191,7 @@ type private KeptCopy(document: Document) =
         children
         |> Array.map (fun n ->
             if n.nodeType = 1.0 then
-                attributesOf (unbox<Element> n)
+                Native.attributesOf (unbox<Element> n)
             else
                 null)
 
@@ -219,9 +208,7 @@ type private KeptCopy(document: Document) =
                     match current with
                     | Some n when obj.ReferenceEquals (n, children[i]) -> ()
                     | Some n -> head.insertBefore (children[i], n) |> ignore
-                    | None ->
-                        head.insertBefore (children[i], Unchecked.defaultof<Node>)
-                        |> ignore
+                    | None -> head.insertBefore children[i] |> ignore
 
                 while (Native.childNodesOf head).Length > children.Length do
                     Native.removeNode (Native.lastChildOf head)
@@ -250,6 +237,7 @@ type private KeptCopy(document: Document) =
 let private keepHead: Func<Document, Served> =
     Func<Document, Served>(fun document -> KeptCopy document :> Served)
 #endif
+
 /// <summary>
 /// The head of the document as it is now. While the document has a window, the head's edits are recorded as they
 /// happen and only the marked elements' attribute lists are copied. Without a window, the head's child list, the

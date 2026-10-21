@@ -1,9 +1,8 @@
 /// <summary>
 /// The host primitives of the view sources. Under Fable each primitive is an Emit expression inlined at its call sites; on
-/// .NET each is F# over the <c>Fable.Core.TS.Dom</c> interfaces, the installed host, or .NET collections. Part of the
-/// view runtime seam: Foundation and the DOM twin call it; applications do not.
+/// .NET each is F# over the <c>Fable.Core.TS.Dom</c> interfaces, the installed host, or .NET collections.
 /// </summary>
-module Ranvier.View.Foundation.Native
+module internal Ranvier.View.Foundation.Native
 
 open Fable.Core
 open Fable.Core.TS.Dom
@@ -29,9 +28,17 @@ type private HostSlot =
     [<System.ThreadStatic; DefaultValue>]
     static val mutable private current: IHost
 
+    [<System.ThreadStatic; DefaultValue>]
+    static val mutable private depth: int
+
     static member Current
         with get () = HostSlot.current
         and set (value: IHost) = HostSlot.current <- value
+
+    /// <summary>The number of installations open on the current thread.</summary>
+    static member Depth
+        with get () = HostSlot.depth
+        and set (value: int) = HostSlot.depth <- value
 
 /// <summary>
 /// Installs <c>host</c> for the current thread until the returned value is disposed. Disposal restores the previous
@@ -41,6 +48,8 @@ let install (host: IHost) : System.IDisposable =
     let previous = HostSlot.Current
     let thread = System.Environment.CurrentManagedThreadId
     HostSlot.Current <- host
+    HostSlot.Depth <- HostSlot.Depth + 1
+    let depth = HostSlot.Depth
     let disposed = ref false
 
     { new System.IDisposable with
@@ -51,10 +60,11 @@ let install (host: IHost) : System.IDisposable =
                 if current <> thread then
                     raise (System.InvalidOperationException $"A DOM host installed on thread {thread} was disposed on thread {current}")
 
-                if not (obj.ReferenceEquals (HostSlot.Current, host)) then
+                if HostSlot.Depth <> depth then
                     raise (System.InvalidOperationException "A DOM host was disposed while a later installation is current")
 
                 disposed.Value <- true
+                HostSlot.Depth <- depth - 1
                 HostSlot.Current <- previous
     }
 
@@ -149,14 +159,22 @@ type SameValueZero private () =
         | :? string -> value
         | :? char as c -> box (string c)
         | :? bool -> value
+        | :? float32 as f ->
+            box (
+                System.Double.Parse (
+                    f.ToString ("R", System.Globalization.CultureInfo.InvariantCulture),
+                    System.Globalization.CultureInfo.InvariantCulture
+                )
+            )
         | :? int8
         | :? uint8
         | :? int16
         | :? uint16
         | :? int32
         | :? uint32
-        | :? float32
-        | :? float -> box (System.Convert.ToDouble value)
+        | :? float
+        | :? decimal -> box (System.Convert.ToDouble value)
+        | :? System.Enum -> box (System.Convert.ToDouble value)
         | _ ->
             let t = value.GetType ()
 
@@ -165,6 +183,14 @@ type SameValueZero private () =
                 && t.GetGenericTypeDefinition () = typedefof<option<_>>
             then
                 SameValueZero.Normal (t.GetProperty("Value").GetValue value)
+            elif
+                t.IsGenericType
+                && t.GetGenericTypeDefinition () = typedefof<voption<_>>
+            then
+                if (t.GetProperty "IsSome").GetValue value :?> bool then
+                    SameValueZero.Normal (t.GetProperty("Value").GetValue value)
+                else
+                    null
             else
                 value
 
@@ -361,11 +387,13 @@ let delete (tableValue: obj) (key: 'K) : unit =
 
 #if FABLE_COMPILER
 [<Emit("$0.forEach($1)")>]
-let forEach (tableValue: obj) (action: 'K -> unit) : unit = jsNative
+let forEach (tableValue: obj) (action: 'V -> unit) : unit = jsNative
 #else
-let forEach (tableValue: obj) (action: 'K -> unit) : unit =
-    for key in (table tableValue).Keys do
-        action (unbox<'K> key)
+let forEach (tableValue: obj) (action: 'V -> unit) : unit =
+    let entries = table tableValue
+
+    for key in entries.Keys do
+        action (unbox<'V>(entries.Get key))
 #endif
 
 // Arrays: a JavaScript read past the end is undefined and a write at the end appends.
@@ -405,6 +433,9 @@ let listAt (items: ResizeArray<'T>) (index: int) : 'T =
         Unchecked.defaultof<'T>
 
 let listSet (items: ResizeArray<'T>) (index: int) (value: 'T) : unit =
+    while items.Count < index do
+        items.Add Unchecked.defaultof<'T>
+
     if index = items.Count then
         items.Add value
     else
@@ -415,7 +446,13 @@ let listTruncate (items: ResizeArray<'T>) (count: int) : unit =
         items.RemoveRange (count, items.Count - count)
 
 let listSplice (items: ResizeArray<'T>) (start: int) (count: int) (inserted: 'T array) : unit =
-    items.RemoveRange (start, min count (items.Count - start))
+    let start =
+        if start < 0 then
+            max 0 (items.Count + start)
+        else
+            min start items.Count
+
+    items.RemoveRange (start, max 0 (min count (items.Count - start)))
     items.InsertRange (start, inserted)
 
 let arrayAt (items: 'T array) (index: int) : 'T =
@@ -424,14 +461,25 @@ let arrayAt (items: 'T array) (index: int) : 'T =
     else
         Unchecked.defaultof<'T>
 
+/// <summary>Writes an element; a .NET array cannot grow, so an index past the end raises.</summary>
 let arraySet (items: 'T array) (index: int) (value: 'T) : unit =
+    if index < 0 || index >= items.Length then
+        raise (System.InvalidOperationException $"A .NET array of length {items.Length} cannot grow to index {index}")
+
     items[index] <- value
 
 let arrayCopy (items: 'T array) : 'T array =
     Array.copy items
 
 let arraySlice (items: 'T array) (start: int) (finish: int) : 'T array =
-    let finish = min finish items.Length
+    let clamp index =
+        if index < 0 then
+            max 0 (items.Length + index)
+        else
+            min index items.Length
+
+    let start = clamp start
+    let finish = clamp finish
 
     if finish <= start then
         [||]
@@ -469,7 +517,7 @@ let setExpando (target: obj) (name: string) (value: 'T) : unit =
 #endif
 
 #if !FABLE_COMPILER
-// .NET bodies of the node, document, timer and microtask helpers the view files keep under a local `#if`.
+// .NET bodies of the node, document, timer and microtask helpers kept under a local `#if` in the view files.
 
 let parentOrNull (node: Node) : Node =
     orNull node.parentNode
@@ -545,19 +593,11 @@ let numberText (value: float) : string =
 
 /// <summary>The value as JavaScript's <c>String</c> writes it, for the values Fable writes as primitives.</summary>
 let jsString (value: obj) : string =
-    match value with
+    match SameValueZero.Normal value with
     | null -> "null"
     | :? string as s -> s
     | :? bool as b -> if b then "true" else "false"
-    | :? char as c -> string c
-    | :? int8
-    | :? uint8
-    | :? int16
-    | :? uint16
-    | :? int32
-    | :? uint32
-    | :? float32
-    | :? float -> numberText (System.Convert.ToDouble value)
+    | :? float as f -> numberText f
     | other -> string other
 
 let setData (node: obj) (value: obj) : unit =
@@ -679,7 +719,7 @@ let childNodesOf (node: Node) : Node array =
 
     children.ToArray ()
 
-/// <summary>The form state <c>keepElement</c> snapshots: <c>value</c>, <c>checked</c> and <c>selected</c>, null or false where the element has none.</summary>
+/// <summary>The element's <c>value</c>, <c>checked</c> and <c>selected</c>; null or false where the element has none.</summary>
 let formStateOf (node: obj) : string * bool * bool =
     match node with
     | :? HTMLInputElement as input -> input.value, input.``checked``, false

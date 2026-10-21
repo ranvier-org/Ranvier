@@ -71,8 +71,8 @@ type Seam =
     /// </summary>
     abstract Parse: System.Action<HTMLTemplateElement, string> with get, set
 
-/// <summary>The seam, an empty object until the first registration.</summary>
 #if FABLE_COMPILER
+/// <summary>The seam, an empty object until the first registration.</summary>
 let seam: Seam = Fable.Core.JsInterop.emitJsExpr () "{}"
 #else
 [<Sealed>]
@@ -137,8 +137,15 @@ type private SeamObject() =
             with get () = parse
             and set value = parse <- value
 
-/// <summary>The seam, an empty object until the first registration.</summary>
-let seam: Seam = SeamObject ()
+/// <summary>A seam with every flag off and every operation null, as the first registration finds it.</summary>
+let internal createSeam () : Seam =
+    SeamObject ()
+
+/// <summary>
+/// The seam, an empty object until the first registration. On .NET it is one object for the process: a registration
+/// on any thread turns <c>Enabled</c> or <c>ReflowEnabled</c> on for every later mount.
+/// </summary>
+let seam: Seam = createSeam ()
 #endif
 
 #if FABLE_COMPILER

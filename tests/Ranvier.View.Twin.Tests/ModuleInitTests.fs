@@ -76,4 +76,14 @@ let tests =
                 second.Dispose ()
                 first.Dispose ()
                 Expect.throwsT<InvalidOperationException> (fun () -> Native.queueMicrotask ignore) "both uninstalled"
+
+            testCase "one host installed twice is disposed innermost first"
+            <| fun () ->
+                let host = recordingHost (ResizeArray ())
+                let outer = Native.install host
+                let inner = Native.install host
+                Expect.throwsT<InvalidOperationException> (fun () -> outer.Dispose ()) "the outer installation first"
+                inner.Dispose ()
+                outer.Dispose ()
+                Expect.throwsT<InvalidOperationException> (fun () -> Native.queueMicrotask ignore) "uninstalled"
         ]

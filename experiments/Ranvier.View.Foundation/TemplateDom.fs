@@ -407,7 +407,11 @@ let private scopeOf (node: Node) : ViewScope =
 
 let private dispatchFor (nodeCount: int) (events: (int * string * Func<obj, obj, unit>) array) (eventNames: string array) =
     Func<obj array, Node, obj, unit>(fun state node event ->
+#if FABLE_COMPILER
         let eventType: string = event?``type``
+#else
+        let eventType: string = (unbox<Event> event).``type``
+#endif
         let mutable handled = false
 
         for eventName in eventNames do

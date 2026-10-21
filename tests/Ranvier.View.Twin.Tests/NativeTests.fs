@@ -91,4 +91,31 @@ let tests =
                 Native.setExpando a "$$ranvierWidget" true
                 Expect.equal (Native.expando<bool> a "$$ranvierWidget") true "set"
                 Expect.isNull (Native.expando<obj> b "$$ranvierWidget") "another object"
+
+            testCase "jsString writes values as Fable's erased primitives"
+            <| fun () ->
+                Expect.equal (Native.jsString (box (Some "x"))) "x" "Some is erased"
+                Expect.equal (Native.jsString (box (Some 2.5))) "2.5" "Some of a number"
+                Expect.equal (Native.jsString (box (ValueSome 3))) "3" "ValueSome is erased"
+                Expect.equal (Native.jsString (box 'c')) "c" "a char"
+                Expect.equal (Native.jsString (box true)) "true" "a bool"
+                Expect.equal (Native.jsString (box 0.1f)) "0.1" "a float32 as its shortest decimal"
+                Expect.equal (Native.jsString (box 1.50M)) "1.5" "a decimal as a number"
+                Expect.equal (Native.jsString (box System.DayOfWeek.Monday)) "1" "an enum as its number"
+                Expect.equal (Native.jsString (box 1e21)) "1e+21" "the ECMAScript exponent form"
+
+            testCase "a map's forEach passes values and a set's passes its members"
+            <| fun () ->
+                let map = Native.newMap ()
+                Native.set map "k" "v"
+                let seen = ResizeArray<string>()
+                Native.forEach map (fun (value: string) -> seen.Add value)
+                Expect.equal (List.ofSeq seen) [ "v" ] "values"
+
+            testCase "list and array writes past the end follow JavaScript's clamping"
+            <| fun () ->
+                let items = ResizeArray<string> [ "a" ]
+                Native.listSplice items 5 1 [| "z" |]
+                Expect.equal (List.ofSeq items) [ "a"; "z" ] "a splice past the end appends"
+                Expect.equal (Native.arraySlice [| "a"; "b"; "c" |] -2 3) [| "b"; "c" |] "a negative start counts from the end"
         ]

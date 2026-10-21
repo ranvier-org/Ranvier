@@ -282,6 +282,21 @@ and does not raise from it by default, as under jsdom.
   insertion-ordered dictionary (`OrderedDictionary<,>` is .NET 9+), and `Native.valueOrNull` replaces `Option.toObj` on
   DOM interface types, which FSharp.Core 8 types as not nullable.
 
+**A11. Phase 1 review rulings** (`dom-twin-phase1-review.md`).
+
+- `Native` stays `internal`. Portable regains `InternalsVisibleTo Ranvier.View.Foundation` for it; this overrides
+  A10's public-module bullet.
+- The A3 rule for Portable files other than `Native.fs`: every Emit and `emitJsExpr` sits in a Fable branch, and a
+  name declared in a Fable branch without `#else` may be used only inside Fable branches (SvgSugar's registration and
+  `Typed.fs`'s helpers are Fable-only).
+- `Departures.createSeam ()` builds a fresh seam; tests use it instead of the process seam, whose `Enabled` and
+  `ReflowEnabled` are process-wide and one-way on .NET.
+- `TemplateDom.dispatchFor` reads the event type through `Event.type` on .NET (spec §2.1's `event?type`); Task 13's
+  delegation cases cover it.
+- Task 10 asserts that every listener of one dispatch receives the same event proxy, which the delegated walk's
+  `$$ranvierHost` expando relies on.
+- Gate 3 ignores carriage returns, and gate runs compile the branch with `--noCache`.
+
 ---
 
 ## File structure
