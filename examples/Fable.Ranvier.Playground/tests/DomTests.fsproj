@@ -42,6 +42,7 @@
     <Compile Include="../../../src/Ranvier.View.Dom/DocumentHead.fs" Link="DocumentHead.fs" />
     <Compile Include="../../../src/Ranvier.View.Dom/Mounting.fs" Link="Mounting.fs" />
     <Compile Include="../../../src/Ranvier.View.Dom/Hydration.fs" Link="Hydration.fs" />
+    <Compile Include="../../../src/Ranvier.View.Dom/Debug.fs" Link="Debug.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Testing/EventSpec.fs" Link="Testing/EventSpec.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Testing/Selector.fs" Link="Testing/Selector.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Testing/Conformance.fs" Link="Testing/Conformance.fs" />

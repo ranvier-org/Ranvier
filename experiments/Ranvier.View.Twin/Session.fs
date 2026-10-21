@@ -101,6 +101,11 @@ type Session internal (host: TwinHost, element: TwinElement, graph: Graph, polic
     member _.Text() =
         element.TextContent
 
+    /// <summary>The text dump of the mounted view under <c>options</c>, by default <c>Debug.DumpOptions.defaults</c>.</summary>
+    member _.Dump(?options: Debug.DumpOptions) =
+        let options = defaultArg options Debug.DumpOptions.defaults
+        Debug.textWith options (Debug.capture options mounted)
+
     /// <summary>Runs <c>action</c> inside the graph and settles the clock.</summary>
     member this.Act(action: unit -> unit) =
         graph.Run action

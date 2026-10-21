@@ -36,6 +36,16 @@ let register (node: Node) (probe: Probe) : unit -> unit =
         | current when obj.ReferenceEquals (current, probe) -> Native.delete table node
         | _ -> ()
 
+let private bound = Native.newWeakSet ()
+
+/// <summary>Marks a text node as a slot target.</summary>
+let markBound (node: Node) =
+    Native.add bound node
+
+/// <summary>Whether the text node is a slot target.</summary>
+let isBound (node: Node) =
+    Native.has bound node
+
 let probeOf (node: Node) : Probe option =
     match box (Native.get<Node, Probe> table node) with
     | null -> None

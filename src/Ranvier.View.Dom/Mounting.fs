@@ -806,6 +806,9 @@ type private OwnedRange(host: Node, first: Node, last: Node) =
 
     /// <summary>The range's start boundary.</summary>
     member _.First = first
+#if RANVIER_VIEW_INSPECT || !FABLE_COMPILER
+    member internal _.Last = last
+#endif
 
     /// <summary>Adds a root already in place in the host as an entry, claimed and left where it is.</summary>
     member _.AddAdopted(node: Node) =
@@ -1207,6 +1210,12 @@ type BuildContext internal (state: MountState) =
 and Mounted internal (state: MountState) =
     member _.Phase = state.Root.Phase
     member _.Failures = state.Root.Failures
+#if RANVIER_VIEW_INSPECT || !FABLE_COMPILER
+    /// <summary>The first and last node of the mount's range.</summary>
+    member internal _.Range = state.RangeEnds
+
+    member internal _.Graph = state.Graph
+#endif
     member _.CommitErrors = state.CommitErrors
 
     member _.Flush() =
@@ -2974,6 +2983,12 @@ and internal MountState
     let mutable templateSetup: Setup = Unchecked.defaultof<_>
 
     member _.Root: MountLifetime = root
+#if RANVIER_VIEW_INSPECT || !FABLE_COMPILER
+    /// <summary>The first and last node of the mount's range.</summary>
+    member internal _.RangeEnds = struct (range.First, range.Last)
+
+    member internal _.Graph = graph
+#endif
 
     member internal _.Identity: IdentityScope = identity
 

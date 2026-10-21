@@ -1215,6 +1215,16 @@ let private bind (services: MountServices) (compiled: Compiled) (state: obj arra
             services.SetupFailed error
             reraise ()
 
+#if RANVIER_VIEW_INSPECT || !FABLE_COMPILER
+    for slots in [| compiled.RenderSlots; compiled.IsolatedSlots |] do
+        for k in 0 .. slots.Length - 1 do
+            let nodeIndex, slot = at slots k
+
+            match slot.Target with
+            | TextTarget -> Inspect.markBound (unbox<Node>(at state (StateNodes + nodeIndex)))
+            | _ -> ()
+#endif
+
     if compiled.RenderSlots.Length > 0 then
         startRender services state
 
