@@ -47,9 +47,9 @@ let profileView (store: ProfileStore) =
 
 - `BoundaryFailure.Error` is the first exception of the failure. `BoundaryFailure.Retry ()` disposes
   the error view and mounts the content again with a new setup.
-- `BoundaryStatus.IsPending ()` is a tracked reader: `true` after the first reveal while a binding
-  under the boundary waits for a pending read. The content stays shown during that wait: a refetch
-  keeps the previous data on screen.
+- `BoundaryStatus.IsPending ()` is a tracked reader: `true` after the first reveal while a binding,
+  an arm's selection or a list's items under the boundary wait for a pending read. The content stays
+  shown during that wait: a refetch keeps the previous data, arms and rows on screen.
 - The content receives the status as its props. Data the content shows comes from state the content's
   definition can reach, such as the store captured above. Build the definitions once.
 
@@ -57,8 +57,8 @@ let profileView (store: ProfileStore) =
 
 A failure under a boundary goes to that boundary. A failure outside every boundary goes to the mount's
 `report` (see [Mounts and lifetimes](lifetimes.md#failures)), and the failing binding keeps its last
-value. A pending read outside every boundary keeps the binding's last value, and a text binding that
-has not yet read a value shows empty text. On the server, a pending read outside every boundary fails
+value. A pending read outside every boundary keeps the binding's last value, or the region's last arm
+or rows; a text binding that has not yet read a value shows empty text, and a region shows nothing. On the server, a pending read outside every boundary fails
 the render (see below).
 
 ## On the server

@@ -1350,6 +1350,10 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
     let mutable owner: Owner = Unchecked.defaultof<_>
     let mutable builder: RowBuilder = Unchecked.defaultof<_>
     let mutable created = 0
+    // The binding state word of the region's source read; `BindingState.Waiting` while a pending read is registered.
+    let mutable sourceState = 0
+    // Whether server nodes the region did not adopt remain between the markers.
+    let mutable stale = false
 
     member _.LaidOut = laidOut
     member _.Errors = errors
@@ -1533,17 +1537,46 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
     /// <summary>
     /// Runs <c>body</c> in a new root owner of the region, then raises the setup failure recorded during that first pass.
     /// </summary>
-    member _.Own(body: unit -> unit) =
+    member this.Own(body: unit -> unit) =
         Api.createRoot (fun created ->
             owner <- created
+
+            if state.Scope.Tracks then
+                Api.onCleanup (fun () -> this.ReleaseSource ())
+
             body ())
 
         errors.Initializing <- false
         errors.SetupFailure |> Option.iter raise
 
+    member private _.ReleaseSource() =
+        let previous = sourceState
+        sourceState <- BindingState.released previous
+        BindingState.ready state.Scope previous
+
+    /// <summary>True when <c>failure</c> is a pending source read, which it registers with the mount's scope.</summary>
+    member private _.Pends(failure: exn option, hydrating: bool) =
+        match failure with
+        | Some (NotReadyException _ as error) ->
+            sourceState <- BindingState.rejected state.Scope sourceState error
+            stale <- stale || hydrating
+            true
+        | _ -> false
+
     /// <summary>
-    /// Ends a pass. A region disposed during the pass reports <c>recorded</c>; otherwise a failure is recorded or
-    /// reported with <c>recorded</c>, and a success runs <c>settle recorded</c>.
+    /// Removes the server nodes left between the markers by a hydrating pass whose source read was pending. Call after
+    /// the source read of a pass that lays out rows.
+    /// </summary>
+    member this.Resume() =
+        if stale then
+            stale <- false
+            Row.ClearBetween (this.Parent (), regionStart, regionEnd)
+
+    /// <summary>
+    /// Ends a pass. A region disposed during the pass reports <c>recorded</c>. A pending source read, the pass's
+    /// failure, keeps the region's rows and waits with the mount's boundary until a later pass ends; a hydrating
+    /// region keeps the server nodes until <c>Resume</c>. Otherwise a failure is recorded or reported with
+    /// <c>recorded</c>, and a success runs <c>settle recorded</c>.
     /// </summary>
     /// <remarks>
     /// A failed <c>hydrating</c> pass passes a structural mismatch to <c>Recover</c> when it is set, with the failure's
@@ -1562,7 +1595,11 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
 
         if not (this.Live ()) then
             errors.Report recorded
+        elif this.Pends (failure, hydrating) then
+            errors.Report recorded
         else
+            this.ReleaseSource ()
+
             match failure with
             | Some error when recovering ->
                 state.HydrationFailed error
@@ -3275,6 +3312,7 @@ and internal MountState
                             report,
                             fun () ->
                                 let current = items.Read ()
+                                site.Resume ()
                                 snapshot <- current
                                 Api.untrack (fun () -> version.Value <- version.Value + 1)
                                 parent.Value <- site.Parent ()
@@ -3707,6 +3745,8 @@ and internal MountState
                                 let selected = selection.Value
 
                                 Api.untrack (fun () ->
+                                    site.Resume ()
+
                                     if hydrating then
                                         site.Parent () |> ignore
                                     else
