@@ -172,8 +172,9 @@ type MotionContext =
         /// <summary>Whether the element's row or arm was created by a region pass after the region's first.</summary>
         Inserted: bool
         /// <summary>
-        /// A reader of whether the element has an exit hook that has not started. Read in the motion hook's cleanup, true
-        /// means the element stays in place for its exit once the instance is disposed, unless the mount tears down.
+        /// A reader of whether the element or an ancestor has an exit hook that has not started. Read in the motion hook's
+        /// cleanup, true means the element stays in place for that exit once the instance is disposed, unless the mount
+        /// tears down.
         /// </summary>
         ExitPending: unit -> bool
     }
@@ -218,6 +219,7 @@ let private validNameCharacters underscore (value: string) =
 
         valid <-
             (c >= 'a' && c <= 'z')
+            || (index > 0 && c >= 'A' && c <= 'Z')
             || (c >= '0' && c <= '9')
             || c = '-'
             || (underscore && c = '_')
@@ -240,7 +242,7 @@ let name =
             || value[0] > 'z'
             || not (validNameCharacters false value)
         then
-            invalidArg "tag" "HTML tag names must contain lowercase letters, digits or hyphens"
+            invalidArg "tag" "Tag names must start with a lowercase letter and contain letters, digits or hyphens"
 
         value
 
@@ -271,7 +273,12 @@ let validateAttribute name =
         || name = "srcdoc"
         || not (validNameCharacters true name)
     then
-        raise (System.ArgumentException ("Attribute names must be lowercase and cannot contain event handlers or raw document content", "name"))
+        raise (
+            System.ArgumentException (
+                "Attribute names must start with a lowercase letter and cannot contain event handlers or raw document content",
+                "name"
+            )
+        )
 
 /// <summary>The entity of an escaped character: one of <c>&amp; &lt; &gt; \r "</c>.</summary>
 let private entity (c: char) =

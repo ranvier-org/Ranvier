@@ -2334,7 +2334,7 @@ type HookBuilder<'inst> internal () =
                         {
                             Hydrated = flags &&& 1 <> 0
                             Inserted = flags &&& 2 <> 0
-                            ExitPending = fun () -> Departures.hasExit (unbox node)
+                            ExitPending = fun () -> Departures.exitFollows (unbox node)
                         }
                     )
                 ))
@@ -2366,7 +2366,8 @@ type HookBuilder<'inst> internal () =
     /// <summary>
     /// <c>first</c> and <c>second</c> on one element as one part: the hook of <c>second</c> runs after the hook of
     /// <c>first</c>, and the cleanup of <c>second</c> before the cleanup of <c>first</c>. Both are hook parts, at most one
-    /// of them other than a motion hook, and the part has that hook's kind; other parts raise.
+    /// of them other than a motion hook, and the part has that hook's kind; other parts raise. When the hook of <c>second</c>
+    /// raises, the cleanup of <c>first</c> runs.
     /// </summary>
     member _.both(first: Part<'native, 'inst>, second: Part<'native, 'inst>) : Part<'native, 'inst> =
         match first, second with
@@ -2376,7 +2377,15 @@ type HookBuilder<'inst> internal () =
                 kind,
                 Func<obj, obj, obj, obj>(fun instance node flags ->
                     let before: unit -> unit = unbox (firstHook.Invoke (instance, node, flags))
-                    let after: unit -> unit = unbox (secondHook.Invoke (instance, node, flags))
+
+                    let after: unit -> unit =
+                        try
+                            unbox (secondHook.Invoke (instance, node, flags))
+                        with _ ->
+                            if not (isNull (box before)) then
+                                before ()
+
+                            reraise ()
 
                     box (fun () ->
                         try

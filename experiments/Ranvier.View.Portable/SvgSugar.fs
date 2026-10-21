@@ -5,10 +5,15 @@ open Fable.Core.TS
 open Ranvier.View.Foundation.Representation
 open Ranvier.View.Foundation.Template
 
-/// <summary>SVG tags. Each creates its element, and every element under it, in the SVG namespace on every mount path.</summary>
+/// <summary>
+/// SVG tags, each an SVG element under both commit modes. <c>text'</c>, <c>use'</c> and <c>title'</c> take an apostrophe:
+/// <c>text</c> is the sugar's text slot, <c>use</c> an F# keyword and <c>title</c> the HTML tag.
+/// </summary>
 /// <remarks>
-/// The first use of an SVG tag enables SVG creation on the expanded path; bundles without an SVG tag create HTML
-/// elements only.
+/// The first SVG tag used enables SVG creation: from then on the expanded path creates an element with an SVG name, and
+/// every element under an SVG element other than a <c>foreignObject</c>, in the SVG namespace, and a row or arm template
+/// rooted at SVG elements is parsed inside an svg element. Without an SVG tag, <c>t.element (HtmlTag "svg")</c> enables
+/// nothing.
 /// </remarks>
 [<AutoOpen>]
 module SvgElements =
@@ -56,3 +61,58 @@ module SvgElements =
         inherit Element<Dom.SVGRectElement, 'i>((HtmlTag "rect"), ps)
         do Ranvier.View.Foundation.Departures.enableSvg ()
         new([<ParamArray>] ps: Part<Dom.SVGRectElement, 'i> array) = rect<'i>(ps, ())
+
+    type text'<'i> private (ps: Part<Dom.SVGTextElement, 'i> array, primary: unit) =
+        inherit Element<Dom.SVGTextElement, 'i>((HtmlTag "text"), ps)
+        do Ranvier.View.Foundation.Departures.enableSvg ()
+        new([<ParamArray>] ps: Part<Dom.SVGTextElement, 'i> array) = text'<'i>(ps, ())
+
+    type tspan<'i> private (ps: Part<Dom.SVGTSpanElement, 'i> array, primary: unit) =
+        inherit Element<Dom.SVGTSpanElement, 'i>((HtmlTag "tspan"), ps)
+        do Ranvier.View.Foundation.Departures.enableSvg ()
+        new([<ParamArray>] ps: Part<Dom.SVGTSpanElement, 'i> array) = tspan<'i>(ps, ())
+
+    type use'<'i> private (ps: Part<Dom.SVGUseElement, 'i> array, primary: unit) =
+        inherit Element<Dom.SVGUseElement, 'i>((HtmlTag "use"), ps)
+        do Ranvier.View.Foundation.Departures.enableSvg ()
+        new([<ParamArray>] ps: Part<Dom.SVGUseElement, 'i> array) = use'<'i>(ps, ())
+
+    type defs<'i> private (ps: Part<Dom.SVGDefsElement, 'i> array, primary: unit) =
+        inherit Element<Dom.SVGDefsElement, 'i>((HtmlTag "defs"), ps)
+        do Ranvier.View.Foundation.Departures.enableSvg ()
+        new([<ParamArray>] ps: Part<Dom.SVGDefsElement, 'i> array) = defs<'i>(ps, ())
+
+    type linearGradient<'i> private (ps: Part<Dom.SVGLinearGradientElement, 'i> array, primary: unit) =
+        inherit Element<Dom.SVGLinearGradientElement, 'i>((HtmlTag "linearGradient"), ps)
+        do Ranvier.View.Foundation.Departures.enableSvg ()
+        new([<ParamArray>] ps: Part<Dom.SVGLinearGradientElement, 'i> array) = linearGradient<'i>(ps, ())
+
+    type radialGradient<'i> private (ps: Part<Dom.SVGRadialGradientElement, 'i> array, primary: unit) =
+        inherit Element<Dom.SVGRadialGradientElement, 'i>((HtmlTag "radialGradient"), ps)
+        do Ranvier.View.Foundation.Departures.enableSvg ()
+        new([<ParamArray>] ps: Part<Dom.SVGRadialGradientElement, 'i> array) = radialGradient<'i>(ps, ())
+
+    type stop<'i> private (ps: Part<Dom.SVGStopElement, 'i> array, primary: unit) =
+        inherit Element<Dom.SVGStopElement, 'i>((HtmlTag "stop"), ps)
+        do Ranvier.View.Foundation.Departures.enableSvg ()
+        new([<ParamArray>] ps: Part<Dom.SVGStopElement, 'i> array) = stop<'i>(ps, ())
+
+    type clipPath<'i> private (ps: Part<Dom.SVGClipPathElement, 'i> array, primary: unit) =
+        inherit Element<Dom.SVGClipPathElement, 'i>((HtmlTag "clipPath"), ps)
+        do Ranvier.View.Foundation.Departures.enableSvg ()
+        new([<ParamArray>] ps: Part<Dom.SVGClipPathElement, 'i> array) = clipPath<'i>(ps, ())
+
+    type mask<'i> private (ps: Part<Dom.SVGMaskElement, 'i> array, primary: unit) =
+        inherit Element<Dom.SVGMaskElement, 'i>((HtmlTag "mask"), ps)
+        do Ranvier.View.Foundation.Departures.enableSvg ()
+        new([<ParamArray>] ps: Part<Dom.SVGMaskElement, 'i> array) = mask<'i>(ps, ())
+
+    type foreignObject<'i> private (ps: Part<Dom.SVGForeignObjectElement, 'i> array, primary: unit) =
+        inherit Element<Dom.SVGForeignObjectElement, 'i>((HtmlTag "foreignObject"), ps)
+        do Ranvier.View.Foundation.Departures.enableSvg ()
+        new([<ParamArray>] ps: Part<Dom.SVGForeignObjectElement, 'i> array) = foreignObject<'i>(ps, ())
+
+    type title'<'i> private (ps: Part<Dom.SVGTitleElement, 'i> array, primary: unit) =
+        inherit Element<Dom.SVGTitleElement, 'i>((HtmlTag "title"), ps)
+        do Ranvier.View.Foundation.Departures.enableSvg ()
+        new([<ParamArray>] ps: Part<Dom.SVGTitleElement, 'i> array) = title'<'i>(ps, ())

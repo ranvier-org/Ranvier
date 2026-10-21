@@ -345,11 +345,11 @@ let private finishesAfterTimeout queued () =
     tick (Departures.safetyTimeout - 1)
     let before = items target
     tick 1
-    let after = items target
+    let after = items target, taken ()
     finish "2"
     let finishedLate = items target
     mounted.Dispose ()
-    equal ([ "1"; "2" ], [ "1" ], [ "1" ]) (before, after, finishedLate)
+    equal ([ "1"; "2" ], ([ "1" ], [ "exit 2"; "cancel 2" ]), [ "1" ]) (before, after, finishedLate)
 
 type Groups =
     {
@@ -805,7 +805,7 @@ let private motionCleanupSeesExit queued () =
     mounted.Dispose ()
 
     equal
-        ([ "cleanup 1 exit pending=false"; "cleanup 1 exit pending=true"; "exit 1" ], [ "cleanup 7 exit pending=true"; "exit after" ])
+        ([ "cleanup 1 exit pending=true"; "cleanup 1 exit pending=true"; "exit 1" ], [ "cleanup 7 exit pending=true"; "exit after" ])
         (first, second)
 
 #if RANVIER_VIEW_COUNTERS
@@ -869,7 +869,7 @@ let cases: (string * (unit -> unit)) array =
                 templated "a key re-added while its old root leaves gets a new row" readdedKeyGetsNewRow
                 templated "an arm switch leaves the old and new arm roots in order" armSwitchKeepsOrder
                 templated "disposing the mount cancels and removes every held root" disposalEndsExits
-                templated "an exit finishes after the safety timeout" finishesAfterTimeout
+                templated "an exit is cancelled and its node leaves after the safety timeout" finishesAfterTimeout
                 templated "a root held inside a removed row leaves with the row and runs until disposal" heldInsideRemovedRow
                 templated "an exit that finishes at once removes its root at once" finishedAtOnce
                 [|
@@ -886,7 +886,7 @@ let cases: (string * (unit -> unit)) array =
                 templated "a raising reflow Before or After is reported once and the list keeps updating" reflowFailuresReported
                 templated "a held root keeps its nested lists, arms and boundaries until finish" heldRootKeepsContent
                 templated "a raising exit on a row's first root removes every root and keeps the region valid" raisingExitKeepsRegion
-                templated "a motion hook's cleanup reads whether an exit of its element follows" motionCleanupSeesExit
+                templated "a motion hook's cleanup reads whether an exit of its element or an ancestor follows" motionCleanupSeesExit
                 [|
                     "a reflow skips the hydrating pass and measures later passes", reflowSkipsHydration
                 |]
