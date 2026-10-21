@@ -362,12 +362,24 @@ jobs:
 
   # Runs the Ranvier analyzers' unit tests, then the analyzers over the repository's projects with every RAN code
   # promoted to an error: any finding fails the job.
+  # The analyzer suite in three shards whose filters partition it: the Fable rules with the shared tests, the core
+  # rules, and the view rules.
   analyzer-tests:
-    name: Analyzer tests
+    name: Analyzer tests (${{ matrix.shard }})
     needs: changes
     if: needs.changes.outputs.docs != 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: fable
+            filter: FullyQualifiedName!~RAN01&FullyQualifiedName!~RAN02
+          - shard: core
+            filter: FullyQualifiedName~RAN01
+          - shard: view
+            filter: FullyQualifiedName~RAN02
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
@@ -379,7 +391,7 @@ jobs:
           key: nuget-analyzer-tests-${{ hashFiles('Directory.Packages.props', 'tools/**/*.fsproj', 'src/**/*.fsproj', 'experiments/**/*.fsproj') }}
           restore-keys: nuget-analyzer-tests-
       - name: Test the analyzers
-        run: dotnet test tools/Ranvier.Analyzers.Tests -c Release
+        run: dotnet test tools/Ranvier.Analyzers.Tests -c Release --filter "${{ matrix.filter }}"
 
   # The repository run, one group of analyzed projects per leg (build.fsx Spec.analyzedGroups): each leg builds its
   # projects once, in parallel, and the CLI reads those outputs.
@@ -388,7 +400,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.docs != 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 12
     strategy:
       fail-fast: false
       matrix:
