@@ -103,3 +103,73 @@ let ran010: Rule =
         Gate = Symbols.Assemblies.Ranvier
         Run = ownedInPure
     }
+
+/// The lambdas on `steps` that run outside the enclosing run: immediate and transparent lambdas do not count.
+let private lambdaCount (steps: Step list) =
+    let rec go count steps =
+        match steps with
+        | [] -> count
+        | Step.Lambda (_, true) :: rest -> go count rest
+        | Step.Lambda (_, false) :: Step.Argument (callee, _, _) :: rest when isTransparent callee -> go count rest
+        | Step.Lambda (_, false) :: rest -> go (count + 1) rest
+        | _ :: rest -> go count rest
+
+    go 0 steps
+
+let private recreated (input: Input) : Message list =
+    [
+        for site in input.Index.Lets do
+            let created =
+                input.Index.Calls
+                |> Array.exists (fun call ->
+                    isAsyncCreator call.Callee
+                    && (match call.Path with
+                        | Step.Bound value :: rest ->
+                            value = site.Value
+                            && obj.ReferenceEquals (rest, site.Path)
+                        | _ -> false))
+
+            let owner =
+                if created then
+                    Index.arguments isTransparent site.Path
+                    |> List.tryHead
+                    |> Option.bind (fun (callee, index, count, lambdas) ->
+                        match ownerBody callee index count with
+                        | Some layers when layers = lambdas -> Some callee
+                        | _ -> None)
+                else
+                    None
+
+            match owner with
+            | Some callee ->
+                let readInBody =
+                    input.Index.Calls
+                    |> Array.exists (fun call ->
+                        isReactiveRead call.Callee
+                        && (match call.Receiver with
+                            | Some (Value value) -> value = site.Value
+                            | _ -> false)
+                        && (match Index.within site.Path call.Path with
+                            | Some inner -> lambdaCount inner = 0
+                            | None -> false))
+
+                if readInBody then
+                    let name = site.Value.DisplayName
+                    let ownerName = Symbols.display callee
+
+                    message
+                        "RAN011"
+                        Severity.Warning
+                        site.Value.DeclarationLocation
+                        $"`{name}` is created inside `{ownerName}`'s body and read there; each run of the body disposes `{name}` and starts a new flight. Create `{name}` outside `{ownerName}` and read it inside."
+                        []
+            | None -> ()
+    ]
+
+let ran011: Rule =
+    {
+        Code = "RAN011"
+        Title = "Async value created and read in the owner that replaces it"
+        Gate = Symbols.Assemblies.Ranvier
+        Run = recreated
+    }

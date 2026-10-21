@@ -266,3 +266,43 @@ module Core =
             | _ -> None
         else
             None
+
+    let private ownerFunctions: Map<string * int, int> =
+        Map.ofList
+            [
+                ("createSuspense", 1), 1
+                ("createSuspenseWithComparer", 2), 1
+                ("createErrorBoundary", 1), 1
+                ("createErrorBoundaryWithComparer", 2), 1
+                ("createBoundary", 2), 1
+                ("createBoundaryWithComparer", 3), 1
+                ("createMemoWith", 0), 1
+                ("createOwningMemoWithComparer", 1), 1
+                ("createEffect", 0), 1
+                ("createAsyncWith", 0), 2
+                ("createOwningAsyncWithPolicy", 1), 2
+            ]
+
+    /// The lambdas before the body when argument `index` of `count` arguments of a call of `m` is an owner body: a
+    /// body that disposes the nodes it created before each re-run.
+    let ownerBody (m: FSharpMemberOrFunctionOrValue) (index: int) (count: int) : int option =
+        if
+            m.IsConstructor
+            && enclosing m = "Ranvier.Effect"
+            && index = count - 1
+        then
+            Some 1
+        elif enclosing m = Api then
+            ownerFunctions
+            |> Map.tryFind (m.LogicalName, index)
+        else
+            None
+
+    /// Whether a call of `m` creates an async value: an async memo, an async source or a stream.
+    let isAsyncCreator (m: FSharpMemberOrFunctionOrValue) : bool =
+        (m.IsConstructor
+         && enclosing m = "Ranvier.AsyncMemo`1")
+        || (enclosing m = Api
+            && (m.LogicalName.StartsWith "createAsync"
+                || m.LogicalName.StartsWith "createStream"
+                || m.LogicalName = "createOwningAsyncWithPolicy"))

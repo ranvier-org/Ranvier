@@ -558,6 +558,8 @@ with a new flight.
 
 **Fix.** Create the async value outside the owner and read it inside the body.
 
+The analyzers report this at build time: [RAN011](../analyzers/ran011.md).
+
 :::details Example
 
 ```fsharp
