@@ -56,6 +56,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 83,110 | 127,147 | 1,734,130 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 83,332 | 127,108 | 1,734,426 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 83,208 | 127,155 | 1,734,216 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 83,284 | 127,178 | 1,734,155 |
 
 ## app-table
 
@@ -113,6 +114,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 4,416,228 | 9,322,764 | 107,544,455 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 4,417,303 | 9,364,719 | 107,451,544 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 4,416,238 | 9,203,731 | 107,431,191 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 4,416,366 | 9,320,151 | 107,579,948 |
 
 ## async-recover
 
@@ -170,6 +172,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 138,992 | 39,723 | 440,655 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 138,992 | 39,721 | 440,655 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 138,992 | 39,648 | 440,647 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 138,992 | 39,724 | 440,650 |
 
 ## async-resolve
 
@@ -227,6 +230,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 2,791,509 | 1,085,589 | 12,313,686 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 2,791,509 | 1,085,758 | 12,313,955 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 2,791,509 | 1,085,495 | 12,313,811 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 2,791,509 | 1,085,565 | 12,314,034 |
 
 ## chain
 
@@ -284,6 +288,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 
 ## chain-affinity
 
@@ -341,6 +346,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 2,549 | 3,067 | 2,496 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 2,549 | 3,067 | 2,496 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 2,549 | 3,067 | 2,496 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 2,549 | 3,067 | 2,496 |
 
 ## control
 
@@ -398,6 +404,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 74,709 | 835,974 | 2,605,092 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 74,709 | 834,047 | 2,605,114 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 74,709 | 833,976 | 2,605,092 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 74,709 | 833,967 | 2,605,089 |
 
 ## create
 
@@ -455,6 +462,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 13,449,960 | 2,859,678 | 2,532,362 | 2,131,719 | 4,004,136 | 34,066,996 | 49,723,800 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 13,450,075 | 2,875,678 | 2,532,362 | 2,130,838 | 4,004,190 | 34,066,742 | 49,723,617 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 13,465,944 | 2,859,678 | 2,532,361 | 2,131,883 | 4,003,981 | 34,064,135 | 49,723,917 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 13,449,944 | 2,859,678 | 2,532,361 | 2,131,856 | 4,003,995 | 34,066,518 | 49,723,693 |
 
 ## create-on
 
@@ -512,6 +520,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 2,910,484 | 4,147,618 | 54,424,693 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 2,910,483 | 4,147,736 | 54,424,698 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 2,910,483 | 4,147,492 | 54,424,907 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 2,910,531 | 4,147,579 | 54,424,865 |
 
 ## cutoff
 
@@ -569,6 +578,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 
 ## derive-effect
 
@@ -626,6 +636,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 765 | 768 | 16,102 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 765 | 768 | 16,102 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 765 | 768 | 16,102 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 765 | 768 | 16,102 |
 
 ## derive-on
 
@@ -683,6 +694,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 737 | 775 | 16,261 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 737 | 775 | 16,261 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 737 | 775 | 16,261 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 737 | 775 | 16,261 |
 
 ## dispose
 
@@ -740,6 +752,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 2,706,242 | 806,291 | 367,497 | 466,354 | 485,301 | 13,193,913 | 9,105,874 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 2,706,747 | 806,291 | 367,497 | 465,883 | 485,318 | 13,194,087 | 9,106,232 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 2,707,644 | 806,291 | 367,497 | 465,498 | 485,102 | 13,194,662 | 9,106,948 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 2,707,644 | 806,291 | 367,497 | 466,121 | 485,066 | 13,195,020 | 9,106,226 |
 
 ## dispose-on
 
@@ -797,6 +810,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 346,497 | 478,440 | 8,902,364 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 346,497 | 478,413 | 8,902,586 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 346,497 | 478,428 | 8,902,356 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 346,497 | 478,762 | 8,902,680 |
 
 ## editable-edit
 
@@ -854,6 +868,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 180,106 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 180,106 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 180,106 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 180,106 |
 
 ## editable-upstream
 
@@ -911,6 +926,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 231,255 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 231,255 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 231,255 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 231,255 |
 
 ## fail-recompute
 
@@ -968,6 +984,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 65,130 | 1,366 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 65,130 | 1,366 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 65,130 | 1,366 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 65,130 | 1,366 |
 
 ## flight
 
@@ -1025,6 +1042,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 
 ## keyed-insert
 
@@ -1082,6 +1100,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 1,921,810 | 53,967 | 54,948 | 3,218,719 | 661,707 | 176,629 | 44,849,867 | 2,634,889 | 2,654,179 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 1,921,833 | 53,951 | 54,970 | 3,218,668 | 661,706 | 176,544 | 44,849,876 | 2,634,990 | 2,654,166 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 1,921,809 | 53,951 | 54,948 | 3,218,794 | 661,705 | 176,502 | 44,849,993 | 2,634,936 | 2,654,351 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 1,921,809 | 53,951 | 54,952 | 3,218,712 | 661,698 | 176,544 | 44,849,835 | 2,634,964 | 2,654,183 |
 
 ## keyed-remove
 
@@ -1139,6 +1158,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 1,920,734 | 43,644 | 45,284 | 3,245,018 | 593,047 | 605,007 | 44,798,152 | 1,924,854 | 1,958,555 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 1,920,755 | 43,628 | 45,309 | 3,245,035 | 593,019 | 605,251 | 44,798,137 | 1,924,869 | 1,958,598 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 1,920,736 | 43,628 | 45,285 | 3,245,066 | 593,166 | 605,227 | 44,798,119 | 1,924,926 | 1,958,524 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 1,920,739 | 43,628 | 45,284 | 3,245,053 | 593,000 | 605,219 | 44,798,156 | 1,924,904 | 1,958,568 |
 
 ## keyed-swap
 
@@ -1196,6 +1216,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 1,973,429 | 46,177 | 46,916 | 3,562,974 | 148,792 | 511,367 | 45,980,662 | 916,582 | 932,900 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 1,973,444 | 46,161 | 46,931 | 3,562,723 | 148,806 | 511,285 | 45,980,302 | 916,547 | 932,887 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 1,973,428 | 46,161 | 46,915 | 3,563,674 | 148,790 | 511,369 | 45,980,286 | 916,510 | 932,853 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 1,973,428 | 46,161 | 46,916 | 3,565,407 | 148,776 | 511,384 | 45,980,674 | 916,497 | 932,852 |
 
 ## mvu-dispatch
 
@@ -1253,6 +1274,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 58,261 | 772 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 58,261 | 772 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 58,261 | 772 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 58,261 | 772 |
 
 ## project-chain
 
@@ -1310,6 +1332,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 1,070,313 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 1,070,219 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 1,070,360 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 1,070,308 |
 
 ## project-churn
 
@@ -1367,6 +1390,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 36,490 | 34,326 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 36,474 | 34,310 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 36,490 | 34,326 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 36,490 | 34,326 |
 
 ## project-edit
 
@@ -1424,6 +1448,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 50,431 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 50,415 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 50,431 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 50,431 |
 
 ## project-reorder
 
@@ -1481,6 +1506,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 779,171 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 779,154 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 779,170 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 779,170 |
 
 ## server-render
 
@@ -1538,6 +1564,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 676,230 | 1,131,482 | 9,833,829 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 677,830 | 1,131,281 | 9,833,492 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 676,231 | 1,131,644 | 9,833,939 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 676,230 | 1,130,643 | 9,834,145 |
 
 ## shape-diamond
 
@@ -1595,6 +1622,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 59,899 | 79,968 | 1,763,357 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 59,899 | 79,968 | 1,763,357 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 59,899 | 79,968 | 1,763,357 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 59,899 | 79,968 | 1,763,357 |
 
 ## shape-dynamic
 
@@ -1652,6 +1680,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 82,921 | 107,033 | 2,006,140 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 82,921 | 107,033 | 2,006,141 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 82,921 | 107,033 | 2,006,140 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 82,921 | 107,033 | 2,006,140 |
 
 ## stream-burst-1
 
@@ -1709,6 +1738,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 1,974 | 1,572 | 2,491 | 4,670 | 3,644 | 13,371 | 47,199 | 45,417 | 55,171 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 1,974 | 1,572 | 2,507 | 4,672 | 3,644 | 13,371 | 47,201 | 45,417 | 55,171 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 1,974 | 1,572 | 2,491 | 4,672 | 3,644 | 13,371 | 47,198 | 45,417 | 55,171 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 1,974 | 1,572 | 2,491 | 4,671 | 3,644 | 13,369 | 47,201 | 45,417 | 55,167 |
 
 ## stream-burst-16
 
@@ -1766,6 +1796,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 5,631 | 25,017 | 5,701 | 9,499 | 49,601 | 8,052 | 120,972 | 714,180 | 113,521 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 5,631 | 25,017 | 5,717 | 9,500 | 49,601 | 8,051 | 120,973 | 714,180 | 113,520 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 5,631 | 25,017 | 5,701 | 9,500 | 49,599 | 8,052 | 120,973 | 714,180 | 113,518 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 5,631 | 25,017 | 5,701 | 9,501 | 49,601 | 8,051 | 120,973 | 714,180 | 113,522 |
 
 ## stream-burst-256
 
@@ -1823,6 +1854,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 64,131 | 400,101 | 57,040 | 127,412 | 787,260 | 74,605 | 1,301,576 | 11,413,350 | 1,046,550 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 64,131 | 400,101 | 57,056 | 127,416 | 787,263 | 74,605 | 1,301,576 | 11,413,287 | 1,046,549 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 64,131 | 400,101 | 57,040 | 127,427 | 787,216 | 74,603 | 1,301,515 | 11,413,366 | 1,046,481 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 64,131 | 400,101 | 57,040 | 127,472 | 787,263 | 74,605 | 1,301,575 | 11,413,287 | 1,046,488 |
 
 ## stream-restart
 
@@ -1880,6 +1912,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 4,187 | 4,992 | 6,105 | 16,356 | 41,498 | 70,402 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 4,187 | 4,992 | 6,106 | 16,356 | 41,493 | 70,402 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 4,187 | 4,976 | 6,106 | 16,353 | 41,497 | 70,401 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 4,187 | 5,008 | 6,106 | 16,356 | 41,497 | 70,403 |
 
 ## timed-admit-both
 
@@ -1937,6 +1970,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 118,591 | 134,965 | 2,679,928 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 118,591 | 134,964 | 2,679,929 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 118,591 | 134,964 | 2,679,929 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 118,591 | 134,961 | 2,679,928 |
 
 ## timed-admit-debounce
 
@@ -1994,6 +2028,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 117,496 | 133,558 | 2,640,272 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 117,496 | 133,558 | 2,640,285 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 117,496 | 133,559 | 2,640,285 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 117,496 | 133,558 | 2,640,284 |
 
 ## timed-admit-first
 
@@ -2051,6 +2086,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 69,479 | 79,053 | 1,611,692 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 69,479 | 79,053 | 1,611,692 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 69,479 | 79,052 | 1,611,692 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 69,479 | 79,052 | 1,611,692 |
 
 ## timed-admit-last
 
@@ -2108,6 +2144,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 117,758 | 133,852 | 2,650,141 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 117,758 | 133,852 | 2,650,128 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 117,758 | 133,849 | 2,650,128 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 117,758 | 133,852 | 2,650,140 |
 
 ## timed-capture-both
 
@@ -2165,6 +2202,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 35,726 | 44,808 | 846,997 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 35,726 | 44,808 | 846,997 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 35,726 | 44,805 | 847,000 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 35,726 | 44,808 | 846,997 |
 
 ## timed-capture-debounce
 
@@ -2222,6 +2260,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 35,598 | 44,104 | 847,375 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 35,598 | 44,104 | 847,375 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 35,598 | 44,104 | 847,375 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 35,598 | 44,104 | 847,375 |
 
 ## timed-capture-first
 
@@ -2279,6 +2318,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 32,078 | 36,612 | 745,370 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 32,078 | 36,611 | 745,370 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 32,078 | 36,610 | 745,370 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 32,078 | 36,611 | 745,370 |
 
 ## timed-capture-last
 
@@ -2336,6 +2376,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 35,534 | 44,040 | 839,503 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 35,534 | 44,040 | 839,503 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 35,534 | 44,040 | 839,503 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 35,534 | 44,040 | 839,503 |
 
 ## update
 
@@ -2393,6 +2434,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 1,090,890 | 38,805 | 82,505 | 262,551 | 151,708 | 3,350,205 | 2,502,796 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 1,087,682 | 38,805 | 82,505 | 262,890 | 151,710 | 3,350,266 | 2,502,844 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 1,087,683 | 38,805 | 82,505 | 262,777 | 151,662 | 3,350,265 | 2,502,720 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 1,087,690 | 38,805 | 82,505 | 262,564 | 151,702 | 3,350,265 | 2,502,828 |
 
 ## update-on
 
@@ -2450,6 +2492,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 93,005 | 165,239 | 2,830,408 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 93,005 | 165,198 | 2,830,418 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 93,005 | 165,175 | 2,830,409 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 93,005 | 165,221 | 2,830,436 |
 
 ## work-form
 
@@ -2507,6 +2550,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 170,300 | 163,392 | 295,935 | 291,405 | 5,349,266 | 5,295,444 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 170,300 | 163,392 | 295,944 | 291,412 | 5,349,290 | 5,295,423 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 170,300 | 163,392 | 295,914 | 291,384 | 5,349,252 | 5,295,459 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 170,300 | 163,392 | 295,929 | 291,359 | 5,349,306 | 5,295,404 |
 
 ## work-status
 
@@ -2564,6 +2608,7 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 100,445 | 78,815 | 264,846 | 152,965 | 2,610,961 | 2,360,869 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 100,445 | 78,815 | 264,844 | 152,942 | 2,611,066 | 2,360,869 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 100,445 | 78,815 | 264,828 | 152,926 | 2,611,015 | 2,360,866 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 100,445 | 78,815 | 264,858 | 152,941 | 2,610,945 | 2,360,863 |
 
 ## work-value
 
@@ -2621,4 +2666,5 @@
 | `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | 107,569 | 119,471 | 265,102 | 279,887 | 2,595,699 | 2,920,161 |
 | `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | 107,569 | 119,471 | 265,049 | 279,897 | 2,595,677 | 2,920,191 |
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 107,569 | 119,469 | 265,039 | 279,894 | 2,595,660 | 2,920,177 |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 107,569 | 119,470 | 265,070 | 279,895 | 2,595,625 | 2,920,163 |
 
