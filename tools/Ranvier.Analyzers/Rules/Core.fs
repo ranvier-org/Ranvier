@@ -117,17 +117,25 @@ let private lambdaCount (steps: Step list) =
     go 0 steps
 
 let private recreated (input: Input) : Message list =
+    // The paths of the `let`s whose bound expression creates an async value, keyed by the bound value.
+    let asyncLets =
+        input.Index.Calls
+        |> Array.choose (fun call ->
+            match call.Path with
+            | Step.Bound value :: rest when isAsyncCreator call.Callee -> Some (value, rest)
+            | _ -> None)
+
+    let reads =
+        input.Index.Calls
+        |> Array.filter (fun call -> isReactiveRead call.Callee)
+
     [
         for site in input.Index.Lets do
             let created =
-                input.Index.Calls
-                |> Array.exists (fun call ->
-                    isAsyncCreator call.Callee
-                    && (match call.Path with
-                        | Step.Bound value :: rest ->
-                            value = site.Value
-                            && obj.ReferenceEquals (rest, site.Path)
-                        | _ -> false))
+                asyncLets
+                |> Array.exists (fun (value, rest) ->
+                    value = site.Value
+                    && obj.ReferenceEquals (rest, site.Path))
 
             let owner =
                 if created then
@@ -143,12 +151,11 @@ let private recreated (input: Input) : Message list =
             match owner with
             | Some callee ->
                 let readInBody =
-                    input.Index.Calls
+                    reads
                     |> Array.exists (fun call ->
-                        isReactiveRead call.Callee
-                        && (match call.Receiver with
-                            | Some (Value value) -> value = site.Value
-                            | _ -> false)
+                        (match call.Receiver with
+                         | Some (Value value) -> value = site.Value
+                         | _ -> false)
                         && (match Index.within site.Path call.Path with
                             | Some inner -> lambdaCount inner = 0
                             | None -> false))
