@@ -464,6 +464,11 @@ and [<Sealed; AllowNullLiteral>] TwinDocument() as this =
     /// <summary>Whether a dispatch raises its first listener exception once the dispatch ends.</summary>
     member val RaiseListenerErrors = false with get, set
 
+    /// <summary>Runs when the outermost dispatch, click, focus or blur returns; a session settles and checks reports here.</summary>
+    member val internal AfterDispatch: unit -> unit = ignore with get, set
+
+    member val internal DispatchDepth = 0 with get, set
+
     member this.CreateElement(tag: string) =
         TwinElement (this, tag.ToLowerInvariant ())
 

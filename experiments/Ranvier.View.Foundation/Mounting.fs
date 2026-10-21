@@ -218,10 +218,10 @@ let private walk (host: Node) (eventName: string) (event: obj) =
     let mutable going = true
 
     while going && not (Native.isNullish node) do
-        let handler: obj -> unit = Native.expando node key
+        let handler: obj = Native.expando node key
 
         if not (Native.isNullish handler) then
-            handler event
+            (unbox<obj -> unit> handler) event
             going <- not (unbox<Event> event).cancelBubble
         else
             let state: obj array = Native.expando node "$$ranvier"

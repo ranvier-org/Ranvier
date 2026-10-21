@@ -7,7 +7,7 @@ open Ranvier.View.Testing
 
 /// <summary>A listener raised during a dispatch; the dispatch ran every other listener first.</summary>
 exception TwinListenerException of eventType: string * inner: exn with
-    override this.Message = $"A '{this.eventType}' listener raised: {this.inner.Message}"
+    override this.Message = $"A '{this.eventType}' listener raised: {this.inner}"
 
 [<AllowNullLiteral>]
 type TwinEvent(eventType: string, kind: EventKind, bubbles: bool, cancelable: bool, init: IDictionary<string, obj>) =
@@ -185,8 +185,25 @@ module Events =
                         failures.Add error
         | false, _ -> ()
 
-    /// <summary>Dispatches <c>event</c> at <c>target</c> through the capture, target and bubble phases; false when cancelled.</summary>
-    let dispatch (target: TwinNode) (event: TwinEvent) : bool =
+    /// <summary>
+    /// Runs an interaction: once the outermost dispatch, click, focus or blur of the document returns, the document's
+    /// <c>AfterDispatch</c> runs.
+    /// </summary>
+    let private outermost (document: TwinDocument) (action: unit -> 'T) : 'T =
+        document.DispatchDepth <- document.DispatchDepth + 1
+
+        let result =
+            try
+                action ()
+            finally
+                document.DispatchDepth <- document.DispatchDepth - 1
+
+        if document.DispatchDepth = 0 then
+            document.AfterDispatch ()
+
+        result
+
+    let private dispatchNow (target: TwinNode) (event: TwinEvent) : bool =
         target.Document.Check ("dispatch " + event.Type)
         event.Target <- target
         let path = ResizeArray<TwinNode>()
@@ -223,6 +240,10 @@ module Events =
             raise (TwinListenerException (event.Type, failures[0]))
 
         not event.DefaultPrevented
+
+    /// <summary>Dispatches <c>event</c> at <c>target</c> through the capture, target and bubble phases; false when cancelled.</summary>
+    let dispatch (target: TwinNode) (event: TwinEvent) : bool =
+        outermost target.Document (fun () -> dispatchNow target event)
 
     let private fire (target: TwinNode) (eventType: string) (bubbles: bool) (cancelable: bool) =
         dispatch
@@ -270,7 +291,7 @@ module Events =
         | id -> label.Document.ElementById id
 
     /// <summary>The <c>click ()</c> of HTML: activation behaviour around a bubbling, cancelable click.</summary>
-    let rec click (element: TwinElement) : unit =
+    let rec private clickNow (element: TwinElement) : unit =
         if not (isDisabled element) then
             let kind =
                 if element.LocalName = "input" then
@@ -340,7 +361,7 @@ module Events =
                 if element.LocalName = "label" then
                     match labelled element with
                     | null -> ()
-                    | control -> click control
+                    | control -> clickNow control
 
     let private focusable (e: TwinElement) =
         not (isDisabled e)
@@ -348,7 +369,7 @@ module Events =
             || (e.LocalName = "a" && e.HasAttribute "href")
             || e.HasAttribute "tabindex")
 
-    let blur (element: TwinElement) : unit =
+    let private blurNow (element: TwinElement) : unit =
         let document = element.Document
 
         if obj.ReferenceEquals (document.ActiveElement, element) then
@@ -356,7 +377,7 @@ module Events =
             fire element "blur" false false |> ignore
             fire element "focusout" true false |> ignore
 
-    let focus (element: TwinElement) : unit =
+    let private focusNow (element: TwinElement) : unit =
         let document = element.Document
 
         if
@@ -365,11 +386,21 @@ module Events =
         then
             match document.ActiveElement with
             | null -> ()
-            | previous -> blur previous
+            | previous -> blurNow previous
 
             document.ActiveElement <- element
             fire element "focus" false false |> ignore
             fire element "focusin" true false |> ignore
+
+    /// <summary>The <c>click ()</c> of HTML: activation behaviour around a bubbling, cancelable click.</summary>
+    let click (element: TwinElement) : unit =
+        outermost element.Document (fun () -> clickNow element)
+
+    let focus (element: TwinElement) : unit =
+        outermost element.Document (fun () -> focusNow element)
+
+    let blur (element: TwinElement) : unit =
+        outermost element.Document (fun () -> blurNow element)
 
     // Per node: the listeners added through addEventListener, by type and callback object, with their removal.
     let private added =

@@ -11,6 +11,9 @@
         <Compile Include="Bridge.fs" />
         <Compile Include="Events.fs" />
         <Compile Include="SelectorMembers.fs" />
+        <Compile Include="Clock.fs" />
+        <Compile Include="Host.fs" />
+        <Compile Include="Session.fs" />
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="../../src/Ranvier/Ranvier.fsproj" />

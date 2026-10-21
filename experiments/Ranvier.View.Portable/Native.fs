@@ -113,6 +113,14 @@ let nextOrNull (node: Node) : Node =
 #endif
 
 #if FABLE_COMPILER
+[<Emit("$0.parentNode")>]
+let parentOrNull (node: Node) : Node = jsNative
+#else
+let parentOrNull (node: Node) : Node =
+    orNull node.parentNode
+#endif
+
+#if FABLE_COMPILER
 [<Emit("$0.firstChild")>]
 let firstChildOf (node: Node) : Node = jsNative
 #else
@@ -518,9 +526,6 @@ let setExpando (target: obj) (name: string) (value: 'T) : unit =
 
 #if !FABLE_COMPILER
 // .NET bodies of the node, document, timer and microtask helpers kept under a local `#if` in the view files.
-
-let parentOrNull (node: Node) : Node =
-    orNull node.parentNode
 
 let lastChildOf (node: Node) : Node =
     orNull node.lastChild

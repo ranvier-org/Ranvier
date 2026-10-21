@@ -528,11 +528,23 @@ let private validateParsed (content: DocumentFragment) (walk: int array) (target
             count <- count + 1
         elif not (isNull (box cursor)) then
             if op = FirstChild then
+#if FABLE_COMPILER
                 cursor <- unbox cursor.firstChild
+#else
+                cursor <- Native.firstChildOf cursor
+#endif
             elif op = NextSibling then
+#if FABLE_COMPILER
                 cursor <- unbox cursor.nextSibling
+#else
+                cursor <- Native.nextOrNull cursor
+#endif
             else
+#if FABLE_COMPILER
                 cursor <- unbox cursor.parentNode
+#else
+                cursor <- Native.parentOrNull cursor
+#endif
 
 let private tables (targets: (TemplateNode * int array) array) (owners: int array) (part: int) (first: int) (count: int) =
     let renderSlots = ResizeArray<int * Slot>()
@@ -709,7 +721,11 @@ let compile (definition: TemplateComponent) : Compiled =
         0
         targets.Length
         (if rootCount = 1 then
+#if FABLE_COMPILER
              unbox content.firstChild
+#else
+             Native.firstChildOf content
+#endif
          else
              content :> Node)
         rootCount
@@ -997,11 +1013,23 @@ let private collect (root: Node) (walk: int array) (state: obj array) =
         let op = at walk i
 
         if op = FirstChild then
+#if FABLE_COMPILER
             cursor <- unbox cursor.firstChild
+#else
+            cursor <- Native.firstChildOf cursor
+#endif
         elif op = NextSibling then
+#if FABLE_COMPILER
             cursor <- unbox cursor.nextSibling
+#else
+            cursor <- Native.nextOrNull cursor
+#endif
         elif op = Parent then
+#if FABLE_COMPILER
             cursor <- unbox cursor.parentNode
+#else
+            cursor <- Native.parentOrNull cursor
+#endif
         else
             store state (StateNodes + count) (box cursor)
             count <- count + 1
@@ -1333,8 +1361,16 @@ let private adoptedPath (roots: Node array) (node: Node) : string =
     let mutable root = rootIndex current
 
     while root.IsNone do
+#if FABLE_COMPILER
         let parent: Node = unbox current.parentNode
+#else
+        let parent: Node = Native.parentOrNull current
+#endif
+#if FABLE_COMPILER
         let mutable sibling: Node = unbox parent.firstChild
+#else
+        let mutable sibling: Node = Native.firstChildOf parent
+#endif
         let mutable position = 0
 
         while not (obj.ReferenceEquals (sibling, current)) do
@@ -1395,7 +1431,11 @@ let private adoptRoots (cursor: HydrationCursor) (compiled: Compiled) : Node arr
     let skeleton = compiled.Skeleton
 
     let mutable expected: Node =
+#if FABLE_COMPILER
         if count = 1 then skeleton else unbox skeleton.firstChild
+#else
+        if count = 1 then skeleton else Native.firstChildOf skeleton
+#endif
 
     let mutable node = cursor.Next
 
@@ -1542,7 +1582,11 @@ let private collectAdopted (roots: Node array) (compiled: Compiled) (state: obj 
             elif absent node then
                 node <- noNode
             else
+#if FABLE_COMPILER
                 node <- unbox node.firstChild
+#else
+                node <- Native.firstChildOf node
+#endif
         elif op = NextSibling then
             if depth = 1 then
                 rootIndex <- rootIndex + 1
@@ -1566,18 +1610,43 @@ let private collectAdopted (roots: Node array) (compiled: Compiled) (state: obj 
         elif op = Parent then
             depth <- depth - 1
             node <- parent
+#if FABLE_COMPILER
             parent <- if absent node then noNode else unbox node.parentNode
+#else
+            parent <- if absent node then noNode else Native.parentOrNull node
+#endif
         else
             node <- adoptTarget cursor (at compiled.Expect count) walk single index parent node
             store state (StateNodes + count) (box node)
             count <- count + 1
 
+#if FABLE_COMPILER
 /// <summary>The definition's compiled form, compiling it on first use.</summary>
 let internal compiledOf (definition: TemplateDefinition) : Compiled =
     if isNull definition.Compiled then
         definition.Compiled <- box (compile (definition :?> TemplateComponent))
 
     definition.Compiled :?> Compiled
+#else
+// Per document: the compiled forms, whose template nodes belong to that document and its thread.
+let private compiledByDocument =
+    System.Runtime.CompilerServices.ConditionalWeakTable<obj, System.Collections.Generic.Dictionary<TemplateDefinition, Compiled>>()
+
+/// <summary>The definition's compiled form in the host document, compiling it on first use there.</summary>
+let internal compiledOf (definition: TemplateDefinition) : Compiled =
+    let compiled =
+        compiledByDocument.GetValue (
+            box (Native.document ()),
+            fun _ -> System.Collections.Generic.Dictionary<TemplateDefinition, Compiled>(HashIdentity.Reference)
+        )
+
+    match compiled.TryGetValue definition with
+    | true, existing -> existing
+    | false, _ ->
+        let created = compile (definition :?> TemplateComponent)
+        compiled[definition] <- created
+        created
+#endif
 
 /// <summary>
 /// Materialises one instance at the position one step of <c>kind</c> below <c>parent</c>: runs setup, clones the
@@ -1658,10 +1727,18 @@ let rec internal materialise
     elif compiled.RootCount = 1 then
         services.Append clone
     else
+#if FABLE_COMPILER
         let mutable root: Node = unbox clone.firstChild
+#else
+        let mutable root: Node = Native.firstChildOf clone
+#endif
 
         while not (isNull (box root)) do
+#if FABLE_COMPILER
             let next: Node = unbox root.nextSibling
+#else
+            let next: Node = Native.nextOrNull root
+#endif
             services.Append root
             root <- next
 
@@ -1689,7 +1766,11 @@ let rec internal materialise
 
         let finish: Node =
             if isNull cursor then
+#if FABLE_COMPILER
                 unbox start.nextSibling
+#else
+                Native.nextOrNull start
+#endif
             else
                 try
                     matchingEnd start
