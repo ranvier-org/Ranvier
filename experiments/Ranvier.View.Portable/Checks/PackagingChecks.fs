@@ -172,73 +172,145 @@ let private nativeStructureRejects () =
     equal 1 (nativeStructure "#if FABLE_COMPILER && X\nlet a = 1\n#endif\n").Length
 
 /// <summary>
-/// The violations of the Emit rule in <c>text</c>: an Emit attribute or <c>emitJsExpr</c> call outside the Fable branch
-/// of a <c>#if FABLE_COMPILER</c> block, and a name declared in a Fable branch without an <c>#else</c> that is used outside
-/// every Fable branch, where .NET would reach its Fable-only body.
+/// The Fable branches of <c>lines</c> through nested directives: for each line, whether it lies in the Fable branch of a
+/// <c>#if FABLE_COMPILER</c> block or in the <c>#else</c> of a <c>#if !FABLE_COMPILER</c> block, and, for a line in a
+/// <c>#if FABLE_COMPILER</c> block without an <c>#else</c>, that block's first line.
 /// </summary>
-let unguardedEmits (text: string) : string list =
-    let lines = text.Replace("\r", "").Split '\n'
-    // For each line: whether it lies in a Fable branch, and the index of the Fable branch's block when it has no #else.
+let private fableBranches (lines: string array) : bool array * int array =
     let inFable = Array.zeroCreate<bool> lines.Length
-    let blockOf = Array.create lines.Length -1
-    let elseless = ResizeArray<int>()
-    let mutable openAt = -1
+    let elselessBlock = Array.create lines.Length -1
+    // The open directives, innermost first: (kind, start, in the #else part). Kind 1: FABLE_COMPILER, -1: its
+    // negation, 0: any other symbol.
+    let mutable frames: (int * int * bool) list = []
+    let pending = ResizeArray<int * int>()
+    let withoutElse = System.Collections.Generic.HashSet<int>()
 
     for i in 0 .. lines.Length - 1 do
         let trimmed = lines[i].Trim()
 
-        if trimmed = "#if FABLE_COMPILER" then
-            openAt <- i
-        elif openAt >= 0 && trimmed = "#else" then
-            openAt <- -1
-        elif openAt >= 0 && trimmed = "#endif" then
-            elseless.Add openAt
-            openAt <- -1
-        elif openAt >= 0 then
-            inFable[i] <- true
-            blockOf[i] <- openAt
+        if trimmed.StartsWith "#if" then
+            let kind =
+                match trimmed with
+                | "#if FABLE_COMPILER" -> 1
+                | "#if !FABLE_COMPILER" -> -1
+                | _ -> 0
 
+            frames <- (kind, i, false) :: frames
+        elif trimmed = "#else" then
+            match frames with
+            | (kind, start, _) :: rest -> frames <- (kind, start, true) :: rest
+            | [] -> ()
+        elif trimmed = "#endif" then
+            match frames with
+            | (1, start, false) :: rest ->
+                withoutElse.Add start |> ignore
+                frames <- rest
+            | _ :: rest -> frames <- rest
+            | [] -> ()
+        else
+            let fable =
+                frames
+                |> List.tryFind (fun (kind, _, inElse) -> (kind = 1 && not inElse) || (kind = -1 && inElse))
+
+            match fable with
+            | Some (kind, start, _) ->
+                inFable[i] <- true
+
+                if kind = 1 then
+                    pending.Add ((i, start))
+            | None -> ()
+
+    for line, start in pending do
+        if withoutElse.Contains start then
+            elselessBlock[line] <- start
+
+    inFable, elselessBlock
+
+let private moduleName (text: string) =
+    let found =
+        Regex.Match (text, @"^module (?:internal )?(?:rec )?([\w.]+)", RegexOptions.Multiline)
+
+    if found.Success then
+        found.Groups[1].Value.Split('.') |> Array.last
+    else
+        ""
+
+/// <summary>
+/// The violations of the Emit rule across <c>files</c> (name and text): an Emit attribute or <c>emitJsExpr</c> call
+/// outside a Fable branch, and a name declared in a Fable branch without an <c>#else</c> that is used outside every Fable
+/// branch, bare in its own file or qualified by its module in any file, where .NET would reach its Fable-only body.
+/// </summary>
+let unguardedEmitsAcross (files: (string * string) list) : string list =
     let emit = Regex (@"\[<\s*(?:[\w.]*\.)?Emit\b|emitJsExpr")
 
     let declared =
         Regex (@"^\s*let (?:inline )?(?:private )?(?:internal )?(?:rec )?(\w+)")
 
-    let fableOnly =
-        set
-            [
-                for i in 0 .. lines.Length - 1 do
-                    if inFable[i] && elseless.Contains blockOf[i] then
-                        let found = declared.Match lines[i]
+    let parsed =
+        [
+            for file, text in files ->
+                let lines = text.Replace("\r", "").Split '\n'
+                let inFable, elseless = fableBranches lines
 
-                        if found.Success then
-                            found.Groups[1].Value
-            ]
+                let fableOnly =
+                    set
+                        [
+                            for i in 0 .. lines.Length - 1 do
+                                if elseless[i] >= 0 then
+                                    let found = declared.Match lines[i]
+
+                                    if found.Success then
+                                        found.Groups[1].Value
+                        ]
+
+                file, moduleName text, lines, inFable, fableOnly
+        ]
+
+    let qualified =
+        [
+            for _, owner, _, _, names in parsed do
+                if owner <> "" then
+                    for name in names do
+                        owner + "." + name
+        ]
 
     [
-        for i in 0 .. lines.Length - 1 do
-            let line = lines[i]
+        for file, _, lines, inFable, fableOnly in parsed do
+            let prefix = if files.Length > 1 then file + ": " else ""
 
-            if not (line.TrimStart().StartsWith "//") then
-                if not inFable[i] && emit.IsMatch line then
-                    line.Trim ()
+            for i in 0 .. lines.Length - 1 do
+                let line = lines[i]
 
-                if not inFable[i] then
+                if
+                    not (line.TrimStart().StartsWith "//")
+                    && not inFable[i]
+                then
+                    if emit.IsMatch line then
+                        prefix + line.Trim ()
+
                     for name in fableOnly do
                         if Regex.IsMatch (line, @"(?<![\w.])" + Regex.Escape name + @"\b") then
-                            $"{name} is declared in a Fable branch without #else and used here: {line.Trim ()}"
+                            $"{prefix}{name} is declared in a Fable branch without #else and used here: {line.Trim ()}"
+
+                    for name in qualified do
+                        if Regex.IsMatch (line, @"(?<![\w.])" + Regex.Escape name + @"\b") then
+                            $"{prefix}{name} is declared in a Fable branch without #else and used here: {line.Trim ()}"
     ]
     |> List.distinct
 
+/// <summary>The violations of the Emit rule in one file's <c>text</c>; see <c>unguardedEmitsAcross</c>.</summary>
+let unguardedEmits (text: string) : string list =
+    unguardedEmitsAcross [ "", text ]
+
 let private guardedEmits () =
-    let offending =
+    let files =
         [
             for file in compiled () do
                 if file <> "Native.fs" then
-                    for line in unguardedEmits (File.ReadAllText (Path.Combine (portable, file))) do
-                        file + ": " + line
+                    file, File.ReadAllText (Path.Combine (portable, file))
         ]
 
-    equal [] offending
+    equal [] (unguardedEmitsAcross files)
 
 let private guardedEmitsRejects () =
     equal [] (unguardedEmits "#if FABLE_COMPILER\n[<Emit(\"$0.a\")>]\nlet a x = jsNative\n#else\nlet a x = x\n#endif\n")
@@ -250,6 +322,27 @@ let private guardedEmitsRejects () =
         []
         (unguardedEmits
             "#if FABLE_COMPILER\n[<Emit(\"$0.a\")>]\nlet a x = jsNative\n#endif\n#if FABLE_COMPILER\nlet b = a 1\n#else\nlet b = 1\n#endif\n")
+
+    // A nested block inside the Fable branch does not end it.
+    equal [] (unguardedEmits "#if FABLE_COMPILER\n#if X\nlet y = 1\n#endif\n[<Emit(\"$0.a\")>]\nlet a x = jsNative\n#else\nlet a x = x\n#endif\n")
+
+    // The #else of #if !FABLE_COMPILER is a Fable branch.
+    equal [] (unguardedEmits "#if !FABLE_COMPILER\nlet a x = x\n#else\n[<Emit(\"$0.a\")>]\nlet a x = jsNative\n#endif\n")
+    equal 1 (unguardedEmits "#if !FABLE_COMPILER\n[<Emit(\"$0.a\")>]\nlet a x = jsNative\n#endif\n").Length
+
+    // A Fable-only helper used qualified from another file.
+    let helper =
+        "module Helpers\n#if FABLE_COMPILER\n[<Emit(\"$0.a\")>]\nlet a x = jsNative\n#endif\n"
+
+    equal 1 (unguardedEmitsAcross [ "Helpers.fs", helper; "Uses.fs", "module Uses\nlet b = Helpers.a 1\n" ]).Length
+
+    equal
+        []
+        (unguardedEmitsAcross
+            [
+                "Helpers.fs", helper
+                "Uses.fs", "module Uses\n#if FABLE_COMPILER\nlet b = Helpers.a 1\n#else\nlet b = 1\n#endif\n"
+            ])
 
 let cases: (string * (unit -> unit)) array =
     [|

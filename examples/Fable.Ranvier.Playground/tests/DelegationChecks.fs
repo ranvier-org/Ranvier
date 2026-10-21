@@ -24,21 +24,26 @@ let private element (tag: string) =
 let private mount graph host view =
     Mounting.mount graph None (fun errors -> failwithf "%A" errors) host None (fun context -> Program.run view context.Backend)
 
-#if FABLE_COMPILER
-[<Emit("(() => { const counts = { add: 0, remove: 0 }; const add = $0.addEventListener.bind($0), remove = $0.removeEventListener.bind($0); $0.addEventListener = (type, listener, options) => { if (type === 'click') counts.add++; add(type, listener, options); }; $0.removeEventListener = (type, listener, options) => { if (type === 'click') counts.remove++; remove(type, listener, options); }; return counts; })()")>]
-let private spyClickListeners (host: HTMLElement) : obj = jsNative
-#else
-let private spyClickListeners (host: HTMLElement) : obj =
-    raise (System.NotSupportedException "jsdom only: patches addEventListener on the host")
-#endif
+// Counts the click listeners added to and removed from the host.
+let private spyClickListeners (host: HTMLElement) : int ref * int ref =
+    let added, removed = ref 0, ref 0
 
-#if FABLE_COMPILER
-[<Emit("[$0.add, $0.remove]")>]
-let private listenerCounts (counts: obj) : int array = jsNative
-#else
-let private listenerCounts (counts: obj) : int array =
-    raise (System.NotSupportedException "jsdom only: patches addEventListener on the host")
-#endif
+    let counting (counter: int ref) (original: obj array -> obj) (args: obj array) =
+        if unbox<string> args[0] = "click" then
+            counter.Value <- counter.Value + 1
+
+        original args
+
+    Conformance.intercept host "addEventListener" (counting added)
+    |> ignore
+
+    Conformance.intercept host "removeEventListener" (counting removed)
+    |> ignore
+
+    added, removed
+
+let private listenerCounts (added: int ref, removed: int ref) : int array =
+    [| added.Value; removed.Value |]
 
 #if FABLE_COMPILER
 [<Emit("$0.dispatchEvent(new FocusEvent('focus'))")>]
@@ -367,23 +372,11 @@ let cases: Conformance.Case array =
             "nested keyed mounts dispatch a click once per handler", fun () -> nested false
             "stopPropagation stops delegated ancestors", fun () -> nested true
             "non-bubbling events use direct listeners removed on disposal", nonBubbling
-            Conformance.platformOnly "jsdom" "patches addEventListener on the host" ("moved mounts dispatch from their new host", moved)
-            Conformance.platformOnly
-                "jsdom"
-                "patches addEventListener on the host"
-                ("a shared host keeps one listener until its last mount is disposed", sharedHost)
-            Conformance.platformOnly
-                "jsdom"
-                "patches addEventListener on the host"
-                ("disposing a mount on one host leaves another host's dispatch and listener unchanged", independentHosts)
-            Conformance.platformOnly
-                "jsdom"
-                "patches addEventListener on the host"
-                ("a handler disposing its own sole mount removes the delegated listener", selfDisposal)
-            Conformance.platformOnly
-                "jsdom"
-                "patches addEventListener on the host"
-                ("a handler mounting a fresh view on its host leaves later clicks dispatching once", remountDuringDispatch)
+            "moved mounts dispatch from their new host", moved
+            "a shared host keeps one listener until its last mount is disposed", sharedHost
+            "disposing a mount on one host leaves another host's dispatch and listener unchanged", independentHosts
+            "a handler disposing its own sole mount removes the delegated listener", selfDisposal
+            "a handler mounting a fresh view on its host leaves later clicks dispatching once", remountDuringDispatch
             "an inner host's handler resumes dispatch in the outer mount", fun () -> nestedHosts false
             "stopPropagation in an inner host's handler stops the outer mount's handler", fun () -> nestedHosts true
             "moving and disposing a mount with only direct listeners leaves the host's delegated dispatch once", directOnlyMove

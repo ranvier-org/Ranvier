@@ -11,6 +11,14 @@ type internal Member = TwinNode -> obj array -> obj
 /// <summary>A member implementation and the DOM interfaces it serves.</summary>
 type internal Entry = { Accepts: Type -> bool; Run: Member }
 
+/// <summary>A wrapper around a DOM method of one node, or of every node of a document when <c>Target</c> is null.</summary>
+type internal Interception =
+    {
+        Target: TwinNode
+        Name: string
+        Wrap: Func<Func<obj array, obj>, obj array, obj>
+    }
+
 /// <summary>The members served on the current thread while a recording is open.</summary>
 [<Sealed; AbstractClass>]
 type internal ServedOnThread =
@@ -63,6 +71,9 @@ and internal BridgeCore private () =
 
     // Per owner: the list proxies already handed out, by list key and interface.
     static let lists = ConditionalWeakTable<obj, Dictionary<string, obj>>()
+
+    // Per document: the interceptions in the order they were added.
+    static let interceptions = ConditionalWeakTable<TwinDocument, ResizeArray<Interception>>()
 
     static member Register(key: string, entry: Entry) =
         table.AddOrUpdate (key, [ entry ], fun _ entries -> entries @ [ entry ])
@@ -309,16 +320,55 @@ and internal BridgeCore private () =
 
         match entry with
         | Some entry ->
-            BridgeCore.Serve (BridgeCore.Qualified targetMethod)
+            let original (args: obj array) : obj =
+                BridgeCore.Serve (BridgeCore.Qualified targetMethod)
+                BridgeCore.Wrap (targetMethod, targetMethod.ReturnType, entry.Run node (Array.map BridgeCore.Unwrap args))
 
-            let args =
-                if isNull args then
-                    [||]
-                else
-                    Array.map BridgeCore.Unwrap args
+            let args = if isNull args then [||] else args
 
-            BridgeCore.Wrap (targetMethod, targetMethod.ReturnType, entry.Run node args)
+            match interceptions.TryGetValue node.Document with
+            | true, list when list.Count > 0 ->
+                let applying =
+                    [
+                        for i in list do
+                            if
+                                i.Name = targetMethod.Name
+                                && (isNull i.Target
+                                    || obj.ReferenceEquals (i.Target, node))
+                            then
+                                i
+                    ]
+
+                // A later interception wraps the earlier ones, as a later patch of a JavaScript method does.
+                let call =
+                    applying
+                    |> List.fold (fun (inner: obj array -> obj) i -> fun (a: obj array) -> i.Wrap.Invoke (Func<obj array, obj> inner, a)) original
+
+                // The wrappers see the arguments as DOM objects: nodes as their proxies, options and unions unwrapped.
+                let visible =
+                    args
+                    |> Array.map (fun a ->
+                        match BridgeCore.Unwrap a with
+                        | :? TwinNode as n -> BridgeCore.ProxyOf n
+                        | v -> v)
+
+                if applying.IsEmpty then original args else call visible
+            | _ -> original args
         | None -> raise (BridgeCore.Unsupported targetMethod)
+
+    /// <summary>Routes calls of the method <c>name</c> on <c>target</c>, or on every node of <c>document</c> when null, through <c>wrap</c>.</summary>
+    static member Intercept(document: TwinDocument, target: TwinNode, name: string, wrap: Func<Func<obj array, obj>, obj array, obj>) : unit -> unit =
+        let list = interceptions.GetValue (document, fun _ -> ResizeArray ())
+
+        let interception =
+            {
+                Target = target
+                Name = name
+                Wrap = wrap
+            }
+
+        list.Add interception
+        fun () -> list.Remove interception |> ignore
 
 [<RequireQualifiedAccess>]
 module Bridge =
@@ -346,6 +396,14 @@ module Bridge =
                 Run = implementation
             }
         )
+
+    /// <summary>
+    /// Routes calls of the DOM method <c>name</c> on <c>target</c>, or on every node of <c>document</c> when
+    /// <c>target</c> is null, through <c>wrap</c> until the returned function runs. <c>wrap</c> receives the original
+    /// method and the call's arguments, and its result is the call's result.
+    /// </summary>
+    let intercept (document: TwinDocument) (target: TwinNode) (name: string) (wrap: Func<Func<obj array, obj>, obj array, obj>) =
+        BridgeCore.Intercept (document, target, name, wrap)
 
     /// <summary>The members served on the calling thread while <c>run</c> runs, sorted.</summary>
     let servedDuring (run: unit -> unit) : string list =

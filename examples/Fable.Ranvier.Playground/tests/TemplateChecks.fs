@@ -93,7 +93,8 @@ type Row =
         Log: ResizeArray<string>
     }
 
-let private rowLog = ResizeArray<string>()
+let private rowLog () =
+    Conformance.local "rowLog" (fun () -> ResizeArray<string>())
 
 let private row =
     Component.define
@@ -104,10 +105,10 @@ let private row =
                     Source = props.Source
                     Disabled = props.Disabled
                     Local = Api.createSignal 0
-                    Log = rowLog
+                    Log = (rowLog ())
                 }
 
-            setup.OnCleanup (fun () -> rowLog.Add ("cleanup " + string row.Index))
+            setup.OnCleanup (fun () -> (rowLog ()).Add("cleanup " + string row.Index))
             row)
         (fun t ->
             t.div
@@ -210,24 +211,23 @@ let private changedSlotsOnly () =
         |> Option.get
         |> unbox<HTMLElement>
 
-    let mutable titleWrites = 0
-    let setAttribute = div?setAttribute
+    let titleWrites = ref 0
 
-    div?setAttribute <-
-        fun (name: string) (value: string) ->
-            if name = "title" then
-                titleWrites <- titleWrites + 1
+    Conformance.intercept div "setAttribute" (fun original args ->
+        if unbox<string> args[0] = "title" then
+            titleWrites.Value <- titleWrites.Value + 1
 
-            setAttribute?call (div, name, value)
+        original args)
+    |> ignore
 
     (host.querySelector "button"
      |> Option.get
      |> unbox<HTMLButtonElement>)
         .click()
 
-    equal 0 titleWrites
+    equal 0 titleWrites.Value
     graph.Run (fun () -> source.Value <- "b")
-    equal 1 titleWrites
+    equal 1 titleWrites.Value
     mounted.Dispose ()
 
 let private readerFailure () =
@@ -425,7 +425,7 @@ let private cleanupOrder () =
     use graph = new Graph ()
     let source = graph.Run (fun () -> Api.createSignal "a")
     let disabled = graph.Run (fun () -> Api.createMemo (fun _ -> false))
-    rowLog.Clear ()
+    (rowLog ()).Clear()
     let host = host ()
 
     let view =
@@ -443,7 +443,7 @@ let private cleanupOrder () =
 
     let mounted = mount graph host view
     mounted.Dispose ()
-    equal [ "cleanup 2"; "cleanup 1" ] (List.ofSeq rowLog)
+    equal [ "cleanup 2"; "cleanup 1" ] (List.ofSeq (rowLog ()))
     equal 0. host.childNodes.length
 
 let private adjacentTexts () =
@@ -930,17 +930,16 @@ let private nullAttributes () =
         |> Option.get
         |> unbox<HTMLElement>
 
-    let mutable writes = 0
-    let setAttribute = div?setAttribute
+    let writes = ref 0
 
-    div?setAttribute <-
-        fun (name: string) (value: string) ->
-            writes <- writes + 1
-            setAttribute?call (div, name, value)
+    Conformance.intercept div "setAttribute" (fun original args ->
+        writes.Value <- writes.Value + 1
+        original args)
+    |> ignore
 
     equal (None, None, None) (div.getAttribute "title", div.getAttribute "id", div.getAttribute "class")
     graph.Run (fun () -> other.Value <- 1)
-    equal (0, None, "1") (writes, div.getAttribute "title", host.textContent)
+    equal (0, None, "1") (writes.Value, div.getAttribute "title", host.textContent)
     graph.Run (fun () -> source.Value <- "set")
     equal (Some "set", Some "set") (div.getAttribute "id", div.getAttribute "class")
     mounted.Dispose ()
@@ -1282,21 +1281,24 @@ type Stage =
     | Working of int
     | Complete of string
 
-let private stageLog = ResizeArray<string>()
-let private stageRenders = ResizeArray<string>()
+let private stageLog () =
+    Conformance.local "stageLog" (fun () -> ResizeArray<string>())
+
+let private stageRenders () =
+    Conformance.local "stageRenders" (fun () -> ResizeArray<string>())
 
 let private waitingArm =
     Component.define
         (fun setup (_: unit -> unit) ->
-            stageLog.Add "setup waiting"
-            setup.OnCleanup (fun () -> stageLog.Add "cleanup waiting"))
+            (stageLog ()).Add "setup waiting"
+            setup.OnCleanup (fun () -> (stageLog ()).Add "cleanup waiting"))
         (fun t -> t.span [||] [| t.text "waiting" |])
 
 let private workingArm =
     Component.define
         (fun setup (progress: unit -> int) ->
-            stageLog.Add "setup working"
-            setup.OnCleanup (fun () -> stageLog.Add "cleanup working")
+            (stageLog ()).Add "setup working"
+            setup.OnCleanup (fun () -> (stageLog ()).Add "cleanup working")
             progress)
         (fun t ->
             t.span
@@ -1304,15 +1306,15 @@ let private workingArm =
                 [|
                     t.text (fun progress ->
                         let text = "working " + string (progress ())
-                        stageRenders.Add text
+                        (stageRenders ()).Add text
                         text)
                 |])
 
 let private completeArm =
     Component.define
         (fun setup (result: unit -> string) ->
-            stageLog.Add "setup complete"
-            setup.OnCleanup (fun () -> stageLog.Add "cleanup complete")
+            (stageLog ()).Add "setup complete"
+            setup.OnCleanup (fun () -> (stageLog ()).Add "cleanup complete")
             result)
         (fun t -> t.span [||] [| t.text (fun result -> "complete " + result ()) |])
 
@@ -1331,7 +1333,7 @@ let private staged =
 
 let private matchSwitching () =
     use graph = new Graph ()
-    stageLog.Clear ()
+    (stageLog ()).Clear()
     let stage = graph.Run (fun () -> Api.createSignal Waiting)
     let host = host ()
     let mounted = mount graph host (Component.render staged stage)
@@ -1350,15 +1352,15 @@ let private matchSwitching () =
             "cleanup working"
             "setup complete"
         ]
-        (List.ofSeq stageLog)
+        (List.ofSeq (stageLog ()))
 
     mounted.Dispose ()
-    equal ("cleanup complete", 0.) (stageLog[stageLog.Count - 1], host.childNodes.length)
+    equal ("cleanup complete", 0.) ((stageLog ())[(stageLog ()).Count - 1], host.childNodes.length)
 
 let private matchSameFlush () =
     use graph = new Graph ()
-    stageLog.Clear ()
-    stageRenders.Clear ()
+    (stageLog ()).Clear()
+    (stageRenders ()).Clear()
     let stage = graph.Run (fun () -> Api.createSignal (Working 1))
     let host = host ()
     let mounted = mount graph host (Component.render staged stage)
@@ -1368,20 +1370,20 @@ let private matchSameFlush () =
             stage.Value <- Complete "x"
             stage.Value <- Working 2))
 
-    equal ("working 2", [ "setup working" ]) (host.textContent, List.ofSeq stageLog)
+    equal ("working 2", [ "setup working" ]) (host.textContent, List.ofSeq (stageLog ()))
 
     graph.Run (fun () ->
         Api.batch (fun () ->
             stage.Value <- Working 3
             stage.Value <- Complete "y"))
 
-    equal ("complete y", [ "setup working"; "cleanup working"; "setup complete" ]) (host.textContent, List.ofSeq stageLog)
-    equal [ "working 1"; "working 2" ] (List.ofSeq stageRenders)
+    equal ("complete y", [ "setup working"; "cleanup working"; "setup complete" ]) (host.textContent, List.ofSeq (stageLog ()))
+    equal [ "working 1"; "working 2" ] (List.ofSeq (stageRenders ()))
     mounted.Dispose ()
 
 let private matchTwin () =
     use graph = new Graph ()
-    stageLog.Clear ()
+    (stageLog ()).Clear()
     let stage = graph.Run (fun () -> Api.createSignal (Working 1))
     let first, second = host (), host ()
     let templateMount = mount graph first (Component.render staged stage)
@@ -1395,14 +1397,15 @@ let private matchTwin () =
     twinMount.Dispose ()
     equal (0., 0.) (first.childNodes.length, second.childNodes.length)
 
-let mutable private haltDuringSetup: unit -> unit = ignore
+let private haltDuringSetup () =
+    Conformance.local "haltDuringSetup" (fun () -> ref (ignore: unit -> unit))
 
 let private haltingArm =
     Component.define
         (fun setup (_: unit -> string) ->
-            stageLog.Add "setup halting"
-            setup.OnCleanup (fun () -> stageLog.Add "cleanup halting")
-            haltDuringSetup ())
+            (stageLog ()).Add "setup halting"
+            setup.OnCleanup (fun () -> (stageLog ()).Add "cleanup halting")
+            (haltDuringSetup ()).Value())
         (fun t -> t.span [||] [| t.text "halting" |])
 
 let private halting =
@@ -1411,7 +1414,7 @@ let private halting =
 
 let private disposedMidSwitch () =
     use graph = new Graph ()
-    stageLog.Clear ()
+    (stageLog ()).Clear()
     let stage = graph.Run (fun () -> Api.createSignal (Working 1))
     let host = host ()
     let reported = ResizeArray<exn>()
@@ -1419,16 +1422,16 @@ let private disposedMidSwitch () =
     let mounted =
         Mounting.mount graph None reported.AddRange host None (fun context -> Program.run (Component.render halting stage) context.Backend)
 
-    haltDuringSetup <- fun () -> mounted.Dispose ()
+    (haltDuringSetup ()).Value <- fun () -> mounted.Dispose ()
 
     try
         graph.Run (fun () -> stage.Value <- Complete "x")
     finally
-        haltDuringSetup <- ignore
+        (haltDuringSetup ()).Value <- ignore
 
     equal (0., 0) (host.childNodes.length, reported.Count)
 
-    equal [ "cleanup halting"; "cleanup working"; "setup halting"; "setup working" ] (List.sort (List.ofSeq stageLog))
+    equal [ "cleanup halting"; "cleanup working"; "setup halting"; "setup working" ] (List.sort (List.ofSeq (stageLog ())))
 
 let private stagedServer =
     Component.define (fun _ (stage: Stage) -> stage) (fun t -> t.div [||] [| t.matchWith id (stageArms t) |])
@@ -1458,7 +1461,7 @@ let private phased =
 
 let private sharedArm () =
     use graph = new Graph ()
-    stageLog.Clear ()
+    (stageLog ()).Clear()
     let phase = graph.Run (fun () -> Api.createSignal (Loading 1))
     let host = host ()
     let mounted = mount graph host (Component.render phased phase)
@@ -1468,28 +1471,29 @@ let private sharedArm () =
         |> Option.get
         |> unbox<HTMLElement>
 
-    equal ("working 1", [ "setup working" ]) (host.textContent, List.ofSeq stageLog)
+    equal ("working 1", [ "setup working" ]) (host.textContent, List.ofSeq (stageLog ()))
     graph.Run (fun () -> phase.Value <- Saving 2)
 
     equal
         ("working 2", [ "setup working" ], true)
-        (host.textContent, List.ofSeq stageLog, obj.ReferenceEquals (span, host.querySelector "span" |> Option.get))
+        (host.textContent, List.ofSeq (stageLog ()), obj.ReferenceEquals (span, host.querySelector "span" |> Option.get))
 
     graph.Run (fun () -> phase.Value <- Loading 3)
-    equal ("working 3", [ "setup working" ]) (host.textContent, List.ofSeq stageLog)
+    equal ("working 3", [ "setup working" ]) (host.textContent, List.ofSeq (stageLog ()))
     graph.Run (fun () -> phase.Value <- Idle)
-    equal ("waiting", [ "setup working"; "cleanup working"; "setup waiting" ]) (host.textContent, List.ofSeq stageLog)
+    equal ("waiting", [ "setup working"; "cleanup working"; "setup waiting" ]) (host.textContent, List.ofSeq (stageLog ()))
     mounted.Dispose ()
     equal 0. host.childNodes.length
 
-let private decadeLog = ResizeArray<string>()
+let private decadeLog () =
+    Conformance.local "decadeLog" (fun () -> ResizeArray<string>())
 
 let private decadeArm =
     Component.define
         (fun setup (decade: unit -> int) ->
             let initial = decade ()
-            decadeLog.Add ("setup " + string initial)
-            setup.OnCleanup (fun () -> decadeLog.Add ("cleanup " + string initial))
+            (decadeLog ()).Add("setup " + string initial)
+            setup.OnCleanup (fun () -> (decadeLog ()).Add("cleanup " + string initial))
             decade)
         (fun t -> t.span [||] [| t.text (fun decade -> string (decade ())) |])
 
@@ -1503,20 +1507,20 @@ let private decades =
 
 let private branchSwitching () =
     use graph = new Graph ()
-    decadeLog.Clear ()
+    (decadeLog ()).Clear()
     let value = graph.Run (fun () -> Api.createSignal 11)
     let host = host ()
     let mounted = mount graph host (Component.render decades value)
     graph.Run (fun () -> value.Value <- 12)
-    equal ("1", [ "setup 1" ]) (host.textContent, List.ofSeq decadeLog)
+    equal ("1", [ "setup 1" ]) (host.textContent, List.ofSeq (decadeLog ()))
     graph.Run (fun () -> value.Value <- 21)
-    equal ("2", [ "setup 1"; "cleanup 1"; "setup 2" ]) (host.textContent, List.ofSeq decadeLog)
+    equal ("2", [ "setup 1"; "cleanup 1"; "setup 2" ]) (host.textContent, List.ofSeq (decadeLog ()))
     mounted.Dispose ()
-    equal ([ "setup 1"; "cleanup 1"; "setup 2"; "cleanup 2" ], 0.) (List.ofSeq decadeLog, host.childNodes.length)
+    equal ([ "setup 1"; "cleanup 1"; "setup 2"; "cleanup 2" ], 0.) (List.ofSeq (decadeLog ()), host.childNodes.length)
 
 let private branchTwin () =
     use graph = new Graph ()
-    decadeLog.Clear ()
+    (decadeLog ()).Clear()
     let value = graph.Run (fun () -> Api.createSignal 11)
     let first, second = host (), host ()
     let templateMount = mount graph first (Component.render decades value)
@@ -1550,28 +1554,29 @@ let private branchMarkupAsCaller () =
          + "--><span>4</span><!--]--></div>")
         (Html.render Omit (Program.run (Component.render decades value)))
 
-let private roleLog = ResizeArray<string>()
+let private roleLog () =
+    Conformance.local "roleLog" (fun () -> ResizeArray<string>())
 
 let private adminArm =
     Component.define
         (fun setup (tab: unit -> string) ->
-            roleLog.Add "setup admin"
-            setup.OnCleanup (fun () -> roleLog.Add "cleanup admin")
+            (roleLog ()).Add "setup admin"
+            setup.OnCleanup (fun () -> (roleLog ()).Add "cleanup admin")
             tab)
         (fun t -> t.span [||] [| t.text (fun tab -> "admin " + tab ()) |])
 
 let private userArm =
     Component.define
         (fun setup (length: unit -> int) ->
-            roleLog.Add "setup user"
-            setup.OnCleanup (fun () -> roleLog.Add "cleanup user")
+            (roleLog ()).Add "setup user"
+            setup.OnCleanup (fun () -> (roleLog ()).Add "cleanup user")
             length)
         (fun t -> t.span [||] [| t.text (fun length -> "user " + string (length ())) |])
 
 /// <summary>Mounts a <c>branch</c> whose arms read an admin flag, through the template or its default expansion, and returns the DOM after each step and the setup/cleanup log.</summary>
 let private roleSteps (expanded: bool) =
     use graph = new Graph ()
-    roleLog.Clear ()
+    (roleLog ()).Clear()
     let tab = graph.Run (fun () -> Api.createSignal "home")
     let admin = graph.Run (fun () -> Api.createSignal false)
 
@@ -1608,7 +1613,7 @@ let private roleSteps (expanded: bool) =
     steps.Add (withoutComments host)
     mounted.Dispose ()
     steps.Add (string host.childNodes.length)
-    List.ofSeq steps, List.ofSeq roleLog
+    List.ofSeq steps, List.ofSeq (roleLog ())
 
 let private branchDefinitionChange () =
     let expected =
@@ -1633,15 +1638,16 @@ let private branchDefinitionChange () =
     equal expected (roleSteps false)
     equal expected (roleSteps true)
 
-let mutable private ambient = "original"
+let private ambient () =
+    Conformance.local "ambient" (fun () -> ref "original")
 
 /// <summary>An arm that saves <c>ambient</c> on setup, sets it to its name, and restores the saved value on cleanup.</summary>
 let private ambientArm (name: string) =
     Component.define
         (fun setup (_: unit -> unit) ->
-            let saved = ambient
-            ambient <- name
-            setup.OnCleanup (fun () -> ambient <- saved))
+            let saved = (ambient ()).Value
+            (ambient ()).Value <- name
+            setup.OnCleanup (fun () -> (ambient ()).Value <- saved))
         (fun t -> t.span [||] [| t.text name |])
 
 let private ambientFirst = ambientArm "a"
@@ -1662,7 +1668,7 @@ let private ambientSwitch =
 let private armSaveRestore () =
     for expanded in [ false; true ] do
         use graph = new Graph ()
-        ambient <- "original"
+        (ambient ()).Value <- "original"
         let second = graph.Run (fun () -> Api.createSignal false)
         let host = host ()
 
@@ -1675,17 +1681,17 @@ let private armSaveRestore () =
                  else
                      Component.render ambientSwitch second)
 
-        equal "a" ambient
+        equal "a" (ambient ()).Value
         graph.Run (fun () -> second.Value <- true)
-        equal ("b", "b") (ambient, host.textContent)
+        equal ("b", "b") ((ambient ()).Value, host.textContent)
         mounted.Dispose ()
-        equal "original" ambient
+        equal "original" (ambient ()).Value
 
 let private failingArm =
     Component.define
         (fun setup (_: unit -> string) ->
-            stageLog.Add "setup failing"
-            setup.OnCleanup (fun () -> stageLog.Add "cleanup failing")
+            (stageLog ()).Add "setup failing"
+            setup.OnCleanup (fun () -> (stageLog ()).Add "cleanup failing")
             (failwith "arm setup failed": unit))
         (fun t -> t.span [||] [| t.text "failing" |])
 
@@ -1695,7 +1701,7 @@ let private failingStaged =
 
 let private armSetupFailure () =
     use graph = new Graph ()
-    stageLog.Clear ()
+    (stageLog ()).Clear()
     let stage = graph.Run (fun () -> Api.createSignal (Working 1))
     let host = host ()
     let reported = ResizeArray<exn>()
@@ -1712,17 +1718,17 @@ let private armSetupFailure () =
 
     equal
         ([ "setup working"; "cleanup working"; "setup failing"; "cleanup failing" ], 2., "", [ "arm setup failed" ])
-        (List.ofSeq stageLog, div.childNodes.length, div.textContent, reported |> Seq.map _.Message |> List.ofSeq)
+        (List.ofSeq (stageLog ()), div.childNodes.length, div.textContent, reported |> Seq.map _.Message |> List.ofSeq)
 
     graph.Run (fun () -> stage.Value <- Waiting)
-    equal ("waiting", "setup waiting", 1) (host.textContent, stageLog[stageLog.Count - 1], reported.Count)
+    equal ("waiting", "setup waiting", 1) (host.textContent, (stageLog ())[(stageLog ()).Count - 1], reported.Count)
     mounted.Dispose ()
-    equal ("cleanup waiting", 0.) (stageLog[stageLog.Count - 1], host.childNodes.length)
+    equal ("cleanup waiting", 0.) ((stageLog ())[(stageLog ()).Count - 1], host.childNodes.length)
 
 let private throwingCleanupArm =
     Component.define
         (fun setup (_: unit -> unit) ->
-            stageLog.Add "setup throwing"
+            (stageLog ()).Add "setup throwing"
             setup.OnCleanup (fun () -> failwith "arm cleanup failed"))
         (fun t -> t.span [||] [| t.text "throwing" |])
 
@@ -1739,7 +1745,7 @@ let private throwingCleanupStaged =
 
 let private armCleanupFailure () =
     use graph = new Graph ()
-    stageLog.Clear ()
+    (stageLog ()).Clear()
     let stage = graph.Run (fun () -> Api.createSignal Waiting)
     let host = host ()
     let reported = ResizeArray<exn>()
@@ -1752,10 +1758,10 @@ let private armCleanupFailure () =
 
     equal
         ("working 1", [ "setup throwing"; "setup working" ], [ "arm cleanup failed" ])
-        (host.textContent, List.ofSeq stageLog, reported |> Seq.map _.Message |> List.ofSeq)
+        (host.textContent, List.ofSeq (stageLog ()), reported |> Seq.map _.Message |> List.ofSeq)
 
     mounted.Dispose ()
-    equal ("cleanup working", 0.) (stageLog[stageLog.Count - 1], host.childNodes.length)
+    equal ("cleanup working", 0.) ((stageLog ())[(stageLog ()).Count - 1], host.childNodes.length)
 
 let private armPlacementFailure () =
     use graph = new Graph ()
@@ -1816,20 +1822,21 @@ let private armPlacementFailure () =
 
 type Listed = { Id: int; Text: string }
 
-let private listedLog = ResizeArray<string>()
+let private listedLog () =
+    Conformance.local "listedLog" (fun () -> ResizeArray<string>())
 
 let private listedRow =
     Component.define
         (fun setup (item: unit -> Listed) ->
             let id = (item ()).Id
-            listedLog.Add ("setup " + string id)
-            setup.OnCleanup (fun () -> listedLog.Add ("cleanup " + string id))
+            (listedLog ()).Add("setup " + string id)
+            setup.OnCleanup (fun () -> (listedLog ()).Add("cleanup " + string id))
             item)
         (fun t ->
             t.element
                 (HtmlTag "li")
                 [|
-                    t.Events.onClick (fun item _ -> listedLog.Add ("click " + string (item ()).Id))
+                    t.Events.onClick (fun item _ -> (listedLog ()).Add("click " + string (item ()).Id))
                 |]
                 [| t.text (fun item -> (item ()).Text) |])
 
@@ -1851,7 +1858,7 @@ let private rootListed =
 
 let private eachRows () =
     use graph = new Graph ()
-    listedLog.Clear ()
+    (listedLog ()).Clear()
 
     let items =
         graph.Run (fun () -> Api.createSignal [| { Id = 1; Text = "a" }; { Id = 2; Text = "b" } |])
@@ -1872,12 +1879,12 @@ let private eachRows () =
     equal "a" host.textContent
     mounted.Dispose ()
 
-    equal ([ "setup 1"; "setup 2"; "click 1"; "cleanup 2"; "cleanup 1" ], 0.) (List.ofSeq listedLog, host.childNodes.length)
+    equal ([ "setup 1"; "setup 2"; "click 1"; "cleanup 2"; "cleanup 1" ], 0.) (List.ofSeq (listedLog ()), host.childNodes.length)
 
 let private eachReplacement () =
     for expanded in [ false; true ] do
         use graph = new Graph ()
-        listedLog.Clear ()
+        (listedLog ()).Clear()
         let items = graph.Run (fun () -> Api.createSignal [| { Id = 1; Text = "a" } |])
         let host = host ()
 
@@ -1891,7 +1898,7 @@ let private eachReplacement () =
                      Component.render listed items)
 
         graph.Run (fun () -> items.Value <- [| { Id = 2; Text = "b" } |])
-        equal ("b", [ "setup 1"; "setup 2"; "cleanup 1" ]) (host.textContent, List.ofSeq listedLog)
+        equal ("b", [ "setup 1"; "setup 2"; "cleanup 1" ]) (host.textContent, List.ofSeq (listedLog ()))
         mounted.Dispose ()
 
 let private eachDuplicates () =
@@ -1926,13 +1933,18 @@ let private eachDuplicates () =
     equal ("b", 1) (second.textContent, reported.Count)
     mounted.Dispose ()
 
-#if FABLE_COMPILER
-[<Emit("(() => { let count = 0; const old = $0.insertBefore; $0.insertBefore = function(n, b) { count++; return old.call(this, n, b); }; return () => { $0.insertBefore = old; return count; }; })()")>]
-let private countInserts (node: Node) : unit -> int = jsNative
-#else
+// Counts the node's insertBefore calls until the result is called.
 let private countInserts (node: Node) : unit -> int =
-    raise (System.NotSupportedException "jsdom only: patches insertBefore")
-#endif
+    let count = ref 0
+
+    let restore =
+        Conformance.intercept node "insertBefore" (fun original args ->
+            count.Value <- count.Value + 1
+            original args)
+
+    fun () ->
+        restore ()
+        count.Value
 
 #if FABLE_COMPILER
 [<Emit("Array.from($0.childNodes).filter(n => n.nodeType === 8 && n.data === 'ranvier:row')")>]
@@ -1974,7 +1986,7 @@ let private reported graph host view =
 
 let private eachSwapMovesTwo () =
     use graph = new Graph ()
-    listedLog.Clear ()
+    (listedLog ()).Clear()
 
     let items =
         graph.Run (fun () -> Api.createSignal (Array.init 1000 (fun index -> { Id = index; Text = "" })))
@@ -1998,7 +2010,7 @@ let private eachSwapMovesTwo () =
 
 let private stableRemove (view: (Listed -> int) -> Signal<Listed array> -> Program.View) =
     use graph = new Graph ()
-    listedLog.Clear ()
+    (listedLog ()).Clear()
     let keyCalls = ref 0
 
     let key (item: Listed) =
@@ -2017,10 +2029,10 @@ let private stableRemove (view: (Listed -> int) -> Signal<Listed array> -> Progr
 
     let host = host ()
     let mounted = mount graph host (view key items)
-    listedLog.Clear ()
+    (listedLog ()).Clear()
     keyCalls.Value <- 0
     graph.Run (fun () -> items.Value <- Array.removeAt 100 items.Value)
-    equal (199., [ "cleanup 100" ]) ((host.querySelectorAll "li").length, List.ofSeq listedLog)
+    equal (199., [ "cleanup 100" ]) ((host.querySelectorAll "li").length, List.ofSeq (listedLog ()))
     equal 0 keyCalls.Value
     mounted.Dispose ()
 
@@ -2455,7 +2467,7 @@ let private keyedScatteredWindow () =
 
 let private eachMatchesReferenceOrder () =
     use graph = new Graph ()
-    listedLog.Clear ()
+    (listedLog ()).Clear()
     let mutable state = 7.0
 
     let next bound =
@@ -2519,7 +2531,7 @@ let private stableView (keyed: bool) (items: Signal<Listed array>) =
 
 let private stableItemsMatchReferenceOrder (keyed: bool) =
     use graph = new Graph ()
-    listedLog.Clear ()
+    (listedLog ()).Clear()
     let mutable state = 20261015.0
 
     let next bound =
@@ -2611,7 +2623,7 @@ let private recreatedView (keyed: bool) (items: Signal<Listed array>) =
 
 let private recreatedRows (keyed: bool) =
     use graph = new Graph ()
-    listedLog.Clear ()
+    (listedLog ()).Clear()
 
     let row id =
         { Id = id; Text = string id + "," }
@@ -2703,7 +2715,7 @@ let private recreatedEqualKeyUpdate (keyed: bool) =
 
 let private stableEqualKeyUpdate (keyed: bool) =
     use graph = new Graph ()
-    listedLog.Clear ()
+    (listedLog ()).Clear()
 
     let items =
         graph.Run (fun () -> Api.createSignal (Array.init 5 (fun id -> { Id = id; Text = string id + "," })))
@@ -2729,7 +2741,7 @@ let private stableEqualKeyUpdate (keyed: bool) =
     let before =
         Array.init 5 (fun index -> box ((host.querySelectorAll "li").item(float index)))
 
-    let setups = listedLog.Count
+    let setups = (listedLog ()).Count
 
     graph.Run (fun () ->
         items.Value <-
@@ -2740,7 +2752,7 @@ let private stableEqualKeyUpdate (keyed: bool) =
         Array.init 5 (fun index -> box ((host.querySelectorAll "li").item(float index)))
 
     equal "0,1,2,X4," host.textContent
-    equal (true, setups) (Array.forall2 (fun a b -> obj.ReferenceEquals (a, b)) before after, listedLog.Count)
+    equal (true, setups) (Array.forall2 (fun a b -> obj.ReferenceEquals (a, b)) before after, (listedLog ()).Count)
     mounted.Dispose ()
 
 let private eachStableEqualKeyUpdate () =
@@ -2848,7 +2860,7 @@ let private armCleansBeforeRelease () =
 
 let private clicksFollowMovedRows () =
     use graph = new Graph ()
-    listedLog.Clear ()
+    (listedLog ()).Clear()
 
     let items =
         graph.Run (fun () -> Api.createSignal [| for id in 1..3 -> { Id = id; Text = string id } |])
@@ -2885,7 +2897,7 @@ let private clicksFollowMovedRows () =
     equal
         (true, 2)
         (removed,
-         listedLog
+         (listedLog ())
          |> Seq.filter (fun line -> line = "click 1")
          |> Seq.length)
 
@@ -2981,7 +2993,7 @@ let private grouped =
 
 let private nestedListsMoveWhole () =
     use graph = new Graph ()
-    listedLog.Clear ()
+    (listedLog ()).Clear()
 
     let listedOf texts =
         texts
@@ -3142,7 +3154,7 @@ let private disposalAfterCleanupFailure placement =
 
 let private adoptedElementLosesRows () =
     use graph = new Graph ()
-    listedLog.Clear ()
+    (listedLog ()).Clear()
 
     let items =
         graph.Run (fun () -> Api.createSignal [| for id in 1..2 -> { Id = id; Text = string id } |])
@@ -3208,13 +3220,18 @@ let private focusSurvivesOtherMoves () =
     host.remove ()
     equal (true, "1,3") (focused, selection)
 
-#if FABLE_COMPILER
-[<Emit("(() => { const w = document.defaultView; const protos = [w.Element.prototype, w.CharacterData.prototype]; const olds = protos.map(p => p.remove); let count = 0; protos.forEach((p, i) => { p.remove = function () { count++; return olds[i].call(this); }; }); return () => { protos.forEach((p, i) => { p.remove = olds[i]; }); return count; }; })()")>]
-let private countRemoves () : unit -> int = jsNative
-#else
+// Counts the remove () calls on every node until the result is called.
 let private countRemoves () : unit -> int =
-    raise (System.NotSupportedException "jsdom only: patches Element.prototype.remove")
-#endif
+    let count = ref 0
+
+    let restore =
+        Conformance.intercept null "remove" (fun original args ->
+            count.Value <- count.Value + 1
+            original args)
+
+    fun () ->
+        restore ()
+        count.Value
 
 #if FABLE_COMPILER
 [<Emit("Array.from($0.childNodes)")>]
@@ -3227,7 +3244,7 @@ let private childrenOf (node: Node) : obj array =
 
 let private clearsWithoutRemoves () =
     use graph = new Graph ()
-    listedLog.Clear ()
+    (listedLog ()).Clear()
     let items = graph.Run (fun () -> Api.createSignal (listedItems 1000))
     let host = host ()
     let mounted = mount graph host (Component.render listed items)
@@ -3249,7 +3266,7 @@ let private clearsWithoutRemoves () =
          after.Length,
          obj.ReferenceEquals (after[0], before[0])
          && obj.ReferenceEquals (after[1], before[before.Length - 1]),
-         listedLog
+         (listedLog ())
          |> Seq.filter (fun line -> line.StartsWith "cleanup")
          |> Seq.length)
 
@@ -3365,7 +3382,7 @@ let private loggedGroupRow =
     Component.define
         (fun setup (item: unit -> Grouped) ->
             let group = (item ()).Group
-            setup.OnCleanup (fun () -> listedLog.Add ("group cleanup " + string group))
+            setup.OnCleanup (fun () -> (listedLog ()).Add("group cleanup " + string group))
             item)
         (fun t ->
             t.element
@@ -3378,7 +3395,7 @@ let private loggedGroupRow =
 
 let private keyedClearKeepsOrder () =
     use graph = new Graph ()
-    listedLog.Clear ()
+    (listedLog ()).Clear()
 
     let groups =
         [|
@@ -3395,7 +3412,7 @@ let private keyedClearKeepsOrder () =
     let mounted =
         mount graph host (Keyed.array Program.ops (fun (group: Grouped) -> group.Group) (fun () -> items.Value) (Component.render loggedGroupRow))
 
-    listedLog.Clear ()
+    (listedLog ()).Clear()
     graph.Run (fun () -> items.Value <- [||])
 
     equal
@@ -3412,7 +3429,7 @@ let private keyedClearKeepsOrder () =
          ],
          0.,
          4.)
-        (List.ofSeq listedLog, (host.querySelectorAll "li").length, host.childNodes.length)
+        (List.ofSeq (listedLog ()), (host.querySelectorAll "li").length, host.childNodes.length)
 
     graph.Run (fun () -> items.Value <- groups[0..0])
     equal "1:" host.textContent
@@ -3732,7 +3749,7 @@ let private loggedGrouped =
 
 let private nestedClearKeepsOrder () =
     use graph = new Graph ()
-    listedLog.Clear ()
+    (listedLog ()).Clear()
 
     let groups =
         [|
@@ -3753,7 +3770,7 @@ let private nestedClearKeepsOrder () =
         |> unbox<HTMLElement>
 
     let before = childrenOf list
-    listedLog.Clear ()
+    (listedLog ()).Clear()
     graph.Run (fun () -> items.Value <- [||])
     let after = childrenOf list
 
@@ -3772,7 +3789,7 @@ let private nestedClearKeepsOrder () =
          0.,
          2,
          true)
-        (List.ofSeq listedLog,
+        (List.ofSeq (listedLog ()),
          (list.querySelectorAll "li").length,
          after.Length,
          obj.ReferenceEquals (after[0], before[0])
@@ -3791,7 +3808,7 @@ let browserCases: Conformance.Case array =
 
 let private eachEmpty () =
     use graph = new Graph ()
-    listedLog.Clear ()
+    (listedLog ()).Clear()
     let nested = graph.Run (fun () -> Api.createSignal ([||]: Listed array))
     let rooted = graph.Run (fun () -> Api.createSignal ([||]: Listed array))
     let first, second = host (), host ()
@@ -3816,7 +3833,7 @@ let private eachEmpty () =
      |> unbox<HTMLElement>)
         .click()
 
-    equal true (listedLog.Contains "click 2")
+    equal true ((listedLog ()).Contains "click 2")
 
     graph.Run (fun () ->
         nested.Value <- [||]
@@ -3829,7 +3846,7 @@ let private eachEmpty () =
 
 let private eachTwin () =
     use graph = new Graph ()
-    listedLog.Clear ()
+    (listedLog ()).Clear()
 
     let items =
         graph.Run (fun () -> Api.createSignal [| { Id = 1; Text = "a" }; { Id = 2; Text = "b" } |])
@@ -3863,7 +3880,7 @@ let private eachTwin () =
 
 let private eachRandomEdits () =
     use graph = new Graph ()
-    listedLog.Clear ()
+    (listedLog ()).Clear()
     // Park–Miller in floats: the sequence is identical under .NET and Fable.
     let mutable seed = 20261017.0
 
@@ -3978,7 +3995,7 @@ let private shelved =
 
 let private rootRegions () =
     use graph = new Graph ()
-    listedLog.Clear ()
+    (listedLog ()).Clear()
 
     let shelf =
         graph.Run (fun () ->
@@ -4029,7 +4046,7 @@ let private rootRegions () =
                 "cleanup 4"
                 "cleanup 5"
             ])
-        (List.sort (List.ofSeq listedLog))
+        (List.sort (List.ofSeq (listedLog ())))
 
 type Job = { JobId: int; Stage: Stage }
 
@@ -4043,7 +4060,7 @@ let private jobs =
 
 let private nestedRegions () =
     use graph = new Graph ()
-    stageLog.Clear ()
+    (stageLog ()).Clear()
 
     let items =
         graph.Run (fun () -> Api.createSignal [| { JobId = 1; Stage = Waiting }; { JobId = 2; Stage = Working 1 } |])
@@ -4083,7 +4100,7 @@ let private nestedRegions () =
             "cleanup working"
             "cleanup complete"
         ]
-        (List.ofSeq stageLog)
+        (List.ofSeq (stageLog ()))
 
 let private jobItems count =
     Array.init count (fun id ->
@@ -4094,7 +4111,7 @@ let private jobItems count =
 
 let private clearsArmRowsWithoutRemoves () =
     use graph = new Graph ()
-    stageLog.Clear ()
+    (stageLog ()).Clear()
     let items = graph.Run (fun () -> Api.createSignal (jobItems 100))
     let host = host ()
     let mounted = mount graph host (Component.render jobs items)
@@ -4106,7 +4123,7 @@ let private clearsArmRowsWithoutRemoves () =
         (0, 0., 100)
         (removed,
          (host.querySelectorAll "li").length,
-         stageLog
+         (stageLog ())
          |> Seq.filter (fun line -> line.StartsWith "cleanup")
          |> Seq.length)
 
@@ -4421,7 +4438,7 @@ let private ledgerFrame =
 /// <summary>Mounts a multi-root template whose inlined child owns a root-level region beside text, at the mount's top level or inside an authored element.</summary>
 let private inlinedRootRegion (wrapped: bool) =
     use graph = new Graph ()
-    listedLog.Clear ()
+    (listedLog ()).Clear()
 
     let ledger =
         graph.Run (fun () ->
@@ -4481,7 +4498,7 @@ let private inlinedRootRegion (wrapped: bool) =
                 "cleanup 2"
                 "cleanup 3"
             ])
-        (List.sort (List.ofSeq listedLog))
+        (List.sort (List.ofSeq (listedLog ())))
 
 /// <summary>Checks template compilation and DOM materialisation.</summary>
 let cases: Conformance.Case array =
@@ -4490,10 +4507,7 @@ let cases: Conformance.Case array =
             "walk programs reach dynamic nodes in document order", walkPrograms
             "a compiled skeleton round-trips and records every dynamic node", compiledSkeleton
             "a template renders the same DOM as its createComponent twin", twinEquality
-            Conformance.platformOnly
-                "jsdom"
-                "patches setAttribute on an element instance"
-                ("slot writes happen only for changed values", changedSlotsOnly)
+            "slot writes happen only for changed values", changedSlotsOnly
             "a throwing reader fails only its slot", readerFailure
             "a slot failing on first render is reported without failing the mount", initialReaderFailure
             "a throwing reporter leaves no failure for the next successful run", throwingReporter
@@ -4520,10 +4534,7 @@ let cases: Conformance.Case array =
                 "the twin parser rejects a table without tbody, before template compilation"
                 ("markup restructured by the HTML parser fails compilation", restructuredMarkup)
             "a pending or failed text slot renders empty", unsetText
-            Conformance.platformOnly
-                "jsdom"
-                "patches setAttribute on an element instance"
-                ("null attribute values remove the attribute", nullAttributes)
+            "null attribute values remove the attribute", nullAttributes
             "a later setter failure is reported and keeps the other slots", laterSetterFailure
             "a template whose single root is a text slot mounts, updates and disposes", textRoot
             "a single root reached through a fragment mounts, updates and disposes", fragmentRoot
@@ -4557,14 +4568,8 @@ let cases: Conformance.Case array =
             "each renders template rows, retains them by key and dispatches their clicks", eachRows
             "each sets up a replacing row before the replaced row's cleanup", eachReplacement
             "duplicate each keys fail the mount, are reported on update and keep the rows", eachDuplicates
-            Conformance.platformOnly
-                "jsdom"
-                "patches insertBefore or remove on the DOM prototypes"
-                ("a two-row swap of 1,000 rows moves two rows", eachSwapMovesTwo)
-            Conformance.platformOnly
-                "jsdom"
-                "patches insertBefore or remove on the DOM prototypes"
-                ("swapping the ends of a changed window moves two rows and keeps node identity", swapShapes)
+            "a two-row swap of 1,000 rows moves two rows", eachSwapMovesTwo
+            "swapping the ends of a changed window moves two rows and keeps node identity", swapShapes
             Conformance.platformOnly
                 "jsdom"
                 "defines a custom element"
@@ -4624,35 +4629,20 @@ let cases: Conformance.Case array =
             "a row cleanup disposing the mount leaves no row nodes at the mount's top level", fun () -> disposalAfterCleanupFailure "root"
             "a row cleanup disposing the mount leaves no row nodes in an adopted element", fun () -> disposalAfterCleanupFailure "adopted"
             "an adopted element holding a list keeps no row nodes after its mount is disposed", adoptedElementLosesRows
-            Conformance.platformOnly
-                "jsdom"
-                "patches insertBefore or remove on the DOM prototypes"
-                ("clearing 1,000 each rows removes no row node by itself and keeps the region's markers", clearsWithoutRemoves)
-            Conformance.platformOnly
-                "jsdom"
-                "patches insertBefore or remove on the DOM prototypes"
-                ("clearing a list between foreign siblings removes only the list's nodes", clearsBetweenSiblings)
+            "clearing 1,000 each rows removes no row node by itself and keeps the region's markers", clearsWithoutRemoves
+            "clearing a list between foreign siblings removes only the list's nodes", clearsBetweenSiblings
             "clearing Keyed.array rows holding nested lists keeps their cleanup order", keyedClearKeepsOrder
             "row cleanups see their row connected on remove, clear and mount disposal", cleanupsSeeConnectedRows
             "a clear whose row cleanup throws reports it and leaves no row nodes", failingClearLeavesNoRows
-            Conformance.platformOnly
-                "jsdom"
-                "patches insertBefore or remove on the DOM prototypes"
-                ("a clear and an insertion after a failed row setup each take one operation", failedInsertionLeavesStagingEmpty)
+            "a clear and an insertion after a failed row setup each take one operation", failedInsertionLeavesStagingEmpty
             "a row setup failure while filling an empty list leaves only the markers", failedCreateLeavesRegionEmpty false
             "a row setup failure while filling an empty attached list leaves only the markers", failedCreateLeavesRegionEmpty true
             "rows created into an empty list keep their order through an insertion and a reversal", createdRowsKeepOrder
-            Conformance.platformOnly
-                "jsdom"
-                "patches insertBefore or remove on the DOM prototypes"
-                ("a clear after a swap removes the rows in one operation", clearAfterSwapRemovesInOneOperation)
+            "a clear after a swap removes the rows in one operation", clearAfterSwapRemovesInOneOperation
             "a clear deletes a foreign node between the markers and reports nothing", clearDeletesForeignNode false
             "a clear between siblings deletes a foreign node between the markers and reports nothing", clearDeletesForeignNode true
             "a clear after the end marker moves to another parent reports the boundaries", clearReportsMovedMarker
-            Conformance.platformOnly
-                "jsdom"
-                "patches insertBefore or remove on the DOM prototypes"
-                ("a retired row holding a nested list leaves whole in one remove", retiredRowLeavesWhole)
+            "a retired row holding a nested list leaves whole in one remove", retiredRowLeavesWhole
             "a nested row cleanup disposing the mount leaves no nodes and reports nothing", disposalLeavesDetachedHeldRows
             "clearing template rows holding nested lists keeps their cleanup order and markers", nestedClearKeepsOrder
             "an empty each region keeps its markers, fills and empties", eachEmpty
@@ -4660,14 +4650,8 @@ let cases: Conformance.Case array =
             "each rows match their items and keep their nodes across seeded random edits", eachRandomEdits
             "root-level each regions beside other roots update, reorder, move and dispose", rootRegions
             "a matchWith inside each rows follows, moves and leaves with its row", nestedRegions
-            Conformance.platformOnly
-                "jsdom"
-                "patches insertBefore or remove on the DOM prototypes"
-                ("clearing each rows holding matchWith arms removes no arm node by itself", clearsArmRowsWithoutRemoves)
-            Conformance.platformOnly
-                "jsdom"
-                "patches insertBefore or remove on the DOM prototypes"
-                ("removing an each row holding a matchWith arm takes the removes of a plain row", removesArmRowLikePlainRow)
+            "clearing each rows holding matchWith arms removes no arm node by itself", clearsArmRowsWithoutRemoves
+            "removing an each row holding a matchWith arm takes the removes of a plain row", removesArmRowLikePlainRow
             "each server markup under Fable matches .NET", eachMarkup
             "an inlined child shares the clone and keeps its own instance, effect and handlers", inlinedChild
             "a grandchild inlined through a child is hoisted and updates", inlinedGrandchild

@@ -803,7 +803,7 @@ let private at (array: 'T array) (index: int) : 'T =
     Native.arrayAt array index
 #endif
 
-/// <summary>Writes the element at an index; an index past the end grows the array.</summary>
+/// <summary>Writes the element at an index. Under Fable an index past the end grows the array; on .NET it raises.</summary>
 #if FABLE_COMPILER
 [<Emit("$0[$1] = $2")>]
 let private store (array: obj array) (index: int) (value: obj) : unit = jsNative

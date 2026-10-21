@@ -106,6 +106,38 @@ let tests =
                 native.textContent <- Some "y"
                 Expect.equal document.Body.TextContent "x" "unchanged"
 
+            testCase "an interception wraps a method of one node or of every node until it is removed"
+            <| fun () ->
+                use document = new TwinDocument ()
+                let div = document.CreateElement "div"
+                let other = document.CreateElement "div"
+                let seen = ResizeArray<string>()
+
+                let wrap label =
+                    Func<Func<obj array, obj>, obj array, obj>(fun original args ->
+                        seen.Add (label + ":" + (unbox<Node> args[0]).nodeName)
+                        original.Invoke args)
+
+                let one = Bridge.intercept document div "appendChild" (wrap "one")
+                let all = Bridge.intercept document null "appendChild" (wrap "all")
+
+                div.Native.appendChild ((document.CreateElement "b").Native)
+                |> ignore
+
+                other.Native.appendChild ((document.CreateElement "i").Native)
+                |> ignore
+
+                Expect.equal (List.ofSeq seen) [ "all:B"; "one:B"; "all:I" ] "the later interception runs first"
+                Expect.equal [ for c in div.Children -> (c :?> TwinElement).LocalName ] [ "b" ] "the original ran"
+                one ()
+                all ()
+                seen.Clear ()
+
+                div.Native.appendChild ((document.CreateElement "u").Native)
+                |> ignore
+
+                Expect.isEmpty seen "removed"
+
             testCase "live lists are the same object on every read"
             <| fun () ->
                 use document = new TwinDocument ()

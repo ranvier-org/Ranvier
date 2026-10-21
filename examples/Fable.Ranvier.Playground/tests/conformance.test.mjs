@@ -1,24 +1,45 @@
 // The shared conformance cases under jsdom. Writes each case's artefacts to generated-conformance/jsdom/<module>/<case>/.
+// Each case starts from an empty document and the harness clock of conformance-host.mjs, as each twin case starts from a
+// fresh twin. One jsdom serves the run, as one document serves a page: Foundation keeps a definition's compiled
+// template on the definition, so a template compiled in one window's document would reach the next case's nodes
+// with the earlier window's prototypes.
 import test, { after, mock } from "node:test";
 import { JSDOM, VirtualConsole } from "jsdom";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { create } from "../generated-tests/JsdomHarness.js";
 import { modules } from "../generated-tests/ConformanceCases.js";
 import { skippedOn } from "../generated-tests/experiments/Ranvier.View.Testing/Conformance.js";
+import { makeClock, interceptIn } from "./conformance-host.mjs";
 
-// Listener failures go to the virtual console, as they would to a browser's; the harness hands them to the case.
-const listenerErrors = [];
-const virtualConsole = new VirtualConsole();
-virtualConsole.on("jsdomError", e => listenerErrors.push(e.detail?.message ?? e.message));
-const dom = new JSDOM("<!doctype html><html><head></head><body></body></html>", { virtualConsole });
 const globals = ["window", "document", "Event", "MouseEvent", "PointerEvent", "KeyboardEvent", "InputEvent", "FocusEvent"];
-globalThis.window = dom.window;
-for (const name of globals.slice(1)) globalThis[name] = name === "document" ? dom.window.document : dom.window[name];
-after(() => { dom.window.close(); for (const name of globals) delete globalThis[name]; });
 
 const root = new URL("../generated-conformance/jsdom/", import.meta.url);
 rmSync(root, { recursive: true, force: true });
 export const slug = name => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80);
+
+// Listener failures reach the virtual console, as they would a browser's; jsdom's "Not implemented" notices (form
+// submission, navigation) have no twin counterpart and stay out of the listener failures.
+const listenerErrors = [];
+const virtualConsole = new VirtualConsole();
+virtualConsole.on("jsdomError", e => {
+  const message = e.detail?.message ?? e.message;
+  if (!String(message).startsWith("Not implemented")) listenerErrors.push(message);
+});
+const dom = new JSDOM("<!doctype html><html><head></head><body></body></html>", { virtualConsole, pretendToBeVisual: true });
+globalThis.window = dom.window;
+for (const name of globals.slice(1)) globalThis[name] = name === "document" ? dom.window.document : dom.window[name];
+after(() => { dom.window.close(); for (const name of globals) delete globalThis[name]; });
+
+// The document as a new one has it: empty head and body without attributes, and nothing focused.
+function resetDocument() {
+  const document = dom.window.document;
+  document.activeElement?.blur?.();
+  for (const element of [document.head, document.body]) {
+    element.replaceChildren();
+    for (const attribute of [...element.attributes]) element.removeAttribute(attribute.name);
+  }
+  for (const attribute of [...document.documentElement.attributes]) document.documentElement.removeAttribute(attribute.name);
+}
 
 for (const [moduleName, cases] of modules) {
   for (const [name, run] of cases) {
@@ -26,14 +47,26 @@ for (const [moduleName, cases] of modules) {
     test(`${moduleName}: ${name}`, () => {
       const directory = new URL(`${moduleName}/${slug(name)}/`, root);
       let count = 0;
-      const record = (artefact, text) => {
-        mkdirSync(directory, { recursive: true });
-        writeFileSync(new URL(`${String(++count).padStart(2, "0")}-${slug(artefact)}.txt`, directory), text);
-      };
-      mock.timers.enable({ apis: ["setTimeout", "setInterval", "Date"] });
+      resetDocument();
       listenerErrors.length = 0;
-      try { run(create(dom.window.document, record, ms => mock.timers.tick(ms), () => listenerErrors.splice(0))); }
-      finally { mock.timers.reset(); }
+      mock.timers.enable({ apis: ["Date"] });
+      const clock = makeClock([globalThis, dom.window], milliseconds => { if (milliseconds > 0) mock.timers.tick(milliseconds); });
+      const host = {
+        post: clock.post,
+        runMicrotasks: clock.runMicrotasks,
+        advanceBy: clock.advanceBy,
+        record: (artefact, text) => {
+          mkdirSync(directory, { recursive: true });
+          writeFileSync(new URL(`${String(++count).padStart(2, "0")}-${slug(artefact)}.txt`, directory), text);
+        },
+        errors: () => listenerErrors.splice(0),
+        intercept: interceptIn(dom.window),
+      };
+      try { run(create(dom.window.document, host)); }
+      finally {
+        clock.restore();
+        mock.timers.reset();
+      }
     });
   }
 }

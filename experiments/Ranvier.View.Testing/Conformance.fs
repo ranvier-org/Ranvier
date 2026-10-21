@@ -3,7 +3,11 @@ module Ranvier.View.Testing.Conformance
 
 open Fable.Core.TS.Dom
 
-/// <summary>The host-specific operations a case uses: the document, the clock, and the artefact sink.</summary>
+/// <summary>
+/// The host-specific operations a case uses: the document, the clock, interception and the artefact sink. Both hosts
+/// give each case a fresh document and the same clock: the view's queued microtasks and <c>Post</c> share one queue
+/// that only <c>RunMicrotasks</c> drains, and timers and animation frames run only in <c>AdvanceBy</c>.
+/// </summary>
 type Harness =
     abstract Platform: string
     abstract Document: Document
@@ -11,11 +15,21 @@ type Harness =
     abstract Post: (unit -> unit) -> unit
     /// <summary>Drains the harness's queue, including callbacks queued while it drains.</summary>
     abstract RunMicrotasks: unit -> unit
+    /// <summary>
+    /// Moves the clock forward: the timers and animation frames (every 16 ms) due within the span run in due order, and
+    /// the queue drains after each callback.
+    /// </summary>
     abstract AdvanceBy: float -> unit
     /// <summary>Records a named artefact (host HTML, dump text) for the cross-host comparison.</summary>
     abstract Record: name: string * text: string -> unit
     /// <summary>The messages of the listener failures since the last call, which it clears.</summary>
     abstract ListenerErrors: unit -> string list
+    /// <summary>
+    /// Routes calls of the DOM method <c>memberName</c> on <c>target</c>, or on every node of the document when
+    /// <c>target</c> is null, through <c>wrap</c> until the returned function runs. <c>wrap</c> receives the original
+    /// method and the call's arguments, and its result is the call's result.
+    /// </summary>
+    abstract Intercept: target: obj * memberName: string * wrap: System.Func<System.Func<obj array, obj>, obj array, obj> -> (unit -> unit)
 
 type Case = string * (Harness -> unit)
 
@@ -25,6 +39,10 @@ type Case = string * (Harness -> unit)
 /// </summary>
 type private Running(inner: Harness) =
     let recorded = ResizeArray<string>()
+    let locals = System.Collections.Generic.Dictionary<string, obj>()
+
+    /// <summary>The values <c>Conformance.local</c> created for the case, by key.</summary>
+    member _.Locals = locals
 
     /// <summary>The failures since the last call, kept for <c>ListenerErrors</c>.</summary>
     member _.Fresh() : string list =
@@ -52,6 +70,9 @@ type private Running(inner: Harness) =
             let all = List.ofSeq recorded @ inner.ListenerErrors ()
             recorded.Clear ()
             all
+
+        member _.Intercept(target, memberName, wrap) =
+            inner.Intercept (target, memberName, wrap)
 
 #if FABLE_COMPILER
 let mutable private current: Harness = Unchecked.defaultof<_>
@@ -84,6 +105,27 @@ let harness () : Harness =
 
 let document () : Document =
     (harness ()).Document
+
+/// <summary>
+/// The running case's value under <c>key</c>, created by <c>create</c> on its first use in the case: state a check
+/// module keeps per case, so cases on different threads or hosts share none.
+/// </summary>
+let local (key: string) (create: unit -> 'T) : 'T =
+    match box (read ()) with
+    | null -> raise (System.InvalidOperationException "No conformance case is running on this thread")
+    | value ->
+        let locals = (unbox<Running> value).Locals
+
+        match locals.TryGetValue key with
+        | true, existing -> unbox<'T> existing
+        | false, _ ->
+            let created = create ()
+            locals[key] <- box created
+            created
+
+/// <summary>The running case's <c>Harness.Intercept</c>, with <c>wrap</c> taking the original method and the arguments.</summary>
+let intercept (target: obj) (name: string) (wrap: (obj array -> obj) -> obj array -> obj) : unit -> unit =
+    (harness ()).Intercept(target, name, System.Func<_, _, _>(fun original args -> wrap original.Invoke args))
 
 /// <summary>Records a named artefact with the running case's harness; outside a case it does nothing.</summary>
 let recordIfRunning (name: string) (text: string) : unit =

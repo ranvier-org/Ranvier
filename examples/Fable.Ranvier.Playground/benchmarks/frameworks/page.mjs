@@ -14,6 +14,7 @@ import { mount as reactMount } from "./react.mjs";
 import { verify, expectState } from "./contract.mjs";
 import { allCases as rangeCases } from "../../generated-tests/RangeChecks.js";
 import { create as createHarness } from "../../generated-tests/JsdomHarness.js";
+import { runOnPage } from "../../tests/conformance-host.mjs";
 import { mountNative } from "./native.mjs";
 import * as ranvierSemantics from "../../generated-tests/FrameworkSemantics.js";
 import * as solidSemantics from "./semantics-solid.jsx";
@@ -59,8 +60,7 @@ window.frameworkPerf = {
   parts, scopes, core, coreOwners,
   rangeProofs() {
     const passed = [];
-    const harness = createHarness(document, () => {}, () => { throw new Error("the benchmark page has no mock clock"); }, () => []);
-    for (const [name, run] of rangeCases) { run(harness); passed.push(name); }
+    for (const [name, run] of rangeCases) { runOnPage(window, createHarness, run); passed.push(name); }
     return passed;
   },
   prepare(mode, width, phase, count) {

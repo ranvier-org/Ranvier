@@ -47,6 +47,9 @@ let create (host: TwinHost) (directory: string) : Harness =
             host.Document.ListenerErrors.Clear ()
             messages
 
+        member _.Intercept(target, memberName, wrap) =
+            Bridge.intercept host.Document (Bridge.nodeOf target) memberName wrap
+
         member _.Record(name, text) =
             count <- count + 1
             Directory.CreateDirectory directory |> ignore

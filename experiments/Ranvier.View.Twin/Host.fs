@@ -53,8 +53,13 @@ type TwinHost private (document: TwinDocument, clock: TwinClock) =
                 cursor.Remove ()
                 cursor <- next
 
+        // Through addEventListener and removeEventListener, as the JavaScript body calls them, so a case's
+        // interception of those members sees the view's listeners.
         member _.Listen(target, eventName, listener) =
-            Events.listen (Bridge.nodeOf target) eventName false listener
+            let target = target :?> Fable.Core.TS.Dom.EventTarget
+            let callback: Fable.Core.TS.Dom.Event -> unit = fun e -> listener (box e)
+            target.addEventListener (eventName, Fable.Core.U2.Case1 callback)
+            fun () -> target.removeEventListener (eventName, Fable.Core.U2.Case1 callback)
 
         member _.OverrideCurrentTarget(event, read) =
             (Events.eventOf event).CurrentTargetOverride <- read

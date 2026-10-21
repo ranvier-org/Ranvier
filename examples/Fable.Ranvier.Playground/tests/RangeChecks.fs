@@ -57,13 +57,11 @@ let private query (node: Node) (selector: string) : HTMLElement option =
     |> Option.map unbox<HTMLElement>
 #endif
 
-#if FABLE_COMPILER
-[<Emit("(() => { const old = $0.insertBefore; $0.insertBefore = function(n,b) { old.call(this,n,b); throw $1; }; return () => $0.insertBefore = old; })()")>]
-let private failAttachment (node: Node) (error: exn) : unit -> unit = jsNative
-#else
+// insertBefore on the node inserts, then raises `error`.
 let private failAttachment (node: Node) (error: exn) : unit -> unit =
-    raise (System.NotSupportedException "jsdom only: patches insertBefore")
-#endif
+    Conformance.intercept node "insertBefore" (fun original args ->
+        original args |> ignore
+        raise error)
 
 #if FABLE_COMPILER
 [<Emit("(() => { const f = () => $1(); $0.addEventListener('click', f); return () => $0.removeEventListener('click', f); })()")>]
@@ -73,13 +71,9 @@ let private listen (node: HTMLElement) (handler: unit -> unit) : unit -> unit =
     Ranvier.View.Foundation.Native.listen node "click" (fun _ -> handler ())
 #endif
 
-#if FABLE_COMPILER
-[<Emit("(() => { const old = $0.remove; $0.remove = () => { throw new Error('remove'); }; return () => $0.remove = old; })()")>]
-let private failRemoval (node: Node) : unit -> unit = jsNative
-#else
+// remove () on the node raises.
 let private failRemoval (node: Node) : unit -> unit =
-    raise (System.NotSupportedException "jsdom only: patches remove")
-#endif
+    Conformance.intercept node "remove" (fun _ _ -> raise (exn "remove"))
 
 let private mounted graph parent host before build =
     mount graph parent ignore host before build
@@ -393,28 +387,21 @@ let cases =
         "owned nodes release after external reparenting", reparentedOwnership
         "borrowed native nodes restore original placement", nativePolicies
         "setup failure unwinds acquired listeners and bindings", fun () -> failures false
-        Conformance.platformOnly
-            "jsdom"
-            "patches insertBefore or remove on a node"
-            ("attachment failure after insertion unwinds resources and nodes", fun () -> failures true)
+        "attachment failure after insertion unwinds resources and nodes", fun () -> failures true
         "range cleanup runs child first while DOM stays attached", cleanupOrder
         "parent and graph disposal preserve independent mounts", parentAndGraph
         "retained setup capabilities cannot mutate attached or disposed mounts", retainedCapabilities
         "duplicate or host native ownership is rejected", duplicateNative
-        Conformance.platformOnly
-            "jsdom"
-            "patches insertBefore or remove on a node"
-            ("release and reporter failures cannot strand remaining owned nodes", releaseFailures)
+        "release and reporter failures cannot strand remaining owned nodes", releaseFailures
         "disposal during setup cannot attach or acquire further nodes", disposedDuringSetup
     |]
 
-#if FABLE_COMPILER
-[<Emit("(() => { const old = $0.insertBefore; $0.insertBefore = function(n,b) { const result = old.call(this,n,b); $1(); return result; }; return () => $0.insertBefore = old; })()")>]
-let private afterAttachment (node: Node) (action: unit -> unit) : unit -> unit = jsNative
-#else
+// insertBefore on the node inserts, then runs `action`.
 let private afterAttachment (node: Node) (action: unit -> unit) : unit -> unit =
-    raise (System.NotSupportedException "jsdom only: patches insertBefore")
-#endif
+    Conformance.intercept node "insertBefore" (fun original args ->
+        let result = original args
+        action ()
+        result)
 
 let private reactiveMoves () =
     use graph = new Graph ()
@@ -551,13 +538,9 @@ let private keyedForeignMutation () =
     same host foreign.parentNode.Value
     remove foreign
 
-#if FABLE_COMPILER
-[<Emit("(() => { const old = $0.remove; $0.remove = () => { throw new Error('remove start'); }; return () => $0.remove = old; })()")>]
-let private failRegionRemoval (node: Node) : unit -> unit = jsNative
-#else
+// remove () on the node raises.
 let private failRegionRemoval (node: Node) : unit -> unit =
-    raise (System.NotSupportedException "jsdom only: patches remove")
-#endif
+    Conformance.intercept node "remove" (fun _ _ -> raise (exn "remove start"))
 
 let private keyedReleaseFailure () =
     use graph = new Graph ()
@@ -719,13 +702,18 @@ let private stagedAfterDetachedRoot () =
     handle.Dispose ()
     equal [| "ASIDE" |] (describe host)
 
-#if FABLE_COMPILER
-[<Emit("(() => { const old = $0.insertBefore; let done = false; $0.insertBefore = function(n,b) { const result = old.call(this,n,b); if (!done) { done = true; $1.remove(); } return result; }; return () => $0.insertBefore = old; })()")>]
-let private removeAnchorAfterFirstInsert (host: Node) (anchor: Node) : unit -> unit = jsNative
-#else
+// The host's first insertBefore inserts, then removes `anchor`.
 let private removeAnchorAfterFirstInsert (host: Node) (anchor: Node) : unit -> unit =
-    raise (System.NotSupportedException "jsdom only: patches insertBefore")
-#endif
+    let isDone = ref false
+
+    Conformance.intercept host "insertBefore" (fun original args ->
+        let result = original args
+
+        if not isDone.Value then
+            isDone.Value <- true
+            (unbox<ChildNode> anchor).remove()
+
+        result)
 
 #if FABLE_COMPILER
 [<Emit("$0.name")>]
@@ -855,7 +843,8 @@ let private failedMovementRollback () =
         try
             handle.MoveBefore (other, None)
         with error ->
-            equal "Range movement and rollback failed" error.Message
+            // .NET's AggregateException appends the inner messages to its own.
+            equal true (error.Message.StartsWith "Range movement and rollback failed")
             caught <- true
 
         equal true caught
@@ -1295,53 +1284,26 @@ let private moreCases =
         "keyed rows preserve identity and current data across reorder and removal", keyedReconciliation
         "top-level keyed regions retain sibling order and move with their mount", keyedRootMovement
         "foreign mutations inside keyed rows reject outer movement", keyedForeignMutation
-        Conformance.platformOnly
-            "jsdom"
-            "patches insertBefore or remove on a node"
-            ("keyed range release attempts both endpoints after a removal failure", keyedReleaseFailure)
+        "keyed range release attempts both endpoints after a removal failure", keyedReleaseFailure
         "duplicate keys fail before mounting mutates the host", duplicateKeys
-        Conformance.platformOnly
-            "jsdom"
-            "patches insertBefore or remove on a node"
-            ("disposal during attachment cannot revive a mount", attachmentReentry)
+        "disposal during attachment cannot revive a mount", attachmentReentry
         "native ownership cannot overlap another live mount", overlappingMounts
         "staging rejects a root moved elsewhere by a browser hook and unwinds", movedBeforeStaging
         "detached roots keep their order and before sibling when a keyed region stages them", stagedAfterDetachedRoot
-        Conformance.platformOnly
-            "jsdom"
-            "patches insertBefore or remove on a node"
-            ("an anchor removed during attachment fails with NotFoundError and unwinds the mount", anchorRemovedDuringAttach)
+        "an anchor removed during attachment fails with NotFoundError and unwinds the mount", anchorRemovedDuringAttach
         "equality-triggered disposal prevents a late DOM write", equalityDisposal
         "direct child mount disposal uses its explicit reporter", childReporter
-        Conformance.platformOnly
-            "jsdom"
-            "patches insertBefore or remove on a node"
-            ("failed movement rollback disposes resources instead of stranding bindings", failedMovementRollback)
+        "failed movement rollback disposes resources instead of stranding bindings", failedMovementRollback
         "reparented generated descendants can be adopted and outlive their mount", reparentedGeneratedDescendants
         "duplicate keyed updates report once and recover without replacing retained rows", keyedReportsAndRecovery
         "initial keyed row setup failure unwinds the entire mount", fun () -> keyedSetupRecovery true
         "failed live row setup retains prior rows and permits recovery", fun () -> keyedSetupRecovery false
-        Conformance.platformOnly
-            "jsdom"
-            "patches insertBefore or remove on a node"
-            ("a failed keyed layout disposes the mount and reports once", keyedLayoutFailure)
+        "a failed keyed layout disposes the mount and reports once", keyedLayoutFailure
         "nested keyed rows update and dispose after outer movement", keyedNestedMovement
-        Conformance.platformOnly
-            "jsdom"
-            "patches insertBefore or remove on a node"
-            ("keyed reader disposal prevents further reconciliation", fun () -> keyedDisposal "read")
-        Conformance.platformOnly
-            "jsdom"
-            "patches insertBefore or remove on a node"
-            ("keyed row setup disposal cannot attach new rows", fun () -> keyedDisposal "setup")
-        Conformance.platformOnly
-            "jsdom"
-            "patches insertBefore or remove on a node"
-            ("keyed movement disposal cannot revive row ranges", fun () -> keyedDisposal "move")
-        Conformance.platformOnly
-            "jsdom"
-            "patches insertBefore or remove on a node"
-            ("keyed row cleanup disposal cancels the remaining update", fun () -> keyedDisposal "cleanup")
+        "keyed reader disposal prevents further reconciliation", fun () -> keyedDisposal "read"
+        "keyed row setup disposal cannot attach new rows", fun () -> keyedDisposal "setup"
+        "keyed movement disposal cannot revive row ranges", fun () -> keyedDisposal "move"
+        "keyed row cleanup disposal cancels the remaining update", fun () -> keyedDisposal "cleanup"
         "keyed error reporting does not subscribe to reporter reads", fun () -> keyedReporter false
         "throwing keyed reporters cannot prevent later recovery or disposal", fun () -> keyedReporter true
         "keyed reconciliation tracks snapshots but not comparers or cleanup", keyedTracksOnlySnapshot

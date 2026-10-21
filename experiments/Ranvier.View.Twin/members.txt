@@ -11,6 +11,7 @@ Element.getAttribute
 Element.innerHTML
 Element.localName
 Element.namespaceURI
+Element.removeAttribute
 Element.setAttribute
 Element.tagName
 Element.textContent
@@ -19,7 +20,9 @@ Event.currentTarget
 Event.stopPropagation
 Event.target
 Event.type
+EventTarget.addEventListener
 EventTarget.dispatchEvent
+EventTarget.removeEventListener
 HTMLButtonElement.disabled
 HTMLCollectionBase.length
 HTMLElement.click

@@ -4,34 +4,38 @@ open Fable.Core.TS.Dom
 open Ranvier.View.Testing.Conformance
 
 /// <summary>
-/// A harness over a jsdom or browser document: a post queue drained by <c>RunMicrotasks</c>, and the caller's clock
-/// ticked by <c>AdvanceBy</c>.
+/// The JavaScript side of a harness over a jsdom or browser document: <c>conformance-host.mjs</c>'s clock, which
+/// replaces the window's microtask, timer and animation-frame functions, and its method interception.
 /// </summary>
-let create (document: Document) (record: System.Action<string, string>) (tick: System.Action<float>) (errors: System.Func<string array>) : Harness =
-    let queue = ResizeArray<unit -> unit>()
+type HostSide =
+    abstract post: (unit -> unit) -> unit
+    abstract runMicrotasks: unit -> unit
+    abstract advanceBy: float -> unit
+    abstract record: string * string -> unit
+    abstract errors: unit -> string array
+    abstract intercept: obj * string * System.Func<System.Func<obj array, obj>, obj array, obj> -> (unit -> unit)
 
+/// <summary>A harness over a jsdom or browser document whose clock and interception <c>host</c> provides.</summary>
+let create (document: Document) (host: HostSide) : Harness =
     { new Harness with
         member _.Platform = "jsdom"
         member _.Document = document
 
         member _.Post callback =
-            queue.Add callback
+            host.post callback
 
         member _.RunMicrotasks() =
-            let mutable i = 0
-
-            while i < queue.Count do
-                queue[i]()
-                i <- i + 1
-
-            queue.Clear ()
+            host.runMicrotasks ()
 
         member _.AdvanceBy milliseconds =
-            tick.Invoke milliseconds
+            host.advanceBy milliseconds
 
         member _.Record(name, text) =
-            record.Invoke (name, text)
+            host.record (name, text)
 
         member _.ListenerErrors() =
-            List.ofArray (errors.Invoke ())
+            List.ofArray (host.errors ())
+
+        member _.Intercept(target, memberName, wrap) =
+            host.intercept (target, memberName, wrap)
     }

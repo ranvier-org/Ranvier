@@ -17,14 +17,21 @@ let runIn (directory: string) (run: Conformance.Harness -> unit) =
     finally
         (host.Document :> System.IDisposable).Dispose()
 
+// The artefacts of an earlier run go before the first case writes, so a renamed case leaves none behind.
+let private cleared =
+    lazy
+        (let root = output ()
+
+         if Directory.Exists root then
+             Directory.Delete (root, true))
+
 let private runCase (moduleName: string) (name: string) (run: Conformance.Harness -> unit) () =
+    cleared.Force ()
     runIn (Path.Combine (output (), moduleName, TwinHarness.slug name)) run
 
 [<Tests>]
 let tests =
-    // The check modules keep module-level logs: no two cases, here or in the members test, run at once.
-    testSequencedGroup "conformance"
-    <| testList
+    testList
         "Conformance"
         [
             for moduleName, cases in ConformanceCases.modules do

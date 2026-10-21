@@ -33,8 +33,7 @@ let private servedByCases () : string list =
 
 [<Tests>]
 let tests =
-    testSequencedGroup "conformance"
-    <| testList
+    testList
         "Bridge coverage"
         [
             testCase "the members the conformance cases use equal members.txt"
