@@ -58,6 +58,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 83,208 | 127,155 | 1,734,216 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 83,284 | 127,178 | 1,734,155 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 83,044 | 127,150 | 1,734,108 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 83,044 | 127,109 | 1,734,259 |
 
 ## app-table
 
@@ -117,6 +118,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 4,416,238 | 9,203,731 | 107,431,191 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 4,416,366 | 9,320,151 | 107,579,948 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 4,416,210 | 9,320,035 | 107,302,072 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 4,416,154 | 9,203,687 | 107,708,264 |
 
 ## async-recover
 
@@ -176,6 +178,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 138,992 | 39,648 | 440,647 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 138,992 | 39,724 | 440,650 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 138,992 | 39,721 | 440,644 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 138,992 | 39,720 | 440,650 |
 
 ## async-resolve
 
@@ -235,6 +238,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 2,791,509 | 1,085,495 | 12,313,811 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 2,791,509 | 1,085,565 | 12,314,034 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 2,791,510 | 1,085,374 | 12,314,033 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 2,791,509 | 1,085,437 | 12,317,226 |
 
 ## chain
 
@@ -294,6 +298,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 
 ## chain-affinity
 
@@ -353,6 +358,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 2,549 | 3,067 | 2,496 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 2,549 | 3,067 | 2,496 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 2,549 | 3,067 | 2,496 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 2,549 | 3,067 | 2,496 |
 
 ## control
 
@@ -412,6 +418,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 74,709 | 833,976 | 2,605,092 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 74,709 | 833,967 | 2,605,089 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 74,709 | 833,986 | 2,605,089 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 74,709 | 833,924 | 2,605,062 |
 
 ## create
 
@@ -471,6 +478,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 13,465,944 | 2,859,678 | 2,532,361 | 2,131,883 | 4,003,981 | 34,064,135 | 49,723,917 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 13,449,944 | 2,859,678 | 2,532,361 | 2,131,856 | 4,003,995 | 34,066,518 | 49,723,693 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 13,450,079 | 2,859,678 | 2,532,361 | 2,131,028 | 4,004,129 | 34,063,281 | 49,723,741 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 13,450,044 | 2,875,677 | 2,532,362 | 2,131,829 | 4,003,596 | 34,063,832 | 49,723,813 |
 
 ## create-on
 
@@ -530,6 +538,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 2,910,483 | 4,147,492 | 54,424,907 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 2,910,531 | 4,147,579 | 54,424,865 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 2,926,483 | 4,147,607 | 54,424,898 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 2,910,484 | 4,147,496 | 54,424,776 |
 
 ## cutoff
 
@@ -589,6 +598,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 
 ## derive-effect
 
@@ -648,6 +658,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 765 | 768 | 16,102 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 765 | 768 | 16,102 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 765 | 768 | 16,102 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 765 | 768 | 16,102 |
 
 ## derive-on
 
@@ -707,6 +718,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 737 | 775 | 16,261 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 737 | 775 | 16,261 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 737 | 775 | 16,261 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 737 | 775 | 16,261 |
 
 ## dispose
 
@@ -766,6 +778,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 2,707,644 | 806,291 | 367,497 | 465,498 | 485,102 | 13,194,662 | 9,106,948 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 2,707,644 | 806,291 | 367,497 | 466,121 | 485,066 | 13,195,020 | 9,106,226 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 2,707,646 | 806,291 | 367,497 | 466,079 | 485,247 | 13,195,636 | 9,106,272 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 2,707,644 | 806,291 | 367,497 | 465,801 | 485,236 | 13,195,316 | 9,105,912 |
 
 ## dispose-on
 
@@ -825,6 +838,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 346,497 | 478,428 | 8,902,356 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 346,497 | 478,762 | 8,902,680 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 346,497 | 478,707 | 8,901,848 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 346,497 | 478,520 | 8,902,234 |
 
 ## editable-edit
 
@@ -884,6 +898,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 180,106 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 180,106 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 180,106 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 180,106 |
 
 ## editable-upstream
 
@@ -943,6 +958,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 231,255 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 231,255 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 231,255 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 231,255 |
 
 ## fail-recompute
 
@@ -1002,6 +1018,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 65,130 | 1,366 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 65,130 | 1,366 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 65,130 | 1,366 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 65,130 | 1,366 |
 
 ## flight
 
@@ -1061,6 +1078,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 
 ## keyed-insert
 
@@ -1120,6 +1138,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 1,921,809 | 53,951 | 54,948 | 3,218,794 | 661,705 | 176,502 | 44,849,993 | 2,634,936 | 2,654,351 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 1,921,809 | 53,951 | 54,952 | 3,218,712 | 661,698 | 176,544 | 44,849,835 | 2,634,964 | 2,654,183 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 1,921,809 | 53,951 | 54,946 | 3,218,693 | 661,749 | 176,629 | 44,851,072 | 2,634,967 | 2,654,213 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 1,921,809 | 53,951 | 54,942 | 3,218,727 | 661,707 | 176,576 | 44,849,857 | 2,634,923 | 2,654,118 |
 
 ## keyed-remove
 
@@ -1179,6 +1198,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 1,920,736 | 43,628 | 45,285 | 3,245,066 | 593,166 | 605,227 | 44,798,119 | 1,924,926 | 1,958,524 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 1,920,739 | 43,628 | 45,284 | 3,245,053 | 593,000 | 605,219 | 44,798,156 | 1,924,904 | 1,958,568 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 1,920,730 | 43,628 | 45,284 | 3,245,079 | 593,035 | 605,264 | 44,798,124 | 1,924,928 | 1,958,574 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 1,920,744 | 43,628 | 45,285 | 3,245,033 | 593,260 | 605,129 | 44,798,152 | 1,924,857 | 1,958,555 |
 
 ## keyed-swap
 
@@ -1238,6 +1258,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 1,973,428 | 46,161 | 46,915 | 3,563,674 | 148,790 | 511,369 | 45,980,286 | 916,510 | 932,853 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 1,973,428 | 46,161 | 46,916 | 3,565,407 | 148,776 | 511,384 | 45,980,674 | 916,497 | 932,852 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 1,973,428 | 46,161 | 46,915 | 3,560,726 | 148,809 | 511,217 | 45,980,647 | 916,465 | 932,928 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 1,973,428 | 46,161 | 46,915 | 3,562,791 | 148,813 | 511,376 | 45,980,235 | 916,544 | 932,813 |
 
 ## mvu-dispatch
 
@@ -1297,6 +1318,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 58,261 | 772 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 58,261 | 772 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 58,261 | 772 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 58,261 | 772 |
 
 ## project-chain
 
@@ -1356,6 +1378,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 1,070,360 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 1,070,308 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 1,070,391 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 1,070,200 |
 
 ## project-churn
 
@@ -1415,6 +1438,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 36,490 | 34,326 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 36,490 | 34,326 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 36,506 | 34,342 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 36,490 | 34,326 |
 
 ## project-edit
 
@@ -1474,6 +1498,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 50,431 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 50,431 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 50,431 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 50,431 |
 
 ## project-reorder
 
@@ -1533,6 +1558,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 779,170 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 779,170 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 779,170 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 779,170 |
 
 ## server-render
 
@@ -1592,6 +1618,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 676,231 | 1,131,644 | 9,833,939 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 676,230 | 1,130,643 | 9,834,145 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 676,230 | 1,131,227 | 9,834,142 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 676,230 | 1,131,183 | 9,833,800 |
 
 ## shape-diamond
 
@@ -1651,6 +1678,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 59,899 | 79,968 | 1,763,357 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 59,899 | 79,968 | 1,763,357 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 59,899 | 79,968 | 1,763,357 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 59,899 | 79,968 | 1,763,357 |
 
 ## shape-dynamic
 
@@ -1710,6 +1738,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 82,921 | 107,033 | 2,006,140 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 82,921 | 107,033 | 2,006,140 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 82,921 | 107,033 | 2,006,140 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 82,921 | 107,031 | 2,006,140 |
 
 ## stream-burst-1
 
@@ -1769,6 +1798,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 1,974 | 1,572 | 2,491 | 4,672 | 3,644 | 13,371 | 47,198 | 45,417 | 55,171 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 1,974 | 1,572 | 2,491 | 4,671 | 3,644 | 13,369 | 47,201 | 45,417 | 55,167 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 1,974 | 1,572 | 2,507 | 4,671 | 3,644 | 13,368 | 47,201 | 45,417 | 55,171 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 1,974 | 1,572 | 2,491 | 4,672 | 3,644 | 13,367 | 47,201 | 45,417 | 55,168 |
 
 ## stream-burst-16
 
@@ -1828,6 +1858,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 5,631 | 25,017 | 5,701 | 9,500 | 49,599 | 8,052 | 120,973 | 714,180 | 113,518 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 5,631 | 25,017 | 5,701 | 9,501 | 49,601 | 8,051 | 120,973 | 714,180 | 113,522 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 5,631 | 25,017 | 5,717 | 9,501 | 49,601 | 8,051 | 120,969 | 714,180 | 113,522 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 5,631 | 25,017 | 5,701 | 9,500 | 49,598 | 8,051 | 120,973 | 714,180 | 113,519 |
 
 ## stream-burst-256
 
@@ -1887,6 +1918,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 64,131 | 400,101 | 57,040 | 127,427 | 787,216 | 74,603 | 1,301,515 | 11,413,366 | 1,046,481 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 64,131 | 400,101 | 57,040 | 127,472 | 787,263 | 74,605 | 1,301,575 | 11,413,287 | 1,046,488 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 64,131 | 400,101 | 57,056 | 127,440 | 787,189 | 74,605 | 1,301,511 | 11,413,287 | 1,046,550 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 64,131 | 400,101 | 57,040 | 127,397 | 787,203 | 74,605 | 1,301,517 | 11,413,352 | 1,046,482 |
 
 ## stream-restart
 
@@ -1946,6 +1978,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 4,187 | 4,976 | 6,106 | 16,353 | 41,497 | 70,401 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 4,187 | 5,008 | 6,106 | 16,356 | 41,497 | 70,403 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 4,187 | 4,992 | 6,106 | 16,354 | 41,498 | 70,406 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 4,187 | 4,976 | 6,106 | 16,353 | 41,497 | 70,402 |
 
 ## timed-admit-both
 
@@ -2005,6 +2038,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 118,591 | 134,964 | 2,679,929 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 118,591 | 134,961 | 2,679,928 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 118,591 | 134,965 | 2,679,929 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 118,591 | 134,962 | 2,679,929 |
 
 ## timed-admit-debounce
 
@@ -2064,6 +2098,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 117,496 | 133,559 | 2,640,285 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 117,496 | 133,558 | 2,640,284 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 117,496 | 133,556 | 2,640,272 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 117,496 | 133,555 | 2,640,285 |
 
 ## timed-admit-first
 
@@ -2123,6 +2158,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 69,479 | 79,052 | 1,611,692 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 69,479 | 79,052 | 1,611,692 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 69,479 | 79,053 | 1,611,692 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 69,479 | 79,051 | 1,611,692 |
 
 ## timed-admit-last
 
@@ -2182,6 +2218,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 117,758 | 133,849 | 2,650,128 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 117,758 | 133,852 | 2,650,140 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 117,758 | 133,872 | 2,650,141 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 117,758 | 133,874 | 2,650,128 |
 
 ## timed-capture-both
 
@@ -2241,6 +2278,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 35,726 | 44,805 | 847,000 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 35,726 | 44,808 | 846,997 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 35,726 | 44,807 | 846,997 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 35,726 | 44,808 | 846,997 |
 
 ## timed-capture-debounce
 
@@ -2300,6 +2338,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 35,598 | 44,104 | 847,375 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 35,598 | 44,104 | 847,375 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 35,598 | 44,104 | 847,375 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 35,598 | 44,104 | 847,375 |
 
 ## timed-capture-first
 
@@ -2359,6 +2398,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 32,078 | 36,610 | 745,370 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 32,078 | 36,611 | 745,370 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 32,078 | 36,612 | 745,370 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 32,078 | 36,612 | 745,372 |
 
 ## timed-capture-last
 
@@ -2418,6 +2458,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 35,534 | 44,040 | 839,503 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 35,534 | 44,040 | 839,503 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 35,534 | 44,040 | 839,503 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 35,534 | 44,040 | 839,503 |
 
 ## update
 
@@ -2477,6 +2518,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 1,087,683 | 38,805 | 82,505 | 262,777 | 151,662 | 3,350,265 | 2,502,720 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 1,087,690 | 38,805 | 82,505 | 262,564 | 151,702 | 3,350,265 | 2,502,828 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 1,087,690 | 38,805 | 82,505 | 262,537 | 151,712 | 3,350,266 | 2,502,845 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 1,087,690 | 38,805 | 82,505 | 262,876 | 151,656 | 3,350,234 | 2,502,817 |
 
 ## update-on
 
@@ -2536,6 +2578,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 93,005 | 165,175 | 2,830,409 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 93,005 | 165,221 | 2,830,436 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 93,005 | 165,202 | 2,830,408 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 93,005 | 165,212 | 2,830,406 |
 
 ## work-form
 
@@ -2595,6 +2638,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 170,300 | 163,392 | 295,914 | 291,384 | 5,349,252 | 5,295,459 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 170,300 | 163,392 | 295,929 | 291,359 | 5,349,306 | 5,295,404 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 170,300 | 163,392 | 295,960 | 291,401 | 5,349,263 | 5,295,443 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 170,300 | 163,392 | 295,918 | 291,433 | 5,349,208 | 5,295,435 |
 
 ## work-status
 
@@ -2654,6 +2698,7 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 100,445 | 78,815 | 264,828 | 152,926 | 2,611,015 | 2,360,866 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 100,445 | 78,815 | 264,858 | 152,941 | 2,610,945 | 2,360,863 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 100,445 | 78,815 | 264,849 | 152,963 | 2,611,016 | 2,360,859 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 100,445 | 78,815 | 264,866 | 152,944 | 2,611,050 | 2,360,865 |
 
 ## work-value
 
@@ -2713,4 +2758,5 @@
 | `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | 107,569 | 119,469 | 265,039 | 279,894 | 2,595,660 | 2,920,177 |
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 107,569 | 119,470 | 265,070 | 279,895 | 2,595,625 | 2,920,163 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 107,569 | 119,469 | 265,103 | 279,880 | 2,595,722 | 2,920,176 |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 107,569 | 119,470 | 265,095 | 279,908 | 2,595,573 | 2,920,217 |
 
