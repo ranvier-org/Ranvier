@@ -11,6 +11,7 @@
         <Compile Include="ModuleInitTests.fs" />
         <Compile Include="SeamTests.fs" />
         <Compile Include="TreeTests.fs" />
+        <Compile Include="HtmlTests.fs" />
         <Compile Include="Main.fs" />
     </ItemGroup>
     <ItemGroup>
