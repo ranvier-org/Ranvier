@@ -161,10 +161,10 @@ let private pendingFirstPass bounded queued () =
                 forEach
                     id
                     (fun (_: 'inst) -> Array.init source.Value.Value (fun index -> index + 1))
-                    (li (Hooks.motion pendingRowMotion) { fun (row: unit -> int) -> string (row ()) })
+                    (li (Hooks.motion (System.Func<_, _, _, _> pendingRowMotion)) { fun (row: unit -> int) -> string (row ()) })
             }
 
-            show (fun _ -> source.Value.Value > 0) (span (Hooks.motion pendingArmMotion) { "on" })
+            show (fun _ -> source.Value.Value > 0) (span (Hooks.motion (System.Func<_, _, _, _> pendingArmMotion)) { "on" })
         }
 
     let content =
