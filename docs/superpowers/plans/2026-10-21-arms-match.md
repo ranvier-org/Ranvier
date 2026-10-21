@@ -124,6 +124,7 @@ Each ruling picks an implementation where the spec leaves one open, or settles a
 30. **Hydration parity covers every golden line, the fallback and the Strict mismatch** (Phase 4 review I2, M4, M5): `ArmsFixtures.Case.Run` runs a site and its twin under a `Runner`; `ArmsChecks.hydrations` takes the golden lines and returns `strictCases` that hydrate each line under Strict (served root adopted, no node inserted, markup equal to the twin's), and for each Load fixture the writes after hydration, the non-Strict fallback from a client at `Idle` (reports, markup and writes equal to the twin's) and the Strict mismatch (the twin's message, host left as served). `heldExit` reads its pattern variables in the exit callback, so the withdrawn read runs; `pendingSource` runs pending, settle, re-pend, settle and fail against a `matchWith` twin. `Arms.Prepare ()` runs in `ArmsLoweringChecks.runtimeCases`, in `DotnetCost --prepare` on net10.0 and net8.0 (twice, then on four threads with a site lowered on each), and in a Fable check.
 31. **The Fable cells are JavaScript objects and the first-site budget does not hold** (Task 9): under Fable, `Cells` is a `WeakMap` of `{ l, w }` slots holding `{ g, v, l }` entries through `Emit` helpers, and `Site.create` is `inline`; the F# classes over fable-library arrays cost 771 B gzip. The first site costs 496 B gzip over its twin against 250 (after Ruling 32): the AM006 and AM005 texts cost 141 B and the code 355 B. `size.mjs` exits 1 on the breach, so CI's budget step fails until the budget or the texts change (a spec conflict, reported). The plan's Task 11 labels name the TrimCallSite files by their full paths.
 32. **The Fable cells hold a target's single live entry without an array, and an entry keeps the arm's `current`** (Task 10): slots are a plain object with the live entry (or, once two are live, an array) of target t at key t and the withdrawn entry at key ~t; an entry reads `current()[1]` instead of a values thunk. The first cells cost +14.2-14.5 % heap per row and +18.6 % on armsSwitch1k; these cost +9.6-9.9 % heap (the gate holds) and 66 B more bundle. `keyed-rows.mjs` measures the rows heap only for modes with a rows adapter, since `ranvier-arms-match` has the arm fixture only.
+33. **The trim check sets `ILLinkWarningLevel` 5 and starts clean** (Task 11): an F# project has no `EffectiveAnalysisLevel`, so ILLink runs at warning level 0 and reports no IL2026; an up-to-date publish skips ILLink, so `check.sh` removes `bin` and `obj` first and matches the IL2026 at `Main.fs`. The CI job uses `actions/setup-node@v7` like the other jobs, installs the .NET 8 runtime, and runs `DotnetCost --prepare` on net10.0 and net8.0.
 
 ## Review Focus
 
@@ -6736,6 +6737,8 @@ Message subject: `perf(arms): Chromium arm benchmark mode and heap profile`.
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <PublishTrimmed>true</PublishTrimmed>
     <TrimmerSingleWarn>false</TrimmerSingleWarn>
+    <!-- F# projects have no EffectiveAnalysisLevel, so ILLink would run at warning level 0 and report no IL2026. -->
+    <ILLinkWarningLevel>5</ILLinkWarningLevel>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Main.fs" />
@@ -6783,13 +6786,15 @@ let main _ =
 ```bash
 #!/usr/bin/env bash
 # Publishes TrimCallSite trimmed for the runtime identifier in $1 (linux-x64 by default) and fails unless ILLink reports
-# IL2026 for its Arms.Match call.
+# IL2026 at its Arms.Match call in Main.fs.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 log="$(mktemp)"
+# An up-to-date publish skips ILLink and reports nothing, so each run starts from a clean output.
+rm -rf "$here/bin" "$here/obj"
 dotnet publish "$here/TrimCallSite.fsproj" -c Release -r "${1:-linux-x64}" -o "$here/bin/publish" 2>&1 | tee "$log"
-if ! grep -E "IL2026.*Arms\.Match" "$log" > /dev/null; then
-  echo "The trimmed publish reported no IL2026 naming Arms.Match" >&2
+if ! grep -E "Main\.fs\([0-9]+,[0-9]+\).*IL2026.*Ranvier\.View\.Arms\.Arms\.Match" "$log" > /dev/null; then
+  echo "The trimmed publish reported no IL2026 at the Arms.Match call in Main.fs" >&2
   exit 1
 fi
 ```
@@ -6814,7 +6819,8 @@ In `.github/workflows/ci.yml`, before the `result:` job, add:
 
 ```yaml
   # Arms.Match (experiments/Ranvier.View.Arms): the Fable plugin's tests, the .NET lowering, fixture, golden and runtime
-  # checks inside the representation checks, the jsdom suites (test:arms), the bundle budget, and the trim annotation.
+  # checks inside the representation checks, the jsdom suites (test:arms), the bundle budget, Arms.Prepare on both
+  # runtime targets, and the trim annotation.
   arms:
     name: Arms.Match
     needs: changes
@@ -6822,11 +6828,13 @@ In `.github/workflows/ci.yml`, before the `result:` job, add:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      # global.json pins the SDK; DotnetCost also runs on net8.0, the library's other target, which needs the .NET 8 runtime.
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
+          dotnet-version: 8.0.x
       # The Playground requires Node 26 or newer (package.json engines).
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: '26'
           cache: npm
@@ -6862,6 +6870,12 @@ In `.github/workflows/ci.yml`, before the `result:` job, add:
       # size.mjs rewrites the committed bundle numbers; a difference means they are stale.
       - name: Check the committed bundle numbers
         run: git diff --exit-code -- docs/research/arms-match/bundle.json
+      # The timings print without a budget (shared runners are not the budget's machine); a raise or a wrong render from
+      # Arms.Prepare, called twice and on four threads at once, fails the step.
+      - name: Run Arms.Prepare and the lowering costs on net10.0 and net8.0
+        run: |
+          dotnet run --project experiments/Ranvier.View.Arms/Checks/DotnetCost/DotnetCost.fsproj -c Release -f net10.0 -- --prepare
+          dotnet run --project experiments/Ranvier.View.Arms/Checks/DotnetCost/DotnetCost.fsproj -c Release -f net8.0 -- --prepare
       - name: Check the trim annotation
         run: bash experiments/Ranvier.View.Arms/Checks/TrimCallSite/check.sh linux-x64
 ```
