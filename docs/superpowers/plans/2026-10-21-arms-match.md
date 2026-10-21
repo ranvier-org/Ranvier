@@ -2874,6 +2874,21 @@ let private find (slots: Set<Var>) (expr: Expr) : (Var * Type option) option =
 
     go None expr
 
+/// <summary>
+/// The expression with each assignment followed by <c>()</c>: LeafExpressionConverter types an assignment by its value,
+/// and a lambda returning it would no longer be <c>unit</c>-valued.
+/// </summary>
+let rec private unitAssignments (expr: Expr) : Expr =
+    match expr with
+    | ExprShape.ShapeVar _ -> expr
+    | ExprShape.ShapeLambda (var, body) -> Expr.Lambda (var, unitAssignments body)
+    | ExprShape.ShapeCombination (shape, args) ->
+        match ExprShape.RebuildShapeCombination (shape, List.map unitAssignments args) with
+        | PropertySet _
+        | FieldSet _
+        | VarSet _ as assignment -> Expr.Sequential (assignment, Expr.Value (box (), typeof<unit>))
+        | rebuilt -> rebuilt
+
 let private unboxMethod =
     match <@ unbox<int> null @> with
     | Call (_, info, _) -> info.GetGenericMethodDefinition ()
@@ -2987,7 +3002,7 @@ let lower (cells: Cells.Cells) (at: At) (arms: Expr<'u -> TemplateView<'inst>>) 
             | ExprShape.ShapeLambda (var, inner) -> Expr.Lambda (var, visit inner)
             | ExprShape.ShapeCombination (shape, args) -> ExprShape.RebuildShapeCombination (shape, List.map visit args)
 
-        let lowered = visit body
+        let lowered = visit body |> unitAssignments
 
         match find slotSet lowered with
         | Some (var, Some over) when over <> typeof<'inst> ->
@@ -3083,7 +3098,7 @@ Merge `origin/master` before starting (this task edits `DomTests.fsproj` and `Re
 
 **Interfaces:**
 - Consumes: `Arms.Match` (Tasks 1-3).
-- Produces: `ArmsFixtures` (module): types `Load`, `Item`, `Score`, `Panel`, `Editor`, `Point`, `Value`; `Case = { Fixture: string; State: string; Site: TemplateComponent; Twin: TemplateComponent; Render: Server.Options -> string * string }`; `all: Case list`; `incompleteRaises: unit -> bool`; each fixture component beside its twin, which later tasks mount: `loader`/`loaderTwin`, `rich`/`richTwin`, `rows`/`rowsTwin`, `rowsTuple`/`rowsTupleTwin`, `tupled`/`tupledTwin`, `optional`, `listed`, `arrayed`, `scored`, `whole`/`wholeTwin`, `typed`, `halves`, `parsed`, `forms`/`formsTwin`, `helper`/`helperTwin`, `nested`/`nestedTwin`, `editor`/`editorTwin`, `values`/`valuesTwin`, `incomplete`/`incompleteTwin` (each twin named `<site>Twin`); `loadSteps: Load list` (the probe's eight writes). `ArmsServerChecks.cases: (string * (unit -> unit)) array`. The npm script `test:arms`.
+- Produces: `ArmsFixtures` (module): types `Load`, `Item`, `Score`, `Panel`, `Editor`, `Point`, `Value`; `Case = { Fixture: string; State: string; Site: TemplateComponent; Twin: TemplateComponent; Render: Server.Options -> string * string }`; `all: Case list`; `incompleteRaises: unit -> bool`; each fixture component beside its twin, which later tasks mount: `loader`/`loaderTwin`, `rich`/`richTwin`, `rows`/`rowsTwin`, `rowsTuple`/`rowsTupleTwin`, `tupled`/`tupledTwin`, `optional`, `listed`, `scored`, `whole`/`wholeTwin`, `typed`, `halves`, `parsed`, `forms`/`formsTwin`, `helper`/`helperTwin`, `nested`/`nestedTwin`, `editor`/`editorTwin`, `values`/`valuesTwin`, `incomplete`/`incompleteTwin` (each twin named `<site>Twin`); `loadSteps: Load list` (the probe's eight writes). `ArmsServerChecks.cases: (string * (unit -> unit)) array`. The npm script `test:arms`.
 
 - [ ] **Step 1: Write the fixtures**
 
@@ -3166,7 +3181,8 @@ let private cases (fixture: string) (site: Component<'props>) (twin: Component<'
             }
     ]
 
-let private read (state: Signal<Load>) = state.Value
+let private read (state: Signal<Load>) =
+    state.Value
 
 let private loadStates =
     [
@@ -3315,7 +3331,10 @@ let rowsTuple =
                 function
                 | Loaded (owner, count) ->
                     ul () {
-                        forEach snd (fun _ -> Array.init count (fun index -> owner, index)) (li () { fun (row: unit -> string * int) -> fst (row ()) + string (snd (row ())) })
+                        forEach
+                            snd
+                            (fun _ -> Array.init count (fun index -> owner, index))
+                            (li () { fun (row: unit -> string * int) -> fst (row ()) + string (snd (row ())) })
                     }
                 | _ -> span () { "Other" }
             )
@@ -3387,10 +3406,18 @@ let optionalTwin =
         })
 
 // List pattern.
-let private listOneArm = armOf (b () { fun (payload: unit -> int) -> string (payload ()) })
+let private listOneArm =
+    armOf (b () { fun (payload: unit -> int) -> string (payload ()) })
 
 let private listManyArm =
-    armOf (i () { fun (payload: unit -> int * int list) -> string (fst (payload ())) + "+" + string (snd (payload ())).Length })
+    armOf (
+        i () {
+            fun (payload: unit -> int * int list) ->
+                string (fst (payload ()))
+                + "+"
+                + string (snd (payload ())).Length
+        }
+    )
 
 let listed =
     Component.template
@@ -3413,32 +3440,6 @@ let listedTwin =
                 | [] -> arm noneArm ()
                 | [ x ] -> arm listOneArm x
                 | x :: rest -> arm listManyArm (x, rest))
-        })
-
-// Array pattern.
-let private arrayManyArm = armOf (i () { fun (payload: unit -> int array) -> string (payload ()).Length })
-
-let arrayed =
-    Component.template
-        (fun _ (state: Signal<int array>) -> state)
-        (div () {
-            Arms.Match (
-                (fun (state: Signal<int array>) -> state.Value),
-                function
-                | [||] -> span () { "none" }
-                | [| x |] -> b () { fun _ -> string x }
-                | many -> i () { fun _ -> string many.Length }
-            )
-        })
-
-let arrayedTwin =
-    Component.template
-        (fun _ (state: Signal<int array>) -> state)
-        (div () {
-            matchWith (fun (state: Signal<int array>) -> state.Value) (function
-                | [||] -> arm noneArm ()
-                | [| x |] -> arm listOneArm x
-                | many -> arm arrayManyArm many)
         })
 
 // Record pattern.
@@ -3518,14 +3519,17 @@ let typedTwin =
         })
 
 // Total and partial active patterns.
-let (|Half|Odd|) (n: int) = if n % 2 = 0 then Half (n / 2) else Odd
+let (|Half|Odd|) (n: int) =
+    if n % 2 = 0 then Half (n / 2) else Odd
 
 let (|Number|_|) (text: string) =
     match Int32.TryParse text with
     | true, n -> Some n
     | _ -> None
 
-let private halfArm = armOf (b () { fun (payload: unit -> int) -> string (payload ()) })
+let private halfArm =
+    armOf (b () { fun (payload: unit -> int) -> string (payload ()) })
+
 let private oddArm = armOf (span () { "odd" })
 
 let halves =
@@ -3605,7 +3609,8 @@ let formsTwin =
         })
 
 // A helper view of the enclosing instance type that takes a reader (Review Focus 3).
-let private labelled (label: 'inst -> string) : TemplateView<'inst> = b (Attrs.className "label") { label }
+let private labelled (label: 'inst -> string) : TemplateView<'inst> =
+    b (Attrs.className "label") { label }
 
 let helper =
     Component.template
@@ -3619,7 +3624,8 @@ let helper =
             )
         })
 
-let private labelledArm = armOf (labelled (fun (payload: unit -> string) -> payload ()))
+let private labelledArm =
+    armOf (labelled (fun (payload: unit -> string) -> payload ()))
 
 let helperTwin =
     Component.template
@@ -3719,12 +3725,30 @@ let values =
             )
         })
 
-let private ratioArm = armOf (b () { fun (payload: unit -> float) -> string (payload ()) })
-let private moneyArm = armOf (b () { fun (payload: unit -> decimal) -> string (payload ()) })
-let private flagArm = armOf (b () { fun (payload: unit -> bool) -> if payload () then "on" else "off" })
-let private letterArm = armOf (b () { fun (payload: unit -> char) -> string (payload ()) })
-let private pointArm = armOf (b () { fun (payload: unit -> Point) -> string (payload ()).X + "," + string (payload ()).Y })
-let private countArm = armOf (b () { fun (payload: unit -> int) -> string (payload ()) })
+let private ratioArm =
+    armOf (b () { fun (payload: unit -> float) -> string (payload ()) })
+
+let private moneyArm =
+    armOf (b () { fun (payload: unit -> decimal) -> string (payload ()) })
+
+let private flagArm =
+    armOf (b () { fun (payload: unit -> bool) -> if payload () then "on" else "off" })
+
+let private letterArm =
+    armOf (b () { fun (payload: unit -> char) -> string (payload ()) })
+
+let private pointArm =
+    armOf (
+        b () {
+            fun (payload: unit -> Point) ->
+                string (payload ()).X
+                + ","
+                + string (payload ()).Y
+        }
+    )
+
+let private countArm =
+    armOf (b () { fun (payload: unit -> int) -> string (payload ()) })
 
 let valuesTwin =
     Component.template
@@ -3754,7 +3778,8 @@ let incomplete =
             )
         })
 
-let private percentArm = armOf (b () { fun (payload: unit -> int) -> string (payload ()) })
+let private percentArm =
+    armOf (b () { fun (payload: unit -> int) -> string (payload ()) })
 
 let incompleteTwin =
     Component.template
@@ -3768,15 +3793,45 @@ let incompleteTwin =
 
 let private panels =
     [
-        "Loaded open", (fun () -> { State = Api.createSignal (Loaded ("t", 1)); Open = Api.createSignal true }: Panel)
-        "Loaded closed", (fun () -> { State = Api.createSignal (Loaded ("t", 1)); Open = Api.createSignal false }: Panel)
-        "Idle", (fun () -> { State = Api.createSignal Idle; Open = Api.createSignal true }: Panel)
+        "Loaded open",
+        (fun () ->
+            {
+                State = Api.createSignal (Loaded ("t", 1))
+                Open = Api.createSignal true
+            }
+            : Panel)
+        "Loaded closed",
+        (fun () ->
+            {
+                State = Api.createSignal (Loaded ("t", 1))
+                Open = Api.createSignal false
+            }
+            : Panel)
+        "Idle",
+        (fun () ->
+            {
+                State = Api.createSignal Idle
+                Open = Api.createSignal true
+            }
+            : Panel)
     ]
 
 let private editors =
     [
-        "Loaded", (fun () -> { State = Api.createSignal (Loaded ("draft", 1)); Saved = Api.createSignal "" }: Editor)
-        "Idle", (fun () -> { State = Api.createSignal Idle; Saved = Api.createSignal "" }: Editor)
+        "Loaded",
+        (fun () ->
+            {
+                State = Api.createSignal (Loaded ("draft", 1))
+                Saved = Api.createSignal ""
+            }
+            : Editor)
+        "Idle",
+        (fun () ->
+            {
+                State = Api.createSignal Idle
+                Saved = Api.createSignal ""
+            }
+            : Editor)
     ]
 
 /// <summary>Every fixture state; the incomplete fixture's unmatched state is checked on its own.</summary>
@@ -3790,13 +3845,23 @@ let all: Case list =
             cases "tupled" tupled tupledTwin (signals loadStates)
             cases "optional" optional optionalTwin (signals [ "Some", Some "ink"; "None", None ])
             cases "listed" listed listedTwin (signals [ "empty", []; "one", [ 4 ]; "three", [ 1; 2; 3 ] ])
-            cases "arrayed" arrayed arrayedTwin (signals [ "empty", [||]; "one", [| 4 |]; "three", [| 1; 2; 3 |] ])
             cases "scored" scored scoredTwin (signals [ "zero", { Name = "ada"; Points = 0 }; "five", { Name = "ada"; Points = 5 } ])
             cases "whole" whole wholeTwin (signals loadStates)
             cases "typed" typed typedTwin (signals [ "Item", box { Id = 1; Name = "pen" }; "string", box "ink"; "other", box 3 ])
             cases "halves" halves halvesTwin (signals [ "four", 4; "five", 5 ])
             cases "parsed" parsed parsedTwin (signals [ "number", "21"; "word", "ink" ])
-            cases "forms" forms formsTwin (signals [ "huge", Loaded ("x", 2000); "big", Loaded ("x", 200); "zero", Loaded ("x", 0); "three", Loaded ("y", 3); "Idle", Idle ])
+            cases
+                "forms"
+                forms
+                formsTwin
+                (signals
+                    [
+                        "huge", Loaded ("x", 2000)
+                        "big", Loaded ("x", 200)
+                        "zero", Loaded ("x", 0)
+                        "three", Loaded ("y", 3)
+                        "Idle", Idle
+                    ])
             cases "helper" helper helperTwin (signals loadStates)
             cases "nested" nested nestedTwin panels
             cases "editor" editor editorTwin editors
@@ -3820,7 +3885,9 @@ let all: Case list =
 
 /// <summary>Whether the incomplete site raises for its unmatched case.</summary>
 let incompleteRaises () =
-    let html = renderWith Server.Options.defaults incomplete (fun () -> Api.createSignal (Loaded ("x", 1)))
+    let html =
+        renderWith Server.Options.defaults incomplete (fun () -> Api.createSignal (Loaded ("x", 1)))
+
     html.StartsWith "raised: "
 ```
 
@@ -3850,8 +3917,8 @@ let private omit =
 let private sameLayouts () =
     for case in all do
         equal
-            (case.Fixture, layoutSignature case.Twin.Root, structuralHash case.Twin)
-            (case.Fixture, layoutSignature case.Site.Root, structuralHash case.Site)
+            (case.Fixture, SugarFixtures.layoutSignature case.Twin.Root, structuralHash case.Twin)
+            (case.Fixture, SugarFixtures.layoutSignature case.Site.Root, structuralHash case.Site)
 
 let private sameHtml (options: Server.Options) () =
     for case in all do

@@ -23,6 +23,7 @@ const port = Number(argument("port", 5187));
 
 if (process.argv.includes("--build")) {
   for (const [args, extra] of [
+    [["dotnet", "build", "../../experiments/Ranvier.View.Arms.FablePlugin/Ranvier.View.Arms.FablePlugin.fsproj", "-c", "Release", "-v", "q"], {}],
     [["dotnet", "fickl", "tests/DomTests.fsproj", "--outDir", "generated-tests", "--configuration", "Release", "--noCache"], {}],
     [["dotnet", "fickl", "benchmarks/ripple/RipplePerf.fsproj", "--outDir", "generated-ripple", "--configuration", "Release", "--noCache"], {}]
   ]) execFileSync("rtk", args, { cwd, stdio: "inherit", windowsHide: true, env: { ...env, ...extra } });

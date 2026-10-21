@@ -167,6 +167,21 @@ let private find (slots: Set<Var>) (expr: Expr) : (Var * Type option) option =
 
     go None expr
 
+/// <summary>
+/// The expression with each assignment followed by <c>()</c>: LeafExpressionConverter types an assignment by its value,
+/// and a lambda returning it would no longer be <c>unit</c>-valued.
+/// </summary>
+let rec private unitAssignments (expr: Expr) : Expr =
+    match expr with
+    | ExprShape.ShapeVar _ -> expr
+    | ExprShape.ShapeLambda (var, body) -> Expr.Lambda (var, unitAssignments body)
+    | ExprShape.ShapeCombination (shape, args) ->
+        match ExprShape.RebuildShapeCombination (shape, List.map unitAssignments args) with
+        | PropertySet _
+        | FieldSet _
+        | VarSet _ as assignment -> Expr.Sequential (assignment, Expr.Value (box (), typeof<unit>))
+        | rebuilt -> rebuilt
+
 let private unboxMethod =
     match <@ unbox<int> null @> with
     | Call (_, info, _) -> info.GetGenericMethodDefinition ()
@@ -280,7 +295,7 @@ let lower (cells: Cells.Cells) (at: At) (arms: Expr<'u -> TemplateView<'inst>>) 
             | ExprShape.ShapeLambda (var, inner) -> Expr.Lambda (var, visit inner)
             | ExprShape.ShapeCombination (shape, args) -> ExprShape.RebuildShapeCombination (shape, List.map visit args)
 
-        let lowered = visit body
+        let lowered = visit body |> unitAssignments
 
         match find slotSet lowered with
         | Some (var, Some over) when over <> typeof<'inst> ->

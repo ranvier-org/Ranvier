@@ -283,7 +283,8 @@ plain `match` does, and site build succeeds.
 | Guard | `\| Loaded (t, n) when n > 99 ->` | its own target; the guard runs in `select`, so a guard change remounts | probed |
 | Wildcard | `\| _ ->` | one target | probed |
 | Tuple scrutinee | `(s.Value, s.Value = Idle)` with `\| Loaded (t, _), _ ->` | one target per row | probed (no twin) |
-| Record, list, array, option patterns | `\| { Name = n } ->`, `\| [x] ->`, `\| Some v ->` | one target per row; extracted parts are bound values | spec; fixtures in phase 2 |
+| Record, list, option patterns | `\| { Name = n } ->`, `\| [x] ->`, `\| Some v ->` | one target per row; extracted parts are bound values | fixtures (phase 2) |
+| Array pattern | `\| [\| x \|] ->` | FS0452 "Quotations cannot contain inline assembly code or pattern matching on arrays", in the IDE and on .NET | unsupported (phase 2) |
 | `as` pattern | `\| Loaded _ as whole ->` | one target; `whole` is a bound value | spec; fixture in phase 2 |
 | Type test | `\| :? Item as item ->` (scrutinee `obj`) | one target; `item` is a bound value | spec; fixture in phase 2 |
 | Active pattern, total or partial | `\| Even -> \| Odd ->`, `\| Parse n ->` | the active pattern runs in `select`; one target per row | spec; fixtures in phase 2 |
@@ -292,6 +293,7 @@ plain `match` does, and site build succeeds.
 | Nested `Arms.Match` in a body | inner site reading an outer pattern variable in a reader | inner and outer sites each own their cells | spec; fixture in phase 2 |
 | Incomplete match | missing case, FS0025 warning | `select` raises `MatchFailureException` for unmatched values | spec |
 | Object expression in a body | `{ new IDisposable with ... }` | FS0449 "Quotations cannot contain object expressions", in the IDE and on .NET | probed; unsupported |
+| Assignment in a reader | `fun (e: Editor) _ -> e.Saved.Value <- text` | the .NET lowering follows each assignment with `()`, since `LeafExpressionConverter` types an assignment by its value | fixture (phase 2) |
 | `Arms.Match` with a non-literal second argument | `Arms.Match (read, arms)` | AM003 | probed |
 
 ### Readers
