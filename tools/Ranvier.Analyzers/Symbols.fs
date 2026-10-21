@@ -306,3 +306,26 @@ module Core =
             && (m.LogicalName.StartsWith "createAsync"
                 || m.LogicalName.StartsWith "createStream"
                 || m.LogicalName = "createOwningAsyncWithPolicy"))
+
+    /// Whether a call of `m` writes a signal or pumps the graph: work the graph's owning thread must do.
+    let isGraphWrite (m: FSharpMemberOrFunctionOrValue) : bool =
+        isMember "Ranvier.Signal`1" "set_Value" m
+        || isMember "Ranvier.SignalModule" "update" m
+        || isMember "Ranvier.Graph" "Pump" m
+
+    /// Whether `m` is `Graph.Dispatch`, which runs its work on the owning thread.
+    let isDispatch (m: FSharpMemberOrFunctionOrValue) : bool =
+        isMember "Ranvier.Graph" "Dispatch" m
+
+    /// Whether a call of `m` runs its delegate argument on a thread-pool or new thread.
+    let threadStarter (m: FSharpMemberOrFunctionOrValue) : bool =
+        match enclosing m, m.LogicalName with
+        | "System.Threading.Tasks.Task", "Run"
+        | "System.Threading.Tasks.TaskFactory", "StartNew"
+        | "System.Threading.ThreadPool", "QueueUserWorkItem"
+        | "System.Threading.ThreadPool", "UnsafeQueueUserWorkItem"
+        | "System.Threading.Thread", ".ctor"
+        | "System.Threading.Tasks.Parallel", "For"
+        | "System.Threading.Tasks.Parallel", "ForEach"
+        | "System.Threading.Timer", ".ctor" -> true
+        | _ -> false

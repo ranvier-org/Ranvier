@@ -12,6 +12,7 @@ let rules: Rule list =
         Rules.Core.ran010
         Rules.Core.ran011
         Rules.Core.ran012
+        Rules.Core.ran013
     ]
 
 /// The findings of `rule` in a CLI context; empty when the project lacks the rule's gate reference.
@@ -96,3 +97,11 @@ let ran012Cli: Analyzer<CliContext> =
 [<EditorAnalyzer("RAN012", "Reactive read after the first await of an async memo", "https://shayanhabibi.github.io/Ranvier/analyzers/ran012/")>]
 let ran012Editor: Analyzer<EditorContext> =
     fun context -> async { return runEditor Rules.Core.ran012 context }
+
+[<CliAnalyzer("RAN013", "Signal write or Pump on a thread-pool callback", "https://shayanhabibi.github.io/Ranvier/analyzers/ran013/")>]
+let ran013Cli: Analyzer<CliContext> =
+    fun context -> async { return runCli Rules.Core.ran013 context }
+
+[<EditorAnalyzer("RAN013", "Signal write or Pump on a thread-pool callback", "https://shayanhabibi.github.io/Ranvier/analyzers/ran013/")>]
+let ran013Editor: Analyzer<EditorContext> =
+    fun context -> async { return runEditor Rules.Core.ran013 context }

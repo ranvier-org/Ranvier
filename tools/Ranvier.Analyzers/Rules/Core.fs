@@ -224,3 +224,60 @@ let ran012: Rule =
         Gate = Symbols.Assemblies.Ranvier
         Run = untrackedReads
     }
+
+/// Whether the expression at `path` runs in a delegate handed to a thread starter, with no `Graph.Dispatch` between.
+let private offThread (path: Step list) : bool =
+    let rec go (insideLambda: bool) (steps: Step list) =
+        match steps with
+        | [] -> false
+        | Step.Lambda (_, false) :: rest -> go true rest
+        | Step.Argument (callee, _, _) :: _ when isDispatch callee -> false
+        | Step.Argument (callee, _, _) :: _ when insideLambda && threadStarter callee -> true
+        | _ :: rest -> go insideLambda rest
+
+    go false path
+
+/// The value a graph write targets: the signal or graph receiver, or `Signal.update`'s signal.
+let private writeTarget (site: CallSite) : FSharpMemberOrFunctionOrValue option =
+    match site.Receiver, site.Arguments with
+    | Some (Value target), _ -> Some target
+    | None, Value target :: _ -> Some target
+    | _ -> None
+
+let private offThreadWrites (input: Input) : Message list =
+    let starters =
+        input.Index.Calls
+        |> Array.filter (fun call -> threadStarter call.Callee)
+
+    // A target bound inside the delegate belongs to a graph the delegate's thread owns.
+    let ownedByThread (site: CallSite) =
+        match writeTarget site with
+        | Some target ->
+            starters
+            |> Array.exists (fun starter ->
+                Range.rangeContainsRange starter.Range site.Range
+                && Range.rangeContainsRange starter.Range target.DeclarationLocation)
+        | None -> false
+
+    [
+        for site in input.Index.Calls do
+            if
+                isGraphWrite site.Callee
+                && offThread site.Path
+                && not (ownedByThread site)
+            then
+                message
+                    "RAN013"
+                    Severity.Warning
+                    site.Range
+                    $"`{text input site.Range}` runs on a thread-pool thread; a write off the graph's owning thread raises under `ThreadAffinity.Guarded`. Hand the write to `graph.Dispatch (fun () -> ...)`."
+                    []
+    ]
+
+let ran013: Rule =
+    {
+        Code = "RAN013"
+        Title = "Signal write or Pump on a thread-pool callback"
+        Gate = Symbols.Assemblies.Ranvier
+        Run = offThreadWrites
+    }

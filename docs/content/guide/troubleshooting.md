@@ -92,6 +92,8 @@ on that thread and leaves the work queued.
 thread. On a thread with a `SynchronizationContext` (a UI thread), the graph posts the drain to that
 context and `Pump` is unnecessary.
 
+The analyzers report this at build time: [RAN013](../analyzers/ran013.md).
+
 :::details Example
 
 ```fsharp

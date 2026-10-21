@@ -14,6 +14,7 @@
         <Compile Include="Ran010.fs" />
         <Compile Include="Ran011.fs" />
         <Compile Include="Ran012.fs" />
+        <Compile Include="Ran013.fs" />
         <Compile Include="DocsExamples.fs" />
         <Compile Include="Budget.fs" />
         <Compile Include="Main.fs" />
