@@ -40,7 +40,7 @@ let private typeName (t: FSharpType) : string option =
         None
 
 let private isString (t: FSharpType) =
-    typeName t = Some "System.String"
+    typeName t = Some Symbols.StringType
 
 let private isStatic (t: FSharpType) =
     not (t.StripAbbreviations ()).IsFunctionType
@@ -51,30 +51,14 @@ let private buildSite (m: FSharpMemberOrFunctionOrValue) (index: int) : BuildSit
     let entity = Symbols.enclosing m
 
     match parameterAt m index with
-    | Some parameter when
-        entity = Element
-        && m.LogicalName = "Yield"
-        && isString parameter.Type
-        ->
-        Some BuildSite.Text
-    | Some parameter when
-        entity = Builder
-        && m.LogicalName = "text"
-        && isString parameter.Type
-        ->
-        Some BuildSite.Text
+    | Some parameter when isTextMember m && isString parameter.Type -> Some BuildSite.Text
     | Some parameter when
         (entity = Attributes || entity = Properties)
-        && parameter.Name = Some "value"
+        && parameter.Name = Some ValueParameter
         && isStatic parameter.Type
         ->
         Some (BuildSite.Part (if entity = Attributes then "attribute" else "property"))
-    | Some _ when
-        entity = Sugar
-        && m.LogicalName = "renderOf"
-        && index = 1
-        ->
-        Some BuildSite.RenderOf
+    | Some _ when isRenderOf m && index = 1 -> Some BuildSite.RenderOf
     | _ -> None
 
 /// The build-time site whose argument holds the expression at `path` outside any lambda, with the callee and index.
@@ -101,7 +85,7 @@ let private hasReaderOverload (m: FSharpMemberOrFunctionOrValue) =
             candidate.LogicalName = m.LogicalName
             && candidate.CurriedParameterGroups
                |> Seq.concat
-               |> Seq.exists (fun p -> p.Name = Some "read"))
+               |> Seq.exists (fun p -> p.Name = Some ReaderParameter))
     | None -> false
 
 /// The expressions in the return position of `expr`: through `let`, sequencing, records and tuples.
@@ -187,15 +171,8 @@ let private buildTimeReads (input: Input) : Message list =
         for call in calls do
             let entity = Symbols.enclosing call.Callee
 
-            let setup =
-                (entity = Component
-                 && call.Callee.LogicalName = "define")
-                || (entity = SugarComponent
-                    && call.Callee.LogicalName = "template")
-
-            let renderProps =
-                (entity = Sugar || entity = Builder)
-                && call.Callee.LogicalName = "render"
+            let setup = isSetupDefinition call.Callee
+            let renderProps = isRender call.Callee
 
             if setup && not call.Arguments.IsEmpty then
                 for expr in returned (bodyAfter 2 call.Arguments[0]) do
@@ -233,15 +210,6 @@ let ran020: Rule =
         Run = buildTimeReads
     }
 
-let private isKeyed (m: FSharpMemberOrFunctionOrValue) =
-    let entity = Symbols.enclosing m
-
-    (entity = Builder && m.LogicalName = "each")
-    || (entity = Sugar
-        && (m.LogicalName = "each"
-            || m.LogicalName = "forEach"
-            || m.LogicalName = "forEachFixed"))
-
 let rec private subExpressions (expr: FSharpExpr) : FSharpExpr list =
     expr
     :: List.collect subExpressions expr.ImmediateSubExpressions
@@ -249,7 +217,7 @@ let rec private subExpressions (expr: FSharpExpr) : FSharpExpr list =
 let private isPrimitive (t: FSharpType) =
     t.HasTypeDefinition
     && (t.TypeDefinition.IsValueType
-        || t.TypeDefinition.TryFullName = Some "System.String")
+        || t.TypeDefinition.TryFullName = Some Symbols.StringType)
 
 let private comparedByReference (t: FSharpType) =
     t.HasTypeDefinition
@@ -258,7 +226,7 @@ let private comparedByReference (t: FSharpType) =
         entity.IsClass
         && not entity.IsFSharpRecord
         && not entity.IsFSharpUnion
-        && entity.TryFullName <> Some "System.String"
+        && entity.TryFullName <> Some Symbols.StringType
         && not (
             entity.MembersFunctionsAndValues
             |> Seq.exists (fun m ->
@@ -309,7 +277,7 @@ let private unstableKeys (input: Input) : Message list =
                             || item.FullType.TypeDefinition.IsFSharpUnion)
 
                     let identity =
-                        site.Callee.LogicalName = "forEach"
+                        isForEach site.Callee
                         && structuredItem
                         && (match body with
                             | Value v -> v = item
@@ -505,9 +473,7 @@ let elements (input: Input) : ElementSite list =
                     let children =
                         calls
                         |> Array.exists (fun call ->
-                            (call.Callee.LogicalName = "Yield"
-                             || call.Callee.LogicalName = "YieldFrom")
-                            && Symbols.enclosing call.Callee = Element
+                            isChildYield call.Callee
                             && (match call.Receiver with
                                 | Some (Value receiver) -> receiver = parameter
                                 | _ -> false))

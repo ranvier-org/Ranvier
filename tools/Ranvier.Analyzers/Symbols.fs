@@ -27,6 +27,9 @@ let display (m: FSharpMemberOrFunctionOrValue) : string =
 let Operators = "Microsoft.FSharp.Core.Operators"
 
 [<Literal>]
+let StringType = "System.String"
+
+[<Literal>]
 let PipeRight = "op_PipeRight"
 
 [<Literal>]
@@ -572,6 +575,49 @@ module View =
     /// Whether `m` is `Hydration.hydrateWith`, whose first argument is the commit mode.
     let isHydrateWith (m: FSharpMemberOrFunctionOrValue) : bool =
         isMember Hydration "hydrateWith" m
+
+    /// The parameter name of a builder member's static value overload, beside its `read` overload.
+    [<Literal>]
+    let ValueParameter = "value"
+
+    /// The parameter name of a builder member's reader overload.
+    [<Literal>]
+    let ReaderParameter = "read"
+
+    /// Whether `m` yields or builds a text node: the element CE's `Yield` or the builder's `text`.
+    let isTextMember (m: FSharpMemberOrFunctionOrValue) : bool =
+        isMember Element "Yield" m
+        || isMember Builder "text" m
+
+    /// Whether `m` is a child of an element CE: its `Yield` or `YieldFrom`.
+    let isChildYield (m: FSharpMemberOrFunctionOrValue) : bool =
+        isMember Element "Yield" m
+        || isMember Element "YieldFrom" m
+
+    /// Whether `m` is the sugar's `renderOf`, whose props are fixed when the template is built.
+    let isRenderOf (m: FSharpMemberOrFunctionOrValue) : bool =
+        isMember Sugar "renderOf" m
+
+    /// Whether `m` defines a component from a setup function: `Component.define` or the sugar's `Component.template`.
+    let isSetupDefinition (m: FSharpMemberOrFunctionOrValue) : bool =
+        isMember Component "define" m
+        || isMember SugarComponent "template" m
+
+    /// Whether `m` inlines a child template with a props reader: the sugar's or the builder's `render`.
+    let isRender (m: FSharpMemberOrFunctionOrValue) : bool =
+        isMember Sugar "render" m
+        || isMember Builder "render" m
+
+    /// Whether `m` renders a keyed list: the builder's `each`, the sugar's `each`, `forEach` and `forEachFixed`.
+    let isKeyed (m: FSharpMemberOrFunctionOrValue) : bool =
+        isMember Builder "each" m
+        || isMember Sugar "each" m
+        || isMember Sugar "forEach" m
+        || isMember Sugar "forEachFixed" m
+
+    /// Whether `m` is the sugar's `forEach`, whose rows follow the current item.
+    let isForEach (m: FSharpMemberOrFunctionOrValue) : bool =
+        isMember Sugar "forEach" m
 
 /// The calls that make a list key unstable.
 module Keys =
