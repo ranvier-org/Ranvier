@@ -56,8 +56,7 @@ let noArm =
 
 /// <summary>The AM006 text of a Release Fable build: the code and the docs entry holding the full text.</summary>
 [<Literal>]
-let noArmCode =
-    "Ranvier AM006: https://shayanhabibi.github.io/Ranvier/view/arms/#am006"
+let noArmCode = "Ranvier AM006: shayanhabibi.github.io/Ranvier/view/arms/#am006"
 
 /// <summary>AM007.</summary>
 [<Literal>]

@@ -72,7 +72,7 @@ let private noArm () =
 #if DEBUG
     equal Ranvier.View.Arms.Diagnostics.noArm message
 #else
-    equal "Ranvier AM006: https://shayanhabibi.github.io/Ranvier/view/arms/#am006" message
+    equal "Ranvier AM006: shayanhabibi.github.io/Ranvier/view/arms/#am006" message
 #endif
 
 /// <summary>Under Fable, <c>Arms.Prepare</c> returns and a site mounted after it reads its payload.</summary>

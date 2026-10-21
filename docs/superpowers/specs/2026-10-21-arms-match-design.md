@@ -345,7 +345,7 @@ for free bound variables after substitution (`QuotedArms.fs:142-147`).
 | AM004 | instance type is a value type, `string`, `unit`, an option or an enum | `Arms.Match: the instance type 'int' is not an object type. An arm site keys each arm's payload by its instance; use a record, class, union or function instance.` | `ArmsMatchException`, same sentence |
 | AM005 | Fable build without the `.targets` (no `RANVIER_ARMS_PLUGIN`), or with a plugin that does not run | compile error FS0101 at the call: `This construct is deprecated. Arms.Match needs the Ranvier.View.Arms Fable plugin; import Ranvier.View.Arms.targets in the project compiled by Fable.`; a site whose plugin is referenced but does not run fails at site build with a `TypeError` | — |
 | AM007 | a decision node under a wrapper the walker does not decompose (decision 11) | `Arms.Match: this pattern form is not supported.` | `ArmsMatchException`, `<file>(<line>): ` + the same sentence |
-| AM006 | a reader over the instance type receives an instance with no arm of this site, e.g. a row whose item type equals the instance type | `Arms.Match: no arm of this site is mounted for the instance this reader received. A lambda over the instance type inside a case body runs with the arm's instance.` (a Release Fable build raises `Ranvier AM006: https://shayanhabibi.github.io/Ranvier/view/arms/#am006`, the docs entry holding this text) | same, as `ArmsMatchException` at read time |
+| AM006 | a reader over the instance type receives an instance with no arm of this site, e.g. a row whose item type equals the instance type | `Arms.Match: no arm of this site is mounted for the instance this reader received. A lambda over the instance type inside a case body runs with the arm's instance.` (a Release Fable build raises `Ranvier AM006: shayanhabibi.github.io/Ranvier/view/arms/#am006`, the docs entry holding this text) | same, as `ArmsMatchException` at read time |
 
 AM004 is checked from the type, before any instance exists: `WeakMap.set` throws for a JavaScript primitive and a
 `ConditionalWeakTable` keys a fresh box on each .NET call, so either target would fail at mount with a less useful
@@ -436,7 +436,7 @@ through `Mounting.mountWith`.
 
 | Check | Budget |
 |---|---|
-| `Arms.Match` entry vs its explicit `armOf` + `matchWith` twin | ≤ 400 B gzip (measured 370 B, rounded up to the next 50 B: the AM006 code and anchor text, cells with per-target entries and graph tags inlined into `Arms.Match`; the method resolves about ±20 B) |
+| `Arms.Match` entry vs its explicit `armOf` + `matchWith` twin | ≤ 400 B gzip (measured 370 B before the entry reuse and 394 B after it, rounded up to the next 50 B: the AM006 code and anchor text, cells with per-target entries and graph tags inlined into `Arms.Match`; the method resolves about ±20 B) |
 | Each further site in the same bundle, against its twin | ≤ 60 B gzip per site |
 | An app that references `Ranvier.View.Arms` and calls no `Arms.Match`, vs the same app without the reference | 0 B (byte-identical bundle) |
 | The Playground `sugar-size.mjs` explicit entry before and after this work | 0 B |

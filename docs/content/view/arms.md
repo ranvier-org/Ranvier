@@ -184,7 +184,7 @@ the site is built, with a JavaScript `TypeError`.
 Arms.Match: no arm of this site is mounted for the instance this reader received. A lambda over the instance type inside a case body runs with the arm's instance.
 ```
 
-A Release Fable build raises the short form `Ranvier AM006: https://shayanhabibi.github.io/Ranvier/view/arms/#am006`;
+A Release Fable build raises the short form `Ranvier AM006: shayanhabibi.github.io/Ranvier/view/arms/#am006`;
 Debug builds and .NET raise the text above (`ArmsMatchException` on .NET). A lambda over the instance type inside a
 case body received another value of that type, as a row whose item type equals the instance type does. Give the row
 a type of its own.
