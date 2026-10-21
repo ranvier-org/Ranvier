@@ -71,9 +71,9 @@ let private boundaryWith (source: AsyncSource<float>) =
     Component.template (fun _ () -> ()) (section () { boundary pending failed content })
 
 /// <summary>
-/// A <c>show</c> whose condition reads a pending value inside a boundary's content: the boundary is expected to show its
-/// pending view and reveal the content once the value settles, as it does for the text slot beside it. The arm region's
-/// selection memo raises the pending read, and the boundary shows its failed view.
+/// A <c>show</c> whose condition reads a pending value inside a boundary's content: the boundary shows its pending view and
+/// reveals the content once the value settles. A regression check of a fixed bug: the arm region's selection memo raised
+/// the pending read, and the boundary showed its failed view.
 /// </summary>
 let private armReadPendsBoundary (clock: Clock) =
     use graph = new Graph ()
@@ -140,10 +140,7 @@ let private svgUnderQueuedCommits (_: Clock) =
 let cases: Case list =
     [
         case "flip keeps an entering row's opacity enter" flipRestoresEnteringOpacity
-        bug
-            "an arm region's selection raises a pending read inside a boundary's content instead of waiting"
-            "a show condition reading a pending value inside a boundary waits with the boundary"
-            armReadPendsBoundary
+        case "a show condition reading a pending value inside a boundary waits with the boundary" armReadPendsBoundary
         case "an SVG camel-case attribute is written as given under queued commits" svgCamelCaseAttribute
         case "an SVG path tag mounted under queued commits is in the SVG namespace" svgUnderQueuedCommits
     ]

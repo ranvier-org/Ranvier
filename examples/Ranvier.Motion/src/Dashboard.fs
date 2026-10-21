@@ -166,8 +166,6 @@ type Panel =
         Store: Store
         Latest: Memo<Sample>
         Cpu: Memo<float[]>
-        /// <summary>Whether the latest CPU load is above 85 %; false while the stream is pending.</summary>
-        Alert: Boundary<bool>
         Tween: Signal<Tween>
     }
 
@@ -252,30 +250,22 @@ let private content (store: Store) =
                         Api.createMemo (fun _ ->
                             store.Samples.Value
                             |> Array.map (fun sample -> sample.Cpu))
-                    // A show condition that reads a pending value fails the boundary instead of waiting with it
-                    // (LibraryRepros: "a show condition reading a pending value inside a boundary waits with the
-                    // boundary"); the suspense reads false until the first sample.
-                    Alert = Api.createSuspense (fun _ -> false) (fun () -> latest.Value.Cpu > 0.85)
                     Tween = tween
                 }
 
-            // Setup runs while the stream may be pending: the suspense reads NaN until the first sample.
-            let requests = Api.createSuspense (fun _ -> nan) (fun () -> latest.Value.Requests)
+            Api.createEffectOn (fun () -> latest.Value.Requests) (fun target ->
+                let from = Api.untrack (fun () -> panel.Shown)
+                let clock = Page.point 0. 0.
 
-            Api.createEffectOn (fun () -> requests.Value) (fun target ->
-                if not (Double.IsNaN target) then
-                    let from = Api.untrack (fun () -> panel.Shown)
-                    let clock = Page.point 0. 0.
+                let animation =
+                    Reactive.own (Anime.animate (Targets.object clock, Anim (x = 1, duration = 900, ease = Ease.linear)))
 
-                    let animation =
-                        Reactive.own (Anime.animate (Targets.object clock, Anim (x = 1, duration = 900, ease = Ease.linear)))
-
-                    tween.Value <-
-                        {
-                            From = from
-                            To = target
-                            Progress = (Reactive.track animation).Progress
-                        })
+                tween.Value <-
+                    {
+                        From = from
+                        To = target
+                        Progress = (Reactive.track animation).Progress
+                    })
 
             panel)
         (div (Attrs.className "metrics", Attrs.data ("refreshing", fun (panel: Panel) -> if panel.Status.IsPending () then Some "true" else None)) {
@@ -360,7 +350,7 @@ let private content (store: Store) =
             }
 
             show
-                (fun (panel: Panel) -> panel.Alert.Value)
+                (fun (panel: Panel) -> panel.Latest.Value.Cpu > 0.85)
                 (div (Attrs.className "alert", Attrs.role "status", Motion.fade) {
                     strong () { "CPU above 85%" }
                     span () { fun (panel: Panel) -> sprintf " at sample %d" panel.Latest.Value.Tick }
