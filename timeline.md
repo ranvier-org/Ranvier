@@ -52,6 +52,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 83,006 | 127,210 | 1,734,154 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 82,998 | 127,158 | 1,734,142 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 82,993 | 127,176 | 1,734,338 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 83,044 | 127,137 | 1,734,153 |
 
 ## app-table
 
@@ -105,6 +106,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 4,416,213 | 9,203,548 | 107,415,831 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 4,416,138 | 9,319,189 | 107,430,181 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 4,416,147 | 9,204,859 | 107,586,080 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 4,416,157 | 9,364,954 | 107,322,350 |
 
 ## async-recover
 
@@ -158,6 +160,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 138,940 | 39,711 | 440,653 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 138,992 | 39,704 | 440,655 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 138,992 | 39,722 | 440,645 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 138,992 | 39,725 | 440,649 |
 
 ## async-resolve
 
@@ -211,6 +214,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 2,790,309 | 1,085,295 | 12,317,167 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 2,791,509 | 1,085,032 | 12,313,990 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 2,791,510 | 1,085,385 | 12,314,741 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 2,791,509 | 1,085,675 | 12,314,016 |
 
 ## chain
 
@@ -264,6 +268,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 
 ## chain-affinity
 
@@ -317,6 +322,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 2,549 | 3,067 | 2,496 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 2,549 | 3,067 | 2,496 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 2,549 | 3,067 | 2,496 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 2,549 | 3,067 | 2,496 |
 
 ## control
 
@@ -370,6 +376,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 74,709 | 833,995 | 2,605,046 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 74,709 | 833,949 | 2,605,060 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 74,709 | 833,998 | 2,604,957 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 74,709 | 833,951 | 2,605,072 |
 
 ## create
 
@@ -423,6 +430,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 13,449,996 | 2,875,677 | 2,532,362 | 2,131,822 | 4,004,040 | 34,066,822 | 49,723,813 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 13,529,938 | 2,859,680 | 2,532,377 | 2,131,505 | 4,003,504 | 34,063,398 | 49,723,393 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 13,449,972 | 2,859,678 | 2,532,361 | 2,132,050 | 4,004,167 | 34,066,994 | 49,724,103 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 13,450,115 | 2,875,678 | 2,532,361 | 2,131,788 | 4,003,908 | 34,063,338 | 49,723,627 |
 
 ## create-on
 
@@ -476,6 +484,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 2,926,484 | 4,147,650 | 54,424,657 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 2,910,484 | 4,147,496 | 54,424,666 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 2,910,483 | 4,147,483 | 54,424,652 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 2,910,483 | 4,147,514 | 54,424,698 |
 
 ## cutoff
 
@@ -529,6 +538,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 
 ## derive-effect
 
@@ -582,6 +592,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 765 | 768 | 16,102 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 765 | 768 | 16,102 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 765 | 768 | 16,102 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 765 | 768 | 16,102 |
 
 ## derive-on
 
@@ -635,6 +646,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 737 | 775 | 16,261 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 737 | 775 | 16,261 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 737 | 775 | 16,261 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 737 | 775 | 16,261 |
 
 ## dispose
 
@@ -688,6 +700,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 2,707,642 | 806,291 | 367,497 | 466,092 | 485,284 | 13,194,632 | 9,106,657 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 2,707,643 | 806,290 | 367,497 | 466,264 | 485,030 | 13,195,047 | 9,105,988 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 2,706,244 | 806,291 | 367,497 | 466,055 | 485,160 | 13,193,777 | 9,106,022 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 2,707,643 | 806,291 | 367,497 | 466,177 | 485,125 | 13,195,614 | 9,106,166 |
 
 ## dispose-on
 
@@ -741,6 +754,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 346,497 | 478,697 | 8,902,918 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 346,497 | 478,452 | 8,902,198 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 346,497 | 478,482 | 8,902,694 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 346,497 | 478,565 | 8,902,562 |
 
 ## editable-edit
 
@@ -794,6 +808,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 180,106 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 180,106 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 180,106 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 180,106 |
 
 ## editable-upstream
 
@@ -847,6 +862,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 231,255 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 231,255 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 231,255 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 231,255 |
 
 ## fail-recompute
 
@@ -900,6 +916,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 65,106 | 1,366 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 65,130 | 1,366 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 65,130 | 1,366 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 65,130 | 1,366 |
 
 ## flight
 
@@ -953,6 +970,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 
 ## keyed-insert
 
@@ -1006,6 +1024,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 1,921,809 | 53,951 | 54,947 | 3,218,680 | 661,702 | 176,547 | 44,849,857 | 2,634,918 | 2,654,122 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 1,921,810 | 53,951 | 54,948 | 3,218,792 | 661,710 | 176,636 | 44,849,887 | 2,634,939 | 2,654,360 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 1,921,809 | 53,951 | 54,948 | 3,218,740 | 661,718 | 176,639 | 44,849,855 | 2,634,913 | 2,654,113 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 1,921,793 | 53,951 | 54,931 | 3,218,642 | 661,692 | 176,636 | 44,851,063 | 2,634,916 | 2,654,134 |
 
 ## keyed-remove
 
@@ -1059,6 +1078,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 1,920,732 | 43,628 | 45,285 | 3,244,980 | 593,134 | 605,233 | 44,798,152 | 1,924,867 | 1,958,533 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 1,920,739 | 43,628 | 45,284 | 3,245,000 | 593,200 | 605,224 | 44,798,120 | 1,924,904 | 1,958,584 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 1,920,740 | 43,628 | 45,284 | 3,245,012 | 593,450 | 605,283 | 44,798,165 | 1,924,933 | 1,958,514 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 1,920,724 | 43,628 | 45,268 | 3,245,006 | 593,175 | 605,242 | 44,798,133 | 1,924,937 | 1,958,588 |
 
 ## keyed-swap
 
@@ -1112,6 +1132,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 1,973,428 | 46,161 | 46,915 | 3,564,008 | 148,754 | 511,231 | 45,980,301 | 916,461 | 932,903 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 1,973,429 | 46,161 | 46,916 | 3,564,915 | 148,772 | 511,314 | 45,980,307 | 916,531 | 932,950 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 1,973,428 | 46,161 | 46,915 | 3,562,414 | 148,753 | 511,343 | 45,980,287 | 916,568 | 932,845 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 1,973,412 | 46,162 | 46,900 | 3,560,828 | 148,793 | 511,252 | 45,980,291 | 916,543 | 932,915 |
 
 ## mvu-dispatch
 
@@ -1165,6 +1186,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 58,261 | 772 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 58,261 | 772 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 58,261 | 772 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 58,261 | 772 |
 
 ## project-chain
 
@@ -1218,6 +1240,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 1,070,326 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 1,070,208 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 1,070,324 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 1,070,166 |
 
 ## project-churn
 
@@ -1271,6 +1294,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 36,489 | 34,326 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 36,490 | 34,326 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 36,474 | 34,310 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 36,490 | 34,326 |
 
 ## project-edit
 
@@ -1324,6 +1348,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 50,415 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 50,431 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 50,415 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 50,415 |
 
 ## project-reorder
 
@@ -1377,6 +1402,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 779,156 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 779,171 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 779,155 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 779,156 |
 
 ## server-render
 
@@ -1430,6 +1456,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 676,233 | 1,131,188 | 9,832,759 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 676,230 | 1,131,084 | 9,833,305 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 676,230 | 1,130,744 | 9,833,942 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 676,230 | 1,131,332 | 9,834,179 |
 
 ## shape-diamond
 
@@ -1483,6 +1510,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 59,899 | 79,968 | 1,763,357 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 59,899 | 79,968 | 1,763,357 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 59,899 | 79,968 | 1,763,357 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 59,899 | 79,968 | 1,763,357 |
 
 ## shape-dynamic
 
@@ -1536,6 +1564,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 82,921 | 107,033 | 2,006,140 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 82,921 | 107,030 | 2,006,140 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 82,921 | 107,033 | 2,006,141 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 82,921 | 107,033 | 2,006,140 |
 
 ## stream-burst-1
 
@@ -1589,6 +1618,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 1,974 | 1,572 | 2,506 | 4,671 | 3,644 | 13,371 | 47,201 | 45,417 | 55,169 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 1,974 | 1,572 | 2,507 | 4,671 | 3,644 | 13,371 | 47,201 | 45,417 | 55,168 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 1,974 | 1,572 | 2,491 | 4,671 | 3,644 | 13,371 | 47,201 | 45,417 | 55,171 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 1,974 | 1,572 | 2,491 | 4,671 | 3,644 | 13,371 | 47,200 | 45,417 | 55,171 |
 
 ## stream-burst-16
 
@@ -1642,6 +1672,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 5,631 | 25,017 | 5,716 | 9,502 | 49,601 | 8,051 | 120,970 | 714,180 | 113,522 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 5,631 | 25,017 | 5,717 | 9,499 | 49,601 | 8,052 | 120,971 | 714,180 | 113,521 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 5,631 | 25,017 | 5,701 | 9,500 | 49,601 | 8,048 | 120,970 | 714,180 | 113,519 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 5,631 | 25,017 | 5,701 | 9,501 | 49,601 | 8,051 | 120,971 | 714,181 | 113,522 |
 
 ## stream-burst-256
 
@@ -1695,6 +1726,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 64,131 | 400,101 | 57,055 | 127,408 | 787,241 | 74,603 | 1,301,576 | 11,413,287 | 1,046,548 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 64,131 | 400,101 | 57,056 | 127,372 | 787,200 | 74,603 | 1,301,579 | 11,413,327 | 1,046,550 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 64,131 | 400,101 | 57,040 | 127,472 | 787,263 | 74,603 | 1,301,576 | 11,413,248 | 1,046,550 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 64,131 | 400,101 | 57,040 | 127,468 | 787,187 | 74,605 | 1,301,505 | 11,413,287 | 1,046,532 |
 
 ## stream-restart
 
@@ -1748,6 +1780,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 4,187 | 4,991 | 6,106 | 16,358 | 41,495 | 70,406 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 4,187 | 4,992 | 6,106 | 16,355 | 41,499 | 70,406 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 4,187 | 4,996 | 6,106 | 16,360 | 41,496 | 70,404 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 4,187 | 4,976 | 6,106 | 16,358 | 41,498 | 70,403 |
 
 ## timed-admit-both
 
@@ -1801,6 +1834,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 118,591 | 134,965 | 2,679,928 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 118,591 | 134,962 | 2,679,929 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 118,591 | 134,963 | 2,679,928 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 118,591 | 134,962 | 2,679,929 |
 
 ## timed-admit-debounce
 
@@ -1854,6 +1888,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 117,496 | 133,558 | 2,640,272 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 117,496 | 133,560 | 2,640,272 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 117,496 | 133,561 | 2,640,272 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 117,496 | 133,558 | 2,640,285 |
 
 ## timed-admit-first
 
@@ -1907,6 +1942,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 69,479 | 79,053 | 1,611,692 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 69,479 | 79,049 | 1,611,692 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 69,479 | 79,052 | 1,611,692 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 69,479 | 79,053 | 1,611,692 |
 
 ## timed-admit-last
 
@@ -1960,6 +1996,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 117,758 | 133,879 | 2,650,128 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 117,758 | 133,873 | 2,650,140 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 117,758 | 133,850 | 2,650,140 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 117,758 | 133,875 | 2,650,128 |
 
 ## timed-capture-both
 
@@ -2013,6 +2050,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 35,726 | 44,807 | 846,997 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 35,726 | 44,807 | 846,998 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 35,726 | 44,807 | 846,997 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 35,726 | 44,808 | 846,999 |
 
 ## timed-capture-debounce
 
@@ -2066,6 +2104,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 35,598 | 44,104 | 847,375 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 35,598 | 44,104 | 847,375 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 35,598 | 44,104 | 847,375 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 35,598 | 44,104 | 847,376 |
 
 ## timed-capture-first
 
@@ -2119,6 +2158,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 32,078 | 36,612 | 745,370 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 32,078 | 36,612 | 745,372 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 32,078 | 36,612 | 745,370 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 32,078 | 36,612 | 745,370 |
 
 ## timed-capture-last
 
@@ -2172,6 +2212,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 35,534 | 44,040 | 839,503 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 35,534 | 44,040 | 839,503 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 35,534 | 44,040 | 839,503 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 35,534 | 44,040 | 839,503 |
 
 ## update
 
@@ -2225,6 +2266,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 1,087,690 | 38,805 | 82,505 | 262,591 | 151,714 | 3,350,265 | 2,502,811 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 1,089,290 | 38,805 | 82,505 | 262,578 | 151,678 | 3,350,137 | 2,502,783 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 1,087,690 | 38,805 | 82,505 | 262,499 | 151,702 | 3,350,265 | 2,502,743 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 1,087,683 | 38,805 | 82,505 | 262,550 | 151,711 | 3,350,235 | 2,502,805 |
 
 ## update-on
 
@@ -2278,6 +2320,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 93,005 | 165,239 | 2,830,387 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 93,005 | 165,198 | 2,830,367 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 93,005 | 165,257 | 2,830,436 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 93,005 | 165,226 | 2,830,425 |
 
 ## work-form
 
@@ -2331,6 +2374,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 170,300 | 163,392 | 295,967 | 291,402 | 5,349,270 | 5,295,440 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 170,300 | 163,392 | 295,909 | 291,430 | 5,349,284 | 5,295,471 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 170,300 | 163,392 | 295,966 | 291,392 | 5,349,272 | 5,295,419 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 170,300 | 163,392 | 295,929 | 291,375 | 5,349,238 | 5,295,469 |
 
 ## work-status
 
@@ -2384,6 +2428,7 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 100,445 | 78,815 | 264,858 | 152,942 | 2,611,061 | 2,360,865 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 100,445 | 78,815 | 264,878 | 152,933 | 2,610,913 | 2,360,885 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 100,445 | 78,815 | 264,842 | 152,924 | 2,611,026 | 2,360,755 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 100,445 | 78,815 | 264,828 | 152,951 | 2,610,976 | 2,360,875 |
 
 ## work-value
 
@@ -2437,4 +2482,5 @@
 | `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 107,569 | 119,470 | 265,084 | 279,878 | 2,595,640 | 2,920,188 |
 | `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | 107,570 | 119,469 | 265,050 | 279,830 | 2,595,715 | 2,920,113 |
 | `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | 107,571 | 119,470 | 265,092 | 279,869 | 2,595,634 | 2,920,180 |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | 107,569 | 119,469 | 265,091 | 279,896 | 2,595,679 | 2,920,197 |
 
