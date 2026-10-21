@@ -84,6 +84,40 @@ type TwinNode internal (kind: NodeKind, owner: TwinDocument) =
     /// <summary>Changes with every insertion and removal of a child; the bridge's live lists rebuild when it moves.</summary>
     member val internal ChildVersion = 0 with get, set
 
+    /// <summary>On a document: called with the kind and target of each child list, attribute and character data change.</summary>
+    member val internal MutationSink: string -> TwinNode -> unit = (fun _ _ -> ()) with get, set
+
+    /// <summary>On a document: called with each control whose value, checkedness or selectedness is written.</summary>
+    member val internal FormSink: TwinNode -> unit = ignore with get, set
+
+    /// <summary>
+    /// Runs <c>action</c> with its child list changes of this node reported as one change and the changes inside the
+    /// nodes it inserts unreported, as a MutationObserver records a replacement of all children, a parse into the
+    /// node or a fragment's insertion.
+    /// </summary>
+    member internal this.AsOneChange(action: unit -> unit) =
+        let document = this.Document
+        let sink = document.MutationSink
+        let mutable changed = false
+
+        document.MutationSink <-
+            fun kind target ->
+                if
+                    kind = "childList"
+                    && obj.ReferenceEquals (target, this)
+                then
+                    changed <- true
+                elif not (this.Contains target) then
+                    sink kind target
+
+        try
+            action ()
+        finally
+            document.MutationSink <- sink
+
+        if changed then
+            sink "childList" this
+
     member private this.Unlink(child: TwinNode) =
         let previous, next = child.PreviousSibling, child.NextSibling
 
@@ -99,6 +133,7 @@ type TwinNode internal (kind: NodeKind, owner: TwinDocument) =
 
         child.SetLinks (null, null, null)
         this.ChildVersion <- this.ChildVersion + 1
+        this.Document.MutationSink "childList" this
         this.Document.FocusFixup child
 
     member this.RemoveChild(child: TwinNode) : TwinNode =
@@ -178,8 +213,9 @@ type TwinNode internal (kind: NodeKind, owner: TwinDocument) =
 
     member private this.InsertValidated(node: TwinNode, reference: TwinNode) : TwinNode =
         if node.Kind = NodeKind.Fragment then
-            for child in node.Children do
-                this.InsertValidated (child, reference) |> ignore
+            this.AsOneChange (fun () ->
+                for child in node.Children do
+                    this.InsertValidated (child, reference) |> ignore)
 
             node
         else
@@ -210,6 +246,7 @@ type TwinNode internal (kind: NodeKind, owner: TwinDocument) =
                 reference.SetPrevious node
 
             this.ChildVersion <- this.ChildVersion + 1
+            this.Document.MutationSink "childList" this
             node
 
     member this.AppendChild(node: TwinNode) =
@@ -265,13 +302,15 @@ and [<Sealed; AllowNullLiteral>] TwinCharacterData internal (kind: NodeKind, own
     inherit TwinNode(kind, owner)
     let mutable data = data
 
-    member _.Data
+    member this.Data
         with get () = data
-        and set value = data <- (if isNull value then "" else value)
+        and set value =
+            data <- (if isNull value then "" else value)
+            this.Document.MutationSink "characterData" this
 
-    override _.TextContent
+    override this.TextContent
         with get () = data
-        and set value = data <- (if isNull value then "" else value)
+        and set value = this.Data <- value
 
     override this.Clone _ =
         TwinCharacterData (kind, this.Document, data)
@@ -324,6 +363,8 @@ and [<Sealed; AllowNullLiteral>] TwinElement internal (owner: TwinDocument, loca
     let attributes = ResizeArray<string * string>()
     let content = if localName = "template" then TwinFragment owner else null
     let mutable dirtyValue: string = null
+    let mutable selectionStart = 0
+    let mutable selectionEnd = 0
     let mutable checkedness = false
     let mutable dirtyChecked = false
     let mutable selectedness = false
@@ -333,6 +374,16 @@ and [<Sealed; AllowNullLiteral>] TwinElement internal (owner: TwinDocument, loca
 
     /// <summary>The element's namespace: <c>html</c>, <c>svg</c> or <c>math</c>.</summary>
     member _.Namespace = ns
+
+    /// <summary>The namespace prefix of an element created with a qualified name; null otherwise.</summary>
+    member val Prefix: string = null with get, set
+
+    /// <summary>The prefix and local name joined by a colon, or the local name alone.</summary>
+    member this.QualifiedName =
+        if isNull this.Prefix then
+            localName
+        else
+            this.Prefix + ":" + localName
 
     /// <summary>An attribute name as the element stores it: lowercased for an HTML element, as written for SVG and MathML.</summary>
     member private _.Key(name: string) =
@@ -358,11 +409,13 @@ and [<Sealed; AllowNullLiteral>] TwinElement internal (owner: TwinDocument, loca
         | -1 -> attributes.Add ((name, value))
         | index -> attributes[index] <- (name, value)
 
+        this.Document.MutationSink "attributes" this
+
     member this.RemoveAttribute(name: string) =
         let name = this.Key name
 
-        attributes.RemoveAll (fun (n, _) -> n = name)
-        |> ignore
+        if attributes.RemoveAll (fun (n, _) -> n = name) > 0 then
+            this.Document.MutationSink "attributes" this
 
     /// <summary>
     /// HTML's "actually disabled": a button, input, select, textarea or fieldset with a disabled attribute, or inside a
@@ -455,15 +508,17 @@ and [<Sealed; AllowNullLiteral>] TwinElement internal (owner: TwinDocument, loca
                     else
                         dirtyValue
 
-                // HTML's value sanitization for the text-like types.
+                // HTML's value sanitization for the text-like types; the other types raise.
                 match this.InputType with
                 | "text"
                 | "search"
                 | "tel"
                 | "password" -> raw.Replace("\r", "").Replace("\n", "")
+                | "email" when this.HasAttribute "multiple" ->
+                    raise (NotSupportedException "The DOM twin does not sanitise the value of an email input with multiple")
                 | "url"
                 | "email" -> raw.Replace("\r", "").Replace("\n", "").Trim([| ' '; '\t'; '\n'; '\f'; '\r' |])
-                | _ -> raw
+                | other -> raise (NotSupportedException $"The DOM twin does not sanitise the value of an input of type {other}")
             | "textarea" -> if isNull dirtyValue then this.TextContent else dirtyValue
             | "option" ->
                 match this.GetAttribute "value" with
@@ -487,7 +542,12 @@ and [<Sealed; AllowNullLiteral>] TwinElement internal (owner: TwinDocument, loca
                 ->
                 this.SetAttribute ("value", value)
             | "input"
-            | "textarea" -> dirtyValue <- (if isNull value then "" else value)
+            | "textarea" ->
+                dirtyValue <- (if isNull value then "" else value)
+                // A value write moves the text entry cursor to the end.
+                selectionStart <- this.Value.Length
+                selectionEnd <- selectionStart
+                this.Document.FormSink this
             | "select" ->
                 let mutable found = false
 
@@ -521,6 +581,7 @@ and [<Sealed; AllowNullLiteral>] TwinElement internal (owner: TwinDocument, loca
         and set (value: bool) =
             dirtyChecked <- true
             checkedness <- value
+            this.Document.FormSink this
 
             if
                 value
@@ -636,9 +697,21 @@ and [<Sealed; AllowNullLiteral>] TwinElement internal (owner: TwinDocument, loca
                     | Some first -> first.SetSelectedness true
                     | None -> ()
 
-    member internal _.SetSelectedness(value: bool) =
+    /// <summary>The selection of an input's or a textarea's value, as offsets clamped to its length.</summary>
+    member this.SelectionStart = min selectionStart this.Value.Length
+
+    member this.SelectionEnd = min selectionEnd this.Value.Length
+
+    /// <summary>HTML's setSelectionRange: both offsets clamp to the value's length, and a start past the end moves to the end.</summary>
+    member this.SetSelectionRange(start: int, finish: int) =
+        let length = this.Value.Length
+        selectionEnd <- max 0 (min finish length)
+        selectionStart <- min (max 0 (min start length)) selectionEnd
+
+    member internal this.SetSelectedness(value: bool) =
         dirtySelected <- true
         selectedness <- value
+        this.Document.FormSink this
 
     // The cloning steps of input and textarea: the value, its dirtiness and the checkedness travel with the copy.
     member private _.CopyFormState(value: string, isCheckedDirty: bool, isChecked: bool) =
@@ -648,6 +721,7 @@ and [<Sealed; AllowNullLiteral>] TwinElement internal (owner: TwinDocument, loca
 
     override this.Clone deep =
         let copy = TwinElement (this.Document, localName, ns)
+        copy.Prefix <- this.Prefix
 
         for name, value in attributes do
             copy.SetAttribute (name, value)
@@ -670,11 +744,29 @@ and [<Sealed; AllowNullLiteral>] TwinDocument() as this =
     inherit TwinNode(NodeKind.Document, null)
     let ownerThread = Environment.CurrentManagedThreadId
     let disposals = ResizeArray<unit -> unit>()
+    let mutationObservers = ResizeArray<string * TwinNode -> unit>()
+    let formObservers = ResizeArray<TwinNode -> unit>()
+
+    let observe (observers: ResizeArray<'change -> unit>) (observer: 'change -> unit) =
+        observers.Add observer
+
+        { new IDisposable with
+            member _.Dispose() =
+                observers.Remove observer |> ignore
+        }
+
+    let notify (observers: ResizeArray<'change -> unit>) (change: 'change) =
+        if observers.Count > 0 then
+            for observer in observers.ToArray () do
+                observer change
+
     let html = TwinElement (this, "html", "html")
     let head = TwinElement (this, "head", "html")
     let body = TwinElement (this, "body", "html")
 
     do
+        this.MutationSink <- fun kind target -> notify mutationObservers (kind, target)
+        this.FormSink <- notify formObservers
         this.AppendChild html |> ignore
         html.AppendChild head |> ignore
         html.AppendChild body |> ignore
@@ -683,6 +775,18 @@ and [<Sealed; AllowNullLiteral>] TwinDocument() as this =
     member _.Head = head
     member _.Body = body
     member _.OwnerThread = ownerThread
+
+    /// <summary>
+    /// Calls <c>observer</c> with the kind (<c>childList</c>, <c>attributes</c> or <c>characterData</c>, as a MutationObserver
+    /// names them) and the target of each change, until the result is disposed.
+    /// </summary>
+    member _.ObserveMutations(observer: string * TwinNode -> unit) : IDisposable =
+        observe mutationObservers observer
+
+    /// <summary>Calls <c>observer</c> with each control whose value, checkedness or selectedness is written, until the result is disposed.</summary>
+    member _.ObserveFormWrites(observer: TwinNode -> unit) : IDisposable =
+        observe formObservers observer
+
     member val private Focused: TwinElement = null with get, set
 
     // HTML's focus fixup: removing the focused element, or a subtree holding it, leaves nothing focused.

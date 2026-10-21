@@ -148,8 +148,12 @@ export function trackShared(window) {
   const prototype = window.EventTarget.prototype;
   const add = prototype.addEventListener, remove = prototype.removeEventListener;
   const captureOf = options => typeof options === "boolean" ? options : Boolean(options?.capture);
+  // The selector engine's own window listeners: these event types, added from its source.
+  const selectorEngineTypes = new Set(["focus", "focusin", "keydown", "keyup", "mouseover", "mousedown", "mouseup", "click", "mouseout"]);
+  const fromSelectorEngine = (target, type) =>
+    target === window && selectorEngineTypes.has(type) && /[\\/]dom-selector[\\/]/.test(new Error().stack);
   prototype.addEventListener = function (type, listener, options) {
-    if (recording && shared().some(([, target]) => target === this) && !/[\\/]dom-selector[\\/]/.test(new Error().stack))
+    if (recording && shared().some(([, target]) => target === this) && !fromSelectorEngine(this, type))
       live.push({ target: this, type, listener, capture: captureOf(options) });
     return add.call(this, type, listener, options);
   };

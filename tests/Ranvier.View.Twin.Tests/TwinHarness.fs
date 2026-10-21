@@ -69,6 +69,19 @@ let create (host: TwinHost) (directory: string) : Harness =
             | _, null -> raise (NotSupportedException $"The twin intercepts the members of nodes only, not of a {target.GetType().Name}")
             | _, node -> Bridge.intercept host.Document node memberName wrap
 
+        member _.ObserveMutations root =
+            let under = Bridge.nodeOf root
+            let changes = ResizeArray<string * Fable.Core.TS.Dom.Node>()
+
+            let observer =
+                host.Document.ObserveMutations (fun (kind, target) ->
+                    if under.Contains target then
+                        changes.Add ((kind, unbox target.Native)))
+
+            fun () ->
+                observer.Dispose ()
+                changes.ToArray ()
+
         member _.Record(name, text) =
             count <- count + 1
             Directory.CreateDirectory directory |> ignore

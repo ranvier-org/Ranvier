@@ -853,57 +853,15 @@ let private titleText () : Node =
 [<Emit("(() => { const o = new document.defaultView.MutationObserver(() => {}); o.observe(document.head, { subtree: true, childList: true, attributes: true, characterData: true }); return () => { const n = o.takeRecords().filter(r => r.type !== 'childList' || r.target.nodeName === 'TITLE').length; o.disconnect(); return n; }; })()")>]
 let private recordWrites () : unit -> int = jsNative
 #else
-let private countWritesUnder (root: unit -> Node) (names: string list) (counts: obj -> string -> obj array -> bool) : unit -> int =
-    let count = ref 0
-
-    let restores =
-        [
-            for name in names ->
-                Conformance.interceptOn null name (fun original target args ->
-                    match target with
-                    | :? Node as node when (root ()).contains node && counts target name args -> count.Value <- count.Value + 1
-                    | _ -> ()
-
-                    original args)
-        ]
+// The attribute and text changes under the head, and the child list changes of a title element.
+let private recordWrites () : unit -> int =
+    let stop =
+        (Conformance.harness ()).ObserveMutations((pageOrCaseDocument ()).head :> Node)
 
     fun () ->
-        for restore in restores do
-            restore ()
-
-        count.Value
-
-// The attribute and text writes under the head, and the child list changes inside a title element.
-let private recordWrites () : unit -> int =
-    let head () =
-        (pageOrCaseDocument ()).head :> Node
-
-    let childList =
-        [
-            "appendChild"
-            "insertBefore"
-            "removeChild"
-            "replaceChild"
-            "remove"
-            "replaceChildren"
-        ]
-
-    countWritesUnder
-        head
-        ([ "setAttribute"; "removeAttribute"; "set_data"; "set_textContent" ]
-         @ childList)
-        (fun target name _ ->
-            not (List.contains name childList)
-            || (match target with
-                | :? Node as node ->
-                    let rec inTitle (node: Node) =
-                        node.nodeName = "TITLE"
-                        || (match node.parentNode with
-                            | Some parent -> inTitle (unbox<Node> parent)
-                            | None -> false)
-
-                    inTitle node
-                | _ -> false))
+        stop ()
+        |> Array.filter (fun (kind, target) -> kind <> "childList" || target.nodeName = "TITLE")
+        |> Array.length
 #endif
 
 let private sameNodes (before: Node array) (after: Node array) =

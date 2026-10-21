@@ -135,45 +135,11 @@ let private sameNodes (before: Node array) (after: Node array) =
 [<Emit("(() => { const o = new MutationObserver(() => {}); o.observe($0, { subtree: true, childList: true, attributes: true, characterData: true }); return () => { const n = o.takeRecords().length; o.disconnect(); return n; }; })()")>]
 let private recordMutations (root: Node) : unit -> int = jsNative
 #else
-// The child list, attribute and text writes under the root until the result is called, one per call; form state
-// properties such as value and checked are no DOM mutation.
+// The child list, attribute and character data changes under the root until the result is called, as a
+// MutationObserver counts them.
 let private recordMutations (root: Node) : unit -> int =
-    let count = ref 0
-
-    let restores =
-        [
-            for name in
-                [
-                    "appendChild"
-                    "insertBefore"
-                    "removeChild"
-                    "replaceChild"
-                    "remove"
-                    "replaceWith"
-                    "replaceChildren"
-                    "setAttribute"
-                    "removeAttribute"
-                    "set_data"
-                    "set_textContent"
-                    "set_innerHTML"
-                    "set_className"
-                    "set_id"
-                    "set_title"
-                    "set_disabled"
-                ] ->
-                Conformance.interceptOn null name (fun original target args ->
-                    match target with
-                    | :? Node as node when root.contains node -> count.Value <- count.Value + 1
-                    | _ -> ()
-
-                    original args)
-        ]
-
-    fun () ->
-        for restore in restores do
-            restore ()
-
-        count.Value
+    let stop = (Conformance.harness ()).ObserveMutations root
+    fun () -> (stop ()).Length
 #endif
 
 #if FABLE_COMPILER
@@ -208,7 +174,9 @@ let private detach (node: Node) : unit =
 let private select (node: Node) (start: int) (finish: int) : unit = jsNative
 #else
 let private select (node: Node) (start: int) (finish: int) : unit =
-    raise (System.NotSupportedException "jsdom only: the twin keeps no text selection")
+    match box node with
+    | :? HTMLTextAreaElement as area -> area.setSelectionRange (float start, float finish)
+    | _ -> (unbox<HTMLInputElement> node).setSelectionRange(float start, float finish)
 #endif
 
 #if FABLE_COMPILER
@@ -216,7 +184,11 @@ let private select (node: Node) (start: int) (finish: int) : unit =
 let private selection (node: Node) : int array = jsNative
 #else
 let private selection (node: Node) : int array =
-    raise (System.NotSupportedException "jsdom only: the twin keeps no text selection")
+    match box node with
+    | :? HTMLTextAreaElement as area -> [| int area.selectionStart; int area.selectionEnd |]
+    | _ ->
+        let input = unbox<HTMLInputElement> node
+        [| int input.selectionStart.Value; int input.selectionEnd.Value |]
 #endif
 
 #if FABLE_COMPILER
@@ -2912,6 +2884,39 @@ let private hydratedRootWidgetMoves () =
     mounted.Dispose ()
     equal (true, [ "attached"; "destroyed" ], 0.) (moved, List.ofSeq log, other.childNodes.length)
 
+/// <summary>
+/// The value and checked writes to the input and textarea controls under <c>root</c> until the result is called; a
+/// select's value is a browser-only property, written at every hydration, and is not counted. The count is 0 under
+/// Fable, where jsdom keeps no record of property writes.
+/// </summary>
+let private recordControlWrites (root: Node) : unit -> int =
+#if FABLE_COMPILER
+    fun () -> 0
+#else
+    let count = ref 0
+
+    let restores =
+        [
+            for name in [ "set_value"; "set_checked" ] ->
+                Conformance.interceptOn null name (fun original target args ->
+                    match target with
+                    | :? Element as element when
+                        root.contains element
+                        && element.localName <> "select"
+                        ->
+                        count.Value <- count.Value + 1
+                    | _ -> ()
+
+                    original args)
+        ]
+
+    fun () ->
+        for restore in restores do
+            restore ()
+
+        count.Value
+#endif
+
 let private formsHydrate () =
     let shown (host: HTMLElement) =
         let area = find host "textarea" |> unbox<HTMLTextAreaElement>
@@ -2940,12 +2945,17 @@ let private formsHydrate () =
         use graph = new Graph ()
         let host = serve ServerChecks.formFixture served
         let mutations = recordMutations host
+        let formWrites = recordControlWrites host
         let mounted = hydrate graph strictOptions host ServerChecks.formFixture client
         let outcome = mutations (), shown host
+        let written = formWrites ()
         mounted.Dispose ()
-        outcome
+        outcome, written
 
-    equal ((0, ("\nline", true, 1., "\nline")), ("other", false, 0., "other")) (hydrateWith served, snd (hydrateWith differing))
+    let matching, matchingWrites = hydrateWith served
+    let corrected, _ = hydrateWith differing
+    equal ((0, ("\nline", true, 1., "\nline")), ("other", false, 0., "other")) (matching, snd corrected)
+    equal 0 matchingWrites
 
 /// <summary>
 /// Mounts <c>definition</c> and checks that the client's sorted id log and its DOM ids in document order equal
@@ -3679,7 +3689,13 @@ let private headJourney () =
 let private prefixElements (root: Node) (tag: string) : unit = jsNative
 #else
 let private prefixElements (root: Node) (tag: string) : unit =
-    raise (System.NotSupportedException "jsdom only: creates prefixed elements with createElementNS")
+    let document = pageOrCaseDocument ()
+
+    for element in Ranvier.View.Testing.Query.queryAll root tag do
+        let replacement =
+            document.createElementNS (namespaceURI = Some "http://www.w3.org/1999/xhtml", qualifiedName = "x:" + tag)
+
+        (unbox<ChildNode> element).replaceWith [| Fable.Core.U2.Case2 (replacement :> Node) |]
 #endif
 
 let private boldRoot =
@@ -4100,10 +4116,7 @@ let private checks: (string * (unit -> unit)) array =
             "a client boundary's content takes row 0 and its pending or error view row 1, as the server's [c, [p and [e boundaries do",
             clientBoundaryIdentity
             "hydrating server HTML adopts every node", adoptsEveryNode
-            Conformance.platformOnly
-                "jsdom"
-                "creates prefixed elements with createElementNS"
-                ("an element with a prefix is a mismatch for a template element of its local name, named at its path", prefixedElementsMismatch)
+            "an element with a prefix is a mismatch for a template element of its local name, named at its path", prefixedElementsMismatch
             "a hydrated template updates, dispatches delegated and direct events, and disposes like a mount", updatesAndDisposes
             Conformance.platformOnly
                 "jsdom"
@@ -4178,10 +4191,7 @@ let private checks: (string * (unit -> unit)) array =
             "a mismatch is found directly and among aggregated inner exceptions at any depth", aggregatedMismatch
             "a rollback failure is reported with the mismatch and the root re-renders", rollbackFailureReported
             "an unclosed region raises at its logical path and an unclosed root re-renders its content", unclosedRegions
-            Conformance.platformOnly
-                "jsdom"
-                "reads the text selection, which the twin does not keep"
-                ("inputs edited before hydration keep their values, focus and selection when the server and client values agree", editedInputsKept)
+            "inputs edited before hydration keep their values, focus and selection when the server and client values agree", editedInputsKept
             "a live input value differing from the server's is written by hydration", differingInputsCorrected
             "hydration rewrites raw content once and the slot then updates", rawContentRewritten
             Conformance.platformOnly

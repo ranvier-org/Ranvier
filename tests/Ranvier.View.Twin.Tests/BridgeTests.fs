@@ -31,6 +31,27 @@ let tests =
                 Expect.equal native.title "Lamp · Shop" "stripped and collapsed"
                 Expect.equal title.TextContent "\n  Lamp \t · \r\n Shop  " "the text is unchanged"
 
+            testCase "document.title reads the first title element in tree order and only its Text children"
+            <| fun () ->
+                use document = new TwinDocument ()
+                let native = document.Native :?> Document
+                let title = document.Body.AppendChild (document.CreateElement "title")
+
+                title.AppendChild (document.CreateText "a")
+                |> ignore
+
+                let skipped = title.AppendChild (document.CreateElement "b")
+
+                skipped.AppendChild (document.CreateText "skipped")
+                |> ignore
+
+                title.AppendChild (document.CreateText " b")
+                |> ignore
+
+                Expect.equal native.title "a b" "a title in the body, its element children skipped"
+                native.title <- "c"
+                Expect.equal (Html.inner document.Head, Html.inner title) ("", "c") "the setter writes that title"
+
             testCase "implementation.createHTMLDocument makes a separate titled document"
             <| fun () ->
                 use document = new TwinDocument ()
@@ -49,6 +70,63 @@ let tests =
                 Expect.equal native.ariaRowIndexText (Some "two") "read"
                 native.ariaRowIndexText <- None
                 Expect.isFalse (div.HasAttribute "aria-rowindextext") "removed"
+
+            testCase "mutation observers see each change kind, and a whole-content replacement as one change"
+            <| fun () ->
+                use document = new TwinDocument ()
+                let div = document.CreateElement "div"
+                document.Body.AppendChild div |> ignore
+                let changes = ResizeArray<string * string>()
+
+                use _ =
+                    document.ObserveMutations (fun (kind, target) -> changes.Add ((kind, (unbox<Node> target.Native).nodeName)))
+
+                (div.Native :?> Element).innerHTML <- "<b>x</b><i>y</i>"
+                div.SetAttribute ("title", "t")
+                (unbox<CharacterData> div.FirstChild.FirstChild.Native).data <- "z"
+
+                Expect.equal (List.ofSeq changes) [ "childList", "DIV"; "attributes", "DIV"; "characterData", "#text" ] "one change per operation"
+
+            testCase "createElementNS with a qualified name gives the element a prefix"
+            <| fun () ->
+                use document = new TwinDocument ()
+                let native = document.Native :?> Document
+
+                let element =
+                    native.createElementNS (namespaceURI = Some "http://www.w3.org/1999/xhtml", qualifiedName = "x:b")
+
+                Expect.equal (element.localName, element.prefix, element.tagName, element.outerHTML) ("b", Some "x", "X:B", "<x:b></x:b>") "prefixed"
+
+            testCase "setSelectionRange clamps to the value and a value write moves the selection to the end"
+            <| fun () ->
+                use document = new TwinDocument ()
+
+                let input =
+                    document.CreateElement "input"
+                    |> fun e -> e.Native :?> HTMLInputElement
+
+                input.value <- "abcd"
+                Expect.equal (input.selectionStart, input.selectionEnd) (Some 4., Some 4.) "at the end after a write"
+                input.setSelectionRange (1., 9.)
+                Expect.equal (input.selectionStart, input.selectionEnd) (Some 1., Some 4.) "clamped"
+                input.setSelectionRange (3., 2.)
+                Expect.equal (input.selectionStart, input.selectionEnd) (Some 2., Some 2.) "a start past the end moves to it"
+
+            testCase "selectedIndex in a multiple select, past a disabled option and through an optgroup"
+            <| fun () ->
+                use document = new TwinDocument ()
+                let multiple = document.CreateElement "select"
+                multiple.SetAttribute ("multiple", "")
+                Html.parseInto multiple "<option>a</option><option selected>b</option><option selected>c</option>"
+                let many = multiple.Native :?> HTMLSelectElement
+                Expect.equal many.selectedIndex 1. "the first selected option"
+                many.selectedIndex <- 0.
+                let third = multiple.Children |> List.item 2 :?> TwinElement
+                Expect.equal (many.selectedIndex, many.value, third.Selected) (0., "a", false) "selecting one deselects the others"
+                let single = document.CreateElement "select"
+                Html.parseInto single "<option disabled>a</option><optgroup><option>b</option><option>c</option></optgroup>"
+                let one = single.Native :?> HTMLSelectElement
+                Expect.equal (one.selectedIndex, one.value) (1., "b") "the first enabled option, inside the optgroup"
 
             testCase "selectedIndex reads and selects an option by position"
             <| fun () ->

@@ -107,6 +107,12 @@ type Session internal (host: TwinHost, element: TwinElement, graph: Graph, polic
         host.Clock.Settle graph
         this.RaisePending ()
 
+    /// <summary>Advances the clock by <c>milliseconds</c>, running the timers and frames that fall due, and settles it.</summary>
+    member this.AdvanceBy(milliseconds: float) =
+        host.Clock.AdvanceBy milliseconds
+        host.Clock.Settle graph
+        this.RaisePending ()
+
     interface IDisposable with
         member _.Dispose() =
             try
@@ -168,13 +174,14 @@ module Twin =
         mountWith TwinMount.defaults definition props
 
     /// <summary>
-    /// Parses the server HTML <c>body</c> into the host and hydrates it with <c>Hydration.hydrateWith</c>; raises
-    /// <c>NotSupportedException</c> for queued commits, since hydration commits synchronously.
+    /// Parses the server HTML <c>body</c> into the host, calls <c>parsed</c> with the host element, and hydrates it with
+    /// <c>Hydration.hydrateWith</c>. Queued commits raise <c>NotSupportedException</c>: hydration commits synchronously.
     /// </summary>
-    let hydrateHtml
+    let hydrateHtmlWith
         (options: TwinMount)
         (hydration: Hydration.HydrationOptions)
         (body: string)
+        (parsed: Fable.Core.TS.Dom.HTMLElement -> unit)
         (definition: Component<'props>)
         (props: 'props)
         : Session =
@@ -186,12 +193,17 @@ module Twin =
 
         try
             Html.parseInto element body
+            parsed (unbox element.Native)
             session.Attach (Hydration.hydrateWith SynchronousCommits graph None session.Report hydration element.Native definition props)
             session.RaisePending ()
             session
         with _ ->
             (session :> IDisposable).Dispose()
             reraise ()
+
+    /// <summary>Parses the server HTML <c>body</c> into the host and hydrates it with <c>Hydration.hydrateWith</c>.</summary>
+    let hydrateHtml options hydration body (definition: Component<'props>) (props: 'props) : Session =
+        hydrateHtmlWith options hydration body ignore definition props
 
     /// <summary>
     /// Renders with <c>Server.renderPage</c>, writes the body into the host and the head into the document, and hydrates

@@ -11,7 +11,9 @@ Document.body
 Document.createComment
 Document.createDocumentFragment
 Document.createElement
+Document.createElementNS
 Document.createTextNode
+Document.documentElement
 Document.getElementById
 Document.head
 Document.implementation
@@ -47,6 +49,9 @@ HTMLElement.click
 HTMLElement.popover
 HTMLElement.title
 HTMLInputElement.checked
+HTMLInputElement.selectionEnd
+HTMLInputElement.selectionStart
+HTMLInputElement.setSelectionRange
 HTMLInputElement.value
 HTMLMeterElement.high
 HTMLOptionElement.selected

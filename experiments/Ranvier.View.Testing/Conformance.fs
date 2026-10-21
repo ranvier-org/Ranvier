@@ -30,6 +30,11 @@ type Harness =
     /// method and the call's arguments, and its result is the call's result.
     /// </summary>
     abstract Intercept: target: obj * memberName: string * wrap: System.Func<System.Func<obj array, obj>, obj, obj array, obj> -> (unit -> unit)
+    /// <summary>
+    /// Records the child list, attribute and character data changes under <c>root</c>, as a MutationObserver over its
+    /// subtree does, until the returned function runs; that function returns each change's kind and target in order.
+    /// </summary>
+    abstract ObserveMutations: root: Node -> (unit -> (string * Node) array)
 
 type Case = string * (Harness -> unit)
 
@@ -73,6 +78,9 @@ type private Running(inner: Harness) =
 
         member _.Intercept(target, memberName, wrap) =
             inner.Intercept (target, memberName, wrap)
+
+        member _.ObserveMutations root =
+            inner.ObserveMutations root
 
 #if FABLE_COMPILER
 let mutable private current: Harness = Unchecked.defaultof<_>
@@ -173,9 +181,9 @@ let ofChecks (checks: (string * (unit -> unit)) array) : Case array =
     |> Array.map (fun (name, check) -> name, (fun value -> run value check))
 
 /// <summary>
-/// The cases of checks that return a JavaScript promise, which the jsdom runner awaits. The case's harness is current
-/// until the check returns its promise, so a check reads the document before its first await. On .NET the check runs
-/// and its result is dropped.
+/// The cases of checks that return a JavaScript promise, which the jsdom runner awaits. A check reads the document before
+/// its first await; the harness is current until the check returns its promise. On .NET the check runs and its result
+/// is dropped.
 /// </summary>
 let ofPromiseChecks (checks: (string * (unit -> obj)) array) : Case array =
     checks

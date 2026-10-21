@@ -262,7 +262,7 @@ let private supersededFlight () =
     }
     |> Async.StartAsPromise
 
-/// <summary>Every case awaits JavaScript promise delivery, so it runs under jsdom only.</summary>
+/// <summary>Runs under jsdom only: each case awaits JavaScript promise delivery.</summary>
 let cases: Conformance.Case array =
     Conformance.ofPromiseChecks
         [|

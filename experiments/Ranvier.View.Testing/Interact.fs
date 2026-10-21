@@ -36,7 +36,7 @@ let click (root: Node) (selector: string) : unit =
 
 /// <summary>Fires a cancelable <c>beforeinput</c>; unless it is cancelled, writes <c>value</c> and fires a bubbling <c>input</c>.</summary>
 let input (root: Node) (selector: string) (value: string) : unit =
-    let target = Query.get root selector
+    let target = Expect.control root selector
     let init = [ "data", box value; "inputType", box "insertText" ]
 
     if
@@ -100,10 +100,15 @@ let check (root: Node) (selector: string) (isChecked: bool) : unit =
 /// </summary>
 let select (root: Node) (selector: string) (value: string) : unit =
     let target = Query.get root selector
-    Query.setValue target value
 
-    if Query.valueOf target <> value then
+    let offered =
+        Query.queryAll target "option"
+        |> Array.exists (fun option -> (unbox<HTMLOptionElement> option).value = value)
+
+    if not offered then
         raise (Expect.ExpectationException $"'{selector}' has no option with the value \"{value}\"")
+
+    Query.setValue target value
 
     fire target (plain "input" true false) |> ignore
     fire target (plain "change" true false) |> ignore

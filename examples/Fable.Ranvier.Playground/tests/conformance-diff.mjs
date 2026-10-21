@@ -25,8 +25,8 @@ const unified = (left, right) => {
 };
 
 /** The first file that differs between the two artefact trees, with its diff, or null when they are equal. */
-// A platform-only case ("[jsdom] ..." or "[twin] ...") writes under a slug that starts with its platform; it has no
-// counterpart on the other host.
+// A platform-only case ("[jsdom] ..." or "[twin] ...") writes under a slug that starts with its platform and is
+// compared on that platform only.
 const platformOnly = name => /^[^/]+\/(jsdom|twin)-/.test(name);
 
 export function compareTrees(left, right) {

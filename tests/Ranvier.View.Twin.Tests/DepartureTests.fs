@@ -36,8 +36,10 @@ let tests =
 
                 session.Act (fun () -> items.Value.Value <- [||])
                 Expect.stringContains (session.Html ()) "leaving-row" "held after removal"
-                session.Clock.AdvanceBy 9999.0
+                let pending = session.Clock.Pending
+                Expect.equal (pending.Timers, pending.NextTimerAt) (1, Some 10000.0) "the safety timer"
+                session.AdvanceBy 9999.0
                 Expect.stringContains (session.Html ()) "leaving-row" "held before the safety timeout"
-                session.Clock.AdvanceBy 1.0
+                session.AdvanceBy 1.0
                 Expect.isFalse ((session.Html ()).Contains "leaving-row") "finished at 10 s"
         ]

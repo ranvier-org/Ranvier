@@ -136,6 +136,7 @@ let tests =
                 Expect.equal (valueOf "url" None) ("ab", " a\r\nb ") "url"
                 Expect.equal (valueOf "email" (Some " e@f \n")) ("e@f", " a\r\nb ") "email, written"
                 Expect.equal (valueOf "hidden" None) (" a\r\nb ", " a\r\nb ") "hidden reads the attribute"
+                Expect.throwsT<System.NotSupportedException> (fun () -> valueOf "number" None |> ignore) "number is not sanitised"
 
             testCase "a checkbox's checked follows the attribute until it is written"
             <| fun () ->

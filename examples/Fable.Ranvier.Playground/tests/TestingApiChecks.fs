@@ -165,8 +165,19 @@ let private values () =
 
     host.innerHTML <- "<textarea></textarea><select><option value=\"a\">A</option><option value=\"b\">B</option></select>"
     let root = host :> Node
+    let inputs = ResizeArray<string>()
+    let area = Query.get root "textarea"
+
+    let listener: EventListenerOrEventListenerObject =
+        Fable.Core.U2.Case1 (fun (_: Event) -> inputs.Add (unbox<HTMLTextAreaElement> area).value)
+
+    (area :> EventTarget).addEventListener("input", listener)
     Interact.input root "textarea" "typed"
     Expect.value root "textarea" "typed"
+
+    if List.ofSeq inputs <> [ "typed" ] then
+        failwithf "the textarea's input listener saw %A" (List.ofSeq inputs)
+
     Interact.select root "select" "b"
     Expect.value root "select" "b"
     host.remove ()
@@ -188,7 +199,7 @@ let private failureOf (attempt: unit -> unit) : string =
     | Expect.ExpectationException message -> message
     | Query.QueryException (selector, count, _) -> $"query '{selector}' matched {count}"
 
-// Each failure message is an artefact, so the diff shows the texts are equal on both hosts.
+// Each failure message is an artefact compared across hosts.
 let private failureMessages () =
     let host =
         fixtureHost "<p class=\"x\">a</p><p class=\"x\">a</p><input value=\"v\"><span title=\"t\">s</span>"
@@ -202,6 +213,7 @@ let private failureMessages () =
             "absent attribute", (fun () -> Expect.attribute root "span" "lang" (Some "en"))
             "present attribute", (fun () -> Expect.attribute root "span" "title" None)
             "value", (fun () -> Expect.value root "input" "w")
+            "no value", (fun () -> Expect.value root "span" "w")
             "html", (fun () -> Expect.html root "<b></b>")
             "no match", (fun () -> Query.get root "li" |> ignore)
             "two matches", (fun () -> Query.get root "p" |> ignore)
@@ -223,6 +235,7 @@ let private failureMessages () =
     has "absent attribute" "expected en, actual (absent)"
     has "present attribute" "expected (absent), actual t"
     has "value" "expected \"w\", actual \"v\""
+    has "no value" "'span' matched a <span>, which has no value"
     has "html" "html: expected <b></b>"
     has "no match" "query 'li' matched 0"
     has "two matches" "query 'p' matched 2"
@@ -251,6 +264,9 @@ let private unreachableStates () =
 
     if events.Count <> 0 then
         failwithf "select fired %A" (List.ofSeq events)
+
+    if (unbox<HTMLSelectElement> select).value <> "a" then
+        failwithf "select changed the value to %s" (unbox<HTMLSelectElement> select).value
 
     host.remove ()
 

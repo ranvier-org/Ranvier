@@ -393,8 +393,14 @@ let rec private matchFrom (scope: Node) (element: Element) (compounds: (Simple l
                 found
     | _ -> false
 
-/// <summary>Whether the element matches, with <c>:scope</c> matching <c>scope</c>.</summary>
+/// <summary>Whether the element matches, with <c>:scope</c> matching <c>scope</c>, or its root element when <c>scope</c> is a document.</summary>
 let matchesIn (scope: Node) (Parsed list) (element: Element) : bool =
+    let scope =
+        if scope.nodeType = 9.0 then
+            (unbox<Document> scope).documentElement :> Node
+        else
+            scope
+
     list |> List.exists (matchFrom scope element)
 
 /// <summary>Whether the element matches, with <c>:scope</c> matching the element.</summary>

@@ -998,7 +998,7 @@ let private checks: (string * (unit -> unit)) array =
                 templated "disposing the mount cancels and removes every held root" disposalEndsExits
                 templated "an exit is cancelled and its node leaves after the safety timeout" finishesAfterTimeout
                 templated "a root held inside a removed row leaves with the row and runs until disposal" heldInsideRemovedRow
-                templated "an exit that (finishes ()) at once removes its root at once" finishedAtOnce
+                templated "an exit that finishes at once removes its root at once" finishedAtOnce
                 [|
                     "a hydrated row's root with an exit is held when its row is retired", adoptedRowsRetire
                 |]

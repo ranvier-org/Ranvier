@@ -499,9 +499,9 @@ module Bridge =
         match node with
         | :? TwinElement as e ->
             if e.Namespace = "html" then
-                e.LocalName.ToUpperInvariant ()
+                e.QualifiedName.ToUpperInvariant ()
             else
-                e.LocalName
+                e.QualifiedName
         | _ ->
             match node.Kind with
             | NodeKind.Text -> "#text"
@@ -555,7 +555,7 @@ module Bridge =
 
     let private writeTextContent (n: TwinNode) (v: obj) =
         if n.Kind <> NodeKind.Document then
-            n.TextContent <- text v
+            n.AsOneChange (fun () -> n.TextContent <- text v)
 
     let private nodeArgument (owner: TwinNode) (value: obj) : TwinNode =
         match value with
@@ -584,6 +584,37 @@ module Bridge =
             for replacement in inserted do
                 parent.InsertBefore (replacement, viable)
                 |> ignore
+
+    // HTML's title element: the first HTML title element of the document in tree order.
+    let private titleElement (document: TwinDocument) : TwinElement =
+        let rec find (node: TwinNode) =
+            node.Children
+            |> List.tryPick (fun child ->
+                match child with
+                | :? TwinElement as e when e.LocalName = "title" && e.Namespace = "html" -> Some e
+                | _ -> find child)
+
+        find document |> Option.toObj
+
+    // createElementNS with a qualified name: the prefix and the local name split at the first colon.
+    let private createElementNS (n: TwinNode) (a: obj array) : obj =
+        let ns =
+            match BridgeCore.Unwrap a[0] with
+            | :? string as uri when uri = "http://www.w3.org/1999/xhtml" -> "html"
+            | :? string as uri when uri = "http://www.w3.org/2000/svg" -> "svg"
+            | :? string as uri when uri = "http://www.w3.org/1998/Math/MathML" -> "math"
+            | uri -> raise (NotSupportedException $"The DOM twin creates no element in the namespace {uri}")
+
+        let qualified = string a[1]
+
+        let prefix, local =
+            match qualified.IndexOf ':' with
+            | -1 -> null, qualified
+            | colon -> qualified.Substring (0, colon), qualified.Substring (colon + 1)
+
+        let created = (n :?> TwinDocument).CreateElementIn(ns, local)
+        created.Prefix <- prefix
+        box created
 
     let private core =
         lazy
@@ -644,11 +675,12 @@ module Bridge =
                      (a[0] :?> obj array)
                      |> Array.map (BridgeCore.Unwrap >> nodeArgument n)
 
-                 for child in n.Children do
-                     n.RemoveChild child |> ignore
+                 n.AsOneChange (fun () ->
+                     for child in n.Children do
+                         n.RemoveChild child |> ignore
 
-                 for child in replacements do
-                     n.AppendChild child |> ignore
+                     for child in replacements do
+                         n.AppendChild child |> ignore)
 
                  null)
              // Element
@@ -663,7 +695,7 @@ module Bridge =
                      | _ -> "http://www.w3.org/1999/xhtml"
                  ))
 
-             getter elements "prefix" (fun _ -> null)
+             getter elements "prefix" (fun n -> box (element n).Prefix)
              getter elements "id" (fun n -> box (text ((element n).GetAttribute "id")))
              setter elements "id" (fun n v -> (element n).SetAttribute("id", text v))
              getter elements "className" (fun n -> box (text ((element n).GetAttribute "class")))
@@ -688,10 +720,11 @@ module Bridge =
                      | :? TwinElement as e when e.LocalName = "template" -> e.Content
                      | _ -> n
 
-                 for child in target.Children do
-                     target.RemoveChild child |> ignore
+                 target.AsOneChange (fun () ->
+                     for child in target.Children do
+                         target.RemoveChild child |> ignore
 
-                 Html.parseInto n (text v))
+                     Html.parseInto n (text v)))
 
              getter elements "outerHTML" (fun n -> box (Html.outer n))
              // HTMLTemplateElement
@@ -794,7 +827,7 @@ module Bridge =
              getter documents "documentElement" (fun n -> box (n :?> TwinDocument).Html)
 
              // DOMImplementation.createHTMLDocument: a new document on the same thread, with a title element when titled.
-             getter documents "implementation" (fun _ ->
+             getter documents "implementation" (fun n ->
                  BridgeCore.ValueProxyOf (
                      typeof<Fable.Core.TS.Dom.DOMImplementation>,
                      fun m args ->
@@ -802,6 +835,7 @@ module Bridge =
                          | "createHTMLDocument" ->
                              BridgeCore.ServeMethod m
                              let created = new TwinDocument ()
+                             (n :?> TwinDocument).OnDispose(fun () -> (created :> IDisposable).Dispose())
 
                              match BridgeCore.Unwrap (if args.Length > 0 then args[0] else null) with
                              | null -> ()
@@ -817,37 +851,52 @@ module Bridge =
              getter [ "Document"; "HTMLElement" ] "title" (fun n ->
                  match n with
                  | :? TwinDocument as d ->
-                     d.Head.Children
-                     |> List.tryPick (fun c ->
-                         match c with
-                         | :? TwinElement as e when e.LocalName = "title" ->
-                             let words =
-                                 e.TextContent.Split ([| ' '; '\t'; '\n'; '\f'; '\r' |], StringSplitOptions.RemoveEmptyEntries)
+                     match titleElement d with
+                     | null -> box ""
+                     | title ->
+                         // The child text content: the data of the title's Text children, stripped and collapsed.
+                         let content =
+                             title.Children
+                             |> List.choose (fun child ->
+                                 match child with
+                                 | :? TwinCharacterData as data when child.Kind = NodeKind.Text -> Some data.Data
+                                 | _ -> None)
+                             |> String.concat ""
 
-                             Some (box (String.Join (" ", words)))
-                         | _ -> None)
-                     |> Option.defaultValue (box "")
+                         let words =
+                             content.Split ([| ' '; '\t'; '\n'; '\f'; '\r' |], StringSplitOptions.RemoveEmptyEntries)
+
+                         box (String.Join (" ", words))
                  | _ -> box (text ((element n).GetAttribute "title")))
 
              setter [ "Document"; "HTMLElement" ] "title" (fun n v ->
                  match n with
                  | :? TwinDocument as d ->
-                     let existing =
-                         d.Head.Children
-                         |> List.tryPick (fun c ->
-                             match c with
-                             | :? TwinElement as e when e.LocalName = "title" -> Some e
-                             | _ -> None)
-
                      let title =
-                         match existing with
-                         | Some t -> t
-                         | None -> d.Head.AppendChild (d.CreateElement "title") :?> TwinElement
+                         match titleElement d with
+                         | null -> d.Head.AppendChild (d.CreateElement "title") :?> TwinElement
+                         | existing -> existing
 
                      title.TextContent <- text v
                  | _ -> (element n).SetAttribute("title", text v))
 
              method documents "createElement" 2 (fun n a -> box ((n :?> TwinDocument).CreateElement(string a[0])))
+
+             method documents "createElementNS" 2 createElementNS
+             // The text selection of an input or a textarea.
+             getter [ "HTMLInputElement"; "HTMLTextAreaElement" ] "selectionStart" (fun n -> box (float (element n).SelectionStart))
+             getter [ "HTMLInputElement"; "HTMLTextAreaElement" ] "selectionEnd" (fun n -> box (float (element n).SelectionEnd))
+
+             method [ "HTMLInputElement"; "HTMLTextAreaElement" ] "setSelectionRange" 3 (fun n a ->
+                 let offset (value: obj) =
+                     match BridgeCore.Unwrap value with
+                     | null -> 0
+                     | number -> int (Convert.ToDouble number)
+
+                 (element n).SetSelectionRange(offset a[0], offset a[1])
+                 null)
+
+             method documents "createElementNS" 3 createElementNS
              method documents "createTextNode" 1 (fun n a -> box ((n :?> TwinDocument).CreateText(text a[0])))
              method documents "createComment" 1 (fun n a -> box ((n :?> TwinDocument).CreateComment(text a[0])))
              method documents "createDocumentFragment" 0 (fun n _ -> box ((n :?> TwinDocument).CreateFragment()))

@@ -1127,7 +1127,7 @@ let rec private write
     =
     match node with
     | :? TwinElement as e ->
-        out.Append('<').Append e.LocalName |> ignore
+        out.Append('<').Append e.QualifiedName |> ignore
 
         for name, value in e.Attributes do
             out.Append(' ').Append(name).Append("=\"").Append(attribute value).Append '"'
@@ -1156,7 +1156,7 @@ let rec private write
             for child in children do
                 write out text attribute server e.LocalName child
 
-            out.Append("</").Append(e.LocalName).Append '>'
+            out.Append("</").Append(e.QualifiedName).Append '>'
             |> ignore
     | :? TwinCharacterData as c when c.Kind = NodeKind.Comment ->
         out.Append("<!--").Append(c.Data).Append "-->"

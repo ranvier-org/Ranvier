@@ -56,7 +56,7 @@ function resetDocument() {
   for (const attribute of [...document.documentElement.attributes]) document.documentElement.removeAttribute(attribute.name);
 }
 
-// Each case writes under its own directory: a slug that two case names share would mix their artefacts.
+// Two case names of a module have distinct slugs.
 for (const [moduleName, cases] of modules) {
   const slugs = new Map();
   for (const [name] of cases) {

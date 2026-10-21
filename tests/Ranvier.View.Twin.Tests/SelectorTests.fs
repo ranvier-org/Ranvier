@@ -53,6 +53,21 @@ let tests =
                 Expect.isTrue (Selector.matches (Selector.parse ":scope") inner) "the element is its own scope"
                 Expect.isFalse (Selector.matchesIn root (Selector.parse ":scope") inner) "another scope"
 
+            testCase ":scope in a document's query matches its root element"
+            <| fun () ->
+                SelectorMembers.ensure ()
+                use document = new TwinDocument ()
+                Html.parseInto document.Body "<p></p>"
+                let root = document.Native :?> Node
+
+                Expect.equal
+                    ((Selector.queryAll root ":scope").Length,
+                     (Selector.queryAll root ":scope > body").Length,
+                     (Selector.queryAll root ":scope > html").Length,
+                     (Selector.queryAll root ":scope p").Length)
+                    (1, 1, 0, 1)
+                    "as jsdom gives"
+
             testCase "attribute operators"
             <| fun () ->
                 let document, root = tree ()

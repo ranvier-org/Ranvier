@@ -9,6 +9,16 @@ exception ExpectationException of message: string with
 let private fail (root: Node) (detail: string) =
     raise (ExpectationException (detail + Query.excerptOf root))
 
+/// <summary>The single match of <c>selector</c>; raises when it is no input, textarea or select.</summary>
+let internal control (root: Node) (selector: string) : Element =
+    let target = Query.get root selector
+
+    match target.localName with
+    | "input"
+    | "textarea"
+    | "select" -> target
+    | tag -> fail root $"'{selector}' matched a <{tag}>, which has no value"
+
 let text (root: Node) (selector: string) (expected: string) : unit =
     let actual = Query.textOf (Query.get root selector)
 
@@ -30,7 +40,7 @@ let attribute (root: Node) (selector: string) (name: string) (expected: string o
         fail root $"'{selector}' [{name}]: expected {show expected}, actual {show actual}"
 
 let value (root: Node) (selector: string) (expected: string) : unit =
-    let actual = Query.valueOf (Query.get root selector)
+    let actual = Query.valueOf (control root selector)
 
     if actual <> expected then
         fail root $"'{selector}' value: expected \"{expected}\", actual \"{actual}\""
