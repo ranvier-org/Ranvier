@@ -1046,14 +1046,30 @@ let private mixedCaseHandlerRaises queued (clock: Clock) =
 /// <summary>Each element templates reject on every path, with the phrase its failure holds.</summary>
 let private refused: (string * (TemplateBuilder<unit> -> TemplateView<unit>)) list =
     [
-        "Raw-text", (fun t -> t.div [||] [| t.element (HtmlTag "script") [||] [| t.text "globalThis.pwned = 1" |] |])
+        "Script elements", (fun t -> t.div [||] [| t.element (HtmlTag "script") [||] [| t.text "globalThis.pwned = 1" |] |])
+        "Script elements",
+        (fun t ->
+            t.div
+                [||]
+                [|
+                    t.element (HtmlTag "script") [| t.Attrs.attribute ("src", "data:text/javascript,window.pwnedSrc=1") |] [||]
+                |])
+        "Script elements",
+        (fun t ->
+            t.element
+                (HtmlTag "svg")
+                [||]
+                [|
+                    t.element (HtmlTag "script") [| t.Attrs.attribute ("href", "data:text/javascript,window.pwnedSrc=2") |] [||]
+                |])
+        "Script elements", (fun t -> t.div [||] [| t.script [||] [||] |])
         "Raw-text", (fun t -> t.element (HtmlTag "style") [||] [| t.text "p {}" |])
         "Raw-text", (fun t -> t.element (HtmlTag "iframe") [||] [| t.text "<p>" |])
         "Template elements", (fun t -> t.element (HtmlTag "template") [||] [| t.span [||] [||] |])
         "void element", (fun t -> t.element (HtmlTag "br") [||] [| t.span [||] [||] |])
     ]
 
-[<Emit("globalThis.pwned")>]
+[<Emit("(globalThis.pwned ?? globalThis.window.pwned ?? globalThis.window.pwnedSrc)")>]
 let private pwned () : obj = jsNative
 
 /// <summary>Elements the server rejects and the client mounts as built: RCDATA with element children and case twins.</summary>
@@ -1111,6 +1127,33 @@ let private titleRows queued (clock: Clock) =
     // A title row is an SVG element when created under its svg parent, and an HTML title when parsed on its own.
     equal (if queued then [ "svg" ] else [ "html" ]) spaces
 
+let private failingExit =
+    Component.template
+        (fun _ (state: Rows) -> state)
+        (ul () {
+            forEach
+                id
+                (fun (s: Rows) -> s.Items.Value)
+                (li (Motion.exit (fun _ _ -> failwith "play failed")) { fun (row: unit -> int) -> string (row ()) })
+        })
+
+let private failingExitUnmarks queued (clock: Clock) =
+    use graph = new Graph ()
+    let marked = Motion.departures ()
+    let state = graph.Run (fun () -> rows [| 1; 2 |])
+    let target = host ()
+    let mounted = mountIn queued graph target (Component.render failingExit state)
+
+    // The seam finishes the failed exit and reports the failure with the pass.
+    try
+        write graph mounted (fun () -> state.Items.Value <- [| 1 |])
+    with _ ->
+        ()
+
+    let after = Motion.departures () - marked, List.ofArray (textsOf target "li")
+    mounted.Dispose ()
+    equal (0, [ "1" ]) after
+
 let private modes (name: string) (check: bool -> Clock -> unit) =
     [|
         for queued in [ false; true ] do
@@ -1153,6 +1196,7 @@ let cases: (string * (Clock -> unit)) array =
             [| "anime's layout keeps the property Sets flip edits", layoutFieldsPinned |]
             modes "an attribute name that lowercases to an event handler, or joins listed SVG names, raises" mixedCaseHandlerRaises
             modes "raw-text, template and void-with-children elements raise on the client" refusedElements
+            modes "an exit whose play raises leaves no departing mark" failingExitUnmarks
             modes "the client mounts RCDATA elements with element children and case-twin attributes without running script" clientMountsServerChecks
             modes "a title row under svg follows the commit mode's documented namespace" titleRows
             modes "flip records before and animates after each pass, without leaving rows, and fades rows with no running Motion part" flipOrder

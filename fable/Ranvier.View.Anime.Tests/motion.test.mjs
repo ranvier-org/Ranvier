@@ -3,7 +3,8 @@
 import test, { mock } from "node:test";
 import { JSDOM } from "jsdom";
 
-const dom = new JSDOM("<!doctype html><body></body>");
+// Scripts run, so a check can tell that a refused script element never executed.
+const dom = new JSDOM("<!doctype html><body></body>", { runScripts: "dangerously", resources: "usable" });
 const globals = ["Node", "Element", "HTMLElement", "SVGElement", "NodeList", "HTMLCollection", "getComputedStyle", "Event", "FocusEvent", "MutationObserver"];
 globalThis.window = dom.window;
 globalThis.document = dom.window.document;

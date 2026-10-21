@@ -329,14 +329,16 @@ let rec private holds (counts: TemplateNode -> bool) (nodes: TemplateNode array)
     found
 
 /// <summary>
-/// The failure of an element that templates reject on both client paths, synchronous and queued: a raw-text element
-/// with children (or <c>plaintext</c>), a <c>template</c> element or a void element with children; null for any other
-/// element. The server rejects every raw-text element, and an RCDATA element with element children.
+/// The failure of an element that templates reject on both client paths, synchronous and queued: a <c>script</c>
+/// element, a raw-text element with children (or <c>plaintext</c>), a <c>template</c> element or a void element with
+/// children; null for any other element. The server rejects every raw-text element, and an RCDATA element with element children.
 /// </summary>
 let private refusal tag (children: TemplateNode array) : string =
     let lowered = (name tag).ToLowerInvariant()
 
-    if
+    if lowered = "script" then
+        scriptRefused
+    elif
         rawText tag
         && (lowered = "plaintext"
             || holds (fun _ -> true) children)

@@ -281,6 +281,15 @@ let name =
 
         value
 
+/// <summary>The failure of a script element, which no client mount path creates, in either namespace.</summary>
+let internal scriptRefused =
+    "Script elements are not created by templates or typed views; load scripts through the server document shell"
+
+/// <summary>Raises for a script element name, matched case-insensitively.</summary>
+let internal refuseScript (tagName: string) =
+    if tagName.ToLowerInvariant () = "script" then
+        raise (System.InvalidOperationException scriptRefused)
+
 let isVoid tag =
     match (name tag).ToLowerInvariant() with
     | "area"

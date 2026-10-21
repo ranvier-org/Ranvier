@@ -2336,6 +2336,7 @@ and internal MountState
         ensureSetup ()
         let create = Departures.seam.CreateElement
         let tagName = name tag
+        refuseScript tagName
 
         let node =
             if isNullish create then

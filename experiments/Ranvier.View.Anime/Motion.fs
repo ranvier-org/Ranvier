@@ -58,6 +58,13 @@ module Motion =
     let private animated: obj = null
 #endif
 
+    [<Emit("$0.size")>]
+    let private sizeOf (set: obj) : int = jsNative
+
+    /// <summary>The number of elements whose Motion exit runs.</summary>
+    let internal departures () =
+        sizeOf departing
+
     [<Emit("$0.add($1)")>]
     let private mark (set: obj) (element: obj) : unit = jsNative
 
@@ -198,7 +205,13 @@ module Motion =
                 if pin then
                     pinOutOfFlow element
 
-                let tickable = play inst (elementOf node) :> ITickable
+                let tickable =
+                    try
+                        play inst (elementOf node) :> ITickable
+                    with _ ->
+                        forget departing element
+                        reraise ()
+
                 chain tickable "onComplete" (fun _ -> finished ())
 
                 let cancel () =
