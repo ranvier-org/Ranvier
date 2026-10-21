@@ -60,13 +60,24 @@ let plain: Lazy<FSharpProjectOptions> = lazy (withReferences [])
 
 let private checker = lazy (FSharpChecker.Create (keepAssemblyContents = true))
 
+/// A tool manifest that declares `command` at `version`.
+let manifest (command: string) (version: string) : string =
+    $"{{ \"version\": 1, \"isRoot\": true, \"tools\": {{ \"{command}\": {{ \"version\": \"{version}\", \"commands\": [ \"{command}\" ] }} }} }}"
+
 /// The context of the last of `files`, each a relative path and its source, compiled in order as one project in a
-/// fresh temporary directory; raises on a type error.
-let contextOf (options: FSharpProjectOptions) (files: (string * string) list) : CliContext =
+/// fresh temporary directory whose `.config/dotnet-tools.json` is `tools`, if any; raises on a type error.
+let contextIn (tools: string option) (options: FSharpProjectOptions) (files: (string * string) list) : CliContext =
     let directory =
         Path.Combine (Path.GetTempPath (), "ranvier-analyzers-tests", Guid.NewGuid().ToString "N")
 
     Directory.CreateDirectory directory |> ignore
+
+    tools
+    |> Option.iter (fun text ->
+        Directory.CreateDirectory (Path.Combine (directory, ".config"))
+        |> ignore
+
+        File.WriteAllText (Path.Combine (directory, ".config", "dotnet-tools.json"), text))
 
     let paths =
         [|
@@ -115,6 +126,10 @@ let contextOf (options: FSharpProjectOptions) (files: (string * string) list) : 
     | FSharpCheckFileAnswer.Succeeded fileResults ->
         Utils.createContext projectResults target sourceText (parseResults, fileResults) (AnalyzerProjectOptions.BackgroundCompilerOptions project)
     | FSharpCheckFileAnswer.Aborted -> failwith $"The check of {target} was aborted"
+
+/// The context of the last of `files` in a project whose manifest declares Fable 5.18.0.
+let contextOf (options: FSharpProjectOptions) (files: (string * string) list) : CliContext =
+    contextIn (Some (manifest "fable" "5.18.0")) options files
 
 /// The context of `source` compiled as the single file of a project; raises on a type error.
 let context (options: FSharpProjectOptions) (source: string) : CliContext =

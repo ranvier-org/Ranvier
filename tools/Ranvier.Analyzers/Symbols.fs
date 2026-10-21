@@ -98,6 +98,75 @@ module Assemblies =
     [<Literal>]
     let Fable = "Fable.Core.dll"
 
+/// The F#-to-JavaScript compiler a project declares in its tool manifest.
+module Compilers =
+    open System.Collections.Concurrent
+    open System.Text.Json
+
+    [<Literal>]
+    let Fable = "fable"
+
+    [<Literal>]
+    let Fickl = "fickl"
+
+    /// The first Fable release whose precompile declares the generated union testers.
+    let testersPrecompileFrom = Version (5, 22, 0)
+
+    let private parse (text: string) =
+        let core = text.Split('-', '+').[0]
+
+        match Version.TryParse core with
+        | true, version -> Some version
+        | _ -> None
+
+    let private manifestIn (directory: string) : (string * Version) option =
+        [
+            Path.Combine (directory, ".config", "dotnet-tools.json")
+            Path.Combine (directory, "dotnet-tools.json")
+        ]
+        |> List.tryFind File.Exists
+        |> Option.bind (fun file ->
+            try
+                use document = JsonDocument.Parse (File.ReadAllText file)
+                let mutable tools = Unchecked.defaultof<JsonElement>
+
+                if document.RootElement.TryGetProperty ("tools", &tools) then
+                    [ Fickl; Fable ]
+                    |> List.tryPick (fun command ->
+                        let mutable tool = Unchecked.defaultof<JsonElement>
+                        let mutable version = Unchecked.defaultof<JsonElement>
+
+                        if
+                            tools.TryGetProperty (command, &tool)
+                            && tool.TryGetProperty ("version", &version)
+                        then
+                            parse (version.GetString ())
+                            |> Option.map (fun v -> command, v)
+                        else
+                            None)
+                else
+                    None
+            with _ ->
+                None)
+
+    let private cache = ConcurrentDictionary<string, (string * Version) option>()
+
+    /// The compiler, `fable` or `fickl`, and its version that the tool manifest nearest to `projectFile` declares.
+    let declared (projectFile: string) : (string * Version) option =
+        let rec up (directory: string) =
+            if String.IsNullOrEmpty directory then
+                None
+            else
+                match manifestIn directory with
+                | Some found -> Some found
+                | None -> up (Path.GetDirectoryName directory)
+
+        if String.IsNullOrEmpty projectFile then
+            None
+        else
+            let directory = Path.GetDirectoryName (Path.GetFullPath projectFile)
+            cache.GetOrAdd (directory, (fun d -> up d))
+
 /// The core node types, their creators and their pure contexts.
 module Core =
     [<Literal>]

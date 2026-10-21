@@ -62,6 +62,21 @@ let private casePattern (opened: string list) (union: FSharpEntity) (case: FShar
 
     if case.Fields.Count = 0 then name else name + " _"
 
+/// The compiler that the project's tool manifest declares.
+let private compiler (input: Input) =
+    Symbols.Compilers.declared input.Options.ProjectFileName
+
+/// Whether the project's Fable precompile fails on generated union testers: Fable before 5.22.
+let private precompileDropsTesters (input: Input) =
+    match compiler input with
+    | Some (Symbols.Compilers.Fable, version) -> version < Symbols.Compilers.testersPrecompileFrom
+    | _ -> false
+
+/// Whether the project's Release compile inlines single-use snapshots of module mutables: every Fable and Fickl
+/// release the truth fixtures cover.
+let private inlinesSnapshots (input: Input) =
+    (compiler input).IsSome
+
 let private testers (input: Input) : Message list =
     [
         for site in input.Index.Calls do
@@ -100,7 +115,7 @@ let ran002: Rule =
         Code = "RAN002"
         Title = "Generated union case tester in a Fable library"
         Gate = Symbols.Assemblies.Fable
-        Run = testers
+        Run = fun input -> if precompileDropsTesters input then testers input else []
     }
 
 /// The module-level `let mutable` that `expr` reads bare.
@@ -173,5 +188,5 @@ let ran001: Rule =
         Code = "RAN001"
         Title = "Fable inlines a snapshot of a module mutable"
         Gate = Symbols.Assemblies.Fable
-        Run = snapshots
+        Run = fun input -> if inlinesSnapshots input then snapshots input else []
     }

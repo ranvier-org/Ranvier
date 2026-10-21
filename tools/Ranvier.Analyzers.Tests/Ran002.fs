@@ -219,8 +219,7 @@ type Policy =
 "
                             "Fixture.fs",
                             "module Use
-let queued (p: Defs.Policy) = p.IsQueue
-"
+let queued (p: Defs.Policy) = p.IsQueue\n"
                         ]
 
                 Expect.stringContains messages.Head.Message "(match p with Defs.Policy.Queue -> true | _ -> false)" "other file"
@@ -230,8 +229,7 @@ let queued (p: Defs.Policy) = p.IsQueue
             test "the _.IsCase shorthand, fixed with a function" {
                 let source =
                     policy
-                    + "let queued (ps: Policy list) = ps |> List.filter _.IsQueue
-"
+                    + "let queued (ps: Policy list) = ps |> List.filter _.IsQueue\n"
 
                 let messages = findings source
 
@@ -299,8 +297,7 @@ let slowOutside (k: Shapes.Kind) = k.IsSlow
                 let source =
                     policy
                     + "type Box = { Inner: Policy }
-let queued (bs: Box list) = bs |> List.filter _.Inner.IsQueue
-"
+let queued (bs: Box list) = bs |> List.filter _.Inner.IsQueue\n"
 
                 let messages = findings source
                 Expect.stringContains messages.Head.Message "`Policy.IsQueue`" "the union's tester"
@@ -315,11 +312,25 @@ let queued (bs: Box list) = bs |> List.filter _.Inner.IsQueue
                 let messages =
                     findings (
                         policy
-                        + "let first (ps: Policy list) = (List.head ps).IsQueue
-"
+                        + "let first (ps: Policy list) = (List.head ps).IsQueue\n"
                     )
 
                 Expect.stringContains messages.Head.Message "`(List.head ps).IsQueue`" "the call as written"
+            }
+
+            test "the compiler the tool manifest declares decides the rule" {
+                let source =
+                    policy
+                    + "let isQueue (policy: Policy) = policy.IsQueue\n"
+
+                let codesWith tools =
+                    run Analyzers.ran002Cli (contextIn tools (ranvier.Force ()) [ "Fixture.fs", source ])
+                    |> List.map _.Code
+
+                Expect.equal (codesWith (Some (manifest "fable" "5.21.0"))) [ "RAN002" ] "Fable 5.21 drops the testers"
+                Expect.isEmpty (codesWith (Some (manifest "fable" "5.22.0"))) "Fable 5.22 declares them"
+                Expect.isEmpty (codesWith (Some (manifest "fickl" "0.3.0"))) "Fickl 0.3.0 declares them"
+                Expect.isEmpty (codesWith None) "no Fable compiler declared"
             }
 
             test "a tester inside a quotation is reported" {
