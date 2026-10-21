@@ -7,7 +7,8 @@ Measurements of the `Arms.Match` implementation ([spec](../superpowers/specs/202
 1.1-1.4 ms once the process is warm; the first five-target site of a process costs 125-146 ms, 9-12 ms after
 `Arms.Prepare ()` and about 7 ms with ReadyToRun as well. Under Fable the first `Arms.Match` site costs 370 B gzip over
 its twin (budget 400 B) and each further site -22 B (budget 60 B). The retained heap per row is within 10 % of
-`ranvier-sugar`. The Chromium arm operations are compared by paired ratio in "Chromium".
+`ranvier-sugar` after create and about 18 % above it after a switch. In Chromium, create holds its gate, switch is about
+14 % slower than the sugared twin (a miss), and payload and clear are not settled.
 
 ## Plugin discovery
 
@@ -157,31 +158,36 @@ another graph's arm.
 ## Chromium
 
 `keyed-rows.mjs --modes=ranvier-sugar,ranvier-arms-match --ops=armsCreate1k,armsSwitch1k,armsPayload1k,armsClear1k
---processes=3 --rounds=15`, under the benchmark and browser locks; results in `arms-match/arms-match.json`. The machine
-ran other agents' builds during the run (CPU load 66-77 %), so every figure is about 35 % above a quiet run's.
+--processes=3 --rounds=15 --pairs=ranvier-arms-match:ranvier-sugar`, under the benchmark and browser locks, at
+`f5e2b3d`'s cells (Fickl 0.3.0, Fable 5.22.0; source hashes in the JSON); results in `arms-match/arms-match.json`. The
+run started after three load readings below 20 %; the CPU load was 33 % at its start and 31 % at its end (other agents'
+work), against 59-77 % for the earlier runs.
 
-| Operation | ranvier-sugar median (range), ms | ranvier-arms-match median (range), ms | Δ median |
-|---|---|---|---|
-| armsCreate1k | 18.46 (15.99-19.33) | 19.22 (17.00-19.75) | +4.1 % |
-| armsSwitch1k | 10.05 (8.48-10.72) | 10.76 (9.59-11.90) | +7.1 % |
-| armsPayload1k | 1.63 (1.29-1.80) | 1.78 (1.57-1.90) | +9.5 % |
-| armsClear1k | 2.95 (2.62-3.30) | 3.34 (2.82-3.62) | +13.2 % |
+| Operation | ranvier-sugar median (process medians), ms | ranvier-arms-match median (process medians), ms | paired median ratio | 95 % interval | arms slower in |
+|---|---|---|---|---|---|
+| armsCreate1k | 13.67 (14.37, 12.62, 13.62) | 14.20 (14.57, 12.72, 14.39) | 1.021 | 1.007-1.046 | 30/45 |
+| armsSwitch1k | 6.67 (7.00, 6.57, 6.38) | 7.67 (7.86, 7.22, 7.63) | 1.144 | 1.111-1.176 | 44/45 |
+| armsPayload1k | 0.92 (0.91, 1.03, 0.83) | 1.01 (1.07, 1.09, 0.95) | 1.112 | 1.023-1.178 | 30/45 |
+| armsClear1k | 1.93 (1.66, 2.57, 1.77) | 2.00 (1.89, 2.51, 1.94) | 1.065 | 0.994-1.159 | 27/45 |
 
-Ranges are the three processes' medians. armsCreate1k holds the 5 % gate; the other three exceed 5 % and hold the gate
-by overlapping ranges only. On a quieter machine with the first JavaScript cells (an array per target, a values thunk
-per arm), armsSwitch1k cost 8.41 ms (8.08-8.76) against 7.09 ms (6.97-7.18), +18.6 % without overlap; the current cells
-remove the per-arm thunk and the single-entry array, and need a quiet rerun to settle the switch and clear figures.
+The paired ratio divides each `ranvier-arms-match` sample by the `ranvier-sugar` sample of the same process and round;
+the interval is a percentile bootstrap of its median. armsCreate1k holds the gate (median at most 1.05).
+**armsSwitch1k misses it**: about 14 % slower, with the whole interval above 1.05; each switch registers a new entry
+and withdraws the old one, work the twin does not do. armsPayload1k and armsClear1k have medians above 1.05 with
+intervals that reach below it, so they are not settled by this run.
 
 ## Heap
 
-`keyed-heap.mjs --modes=ranvier-sugar,ranvier-arms-match --fixture=arms --counts=1000,10000`; results in
-`arms-match/arms-match-heap.json`.
+`keyed-heap.mjs --modes=ranvier-sugar,ranvier-arms-match --fixture=arms --counts=1000,10000`, after create and, with
+`--after=switch`, after one switch of every row; results in `arms-match/arms-match-heap.json` and
+`arms-match/arms-match-heap-switch.json`.
 
-| Rows | ranvier-sugar bytes per row | ranvier-arms-match bytes per row | Δ |
-|---|---|---|---|
-| 1,000 | 3,511 | 3,847 | +336 (+9.6 %) |
-| 10,000 | 3,528 | 3,877 | +349 (+9.9 %) |
+| Rows | ranvier-sugar bytes per row | ranvier-arms-match after create | Δ | ranvier-arms-match after a switch | Δ |
+|---|---|---|---|---|---|
+| 1,000 | 3,511 | 3,843 | +332 (+9.5 %) | 4,135 | +624 (+17.8 %) |
+| 10,000 | 3,528 | 3,873 | +345 (+9.8 %) | 4,165 | +637 (+18.1 %) |
 
-The gate holds: both counts stay within 10 % of `ranvier-sugar` before the allowance for a `WeakMap` entry and an entry
-list per row. The extra bytes are the slots object and entry, the arm's cleanup closure, and the arm's `current`
-closure kept by the entry. The first JavaScript cells cost +500 B (+14.2 %) and +513 B (+14.5 %).
+After create the gate holds: both counts stay within 10 % of `ranvier-sugar`. The extra bytes are the slots object and
+entry, the arm's cleanup closure, and the arm's `current` closure kept by the entry. After a switch each row also keeps
+its withdrawn entry, which holds the disposed arm's `current` and its last values: about 290 B more per row, bounded by
+one withdrawn entry per target and instance. The sugared twin keeps nothing after a switch.
