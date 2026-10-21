@@ -62,6 +62,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 83,018 | 127,158 | 1,734,028 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 82,983 | 127,156 | 1,734,666 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 82,985 | 127,177 | 1,734,666 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 83,060 | 127,169 | 1,734,660 |
 
 ## app-table
 
@@ -125,6 +126,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 4,416,115 | 9,320,259 | 107,301,908 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 4,416,101 | 9,480,802 | 107,544,214 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 4,416,062 | 9,203,664 | 107,451,110 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 4,416,458 | 9,203,385 | 107,544,033 |
 
 ## async-recover
 
@@ -188,6 +190,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 139,024 | 39,725 | 440,657 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 139,024 | 39,655 | 440,649 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 139,024 | 39,706 | 440,651 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 138,968 | 39,715 | 440,645 |
 
 ## async-resolve
 
@@ -251,6 +254,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 2,791,509 | 1,085,574 | 12,317,097 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 2,791,509 | 1,085,810 | 12,313,939 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 2,791,509 | 1,085,035 | 12,317,307 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 2,789,909 | 1,085,452 | 12,314,126 |
 
 ## chain
 
@@ -314,6 +318,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,783 | 66,618 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,783 | 66,618 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,783 | 66,618 |
 
 ## chain-affinity
 
@@ -377,6 +382,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 2,549 | 3,067 | 2,496 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 2,549 | 3,067 | 2,496 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 2,549 | 3,067 | 2,496 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 2,549 | 3,067 | 2,496 |
 
 ## control
 
@@ -440,6 +446,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 74,709 | 833,926 | 2,605,031 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 74,709 | 839,547 | 2,604,319 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 74,709 | 839,567 | 2,604,220 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 74,709 | 839,561 | 2,604,210 |
 
 ## create
 
@@ -503,6 +510,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 13,449,958 | 2,859,679 | 2,532,361 | 2,131,745 | 4,003,679 | 34,066,647 | 49,723,316 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 13,450,084 | 2,859,678 | 2,532,361 | 2,131,033 | 4,001,852 | 34,069,376 | 49,687,590 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 13,449,986 | 2,859,678 | 2,532,361 | 2,131,908 | 4,002,734 | 34,068,466 | 49,687,582 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 13,449,950 | 2,859,678 | 2,532,361 | 2,131,765 | 4,002,748 | 34,068,707 | 49,687,454 |
 
 ## create-on
 
@@ -566,6 +574,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 2,910,483 | 4,147,438 | 54,424,708 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 2,910,483 | 4,147,491 | 54,424,704 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 2,910,484 | 4,147,387 | 54,424,576 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 2,910,483 | 4,147,405 | 54,425,006 |
 
 ## cutoff
 
@@ -629,6 +638,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 
 ## derive-effect
 
@@ -692,6 +702,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 765 | 768 | 16,102 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 765 | 768 | 16,102 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 765 | 768 | 16,102 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 765 | 768 | 16,102 |
 
 ## derive-on
 
@@ -755,6 +766,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 737 | 775 | 16,261 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 737 | 775 | 16,261 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 737 | 775 | 16,261 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 737 | 775 | 16,261 |
 
 ## dispose
 
@@ -818,6 +830,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 2,707,646 | 806,291 | 367,497 | 465,654 | 485,338 | 13,195,132 | 9,105,877 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 2,706,242 | 806,291 | 367,497 | 466,089 | 484,937 | 13,193,985 | 9,106,498 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 2,706,747 | 806,291 | 367,497 | 465,792 | 485,187 | 13,195,757 | 9,106,266 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 2,706,246 | 806,291 | 367,497 | 466,323 | 485,036 | 13,194,087 | 9,105,868 |
 
 ## dispose-on
 
@@ -881,6 +894,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 346,497 | 478,841 | 8,902,586 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 346,497 | 478,729 | 8,902,566 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 346,497 | 478,633 | 8,902,293 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 346,497 | 478,476 | 8,902,430 |
 
 ## editable-edit
 
@@ -944,6 +958,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 180,106 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 180,106 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 180,106 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 180,106 |
 
 ## editable-upstream
 
@@ -1007,6 +1022,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 231,255 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 231,255 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 231,255 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 231,255 |
 
 ## fail-recompute
 
@@ -1070,6 +1086,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 65,082 | 1,366 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 65,082 | 1,366 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 65,082 | 1,366 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 65,106 | 1,366 |
 
 ## flight
 
@@ -1133,6 +1150,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 
 ## keyed-insert
 
@@ -1196,6 +1214,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 1,921,825 | 53,951 | 54,960 | 3,218,685 | 661,945 | 176,561 | 44,849,869 | 2,634,924 | 2,654,178 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 1,921,961 | 53,951 | 55,097 | 3,218,645 | 661,756 | 176,524 | 44,845,239 | 2,635,014 | 2,654,056 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 1,921,809 | 53,951 | 54,952 | 3,218,691 | 661,742 | 176,604 | 44,846,491 | 2,635,039 | 2,654,085 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 1,921,825 | 53,951 | 54,958 | 3,218,721 | 661,738 | 176,459 | 44,845,260 | 2,635,033 | 2,654,078 |
 
 ## keyed-remove
 
@@ -1259,6 +1278,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 1,920,750 | 43,628 | 45,300 | 3,245,048 | 593,248 | 605,283 | 44,798,162 | 1,924,836 | 1,958,495 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 1,920,891 | 43,628 | 45,436 | 3,245,029 | 593,196 | 604,996 | 44,802,360 | 1,924,835 | 1,958,886 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 1,920,739 | 43,628 | 45,285 | 3,244,914 | 593,213 | 604,945 | 44,801,844 | 1,924,803 | 1,958,856 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 1,920,750 | 43,628 | 45,300 | 3,244,960 | 593,214 | 605,189 | 44,801,838 | 1,924,842 | 1,958,868 |
 
 ## keyed-swap
 
@@ -1322,6 +1342,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 1,973,444 | 46,161 | 46,931 | 3,565,335 | 148,793 | 511,395 | 45,980,246 | 916,486 | 932,898 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 1,973,524 | 46,162 | 47,012 | 3,563,252 | 148,803 | 511,212 | 45,980,371 | 916,856 | 932,960 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 1,973,428 | 46,161 | 46,915 | 3,560,900 | 148,806 | 511,334 | 45,980,419 | 916,836 | 932,837 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 1,973,444 | 46,161 | 46,931 | 3,564,622 | 148,831 | 511,212 | 45,980,398 | 916,763 | 932,841 |
 
 ## mvu-dispatch
 
@@ -1385,6 +1406,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 58,261 | 772 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 58,261 | 772 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 58,261 | 772 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 58,261 | 772 |
 
 ## project-chain
 
@@ -1448,6 +1470,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 1,070,358 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 1,070,247 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 1,070,169 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 1,070,653 |
 
 ## project-churn
 
@@ -1511,6 +1534,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 36,586 | 34,422 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 36,474 | 34,310 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 36,474 | 34,310 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 36,490 | 34,326 |
 
 ## project-edit
 
@@ -1574,6 +1598,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 50,513 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 50,415 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 50,415 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 50,431 |
 
 ## project-reorder
 
@@ -1637,6 +1662,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 779,267 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 779,155 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 779,155 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 779,171 |
 
 ## server-render
 
@@ -1700,6 +1726,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 675,723 | 1,131,493 | 9,833,582 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 675,724 | 1,131,458 | 9,834,209 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 675,724 | 1,131,578 | 9,834,282 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 675,857 | 1,131,085 | 9,832,639 |
 
 ## shape-diamond
 
@@ -1763,6 +1790,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 59,899 | 79,968 | 1,763,357 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 59,899 | 79,968 | 1,763,357 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 59,899 | 79,968 | 1,763,357 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 59,899 | 79,968 | 1,763,357 |
 
 ## shape-dynamic
 
@@ -1826,6 +1854,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 82,921 | 107,030 | 2,006,140 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 82,921 | 107,034 | 2,006,144 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 82,921 | 107,032 | 2,006,144 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 82,921 | 107,034 | 2,006,144 |
 
 ## stream-burst-1
 
@@ -1889,6 +1918,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 1,974 | 1,572 | 2,491 | 4,672 | 3,644 | 13,372 | 47,199 | 45,417 | 55,171 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 1,974 | 1,572 | 2,491 | 4,671 | 3,644 | 13,371 | 47,204 | 45,417 | 55,168 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 1,974 | 1,572 | 2,491 | 4,671 | 3,644 | 13,378 | 47,202 | 45,417 | 55,171 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 1,974 | 1,572 | 2,507 | 4,671 | 3,644 | 13,371 | 47,201 | 45,417 | 55,168 |
 
 ## stream-burst-16
 
@@ -1952,6 +1982,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 5,631 | 25,017 | 5,701 | 9,503 | 49,601 | 8,051 | 120,973 | 714,180 | 113,518 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 5,631 | 25,017 | 5,701 | 9,499 | 49,601 | 8,050 | 120,976 | 714,180 | 113,519 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 5,631 | 25,017 | 5,701 | 9,502 | 49,601 | 8,051 | 120,972 | 714,180 | 113,522 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 5,631 | 25,017 | 5,717 | 9,498 | 49,601 | 8,051 | 120,970 | 714,180 | 113,519 |
 
 ## stream-burst-256
 
@@ -2015,6 +2046,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 64,131 | 400,101 | 57,040 | 127,431 | 787,263 | 74,605 | 1,301,530 | 11,413,287 | 1,046,549 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 64,131 | 400,101 | 57,040 | 127,412 | 787,250 | 74,603 | 1,301,658 | 11,413,288 | 1,046,552 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 64,131 | 400,101 | 57,040 | 127,431 | 787,250 | 74,605 | 1,301,661 | 11,413,287 | 1,046,532 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 64,131 | 400,101 | 57,056 | 127,416 | 787,248 | 74,605 | 1,301,530 | 11,413,287 | 1,046,484 |
 
 ## stream-restart
 
@@ -2078,6 +2110,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 4,187 | 4,976 | 6,106 | 16,359 | 41,500 | 70,406 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) (accepted) | 4,187 | 4,976 | 6,359 | 16,586 | 42,490 | 71,395 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 4,187 | 4,976 | 6,357 | 16,584 | 42,491 | 71,400 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 4,187 | 4,992 | 6,360 | 16,588 | 42,491 | 71,399 |
 
 ## timed-admit-both
 
@@ -2141,6 +2174,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 118,591 | 134,964 | 2,679,929 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 118,591 | 134,963 | 2,679,932 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 118,591 | 134,962 | 2,679,932 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 118,591 | 134,963 | 2,679,932 |
 
 ## timed-admit-debounce
 
@@ -2204,6 +2238,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 117,496 | 133,558 | 2,640,272 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 117,496 | 133,554 | 2,640,283 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 117,496 | 133,557 | 2,640,285 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 117,496 | 133,581 | 2,640,285 |
 
 ## timed-admit-first
 
@@ -2267,6 +2302,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 69,479 | 79,053 | 1,611,692 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 69,479 | 79,053 | 1,611,692 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 69,479 | 79,053 | 1,611,692 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 69,479 | 79,050 | 1,611,692 |
 
 ## timed-admit-last
 
@@ -2330,6 +2366,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 117,758 | 133,852 | 2,650,128 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 117,758 | 133,878 | 2,650,141 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 117,758 | 133,866 | 2,650,141 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 117,758 | 133,875 | 2,650,140 |
 
 ## timed-capture-both
 
@@ -2393,6 +2430,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 35,726 | 44,806 | 846,997 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 35,726 | 44,800 | 846,996 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 35,726 | 44,797 | 846,998 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 35,726 | 44,797 | 846,996 |
 
 ## timed-capture-debounce
 
@@ -2456,6 +2494,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 35,598 | 44,104 | 847,375 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 35,598 | 44,104 | 847,375 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 35,598 | 44,104 | 847,375 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 35,598 | 44,104 | 847,376 |
 
 ## timed-capture-first
 
@@ -2519,6 +2558,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 32,078 | 36,612 | 745,370 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 32,078 | 36,612 | 745,370 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 32,078 | 36,612 | 745,370 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 32,078 | 36,612 | 745,370 |
 
 ## timed-capture-last
 
@@ -2582,6 +2622,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 35,534 | 44,040 | 839,503 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 35,534 | 44,040 | 839,503 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 35,534 | 44,040 | 839,503 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 35,534 | 44,040 | 839,503 |
 
 ## update
 
@@ -2645,6 +2686,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 1,087,690 | 38,805 | 82,505 | 262,575 | 151,734 | 3,350,265 | 2,502,848 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 1,089,282 | 38,805 | 82,505 | 262,622 | 151,671 | 3,350,263 | 2,502,795 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 1,087,690 | 38,805 | 82,505 | 262,290 | 151,723 | 3,350,151 | 2,502,737 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 1,087,690 | 38,805 | 82,505 | 262,726 | 151,682 | 3,350,255 | 2,502,807 |
 
 ## update-on
 
@@ -2708,6 +2750,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 93,005 | 165,181 | 2,830,412 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 93,005 | 165,257 | 2,830,424 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 93,005 | 165,221 | 2,830,434 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 93,005 | 165,192 | 2,830,302 |
 
 ## work-form
 
@@ -2771,6 +2814,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 170,300 | 163,392 | 295,967 | 291,427 | 5,349,179 | 5,295,442 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 170,300 | 163,392 | 295,940 | 291,403 | 5,349,286 | 5,295,444 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 170,300 | 163,392 | 295,957 | 291,430 | 5,349,217 | 5,295,441 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 170,300 | 163,392 | 295,967 | 291,428 | 5,349,196 | 5,295,422 |
 
 ## work-status
 
@@ -2834,6 +2878,7 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 100,445 | 78,815 | 264,829 | 152,965 | 2,611,039 | 2,360,842 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 100,445 | 78,815 | 264,846 | 152,958 | 2,611,063 | 2,360,865 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 100,445 | 78,815 | 264,906 | 152,965 | 2,610,988 | 2,360,853 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 100,445 | 78,815 | 264,855 | 152,927 | 2,610,951 | 2,360,835 |
 
 ## work-value
 
@@ -2897,4 +2942,5 @@
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 107,570 | 119,469 | 265,101 | 279,915 | 2,595,703 | 2,920,165 |
 | `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 107,569 | 119,469 | 265,111 | 279,912 | 2,595,672 | 2,920,215 |
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 107,569 | 119,471 | 265,063 | 279,878 | 2,595,698 | 2,920,176 |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 107,569 | 119,470 | 265,065 | 279,868 | 2,595,591 | 2,920,211 |
 
