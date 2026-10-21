@@ -9,6 +9,8 @@
     <ItemGroup>
         <Compile Include="Options.fs" />
         <Compile Include="IndexTests.fs" />
+        <Compile Include="Ran002.fs" />
+        <Compile Include="DocsExamples.fs" />
         <Compile Include="Main.fs" />
     </ItemGroup>
     <ItemGroup>

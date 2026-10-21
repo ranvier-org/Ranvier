@@ -5,7 +5,7 @@ open FSharp.Analyzers.SDK
 open Ranvier.Analyzers.Rule
 
 /// Every rule, in code order.
-let rules: Rule list = []
+let rules: Rule list = [ Rules.Fable.ran002 ]
 
 /// The findings of `rule` in a CLI context; empty when the project lacks the rule's gate reference.
 let runCli (rule: Rule) (context: CliContext) : Message list =
@@ -49,3 +49,11 @@ let runEditor (rule: Rule) (context: EditorContext) : Message list =
                 Project = context.CheckProjectResults
             }
     | _ -> []
+
+[<CliAnalyzer("RAN002", "Generated union case tester in a Fable library", "https://shayanhabibi.github.io/Ranvier/analyzers/ran002/")>]
+let ran002Cli: Analyzer<CliContext> =
+    fun context -> async { return runCli Rules.Fable.ran002 context }
+
+[<EditorAnalyzer("RAN002", "Generated union case tester in a Fable library", "https://shayanhabibi.github.io/Ranvier/analyzers/ran002/")>]
+let ran002Editor: Analyzer<EditorContext> =
+    fun context -> async { return runEditor Rules.Fable.ran002 context }

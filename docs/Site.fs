@@ -184,6 +184,11 @@ let theme =
             ]
         >> Theme.menu "fable" [ Menu.section "Fable" [ Menu.page "fable/index.md" ] ]
         >> Theme.menu
+            "analyzers"
+            [
+                Menu.section "Analyzers" [ Menu.page "analyzers/index.md"; Menu.page "analyzers/ran002.md" ]
+            ]
+        >> Theme.menu
             "blog"
             [
                 Menu.section "Blog" [ Menu.page "blog/index.md"; Menu.page "blog/desktop-adaptive.md" ]
