@@ -171,6 +171,20 @@ let memo () =
                     "the body's own path"
             }
 
+            test "a class's let function is indexed" {
+                let file =
+                    index
+                        """
+module Fixture
+open Ranvier
+type Holder() =
+    let make () = createSignal 1
+    member _.Make() = make ()
+"""
+
+                Expect.equal (callsOf "createSignal" file).Length 1 "the let function's body"
+            }
+
             test "the index is built once per file" {
                 let tree = (context (ranvier.Force ()) "module Fixture\nlet x = 1").TypedTree.Value
 

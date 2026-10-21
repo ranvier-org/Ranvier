@@ -15,13 +15,13 @@ open Ranvier.Analyzers.Rule
 let private CompilerGenerated =
     "System.Runtime.CompilerServices.CompilerGeneratedAttribute"
 
-/// The union and case of a compiler-generated `IsCase` getter of a union declared in the analyzed assembly.
-let private generatedTester (m: FSharpMemberOrFunctionOrValue) : (FSharpEntity * FSharpUnionCase) option =
+/// The union and case of a compiler-generated `IsCase` getter of a union declared in the analyzed project.
+let private generatedTester (input: Input) (m: FSharpMemberOrFunctionOrValue) : (FSharpEntity * FSharpUnionCase) option =
     match m.DeclaringEntity with
     | Some union when
         m.IsPropertyGetterMethod
         && union.IsFSharpUnion
-        && union.Assembly.FileName.IsNone
+        && inProject input union.DeclarationLocation.FileName
         ->
         let generated =
             m.Attributes
@@ -54,7 +54,7 @@ let private casePattern (file: string) (union: FSharpEntity) (case: FSharpUnionC
 let private testers (input: Input) : Message list =
     [
         for site in input.Index.Calls do
-            match generatedTester site.Callee, site.Receiver with
+            match generatedTester input site.Callee, site.Receiver with
             | Some (union, case), Some receiver ->
                 let receiverText = text input receiver.Range
 

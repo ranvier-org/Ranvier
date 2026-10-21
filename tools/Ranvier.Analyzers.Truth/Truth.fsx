@@ -96,9 +96,65 @@ let precompile () =
 
     check "RAN002: the precompile accepts a generic union tester" (generic = 0) genericLog
 
+let build () =
+    let analyzerCode, analyzerLog =
+        dotnet
+            [
+                "build"
+                "tools/Ranvier.Analyzers/Ranvier.Analyzers.fsproj"
+                "-c"
+                "Release"
+                "-v"
+                "q"
+            ]
+
+    check "the analyzers build" (analyzerCode = 0) analyzerLog
+    let project = "tools/Ranvier.Analyzers.Truth/Build/Build.fsproj"
+
+    let code, log = dotnet [ "build"; project; "-c"; "Release"; "--no-incremental" ]
+
+    check
+        "RanvierAnalyze reports RAN001 as an MSBuild warning"
+        (code = 0
+         && log.Contains "B.fs(4,8): warning RAN001")
+        log
+
+    check "an ignore-line-next comment silences its line" (not (log.Contains "B.fs(11,")) log
+
+    let quiet, quietLog =
+        dotnet
+            [
+                "build"
+                project
+                "-c"
+                "Release"
+                "--no-incremental"
+                "-p:MSBuildWarningsAsMessages=RAN001"
+            ]
+
+    check
+        "MSBuildWarningsAsMessages demotes RAN001"
+        (quiet = 0
+         && not (quietLog.Contains "warning RAN001"))
+        quietLog
+
+    let strict, strictLog =
+        dotnet
+            [
+                "build"
+                project
+                "-c"
+                "Release"
+                "--no-incremental"
+                "-p:RanvierAnalyzersFlags=--treat-as-error RAN001"
+            ]
+
+    check "an error-promoted RAN001 fails the build" (strict <> 0 && strictLog.Contains "error RAN001") strictLog
+
 dotnet [ "tool"; "restore" ] |> ignore
 inlining ()
 precompile ()
+build ()
 
 if failures.Count > 0 then
     eprintfn "%d truth checks failed: %s" failures.Count (String.Join (", ", failures))

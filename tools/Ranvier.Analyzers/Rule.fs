@@ -29,6 +29,13 @@ type Rule =
         Run: Input -> Message list
     }
 
+/// Whether `file` is one of the analyzed project's source files.
+let inProject (input: Input) (file: string) : bool =
+    let full = System.IO.Path.GetFullPath file
+
+    input.Options.SourceFiles
+    |> List.exists (fun source -> System.String.Equals (System.IO.Path.GetFullPath source, full, System.StringComparison.OrdinalIgnoreCase))
+
 /// The source text of `range`.
 let text (input: Input) (range: range) : string =
     input.Source.GetSubTextFromRange range

@@ -93,6 +93,16 @@ let private isPipe (name: string) (m: FSharpMemberOrFunctionOrValue) =
     m.LogicalName = name
     && Symbols.enclosing m = Symbols.Operators
 
+/// Whether `value` is the structural equality, hashing or comparison the compiler generates for a type. A class's
+/// `let` functions are compiler-generated too, and are indexed.
+let private generatedComparison (value: FSharpMemberOrFunctionOrValue) =
+    value.IsCompilerGenerated
+    && (match value.LogicalName with
+        | "CompareTo"
+        | "Equals"
+        | "GetHashCode" -> true
+        | _ -> false)
+
 let private build (file: FSharpImplementationFileContents) : FileIndex =
     let calls = ResizeArray<CallSite>()
     let lets = ResizeArray<LetSite>()
@@ -163,7 +173,7 @@ let private build (file: FSharpImplementationFileContents) : FileIndex =
         match item with
         | FSharpImplementationFileDeclaration.Entity (_, items) -> List.iter declaration items
         | FSharpImplementationFileDeclaration.MemberOrFunctionOrValue (value, _, body) ->
-            if not value.IsCompilerGenerated then
+            if not (generatedComparison value) then
                 walk [] body
         | FSharpImplementationFileDeclaration.InitAction body -> walk [] body
 

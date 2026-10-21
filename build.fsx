@@ -43,6 +43,28 @@ module Spec =
     /// The signal map model reads the trace log, so its tests compile only in a traced build.
     let mapsTests = "docs/maps/tests"
 
+    /// The projects `analyze` checks; each type-checks under the analyzers CLI. Fable-only projects are left out, and so
+    /// is examples/Ranvier.FuncUI.Workload/Workload.fsproj, which references a FuncUI checkout through $(FuncUIRoot).
+    let analyzedProjects =
+        [
+            "src/Ranvier/Ranvier.fsproj"
+            "src/Ranvier.Query/Ranvier.Query.fsproj"
+            "src/Ranvier.Elmish/Ranvier.Elmish.fsproj"
+            "src/Ranvier.Wire/Ranvier.Wire.fsproj"
+            "src/Fable.Ranvier/Fable.Ranvier.fsproj"
+            "src/Fable.Ranvier.Anime/Fable.Ranvier.Anime.fsproj"
+            "experiments/Ranvier.View.Portable/Ranvier.View.Portable.fsproj"
+            "experiments/Ranvier.View.Foundation/Ranvier.View.Foundation.fsproj"
+            "experiments/Ranvier.View.Anime/Ranvier.View.Anime.fsproj"
+            "examples/Fable.Ranvier.Playground/Playground.fsproj"
+            "examples/Fable.Ranvier.Playground/tests/DomTests.fsproj"
+            "examples/Ranvier.Query.Dictionary/Ranvier.Query.Dictionary.fsproj"
+            "examples/Ranvier.FuncUI.Workload/Workload.Model.fsproj"
+            "docs/samples/view/Ranvier.Docs.ViewSamples.fsproj"
+            "tests/Ranvier.Tests/Ranvier.Tests.fsproj"
+            "tests/Ranvier.Wire.Tests/Ranvier.Wire.Tests.fsproj"
+        ]
+
     let sourceProjectsMap =
         sourceProjects
         |> List.map (_.Name >> Str.replaceChar '.' '-' >> Str.toLower)
@@ -420,6 +442,75 @@ module Stage =
                         |> Cmd.args [ "--project"; "docs/docs.fsproj"; "--" ]
                         |> Cmd.arg (if watch then "watch" else "build")
                     )
+                }
+        }
+
+module private Analyze =
+    /// The CLI arguments common to both runs: the built analyzers, every RAN code an error, and a SARIF report.
+    let private flags (report: string) =
+        [
+            "--analyzers-path"
+            "tools/Ranvier.Analyzers/bin/Release/net10.0"
+            "-c"
+            "Release"
+            "--fail-on-type-errors"
+            "--treat-as-error"
+            "RAN*"
+            "--code-root"
+            "."
+            "--report"
+            report
+        ]
+        @ (if System.Environment.GetEnvironmentVariable "GITHUB_ACTIONS" = "true" then
+               [ "--output-format"; "github" ]
+           else
+               [])
+
+    /// Builds the analyzers and the analyzed projects outside Ranvier.slnx, then runs the analyzers over
+    /// `Spec.analyzedProjects` with every RAN code an error, writing SARIF reports to artifacts/analyzers. Under GitHub
+    /// Actions the findings also print as annotations. The solution's projects must be built first.
+    let stage =
+        input {
+            return
+                stage "analyze" {
+                    stage "build analyzers" { run (cmd $"dotnet build tools/Ranvier.Analyzers/Ranvier.Analyzers.fsproj -c Release -v q") }
+
+                    // The CLI reads a project's references from its build outputs.
+                    stage "build projects outside the solution" {
+                        run (cmd $"dotnet build examples/Ranvier.Query.Dictionary/Ranvier.Query.Dictionary.fsproj -c Release -v q")
+                    }
+
+                    stage "run analyzers" {
+                        run (fun _ ->
+                            System.IO.Directory.CreateDirectory "artifacts/analyzers"
+                            |> ignore)
+
+                        run (
+                            Cmd.ofList
+                                "dotnet"
+                                ([ "fsharp-analyzers"; "--project" ]
+                                 @ Spec.analyzedProjects
+                                 @ [ "--exclude-files"; "**/Generated/**" ]
+                                 @ flags "artifacts/analyzers/ranvier.sarif")
+                        )
+                    }
+
+                    // The Tracer calls are [<Conditional("RANVIER_TRACE")>] and leave an untraced typed tree, and the docs
+                    // precompile Ranvier traced: the library is checked again with the trace log compiled in.
+                    stage "run analyzers over the traced library" {
+                        run (
+                            Cmd.ofList
+                                "dotnet"
+                                ([
+                                    "fsharp-analyzers"
+                                    "--project"
+                                    "src/Ranvier/Ranvier.fsproj"
+                                    "--property"
+                                    "RanvierTrace=true"
+                                 ]
+                                 @ flags "artifacts/analyzers/ranvier-traced.sarif")
+                        )
+                    }
                 }
         }
 
@@ -911,6 +1002,12 @@ exit
         description "Generates the documentation (--watch to serve it)"
         Stage.restore
         Stage.generateDocs
+    }
+
+    command "analyze" {
+        description "Runs the Ranvier analyzers over the repository's projects, every finding an error; build first"
+        Stage.restore
+        Analyze.stage
     }
 
     command "test" {
