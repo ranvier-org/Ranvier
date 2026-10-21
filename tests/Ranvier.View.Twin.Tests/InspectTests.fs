@@ -68,7 +68,7 @@ let tests =
                     probes session
                     |> List.pick (fun p ->
                         match p with
-                        | Inspect.MountProbe (phase, queued, flushing, _) -> Some (phase (), queued, flushing ())
+                        | Inspect.MountProbe (phase, queued, flushing, _, _) -> Some (phase (), queued, flushing ())
                         | _ -> None)
 
                 Expect.equal mount (Attached, false, false) "an attached synchronous mount"

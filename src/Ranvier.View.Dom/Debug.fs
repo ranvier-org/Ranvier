@@ -98,10 +98,11 @@ type Dump =
 
 // The host's view of a value: whether it is a core node and how its fields read.
 #if FABLE_COMPILER
-[<Emit("($0 != null && typeof $0 === 'object' && 'Peek' in $0)")>]
+// A core node: its INode members are class getters, its other members module functions over its fields.
+[<Emit("($0 != null && typeof $0 === 'object' && 'Status' in $0 && 'Id' in $0 && 'AddObserver' in $0)")>]
 let private isNode (value: obj) : bool = jsNative
 
-[<Emit("$0.Peek")>]
+[<Emit("$0.value")>]
 let private peek (node: obj) : obj = jsNative
 
 [<Emit("($0 == null ? 'null' : typeof $0 === 'function' ? 'fun' : ($0.constructor && $0.constructor.name ? $0.constructor.name.replace(/\\$\\d+$/, '') : typeof $0))")>]
@@ -116,7 +117,7 @@ let private statusOf (node: obj) : int = jsNative
 [<Emit("($0.Id ?? 0)")>]
 let private idOf (node: obj) : int = jsNative
 
-[<Emit("(($0.Error ?? $0.Failure?.Error)?.message ?? '')")>]
+[<Emit("($0.failure?.error?.message ?? '')")>]
 let private errorOf (node: obj) : string = jsNative
 
 [<Emit("typeof $0 === 'string'")>]
@@ -160,6 +161,18 @@ let private checkedOf (node: Node) : obj = jsNative
 
 [<Emit("Array.from(($0.ownerDocument?.head ?? $0.head)?.querySelectorAll('[data-ranvier-head]') ?? [])")>]
 let private markedHead (node: Node) : Node array = jsNative
+
+[<Emit("(Array.isArray($0) && $0.length === 2 ? $0[0] : $0)")>]
+let private firstOfPair (value: obj) : obj = jsNative
+
+[<Emit("($0 instanceof Error || ($0 != null && typeof $0 === 'object' && typeof $0.message === 'string' && ('stack' in $0 || 'innerException' in $0)))")>]
+let private isError (value: obj) : bool = jsNative
+
+[<Emit("$0.message")>]
+let private messageOf (value: obj) : string = jsNative
+
+[<Emit("(($0.ownerDocument ?? $0).title ?? '')")>]
+let private documentTitle (node: Node) : string = jsNative
 #else
 let private isNode (value: obj) : bool =
     value :? INode
@@ -170,6 +183,7 @@ let private peek (node: obj) : obj =
 let private typeName (value: obj) : string =
     match value with
     | null -> "null"
+    | :? Delegate -> "fun"
     | _ when Microsoft.FSharp.Reflection.FSharpType.IsFunction (value.GetType ()) -> "fun"
     | _ ->
         let name = value.GetType().Name
@@ -287,6 +301,24 @@ let private checkedOf (node: Node) : obj =
 
 let private markedHead (node: Node) : Node array =
     [| for element in Native.markedIn (Native.documentOf node) -> element :> Node |]
+
+let private firstOfPair (value: obj) : obj =
+    if
+        not (isNull value)
+        && Microsoft.FSharp.Reflection.FSharpType.IsTuple (value.GetType ())
+    then
+        (Microsoft.FSharp.Reflection.FSharpValue.GetTupleFields value)[0]
+    else
+        value
+
+let private isError (value: obj) =
+    value :? exn
+
+let private messageOf (value: obj) =
+    (value :?> exn).Message
+
+let private documentTitle (node: Node) =
+    (Native.documentOf node).title
 #endif
 
 #if FABLE_COMPILER
@@ -340,6 +372,10 @@ let rec private format (options: DumpOptions) (path: obj list) (depth: int) (val
         typeName(value).ToLowerInvariant()
     elif isSome value then
         format options path depth (someValue value)
+    elif isError value then
+        typeName value
+        + " "
+        + quote options (messageOf value)
     else
         let path = value :: path
 
@@ -429,7 +465,7 @@ let private instanceOf (options: DumpOptions) (prefix: string) (definition: Temp
                 "?"
 
     {
-        Name = typeName instance
+        Name = (if isNull instance then "unit" else typeName instance)
         Path = shownPath prefix path
         Hash = hash
         Fields =
@@ -470,13 +506,14 @@ let private regionEnd (start: Node) : Node =
 let private leaving (node: Node) =
     let seam = Departures.seam
 
-    seam.Enabled = true
+    not (isNull (box node))
+    && seam.Enabled = true
     && not (isNull (box seam.Within))
     && seam.Within.Invoke node
 
 let private checkFlushing (probe: Inspect.Probe) =
     match probe with
-    | Inspect.MountProbe (_, _, flushing, _) when flushing () -> raise (InvalidOperationException "Debug.dump ran inside a flush")
+    | Inspect.MountProbe (_, _, flushing, _, _) when flushing () -> raise (InvalidOperationException "Debug.dump ran inside a flush")
     | _ -> ()
 
 let private keyText (options: DumpOptions) (key: obj) =
@@ -496,7 +533,7 @@ let rec private walk (options: DumpOptions) (prefix: string ref) (first: Node) (
         let probe = Inspect.probeOf cursor
 
         match probe with
-        | Some (Inspect.MountProbe (_, _, _, mountPrefix) as mount) ->
+        | Some (Inspect.MountProbe (_, _, _, mountPrefix, _) as mount) ->
             checkFlushing mount
             prefix.Value <- mountPrefix
         | _ -> ()
@@ -525,17 +562,7 @@ let rec private walk (options: DumpOptions) (prefix: string ref) (first: Node) (
                             else
                                 finish
 
-                        let children = walk options prefix firstNode stop
-
-                        let leavingRow =
-                            children
-                            |> Array.exists (function
-                                | Leaving _ -> true
-                                | _ -> false)
-
-                        (keyText options key
-                         + (if leavingRow then "  leaving" else "")),
-                        children)
+                        keyText options key, walk options prefix firstNode stop)
 
                 let shown, elided =
                     if rowNodes.Length > options.MaxRows then
@@ -576,7 +603,10 @@ let rec private walk (options: DumpOptions) (prefix: string ref) (first: Node) (
 
                         "#" + hash
 
-                nodes.Add (Arm (shownPath prefix.Value path, (if isNull key then "" else keyText options key), definitionText, children))
+                nodes.Add (
+                    Arm (shownPath prefix.Value path, (if isNull key then "" else keyText options (firstOfPair key)), definitionText, children)
+                )
+
                 after
             | Some (Inspect.BoundaryProbe (path, state)) ->
                 let children, after = regionChildren ()
@@ -613,7 +643,14 @@ let rec private walk (options: DumpOptions) (prefix: string ref) (first: Node) (
 
                 match shown with
                 | Some dump ->
-                    let dump = if leaving cursor then Leaving dump else dump
+                    let dump =
+                        if
+                            leaving cursor
+                            && not (leaving (Native.parentOrNull cursor))
+                        then
+                            Leaving dump
+                        else
+                            dump
 
                     match probe with
                     | Some (Inspect.InstanceProbe (definition, instance, _, path)) ->
@@ -648,7 +685,7 @@ and private nodeOf (options: DumpOptions) (prefix: string ref) (node: Node) : Du
                         && attribute <> Some value
                         && not (attribute.IsNone && value = "")
                     then
-                        "value", quote options value
+                        yield "value", quote options value
 
                 match checkedOf node with
                 | null -> ()
@@ -658,7 +695,7 @@ and private nodeOf (options: DumpOptions) (prefix: string ref) (node: Node) : Du
                         |> Array.exists (fun (name, _) -> name = "checked")
 
                     if unbox<bool> isChecked <> attribute then
-                        "checked", (if unbox<bool> isChecked then "true" else "false")
+                        yield "checked", (if unbox<bool> isChecked then "true" else "false")
             |]
 
         let children = childrenOf node
@@ -693,6 +730,11 @@ let captureNode (options: DumpOptions) (graph: Graph) (root: Node) : Dump =
             Head =
                 if options.Head then
                     [|
+                        match documentTitle root with
+                        | null
+                        | "" -> ()
+                        | title -> yield "title", quote options title
+
                         for element in markedHead root ->
                             let attributes = attributesOf element
 
@@ -730,7 +772,7 @@ let capture (options: DumpOptions) (mounted: Mounting.Mounted) : Dump =
 
     let header =
         match Inspect.probeOf first with
-        | Some (Inspect.MountProbe (phase, queued, flushing, prefix)) ->
+        | Some (Inspect.MountProbe (phase, queued, flushing, prefix, _)) ->
             if flushing () then
                 raise (InvalidOperationException "Debug.dump ran inside a flush")
 
@@ -853,7 +895,16 @@ let textWith (options: DumpOptions) (dump: Dump) : string =
                 lines.Add (pad + "  row " + key)
 
                 for child in children do
-                    node (depth + 2) child)
+                    match child with
+                    | Leaving _ -> ()
+                    | _ -> node (depth + 2) child
+
+                for child in children do
+                    match child with
+                    | Leaving inner ->
+                        lines.Add (pad + "  leaving")
+                        node (depth + 2) inner
+                    | _ -> ())
         | Arm (path, key, definition, children) ->
             lines.Add (
                 pad
@@ -894,10 +945,15 @@ let textWith (options: DumpOptions) (dump: Dump) : string =
                 lines[before] <- lines[before] + "  leaving"
         | Truncated count -> lines.Add (pad + "… " + string count + " lines omitted")
 
-    lines.Add ("mount " + dump.Mount)
+    let depth =
+        if dump.Mount = "" then
+            0
+        else
+            lines.Add ("mount " + dump.Mount)
+            1
 
     for root in dump.Root do
-        node 1 root
+        node depth root
 
     if options.Head && dump.Head.Length > 0 then
         lines.Add "head"
@@ -1141,4 +1197,68 @@ let nodeAt (mounted: Mounting.Mounted, path: string) : INode option =
                     | None -> find (Native.nextOrNull node)
 
         find (Native.nextOrNull first)
+
+/// <summary>
+/// The first 40 lines of the dump of the nodes under <c>root</c>, after a line break; empty when no mount is registered
+/// under <c>root</c> or beside one of its ancestors, off the mount's graph thread, and during a flush.
+/// </summary>
+let excerpt (root: Node) : string =
+    let graphAt (node: Node) =
+        match Inspect.probeOf node with
+        | Some (Inspect.MountProbe (_, _, _, _, graph)) -> graph
+        | _ -> Unchecked.defaultof<_>
+
+    let rec under (node: Node) : Graph =
+        let mutable found = graphAt node
+
+        let mutable child =
+            if
+                kindOf node = 1.0
+                || kindOf node = 9.0
+                || kindOf node = 11.0
+            then
+                Native.firstChildOf node
+            else
+                Unchecked.defaultof<_>
+
+        while isNull (box found) && not (isNull (box child)) do
+            found <- under child
+            child <- Native.nextOrNull child
+
+        found
+
+    let rec around (node: Node) : Graph =
+        if isNull (box node) then
+            Unchecked.defaultof<_>
+        else
+            let mutable found: Graph = Unchecked.defaultof<_>
+            let mutable child = Native.firstChildOf node
+
+            while isNull (box found) && not (isNull (box child)) do
+                found <- graphAt child
+                child <- Native.nextOrNull child
+
+            if isNull (box found) then
+                around (Native.parentOrNull node)
+            else
+                found
+
+    let graph =
+        let found = under root
+
+        if isNull (box found) then
+            around (Native.parentOrNull root)
+        else
+            found
+
+    if isNull (box graph) || not graph.IsOnGraphThread then
+        ""
+    else
+        try
+            let lines =
+                (textWith DumpOptions.defaults (captureNode DumpOptions.defaults graph root)).Split '\n'
+
+            "\n" + String.Join ("\n", Array.truncate 40 lines)
+        with :? InvalidOperationException ->
+            ""
 #endif

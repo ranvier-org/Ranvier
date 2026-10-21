@@ -3,6 +3,8 @@
 // --out <file>      writes the SHA-256 of each minified entry's bundle.js
 // --compare <file>  exits 1 when an entry's hash differs from the file's, naming each such entry
 // --absence         exits 1 when the unminified explicit or combined bundle holds an Inspect or Debug module or a probe case
+// --inspect-cost    compiles generated-inspect/ with RANVIER_VIEW_INSPECT and prints the minified inspect entry's raw,
+//                   gzip and Brotli bytes over the combined entry's
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -18,7 +20,18 @@ const build = (entry, minify) => {
 const sha = file => createHash("sha256").update(readFileSync(file)).digest("hex");
 const option = name => { const i = process.argv.indexOf(name); return i < 0 ? undefined : process.argv[i + 1] ?? ""; };
 
-if (process.argv.includes("--absence")) {
+if (process.argv.includes("--inspect-cost")) {
+  const { gzipSync, brotliCompressSync } = await import("node:zlib");
+  execFileSync("dotnet", ["fickl", "tests/DomTests.fsproj", "--outDir", "generated-inspect", "--configuration", "Release", "--define", "RANVIER_VIEW_INSPECT"],
+    { cwd, stdio: ["ignore", 2, 2], windowsHide: true });
+  const sizes = entry => {
+    const bytes = readFileSync(build(entry, true));
+    return { raw: bytes.length, gzip: gzipSync(bytes, { level: 9 }).length, brotli: brotliCompressSync(bytes).length };
+  };
+  const combined = sizes("combined"), inspect = sizes("inspect");
+  const delta = Object.fromEntries(Object.keys(combined).map(key => [key, inspect[key] - combined[key]]));
+  console.log(JSON.stringify({ combined, inspect, delta }, null, 2));
+} else if (process.argv.includes("--absence")) {
   const region = /\/\/#region [^\n]*src\/Ranvier\.View\.Dom\/(Inspect|Debug)\.js/;
   const probe = /\b(ListProbe|ArmProbe|BoundaryProbe|HoleProbe|InstanceProbe|MountProbe)\b/;
   const failures = [];

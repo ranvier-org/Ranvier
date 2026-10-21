@@ -3103,7 +3103,7 @@ and internal MountState
                 | Queued queue -> true, (fun () -> this.PassDepth > 0 || queue.Flushing)
                 | Synchronous -> false, (fun () -> this.PassDepth > 0)
 
-            root.OnCleanup (Inspect.register range.First (Inspect.MountProbe ((fun () -> root.Phase), queued, flushing, identity.Prefix)))
+            root.OnCleanup (Inspect.register range.First (Inspect.MountProbe ((fun () -> root.Phase), queued, flushing, identity.Prefix, graph)))
 #endif
             delegateAt host
 
@@ -4283,7 +4283,7 @@ and internal MountState
                                 if isNull (box armItem) then
                                     Unchecked.defaultof<_>
                                 else
-                                    match Api.untrack (fun () -> armItem.Value) with
+                                    match armItem.Peek with
                                     | :? Template.Arm as arm -> arm.Definition
                                     | _ -> Unchecked.defaultof<_>
 

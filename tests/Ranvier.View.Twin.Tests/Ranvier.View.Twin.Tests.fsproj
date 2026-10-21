@@ -51,10 +51,12 @@
         <Compile Include="../../examples/Fable.Ranvier.Playground/tests/PendingRegionChecks.fs" Link="Checks/PendingRegionChecks.fs" />
         <Compile Include="../../examples/Fable.Ranvier.Playground/tests/OwnedAsyncChecks.fs" Link="Checks/OwnedAsyncChecks.fs" />
         <Compile Include="../../examples/Fable.Ranvier.Playground/tests/DepartureChecks.fs" Link="Checks/DepartureChecks.fs" />
+        <Compile Include="../../examples/Fable.Ranvier.Playground/tests/DumpChecks.fs" Link="Checks/DumpChecks.fs" />
         <Compile Include="../../examples/Fable.Ranvier.Playground/tests/ConformanceCases.fs" Link="Checks/ConformanceCases.fs" />
         <Compile Include="ServerParityTests.fs" />
         <Compile Include="TwinHarness.fs" />
         <Compile Include="ConformanceTests.fs" />
+        <Compile Include="GoldenTests.fs" />
         <Compile Include="MembersTests.fs" />
         <Compile Include="TestingApiTests.fs" />
         <Compile Include="Main.fs" />

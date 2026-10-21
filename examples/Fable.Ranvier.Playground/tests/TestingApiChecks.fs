@@ -221,7 +221,8 @@ let private failureMessages () =
         ]
         |> List.map (fun (name, attempt) ->
             let message = failureOf attempt
-            Conformance.recordIfRunning ("failure: " + name) message
+            // The first line: the dump excerpt after it is present in inspect builds only.
+            Conformance.recordIfRunning ("failure: " + name) (message.Split('\n').[0])
             name, message)
 
     let has name (part: string) =
@@ -322,6 +323,30 @@ let private textAndEvents () =
 
     host.remove ()
 
+type private Counted = { Count: Signal<int> }
+
+let private counted =
+    Component.define (fun _ () -> { Count = Api.createSignal 4 }) (fun t -> t.button [||] [| t.text (fun (c: Counted) -> string c.Count.Value) |])
+
+// An expectation failure under a mount carries the dump excerpt in inspect builds and on .NET.
+let private excerptInMessages () =
+    use graph = new Graph ()
+    let target = (Conformance.document ()).createElement "main"
+
+    let mounted =
+        Mounting.mount graph None (fun errors -> failwithf "%A" errors) target None (fun context ->
+            Program.run (Component.render counted ()) context.Backend)
+
+    let message = failureOf (fun () -> Expect.text (target :> Node) "button" "nope")
+    mounted.Dispose ()
+#if RANVIER_VIEW_INSPECT || !FABLE_COMPILER
+    if not (message.Contains "instance Counted") then
+        failwithf "no excerpt in %s" message
+#else
+    if message.Contains "instance" then
+        failwithf "an excerpt in %s" message
+#endif
+
 let cases: Conformance.Case array =
     Conformance.ofChecks
         [|
@@ -330,6 +355,7 @@ let cases: Conformance.Case array =
             "byText returns the innermost element with the text", byText
             "input, select and value read and write textareas and selects", values
             "each expectation and query failure names what it expected and found", failureMessages
+            "an expectation failure under a mount carries the dump excerpt in inspect builds", excerptInMessages
             "select with an unknown value and unchecking a radio raise", unreachableStates
             "byText normalises whitespace; key fires keydown and keyup; dispatch returns whether the event was accepted", textAndEvents
             "the selector engine and querySelectorAll agree on child and descendant combinators", selectorsAgree

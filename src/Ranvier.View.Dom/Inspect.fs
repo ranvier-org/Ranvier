@@ -17,8 +17,8 @@ type Probe =
     | HoleProbe of path: InstancePath
     /// <summary>A template instance: its definition, instance value, owner and path; keyed by its first root node.</summary>
     | InstanceProbe of TemplateComponent * instance: obj * owner: Owner * path: InstancePath
-    /// <summary>A mount: its phase, commit mode, whether its queue is flushing, and its identity prefix; keyed by its range's start marker.</summary>
-    | MountProbe of phase: (unit -> ScopePhase) * queued: bool * flushing: (unit -> bool) * prefix: string
+    /// <summary>A mount: its phase, commit mode, whether a pass or its queue is flushing, its identity prefix and its graph; keyed by its range's start marker.</summary>
+    | MountProbe of phase: (unit -> ScopePhase) * queued: bool * flushing: (unit -> bool) * prefix: string * graph: Graph
 
 and [<NoEquality; NoComparison>] BoundaryProbeState =
     | Ready
