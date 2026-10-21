@@ -114,9 +114,8 @@ type MountLifetime private (graph: Graph, owner: Owner, report: exn list -> unit
 
     /// <summary>
     /// Wraps <c>owner</c> and registers the release as its first cleanup. Call before anything else registers with
-    /// <c>owner</c>.
+    /// <c>owner</c>. Each owner takes one lifetime; a second call registers a second release.
     /// </summary>
-    /// <remarks>Part of the view runtime seam: Ranvier.View.Foundation mounts through it, and both packages change it together.</remarks>
     static member Create(graph: Graph, owner: Owner, report: exn list -> unit, release: unit -> unit, parent: MountLifetime) =
         let lifetime = MountLifetime (graph, owner, report, release, parent)
         owner.OnCleanup (Action (fun () -> lifetime.Finish ()))
@@ -128,9 +127,9 @@ type MountLifetime private (graph: Graph, owner: Owner, report: exn list -> unit
 
     /// <summary>
     /// Runs <c>body</c> in a new teardown window serving <c>report</c>, and returns the window's errors with the
-    /// exception <c>body</c> raised.
+    /// exception <c>body</c> raised. While the window is open, <c>Abandon</c> on a lifetime serving <c>report</c> adds its
+    /// errors to the window.
     /// </summary>
-    /// <remarks>Part of the view runtime seam: Ranvier.View.Foundation mounts through it, and both packages change it together.</remarks>
     static member Capture(graph: Graph, report: exn list -> unit, body: unit -> unit) : exn list * exn option =
         let root = graph.Root
         let windows = MountLifetime.Windows
@@ -391,7 +390,6 @@ type MountLifetime private (graph: Graph, owner: Owner, report: exn list -> unit
             failure |> Option.iter raise
 
     /// <summary>Tears the lifetime down. Inside a teardown window serving this lifetime's reporter the errors join that window.</summary>
-    /// <remarks>Part of the view runtime seam: Ranvier.View.Foundation mounts through it, and both packages change it together.</remarks>
     member this.Abandon() =
         if not (this.Serves MountLifetime.CurrentWindow) then
             this.Dispose ()

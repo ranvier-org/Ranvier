@@ -41,7 +41,6 @@ type Setup =
 /// <c>setup</c> with a <c>CreateId</c> that issues positional ids in the window open in <c>identity</c>, and raises
 /// once another window is open or none is.
 /// </summary>
-/// <remarks>Part of the view runtime seam: Ranvier.View.Foundation mounts through it, and both packages change it together.</remarks>
 let ownSetup (identity: IdentityScope) (setup: Setup) : Setup =
     let owner = identity.Window
 
@@ -50,7 +49,6 @@ let ownSetup (identity: IdentityScope) (setup: Setup) : Setup =
     }
 
 /// <summary>The items of a keyed region, with the key of each item; list items keep the caller's references.</summary>
-/// <remarks>Part of the view runtime seam: Ranvier.View.Foundation mounts through it, and both packages change it together.</remarks>
 [<NoEquality; NoComparison>]
 type KeyedItems =
     {
@@ -58,7 +56,7 @@ type KeyedItems =
         Key: System.Func<obj, obj>
     }
 
-/// <remarks>Part of the view runtime seam: Ranvier.View.Foundation mounts through it, and both packages change it together.</remarks>
+/// <summary>Constructors and accessors of <c>KeyedItems</c>.</summary>
 module KeyedItems =
     /// <summary>The items as an <c>obj</c> array; an item of a reference type keeps its reference, and Fable returns the array itself.</summary>
     let inline internal boxAll (items: 'item array) : obj array =
@@ -289,7 +287,6 @@ let internal scriptRefused =
     "Script elements are not created by templates or typed views; load scripts through the server document shell"
 
 /// <summary>Raises for a script element name, matched case-insensitively.</summary>
-/// <remarks>Part of the view runtime seam: Ranvier.View.Foundation mounts through it, and both packages change it together.</remarks>
 let refuseScript (tagName: string) =
     if tagName.ToLowerInvariant () = "script" then
         raise (System.InvalidOperationException scriptRefused)

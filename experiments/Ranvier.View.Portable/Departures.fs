@@ -12,10 +12,17 @@ open Ranvier.View.Foundation.Representation
 /// The registry operations the mount paths call. The operations are null until <c>Enabled</c> (exits) or
 /// <c>ReflowEnabled</c> (reflows) is set.
 /// </summary>
-/// <remarks>Part of the view runtime seam: Ranvier.View.Foundation mounts through it, and both packages change it together.</remarks>
+/// <remarks>
+/// Written by the exit and reflow registrations. <c>Enabled</c> guarantees that <c>Retire</c>, <c>NextLive</c>,
+/// <c>Holds</c>, <c>Within</c> and <c>End</c> are set; <c>ReflowEnabled</c> guarantees <c>Before</c>. Setting a flag
+/// directly or replacing a slot after registration causes null invocations or lost exits.
+/// </remarks>
 [<AllowNullLiteral>]
 type Seam =
+    /// <summary>True once the exit slots <c>Retire</c>, <c>NextLive</c>, <c>Holds</c>, <c>Within</c> and <c>End</c> are set.</summary>
     abstract Enabled: bool with get, set
+
+    /// <summary>True once the reflow slot <c>Before</c> is set.</summary>
     abstract ReflowEnabled: bool with get, set
 
     /// <summary>
@@ -64,8 +71,7 @@ type Seam =
     /// </summary>
     abstract Parse: System.Action<HTMLTemplateElement, string> with get, set
 
-/// <summary>The seam, an empty object until the first registration; null on .NET.</summary>
-/// <remarks>Part of the view runtime seam: Ranvier.View.Foundation mounts through it, and both packages change it together.</remarks>
+/// <summary>The seam, an empty object until the first registration; null on .NET, where any access raises.</summary>
 #if FABLE_COMPILER
 let seam: Seam = Fable.Core.JsInterop.emitJsExpr () "{}"
 #else

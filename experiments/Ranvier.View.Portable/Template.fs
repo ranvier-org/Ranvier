@@ -24,7 +24,6 @@ type UnsafeHtml private (markup: string) =
         UnsafeHtml markup
 
 /// <summary>The markup of a raw-HTML slot value; a null value raises "An UnsafeHtml reader returned null".</summary>
-/// <remarks>Part of the view runtime seam: Ranvier.View.Foundation mounts through it, and both packages change it together.</remarks>
 let markupOf (value: obj) : string =
     if isNull value then
         raise (ArgumentException ("An UnsafeHtml reader returned null", "read"))
@@ -229,16 +228,20 @@ and [<AbstractClass>] TemplateComponent internal (setup: Func<Setup, obj, obj>, 
     [<DefaultValue>]
     val mutable internal armReader: Func<(unit -> obj), obj>
 
-    /// <remarks>Part of the view runtime seam: Ranvier.View.Foundation mounts through it, and both packages change it together.</remarks>
+    /// <summary>The definition's setup function.</summary>
     member _.Setup = setup
-    /// <remarks>Part of the view runtime seam: Ranvier.View.Foundation mounts through it, and both packages change it together.</remarks>
+
+    /// <summary>The definition's root template node.</summary>
     member _.Root = root
 
     /// <summary>The arm reader shared by every arm of the definition; <c>null</c> until the definition first appears in an arm.</summary>
     member internal this.ArmReader = this.armReader
 
-/// <summary>A component definition selected by a <c>matchWith</c> or <c>branch</c> arm, with the payload read by its props.</summary>
-/// <remarks>Part of the view runtime seam: Ranvier.View.Foundation mounts through it, and both packages change it together.</remarks>
+/// <summary>
+/// A component definition selected by a <c>matchWith</c> or <c>branch</c> arm, with the payload read by its props.
+/// <c>Reader</c> must come from <c>Definition</c>; a reader of another definition raises <c>InvalidCastException</c> when
+/// the arm renders.
+/// </summary>
 [<NoEquality; NoComparison>]
 type Arm =
     {
@@ -361,7 +364,6 @@ let private width node =
     | _ -> 1
 
 /// <summary>Renders a region row through a backend; the reader returns the row's current item.</summary>
-/// <remarks>Part of the view runtime seam: Ranvier.View.Foundation mounts through it, and both packages change it together.</remarks>
 let rowRenderer (row: RegionRow) (current: unit -> obj) (backend: Backend) : unit =
     match row with
     | ViewRow -> (unbox<Program.View>(current ())).Invoke backend
@@ -1936,7 +1938,6 @@ type internal ServerWriter(backend: HtmlBackend) =
         backend.Append "<!--]-->"
 
 /// <summary>The head entry of <c>head</c> for <c>instance</c>.</summary>
-/// <remarks>Part of the view runtime seam: Ranvier.View.Foundation mounts through it, and both packages change it together.</remarks>
 let headEntry (head: HeadTemplate) (instance: obj) : HeadEntry =
     {
         HeadEntry.Kind = head.Kind

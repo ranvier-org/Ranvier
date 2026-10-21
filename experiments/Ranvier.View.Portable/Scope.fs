@@ -3,7 +3,6 @@ namespace Ranvier.View.Foundation
 open Ranvier
 
 /// <summary>The receiver of the pending reads and failures of the bindings, rows and handlers mounted under it.</summary>
-/// <remarks>Part of the view runtime seam: Ranvier.View.Foundation mounts through it, and both packages change it together.</remarks>
 type ViewScope =
     /// <summary>True for a boundary: its bindings report pending reads through <c>Wait</c> and <c>Ready</c>.</summary>
     abstract Tracks: bool
@@ -22,7 +21,6 @@ type ViewScope =
     abstract FailAll: exn list -> unit
 
 /// <summary>The bits of a binding's state word, and its transitions.</summary>
-/// <remarks>Part of the view runtime seam: Ranvier.View.Foundation mounts through it, and both packages change it together.</remarks>
 module BindingState =
     /// <summary>The binding's last read raised an exception other than a pending read.</summary>
     [<Literal>]
@@ -34,7 +32,7 @@ module BindingState =
 
     /// <summary>
     /// The state word of a new binding: <c>Waiting</c> when a tracking scope records it as waiting for its first read,
-    /// 0 otherwise.
+    /// 0 otherwise. A <c>Waiting</c> word hides the scope's content until <c>ready</c> releases it.
     /// </summary>
     let started (scope: ViewScope) : int =
         if scope.Tracks && scope.Expect () then Waiting else 0
@@ -74,7 +72,8 @@ module BindingState =
 
     /// <summary>
     /// Releases a binding whose word before <c>released</c> was <c>Waiting</c> from its scope. Call after the value
-    /// read is committed, and when the binding's owner is disposed.
+    /// read is committed, and when the binding's owner is disposed. Call once per <c>released</c>; a second call with the
+    /// same word releases the scope twice.
     /// </summary>
     let ready (scope: ViewScope) (previous: int) =
         if previous &&& Waiting <> 0 then

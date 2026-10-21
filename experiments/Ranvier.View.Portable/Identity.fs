@@ -58,7 +58,6 @@ type InstancePath private (parent: InstancePath, step: string, a: int, b: int) =
         text
 
     /// <summary>The path one step of <c>kind</c> below <c>parent</c>; see <c>InstanceStep</c> for the arguments.</summary>
-    /// <remarks>Part of the view runtime seam: Ranvier.View.Foundation mounts through it, and both packages change it together.</remarks>
     static member Below(parent: InstancePath, kind: int, a: int, b: int) : InstancePath =
         match kind with
         | InstanceStep.Root -> InstancePath.Root
