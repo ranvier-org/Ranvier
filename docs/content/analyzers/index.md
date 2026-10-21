@@ -14,6 +14,7 @@ cause, its fix and an example.
 |---|---|---|
 | [RAN001](ran001.md) | Fable inlines a snapshot of a module mutable | Warning |
 | [RAN002](ran002.md) | Generated union case tester in a Fable library | Warning |
+| [RAN010](ran010.md) | Owned node created in a pure derivation | Error |
 
 ## Running the analyzers
 

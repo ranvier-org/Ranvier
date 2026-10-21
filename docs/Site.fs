@@ -200,6 +200,7 @@ let theme =
                         Menu.page "analyzers/index.md"
                         Menu.page "analyzers/ran001.md"
                         Menu.page "analyzers/ran002.md"
+                        Menu.page "analyzers/ran010.md"
                     ]
             ]
         >> Theme.menu

@@ -2,6 +2,7 @@
 /// declaration. One walk per file serves every rule.
 module Ranvier.Analyzers.Index
 
+open System.Collections.Generic
 open System.Runtime.CompilerServices
 open FSharp.Compiler.Symbols
 open FSharp.Compiler.Symbols.FSharpExprPatterns
@@ -106,6 +107,10 @@ let private build (file: FSharpImplementationFileContents) : FileIndex =
     let lets = ResizeArray<LetSite>()
     let mutable opened: string list = []
 
+    // Lambdas the compiler binds to a generated local before a partial application: `p |> Projection.fold f 0` is
+    // `let folder = f in fun upstream -> fold folder 0 upstream`. Each is walked at the argument that uses it.
+    let hoisted = Dictionary<FSharpMemberOrFunctionOrValue, FSharpExpr>()
+
     let rec call path range receiver (callee: FSharpMemberOrFunctionOrValue) (arguments: FSharpExpr list) =
         calls.Add
             {
@@ -122,10 +127,16 @@ let private build (file: FSharpImplementationFileContents) : FileIndex =
 
         arguments
         |> List.iteri (fun index argument ->
-            walk
-                (Step.Argument (callee, index, arguments.Length)
-                 :: path)
-                argument)
+            let step =
+                Step.Argument (callee, index, arguments.Length)
+                :: path
+
+            match argument with
+            | Value value when hoisted.ContainsKey value ->
+                let bound = hoisted[value]
+                hoisted.Remove value |> ignore
+                walk step bound
+            | _ -> walk step argument)
 
     and apply path (expr: FSharpExpr) (fn: FSharpExpr) (arguments: FSharpExpr list) =
         match redex fn arguments with
@@ -158,8 +169,16 @@ let private build (file: FSharpImplementationFileContents) : FileIndex =
                     Path = path
                 }
 
-            walk (Step.Bound value :: path) bound
-            walk path body
+            match bound with
+            | Lambda _ when value.IsCompilerGenerated ->
+                hoisted[value] <- bound
+                walk path body
+
+                if hoisted.Remove value then
+                    walk (Step.Bound value :: path) bound
+            | _ ->
+                walk (Step.Bound value :: path) bound
+                walk path body
         | ObjectExpr (_, baseCall, overrides, interfaces) ->
             walk path baseCall
 

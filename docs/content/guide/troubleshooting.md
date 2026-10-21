@@ -197,6 +197,8 @@ and it fails with this message even when the body then throws an exception of it
 purpose. Its nodes and cleanups are disposed before each re-run and with the memo. Otherwise create
 the node outside the memo and read it inside.
 
+The analyzers report this at build time: [RAN010](../analyzers/ran010.md).
+
 :::details Example
 
 ```fsharp

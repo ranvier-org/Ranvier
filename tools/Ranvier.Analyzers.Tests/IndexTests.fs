@@ -185,6 +185,26 @@ type Holder() =
                 Expect.equal (callsOf "createSignal" file).Length 1 "the let function's body"
             }
 
+            test "a lambda the compiler hoists before a partial application is walked at its argument" {
+                let file =
+                    index
+                        """
+module Fixture
+open Ranvier
+let f (p: Projection<int, int>) = p |> Projection.fold (fun s v -> s + v) 0
+"""
+
+                let addition = callsOf "op_Addition" file |> Array.exactlyOne
+
+                Expect.isTrue
+                    (addition.Path
+                     |> List.exists (fun step ->
+                         match step with
+                         | Step.Argument (callee, 0, 3) -> callee.LogicalName = "fold"
+                         | _ -> false))
+                    "the folder is fold's argument 0"
+            }
+
             test "the index is built once per file" {
                 let tree = (context (ranvier.Force ()) "module Fixture\nlet x = 1").TypedTree.Value
 
