@@ -24,7 +24,6 @@
     <Project Path="examples/Ranvier.Motion/tests/MotionTests.fsproj" />
     <Project Path="examples/Ranvier.Motion/Server/ServerChecks.fsproj" />
   </Folder>
-  <Folder Name="/experiments/" />
   <Folder Name="/experiments/Ranvier.View.Checks/">
     <Project Path="experiments/Ranvier.View.Checks/RepresentationChecks.fsproj" />
     <Project Path="experiments/Ranvier.View.Checks/SnapshotBench/SnapshotBench.fsproj" />

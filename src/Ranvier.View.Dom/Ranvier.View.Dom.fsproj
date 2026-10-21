@@ -13,6 +13,7 @@
         <Description Condition="'$(RanvierTrace)' == 'true'">The traced build of Ranvier.View.Dom: the browser DOM renderer for Ranvier.View. Depends on Ranvier.View.Traced.</Description>
         <PackageTags>reactive;signals;view;dom;hydration;fable;fine-grained;fsharp</PackageTags>
         <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageReleaseNotes>Alpha release. The API may change before 1.0.</PackageReleaseNotes>
         <!-- Shares its version with Ranvier.View (see Ranvier.View.fsproj). -->
         <Version>0.1.0-alpha.1</Version>
         <AssemblyVersion>0.0.0.0</AssemblyVersion>

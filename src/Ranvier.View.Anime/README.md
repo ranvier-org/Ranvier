@@ -1,6 +1,12 @@
-# Motion parts
+# Ranvier.View.Anime
 
-`Ranvier.View.Anime` animates the elements of a sugar template with [anime.js](https://animejs.com) 4.5.0 through the typed bindings of `src/Fable.Ranvier.Anime`. Each `Motion.*` function returns a `Part<'native, 'inst>`, given to a tag beside its attributes and events. Every part creates its anime objects once the element is placed, and the instance's disposal reverts them. Enter and exit follow the region passes of lists and arms, FLIP follows the reflow of a list's container, and signals drive the reactive parts. The server omits every part, so a portable template with motion renders the same HTML as its twin without it. The design is in the [motion spec](https://github.com/shayanhabibi/Ranvier/blob/master/docs/superpowers/specs/2026-10-21-motion-design.md); the runtime seam the parts use is in the [seam note](https://github.com/shayanhabibi/Ranvier/blob/master/docs/research/2026-10-21-motion-seam.md).
+Motion parts for `Ranvier.View` templates. `Ranvier.View.Anime` animates the elements of a sugar template with [anime.js](https://animejs.com) 4.5.0 through the typed bindings of the `Fable.Ranvier.Anime` package. Each `Motion.*` function returns a `Part<'native, 'inst>`, given to a tag beside its attributes and events. Every part creates its anime objects once the element is placed, and the instance's disposal reverts them. Enter and exit follow the region passes of lists and arms, FLIP follows the reflow of a list's container, and signals drive the reactive parts. The server omits every part, so a portable template with motion renders the same HTML as its twin without it. The design is in the [motion spec](https://github.com/shayanhabibi/Ranvier/blob/master/docs/superpowers/specs/2026-10-21-motion-design.md); the runtime seam the parts use is in the [seam note](https://github.com/shayanhabibi/Ranvier/blob/master/docs/research/2026-10-21-motion-seam.md).
+
+Install the JavaScript package beside it:
+
+```shell
+npm install animejs@4.5.0
+```
 
 ## Opening the parts
 

@@ -13,6 +13,7 @@
         <Description Condition="'$(RanvierTrace)' == 'true'">The traced build of Ranvier.View: template components and server rendering for Ranvier. Depends on Ranvier.Traced.</Description>
         <PackageTags>reactive;signals;view;templates;html;server-rendering;fine-grained;fsharp</PackageTags>
         <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageReleaseNotes>Alpha release. The API may change before 1.0.</PackageReleaseNotes>
         <!-- Ranvier.View, Ranvier.View.Dom, Ranvier.View.Anime and Fable.Ranvier.Anime share this version and depend on
              each other at exactly it (RanvierExactSiblingVersions, src/Directory.Build.targets). -->
         <Version>0.1.0-alpha.1</Version>
