@@ -313,11 +313,56 @@ jobs:
         run: dotnet run --project fable/Ranvier.View.Anime.Tests/Ranvier.View.Anime.Tests.fsproj -c Release
         working-directory: .
 
+  # Runs the Ranvier analyzers' unit tests, then the analyzers over the repository's projects with every RAN code
+  # promoted to an error: any finding fails the job.
+  analyzers:
+    name: Analyzers
+    needs: changes
+    if: needs.changes.outputs.docs != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - name: Restore tools
+        run: dotnet tool restore
+      - name: Test the analyzers
+        run: dotnet test tools/Ranvier.Analyzers.Tests -c Release
+      - name: Build the analyzed projects
+        run: dotnet build Ranvier.slnx -c Release
+      - name: Run the analyzers over the repository
+        run: dotnet fsi build.fsx -- analyze
+      - name: Upload the SARIF report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: analyzers-sarif
+          path: artifacts/analyzers/
+
+  # The external facts the analyzers describe: Fable Release's inlining of module-mutable snapshots (RAN001), the Fable
+  # precompile failure on union testers (RAN002), and the MSBuild integration. A failure means a rule needs retiring or
+  # rescoping. A job of its own, so the analyzers job keeps to its time budget.
+  analyzer-truth:
+    name: Analyzer truth fixtures
+    needs: changes
+    if: needs.changes.outputs.docs != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - name: Restore tools
+        run: dotnet tool restore
+      - name: Check the truth fixtures
+        run: dotnet fsi tools/Ranvier.Analyzers.Truth/Truth.fsx
+
   # The one CI check that branch rules require: it fails when any job failed or was cancelled, and passes when the
   # build and test jobs were skipped for a documentation-only change.
   result:
     name: CI result
-    needs: [changes, scripts, dotnet, aot, packages, format, fable, playground, sugar, anime, motion-view]
+    needs: [changes, scripts, dotnet, aot, packages, format, fable, playground, sugar, anime, motion-view, analyzers, analyzer-truth]
     if: always()
     runs-on: ubuntu-latest
     steps:
