@@ -307,6 +307,50 @@ let private rawText tag =
     | "plaintext" -> true
     | _ -> false
 
+/// <summary>Elements whose content is parsed as a single text node.</summary>
+let private isRcdata (tagName: string) =
+    let tagName = tagName.ToLowerInvariant ()
+    tagName = "textarea" || tagName = "title"
+
+// Whether the nodes, looked into through fragments, hold a node that `counts` accepts; empty text never counts.
+let rec private holds (counts: TemplateNode -> bool) (nodes: TemplateNode array) =
+    let mutable found = false
+    let mutable index = 0
+
+    while not found && index < nodes.Length do
+        found <-
+            match nodes[index] with
+            | FragmentNode children -> holds counts children
+            | TextNode "" -> false
+            | node -> counts node
+
+        index <- index + 1
+
+    found
+
+/// <summary>
+/// The failure of an element that templates reject on both client paths, synchronous and queued: a <c>script</c>
+/// element, a raw-text element with children (or <c>plaintext</c>), a <c>template</c> element or a void element with
+/// children; null for any other element. The server rejects every raw-text element, and an RCDATA element with element children.
+/// </summary>
+let private refusal tag (children: TemplateNode array) : string =
+    let lowered = (name tag).ToLowerInvariant()
+
+    if lowered = "script" then
+        scriptRefused
+    elif
+        rawText tag
+        && (lowered = "plaintext"
+            || holds (fun _ -> true) children)
+    then
+        "Raw-text elements require an explicit HTML serialization policy"
+    elif lowered = "template" then
+        "Template elements are not supported in templates"
+    elif isVoid tag && holds (fun _ -> true) children then
+        "A void element has children"
+    else
+        null
+
 /// <summary>The number of skeleton sibling nodes occupied by a flattened node.</summary>
 let private width node =
     match node with
@@ -428,11 +472,9 @@ let private writeMarkup (append: string -> unit) (state: WriterState) (root: Tem
         | ChildNode _
         | HeadNode _ -> invalidOp "Fragments, inlined children and head entries are flattened before writing"
         | ElementNode (tag, attributes, properties, slots, events, placed, children) ->
-            if
-                rawText tag
-                && (children.Length > 0 || name tag = "plaintext")
-            then
-                raise (InvalidOperationException "Raw-text elements require an explicit HTML serialization policy")
+            match refusal tag children with
+            | null -> ()
+            | message -> raise (InvalidOperationException message)
 
             if
                 properties.Length > 0
@@ -604,11 +646,6 @@ let private dropsLeadingLineFeed (tagName: string) =
     tagName = "pre"
     || tagName = "textarea"
     || tagName = "listing"
-
-/// <summary>Elements whose content is parsed as a single text node.</summary>
-let private isRcdata (tagName: string) =
-    let tagName = tagName.ToLowerInvariant ()
-    tagName = "textarea" || tagName = "title"
 
 /// <summary>
 /// Nesting rules from the HTML tree-construction algorithm. Markup matched by a rule parses to a different tree than
@@ -1960,6 +1997,10 @@ let rec private expandNode (ops: Operations<'view>) (instance: obj) (node: Templ
     | TextSlotNode slot -> ops.Bind (fun left right -> slot.Same.Invoke (box left, box right)) (fun () -> unbox<string>(slot.Read.Invoke instance))
     | FragmentNode children -> ops.Fragment (Array.map (expandNode ops instance) children)
     | ElementNode (tag, attributes, properties, slots, events, placed, children) ->
+        match refusal tag children with
+        | null -> ()
+        | message -> raise (InvalidOperationException message)
+
         let modifiers: ModifierAction array =
             [|
                 for key, value in attributes -> Attribute (key, value)
@@ -2131,6 +2172,39 @@ let private elementNode tag (parts: Part<'native, 'inst> array) (children: Templ
 
     if contents > 1 then
         raise (ArgumentException ("An element takes at most one content part", "parts"))
+
+#if !FABLE_COMPILER
+    // Attribute names that differ only by case raise in the server's definition path only.
+    let attributeNames = ResizeArray<string>()
+
+    for attribute, _ in attributes do
+        attributeNames.Add attribute
+
+    for slot in slots do
+        match slot.Target with
+        | AttributeTarget attribute -> attributeNames.Add attribute
+        | _ -> ()
+
+    for first in 0 .. attributeNames.Count - 1 do
+        for second in first + 1 .. attributeNames.Count - 1 do
+            let earlier = attributeNames[first]
+            let later = attributeNames[second]
+
+            if
+                earlier <> later
+                && earlier.ToLowerInvariant () = later.ToLowerInvariant ()
+            then
+                raise (
+                    ArgumentException (
+                        "An element takes "
+                        + earlier
+                        + " and "
+                        + later
+                        + ", which differ only by case",
+                        "parts"
+                    )
+                )
+#endif
 
     if contents = 1 && children.Length > 0 then
         raise (ArgumentException ("An element with a content part has no template children", "children"))

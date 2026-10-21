@@ -235,16 +235,33 @@ let private validNameCharacters underscore (value: string) =
 [<Sealed>]
 type internal SvgNames() =
 #if FABLE_COMPILER
-    member val Listed = "" with get, set
+    /// <summary>A JS Set of the names; null until the SVG sugar tags' module loads.</summary>
+    member val Names: obj = null with get, set
 #else
-    member val Listed =
-        " altGlyph altGlyphDef altGlyphItem animateColor animateMotion animateTransform clipPath feBlend feColorMatrix feComponentTransfer feComposite feConvolveMatrix feDiffuseLighting feDisplacementMap feDistantLight feDropShadow feFlood feFuncA feFuncB feFuncG feFuncR feGaussianBlur feImage feMerge feMergeNode feMorphology feOffset fePointLight feSpecularLighting feSpotLight feTile feTurbulence foreignObject glyphRef linearGradient radialGradient textPath attributeName attributeType baseFrequency baseProfile calcMode clipPathUnits diffuseConstant edgeMode filterUnits glyphRef gradientTransform gradientUnits kernelMatrix kernelUnitLength keyPoints keySplines keyTimes lengthAdjust limitingConeAngle markerHeight markerUnits markerWidth maskContentUnits maskUnits numOctaves pathLength patternContentUnits patternTransform patternUnits pointsAtX pointsAtY pointsAtZ preserveAlpha preserveAspectRatio primitiveUnits refX refY repeatCount repeatDur requiredExtensions requiredFeatures specularConstant specularExponent spreadMethod startOffset stdDeviation stitchTiles surfaceScale systemLanguage tableValues targetX targetY textLength viewBox viewTarget xChannelSelector yChannelSelector zoomAndPan " with get, set
+    member val Names =
+        System.Collections.Generic.HashSet<string>(
+            "altGlyph altGlyphDef altGlyphItem animateColor animateMotion animateTransform clipPath feBlend feColorMatrix feComponentTransfer feComposite feConvolveMatrix feDiffuseLighting feDisplacementMap feDistantLight feDropShadow feFlood feFuncA feFuncB feFuncG feFuncR feGaussianBlur feImage feMerge feMergeNode feMorphology feOffset fePointLight feSpecularLighting feSpotLight feTile feTurbulence foreignObject glyphRef linearGradient radialGradient textPath attributeName attributeType baseFrequency baseProfile calcMode clipPathUnits diffuseConstant edgeMode filterUnits gradientTransform gradientUnits kernelMatrix kernelUnitLength keyPoints keySplines keyTimes lengthAdjust limitingConeAngle markerHeight markerUnits markerWidth maskContentUnits maskUnits numOctaves pathLength patternContentUnits patternTransform patternUnits pointsAtX pointsAtY pointsAtZ preserveAlpha preserveAspectRatio primitiveUnits refX refY repeatCount repeatDur requiredExtensions requiredFeatures specularConstant specularExponent spreadMethod startOffset stdDeviation stitchTiles surfaceScale systemLanguage tableValues targetX targetY textLength viewBox viewTarget xChannelSelector yChannelSelector zoomAndPan"
+                .Split
+                ' '
+        ) with get, set
 #endif
 
 let internal svgNames = SvgNames ()
 
+#if FABLE_COMPILER
+[<Fable.Core.Emit("($0 != null && $0.has($1))")>]
+let private has (names: obj) (value: string) : bool =
+    Fable.Core.Util.jsNative
+
+// Whether the value is exactly one listed name: ASCII letters only, then a member of the set.
 let private listed (value: string) =
-    svgNames.Listed.Contains (" " + value + " ")
+    validNameCharacters false (value.ToLowerInvariant ())
+    && has svgNames.Names value
+#else
+let private listed (value: string) =
+    validNameCharacters false (value.ToLowerInvariant ())
+    && svgNames.Names.Contains value
+#endif
 
 let name =
     function
@@ -263,6 +280,15 @@ let name =
             invalidArg "tag" "Tag names must contain lowercase letters, digits or hyphens, or be a case-sensitive SVG name"
 
         value
+
+/// <summary>The failure of a script element, which no client mount path creates, in either namespace.</summary>
+let internal scriptRefused =
+    "Script elements are not created by templates or typed views; load scripts through the server document shell"
+
+/// <summary>Raises for a script element name, matched case-insensitively.</summary>
+let internal refuseScript (tagName: string) =
+    if tagName.ToLowerInvariant () = "script" then
+        raise (System.InvalidOperationException scriptRefused)
 
 let isVoid tag =
     match (name tag).ToLowerInvariant() with
@@ -283,11 +309,13 @@ let isVoid tag =
     | _ -> false
 
 let validateAttribute (name: string) =
+    if System.String.IsNullOrEmpty name then
+        raise (System.ArgumentException ("Attribute names must not be empty", "name"))
+
     let lowered = name.ToLowerInvariant ()
 
     if
-        System.String.IsNullOrEmpty name
-        || name[0] < 'a'
+        name[0] < 'a'
         || name[0] > 'z'
         || lowered.StartsWith ("on", System.StringComparison.Ordinal)
         || lowered = "srcdoc"

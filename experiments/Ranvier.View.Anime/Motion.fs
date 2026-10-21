@@ -42,20 +42,28 @@ type DragBinding =
 [<RequireQualifiedAccess>]
 module Motion =
 #if FABLE_COMPILER
-    [<Emit("new WeakSet()")>]
-    let private weakSet () : obj = jsNative
+    // Sets, not WeakSets: flip scans their members, and every member leaves with its part's cleanup or its exit's end.
+    [<Emit("new Set()")>]
+    let private markSet () : obj = jsNative
 
     // Elements whose Motion exit runs.
-    let private departing = weakSet ()
+    let private departing = markSet ()
     // Elements whose Motion enter started in a pass that has not yet been laid out.
-    let private arriving = weakSet ()
+    let private arriving = markSet ()
     // Elements whose Motion part animates them.
-    let private animated = weakSet ()
+    let private animated = markSet ()
 #else
     let private departing: obj = null
     let private arriving: obj = null
     let private animated: obj = null
 #endif
+
+    [<Emit("$0.size")>]
+    let private sizeOf (set: obj) : int = jsNative
+
+    /// <summary>The number of elements whose Motion exit runs.</summary>
+    let internal departures () =
+        sizeOf departing
 
     [<Emit("$0.add($1)")>]
     let private mark (set: obj) (element: obj) : unit = jsNative
@@ -85,7 +93,7 @@ module Motion =
     // do not name out of its animated and recorded properties while an element under the root carries a Motion part, and
     // puts them back otherwise. anime 4.5.0 has no public way to remove them (AutoLayout's `properties` and
     // `recordedProperties` Sets).
-    [<Emit("((l, p, r, a, b, c) => { if (!l.motionVisual) { const named = new Set([...(p.properties || []), ...Object.keys(p.enterFrom || {}), ...Object.keys(p.leaveTo || {}), ...Object.keys(p.swapAt || {})]); l.motionVisual = ['opacity', 'fontSize', 'color', 'backgroundColor', 'borderRadius', 'border', 'filter', 'clipPath'].filter(n => !named.has(n)); } const owned = [r, ...r.querySelectorAll('*')].some(n => a.has(n) || b.has(n) || c.has(n)); for (const n of l.motionVisual) { if (owned) { l.properties.delete(n); l.recordedProperties.delete(n); } else { l.properties.add(n); l.recordedProperties.add(n); } } })($0, $1, $2, $3, $4, $5)")>]
+    [<Emit("((l, p, r, a, b, c) => { if (!l.motionVisual) { const named = new Set([...(p.properties || []), ...Object.keys(p.enterFrom || {}), ...Object.keys(p.leaveTo || {}), ...Object.keys(p.swapAt || {})]); l.motionVisual = ['opacity', 'fontSize', 'color', 'backgroundColor', 'borderRadius', 'border', 'filter', 'clipPath'].filter(n => !named.has(n)); } const owned = [a, b, c].some(s => { for (const n of s) if (r.contains(n)) return true; return false; }); for (const n of l.motionVisual) { if (owned) { l.properties.delete(n); l.recordedProperties.delete(n); } else { l.properties.add(n); l.recordedProperties.add(n); } } })($0, $1, $2, $3, $4, $5)")>]
     let private leaveVisuals (layout: AutoLayout) (parameters: LayoutParams) (root: obj) (animated: obj) (departing: obj) (arriving: obj) : unit =
         jsNative
 
@@ -197,7 +205,13 @@ module Motion =
                 if pin then
                     pinOutOfFlow element
 
-                let tickable = play inst (elementOf node) :> ITickable
+                let tickable =
+                    try
+                        play inst (elementOf node) :> ITickable
+                    with _ ->
+                        forget departing element
+                        reraise ()
+
                 chain tickable "onComplete" (fun _ -> finished ())
 
                 let cancel () =
