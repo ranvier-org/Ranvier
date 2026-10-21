@@ -60,6 +60,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 83,044 | 127,150 | 1,734,108 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 83,044 | 127,109 | 1,734,259 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 83,018 | 127,158 | 1,734,028 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 82,983 | 127,156 | 1,734,666 |
 
 ## app-table
 
@@ -121,6 +122,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 4,416,210 | 9,320,035 | 107,302,072 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 4,416,154 | 9,203,687 | 107,708,264 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 4,416,115 | 9,320,259 | 107,301,908 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 4,416,101 | 9,480,802 | 107,544,214 |
 
 ## async-recover
 
@@ -182,6 +184,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 138,992 | 39,721 | 440,644 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 138,992 | 39,720 | 440,650 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 139,024 | 39,725 | 440,657 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 139,024 | 39,655 | 440,649 |
 
 ## async-resolve
 
@@ -243,6 +246,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 2,791,510 | 1,085,374 | 12,314,033 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 2,791,509 | 1,085,437 | 12,317,226 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 2,791,509 | 1,085,574 | 12,317,097 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 2,791,509 | 1,085,810 | 12,313,939 |
 
 ## chain
 
@@ -304,6 +308,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,783 | 66,618 |
 
 ## chain-affinity
 
@@ -365,6 +370,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 2,549 | 3,067 | 2,496 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 2,549 | 3,067 | 2,496 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 2,549 | 3,067 | 2,496 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 2,549 | 3,067 | 2,496 |
 
 ## control
 
@@ -426,6 +432,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 74,709 | 833,986 | 2,605,089 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 74,709 | 833,924 | 2,605,062 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 74,709 | 833,926 | 2,605,031 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 74,709 | 839,547 | 2,604,319 |
 
 ## create
 
@@ -487,6 +494,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 13,450,079 | 2,859,678 | 2,532,361 | 2,131,028 | 4,004,129 | 34,063,281 | 49,723,741 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 13,450,044 | 2,875,677 | 2,532,362 | 2,131,829 | 4,003,596 | 34,063,832 | 49,723,813 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 13,449,958 | 2,859,679 | 2,532,361 | 2,131,745 | 4,003,679 | 34,066,647 | 49,723,316 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 13,450,084 | 2,859,678 | 2,532,361 | 2,131,033 | 4,001,852 | 34,069,376 | 49,687,590 |
 
 ## create-on
 
@@ -548,6 +556,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 2,926,483 | 4,147,607 | 54,424,898 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 2,910,484 | 4,147,496 | 54,424,776 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 2,910,483 | 4,147,438 | 54,424,708 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 2,910,483 | 4,147,491 | 54,424,704 |
 
 ## cutoff
 
@@ -609,6 +618,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 
 ## derive-effect
 
@@ -670,6 +680,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 765 | 768 | 16,102 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 765 | 768 | 16,102 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 765 | 768 | 16,102 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 765 | 768 | 16,102 |
 
 ## derive-on
 
@@ -731,6 +742,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 737 | 775 | 16,261 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 737 | 775 | 16,261 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 737 | 775 | 16,261 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 737 | 775 | 16,261 |
 
 ## dispose
 
@@ -792,6 +804,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 2,707,646 | 806,291 | 367,497 | 466,079 | 485,247 | 13,195,636 | 9,106,272 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 2,707,644 | 806,291 | 367,497 | 465,801 | 485,236 | 13,195,316 | 9,105,912 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 2,707,646 | 806,291 | 367,497 | 465,654 | 485,338 | 13,195,132 | 9,105,877 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 2,706,242 | 806,291 | 367,497 | 466,089 | 484,937 | 13,193,985 | 9,106,498 |
 
 ## dispose-on
 
@@ -853,6 +866,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 346,497 | 478,707 | 8,901,848 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 346,497 | 478,520 | 8,902,234 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 346,497 | 478,841 | 8,902,586 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 346,497 | 478,729 | 8,902,566 |
 
 ## editable-edit
 
@@ -914,6 +928,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 180,106 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 180,106 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 180,106 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 180,106 |
 
 ## editable-upstream
 
@@ -975,6 +990,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 231,255 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 231,255 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 231,255 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 231,255 |
 
 ## fail-recompute
 
@@ -1036,6 +1052,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 65,130 | 1,366 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 65,130 | 1,366 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 65,082 | 1,366 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 65,082 | 1,366 |
 
 ## flight
 
@@ -1097,6 +1114,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 
 ## keyed-insert
 
@@ -1158,6 +1176,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 1,921,809 | 53,951 | 54,946 | 3,218,693 | 661,749 | 176,629 | 44,851,072 | 2,634,967 | 2,654,213 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 1,921,809 | 53,951 | 54,942 | 3,218,727 | 661,707 | 176,576 | 44,849,857 | 2,634,923 | 2,654,118 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 1,921,825 | 53,951 | 54,960 | 3,218,685 | 661,945 | 176,561 | 44,849,869 | 2,634,924 | 2,654,178 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 1,921,961 | 53,951 | 55,097 | 3,218,645 | 661,756 | 176,524 | 44,845,239 | 2,635,014 | 2,654,056 |
 
 ## keyed-remove
 
@@ -1219,6 +1238,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 1,920,730 | 43,628 | 45,284 | 3,245,079 | 593,035 | 605,264 | 44,798,124 | 1,924,928 | 1,958,574 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 1,920,744 | 43,628 | 45,285 | 3,245,033 | 593,260 | 605,129 | 44,798,152 | 1,924,857 | 1,958,555 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 1,920,750 | 43,628 | 45,300 | 3,245,048 | 593,248 | 605,283 | 44,798,162 | 1,924,836 | 1,958,495 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 1,920,891 | 43,628 | 45,436 | 3,245,029 | 593,196 | 604,996 | 44,802,360 | 1,924,835 | 1,958,886 |
 
 ## keyed-swap
 
@@ -1280,6 +1300,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 1,973,428 | 46,161 | 46,915 | 3,560,726 | 148,809 | 511,217 | 45,980,647 | 916,465 | 932,928 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 1,973,428 | 46,161 | 46,915 | 3,562,791 | 148,813 | 511,376 | 45,980,235 | 916,544 | 932,813 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 1,973,444 | 46,161 | 46,931 | 3,565,335 | 148,793 | 511,395 | 45,980,246 | 916,486 | 932,898 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 1,973,524 | 46,162 | 47,012 | 3,563,252 | 148,803 | 511,212 | 45,980,371 | 916,856 | 932,960 |
 
 ## mvu-dispatch
 
@@ -1341,6 +1362,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 58,261 | 772 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 58,261 | 772 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 58,261 | 772 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 58,261 | 772 |
 
 ## project-chain
 
@@ -1402,6 +1424,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 1,070,391 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 1,070,200 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 1,070,358 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 1,070,247 |
 
 ## project-churn
 
@@ -1463,6 +1486,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 36,506 | 34,342 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 36,490 | 34,326 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 36,586 | 34,422 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 36,474 | 34,310 |
 
 ## project-edit
 
@@ -1524,6 +1548,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 50,431 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 50,431 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 50,513 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 50,415 |
 
 ## project-reorder
 
@@ -1585,6 +1610,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 779,170 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 779,170 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 779,267 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 779,155 |
 
 ## server-render
 
@@ -1646,6 +1672,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 676,230 | 1,131,227 | 9,834,142 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 676,230 | 1,131,183 | 9,833,800 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 675,723 | 1,131,493 | 9,833,582 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 675,724 | 1,131,458 | 9,834,209 |
 
 ## shape-diamond
 
@@ -1707,6 +1734,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 59,899 | 79,968 | 1,763,357 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 59,899 | 79,968 | 1,763,357 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 59,899 | 79,968 | 1,763,357 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 59,899 | 79,968 | 1,763,357 |
 
 ## shape-dynamic
 
@@ -1768,6 +1796,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 82,921 | 107,033 | 2,006,140 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 82,921 | 107,031 | 2,006,140 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 82,921 | 107,030 | 2,006,140 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 82,921 | 107,034 | 2,006,144 |
 
 ## stream-burst-1
 
@@ -1829,6 +1858,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 1,974 | 1,572 | 2,507 | 4,671 | 3,644 | 13,368 | 47,201 | 45,417 | 55,171 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 1,974 | 1,572 | 2,491 | 4,672 | 3,644 | 13,367 | 47,201 | 45,417 | 55,168 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 1,974 | 1,572 | 2,491 | 4,672 | 3,644 | 13,372 | 47,199 | 45,417 | 55,171 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 1,974 | 1,572 | 2,491 | 4,671 | 3,644 | 13,371 | 47,204 | 45,417 | 55,168 |
 
 ## stream-burst-16
 
@@ -1890,6 +1920,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 5,631 | 25,017 | 5,717 | 9,501 | 49,601 | 8,051 | 120,969 | 714,180 | 113,522 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 5,631 | 25,017 | 5,701 | 9,500 | 49,598 | 8,051 | 120,973 | 714,180 | 113,519 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 5,631 | 25,017 | 5,701 | 9,503 | 49,601 | 8,051 | 120,973 | 714,180 | 113,518 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 5,631 | 25,017 | 5,701 | 9,499 | 49,601 | 8,050 | 120,976 | 714,180 | 113,519 |
 
 ## stream-burst-256
 
@@ -1951,6 +1982,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 64,131 | 400,101 | 57,056 | 127,440 | 787,189 | 74,605 | 1,301,511 | 11,413,287 | 1,046,550 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 64,131 | 400,101 | 57,040 | 127,397 | 787,203 | 74,605 | 1,301,517 | 11,413,352 | 1,046,482 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 64,131 | 400,101 | 57,040 | 127,431 | 787,263 | 74,605 | 1,301,530 | 11,413,287 | 1,046,549 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 64,131 | 400,101 | 57,040 | 127,412 | 787,250 | 74,603 | 1,301,658 | 11,413,288 | 1,046,552 |
 
 ## stream-restart
 
@@ -2012,6 +2044,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 4,187 | 4,992 | 6,106 | 16,354 | 41,498 | 70,406 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 4,187 | 4,976 | 6,106 | 16,353 | 41,497 | 70,402 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 4,187 | 4,976 | 6,106 | 16,359 | 41,500 | 70,406 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) (accepted) | 4,187 | 4,976 | 6,359 | 16,586 | 42,490 | 71,395 |
 
 ## timed-admit-both
 
@@ -2073,6 +2106,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 118,591 | 134,965 | 2,679,929 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 118,591 | 134,962 | 2,679,929 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 118,591 | 134,964 | 2,679,929 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 118,591 | 134,963 | 2,679,932 |
 
 ## timed-admit-debounce
 
@@ -2134,6 +2168,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 117,496 | 133,556 | 2,640,272 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 117,496 | 133,555 | 2,640,285 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 117,496 | 133,558 | 2,640,272 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 117,496 | 133,554 | 2,640,283 |
 
 ## timed-admit-first
 
@@ -2195,6 +2230,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 69,479 | 79,053 | 1,611,692 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 69,479 | 79,051 | 1,611,692 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 69,479 | 79,053 | 1,611,692 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 69,479 | 79,053 | 1,611,692 |
 
 ## timed-admit-last
 
@@ -2256,6 +2292,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 117,758 | 133,872 | 2,650,141 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 117,758 | 133,874 | 2,650,128 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 117,758 | 133,852 | 2,650,128 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 117,758 | 133,878 | 2,650,141 |
 
 ## timed-capture-both
 
@@ -2317,6 +2354,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 35,726 | 44,807 | 846,997 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 35,726 | 44,808 | 846,997 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 35,726 | 44,806 | 846,997 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 35,726 | 44,800 | 846,996 |
 
 ## timed-capture-debounce
 
@@ -2378,6 +2416,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 35,598 | 44,104 | 847,375 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 35,598 | 44,104 | 847,375 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 35,598 | 44,104 | 847,375 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 35,598 | 44,104 | 847,375 |
 
 ## timed-capture-first
 
@@ -2439,6 +2478,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 32,078 | 36,612 | 745,370 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 32,078 | 36,612 | 745,372 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 32,078 | 36,612 | 745,370 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 32,078 | 36,612 | 745,370 |
 
 ## timed-capture-last
 
@@ -2500,6 +2540,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 35,534 | 44,040 | 839,503 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 35,534 | 44,040 | 839,503 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 35,534 | 44,040 | 839,503 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 35,534 | 44,040 | 839,503 |
 
 ## update
 
@@ -2561,6 +2602,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 1,087,690 | 38,805 | 82,505 | 262,537 | 151,712 | 3,350,266 | 2,502,845 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 1,087,690 | 38,805 | 82,505 | 262,876 | 151,656 | 3,350,234 | 2,502,817 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 1,087,690 | 38,805 | 82,505 | 262,575 | 151,734 | 3,350,265 | 2,502,848 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 1,089,282 | 38,805 | 82,505 | 262,622 | 151,671 | 3,350,263 | 2,502,795 |
 
 ## update-on
 
@@ -2622,6 +2664,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 93,005 | 165,202 | 2,830,408 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 93,005 | 165,212 | 2,830,406 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 93,005 | 165,181 | 2,830,412 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 93,005 | 165,257 | 2,830,424 |
 
 ## work-form
 
@@ -2683,6 +2726,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 170,300 | 163,392 | 295,960 | 291,401 | 5,349,263 | 5,295,443 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 170,300 | 163,392 | 295,918 | 291,433 | 5,349,208 | 5,295,435 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 170,300 | 163,392 | 295,967 | 291,427 | 5,349,179 | 5,295,442 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 170,300 | 163,392 | 295,940 | 291,403 | 5,349,286 | 5,295,444 |
 
 ## work-status
 
@@ -2744,6 +2788,7 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 100,445 | 78,815 | 264,849 | 152,963 | 2,611,016 | 2,360,859 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 100,445 | 78,815 | 264,866 | 152,944 | 2,611,050 | 2,360,865 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 100,445 | 78,815 | 264,829 | 152,965 | 2,611,039 | 2,360,842 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 100,445 | 78,815 | 264,846 | 152,958 | 2,611,063 | 2,360,865 |
 
 ## work-value
 
@@ -2805,4 +2850,5 @@
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 107,569 | 119,469 | 265,103 | 279,880 | 2,595,722 | 2,920,176 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 107,569 | 119,470 | 265,095 | 279,908 | 2,595,573 | 2,920,217 |
 | `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 107,570 | 119,469 | 265,101 | 279,915 | 2,595,703 | 2,920,165 |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | 107,569 | 119,469 | 265,111 | 279,912 | 2,595,672 | 2,920,215 |
 
