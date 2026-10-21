@@ -40,6 +40,8 @@ Each of the 112 HTML tags is a generic class named by its raw lowercase tag name
 
 A tag takes its parts in parentheses, `div ()` or `div (Attrs.className "x", Events.onClick handler)`, and its children in braces. `Attrs`, `Props`, `Events` and `Hooks` carry every generated member: `Attrs.className`, `Attrs.data`, `Attrs.aria`, `Attrs.attribute`, `Props.Input.value`, `Props.Button.disabled`, `Events.onClick`, `Events.onInput`, `Hooks.mounted`. An element-specific member is checked against its tag: `span (Props.Input.value "x")` fails with FS0041.
 
+**SVG tags.** `svg`, `g`, `path`, `circle`, `ellipse`, `line`, `polyline`, `polygon` and `rect` (`SvgElements`, auto-opened) create their elements in the SVG namespace, with the matching `SVG*Element` native types, and so does every element under an `svg` element. In a bundle without an SVG tag, queued commits create HTML elements only. Under synchronous commits a list row or arm whose root is an SVG tag is parsed apart from its `svg` parent and created as an HTML element; under queued commits it is an SVG element.
+
 **Void tags take no body.** `input`, `br`, `img`, `meta`, `base'` and the other void elements are written `input (parts)`; `input () { "x" }` fails with FS0708.
 
 **A void tag outside a body is used through `View`.** Inside a body a void tag is yielded as it is. Every other position that takes a `TemplateView` (the content of `show` or `showElse`, an `armOf` view, a `fragment` child, a row view, a template root) takes the tag's `View`, `(img (parts)).View`. Without it, `show condition (img ())` fails with FS0193. A [component tag](#declaring-components) is used the same way.
