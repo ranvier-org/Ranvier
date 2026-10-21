@@ -8,7 +8,7 @@ open Ranvier.View.Foundation.Sugar
 /// One arm per body, built when the site is built. The same target keeps its arm and replaces its bound values;
 /// another target remounts. A body's instance is the enclosing instance.
 /// </summary>
-let create (cells: Cells.Cells) (read: 'inst -> 'u) (select: 'u -> int * obj array) (bodies: TemplateView<'inst> array) : TemplateView<'inst> =
+let inline create (cells: Cells.Cells) (read: 'inst -> 'u) (select: 'u -> int * obj array) (bodies: TemplateView<'inst> array) : TemplateView<'inst> =
     let definitions =
         bodies
         |> Array.mapi (fun target body ->
