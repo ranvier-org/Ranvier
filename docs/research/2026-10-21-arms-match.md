@@ -18,3 +18,11 @@ import of `Ranvier.View.Arms.targets`:
   so the compilation that holds `Arms.fs` references `Fable.AST.dll` as well; without it Fable reports FS0074 at the
   attribute and skips the plugin assembly ("`ScanForPluginsAttribute` is required here and is unavailable"). The plugin
   project copies `Fable.AST.dll` beside its own assembly, and the `.targets` references both.
+- **References and defines of referenced sources:** Fable compiles `Ranvier.View.Arms` with the app's assembly
+  references and the app's `DefineConstants`, not those of `Ranvier.View.Arms.fsproj`. With the `.targets` imported by
+  the app alone, `RANVIER_ARMS_PLUGIN` reaches `Arms.fs`; an app without the import (`Tests/NoTargets`) fails at its
+  call with FS0101 and the AM005 text.
+- **MSBuild targets during cracking:** Fable's project cracking runs a target declared
+  `BeforeTargets="ResolveAssemblyReferences"`; the `.targets` check for a missing plugin assembly fires under
+  `dotnet fable`.
+- **`dotnet fsi build.fsx -- test` cleans the plugin's `bin` folder** with every other; the plugin is rebuilt after it.

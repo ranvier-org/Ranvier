@@ -10,7 +10,7 @@ type BuildTimeReadException(variable: string, message: string) =
     /// <summary>The pattern variable, or the union field when the compiler removed the binding.</summary>
     member _.Variable = variable
 
-/// <summary>A site the .NET lowering rejects for a reason other than a build-time read.</summary>
+/// <summary>A site rejected by the .NET lowering: AM003, AM004, AM006 or AM007.</summary>
 type ArmsMatchException(message: string) =
     inherit InvalidOperationException(message)
 #endif

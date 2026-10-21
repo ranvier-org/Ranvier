@@ -1,12 +1,21 @@
 <Project>
   <!--
-  Fable discovers plugins among the compilation's assembly references. `dotnet fable` evaluates projects without
-  building them, so the plugin assembly is built beforehand:
+  The Arms.Match opt-in for a project compiled by Fable. The plugin assembly must exist before `dotnet fable` runs:
   dotnet build experiments/Ranvier.View.Arms.FablePlugin/Ranvier.View.Arms.FablePlugin.fsproj -c Release
   -->
+  <PropertyGroup>
+    <RanvierArmsPluginDir Condition="'$(RanvierArmsPluginDir)' == ''">$(MSBuildThisFileDirectory)../Ranvier.View.Arms.FablePlugin/bin/Release/netstandard2.0/</RanvierArmsPluginDir>
+  </PropertyGroup>
+  <!-- RANVIER_ARMS_PLUGIN selects the plugin-lowered Arms.Match; without it a Fable call of Arms.Match fails with AM005. -->
+  <PropertyGroup Condition="'$(FABLE_COMPILER)' == 'true'">
+    <DefineConstants>$(DefineConstants);RANVIER_ARMS_PLUGIN</DefineConstants>
+  </PropertyGroup>
   <ItemGroup Condition="'$(FABLE_COMPILER)' == 'true'">
-    <Reference Include="$(MSBuildThisFileDirectory)../Ranvier.View.Arms.FablePlugin/bin/Release/netstandard2.0/Ranvier.View.Arms.FablePlugin.dll" />
-    <!-- The plugin attribute on Arms.Match derives from a Fable.AST type, so the compilation references Fable.AST too. -->
-    <Reference Include="$(MSBuildThisFileDirectory)../Ranvier.View.Arms.FablePlugin/bin/Release/netstandard2.0/Fable.AST.dll" />
+    <Reference Include="$(RanvierArmsPluginDir)Ranvier.View.Arms.FablePlugin.dll" />
+    <!-- Fable.AST.dll: the base type of the plugin attribute on Arms.Match. -->
+    <Reference Include="$(RanvierArmsPluginDir)Fable.AST.dll" />
   </ItemGroup>
+  <Target Name="RanvierArmsPluginExists" BeforeTargets="ResolveAssemblyReferences" Condition="'$(FABLE_COMPILER)' == 'true'">
+    <Error Condition="!Exists('$(RanvierArmsPluginDir)Ranvier.View.Arms.FablePlugin.dll')" Text="Ranvier.View.Arms.FablePlugin.dll is missing from $(RanvierArmsPluginDir). Build the plugin first: dotnet build experiments/Ranvier.View.Arms.FablePlugin/Ranvier.View.Arms.FablePlugin.fsproj -c Release" />
+  </Target>
 </Project>

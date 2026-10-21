@@ -1,4 +1,4 @@
-/// <summary>The lowering of one Arms.Match call into a target selector and one case body per target.</summary>
+/// <summary>The lowering of an Arms.Match call into a target selector and one case body per target.</summary>
 module internal Ranvier.View.Arms.FablePlugin.Lower
 
 open Fable
@@ -58,21 +58,22 @@ let mapLeaves (control: Set<string>) (leaf: Ident list -> Expr -> Expr) (tree: E
 
     walk control [] tree
 
-let mutable private unnamed = 0
+/// <summary>
+/// The suffix of a site's emitted names: the line and column of the first available range, in the order given (the
+/// call, its arms, its read).
+/// </summary>
+let siteName (ranges: SourceLocation option list) : string option =
+    ranges
+    |> List.tryPick id
+    |> Option.map (fun r -> sprintf "L%dC%d" r.start.line r.start.column)
 
-/// <summary>The suffix of a site's emitted names: the call's line and column.</summary>
-let siteName (r: SourceLocation option) =
-    match r with
-    | Some r -> sprintf "L%dC%d" r.start.line r.start.column
-    | None ->
-        unnamed <- unnamed + 1
-        sprintf "N%d" unnamed
-
-/// <summary>The packed function of one call, or None after reporting a rejection.</summary>
+/// <summary>The packed function of a call, or None after reporting a rejection.</summary>
 let site (helper: PluginHelper) (read: Expr) (arms: Expr) (r: SourceLocation option) : Expr option =
-    match arms with
-    | Lambda (matched, tree, _) ->
-        let name = siteName r
+    match arms, siteName [ r; arms.Range; read.Range ] with
+    | Lambda _, None ->
+        helper.LogError Diagnostics.noRange
+        None
+    | Lambda (matched, tree, _), Some name ->
 
         let instanceType =
             match read.Type with

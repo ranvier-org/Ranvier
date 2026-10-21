@@ -51,9 +51,9 @@ Every task's requirements include this section.
 Task gates, from the worktree root, all exit 0 (run the ones the task's files reach; the last task of each phase runs all of them):
 
 ```bash
+dotnet fsi build.fsx -- test
 dotnet build experiments/Ranvier.View.Arms.FablePlugin/Ranvier.View.Arms.FablePlugin.fsproj -c Release
 dotnet fsi experiments/Ranvier.View.Arms.FablePlugin/Tests/PluginTests.fsx
-dotnet fsi build.fsx -- test
 dotnet run --project experiments/Ranvier.View.Foundation/RepresentationChecks.fsproj -c Release
 dotnet run --project docs/samples/view/Ranvier.Docs.ViewSamples.fsproj -c Release
 dotnet fsi docs/samples/view/Generate.fsx --check
@@ -85,7 +85,7 @@ and, from Task 9 on, `node experiments/Ranvier.View.Arms/Checks/size.mjs` from t
 - **A union's `.IsCase` properties break Fable precompile.** Write a `match` instead.
 - **No `node_modules` junctions or symlinks.** Run `npm ci` in each package directory of this worktree (`examples/Fable.Ranvier.Playground`, `tools/Ranvier.Dom.Generate`).
 - **Locks.** `browser.lock` (any Chromium or Playwright run) and `bench.lock` (any timed benchmark) are directories under `C:/Users/shaya/.claude/jobs/7fee9ca9/tmp/`: `mkdir` before, waiting while it exists, `rmdir` after. Only the creator removes a lock.
-- **The plugin assembly must exist before `dotnet fable` evaluates a project that imports the `.targets`.** `npm run compile:tests` builds it; any other `dotnet fable` of `DomTests.fsproj` (the counters build, `keyed-rows.mjs --build`) runs after a plugin build. After a plugin change, compile with `--noCache`: Fable's cache does not track the plugin.
+- **The plugin assembly must exist before `dotnet fable` evaluates a project that imports the `.targets`.** `npm run compile:tests` builds it; any other `dotnet fable` of `DomTests.fsproj` (the counters build, `keyed-rows.mjs --build`) runs after a plugin build. After a plugin change, compile with `--noCache`: Fable's cache does not track the plugin. `dotnet fsi build.fsx -- test` cleans every `bin` folder, the plugin's included, so the plugin build runs after it; a missing plugin assembly fails the Fable compile with "Ranvier.View.Arms.FablePlugin.dll is missing from ..." (the `.targets` check).
 - Leave untracked `generated-*` directories alone; new output directories (`generated-arms-size`, `Checks/Discovery/out`, `Checks/TrimCallSite/bin`) are git-ignored by the task that creates them.
 
 ## Rulings on the spec
@@ -94,14 +94,14 @@ Each ruling picks an implementation where the spec leaves one open, or settles a
 
 1. **The open questions become Decisions 11-18 of the spec**, in their order, and the "unsupported form" error of Decision 11 is **AM007** (`Arms.Match: this pattern form is not supported.`). *If wrong:* one code and one table row.
 2. **"Refers to a controlled identifier" means a reference outside every lambda.** A `let view = pre () { fun _ -> t }` in a case body is a leaf, and its reader is rewritten; with the spec's literal rule it would be a decision binding computed per region read and then raise AM001. **A compiler-generated `let`** (a Fable ident with `IsCompilerGenerated`, a quotation variable whose name contains `@`) is decision only when its value extracts a part of a controlled identifier (the probe's rule), so a CE's `builder@` binding stays in the leaf. *If wrong:* a `let` over a view that reads a pattern variable only in a reader becomes a misleading AM001.
-3. **Emitted names are derived from the call site's line and column** (`armsValues_L12C8`), because `TransformCall` receives no enclosing member. They are stable across files and watch rebuilds as long as the call does not move. *If wrong:* names change when lines above the call change; the plugin expectation is regenerated.
+3. **Emitted names are derived from a source range** (`armsValues_L12C8`), because `TransformCall` receives no enclosing member: the call's, else the arms lambda's, else the read's; a call with none of them fails with a plugin error, so no process-wide counter exists. The names are JS locals and reach no HTML, hash or marker. `PluginTests.fsx` replaces each `L<line>C<column>` by its ordinal in the file before comparing, as the spec's "names normalised" says, so the expectation changes only when the lowering does.
 4. **The plugin packs a function, not values.** `?lowered` receives `fun values -> (select, bodies)`, where `values: Func<obj, int, obj array>` reads the cells; `Arms.Match` creates the cells, calls the function once and hands its result to `Site.create`. Each reader's prologue is `values(instance, target)` (an `Emit`). The cells stay F# code, and the plugin emits no constructor or import. *If wrong:* one prologue shape in `Lower.fs` and five lines in `Arms.fs`.
 5. **`BuildTimeReadException` and `ArmsMatchException` exist on .NET only.** Under Fable, AM005 and AM006 raise `InvalidOperationException` with the same text; the other codes are compile errors there. *If wrong:* Fable code catching the named types does not compile.
 6. **Two files beyond the spec's list:** `Errors.fs` (the exception types and raise helpers, runtime only) and the plugin's link of `Diagnostics.fs`. Exceptions cannot live in the linked file: the plugin assembly is a reference of every Fable compilation, and two public `ArmsMatchException` types would collide.
 7. **`Site` and `Cells` are internal.** `Site.create` takes the internal `Cells` type, so it cannot be public. *If wrong:* none; the spec's API names no caller outside the package.
 8. **Under Fable, an instance type that is a generic parameter passes AM004 at compile time.** Only a concrete type can be judged; `WeakMap.set` raises at mount for a primitive. *If wrong:* a generic helper instantiated at `int` fails at mount instead of at compile.
 9. **The one-lambda compile lands with the .NET lowering (Task 3)**, and the `lowering|` budget is enforced when `RepresentationChecks` runs with `--timing`, which Task 3's steps and the research note use. CI prints the line without failing on it: shared runners are not the budget's machine. *If wrong:* a CI job fails on runner noise.
-10. **The plugin tests are a `dotnet fsi` script** (`PluginTests.fsx`), as the generator's `GeneratorTests.fsx` is. A bad fixture asserts exit code 1, the file, the line and the exact message; the column is not asserted, since Fable reports the range of the expression it holds, which for an inlined field is the `Get` and not the identifier.
+10. **The plugin tests are a `dotnet fsi` script** (`PluginTests.fsx`), as the generator's `GeneratorTests.fsx` is. A bad fixture asserts exit code 1, the file, the line and the exact message, and the column (1-based, as Fable prints it) where the range is the identifier or the call: AM001, AM003, AM004. For AM001b the range is the field read, and for AM002 and AM007 the expression Fable holds; those assert the line only. The columns in the plan are the token positions; when Fable reports another column for the same token, the observed one is pinned and ledgered.
 11. **A prologue carries the range of the first pattern-variable reference inside its reader.** A Fable `Lambda` has no range of its own.
 12. **The 0 B rule for an app that references the package and calls no `Arms.Match`** is checked as the absence of every `Ranvier.View.Arms` module from that entry's bundle, plus the Playground explicit entry's bytes before (recorded in Task 1) and after. A second Fable compilation without the reference would cost a full compile per size run for the same evidence.
 13. **`DomTests.fsproj` links the `Ranvier.View.Arms` sources** and imports the `.targets`, as it links every other view source; a project reference would bring a second copy of the Portable types.
@@ -111,8 +111,10 @@ Each ruling picks an implementation where the spec leaves one open, or settles a
 17. **The twin-trace harness of `SugarChecks.fs` moves to `tests/TwinTrace.fs`**, unchanged, so `ArmsChecks.fs` reuses it.
 18. **A cells entry records the values of each read** (`Last`), and withdrawal keeps the last entry's `Last`. No read happens at setup, so core counters match the twin's.
 19. **A thunk over `unit` is transparent to AM002.** A pattern variable inside `fun () -> ...` (a computation expression's `Delay`, for one) is reported as AM001, read outside a reader, and not as a read inside a lambda over `unit`.
-20. **AM005 is a backstop.** Under Fable, `Arms.fs` names the plugin's attribute, so a compilation without the plugin assembly fails at `Arms.fs` with FS0039 ("The type 'CaseArms' is not defined"); AM005 is reached only when the assembly is referenced and Fable does not run the plugin. No test provokes it; the troubleshooting page lists both texts.
+20. **AM005 is a compile error at the call** (spec Decision 17, amended). The `.targets` defines `RANVIER_ARMS_PLUGIN`; without it `Arms.fs` compiles an `[<Obsolete(Diagnostics.noPlugin, true)>]` overload, so the call fails with FS0101 and the AM005 text. `Ranvier.View.Arms.fsproj` does not import the `.targets`: Fable compiles referenced sources with the app's references and defines (verified in Phase 1), and the project's own import would define the symbol for an app without the plugin. `Tests/NoTargets` pins the FS0101 outcome. The run-time AM005 remains for a referenced plugin that does not run.
 21. **The .NET lowering rewrites a delegate over the instance** (`NewDelegate`) as a reader, as the plugin rewrites a Fable `Delegate`; `Hooks.exit (Func<_, _, _, _>(fun s node finish -> ...))` is one.
+22. **Fable.AST at graduation** (spec Decision 16, amended): the package declares `Fable.AST` as a NuGet dependency and ships only `Ranvier.View.Arms.FablePlugin.dll` under `fable-plugin/` from an explicit file list. The experiment references the copied `Fable.AST.dll` directly, since no package exists to exercise the dependency form.
+23. **The `.targets` names its plugin folder `RanvierArmsPluginDir`** (default: the Release output) and fails the Fable compile when the plugin assembly is missing there; Fable's cracking runs the check (`BeforeTargets="ResolveAssemblyReferences"`, verified in Phase 1).
 
 ## Review Focus
 
@@ -360,7 +362,7 @@ let private callShape (info: CallInfo) : Expr list * (Expr list -> CallInfo) =
             }
         | None -> { info with Args = xs }
 
-/// <summary>The direct children of an expression and its rebuilder; a lambda's binder is not a child.</summary>
+/// <summary>The direct subexpressions of an expression and its rebuilder.</summary>
 let children (expr: Expr) : Expr list * (Expr list -> Expr) =
     match expr with
     | Lambda (arg, body, n) -> [ body ], (fun xs -> Lambda (arg, xs.Head, n))
@@ -394,14 +396,17 @@ let children (expr: Expr) : Expr list * (Expr list -> Expr) =
     | WhileLoop (c, body, r) -> [ c; body ], (fun xs -> WhileLoop (xs[0], xs[1], r))
     | ForLoop (id, a, b, body, up, r) -> [ a; b; body ], (fun xs -> ForLoop (id, xs[0], xs[1], xs[2], up, r))
     | TryCatch (body, catch, finalizer, r) ->
-        body :: (Option.toList (Option.map snd catch) @ Option.toList finalizer),
+        body
+        :: (Option.toList (Option.map snd catch)
+            @ Option.toList finalizer),
         (fun xs ->
             let rest = xs.Tail
             TryCatch (xs.Head, Option.map (fun (id, _) -> id, rest.Head) catch, Option.map (fun _ -> List.last rest) finalizer, r))
     | Extended (Throw (Some e, t), r) -> [ e ], (fun xs -> Extended (Throw (Some xs.Head, t), r))
     | Extended (Curry (e, arity), r) -> [ e ], (fun xs -> Extended (Curry (xs.Head, arity), r))
     | ObjectExpr (members, t, baseCall) ->
-        (List.map (fun (m: ObjectExprMember) -> m.Body) members) @ Option.toList baseCall,
+        (List.map (fun (m: ObjectExprMember) -> m.Body) members)
+        @ Option.toList baseCall,
         (fun xs ->
             let bodies = List.take members.Length xs
             ObjectExpr (List.map2 (fun (m: ObjectExprMember) b -> { m with Body = b }) members bodies, t, List.tryItem members.Length xs))
@@ -417,7 +422,8 @@ let rec map (f: Expr -> Expr option) (expr: Expr) : Expr =
         | xs, rebuild -> rebuild (List.map (map f) xs)
 
 let rec exists (f: Expr -> bool) (expr: Expr) : bool =
-    f expr || (fst (children expr) |> List.exists (exists f))
+    f expr
+    || (fst (children expr) |> List.exists (exists f))
 
 let refersTo (names: Set<string>) (expr: Expr) =
     exists
@@ -432,18 +438,22 @@ let rec refersOutsideLambdas (names: Set<string>) (expr: Expr) =
     | IdentExpr id -> names.Contains id.Name
     | Lambda _
     | Delegate _ -> false
-    | _ -> fst (children expr) |> List.exists (refersOutsideLambdas names)
+    | _ ->
+        fst (children expr)
+        |> List.exists (refersOutsideLambdas names)
 
 let rec firstReference (names: Set<string>) (expr: Expr) : Ident option =
     match expr with
     | IdentExpr id when names.Contains id.Name -> Some id
-    | _ -> fst (children expr) |> List.tryPick (firstReference names)
+    | _ ->
+        fst (children expr)
+        |> List.tryPick (firstReference names)
 ```
 
 `experiments/Ranvier.View.Arms.FablePlugin/Lower.fs` (the probe's rules with the packed contract of Ruling 4; Task 2 replaces this file):
 
 ```fsharp
-/// <summary>The lowering of one Arms.Match call into a target selector and one case body per target.</summary>
+/// <summary>The lowering of an Arms.Match call into a target selector and one case body per target.</summary>
 module internal Ranvier.View.Arms.FablePlugin.Lower
 
 open Fable
@@ -489,7 +499,12 @@ let mapLeaves (control: Set<string>) (leaf: Ident list -> Expr -> Expr) (tree: E
     let rec walk (control: Set<string>) (bound: Ident list) (expr: Expr) =
         match expr with
         | DecisionTree (decision, targets) ->
-            DecisionTree (decision, [ for ids, body in targets -> ids, walk (control + set [ for id in ids -> id.Name ]) (bound @ ids) body ])
+            DecisionTree (
+                decision,
+                [
+                    for ids, body in targets -> ids, walk (control + set [ for id in ids -> id.Name ]) (bound @ ids) body
+                ]
+            )
         | IfThenElse (condition, whenTrue, whenFalse, r) when Shape.refersTo control condition ->
             let whenTrue = walk control bound whenTrue
             IfThenElse (condition, whenTrue, walk control bound whenFalse, r)
@@ -498,21 +513,22 @@ let mapLeaves (control: Set<string>) (leaf: Ident list -> Expr -> Expr) (tree: E
 
     walk control [] tree
 
-let mutable private unnamed = 0
+/// <summary>
+/// The suffix of a site's emitted names: the line and column of the first available range, in the order given (the
+/// call, its arms, its read).
+/// </summary>
+let siteName (ranges: SourceLocation option list) : string option =
+    ranges
+    |> List.tryPick id
+    |> Option.map (fun r -> sprintf "L%dC%d" r.start.line r.start.column)
 
-/// <summary>The suffix of a site's emitted names: the call's line and column.</summary>
-let siteName (r: SourceLocation option) =
-    match r with
-    | Some r -> sprintf "L%dC%d" r.start.line r.start.column
-    | None ->
-        unnamed <- unnamed + 1
-        sprintf "N%d" unnamed
-
-/// <summary>The packed function of one call, or None after reporting a rejection.</summary>
+/// <summary>The packed function of a call, or None after reporting a rejection.</summary>
 let site (helper: PluginHelper) (read: Expr) (arms: Expr) (r: SourceLocation option) : Expr option =
-    match arms with
-    | Lambda (matched, tree, _) ->
-        let name = siteName r
+    match arms, siteName [ r; arms.Range; read.Range ] with
+    | Lambda _, None ->
+        helper.LogError Diagnostics.noRange
+        None
+    | Lambda (matched, tree, _), Some name ->
 
         let instanceType =
             match read.Type with
@@ -551,7 +567,10 @@ let site (helper: PluginHelper) (read: Expr) (arms: Expr) (r: SourceLocation opt
                 body
                 |> Shape.map (fun expr ->
                     match expr with
-                    | Lambda (argument, inner, n) when argument.Type = instanceType && Shape.refersTo names inner ->
+                    | Lambda (argument, inner, n) when
+                        argument.Type = instanceType
+                        && Shape.refersTo names inner
+                        ->
                         let values = ident ("armsRead_" + name) Any
                         let fresh = [ for id in slots -> id, ident (sprintf "%s_%s" id.Name name) id.Type ]
 
@@ -571,7 +590,9 @@ let site (helper: PluginHelper) (read: Expr) (arms: Expr) (r: SourceLocation opt
                                 (List.indexed fresh)
                                 renamed
 
-                        let current = emit "$0($1, $2)" [ IdentExpr valuesFn; IdentExpr argument; int32 target ] None
+                        let current =
+                            emit "$0($1, $2)" [ IdentExpr valuesFn; IdentExpr argument; int32 target ] None
+
                         Some (Lambda (argument, Let (values, current, prologue), n))
                     | _ -> None)
 
@@ -599,7 +620,16 @@ let site (helper: PluginHelper) (read: Expr) (arms: Expr) (r: SourceLocation opt
         Some (
             Lambda (
                 valuesFn,
-                Value (NewTuple ([ selector; Value (NewArray (ArrayValues bodies, tree.Type, MutableArray), None) ], false), None),
+                Value (
+                    NewTuple (
+                        [
+                            selector
+                            Value (NewArray (ArrayValues bodies, tree.Type, MutableArray), None)
+                        ],
+                        false
+                    ),
+                    None
+                ),
                 None
             )
         )
@@ -632,11 +662,19 @@ module internal Calls =
             match info.Args with
             | [ read; arms ] ->
                 Lower.site helper read arms r
-                |> Option.map (fun packed -> Call (callee, { info with Args = [ read; Value (Null Any, None); packed ] }, t, r))
+                |> Option.map (fun packed ->
+                    Call (
+                        callee,
+                        { info with
+                            Args = [ read; Value (Null Any, None); packed ]
+                        },
+                        t,
+                        r
+                    ))
             | _ -> None
         | _ -> None
 
-/// <summary>Placed on <c>Arms.Match</c>: Fable lowers every call of it, and call sites carry no attribute.</summary>
+/// <summary>Placed on <c>Arms.Match</c>: Fable lowers every call of it; the attribute is required only on the member.</summary>
 type CaseArmsAttribute() =
     inherit MemberDeclarationPluginAttribute()
     override _.FableMinimumVersion = "5.0"
@@ -644,7 +682,8 @@ type CaseArmsAttribute() =
     override _.Transform(_: PluginHelper, _: File, decl: MemberDecl) = decl
 
     override _.TransformCall(helper: PluginHelper, _: MemberFunctionOrValue, expr: Expr) =
-        Calls.lower helper expr |> Option.defaultValue expr
+        Calls.lower helper expr
+        |> Option.defaultValue expr
 ```
 
 - [ ] **Step 5: Create the runtime project**
@@ -670,7 +709,6 @@ type CaseArmsAttribute() =
     <PackageReference Update="FSharp.Core" Version="10.1.401" />
     <InternalsVisibleTo Include="RepresentationChecks" />
   </ItemGroup>
-  <Import Project="Ranvier.View.Arms.targets" />
 </Project>
 ```
 
@@ -679,15 +717,24 @@ type CaseArmsAttribute() =
 ```xml
 <Project>
   <!--
-  Fable discovers plugins among the compilation's assembly references. `dotnet fable` evaluates projects without
-  building them, so the plugin assembly is built beforehand:
+  The Arms.Match opt-in for a project compiled by Fable. The plugin assembly must exist before `dotnet fable` runs:
   dotnet build experiments/Ranvier.View.Arms.FablePlugin/Ranvier.View.Arms.FablePlugin.fsproj -c Release
   -->
+  <PropertyGroup>
+    <RanvierArmsPluginDir Condition="'$(RanvierArmsPluginDir)' == ''">$(MSBuildThisFileDirectory)../Ranvier.View.Arms.FablePlugin/bin/Release/netstandard2.0/</RanvierArmsPluginDir>
+  </PropertyGroup>
+  <!-- RANVIER_ARMS_PLUGIN selects the plugin-lowered Arms.Match; without it a Fable call of Arms.Match fails with AM005. -->
+  <PropertyGroup Condition="'$(FABLE_COMPILER)' == 'true'">
+    <DefineConstants>$(DefineConstants);RANVIER_ARMS_PLUGIN</DefineConstants>
+  </PropertyGroup>
   <ItemGroup Condition="'$(FABLE_COMPILER)' == 'true'">
-    <Reference Include="$(MSBuildThisFileDirectory)../Ranvier.View.Arms.FablePlugin/bin/Release/netstandard2.0/Ranvier.View.Arms.FablePlugin.dll" />
-    <!-- The plugin attribute on Arms.Match derives from a Fable.AST type, so the compilation references Fable.AST too. -->
-    <Reference Include="$(MSBuildThisFileDirectory)../Ranvier.View.Arms.FablePlugin/bin/Release/netstandard2.0/Fable.AST.dll" />
+    <Reference Include="$(RanvierArmsPluginDir)Ranvier.View.Arms.FablePlugin.dll" />
+    <!-- Fable.AST.dll: the base type of the plugin attribute on Arms.Match. -->
+    <Reference Include="$(RanvierArmsPluginDir)Fable.AST.dll" />
   </ItemGroup>
+  <Target Name="RanvierArmsPluginExists" BeforeTargets="ResolveAssemblyReferences" Condition="'$(FABLE_COMPILER)' == 'true'">
+    <Error Condition="!Exists('$(RanvierArmsPluginDir)Ranvier.View.Arms.FablePlugin.dll')" Text="Ranvier.View.Arms.FablePlugin.dll is missing from $(RanvierArmsPluginDir). Build the plugin first: dotnet build experiments/Ranvier.View.Arms.FablePlugin/Ranvier.View.Arms.FablePlugin.fsproj -c Release" />
+  </Target>
 </Project>
 ```
 
@@ -753,6 +800,11 @@ let noArm =
 /// <summary>AM007.</summary>
 [<Literal>]
 let unsupported = "Arms.Match: this pattern form is not supported."
+
+/// <summary>A call with no source location, from which the plugin names its emitted locals.</summary>
+[<Literal>]
+let noRange =
+    "Arms.Match: the call carries no source location, from which the emitted names of its site derive."
 ```
 
 `experiments/Ranvier.View.Arms/Errors.fs`:
@@ -770,7 +822,7 @@ type BuildTimeReadException(variable: string, message: string) =
     /// <summary>The pattern variable, or the union field when the compiler removed the binding.</summary>
     member _.Variable = variable
 
-/// <summary>A site the .NET lowering rejects for a reason other than a build-time read.</summary>
+/// <summary>A site rejected by the .NET lowering: AM003, AM004, AM006 or AM007.</summary>
 type ArmsMatchException(message: string) =
     inherit InvalidOperationException(message)
 #endif
@@ -797,7 +849,7 @@ module internal Ranvier.View.Arms.Cells
 
 open Ranvier.View.Foundation.Representation
 
-/// <summary>The payload reader of each target's mounted arm for one instance.</summary>
+/// <summary>The payload reader of each target's mounted arm for an instance.</summary>
 [<AllowNullLiteral>]
 type Slots() =
     let readers = ResizeArray<unit -> obj array>()
@@ -836,7 +888,8 @@ let private slotsOf (table: obj) (instance: obj) : Slots =
 #else
 open System.Runtime.CompilerServices
 
-let private newTable () : obj = ConditionalWeakTable<obj, Slots>() :> obj
+let private newTable () : obj =
+    ConditionalWeakTable<obj, Slots>() :> obj
 
 let private tryFind (table: obj) (instance: obj) : Slots =
     match (table :?> ConditionalWeakTable<obj, Slots>).TryGetValue instance with
@@ -844,18 +897,19 @@ let private tryFind (table: obj) (instance: obj) : Slots =
     | _ -> null
 
 let private slotsOf (table: obj) (instance: obj) : Slots =
-    (table :?> ConditionalWeakTable<obj, Slots>).GetValue (instance, fun _ -> Slots ())
+    (table :?> ConditionalWeakTable<obj, Slots>).GetValue(instance, fun _ -> Slots ())
 #endif
 
 [<Sealed>]
 type Cells internal (table: obj) =
     member internal _.Table = table
 
-let create () = Cells (newTable ())
+let create () =
+    Cells (newTable ())
 
 /// <summary>Registers the arm's payload reader for the instance and target.</summary>
 let enter (cells: Cells) (_: Setup) (instance: obj) (target: int) (values: unit -> obj array) : unit =
-    (slotsOf cells.Table instance).Set (target, values)
+    (slotsOf cells.Table instance).Set(target, values)
 
 /// <summary>The bound values of the reader's own arm: the pattern variables, then the matched value.</summary>
 let values (cells: Cells) (instance: obj) (target: int) : obj array =
@@ -864,10 +918,7 @@ let values (cells: Cells) (instance: obj) (target: int) : obj array =
     | slots ->
         let read = slots.Get target
 
-        if isNull (box read) then
-            Errors.noArm ()
-        else
-            read ()
+        if isNull (box read) then Errors.noArm () else read ()
 ```
 
 `experiments/Ranvier.View.Arms/Site.fs` (final in this task):
@@ -883,12 +934,7 @@ open Ranvier.View.Foundation.Sugar
 /// One arm per body, built when the site is built. The same target keeps its arm and replaces its bound values;
 /// another target remounts. A body's instance is the enclosing instance.
 /// </summary>
-let create
-    (cells: Cells.Cells)
-    (read: 'inst -> 'u)
-    (select: 'u -> int * obj array)
-    (bodies: TemplateView<'inst> array)
-    : TemplateView<'inst> =
+let create (cells: Cells.Cells) (read: 'inst -> 'u) (select: 'u -> int * obj array) (bodies: TemplateView<'inst> array) : TemplateView<'inst> =
     let definitions =
         bodies
         |> Array.mapi (fun target body ->
@@ -919,7 +965,8 @@ open Ranvier.View.Foundation.Template
 /// <summary>The call site of an Arms.Match call, prefixed to its exception messages.</summary>
 type At = { File: string; Line: int }
 
-let private located (at: At) (message: string) = sprintf "%s(%d): %s" at.File at.Line message
+let private located (at: At) (message: string) =
+    sprintf "%s(%d): %s" at.File at.Line message
 
 let private refersTo (control: Set<Var>) (expr: Expr) =
     expr.GetFreeVars () |> Seq.exists control.Contains
@@ -997,20 +1044,29 @@ let lower (cells: Cells.Cells) (at: At) (arms: Expr<'u -> TemplateView<'inst>>) 
 
         let rec visit (expr: Expr) =
             match expr with
-            | Lambda (argument, inner) when argument.Type = typeof<'inst> && refersTo slotSet inner ->
+            | Lambda (argument, inner) when
+                argument.Type = typeof<'inst>
+                && refersTo slotSet inner
+                ->
                 let values = Var ("values", typeof<obj array>)
 
                 let substituted =
                     inner.Substitute (fun var ->
                         match List.tryFindIndex ((=) var) slots with
                         | Some field ->
-                            Some (Expr.Call (unboxMethod.MakeGenericMethod var.Type, [ Expr.Call (getMethod, [ Expr.Var values; Expr.Value field ]) ]))
+                            Some (
+                                Expr.Call (unboxMethod.MakeGenericMethod var.Type, [ Expr.Call (getMethod, [ Expr.Var values; Expr.Value field ]) ])
+                            )
                         | None -> None)
 
                 let current =
                     Expr.Call (
                         valuesMethod,
-                        [ Expr.Value (box cells, typeof<Cells.Cells>); Expr.Coerce (Expr.Var argument, typeof<obj>); Expr.Value target ]
+                        [
+                            Expr.Value (box cells, typeof<Cells.Cells>)
+                            Expr.Coerce (Expr.Var argument, typeof<obj>)
+                            Expr.Value target
+                        ]
                     )
 
                 Expr.Lambda (argument, Expr.Let (values, current, substituted))
@@ -1020,7 +1076,10 @@ let lower (cells: Cells.Cells) (at: At) (arms: Expr<'u -> TemplateView<'inst>>) 
 
         let lowered = visit body
 
-        match lowered.GetFreeVars () |> Seq.tryFind slotSet.Contains with
+        match
+            lowered.GetFreeVars ()
+            |> Seq.tryFind slotSet.Contains
+        with
         | Some var -> raise (BuildTimeReadException (var.Name, located at (Diagnostics.outsideReader var.Name)))
         | None -> lowered
 
@@ -1032,7 +1091,9 @@ let lower (cells: Cells.Cells) (at: At) (arms: Expr<'u -> TemplateView<'inst>>) 
                 |> unbox<TemplateView<'inst>>
         |]
 
-    LeafExpressionConverter.EvaluateQuotation selector |> unbox<'u -> int * obj array>, bodies
+    LeafExpressionConverter.EvaluateQuotation selector
+    |> unbox<'u -> int * obj array>,
+    bodies
 #endif
 ```
 
@@ -1042,7 +1103,6 @@ let lower (cells: Cells.Cells) (at: At) (arms: Expr<'u -> TemplateView<'inst>>) 
 namespace Ranvier.View.Arms
 
 open System
-open System.ComponentModel
 open System.Diagnostics.CodeAnalysis
 open Ranvier.View.Foundation.Template
 #if !FABLE_COMPILER
@@ -1052,24 +1112,28 @@ open Microsoft.FSharp.Quotations
 /// <summary>Arm sites written as a plain F# match: one arm per match target.</summary>
 [<AbstractClass; Sealed>]
 type Arms =
-#if FABLE_COMPILER
+#if FABLE_COMPILER && RANVIER_ARMS_PLUGIN
     /// <summary>One arm per match target of <c>arms</c>; the Ranvier.View.Arms Fable plugin supplies <c>lowered</c>.</summary>
     [<Ranvier.View.Arms.FablePlugin.CaseArms>]
-    static member Match
-        (read: 'inst -> 'u, arms: 'u -> TemplateView<'inst>, [<EditorBrowsable(EditorBrowsableState.Never)>] ?lowered: obj)
-        : TemplateView<'inst> =
+    static member Match(read: 'inst -> 'u, arms: 'u -> TemplateView<'inst>, ?lowered: obj) : TemplateView<'inst> =
         match lowered with
         | Some packed ->
             let cells = Cells.create ()
             let lower = unbox<Func<Func<obj, int, obj array>, obj>> packed
 
             let select, bodies =
-                unbox<('u -> int * obj array) * TemplateView<'inst> array> (
+                unbox<('u -> int * obj array) * TemplateView<'inst> array>(
                     lower.Invoke (Func<obj, int, obj array>(fun instance target -> Cells.values cells instance target))
                 )
 
             Site.create cells read select bodies
         | None -> Errors.noPlugin ()
+#else
+#if FABLE_COMPILER
+    /// <summary>AM005: the project compiled by Fable does not import Ranvier.View.Arms.targets.</summary>
+    [<Obsolete(Diagnostics.noPlugin, true)>]
+    static member Match(read: 'inst -> 'u, arms: 'u -> TemplateView<'inst>) : TemplateView<'inst> =
+        Errors.noPlugin ()
 #else
     /// <summary>One arm per match target of <c>arms</c>, lowered from its quotation when the site is built.</summary>
     [<RequiresUnreferencedCode(Diagnostics.reflection); RequiresDynamicCode(Diagnostics.reflection)>]
@@ -1089,6 +1153,7 @@ type Arms =
         let cells = Cells.create ()
         let select, bodies = Quoted.lower cells at arms
         Site.create cells read select bodies
+#endif
 #endif
 ```
 
@@ -1119,6 +1184,8 @@ dotnet fable experiments/Ranvier.View.Arms/Checks/Discovery/Discovery.fsproj --o
 node experiments/Ranvier.View.Arms/Checks/Discovery/out/Main.js > C:/Users/shaya/.claude/jobs/7fee9ca9/tmp/arms-discovery-fable.txt
 diff --strip-trailing-cr C:/Users/shaya/.claude/jobs/7fee9ca9/tmp/arms-discovery-net.txt C:/Users/shaya/.claude/jobs/7fee9ca9/tmp/arms-discovery-fable.txt
 rtk grep -c "armsValues_L" experiments/Ranvier.View.Arms/Checks/Discovery/out/Main.js
+test ! -e experiments/Ranvier.View.Arms/Checks/Discovery/bin/Release/net10.0/Ranvier.View.Arms.FablePlugin.dll
+test ! -e experiments/Ranvier.View.Arms/Checks/Discovery/bin/Release/net10.0/Fable.AST.dll
 ```
 
 Expected: `diff` prints nothing; the .NET file is exactly
@@ -1129,7 +1196,7 @@ Loading 40|<!--[r--><div class="loader"><!--[a:a8ebc344--><progress max="100" va
 Loaded done 3|<!--[r--><div class="loader"><!--[a:646a1db6--><pre>done<!--!--> x<!--!-->3</pre><!--]--></div><!--]-->
 ```
 
-and `Main.js` names `armsValues_L` at least once. If `dotnet fable` fails with "The type 'CaseArms' is not defined", Fable did not set `FABLE_COMPILER` as an MSBuild property during cracking: remove the `Condition` from the `.targets` `ItemGroup` (the spec's fallback), rerun this step, and record it in Step 8. If it fails with a plugin load error, record the message and stop: the netstandard2.0 load is the phase-1 question.
+and `Main.js` names `armsValues_L` at least once, and the .NET output holds neither the plugin nor `Fable.AST.dll`. If `dotnet fable` fails with FS0101 naming AM005, Fable did not set `FABLE_COMPILER` as an MSBuild property during cracking: remove the `Condition`s from the `.targets` (the spec's fallback), rerun this step, and record it in Step 8. If it fails with a plugin load error, record the message and stop: the netstandard2.0 load is the phase-1 question.
 
 - [ ] **Step 8: Record the discovery results**
 
@@ -1178,7 +1245,8 @@ Start of phase: `git fetch origin && git merge origin/master` (message file with
 
 **Files:**
 - Modify: `experiments/Ranvier.View.Arms.FablePlugin/Lower.fs` (replaced whole)
-- Create: `experiments/Ranvier.View.Arms.FablePlugin/Tests/PluginTests.fsx`
+- Create: `experiments/Ranvier.View.Arms.FablePlugin/Tests/PluginTests.fsx`, `Tests/sourcemap.mjs`
+- Create: `experiments/Ranvier.View.Arms.FablePlugin/Tests/NoTargets/NoTargets.fsproj`, `Tests/NoTargets/Site.fs` (a project without the `.targets`)
 - Create: `experiments/Ranvier.View.Arms.FablePlugin/Tests/Fixtures/PluginFixtures.fsproj`, `Types.fs`, `Sites.fs`, `Bad/AM001.fs`, `Bad/AM001b.fs`, `Bad/AM002.fs`, `Bad/AM003.fs`, `Bad/AM004.fs`, `Bad/AM007.fs`
 - Create: `experiments/Ranvier.View.Arms.FablePlugin/Tests/expected/Sites.js` (written by `--update`)
 - Modify: `.fantomasignore` (the fixtures keep the line numbers the tests assert, and their emitted names)
@@ -1448,11 +1516,54 @@ let site = Component.template (fun _ (p: Point) -> p) (div () { Arms.Match ((fun
 
 The five `let site` lines are lines 10, 13, 16, 19 and 22.
 
+A project that references `Ranvier.View.Arms` and does not import the `.targets` (Decision 17: AM005 at the call, line 12, column 13). `experiments/Ranvier.View.Arms.FablePlugin/Tests/NoTargets/NoTargets.fsproj`:
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- An app that references Ranvier.View.Arms without importing Ranvier.View.Arms.targets: PluginTests.fsx expects the compile to fail. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Site.fs" />
+    <ProjectReference Include="../../../Ranvier.View.Arms/Ranvier.View.Arms.fsproj" />
+    <PackageReference Update="FSharp.Core" Version="10.1.401" />
+  </ItemGroup>
+</Project>
+```
+
+`experiments/Ranvier.View.Arms.FablePlugin/Tests/NoTargets/Site.fs`:
+
+```fsharp
+module NoTargets.Site
+
+open global.Ranvier
+open Ranvier.View.Foundation.Template
+open Ranvier.View.Foundation.Sugar
+open Ranvier.View.Arms
+
+let site =
+    Component.template
+        (fun _ (state: Signal<int option>) -> state)
+        (div () {
+            Arms.Match (
+                (fun (state: Signal<int option>) -> state.Value),
+                function
+                | Some n -> b () { fun _ -> string n }
+                | None -> span () { "none" }
+            )
+        })
+```
+
 Add to `.fantomasignore`:
 
 ```
 # The plugin fixtures keep the lines and columns PluginTests.fsx asserts.
 experiments/Ranvier.View.Arms.FablePlugin/Tests/Fixtures/
+experiments/Ranvier.View.Arms.FablePlugin/Tests/NoTargets/
 ```
 
 - [ ] **Step 3: Write the plugin tests**
@@ -1484,26 +1595,47 @@ let check (name: string) (ok: bool) (detail: string) =
         failures.Add (name + ": " + detail)
         printfn "FAIL %s" name
 
-/// Runs dotnet fable on the fixtures with the defines, into its own folder; the exit code and the whole output.
-let fable (name: string) (defines: string list) =
-    let outDir = Path.Combine (scratch, name)
-
-    let args =
-        [ "fable"; project; "--outDir"; outDir; "--configuration"; "Release"; "--noCache" ]
-        @ (defines |> List.collect (fun define -> [ "--define"; define ]))
-
+/// Runs a process from the repository root; its exit code and its whole output.
+let exec (file: string) (args: string list) =
     let info =
-        ProcessStartInfo ("dotnet", args, WorkingDirectory = repo, RedirectStandardOutput = true, RedirectStandardError = true)
+        ProcessStartInfo (file, args, WorkingDirectory = repo, RedirectStandardOutput = true, RedirectStandardError = true)
 
     use run = Process.Start info
     let output = run.StandardOutput.ReadToEndAsync ()
     let errors = run.StandardError.ReadToEndAsync ()
     run.WaitForExit ()
-    run.ExitCode, outDir, output.Result + errors.Result
+    run.ExitCode, output.Result + errors.Result
 
-let normalise (text: string) = text.Replace ("\r\n", "\n")
+/// Runs dotnet fable on a fixtures project with the defines and extra arguments, into its own folder.
+let fableOf (fixtures: string) (name: string) (defines: string list) (extra: string list) =
+    let outDir = Path.Combine (scratch, name)
 
-let code, outDir, log = fable "good" []
+    let code, log =
+        exec
+            "dotnet"
+            ([ "fable"; fixtures; "--outDir"; outDir; "--configuration"; "Release"; "--noCache" ]
+             @ (defines |> List.collect (fun define -> [ "--define"; define ]))
+             @ extra)
+
+    code, outDir, log
+
+let fable name defines extra = fableOf project name defines extra
+
+/// <summary>Line endings unified, and each site suffix (L<line>C<column>) replaced by its ordinal in the file.</summary>
+let normalise (text: string) =
+    let ordinals = Collections.Generic.Dictionary<string, int>()
+
+    Regex.Replace (
+        text.Replace ("\r\n", "\n"),
+        @"L\d+C\d+",
+        fun found ->
+            if not (ordinals.ContainsKey found.Value) then
+                ordinals[found.Value] <- ordinals.Count + 1
+
+            "S" + string ordinals[found.Value]
+    )
+
+let code, outDir, log = fable "good" [] [ "--sourceMaps" ]
 check "the good fixtures compile" (code = 0) log
 
 if code = 0 then
@@ -1520,37 +1652,98 @@ if code = 0 then
             (File.Exists expected && normalise (File.ReadAllText emitted) = normalise (File.ReadAllText expected))
             ("diff " + emitted + " " + expected)
 
+    // Each prologue maps back to the line of the reader it opens (spec, IDE experience).
+    let mapped, mapLog = exec "node" [ Path.Combine (here, "sourcemap.mjs"); emitted; Path.Combine (here, "Fixtures", "Sites.fs") ]
+    check "each prologue maps to its reader's source line" (mapped = 0) mapLog
+
+// The reported column is asserted where the range is the identifier or the call (AM001, AM003, AM004); for AM001b it is
+// the field read, and for AM002 and AM007 the expression Fable holds, so only the line is asserted.
 let bad =
     [
-        "BAD_AM001", "AM001.fs", 17, "Arms.Match: 'text' is read outside a reader of the instance. Read it inside a lambda over the instance, such as (fun _ -> text)."
-        "BAD_AM001B", "AM001b.fs", 17, "Arms.Match: the field 'text' of 'Loaded' is read outside a reader of the instance. Read it inside a lambda over the instance, such as (fun _ -> text)."
-        "BAD_AM002", "AM002.fs", 17, "Arms.Match: 'text' is read inside a lambda over 'unit -> string', which is not the instance type 'Signal<Load>'. Pass the value to the nested view through its items or props."
-        "BAD_AM003", "AM003.fs", 16, "Arms.Match takes a function literal as its second argument, such as (function | Case x -> ...)."
-        "BAD_AM004_INT", "AM004.fs", 10, "Arms.Match: the instance type 'int' is not an object type. An arm site keys each arm's payload by its instance; use a record, class, union or function instance."
-        "BAD_AM004_STRING", "AM004.fs", 13, "Arms.Match: the instance type 'string' is not an object type. An arm site keys each arm's payload by its instance; use a record, class, union or function instance."
-        "BAD_AM004_UNIT", "AM004.fs", 16, "Arms.Match: the instance type 'unit' is not an object type. An arm site keys each arm's payload by its instance; use a record, class, union or function instance."
-        "BAD_AM004_OPTION", "AM004.fs", 19, "Arms.Match: the instance type 'int option' is not an object type. An arm site keys each arm's payload by its instance; use a record, class, union or function instance."
-        "BAD_AM004_STRUCT", "AM004.fs", 22, "Arms.Match: the instance type 'Point' is not an object type. An arm site keys each arm's payload by its instance; use a record, class, union or function instance."
-        "BAD_AM007", "AM007.fs", 18, "Arms.Match: this pattern form is not supported."
+        "BAD_AM001", "AM001.fs", 17, Some 68, "Arms.Match: 'text' is read outside a reader of the instance. Read it inside a lambda over the instance, such as (fun _ -> text)."
+        "BAD_AM001B", "AM001b.fs", 17, None, "Arms.Match: the field 'text' of 'Loaded' is read outside a reader of the instance. Read it inside a lambda over the instance, such as (fun _ -> text)."
+        "BAD_AM002", "AM002.fs", 17, None, "Arms.Match: 'text' is read inside a lambda over 'unit -> string', which is not the instance type 'Signal<Load>'. Pass the value to the nested view through its items or props."
+        "BAD_AM003", "AM003.fs", 16, Some 73, "Arms.Match takes a function literal as its second argument, such as (function | Case x -> ...)."
+        "BAD_AM004_INT", "AM004.fs", 10, Some 63, "Arms.Match: the instance type 'int' is not an object type. An arm site keys each arm's payload by its instance; use a record, class, union or function instance."
+        "BAD_AM004_STRING", "AM004.fs", 13, Some 66, "Arms.Match: the instance type 'string' is not an object type. An arm site keys each arm's payload by its instance; use a record, class, union or function instance."
+        "BAD_AM004_UNIT", "AM004.fs", 16, Some 64, "Arms.Match: the instance type 'unit' is not an object type. An arm site keys each arm's payload by its instance; use a record, class, union or function instance."
+        "BAD_AM004_OPTION", "AM004.fs", 19, Some 70, "Arms.Match: the instance type 'int option' is not an object type. An arm site keys each arm's payload by its instance; use a record, class, union or function instance."
+        "BAD_AM004_STRUCT", "AM004.fs", 22, Some 65, "Arms.Match: the instance type 'Point' is not an object type. An arm site keys each arm's payload by its instance; use a record, class, union or function instance."
+        "BAD_AM007", "AM007.fs", 18, None, "Arms.Match: this pattern form is not supported."
     ]
 
-for define, file, line, message in bad do
-    let code, _, log = fable (define.ToLowerInvariant ()) [ define ]
-    let at = Regex (Regex.Escape file + @"\((\d+),")
+/// Whether some line of the log holds the message at file(line,column), or at file(line, when the column is None.
+let reportedAt (log: string) (file: string) (line: int) (column: int option) (message: string) =
+    let at = Regex (Regex.Escape file + @"\((\d+),(\d+)\)")
 
-    let reported =
-        log.Split '\n'
-        |> Array.exists (fun entry ->
-            entry.Contains message
-            && (let found = at.Match entry in found.Success && found.Groups[1].Value = string line))
+    log.Split '\n'
+    |> Array.exists (fun entry ->
+        let found = at.Match entry
 
-    check (sprintf "%s fails at %s(%d) with its message" define file line) (code = 1 && reported) log
+        entry.Contains message
+        && found.Success
+        && found.Groups[1].Value = string line
+        && (column |> Option.forall (fun column -> found.Groups[2].Value = string column)))
+
+for define, file, line, column, message in bad do
+    let code, _, log = fable (define.ToLowerInvariant ()) [ define ] []
+    check (sprintf "%s fails at %s(%d) with its message" define file line) (code = 1 && reportedAt log file line column message) log
+
+// A project that references Ranvier.View.Arms without importing the .targets fails at its call with AM005.
+let missing, _, missingLog =
+    fableOf (Path.Combine (here, "NoTargets", "NoTargets.fsproj")) "no-targets" [] []
+
+check
+    "a project without the .targets fails at its Arms.Match call with AM005"
+    (missing = 1
+     && reportedAt
+         missingLog
+         "Site.fs"
+         12
+         (Some 13)
+         "This construct is deprecated. Arms.Match needs the Ranvier.View.Arms Fable plugin; import Ranvier.View.Arms.targets in the project compiled by Fable.")
+    missingLog
 
 if failures.Count > 0 then
     for failure in failures do
         eprintfn "%s" failure
 
     exit 1
+```
+
+`experiments/Ranvier.View.Arms.FablePlugin/Tests/sourcemap.mjs` (reads `@jridgewell/trace-mapping` from the Playground's `node_modules`; run `npm ci` there first):
+
+```js
+// Maps each Arms.Match prologue call (armsValues_L<line>C<column>(...)) of an emitted file back to its F# source line,
+// and exits 1 unless every one lands inside a reader: on a line holding "fun" or "Func<", or at most two lines below one.
+// Usage: node sourcemap.mjs <emitted .js> <F# source>   (the .js.map beside the .js; Fable --sourceMaps writes it)
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+
+const require = createRequire(new URL("../../../examples/Fable.Ranvier.Playground/package.json", import.meta.url));
+const { TraceMap, originalPositionFor } = require("@jridgewell/trace-mapping");
+const [emitted, source] = process.argv.slice(2);
+const map = new TraceMap(readFileSync(emitted + ".map", "utf8"));
+const lines = readFileSync(source, "utf8").split(/\r?\n/);
+const prologue = /armsValues_L\d+C\d+\(/g;
+const opensReader = row => row >= 0 && /\bfun\b|Func</.test(lines[row] ?? "");
+const misplaced = [];
+let checked = 0;
+
+readFileSync(emitted, "utf8").split("\n").forEach((text, index) => {
+  for (const found of text.matchAll(prologue)) {
+    checked++;
+    const original = originalPositionFor(map, { line: index + 1, column: found.index });
+    const at = original.line == null ? -1 : original.line - 1;
+    if (![at, at - 1, at - 2].some(opensReader)) misplaced.push(`${index + 1}:${found.index} -> ${original.line}: ${(lines[at] ?? "").trim()}`);
+  }
+});
+
+console.log(`${checked} prologues checked`);
+if (checked === 0 || misplaced.length > 0) {
+  console.error(checked === 0 ? "no prologue found" : misplaced.join("\n"));
+  process.exit(1);
+}
 ```
 
 - [ ] **Step 4: Run the plugin tests to verify they fail**
@@ -1560,14 +1753,14 @@ dotnet build experiments/Ranvier.View.Arms.FablePlugin/Ranvier.View.Arms.FablePl
 dotnet fsi experiments/Ranvier.View.Arms.FablePlugin/Tests/PluginTests.fsx
 ```
 
-Expected: FAIL. `the emitted sites equal expected/Sites.js` fails (no expectation yet); `BAD_AM001B`, `BAD_AM002`, every `BAD_AM004_*` and `BAD_AM007` fail (Task 1's lowering reports AM001 or nothing for them); the good fixtures may fail to compile with an AM001 on `bodies` (the `let view` leaf).
+Expected: FAIL. `the emitted sites equal expected/Sites.js` fails (no expectation yet); `BAD_AM001B`, `BAD_AM002`, every `BAD_AM004_*` and `BAD_AM007` fail (Task 1's lowering reports AM001 or nothing for them); the good fixtures may fail to compile with an AM001 on `bodies` (the `let view` leaf); the source-map check fails (Task 1's prologues carry no range). The no-targets check passes already: Task 1's review fixes added the obsolete overload.
 
 - [ ] **Step 5: Replace `Lower.fs` with the full rules**
 
 `experiments/Ranvier.View.Arms.FablePlugin/Lower.fs`:
 
 ```fsharp
-/// <summary>The lowering of one Arms.Match call into a target selector and one case body per target.</summary>
+/// <summary>The lowering of an Arms.Match call into a target selector and one case body per target.</summary>
 module internal Ranvier.View.Arms.FablePlugin.Lower
 
 open Fable
@@ -1717,15 +1910,14 @@ let rec private hidden (control: Set<string>) (expr: Expr) : SourceLocation opti
     | Sequential xs when not xs.IsEmpty -> hidden control (List.last xs)
     | _ -> None
 
-let mutable private unnamed = 0
-
-/// <summary>The suffix of a site's emitted names: the call's line and column.</summary>
-let siteName (r: SourceLocation option) =
-    match r with
-    | Some r -> sprintf "L%dC%d" r.start.line r.start.column
-    | None ->
-        unnamed <- unnamed + 1
-        sprintf "N%d" unnamed
+/// <summary>
+/// The suffix of a site's emitted names: the line and column of the first available range, in the order given (the
+/// call, its arms, its read).
+/// </summary>
+let siteName (ranges: SourceLocation option list) : string option =
+    ranges
+    |> List.tryPick id
+    |> Option.map (fun r -> sprintf "L%dC%d" r.start.line r.start.column)
 
 /// <summary>The parameter of a lambda or delegate over the instance type.</summary>
 let private readerArgument (instanceType: Type) (expr: Expr) : Ident option =
@@ -1796,19 +1988,21 @@ let private report (helper: PluginHelper) (matched: Ident) (instanceType: Type) 
     | None, Some (name, case, r) -> helper.LogError (Diagnostics.fieldOutsideReader name case, ?range = at r)
     | None, None -> helper.LogError (Diagnostics.outsideReader found.Ident.DisplayName, ?range = at found.Ident.Range)
 
-/// <summary>The packed function of one call, or None after reporting AM003 or AM004.</summary>
+/// <summary>The packed function of a call, or None after reporting AM003 or AM004.</summary>
 let site (helper: PluginHelper) (read: Expr) (arms: Expr) (r: SourceLocation option) : Expr option =
     let instanceType =
         match read.Type with
         | LambdaType (instance, _) -> instance
         | other -> other
 
-    match arms with
+    match arms, siteName [ r; arms.Range; read.Range ] with
     | _ when notObject helper instanceType ->
         helper.LogError (Diagnostics.notObject (show helper instanceType), ?range = r)
         None
-    | Lambda (matched, tree, _) ->
-        let name = siteName r
+    | Lambda _, None ->
+        helper.LogError Diagnostics.noRange
+        None
+    | Lambda (matched, tree, _), Some name ->
         let control = Set.singleton matched.Name
         let leaves = System.Collections.Generic.List<Ident list * Expr>()
 
@@ -5159,15 +5353,27 @@ In `.github/workflows/ci.yml`, before the `result:` job, add:
           cache-dependency-path: examples/Fable.Ranvier.Playground/package-lock.json
       - name: Restore tools
         run: dotnet tool restore
+      # sourcemap.mjs in the plugin tests reads the Playground's node_modules.
+      - name: Install npm packages
+        run: npm ci
+        working-directory: examples/Fable.Ranvier.Playground
       - name: Build the Fable plugin
         run: dotnet build experiments/Ranvier.View.Arms.FablePlugin/Ranvier.View.Arms.FablePlugin.fsproj -c Release
       - name: Run the plugin tests
         run: dotnet fsi experiments/Ranvier.View.Arms.FablePlugin/Tests/PluginTests.fsx
+      # The documented opt-in (a project reference and the .targets): the same server HTML on .NET and under Fable, and
+      # no plugin assembly in the .NET output.
+      - name: Run the discovery app on both targets
+        run: |
+          dotnet run --project experiments/Ranvier.View.Arms/Checks/Discovery/Discovery.fsproj -c Release > discovery-net.txt
+          dotnet fable experiments/Ranvier.View.Arms/Checks/Discovery/Discovery.fsproj --outDir experiments/Ranvier.View.Arms/Checks/Discovery/out -c Release --noCache
+          node experiments/Ranvier.View.Arms/Checks/Discovery/out/Main.js > discovery-fable.txt
+          diff --strip-trailing-cr discovery-net.txt discovery-fable.txt
+          grep -q armsValues_L experiments/Ranvier.View.Arms/Checks/Discovery/out/Main.js
+          test ! -e experiments/Ranvier.View.Arms/Checks/Discovery/bin/Release/net10.0/Ranvier.View.Arms.FablePlugin.dll
+          test ! -e experiments/Ranvier.View.Arms/Checks/Discovery/bin/Release/net10.0/Fable.AST.dll
       - name: Run the representation checks with the arms checks
         run: dotnet run --project experiments/Ranvier.View.Foundation/RepresentationChecks.fsproj -c Release
-      - name: Install npm packages
-        run: npm ci
-        working-directory: examples/Fable.Ranvier.Playground
       - name: Run the arms suites
         run: npm run test:arms
         working-directory: examples/Fable.Ranvier.Playground
@@ -5342,16 +5548,24 @@ Expected: `Arms.fs` gains `open Ranvier.View.Arms`, `loaderMatch`, `Folder` and 
 
 | Module | Contents | Page |
 | --- | --- | --- |
-| [`Ranvier.View.Arms`](https://github.com/shayanhabibi/Ranvier/blob/master/experiments/Ranvier.View.Arms/Arms.fs) | `Arms.Match`; on .NET `BuildTimeReadException` and `ArmsMatchException` | [Conditional arms](arms.md) |
+| [`Ranvier.View.Arms`](https://github.com/shayanhabibi/Ranvier/blob/master/experiments/Ranvier.View.Arms/Arms.fs) | `Arms.Match`; on .NET `BuildTimeReadException` and `ArmsMatchException` (both inherit `InvalidOperationException`, which shared code catches on both targets) | [Conditional arms](arms.md) |
 | [`Ranvier.View.Arms.FablePlugin`](https://github.com/shayanhabibi/Ranvier/tree/master/experiments/Ranvier.View.Arms.FablePlugin) | `CaseArmsAttribute`: the Fable plugin that lowers `Arms.Match` calls, referenced through `Ranvier.View.Arms.targets` | [Conditional arms](arms.md) |
 ```
 
 `docs/content/view/troubleshooting.md`, at the end of `## Compile errors`:
 
 ```markdown
-**FS0039 "The type 'CaseArms' is not defined" in `Arms.fs`.** The project `dotnet fable` compiles references
-`Ranvier.View.Arms` without the plugin assembly. Import `Ranvier.View.Arms.targets` in it, and build
-`experiments/Ranvier.View.Arms.FablePlugin` in Release first.
+**FS0101 "This construct is deprecated. Arms.Match needs the Ranvier.View.Arms Fable plugin" (AM005) at an
+`Arms.Match` call.** The project `dotnet fable` compiles references `Ranvier.View.Arms` without importing
+`Ranvier.View.Arms.targets`. Import it.
+
+**"Ranvier.View.Arms.FablePlugin.dll is missing from ..."** when `dotnet fable` starts: the plugin is not built in
+Release. Run `dotnet build experiments/Ranvier.View.Arms.FablePlugin -c Release`, or set `RanvierArmsPluginDir` to the
+folder of another build.
+
+**FS0039 "The type 'FablePlugin' is not defined" in `Arms.fs`.** The project defines `RANVIER_ARMS_PLUGIN` without
+importing the `.targets`, so the plugin assembly is missing from the compilation. Import the `.targets` instead of
+defining the symbol.
 
 **AM001 "Arms.Match: 'x' is read outside a reader of the instance"** (Fable compile; `BuildTimeReadException` on .NET).
 A pattern variable is used as a build-time value, for example as static text or as the argument of a helper that takes
@@ -5377,8 +5591,11 @@ a sequence, a type cast or a `try` at the top of a case body. Move the condition
 and at the end of `## Runtime errors`:
 
 ```markdown
-**AM005 "Arms.Match needs the Ranvier.View.Arms Fable plugin"**: a Fable build compiled `Arms.Match` without the
-plugin. Import `Ranvier.View.Arms.targets` in the project `dotnet fable` compiles, and build the plugin project first.
+Shared code that catches an `Arms.Match` rejection catches `InvalidOperationException`: `BuildTimeReadException` and
+`ArmsMatchException` exist on .NET only, and Fable raises `InvalidOperationException` with the same texts.
+
+**AM005 "Arms.Match needs the Ranvier.View.Arms Fable plugin"** when a site is built: the plugin assembly is
+referenced but did not run, for example under a Fable version below its `FableMinimumVersion`. Use Fable 5.
 
 **AM006 "Arms.Match: no arm of this site is mounted for the instance this reader received"**: a lambda over the
 instance type inside a case body received another value of that type, as a row whose item type equals the instance

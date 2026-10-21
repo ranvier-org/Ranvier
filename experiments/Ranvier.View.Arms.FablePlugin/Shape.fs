@@ -29,7 +29,7 @@ let private callShape (info: CallInfo) : Expr list * (Expr list -> CallInfo) =
             }
         | None -> { info with Args = xs }
 
-/// <summary>The direct children of an expression and its rebuilder; a lambda's binder is not a child.</summary>
+/// <summary>The direct subexpressions of an expression and its rebuilder.</summary>
 let children (expr: Expr) : Expr list * (Expr list -> Expr) =
     match expr with
     | Lambda (arg, body, n) -> [ body ], (fun xs -> Lambda (arg, xs.Head, n))

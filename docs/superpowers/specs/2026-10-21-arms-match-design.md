@@ -120,9 +120,17 @@ its rows and updates them.
 15. **No NativeAOT-compatible .NET path.** It would need a build-time lowering, the machinery the plugin avoids. Trimmed
     and NativeAOT apps use `matchWith`, and the annotation says so at publish.
 16. **One package at graduation.** `Ranvier.View.Arms` carries the plugin assembly and an auto-imported `.targets`, so
-    an app adds one reference and always gets the runtime with the plugin.
-17. **AM005 becomes a compile-time error through the follow-up analyzer.** Until then the `.targets` is part of the
-    opt-in and AM005 at site build is the backstop.
+    an app adds one reference and always gets the runtime with the plugin. The package declares `Fable.AST` as a NuGet
+    dependency, so NuGet unifies it with the `Fable.AST` of other plugin packages (a .NET build carries an unused
+    compile reference), and ships only `Ranvier.View.Arms.FablePlugin.dll` under `fable-plugin/`, from an explicit file
+    list: the `FSharp.Core.dll` the plugin build copies stays out. The experiment references the copied
+    `Fable.AST.dll` directly until the package exists; the pack work belongs to graduation.
+17. **AM005 is a compile-time error at the call.** The `.targets` defines `RANVIER_ARMS_PLUGIN` under Fable; without it,
+    Fable compiles an `Arms.Match` marked `[<Obsolete(..., true)>]`, so a project that references `Ranvier.View.Arms`
+    without importing the `.targets` fails with FS0101 "This construct is deprecated. Arms.Match needs the
+    Ranvier.View.Arms Fable plugin; ..." at each call. A project that defines the symbol but whose compilation lacks
+    the plugin assembly fails with FS0039 naming `FablePlugin` in `Arms.fs`; one whose plugin does not run raises AM005
+    at site build. The follow-up analyzer reports AM005 in the IDE.
 18. **The instance-type rule rejects `string`.** A JavaScript string is a primitive that `WeakMap` rejects, so accepting
     it on .NET alone would break "builds on one, builds on the other".
 
@@ -132,7 +140,7 @@ its rows and updates them.
 |---|---|---|
 | `experiments/Ranvier.View.Arms/Ranvier.View.Arms.fsproj` | net10.0, Fable sources | `Cells.fs`, `Site.fs`, `Quoted.fs` (.NET only), `Arms.fs`, `Diagnostics.fs`; references `Ranvier.View.Portable` |
 | `experiments/Ranvier.View.Arms.FablePlugin/Ranvier.View.Arms.FablePlugin.fsproj` | netstandard2.0 | `Shape.fs`, `Lower.fs`, `Plugin.fs`: the probe's `Plugin.fs` split by role; `[<assembly: ScanForPlugins>]` |
-| `experiments/Ranvier.View.Arms/Ranvier.View.Arms.targets` | MSBuild | adds the plugin assembly as a `Reference` when `'$(FABLE_COMPILER)' == 'true'` |
+| `experiments/Ranvier.View.Arms/Ranvier.View.Arms.targets` | MSBuild | when `'$(FABLE_COMPILER)' == 'true'`: defines `RANVIER_ARMS_PLUGIN`, adds the plugin assembly and `Fable.AST.dll` (the base type of the plugin attribute) as `Reference`s, and fails the build when the plugin assembly is missing; `RanvierArmsPluginDir` overrides its folder |
 | `experiments/Ranvier.View.Arms/Checks/` | both | fixtures, explicit twins, server checks, the golden server HTML |
 
 Versions:
@@ -153,13 +161,14 @@ two lines:
 ```
 
 Fable discovers plugins among the compilation's assembly references, and it compiles `Ranvier.View.Arms` from source
-inside the app's compilation, so the app's own references must contain the plugin assembly; the `.targets` adds it.
+inside the app's compilation with the app's references and defines; the `.targets` adds the plugin assembly,
+`Fable.AST.dll` and the `RANVIER_ARMS_PLUGIN` define.
 `dotnet fable` evaluates the project without building it, so the plugin assembly must exist beforehand: the Playground
 `compile` scripts and the CI jobs run `dotnet build experiments/Ranvier.View.Arms.FablePlugin -c Release` first.
-Phase 1 verifies that Fable sets the `FABLE_COMPILER` MSBuild property during project cracking; if it does not, the
-reference is unconditional and .NET builds carry an unused plugin assembly. When the view graduates to a package, one
-`Ranvier.View.Arms` package ships the plugin assembly under `fable-plugin/` and the `.targets` under `build/`, which
-NuGet imports automatically (decision 16).
+Fable sets the `FABLE_COMPILER` MSBuild property during project cracking (verified in phase 1), so .NET builds carry
+no plugin assembly. When the view graduates to a package, one `Ranvier.View.Arms` package ships the plugin assembly
+under `fable-plugin/` with a NuGet dependency on `Fable.AST`, and the `.targets` under `build/`, which NuGet imports
+automatically (decision 16).
 
 ## Public API
 
@@ -172,13 +181,17 @@ open Ranvier.View.Foundation.Template
 /// <summary>Arm sites written as a plain F# match: one arm per match target.</summary>
 [<AbstractClass; Sealed>]
 type Arms =
-#if FABLE_COMPILER
+#if FABLE_COMPILER && RANVIER_ARMS_PLUGIN
     [<Ranvier.View.Arms.FablePlugin.CaseArms>]
     static member Match:
         read: ('inst -> 'u) *
         arms: ('u -> TemplateView<'inst>) *
-        [<EditorBrowsable(EditorBrowsableState.Never)>] ?lowered: obj
+        ?lowered: obj
             -> TemplateView<'inst>
+#else
+#if FABLE_COMPILER
+    [<Obsolete(Diagnostics.noPlugin, true)>]
+    static member Match: read: ('inst -> 'u) * arms: ('u -> TemplateView<'inst>) -> TemplateView<'inst>
 #else
     [<RequiresUnreferencedCode(Diagnostics.reflection); RequiresDynamicCode(Diagnostics.reflection)>]
     static member Match:
@@ -188,20 +201,24 @@ type Arms =
         [<CallerLineNumber; Optional>] ?line: int
             -> TemplateView<'inst>
 #endif
+#endif
 
+// .NET only: shared code catches InvalidOperationException, which both types inherit and Fable raises.
+#if !FABLE_COMPILER
 /// <summary>A pattern variable read outside a reader of the instance, raised when a .NET site is built.</summary>
 type BuildTimeReadException =
     inherit System.InvalidOperationException
     /// <summary>The pattern variable, or the union field when the compiler removed the binding.</summary>
     member Variable: string
 
-/// <summary>A site the .NET lowering rejects for a reason other than a build-time read.</summary>
+/// <summary>A site rejected by the .NET lowering: AM003, AM004, AM006 or AM007.</summary>
 type ArmsMatchException =
     inherit System.InvalidOperationException
+#endif
 ```
 
-`?lowered` is filled by the plugin with the packed `(cells, select, bodies)` (`Plugin.fs:277-290`); a call that reaches
-the runtime without it raises AM005. Two internal modules complete the runtime:
+`?lowered` is filled by the plugin with a function from the cells reader to `(select, bodies)` (plan, Ruling 4); a call
+that reaches the runtime without it raises AM005. Two internal modules complete the runtime:
 
 ```fsharp
 module internal Cells =
@@ -313,7 +330,7 @@ for free bound variables after substitution (`QuotedArms.fs:142-147`).
 | AM002 | pattern variable inside a lambda over another type, e.g. a `forEach` row reader | `Arms.Match: 'text' is read inside a lambda over 'unit -> string', which is not the instance type 'Signal<Load>'. Pass the value to the nested view through its items or props.` | `BuildTimeReadException` with the same sentence |
 | AM003 | second argument not a function literal | `Arms.Match takes a function literal as its second argument, such as (function \| Case x -> ...).` | `ArmsMatchException`, same sentence |
 | AM004 | instance type is a value type, `string`, `unit`, an option or an enum | `Arms.Match: the instance type 'int' is not an object type. An arm site keys each arm's payload by its instance; use a record, class, union or function instance.` | `ArmsMatchException`, same sentence |
-| AM005 | Fable build without the plugin | — | raised at site build under Fable: `Arms.Match needs the Ranvier.View.Arms Fable plugin; import Ranvier.View.Arms.targets in the project compiled by Fable.` |
+| AM005 | Fable build without the `.targets` (no `RANVIER_ARMS_PLUGIN`), or with a plugin that does not run | compile error FS0101 at the call: `This construct is deprecated. Arms.Match needs the Ranvier.View.Arms Fable plugin; import Ranvier.View.Arms.targets in the project compiled by Fable.`; the same text raised at site build when the plugin is referenced but does not run | — |
 | AM007 | a decision node under a wrapper the walker does not decompose (decision 11) | `Arms.Match: this pattern form is not supported.` | `ArmsMatchException`, `<file>(<line>): ` + the same sentence |
 | AM006 | a reader over the instance type receives an instance with no arm of this site, e.g. a row whose item type equals the instance type | `Arms.Match: no arm of this site is mounted for the instance this reader received. A lambda over the instance type inside a case body runs with the arm's instance.` | same, as `ArmsMatchException` at read time |
 

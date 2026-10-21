@@ -3,7 +3,7 @@ module internal Ranvier.View.Arms.Cells
 
 open Ranvier.View.Foundation.Representation
 
-/// <summary>The payload reader of each target's mounted arm for one instance.</summary>
+/// <summary>The payload reader of each target's mounted arm for an instance.</summary>
 [<AllowNullLiteral>]
 type Slots() =
     let readers = ResizeArray<unit -> obj array>()

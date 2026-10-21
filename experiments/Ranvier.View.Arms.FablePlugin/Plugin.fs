@@ -31,7 +31,7 @@ module internal Calls =
             | _ -> None
         | _ -> None
 
-/// <summary>Placed on <c>Arms.Match</c>: Fable lowers every call of it, and call sites carry no attribute.</summary>
+/// <summary>Placed on <c>Arms.Match</c>: Fable lowers every call of it; the attribute is required only on the member.</summary>
 type CaseArmsAttribute() =
     inherit MemberDeclarationPluginAttribute()
     override _.FableMinimumVersion = "5.0"

@@ -16,5 +16,4 @@
     <PackageReference Update="FSharp.Core" Version="10.1.401" />
     <InternalsVisibleTo Include="RepresentationChecks" />
   </ItemGroup>
-  <Import Project="Ranvier.View.Arms.targets" />
 </Project>
