@@ -35,8 +35,8 @@ type DragBinding =
 /// </summary>
 /// <remarks>
 /// Every part creates its anime objects once the element is placed and reverts them when the instance is disposed. On an
-/// element whose exit follows the disposal, the part pauses its animations instead, so the exit starts from the current
-/// values; a paused animation leaves anime's engine on its next tick. The server omits every part.
+/// element whose exit, or whose ancestor's exit, follows the disposal, the part instead pauses its animations, so the exit
+/// starts from the current values, and stops its observers and listeners. The server omits every part.
 /// Under <c>Reactive.policy</c> <c>Reduced</c>, enter and flip do not play and an exit finishes at once.
 /// </remarks>
 [<RequireQualifiedAccess>]
@@ -47,8 +47,11 @@ module Motion =
 
     // Elements whose Motion exit runs.
     let private departing = weakSet ()
+    // Elements whose Motion enter runs.
+    let private arriving = weakSet ()
 #else
     let private departing: obj = null
+    let private arriving: obj = null
 #endif
 
     [<Emit("$0.add($1)")>]
@@ -57,7 +60,7 @@ module Motion =
     [<Emit("$0.delete($1)")>]
     let private forget (set: obj) (element: obj) : unit = jsNative
 
-    [<Emit("(r => typeof r.pause === 'function' && r.pause())($0)")>]
+    [<Emit("(r => { if (typeof r.pause === 'function') r.pause(); else if (r.animations) for (const k in r.animations) r.animations[k].pause(); })($0)")>]
     let private pauseIfPlayable (revertible: obj) : unit = jsNative
 
     [<Emit("((t, k, f) => { const previous = t[k]; t[k] = self => { if (previous) previous(self); f(self); }; })($0, $1, $2)")>]
@@ -72,8 +75,13 @@ module Motion =
     [<Emit("(e => { const top = e.offsetTop, left = e.offsetLeft, width = e.offsetWidth, height = e.offsetHeight, s = e.style; s.position = 'absolute'; s.top = top + 'px'; s.left = left + 'px'; s.width = width + 'px'; s.height = height + 'px'; s.margin = '0'; s.boxSizing = 'border-box'; })($0)")>]
     let private pinOutOfFlow (element: obj) : unit = jsNative
 
-    [<Emit("Array.prototype.filter.call($0.children, c => !$1.has(c))")>]
-    let private liveChildren (root: obj) (leaving: obj) : TS.Dom.Element array = jsNative
+    [<Emit("Array.prototype.filter.call($0.children, c => !$1.has(c) && !$2.has(c))")>]
+    let private liveChildren (root: obj) (leaving: obj) (entering: obj) : TS.Dom.Element array = jsNative
+
+    // Leaves the layout's visual properties (opacity, colours, borders, filters, clip paths, font size) to the parts that
+    // animate them, unless the layout parameters name one.
+    [<Emit("((l, p) => { const named = new Set([...(p.properties || []), ...Object.keys(p.enterFrom || {}), ...Object.keys(p.leaveTo || {}), ...Object.keys(p.swapAt || {})]); for (const n of ['opacity', 'fontSize', 'color', 'backgroundColor', 'borderRadius', 'border', 'filter', 'clipPath']) if (!named.has(n)) { l.properties.delete(n); l.recordedProperties.delete(n); } })($0, $1)")>]
+    let private geometryOnly (layout: AutoLayout) (parameters: LayoutParams) : unit = jsNative
 
     [<Emit("$0.children = $1")>]
     let private measureChildren (layout: AutoLayout) (children: TS.Dom.Element array) : unit = jsNative
@@ -92,6 +100,15 @@ module Motion =
 
     [<Emit("$0.setAttribute($1, $2)")>]
     let private setShape (element: obj) (attribute: string) (shape: string) : unit = jsNative
+
+    [<Emit("(d => { d.stop(); d.disable(); d.$target.classList.remove('is-disabled'); d.updateTicker.pause(); d.overshootTicker.pause(); d.resizeTicker.pause(); for (const k in d.animate.animations) d.animate.animations[k].pause(); d.resizeObserver.disconnect(); })($0)")>]
+    let private freezeDraggable (draggable: Draggable) : unit = jsNative
+
+    [<Emit("(s => { clearTimeout(s.resizeTimeout); s.resizeObserver.disconnect(); })($0)")>]
+    let private freezeSplitter (splitter: TextSplitter) : unit = jsNative
+
+    [<Emit("((e, names) => { const kept = names.map(n => e.getAttribute(n)); return () => names.forEach((n, i) => kept[i] == null ? e.removeAttribute(n) : e.setAttribute(n, kept[i])); })($0, $1)")>]
+    let private keepAttributes (element: obj) (names: string array) : unit -> unit = jsNative
 
     [<Emit("$0.scrollHeight")>]
     let private contentHeight (element: obj) : float = jsNative
@@ -125,7 +142,17 @@ module Motion =
     let private entering (play: 'inst -> TS.Dom.Element -> #ITickable) =
         Func<'inst, 'native, MotionContext, unit -> unit>(fun inst node context ->
             if context.Inserted && not (reduced ()) then
-                settle context (play inst (elementOf node) :> IRevertible)
+                let element = box node
+                let tickable = play inst (elementOf node) :> ITickable
+                mark arriving element
+                chain tickable "onComplete" (fun _ -> forget arriving element)
+                let stop = settle context tickable
+
+                let release () =
+                    forget arriving element
+                    stop ()
+
+                release
             else
                 nothing)
 
@@ -243,12 +270,14 @@ module Motion =
 
     /// <summary>
     /// FLIP for the rows of every region under the element: anime's <c>createLayout</c> over the element's element
-    /// children whose Motion exit has not started, recorded before each flush's region passes and animated once their
-    /// nodes and commits are in place.
+    /// children whose Motion enter or exit is not running, recorded before each flush's region passes and animated once
+    /// their nodes and commits are in place.
     /// </summary>
     /// <remarks>
-    /// <c>parameters</c> apply to every animation; <c>children</c> is replaced. The layout animates transforms through
-    /// WAAPI, and its leaving rows through <c>leaveTo</c>, so a row with a Motion exit is left out of the measurement.
+    /// <c>parameters</c> apply to every animation; <c>children</c> is replaced. A row whose Motion enter or exit is running is
+    /// left out of both measurements. The layout moves and resizes rows; their opacity, colours, borders, filters, clip
+    /// paths and font size stay with the parts that animate them, unless <c>parameters</c> name one in <c>properties</c>,
+    /// <c>enterFrom</c>, <c>leaveTo</c> or <c>swapAt</c>.
     /// </remarks>
     let flip (parameters: LayoutParams) : Part<'native, 'inst> =
         Hooks.reflow (fun _ node ->
@@ -267,15 +296,16 @@ module Motion =
 
                         if recorded.Value then
                             if isNull layout.Value then
-                                layout.Value <- Anime.layout (elementOf node, withKey parameters "children" (liveChildren root departing))
+                                layout.Value <- Anime.layout (elementOf node, withKey parameters "children" (liveChildren root departing arriving))
+                                geometryOnly layout.Value parameters
                             else
-                                measureChildren layout.Value (liveChildren root departing)
+                                measureChildren layout.Value (liveChildren root departing arriving)
                                 layout.Value.record () |> ignore
                 After =
                     fun () ->
                         if recorded.Value then
                             recorded.Value <- false
-                            measureChildren layout.Value (liveChildren root departing)
+                            measureChildren layout.Value (liveChildren root departing arriving)
                             layout.Value.animate () |> ignore
             })
 
@@ -329,31 +359,44 @@ module Motion =
 
     /// <summary>
     /// On an SVG geometry element: draws the stroke from its start to the fraction <c>read</c> returns, in 0..1, animating
-    /// to each new fraction; the first fraction is drawn at once.
+    /// to each new fraction; the first fraction is drawn at once. The cleanup restores the element's stroke attributes.
     /// </summary>
     let draw (parameters: AnimatableParams) (read: 'inst -> float) : Part<'native, 'inst> =
         Hooks.motion (
             Func<_, _, _, _>(fun inst node context ->
                 let initial = read inst
+
+                let restore =
+                    keepAttributes (box node) [| "pathLength"; "stroke-dasharray"; "stroke-dashoffset" |]
+
                 let drawable = (Svg.drawable (targetsOf node, 0., initial))[0]
 
                 let animatable =
                     Anime.animatable (Targets.object (strokeTarget drawable initial), withDefault parameters "draw" (AnimatableProp ()))
 
                 Api.createEffectOn (fun () -> read inst) (fun fraction -> animatable.set ("draw", fraction))
-                settle context animatable)
+
+                let release () =
+                    if context.ExitPending () then
+                        pauseIfPlayable animatable
+                    else
+                        animatable.revert ()
+                        restore ()
+
+                release)
         )
 
     /// <summary>
     /// On a <c>path</c>, <c>polygon</c> or <c>polyline</c>: morphs the shape to the <c>d</c> or <c>points</c> that
     /// <c>read</c> returns whenever it changes, with <c>parameters</c>' timing. The first shape is set at once, and each
-    /// completed morph leaves exactly the shape read.
+    /// completed morph leaves exactly the shape read. The cleanup restores the shape the element had before the first.
     /// </summary>
     let morph (parameters: Anim) (read: 'inst -> string) : Part<'native, 'inst> =
         Hooks.motion (
             Func<_, _, _, _>(fun inst node context ->
                 let element = box node
                 let attribute = shapeAttribute element
+                let restore = keepAttributes element [| attribute |]
                 let current: JSAnimation ref = ref null
                 let first = ref true
 
@@ -372,8 +415,14 @@ module Motion =
                         current.Value <- morphing)
 
                 let release () =
-                    if not (isNull current.Value) then
-                        settle context current.Value ()
+                    if context.ExitPending () then
+                        if not (isNull current.Value) then
+                            current.Value.pause ()
+                    else
+                        if not (isNull current.Value) then
+                            current.Value.cancel ()
+
+                        restore ()
 
                 release)
         )
@@ -412,8 +461,8 @@ module Motion =
         )
 
     /// <summary>
-    /// Makes the element draggable, two-way: dragging writes <c>Position</c>, and a write to <c>Position</c> from elsewhere
-    /// moves the element without an update callback, so the write is not echoed back.
+    /// Makes the element draggable, two-way: dragging, and the settling of a release, write <c>Position</c>, and a write to
+    /// <c>Position</c> from elsewhere moves the element without an update callback, so the write is not echoed back.
     /// </summary>
     /// <remarks>The draggable requires <c>DOMPoint</c>, <c>DOMMatrix</c> and <c>ResizeObserver</c>.</remarks>
     let drag (parameters: DraggableParams) (bind: 'inst -> DragBinding) : Part<'native, 'inst> =
@@ -423,7 +472,11 @@ module Motion =
                 let graph = Graph.Current
                 let draggable = Anime.draggable (targetsOf node, parameters)
 
-                chain draggable "onUpdate" (fun _ -> graph.Batch (fun () -> binding.Position.Value <- struct (draggable.x, draggable.y)))
+                let publish _ =
+                    graph.Batch (fun () -> binding.Position.Value <- struct (draggable.x, draggable.y))
+
+                chain draggable "onUpdate" publish
+                chain draggable "onSettle" publish
 
                 match binding.Dragging with
                 | ValueSome dragging ->
@@ -438,7 +491,13 @@ module Motion =
                     if y <> draggable.y then
                         draggable.setY (y, true) |> ignore)
 
-                settle context draggable)
+                let release () =
+                    if context.ExitPending () then
+                        freezeDraggable draggable
+                    else
+                        draggable.revert ()
+
+                release)
         )
 
     /// <summary>
@@ -455,6 +514,7 @@ module Motion =
                 let release () =
                     if context.ExitPending () then
                         tickable.pause ()
+                        freezeSplitter splitter
                     else
                         tickable.revert ()
                         splitter.revert ()

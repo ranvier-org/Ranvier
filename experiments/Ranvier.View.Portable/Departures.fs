@@ -46,8 +46,8 @@ type Seam =
     abstract Before: System.Func<Node, (unit -> unit) -> unit, unit -> unit> with get, set
 
     /// <summary>
-    /// Creates the element named by the string under the node: in the SVG namespace for an svg element and under an SVG
-    /// element other than a foreignObject. Null until <c>enableSvg</c>, while the mount paths create HTML elements.
+    /// Creates the element named by the string under the node: in the SVG namespace for an SVG element name and under an
+    /// SVG element other than a foreignObject. Null until <c>enableSvg</c>, while the mount paths create HTML elements.
     /// </summary>
     abstract CreateElement: System.Func<Node, string, HTMLElement> with get, set
 
@@ -58,8 +58,8 @@ type Seam =
     abstract Nest: System.Action<Node, Node> with get, set
 
     /// <summary>
-    /// Parses the markup into the template's content, in the SVG namespace when the markup's first element is an SVG tag
-    /// other than svg. Null until <c>enableSvg</c>.
+    /// Parses the markup into the template's content, in the SVG namespace when its root elements have SVG element names;
+    /// root elements with SVG and HTML names together raise. Null until <c>enableSvg</c>.
     /// </summary>
     abstract Parse: System.Action<HTMLTemplateElement, string> with get, set
 
@@ -189,8 +189,8 @@ let private endAll (held: ResizeArray<unit -> unit>) (errors: ResizeArray<exn>) 
             target.Add departing[index]
 
 // Withdraws the node's exit, marks the node leaving, adds its end action to `held` and starts its exit with a `finish`
-// that removes the node and drops the end action; `safetyTimeout` milliseconds later `finish` runs unless it ran earlier.
-// The end action cancels the exit, then removes the node. A failure of the exit finishes it and is raised.
+// that removes the node and drops the end action. The end action cancels the exit, then removes the node; it runs
+// `safetyTimeout` milliseconds later unless `finish` ran earlier. A failure of the exit finishes it and is raised.
 let private retire (node: Node) (held: ResizeArray<unit -> unit>) : bool =
     let exit: System.Func<unit -> unit, unit -> unit> = lookup exits node
 
@@ -233,7 +233,7 @@ let private retire (node: Node) (held: ResizeArray<unit -> unit>) : bool =
 
         store holders ending held
         held.Add ending
-        timer <- startTimer finish safetyTimeout
+        timer <- startTimer (fun () -> ending ()) safetyTimeout
 
         try
             cancel <- exit.Invoke finish
@@ -297,6 +297,17 @@ let register (node: Node) (exit: System.Func<unit -> unit, unit -> unit>) : unit
 let hasExit (node: Node) : bool =
     holds exits node
 
+/// <summary>Whether <c>node</c> or an ancestor has a registered exit that has not started.</summary>
+let exitFollows (node: Node) : bool =
+    let mutable cursor = node
+    let mutable found = false
+
+    while not found && not (isNullish cursor) do
+        found <- holds exits cursor
+        cursor <- parentOf cursor
+
+    found
+
 /// <summary>Whether a reflow is registered for <c>node</c>.</summary>
 let hasReflow (node: Node) : bool =
     holds reflows node
@@ -326,27 +337,34 @@ let registerReflow (node: Node) (reflow: Reflow) : unit -> unit =
 // The parent recorded for each row fragment by `Nest`.
 let private nests = weakMap ()
 
-[<Emit("((p, tag) => tag === 'svg' || p.namespaceURI === 'http://www.w3.org/2000/svg' && p.localName !== 'foreignObject' ? document.createElementNS('http://www.w3.org/2000/svg', tag) : document.createElement(tag))($2.get($0) || $0, $1)")>]
-let private createUnder (parent: Node) (tag: string) (nested: obj) : HTMLElement = jsNative
+// The lowercase SVG element names that HTML does not also define, and svg.
+[<Emit("new Set('svg g path circle ellipse line polyline polygon rect text tspan textpath use defs symbol marker pattern lineargradient radialgradient stop clippath mask foreignobject'.split(' '))")>]
+let private svgNames () : obj = jsNative
 
-// Parses SVG-rooted markup inside an svg element, then lifts the parsed nodes into the template's content.
-[<Emit("((t, m) => { if (/^(?:<!--[^]*?-->)*<(?:g|path|circle|ellipse|line|polyline|polygon|rect)[ >/]/.test(m)) { t.innerHTML = '<svg>' + m + '</svg>'; t.content.replaceChildren(...t.content.firstChild.childNodes); } else t.innerHTML = m; })($0, $1)")>]
-let private parseUnder (template: HTMLTemplateElement) (markup: string) : unit = jsNative
+// An SVG element for an SVG name, or under an SVG parent other than a foreignObject; an HTML element otherwise.
+[<Emit("((p, tag, names) => names.has(tag.toLowerCase()) || p.namespaceURI === 'http://www.w3.org/2000/svg' && p.localName !== 'foreignObject' ? document.createElementNS('http://www.w3.org/2000/svg', tag) : document.createElement(tag))($2.get($0) || $0, $1, $3)")>]
+let private createUnder (parent: Node) (tag: string) (nested: obj) (names: obj) : HTMLElement = jsNative
+
+// Parses the markup; when its root elements have SVG names, parses it again inside an svg element and lifts the nodes
+// into the template's content. Root elements with SVG and HTML names together raise.
+[<Emit("((t, m, names) => { t.innerHTML = m; const roots = Array.from(t.content.children); const svg = roots.filter(r => names.has(r.localName)).length; if (svg > 0) { if (svg < roots.length) throw new Error('A row or arm template mixes SVG and HTML root elements; under synchronous commits wrap them in one element'); t.innerHTML = '<svg>' + m + '</svg>'; t.content.replaceChildren(...t.content.firstChild.childNodes); } })($0, $1, $2)")>]
+let private parseUnder (template: HTMLTemplateElement) (markup: string) (names: obj) : unit = jsNative
 
 // Records the region start's parent, or the parent recorded for the fragment holding the region start.
 [<Emit("((m, f, s) => { const p = s.parentNode; if (p != null) m.set(f, m.get(p) || p); })($0, $1, $2)")>]
 let private nestUnder (nested: obj) (fragment: Node) (regionStart: Node) : unit = jsNative
 
 /// <summary>
-/// Makes the expanded path create an svg element, and every element under an SVG element other than a foreignObject, in
-/// the SVG namespace.
+/// Makes the elements with SVG names, and every element under an SVG element other than a foreignObject, SVG elements on
+/// the expanded path, and parses a template whose root elements have SVG names inside an svg element.
 /// </summary>
 let enableSvg () =
 #if FABLE_COMPILER
     if isNullish seam.CreateElement then
-        seam.CreateElement <- System.Func<_, _, _>(fun parent tag -> createUnder parent tag nests)
+        let names = svgNames ()
+        seam.CreateElement <- System.Func<_, _, _>(fun parent tag -> createUnder parent tag nests names)
         seam.Nest <- System.Action<_, _>(fun fragment regionStart -> nestUnder nests fragment regionStart)
-        seam.Parse <- System.Action<_, _>(fun template markup -> parseUnder template markup)
+        seam.Parse <- System.Action<_, _>(fun template markup -> parseUnder template markup names)
 #else
     ()
 #endif
