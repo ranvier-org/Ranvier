@@ -342,7 +342,8 @@ module Events =
 
                     for radio, state in group do
                         radio.Checked <- state
-                elif element.Checked <> before then
+                // The input activation behaviour of HTML fires input and change for a connected element only.
+                elif element.Checked <> before && element.IsConnected then
                     fire element "input" true false |> ignore
                     fire element "change" true false |> ignore
             elif accepted then

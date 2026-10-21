@@ -19,6 +19,40 @@ type Harness =
 
 type Case = string * (Harness -> unit)
 
+/// <summary>
+/// The running case's harness. It keeps the listener failures already recorded as artefacts, and its
+/// <c>ListenerErrors</c> returns them with the later ones.
+/// </summary>
+type private Running(inner: Harness) =
+    let recorded = ResizeArray<string>()
+
+    /// <summary>The failures since the last call, kept for <c>ListenerErrors</c>.</summary>
+    member _.Fresh() : string list =
+        let fresh = inner.ListenerErrors ()
+        recorded.AddRange fresh
+        fresh
+
+    interface Harness with
+        member _.Platform = inner.Platform
+        member _.Document = inner.Document
+
+        member _.Post callback =
+            inner.Post callback
+
+        member _.RunMicrotasks() =
+            inner.RunMicrotasks ()
+
+        member _.AdvanceBy milliseconds =
+            inner.AdvanceBy milliseconds
+
+        member _.Record(name, text) =
+            inner.Record (name, text)
+
+        member _.ListenerErrors() =
+            let all = List.ofSeq recorded @ inner.ListenerErrors ()
+            recorded.Clear ()
+            all
+
 #if FABLE_COMPILER
 let mutable private current: Harness = Unchecked.defaultof<_>
 
@@ -51,9 +85,33 @@ let harness () : Harness =
 let document () : Document =
     (harness ()).Document
 
+/// <summary>Records a named artefact with the running case's harness; outside a case it does nothing.</summary>
+let recordIfRunning (name: string) (text: string) : unit =
+    match box (read ()) with
+    | null -> ()
+    | value -> (unbox<Harness> value).Record(name, text)
+
+/// <summary>
+/// Records the listener failures since the last such record as a <c>listener-errors</c> artefact, one message per
+/// line, when there are any; the running harness's <c>ListenerErrors</c> still returns them.
+/// </summary>
+let recordListenerErrors () : unit =
+    match box (read ()) with
+    | null -> ()
+    | value ->
+        match (unbox<Running> value).Fresh() with
+        | [] -> ()
+        | messages -> (unbox<Harness> value).Record("listener-errors", String.concat "\n" messages)
+
+/// <summary>The node's document, or the node itself when it is a document.</summary>
+let documentOf (node: Node) : Document =
+    match node.ownerDocument with
+    | Some document -> document
+    | None -> unbox<Document> node
+
 let private run (value: Harness) (check: unit -> unit) =
     let previous = read ()
-    write value
+    write (Running value)
 
     try
         check ()

@@ -9,6 +9,9 @@
         <Compile Include="EventSpec.fs" />
         <Compile Include="Selector.fs" />
         <Compile Include="Conformance.fs" />
+        <Compile Include="Query.fs" />
+        <Compile Include="Interact.fs" />
+        <Compile Include="Expect.fs" />
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="../Ranvier.View.Foundation/Ranvier.View.Foundation.fsproj" />

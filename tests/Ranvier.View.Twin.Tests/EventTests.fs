@@ -104,6 +104,21 @@ let tests =
                 Events.click box
                 Expect.equal (List.ofSeq log) [ "click:True"; "input:True"; "change:True" ] "sequence"
 
+            testCase "clicking a detached checkbox toggles it and fires click only"
+            <| fun () ->
+                Events.ensure ()
+                use document = new TwinDocument ()
+                let box = document.CreateElement "input"
+                box.SetAttribute ("type", "checkbox")
+                let log = ResizeArray<string>()
+
+                for name in [ "click"; "input"; "change" ] do
+                    Events.listen box name false (fun _ -> log.Add name)
+                    |> ignore
+
+                Events.click box
+                Expect.equal (box.Checked, List.ofSeq log) (true, [ "click" ]) "no input or change"
+
             testCase "a cancelled checkbox click restores the state and fires no change"
             <| fun () ->
                 Events.ensure ()

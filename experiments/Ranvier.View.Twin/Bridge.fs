@@ -7,6 +7,16 @@ open Microsoft.FSharp.Reflection
 
 type internal Member = TwinNode -> obj array -> obj
 
+/// <summary>The members served on the current thread while a recording is open.</summary>
+[<Sealed; AbstractClass>]
+type internal ServedOnThread =
+    [<ThreadStatic; DefaultValue>]
+    static val mutable private recording: HashSet<string>
+
+    static member Recording
+        with get () = ServedOnThread.recording
+        and set (value: HashSet<string>) = ServedOnThread.recording <- value
+
 /// <summary>A live list of twin nodes, which the bridge presents as the declared list interface.</summary>
 type internal ListValue(items: unit -> TwinNode list) =
     member _.Items = items ()
@@ -58,6 +68,10 @@ and internal BridgeCore private () =
 
     static member Serve(name: string) =
         served.TryAdd (name, 0uy) |> ignore
+
+        match ServedOnThread.Recording with
+        | null -> ()
+        | recording -> recording.Add name |> ignore
 
     static member Served: string seq = served.Keys
 
@@ -287,6 +301,22 @@ module Bridge =
 
     let resetServed () =
         BridgeCore.ResetServed ()
+
+    /// <summary>The members served on the calling thread while <c>run</c> runs, sorted.</summary>
+    let servedDuring (run: unit -> unit) : string list =
+        let previous = ServedOnThread.Recording
+        let recording = HashSet<string>()
+        ServedOnThread.Recording <- recording
+
+        try
+            run ()
+        finally
+            ServedOnThread.Recording <- previous
+
+            if not (isNull previous) then
+                previous.UnionWith recording
+
+        recording |> Seq.sort |> List.ofSeq
 
     let private element (node: TwinNode) =
         node :?> TwinElement

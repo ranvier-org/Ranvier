@@ -8,17 +8,22 @@ open Ranvier.View.Testing
 let output () =
     Path.Combine (TwinHarness.repository (), "examples", "Fable.Ranvier.Playground", "generated-conformance", "twin")
 
-let private runCase (moduleName: string) (name: string) (run: Conformance.Harness -> unit) () =
+/// <summary>Runs a case on a fresh twin host whose artefacts go to <c>directory</c>.</summary>
+let runIn (directory: string) (run: Conformance.Harness -> unit) =
     let host = TwinHost.Create ()
 
     try
-        run (TwinHarness.create host (Path.Combine (output (), moduleName, TwinHarness.slug name)))
+        run (TwinHarness.create host directory)
     finally
         (host.Document :> System.IDisposable).Dispose()
 
+let private runCase (moduleName: string) (name: string) (run: Conformance.Harness -> unit) () =
+    runIn (Path.Combine (output (), moduleName, TwinHarness.slug name)) run
+
 [<Tests>]
 let tests =
-    testSequenced
+    // The check modules keep module-level logs: no two cases, here or in the members test, run at once.
+    testSequencedGroup "conformance"
     <| testList
         "Conformance"
         [
