@@ -49,6 +49,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 82,993 | 127,165 | 1,734,029 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 83,006 | 127,186 | 1,734,155 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 83,006 | 127,142 | 1,734,128 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 83,006 | 127,210 | 1,734,154 |
 
 ## app-table
 
@@ -99,6 +100,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 4,416,184 | 9,482,482 | 107,429,728 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 4,416,259 | 9,320,392 | 107,580,269 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 4,416,223 | 9,203,595 | 107,451,682 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 4,416,213 | 9,203,548 | 107,415,831 |
 
 ## async-recover
 
@@ -149,6 +151,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 138,908 | 39,667 | 440,646 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 138,908 | 39,726 | 440,641 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 138,908 | 39,724 | 440,640 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 138,940 | 39,711 | 440,653 |
 
 ## async-resolve
 
@@ -199,6 +202,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 2,788,709 | 1,085,426 | 12,314,050 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 2,788,708 | 1,085,476 | 12,314,312 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 2,788,708 | 1,085,588 | 12,317,052 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 2,790,309 | 1,085,295 | 12,317,167 |
 
 ## chain
 
@@ -249,6 +253,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 
 ## chain-affinity
 
@@ -299,6 +304,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 2,549 | 3,067 | 2,496 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 2,549 | 3,067 | 2,496 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 2,549 | 3,067 | 2,496 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 2,549 | 3,067 | 2,496 |
 
 ## control
 
@@ -349,6 +355,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 74,709 | 833,964 | 2,605,007 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 74,709 | 833,966 | 2,605,083 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 74,709 | 834,004 | 2,605,080 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 74,709 | 833,995 | 2,605,046 |
 
 ## create
 
@@ -399,6 +406,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 13,450,081 | 2,859,678 | 2,532,361 | 2,131,924 | 4,004,054 | 34,063,483 | 49,723,886 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 13,450,076 | 2,859,678 | 2,532,362 | 2,131,574 | 4,004,174 | 34,066,813 | 49,723,672 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 13,450,056 | 2,859,678 | 2,532,361 | 2,131,490 | 4,004,047 | 34,063,093 | 49,723,513 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 13,449,996 | 2,875,677 | 2,532,362 | 2,131,822 | 4,004,040 | 34,066,822 | 49,723,813 |
 
 ## create-on
 
@@ -449,6 +457,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 2,926,483 | 4,147,276 | 54,424,664 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 2,910,483 | 4,147,560 | 54,424,712 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 2,910,483 | 4,147,510 | 54,424,652 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 2,926,484 | 4,147,650 | 54,424,657 |
 
 ## cutoff
 
@@ -499,6 +508,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 
 ## derive-effect
 
@@ -549,6 +559,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 765 | 768 | 16,102 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 765 | 768 | 16,102 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 765 | 768 | 16,102 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 765 | 768 | 16,102 |
 
 ## derive-on
 
@@ -599,6 +610,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 737 | 775 | 16,261 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 737 | 775 | 16,261 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 737 | 775 | 16,261 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 737 | 775 | 16,261 |
 
 ## dispose
 
@@ -649,6 +661,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 2,707,643 | 806,291 | 367,497 | 466,161 | 485,312 | 13,195,906 | 9,105,580 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 2,706,243 | 806,291 | 367,497 | 465,939 | 485,409 | 13,192,461 | 9,106,048 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 2,707,643 | 806,291 | 367,497 | 465,989 | 485,057 | 13,195,293 | 9,105,879 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 2,707,642 | 806,291 | 367,497 | 466,092 | 485,284 | 13,194,632 | 9,106,657 |
 
 ## dispose-on
 
@@ -699,6 +712,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 346,497 | 478,643 | 8,902,770 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 346,497 | 478,604 | 8,902,544 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 346,497 | 478,438 | 8,902,380 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 346,497 | 478,697 | 8,902,918 |
 
 ## editable-edit
 
@@ -749,6 +763,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 180,106 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 180,106 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 180,106 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 180,106 |
 
 ## editable-upstream
 
@@ -799,6 +814,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 231,255 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 231,255 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 231,255 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 231,255 |
 
 ## fail-recompute
 
@@ -849,6 +865,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 65,106 | 1,366 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 65,106 | 1,366 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 65,106 | 1,366 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 65,106 | 1,366 |
 
 ## flight
 
@@ -899,6 +916,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 10,995 | 6,215 | 6,216 | 11,316 | 10,763 | 22,341 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 10,995 | 6,215 | 6,216 | 11,316 | 10,763 | 22,341 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 
 ## keyed-insert
 
@@ -949,6 +967,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 1,921,809 | 53,951 | 54,948 | 3,218,784 | 661,918 | 176,593 | 44,849,854 | 2,634,915 | 2,654,166 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 1,921,825 | 53,951 | 54,960 | 3,218,701 | 661,896 | 176,569 | 44,849,827 | 2,634,913 | 2,654,316 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 1,921,825 | 53,951 | 54,961 | 3,218,690 | 661,901 | 176,511 | 44,849,856 | 2,634,976 | 2,654,203 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 1,921,809 | 53,951 | 54,947 | 3,218,680 | 661,702 | 176,547 | 44,849,857 | 2,634,918 | 2,654,122 |
 
 ## keyed-remove
 
@@ -999,6 +1018,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 1,920,740 | 43,628 | 45,285 | 3,244,988 | 593,073 | 605,180 | 44,798,138 | 1,924,879 | 1,958,566 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 1,920,752 | 43,628 | 45,300 | 3,245,009 | 593,223 | 605,048 | 44,798,161 | 1,924,915 | 1,958,567 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 1,920,748 | 43,628 | 45,300 | 3,245,014 | 592,981 | 605,218 | 44,798,135 | 1,924,905 | 1,958,573 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 1,920,732 | 43,628 | 45,285 | 3,244,980 | 593,134 | 605,233 | 44,798,152 | 1,924,867 | 1,958,533 |
 
 ## keyed-swap
 
@@ -1049,6 +1069,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 1,973,428 | 46,161 | 46,915 | 3,562,638 | 148,816 | 511,394 | 45,976,612 | 916,412 | 932,865 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 1,973,444 | 46,161 | 46,931 | 3,561,040 | 148,774 | 511,419 | 45,980,255 | 916,495 | 932,920 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 1,973,444 | 46,162 | 46,932 | 3,564,528 | 148,811 | 511,379 | 45,980,641 | 916,502 | 932,916 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 1,973,428 | 46,161 | 46,915 | 3,564,008 | 148,754 | 511,231 | 45,980,301 | 916,461 | 932,903 |
 
 ## mvu-dispatch
 
@@ -1099,6 +1120,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 58,261 | 772 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 58,261 | 772 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 58,261 | 772 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 58,261 | 772 |
 
 ## project-chain
 
@@ -1149,6 +1171,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 1,070,241 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 1,070,307 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 1,070,225 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 1,070,326 |
 
 ## project-churn
 
@@ -1199,6 +1222,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 36,473 | 34,310 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 36,473 | 34,310 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 36,489 | 34,326 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 36,489 | 34,326 |
 
 ## project-edit
 
@@ -1249,6 +1273,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 50,415 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 50,431 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 50,431 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 50,415 |
 
 ## project-reorder
 
@@ -1299,6 +1324,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 779,155 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 779,171 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 779,172 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 779,156 |
 
 ## server-render
 
@@ -1349,6 +1375,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 676,238 | 1,130,708 | 9,832,837 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 676,302 | 1,131,265 | 9,832,279 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 676,238 | 1,131,336 | 9,833,037 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 676,233 | 1,131,188 | 9,832,759 |
 
 ## shape-diamond
 
@@ -1399,6 +1426,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 59,899 | 79,968 | 1,763,357 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 59,899 | 79,968 | 1,763,357 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 59,899 | 79,968 | 1,763,357 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 59,899 | 79,968 | 1,763,357 |
 
 ## shape-dynamic
 
@@ -1449,6 +1477,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 82,921 | 107,033 | 2,006,140 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 82,921 | 107,033 | 2,006,144 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 82,921 | 107,033 | 2,006,140 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 82,921 | 107,033 | 2,006,140 |
 
 ## stream-burst-1
 
@@ -1499,6 +1528,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 1,974 | 1,572 | 2,506 | 4,668 | 3,644 | 13,368 | 47,201 | 45,417 | 55,168 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 1,974 | 1,572 | 2,490 | 4,671 | 3,644 | 13,371 | 47,201 | 45,417 | 55,171 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 1,974 | 1,572 | 2,506 | 4,671 | 3,644 | 13,368 | 47,199 | 45,417 | 55,171 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 1,974 | 1,572 | 2,506 | 4,671 | 3,644 | 13,371 | 47,201 | 45,417 | 55,169 |
 
 ## stream-burst-16
 
@@ -1549,6 +1579,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 5,631 | 25,017 | 5,716 | 9,498 | 49,601 | 8,051 | 120,968 | 714,180 | 113,521 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 5,631 | 25,017 | 5,700 | 9,502 | 49,601 | 8,051 | 120,973 | 714,180 | 113,522 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 5,631 | 25,017 | 5,716 | 9,501 | 49,601 | 8,049 | 120,969 | 714,180 | 113,522 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 5,631 | 25,017 | 5,716 | 9,502 | 49,601 | 8,051 | 120,970 | 714,180 | 113,522 |
 
 ## stream-burst-256
 
@@ -1599,6 +1630,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 64,131 | 400,101 | 57,055 | 127,302 | 787,259 | 74,571 | 1,301,576 | 11,413,288 | 1,046,549 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 64,131 | 400,101 | 57,039 | 127,472 | 787,263 | 74,603 | 1,301,499 | 11,413,287 | 1,046,540 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 64,131 | 400,101 | 57,055 | 127,406 | 787,260 | 74,605 | 1,301,528 | 11,413,287 | 1,046,548 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 64,131 | 400,101 | 57,055 | 127,408 | 787,241 | 74,603 | 1,301,576 | 11,413,287 | 1,046,548 |
 
 ## stream-restart
 
@@ -1649,6 +1681,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 4,188 | 4,991 | 6,101 | 16,353 | 41,498 | 70,403 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 4,188 | 4,975 | 6,106 | 16,360 | 41,495 | 70,406 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 4,187 | 4,991 | 6,104 | 16,356 | 41,499 | 70,403 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 4,187 | 4,991 | 6,106 | 16,358 | 41,495 | 70,406 |
 
 ## timed-admit-both
 
@@ -1699,6 +1732,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 118,591 | 134,963 | 2,679,928 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 119,615 | 134,965 | 2,679,929 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 118,591 | 134,965 | 2,679,929 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 118,591 | 134,965 | 2,679,928 |
 
 ## timed-admit-debounce
 
@@ -1749,6 +1783,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 117,496 | 133,556 | 2,640,272 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 118,520 | 133,583 | 2,640,285 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 117,496 | 133,558 | 2,640,272 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 117,496 | 133,558 | 2,640,272 |
 
 ## timed-admit-first
 
@@ -1799,6 +1834,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 69,479 | 79,051 | 1,611,692 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 70,503 | 79,053 | 1,611,692 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 69,479 | 79,053 | 1,611,692 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 69,479 | 79,053 | 1,611,692 |
 
 ## timed-admit-last
 
@@ -1849,6 +1885,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 117,758 | 133,852 | 2,650,141 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 118,782 | 133,854 | 2,650,141 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 117,758 | 133,878 | 2,650,128 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 117,758 | 133,879 | 2,650,128 |
 
 ## timed-capture-both
 
@@ -1899,6 +1936,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 35,726 | 44,808 | 846,997 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 35,726 | 44,808 | 847,000 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 35,726 | 44,807 | 846,997 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 35,726 | 44,807 | 846,997 |
 
 ## timed-capture-debounce
 
@@ -1949,6 +1987,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 35,598 | 44,104 | 847,375 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 35,598 | 44,104 | 847,375 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 35,598 | 44,104 | 847,375 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 35,598 | 44,104 | 847,375 |
 
 ## timed-capture-first
 
@@ -1999,6 +2038,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 32,078 | 36,612 | 745,372 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 32,078 | 36,612 | 745,372 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 32,078 | 36,612 | 745,370 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 32,078 | 36,612 | 745,370 |
 
 ## timed-capture-last
 
@@ -2049,6 +2089,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 35,534 | 44,040 | 839,503 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 35,534 | 44,040 | 839,503 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 35,534 | 44,040 | 839,503 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 35,534 | 44,040 | 839,503 |
 
 ## update
 
@@ -2099,6 +2140,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 1,087,690 | 38,805 | 82,505 | 262,472 | 151,719 | 3,350,264 | 2,502,780 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 1,087,690 | 38,805 | 82,505 | 262,607 | 151,714 | 3,350,250 | 2,502,787 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 1,087,683 | 38,805 | 82,505 | 262,521 | 151,660 | 3,350,225 | 2,502,762 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 1,087,690 | 38,805 | 82,505 | 262,591 | 151,714 | 3,350,265 | 2,502,811 |
 
 ## update-on
 
@@ -2149,6 +2191,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 93,005 | 165,206 | 2,830,335 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 93,005 | 165,209 | 2,830,434 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 93,005 | 165,214 | 2,830,397 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 93,005 | 165,239 | 2,830,387 |
 
 ## work-form
 
@@ -2199,6 +2242,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 170,300 | 163,392 | 295,902 | 291,347 | 5,349,235 | 5,295,442 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 170,300 | 163,427 | 295,967 | 291,364 | 5,349,259 | 5,295,445 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 170,300 | 163,392 | 295,899 | 291,430 | 5,349,272 | 5,295,444 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 170,300 | 163,392 | 295,967 | 291,402 | 5,349,270 | 5,295,440 |
 
 ## work-status
 
@@ -2249,6 +2293,7 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 100,445 | 78,815 | 264,855 | 152,961 | 2,611,043 | 2,360,848 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 100,445 | 78,815 | 264,796 | 152,948 | 2,611,019 | 2,360,873 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 100,445 | 78,815 | 264,844 | 152,958 | 2,611,054 | 2,360,876 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 100,445 | 78,815 | 264,858 | 152,942 | 2,611,061 | 2,360,865 |
 
 ## work-value
 
@@ -2299,4 +2344,5 @@
 | `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | 107,569 | 119,469 | 265,079 | 279,859 | 2,595,627 | 2,920,219 |
 | `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | 107,569 | 119,469 | 265,105 | 279,902 | 2,595,684 | 2,920,181 |
 | `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | 107,569 | 119,469 | 265,043 | 279,864 | 2,595,683 | 2,920,202 |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | 107,569 | 119,470 | 265,084 | 279,878 | 2,595,640 | 2,920,188 |
 
