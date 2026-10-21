@@ -226,7 +226,7 @@ let private contentSame =
     Func<obj, obj, bool>(fun left right -> markupOf left = markupOf right)
 
 let private innerHtml =
-    Func<obj, obj, unit>(fun node markup -> (unbox<HTMLElement> node).innerHTML <- unbox<string> markup)
+    Func<obj, obj, unit>(fun node markup -> (unbox<Element> node).innerHTML <- unbox<string> markup)
 
 let private contentSlot (slots: Slot array) =
     slots

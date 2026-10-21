@@ -101,6 +101,28 @@ let private inContext queued () =
     equal (2., "ab") ((target.querySelectorAll "tbody > tr").length, target.textContent)
     mounted.Dispose ()
 
+let private svgGroup =
+    Component.define (fun _ () -> ()) (fun t ->
+        t.element
+            (HtmlTag "svg")
+            [||]
+            [|
+                t.element (HtmlTag "g") [| t.Unsafe.html (UnsafeHtml.Trust "<circle></circle>") |] [||]
+            |])
+
+/// <summary>Raw HTML inside an SVG element is written as the element's markup.</summary>
+let private inSvg queued () =
+    use graph = new Graph ()
+    let target = host ()
+
+    let mounted =
+        mountTemplate queued graph strict target (Component.render svgGroup ())
+
+    let shown = target.innerHTML
+    mounted.Dispose ()
+    Conformance.recordIfRunning "shown" shown
+    equal true (shown.Contains "<g><circle></circle></g>")
+
 let private definitionChecks () =
     let defines (build: TemplateBuilder<unit> -> TemplateView<unit>) =
         raisesArgument (fun () -> Component.define (fun _ () -> ()) build |> ignore)
@@ -340,6 +362,7 @@ let private checks: (string * (unit -> unit)) array =
             [
                 templated "raw HTML replaces the element's content and is re-parsed only when the markup changes" reparse
                 templated "raw HTML inside a tbody element parses table rows in context" inContext
+                templated "raw HTML inside an SVG element is written as its markup" inSvg
                 [|
                     "an element with raw HTML and template children fails at definition time; void, raw-text, template, textarea and title elements reject raw HTML",
                     definitionChecks

@@ -843,7 +843,7 @@ let private write (slot: Slot) (node: obj) (value: obj) =
     | AttributeTarget name -> setAttribute node value name
     | PropertyTarget property -> property.Write.Invoke (node, value)
     | TextTarget -> setData node value
-    | ContentTarget -> (unbox<HTMLElement> node).innerHTML <- markupOf value
+    | ContentTarget -> (unbox<Element> node).innerHTML <- markupOf value
 
 #if FABLE_COMPILER
 [<Emit("$0.data !== ($1 == null ? '' : String($1))")>]
