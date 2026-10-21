@@ -22,10 +22,19 @@ let rules: Rule list =
         Rules.View.ran025
     ]
 
-/// The findings of `rule` in a CLI context; empty when the project lacks the rule's gate reference.
+/// Whether `rule` runs on a file of the project: the project references the rule's gate assembly, or, for a view rule,
+/// the file calls into the view layer, which a project can compile from source.
+let enabled (rule: Rule) (options: AnalyzerProjectOptions) (index: Index.FileIndex) : bool =
+    Symbols.references rule.Gate options
+    || ((rule.Gate = Symbols.Assemblies.View
+         || rule.Gate = Symbols.Assemblies.Foundation)
+        && index.Calls
+           |> Array.exists (fun call -> Symbols.View.isViewMember call.Callee))
+
+/// The findings of `rule` in a CLI context; empty when `enabled` refuses the file.
 let runCli (rule: Rule) (context: CliContext) : Message list =
     match context.TypedTree with
-    | Some tree when Symbols.references rule.Gate context.ProjectOptions ->
+    | Some tree when enabled rule context.ProjectOptions (Index.ofFile tree) ->
         rule.Run
             {
                 FileName = context.FileName
@@ -51,7 +60,7 @@ let private ignoresFile (code: string) (ranges: Map<string, AnalyzerIgnoreRange 
 let runEditor (rule: Rule) (context: EditorContext) : Message list =
     match context.TypedTree with
     | Some tree when
-        Symbols.references rule.Gate context.ProjectOptions
+        enabled rule context.ProjectOptions (Index.ofFile tree)
         && not (ignoresFile rule.Code context.AnalyzerIgnoreRanges)
         ->
         rule.Run

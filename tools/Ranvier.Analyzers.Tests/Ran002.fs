@@ -330,7 +330,31 @@ let queued (bs: Box list) = bs |> List.filter _.Inner.IsQueue\n"
                 Expect.equal (codesWith (Some (manifest "fable" "5.21.0"))) [ "RAN002" ] "Fable 5.21 drops the testers"
                 Expect.isEmpty (codesWith (Some (manifest "fable" "5.22.0"))) "Fable 5.22 declares them"
                 Expect.isEmpty (codesWith (Some (manifest "fickl" "0.3.0"))) "Fickl 0.3.0 declares them"
-                Expect.isEmpty (codesWith None) "no Fable compiler declared"
+                Expect.equal (codesWith None) [ "RAN002" ] "no declared compiler: Fable.Core alone decides"
+
+                Expect.equal (codesWith (Some (manifest "fable" "5.22.0-alpha.1"))) [ "RAN002" ] "a prerelease of 5.22 precedes the fix"
+
+                Expect.isEmpty
+                    (codesWith (Some "// comment\n{ \"tools\": { \"Fable\": { \"version\": \"5.22.0\", }, }, }"))
+                    "comments, trailing commas and key case are read"
+            }
+
+            test "a nested manifest without a compiler defers to the root manifest" {
+                let source =
+                    policy
+                    + "let isQueue (policy: Policy) = policy.IsQueue\n"
+
+                let codesIn innerIsRoot =
+                    let inner =
+                        $"{{ \"version\": 1, \"isRoot\": {innerIsRoot}, \"tools\": {{ \"paket\": {{ \"version\": \"9.0.0\" }} }} }}"
+
+                    run
+                        Analyzers.ran002Cli
+                        (contextLayout [ "", manifest "fickl" "0.3.0"; "sub", inner ] "sub" (ranvier.Force ()) [ "Fixture.fs", source ])
+                    |> List.map _.Code
+
+                Expect.isEmpty (codesIn "false") "the root manifest declares Fickl"
+                Expect.equal (codesIn "true") [ "RAN002" ] "a root manifest without a compiler ends the search"
             }
 
             test "an edited tool manifest takes effect in the same process" {

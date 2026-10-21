@@ -112,68 +112,105 @@ module Compilers =
     [<Literal>]
     let Fickl = "fickl"
 
+    /// A declared compiler: its command, its version without a prerelease label, and whether it has one.
+    type Declared =
+        {
+            Command: string
+            Version: Version
+            Prerelease: bool
+        }
+
     /// The first Fable release whose precompile declares the generated union testers.
     let testersPrecompileFrom = Version (5, 22, 0)
 
-    let private parse (text: string) =
+    /// Whether `declared` is a Fable release before `testersPrecompileFrom`; a prerelease of it is before it.
+    let precedesTesterFix (declared: Declared) : bool =
+        declared.Command = Fable
+        && (declared.Version < testersPrecompileFrom
+            || (declared.Version = testersPrecompileFrom
+                && declared.Prerelease))
+
+    let private parse (text: string) : (Version * bool) option =
         let core = text.Split('-', '+').[0]
 
         match Version.TryParse core with
-        | true, version -> Some version
+        | true, version -> Some (version, text.Contains '-')
         | _ -> None
 
-    let private read (file: string) : (string * Version) option =
+    let private options =
+        JsonDocumentOptions (CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true)
+
+    /// A manifest's declared compiler, and whether the manifest is a root.
+    let private read (file: string) : Declared option * bool =
         try
-            use document = JsonDocument.Parse (File.ReadAllText file)
-            let mutable tools = Unchecked.defaultof<JsonElement>
+            use document = JsonDocument.Parse (File.ReadAllText file, options)
+            let root = document.RootElement
 
-            if document.RootElement.TryGetProperty ("tools", &tools) then
-                [ Fickl; Fable ]
-                |> List.tryPick (fun command ->
-                    let mutable tool = Unchecked.defaultof<JsonElement>
-                    let mutable version = Unchecked.defaultof<JsonElement>
+            let isRoot =
+                root.EnumerateObject ()
+                |> Seq.exists (fun property ->
+                    String.Equals (property.Name, "isRoot", StringComparison.OrdinalIgnoreCase)
+                    && property.Value.ValueKind = JsonValueKind.True)
 
-                    if
-                        tools.TryGetProperty (command, &tool)
-                        && tool.TryGetProperty ("version", &version)
-                    then
-                        parse (version.GetString ())
-                        |> Option.map (fun v -> command, v)
-                    else
-                        None)
-            else
-                None
+            let tools =
+                root.EnumerateObject ()
+                |> Seq.tryFind (fun property -> String.Equals (property.Name, "tools", StringComparison.OrdinalIgnoreCase))
+
+            let declared =
+                match tools with
+                | Some tools when tools.Value.ValueKind = JsonValueKind.Object ->
+                    [ Fickl; Fable ]
+                    |> List.tryPick (fun command ->
+                        tools.Value.EnumerateObject ()
+                        |> Seq.tryFind (fun tool -> String.Equals (tool.Name, command, StringComparison.OrdinalIgnoreCase))
+                        |> Option.bind (fun tool ->
+                            tool.Value.EnumerateObject ()
+                            |> Seq.tryFind (fun property -> String.Equals (property.Name, "version", StringComparison.OrdinalIgnoreCase))
+                            |> Option.bind (fun version -> parse (version.Value.GetString ())))
+                        |> Option.map (fun (version, prerelease) ->
+                            {
+                                Command = command
+                                Version = version
+                                Prerelease = prerelease
+                            }))
+                | _ -> None
+
+            declared, isRoot
         with _ ->
-            None
+            None, false
 
-    // Each manifest's parse, keyed by its path and valid while its last write time is unchanged.
-    let private parsed =
-        ConcurrentDictionary<string, DateTime * (string * Version) option>()
+    // Each manifest's reading, keyed by its path and valid while its last write time is unchanged.
+    let private readings =
+        ConcurrentDictionary<string, DateTime * (Declared option * bool)>()
 
-    let private manifestOf (file: string) : (string * Version) option =
+    let private manifestOf (file: string) : Declared option * bool =
         let written = File.GetLastWriteTimeUtc file
 
-        match parsed.TryGetValue file with
-        | true, (stamp, result) when stamp = written -> result
+        match readings.TryGetValue file with
+        | true, (stamp, reading) when stamp = written -> reading
         | _ ->
-            let result = read file
-            parsed[file] <- (written, result)
-            result
+            let reading = read file
+            readings[file] <- (written, reading)
+            reading
 
-    /// The compiler, `fable` or `fickl`, and its version that the nearest tool manifest above `projectFile` declaring one
-    /// names. Every call searches again and re-reads a manifest whose last write time changed.
-    let declared (projectFile: string) : (string * Version) option =
+    /// The compiler, `fable` or `fickl`, that the tool manifests above `projectFile` declare: the nearest manifest that
+    /// declares one, searching up to the first root manifest. An edited or added manifest takes effect on the next call.
+    let declared (projectFile: string) : Declared option =
         let rec up (directory: string) =
             if String.IsNullOrEmpty directory then
                 None
             else
-                [
-                    Path.Combine (directory, ".config", "dotnet-tools.json")
-                    Path.Combine (directory, "dotnet-tools.json")
-                ]
-                |> List.tryFind File.Exists
-                |> Option.bind manifestOf
-                |> Option.orElseWith (fun () -> up (Path.GetDirectoryName directory))
+                let manifest =
+                    [
+                        Path.Combine (directory, ".config", "dotnet-tools.json")
+                        Path.Combine (directory, "dotnet-tools.json")
+                    ]
+                    |> List.tryFind File.Exists
+
+                match manifest |> Option.map manifestOf with
+                | Some (Some found, _) -> Some found
+                | Some (None, true) -> None
+                | _ -> up (Path.GetDirectoryName directory)
 
         if String.IsNullOrEmpty projectFile then
             None
@@ -474,6 +511,10 @@ module Core =
 
 /// The view layer's builders, sugar and definitions.
 module View =
+    /// The namespace of the view layer.
+    [<Literal>]
+    let Root = "Ranvier.View.Foundation"
+
     open FSharp.Compiler.Symbols.FSharpExprPatterns
 
     /// Raises `InvalidOperationException` when the HTML parser restructures `tag` under `ancestors` (nearest first, lower
@@ -482,46 +523,56 @@ module View =
         Ranvier.View.Foundation.ContentModel.check ancestors tag
 
     [<Literal>]
-    let Builder = "Ranvier.View.Foundation.Template.TemplateBuilder`1"
+    let Builder = Root + ".Template.TemplateBuilder`1"
 
     [<Literal>]
-    let Attributes = "Ranvier.View.Foundation.Template.AttributeBuilder`1"
+    let Attributes = Root + ".Template.AttributeBuilder`1"
 
     [<Literal>]
-    let Properties = "Ranvier.View.Foundation.Template.PropertyBuilder`1"
+    let Properties = Root + ".Template.PropertyBuilder`1"
 
     [<Literal>]
-    let Hooks = "Ranvier.View.Foundation.Template.HookBuilder`1"
+    let Hooks = Root + ".Template.HookBuilder`1"
 
     [<Literal>]
-    let Unsafe = "Ranvier.View.Foundation.Template.UnsafeBuilder`1"
+    let Unsafe = Root + ".Template.UnsafeBuilder`1"
 
     [<Literal>]
-    let Component = "Ranvier.View.Foundation.Template.Component"
+    let Component = Root + ".Template.Component"
 
     [<Literal>]
-    let ComponentType = "Ranvier.View.Foundation.Template.Component`1"
+    let ComponentType = Root + ".Template.Component`1"
 
     [<Literal>]
-    let Sugar = "Ranvier.View.Foundation.Sugar.Builders"
+    let Sugar = Root + ".Sugar.Builders"
 
     [<Literal>]
-    let SugarComponent = "Ranvier.View.Foundation.Sugar.Builders.Component"
+    let SugarComponent = Root + ".Sugar.Builders.Component"
 
     [<Literal>]
-    let Element = "Ranvier.View.Foundation.Sugar.Builders.Element`2"
+    let Element = Root + ".Sugar.Builders.Element`2"
 
     [<Literal>]
-    let Elements = "Ranvier.View.Foundation.Sugar.Elements"
+    let Elements = Root + ".Sugar.Elements"
 
     [<Literal>]
-    let Source = "Ranvier.View.Foundation.Template.Source`2"
+    let Source = Root + ".Template.Source`2"
 
     [<Literal>]
-    let Hydration = "Ranvier.View.Foundation.Hydration"
+    let Hydration = Root + ".Hydration"
 
     [<Literal>]
-    let Microtask = "Ranvier.View.Foundation.Microtask"
+    let Microtask = Root + ".Microtask"
+
+    [<Literal>]
+    let CommitMode = Root + ".Scheduling.CommitMode"
+
+    [<Literal>]
+    let ComponentTag = Root + ".Sugar.Builders.ComponentTag`2"
+
+    /// Whether `m` belongs to the view layer, by its enclosing entity's namespace.
+    let isViewMember (m: FSharpMemberOrFunctionOrValue) : bool =
+        enclosing(m).StartsWith(Root + ".")
 
     /// Whether argument `index` of a call of `m` is read per region read: the arms of `matchWith` and `branch`, the
     /// key and items of `each`, `forEach` and `forEachFixed`.
@@ -587,7 +638,7 @@ module View =
     let isQueuedCommits (case: FSharpUnionCase) : bool =
         case.Name = "QueuedCommits"
         && case.ReturnType.HasTypeDefinition
-        && case.ReturnType.TypeDefinition.TryFullName = Some "Ranvier.View.Foundation.Scheduling.CommitMode"
+        && case.ReturnType.TypeDefinition.TryFullName = Some CommitMode
 
     /// Whether `m` returns a queued commit mode: `Microtask.mode`.
     let isQueuedModeFunction (m: FSharpMemberOrFunctionOrValue) : bool =

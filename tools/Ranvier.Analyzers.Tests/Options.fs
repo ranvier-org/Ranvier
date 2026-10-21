@@ -66,18 +66,27 @@ let manifest (command: string) (version: string) : string =
 
 /// The context of the last of `files`, each a relative path and its source, compiled in order as one project in a
 /// fresh temporary directory whose `.config/dotnet-tools.json` is `tools`, if any; raises on a type error.
-let contextIn (tools: string option) (options: FSharpProjectOptions) (files: (string * string) list) : CliContext =
-    let directory =
+let rec contextIn (tools: string option) (options: FSharpProjectOptions) (files: (string * string) list) : CliContext =
+    contextLayout [ for text in Option.toList tools -> "", text ] "" options files
+
+/// The context of the last of `files` in a project at `projectDirectory` below a fresh temporary directory, with a
+/// `.config/dotnet-tools.json` for each of `manifests`, a directory relative to the temporary one and its text.
+and contextLayout
+    (manifests: (string * string) list)
+    (projectDirectory: string)
+    (options: FSharpProjectOptions)
+    (files: (string * string) list)
+    : CliContext =
+    let root =
         Path.Combine (Path.GetTempPath (), "ranvier-analyzers-tests", Guid.NewGuid().ToString "N")
 
+    for relative, text in manifests do
+        let config = Path.Combine (root, relative, ".config")
+        Directory.CreateDirectory config |> ignore
+        File.WriteAllText (Path.Combine (config, "dotnet-tools.json"), text)
+
+    let directory = Path.Combine (root, projectDirectory)
     Directory.CreateDirectory directory |> ignore
-
-    tools
-    |> Option.iter (fun text ->
-        Directory.CreateDirectory (Path.Combine (directory, ".config"))
-        |> ignore
-
-        File.WriteAllText (Path.Combine (directory, ".config", "dotnet-tools.json"), text))
 
     let paths =
         [|

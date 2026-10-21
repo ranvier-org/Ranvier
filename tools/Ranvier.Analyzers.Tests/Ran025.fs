@@ -49,6 +49,29 @@ let tests =
                     "let-bound"
             }
 
+            test "a project that compiles the view from source is analyzed" {
+                let view =
+                    "namespace Ranvier.View.Foundation\nmodule Scheduling =
+    type CommitMode =
+        | SynchronousCommits
+        | QueuedCommits of int
+module Hydration =
+    let hydrateWith (mode: Scheduling.CommitMode) (props: unit) = ignore mode
+"
+
+                let caller =
+                    "module Fixture
+open Ranvier.View.Foundation
+let h () = Hydration.hydrateWith (Scheduling.QueuedCommits 1) ()
+"
+
+                Expect.equal
+                    (run Analyzers.ran025Cli (contextOf (plain.Force ()) [ "View.fs", view; "Fixture.fs", caller ])
+                     |> List.map _.Code)
+                    [ "RAN025" ]
+                    "no Foundation assembly reference"
+            }
+
             test "SynchronousCommits" { Expect.isEmpty (codes (call "SynchronousCommits")) "supported" }
 
             test "a mode parameter" {

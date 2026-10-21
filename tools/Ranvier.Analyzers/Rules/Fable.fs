@@ -62,20 +62,12 @@ let private casePattern (opened: string list) (union: FSharpEntity) (case: FShar
 
     if case.Fields.Count = 0 then name else name + " _"
 
-/// The compiler that the project's tool manifest declares.
-let private compiler (input: Input) =
-    Symbols.Compilers.declared input.Options.ProjectFileName
-
-/// Whether the project's Fable precompile fails on generated union testers: Fable before 5.22.
+/// Whether the project's Fable precompile fails on generated union testers: a declared Fable before 5.22, or no
+/// declared compiler.
 let private precompileDropsTesters (input: Input) =
-    match compiler input with
-    | Some (Symbols.Compilers.Fable, version) -> version < Symbols.Compilers.testersPrecompileFrom
-    | _ -> false
-
-/// Whether the project's Release compile inlines single-use snapshots of module mutables: every Fable and Fickl
-/// release the truth fixtures cover.
-let private inlinesSnapshots (input: Input) =
-    (compiler input).IsSome
+    match Symbols.Compilers.declared input.Options.ProjectFileName with
+    | Some declared -> Symbols.Compilers.precedesTesterFix declared
+    | None -> true
 
 let private testers (input: Input) : Message list =
     [
@@ -188,5 +180,5 @@ let ran001: Rule =
         Code = "RAN001"
         Title = "Fable inlines a snapshot of a module mutable"
         Gate = Symbols.Assemblies.Fable
-        Run = fun input -> if inlinesSnapshots input then snapshots input else []
+        Run = snapshots
     }

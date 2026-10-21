@@ -424,7 +424,7 @@ let private sugarTag (m: FSharpMemberOrFunctionOrValue) =
         m.IsConstructor
         && (Symbols.enclosing m).StartsWith(Elements + ".")
         ->
-        Some (entity.DisplayName.Trim '`')
+        Some (entity.DisplayName.Trim('`').TrimEnd ''')
     | _ -> None
 
 /// The literal elements of the file, each with its literal ancestors.

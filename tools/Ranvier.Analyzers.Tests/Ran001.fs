@@ -110,14 +110,14 @@ let matched () =
                 Expect.isEmpty (findings probe) "no let binds it"
             }
 
-            test "the compiler the tool manifest declares decides the rule" {
+            test "the rule runs whatever compiler the manifest declares" {
                 let codesWith tools =
                     run Analyzers.ran001Cli (contextIn tools (ranvier.Force ()) [ "Loops.fs", loops; "Probe.fs", snapshot ])
                     |> List.map _.Code
 
                 Expect.equal (codesWith (Some (manifest "fickl" "0.3.0"))) [ "RAN001" ] "Fickl 0.3.0 inlines"
                 Expect.equal (codesWith (Some (manifest "fable" "5.22.0"))) [ "RAN001" ] "Fable 5.22 inlines"
-                Expect.isEmpty (codesWith None) "no Fable compiler declared"
+                Expect.equal (codesWith None) [ "RAN001" ] "every Fable and Fickl release inlines"
             }
 
             test "the fix type-checks and clears the finding" {

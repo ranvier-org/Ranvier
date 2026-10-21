@@ -54,6 +54,14 @@ let tests =
                     "parsed as written"
             }
 
+            test "a sugar tag with a quoted name keeps its HTML name" {
+                Expect.isEmpty
+                    (codes
+                        "let c = Component.template (fun _ () -> ()) (div () { select () { option' () { \"o\" } } })
+")
+                    "option' is option"
+            }
+
             test "a div in a div" {
                 Expect.isEmpty (codes "let c = Component.define (fun _ () -> ()) (fun t -> t.div [||] [| t.div [||] [||] |])\n") "valid nesting"
             }
