@@ -64,6 +64,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 82,985 | 127,177 | 1,734,666 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 83,060 | 127,169 | 1,734,660 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 83,046 | 127,102 | 1,734,026 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 82,998 | 127,188 | 1,733,954 |
 
 ## app-table
 
@@ -129,6 +130,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 4,416,062 | 9,203,664 | 107,451,110 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 4,416,458 | 9,203,385 | 107,544,033 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 4,416,064 | 9,203,925 | 107,579,989 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 4,416,080 | 9,319,178 | 107,544,285 |
 
 ## async-recover
 
@@ -194,6 +196,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 139,024 | 39,706 | 440,651 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 138,968 | 39,715 | 440,645 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 138,968 | 39,717 | 440,660 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 138,968 | 39,715 | 440,654 |
 
 ## async-resolve
 
@@ -259,6 +262,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 2,791,509 | 1,085,035 | 12,317,307 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 2,789,909 | 1,085,452 | 12,314,126 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 2,789,909 | 1,085,420 | 12,313,854 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 2,789,910 | 1,086,015 | 12,314,010 |
 
 ## chain
 
@@ -324,6 +328,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,783 | 66,618 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,783 | 66,618 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 
 ## chain-affinity
 
@@ -389,6 +394,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 2,549 | 3,067 | 2,496 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 2,549 | 3,067 | 2,496 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 2,549 | 3,067 | 2,496 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 2,549 | 3,067 | 2,496 |
 
 ## control
 
@@ -454,6 +460,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 74,709 | 839,567 | 2,604,220 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 74,709 | 839,561 | 2,604,210 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 74,709 | 833,805 | 2,589,553 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 74,709 | 833,798 | 2,589,525 |
 
 ## create
 
@@ -519,6 +526,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 13,449,986 | 2,859,678 | 2,532,361 | 2,131,908 | 4,002,734 | 34,068,466 | 49,687,582 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 13,449,950 | 2,859,678 | 2,532,361 | 2,131,765 | 4,002,748 | 34,068,707 | 49,687,454 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 13,497,950 | 2,859,678 | 2,532,363 | 2,132,052 | 4,002,883 | 33,868,258 | 49,467,981 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 13,449,965 | 2,859,678 | 2,532,363 | 2,131,893 | 4,003,302 | 33,867,964 | 49,467,917 |
 
 ## create-on
 
@@ -584,6 +592,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 2,910,484 | 4,147,387 | 54,424,576 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 2,910,483 | 4,147,405 | 54,425,006 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 2,910,484 | 4,147,653 | 54,424,696 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 2,910,486 | 4,147,486 | 54,424,787 |
 
 ## cutoff
 
@@ -649,6 +658,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 
 ## derive-effect
 
@@ -714,6 +724,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 765 | 768 | 16,102 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 765 | 768 | 16,102 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 765 | 768 | 16,102 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 765 | 768 | 16,102 |
 
 ## derive-on
 
@@ -779,6 +790,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 737 | 775 | 16,261 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 737 | 775 | 16,261 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 737 | 775 | 16,261 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 737 | 775 | 16,261 |
 
 ## dispose
 
@@ -844,6 +856,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 2,706,747 | 806,291 | 367,497 | 465,792 | 485,187 | 13,195,757 | 9,106,266 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 2,706,246 | 806,291 | 367,497 | 466,323 | 485,036 | 13,194,087 | 9,105,868 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 2,707,640 | 806,291 | 367,497 | 466,327 | 485,261 | 13,193,963 | 9,106,924 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 2,706,242 | 806,291 | 367,497 | 466,065 | 485,358 | 13,192,394 | 9,105,869 |
 
 ## dispose-on
 
@@ -909,6 +922,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 346,497 | 478,633 | 8,902,293 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 346,497 | 478,476 | 8,902,430 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 346,497 | 478,708 | 8,902,658 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 346,497 | 478,687 | 8,902,464 |
 
 ## editable-edit
 
@@ -974,6 +988,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 180,106 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 180,106 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 180,106 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 180,106 |
 
 ## editable-upstream
 
@@ -1039,6 +1054,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 231,255 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 231,255 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 231,255 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 231,255 |
 
 ## fail-recompute
 
@@ -1104,6 +1120,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 65,082 | 1,366 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 65,106 | 1,366 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 65,106 | 1,366 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 65,106 | 1,366 |
 
 ## flight
 
@@ -1169,6 +1186,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 
 ## keyed-insert
 
@@ -1234,6 +1252,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 1,921,809 | 53,951 | 54,952 | 3,218,691 | 661,742 | 176,604 | 44,846,491 | 2,635,039 | 2,654,085 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 1,921,825 | 53,951 | 54,958 | 3,218,721 | 661,738 | 176,459 | 44,845,260 | 2,635,033 | 2,654,078 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 1,921,913 | 53,951 | 55,052 | 3,218,786 | 661,689 | 176,583 | 44,858,901 | 2,634,940 | 2,654,384 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 1,921,809 | 53,951 | 54,942 | 3,218,694 | 661,702 | 176,529 | 44,863,324 | 2,634,938 | 2,654,362 |
 
 ## keyed-remove
 
@@ -1299,6 +1318,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 1,920,739 | 43,628 | 45,285 | 3,244,914 | 593,213 | 604,945 | 44,801,844 | 1,924,803 | 1,958,856 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 1,920,750 | 43,628 | 45,300 | 3,244,960 | 593,214 | 605,189 | 44,801,838 | 1,924,842 | 1,958,868 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 1,920,842 | 43,611 | 45,372 | 3,245,051 | 593,263 | 604,992 | 44,798,546 | 1,924,844 | 1,958,836 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 1,920,749 | 43,611 | 45,268 | 3,245,069 | 593,201 | 605,029 | 44,798,430 | 1,924,844 | 1,958,927 |
 
 ## keyed-swap
 
@@ -1364,6 +1384,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 1,973,428 | 46,161 | 46,915 | 3,560,900 | 148,806 | 511,334 | 45,980,419 | 916,836 | 932,837 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 1,973,444 | 46,161 | 46,931 | 3,564,622 | 148,831 | 511,212 | 45,980,398 | 916,763 | 932,841 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 1,973,528 | 46,161 | 47,011 | 3,561,803 | 149,105 | 511,392 | 45,980,663 | 916,660 | 932,900 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 1,973,432 | 46,161 | 46,915 | 3,564,102 | 148,822 | 511,451 | 45,980,335 | 916,675 | 932,839 |
 
 ## mvu-dispatch
 
@@ -1429,6 +1450,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 58,261 | 772 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 58,261 | 772 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 58,261 | 772 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 58,261 | 772 |
 
 ## project-chain
 
@@ -1494,6 +1516,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 1,070,169 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 1,070,653 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 1,070,251 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 1,070,228 |
 
 ## project-churn
 
@@ -1559,6 +1582,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 36,474 | 34,310 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 36,490 | 34,326 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 36,474 | 34,310 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 36,474 | 34,310 |
 
 ## project-edit
 
@@ -1624,6 +1648,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 50,415 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 50,431 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 50,415 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 50,431 |
 
 ## project-reorder
 
@@ -1689,6 +1714,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 779,155 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 779,171 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 779,147 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 779,163 |
 
 ## server-render
 
@@ -1754,6 +1780,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 675,724 | 1,131,578 | 9,834,282 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 675,857 | 1,131,085 | 9,832,639 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 675,825 | 1,130,425 | 9,834,047 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 675,889 | 1,130,848 | 9,834,015 |
 
 ## shape-diamond
 
@@ -1819,6 +1846,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 59,899 | 79,968 | 1,763,357 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 59,899 | 79,968 | 1,763,357 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 59,899 | 79,968 | 1,763,357 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 59,899 | 79,968 | 1,763,357 |
 
 ## shape-dynamic
 
@@ -1884,6 +1912,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 82,921 | 107,032 | 2,006,144 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 82,921 | 107,034 | 2,006,144 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 82,921 | 107,035 | 2,006,147 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 82,921 | 107,035 | 2,006,147 |
 
 ## stream-burst-1
 
@@ -1949,6 +1978,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 1,974 | 1,572 | 2,491 | 4,671 | 3,644 | 13,378 | 47,202 | 45,417 | 55,171 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 1,974 | 1,572 | 2,507 | 4,671 | 3,644 | 13,371 | 47,201 | 45,417 | 55,168 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 1,974 | 1,572 | 2,491 | 4,672 | 3,644 | 13,370 | 47,202 | 45,417 | 55,169 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 1,974 | 1,572 | 2,491 | 4,672 | 3,644 | 13,370 | 47,200 | 45,417 | 55,167 |
 
 ## stream-burst-16
 
@@ -2014,6 +2044,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 5,631 | 25,017 | 5,701 | 9,502 | 49,601 | 8,051 | 120,972 | 714,180 | 113,522 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 5,631 | 25,017 | 5,717 | 9,498 | 49,601 | 8,051 | 120,970 | 714,180 | 113,519 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 5,631 | 25,017 | 5,701 | 9,503 | 49,601 | 8,051 | 120,970 | 714,180 | 113,519 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 5,631 | 25,017 | 5,701 | 9,500 | 49,599 | 8,051 | 120,973 | 714,180 | 113,522 |
 
 ## stream-burst-256
 
@@ -2079,6 +2110,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 64,131 | 400,101 | 57,040 | 127,431 | 787,250 | 74,605 | 1,301,661 | 11,413,287 | 1,046,532 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 64,131 | 400,101 | 57,056 | 127,416 | 787,248 | 74,605 | 1,301,530 | 11,413,287 | 1,046,484 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 64,131 | 400,101 | 57,040 | 127,470 | 787,248 | 74,560 | 1,301,578 | 11,413,339 | 1,046,549 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 64,131 | 400,101 | 57,040 | 127,437 | 787,211 | 74,566 | 1,301,581 | 11,413,283 | 1,046,550 |
 
 ## stream-restart
 
@@ -2144,6 +2176,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 4,187 | 4,976 | 6,357 | 16,584 | 42,491 | 71,400 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 4,187 | 4,992 | 6,360 | 16,588 | 42,491 | 71,399 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 4,187 | 4,976 | 6,359 | 16,588 | 42,491 | 71,403 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 4,187 | 4,976 | 6,359 | 16,582 | 42,491 | 71,400 |
 
 ## timed-admit-both
 
@@ -2209,6 +2242,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 118,591 | 134,962 | 2,679,932 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 118,591 | 134,963 | 2,679,932 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 118,591 | 134,962 | 2,679,800 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 118,591 | 134,961 | 2,679,800 |
 
 ## timed-admit-debounce
 
@@ -2274,6 +2308,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 117,496 | 133,557 | 2,640,285 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 117,496 | 133,581 | 2,640,285 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 117,496 | 133,557 | 2,640,296 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 117,496 | 133,557 | 2,640,271 |
 
 ## timed-admit-first
 
@@ -2339,6 +2374,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 69,479 | 79,053 | 1,611,692 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 69,479 | 79,050 | 1,611,692 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 69,479 | 79,050 | 1,611,692 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 69,479 | 79,052 | 1,611,692 |
 
 ## timed-admit-last
 
@@ -2404,6 +2440,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 117,758 | 133,866 | 2,650,141 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 117,758 | 133,875 | 2,650,140 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 117,758 | 133,865 | 2,650,126 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 117,758 | 133,874 | 2,650,132 |
 
 ## timed-capture-both
 
@@ -2469,6 +2506,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 35,726 | 44,797 | 846,998 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 35,726 | 44,797 | 846,996 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 35,726 | 44,808 | 846,879 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 35,726 | 44,807 | 846,878 |
 
 ## timed-capture-debounce
 
@@ -2534,6 +2572,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 35,598 | 44,104 | 847,375 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 35,598 | 44,104 | 847,376 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 35,598 | 44,104 | 847,376 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 35,598 | 44,104 | 847,376 |
 
 ## timed-capture-first
 
@@ -2599,6 +2638,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 32,078 | 36,612 | 745,370 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 32,078 | 36,612 | 745,370 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 32,078 | 36,612 | 745,371 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 32,078 | 36,612 | 745,370 |
 
 ## timed-capture-last
 
@@ -2664,6 +2704,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 35,534 | 44,040 | 839,503 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 35,534 | 44,040 | 839,503 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 35,534 | 44,040 | 839,504 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 35,534 | 44,040 | 839,504 |
 
 ## update
 
@@ -2729,6 +2770,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 1,087,690 | 38,805 | 82,505 | 262,290 | 151,723 | 3,350,151 | 2,502,737 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 1,087,690 | 38,805 | 82,505 | 262,726 | 151,682 | 3,350,255 | 2,502,807 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 1,087,690 | 38,805 | 82,505 | 262,845 | 151,672 | 3,350,287 | 2,502,840 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 1,087,690 | 38,805 | 82,505 | 262,748 | 151,696 | 3,350,391 | 2,502,797 |
 
 ## update-on
 
@@ -2794,6 +2836,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 93,005 | 165,221 | 2,830,434 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 93,005 | 165,192 | 2,830,302 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 93,005 | 165,259 | 2,830,351 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 93,005 | 165,242 | 2,830,394 |
 
 ## work-form
 
@@ -2859,6 +2902,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 170,300 | 163,392 | 295,957 | 291,430 | 5,349,217 | 5,295,441 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 170,300 | 163,392 | 295,967 | 291,428 | 5,349,196 | 5,295,422 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 170,300 | 163,392 | 295,967 | 291,361 | 5,349,236 | 5,295,424 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 170,300 | 163,392 | 295,967 | 291,360 | 5,349,282 | 5,295,421 |
 
 ## work-status
 
@@ -2924,6 +2968,7 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 100,445 | 78,815 | 264,906 | 152,965 | 2,610,988 | 2,360,853 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 100,445 | 78,815 | 264,855 | 152,927 | 2,610,951 | 2,360,835 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 100,445 | 78,815 | 264,848 | 152,963 | 2,611,029 | 2,360,863 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 100,445 | 78,815 | 264,818 | 152,949 | 2,611,023 | 2,360,832 |
 
 ## work-value
 
@@ -2989,4 +3034,5 @@
 | `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | 107,569 | 119,471 | 265,063 | 279,878 | 2,595,698 | 2,920,176 |
 | `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | 107,569 | 119,470 | 265,065 | 279,868 | 2,595,591 | 2,920,211 |
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 107,569 | 119,471 | 265,104 | 279,898 | 2,595,629 | 2,920,187 |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 107,569 | 119,471 | 265,109 | 279,920 | 2,595,682 | 2,920,190 |
 
