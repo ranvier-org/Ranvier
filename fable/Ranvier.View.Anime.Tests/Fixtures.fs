@@ -147,22 +147,13 @@ type Chart =
     }
 
 let chart =
-    Component.define
+    Component.template
         (fun _ () ->
             {
                 Fraction = Api.createSignal 0.
                 Line = Api.createSignal "M0 0 L100 0"
             })
-        (fun t ->
-            t.element
-                (HtmlTag "svg")
-                [||]
-                [|
-                    t.element
-                        (HtmlTag "path")
-                        [|
-                            Motion.draw (AnimatableParams (duration = 300)) (fun c -> c.Fraction.Value)
-                        |]
-                        [||]
-                    t.element (HtmlTag "path") [| Motion.morph (Anim (duration = 300)) (fun c -> c.Line.Value) |] [||]
-                |])
+        (svg () {
+            path (Motion.draw (AnimatableParams (duration = 300)) (fun c -> c.Fraction.Value)) { () }
+            path (Motion.morph (Anim (duration = 300)) (fun c -> c.Line.Value)) { () }
+        })

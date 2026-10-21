@@ -2,27 +2,27 @@
   "glue": {
     "presence": {
       "motion": {
-        "raw": 242232,
-        "gzip": 72894
+        "raw": 242429,
+        "gzip": 73010
       },
       "handWritten": {
-        "raw": 240972,
-        "gzip": 72405
+        "raw": 240930,
+        "gzip": 72424
       },
-      "deltaGzip": 489,
+      "deltaGzip": 586,
       "budgetGzip": 900,
       "withinBudget": true
     },
     "flip": {
       "motion": {
-        "raw": 269534,
-        "gzip": 80707
+        "raw": 269744,
+        "gzip": 80791
       },
       "handWritten": {
-        "raw": 268597,
-        "gzip": 80371
+        "raw": 268807,
+        "gzip": 80454
       },
-      "deltaGzip": 336,
+      "deltaGzip": 337,
       "budgetGzip": 600,
       "withinBudget": true
     }
@@ -125,26 +125,10 @@
     }
   },
   "helpers": {
-    "experiments/Ranvier.View.Anime/Motion.js": {
-      "helpers": 3,
-      "seamAdapters": 2,
-      "other": 0
-    },
-    "src/Fable.Ranvier.Anime/Params.js": {
-      "helpers": 0,
-      "seamAdapters": 0,
-      "other": 0
-    },
-    "src/Fable.Ranvier.Anime/Reactive.js": {
-      "helpers": 0,
-      "seamAdapters": 0,
-      "other": 0
-    },
-    "src/Fable.Ranvier.Anime/Testing.js": {
-      "helpers": 0,
-      "seamAdapters": 0,
-      "other": 0
-    }
+    "experiments/Ranvier.View.Anime/Motion.js": 0,
+    "src/Fable.Ranvier.Anime/Params.js": 0,
+    "src/Fable.Ranvier.Anime/Reactive.js": 0,
+    "src/Fable.Ranvier.Anime/Testing.js": 0
   },
   "withinBudget": true
 }

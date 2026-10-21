@@ -394,20 +394,11 @@ let private animateOnReplaces (clock: Clock) =
     equal ("0.2", "0.6", "0.5", "0.4", "0.4") (first, half, replaced, reached, settled)
 
 let private stroked =
-    Component.define (fun _ (s: Level) -> s) (fun t ->
-        t.element
-            (HtmlTag "svg")
-            [||]
-            [|
-                t.element
-                    (HtmlTag "path")
-                    [|
-                        Motion.draw (AnimatableParams (duration = 1000, ease = Ease.linear)) (fun (s: Level) -> s.Level.Value)
-                    |]
-                    [||]
-            |])
+    Component.template
+        (fun _ (s: Level) -> s)
+        (svg () { path (Motion.draw (AnimatableParams (duration = 1000, ease = Ease.linear)) (fun (s: Level) -> s.Level.Value)) { () } })
 
-let private drawReaches (clock: Clock) =
+let private drawReaches queued (clock: Clock) =
     use graph = new Graph ()
     let target = host ()
 
@@ -416,7 +407,7 @@ let private drawReaches (clock: Clock) =
             Level = graph.Run (fun () -> Api.createSignal 0.25)
         }
 
-    let mounted = mountIn false graph target (Component.render stroked state)
+    let mounted = mountIn queued graph target (Component.render stroked state)
     let path = find target "path"
     let first = attributeOf path "stroke-dasharray", namespaceOf path
     write graph mounted (fun () -> state.Level.Value <- 0.75)
@@ -431,20 +422,11 @@ let private drawReaches (clock: Clock) =
 type Outline = { Shape: Signal<string> }
 
 let private morphed =
-    Component.define (fun _ (s: Outline) -> s) (fun t ->
-        t.element
-            (HtmlTag "svg")
-            [||]
-            [|
-                t.element
-                    (HtmlTag "path")
-                    [|
-                        Motion.morph (Anim (duration = 1000, ease = Ease.linear)) (fun (s: Outline) -> s.Shape.Value)
-                    |]
-                    [||]
-            |])
+    Component.template
+        (fun _ (s: Outline) -> s)
+        (svg () { path (Motion.morph (Anim (duration = 1000, ease = Ease.linear)) (fun (s: Outline) -> s.Shape.Value)) { () } })
 
-let private morphReaches (clock: Clock) =
+let private morphReaches queued (clock: Clock) =
     use graph = new Graph ()
     let target = host ()
 
@@ -453,9 +435,9 @@ let private morphReaches (clock: Clock) =
             Shape = graph.Run (fun () -> Api.createSignal "M0 0 L10 0")
         }
 
-    let mounted = mountIn false graph target (Component.render morphed state)
+    let mounted = mountIn queued graph target (Component.render morphed state)
     let path = find target "path"
-    let first = attributeOf path "d"
+    let first = attributeOf path "d", namespaceOf path
     write graph mounted (fun () -> state.Shape.Value <- "M0 10 L10 10")
     advance clock 0.
     advance clock 488.
@@ -463,7 +445,38 @@ let private morphReaches (clock: Clock) =
     advance clock 600.
     let reached = attributeOf path "d"
     mounted.Dispose ()
-    equal ("M0 0 L10 0", true, "M0 10 L10 10") (first, half <> first && half <> reached, reached)
+    equal (("M0 0 L10 0", "http://www.w3.org/2000/svg"), true, "M0 10 L10 10") (first, half <> fst first && half <> reached, reached)
+
+type Strokes = { Fractions: Signal<float array> }
+
+let private strokes =
+    Component.template
+        (fun _ (s: Strokes) -> s)
+        (svg () {
+            forEach
+                id
+                (fun (s: Strokes) -> s.Fractions.Value)
+                (path (Motion.draw (AnimatableParams (duration = 1000, ease = Ease.linear)) (fun (current: unit -> float) -> current ())) { () })
+        })
+
+[<Emit("Array.from($0.querySelectorAll($1), n => n.namespaceURI + ' ' + n.getAttribute('stroke-dasharray'))")>]
+let private strokesOf (root: obj) (selector: string) : string array = jsNative
+
+let private svgRows queued (clock: Clock) =
+    use graph = new Graph ()
+    let target = host ()
+
+    let state =
+        {
+            Fractions = graph.Run (fun () -> Api.createSignal [| 0.25 |])
+        }
+
+    let mounted = mountIn queued graph target (Component.render strokes state)
+    write graph mounted (fun () -> state.Fractions.Value <- [| 0.25; 0.5 |])
+    let rows = List.ofArray (strokesOf target "svg > *")
+    mounted.Dispose ()
+    let svg = "http://www.w3.org/2000/svg"
+    equal [ svg + " 250 760"; svg + " 500 510" ] rows
 
 type Puck =
     {
@@ -619,12 +632,15 @@ let cases: (string * (Clock -> unit)) array =
             [| "presence pins the leaving node out of flow", presencePins |]
             modes "disposing the mount mid-exit removes the node and stops the exit" disposalEndsExits
             modes "under Reduced, enter does not play and exit finishes at once" reducedPolicy
+            modes "draw animates the stroke of an SVG path to each fraction" drawReaches
+            modes "morph animates an SVG path to each shape and ends on it exactly" morphReaches
+            [|
+                "list rows under an svg element are SVG elements (queued commits)", svgRows true
+            |]
             modes "flip records before and animates after each pass, without leaving rows" flipOrder
             [|
                 "follow sets its first value and animates to each write", followReaches
                 "animateOn replaces a running animation and settles on the last value", animateOnReplaces
-                "draw animates the stroke to each fraction", drawReaches
-                "morph animates to each shape and ends on it exactly", morphReaches
                 "drag writes its position and moves on writes without echo", dragEchoGuard
                 "scroll writes the observer's progress and in-view state", scrollWrites
                 "split splits the text and its cleanup restores it", splitReverts

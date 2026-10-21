@@ -4,8 +4,8 @@
 //   Motion.flip against its twin calling createLayout through Hooks.reflow (≤ 600 B);
 // - isolation: an unminified entry using one Motion part declares no anime feature class beyond those its own anime
 //   imports bring (AutoLayout, Draggable, ScrollObserver, TextSplitter, WAAPIAnimation, Timeline);
-// - helpers: the emitted Ranvier.View.Anime and Fable.Ranvier.Anime modules hold no curry, partialApply or createObj,
-//   and Ranvier.View.Anime holds uncurry4 only at its two seam adapters (the HookBuilder members take curried functions).
+// - helpers: the emitted Ranvier.View.Anime and Fable.Ranvier.Anime modules hold no curry, uncurry, partialApply or
+//   createObj.
 // Exits 1 on a breach. Writes docs/research/motion/bundle.json.
 import { rolldown } from "rolldown";
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
@@ -68,11 +68,8 @@ const modules = [
 for (const module of modules) {
   const text = readFileSync(new URL(module, generated), "utf8");
   const calls = [...text.matchAll(helpers)].map(match => match[0]);
-  const adapters = (text.match(/HookBuilder\$1__(motion|exit)_\w+\(Hooks\(\), uncurry4\(/g) ?? []).length;
-  const imports = (text.match(/^import \{[^}]*\buncurry4\b[^}]*\} from/gm) ?? []).length;
-  const other = calls.length - adapters - imports;
-  breach ||= other !== 0;
-  result.helpers[module] = { helpers: calls.length, seamAdapters: adapters, other };
+  breach ||= calls.length !== 0;
+  result.helpers[module] = calls.length;
 }
 
 result.withinBudget = !breach;

@@ -2321,21 +2321,22 @@ type HookBuilder<'inst> internal () =
     /// was created by a region pass after the region's first. The returned cleanup runs when the instance is disposed.
     /// The server omits the hook.
     /// </summary>
-    member _.motion(hook: 'inst -> 'native -> MotionContext -> (unit -> unit)) : Part<'native, 'inst> =
+    member _.motion(hook: Func<'inst, 'native, MotionContext, unit -> unit>) : Part<'native, 'inst> =
         PlacedPart (
             PlacedKind.Motion,
             Func<obj, obj, obj, obj>(fun instance node flags ->
                 let flags: int = unbox flags
 
                 box (
-                    hook
-                        (unbox instance)
-                        (unbox node)
+                    hook.Invoke (
+                        unbox instance,
+                        unbox node,
                         {
                             Hydrated = flags &&& 1 <> 0
                             Inserted = flags &&& 2 <> 0
                             ExitPending = fun () -> Departures.hasExit (unbox node)
                         }
+                    )
                 ))
         )
 
@@ -2344,22 +2345,48 @@ type HookBuilder<'inst> internal () =
     /// runs with <c>finish</c>; the node leaves when <c>finish</c> is called. The returned function cancels the exit when
     /// the removal is forced. An exit applies once the element is placed. The server omits the hook.
     /// </summary>
-    member _.exit(exit: 'inst -> 'native -> (unit -> unit) -> (unit -> unit)) : Part<'native, 'inst> =
+    member _.exit(exit: Func<'inst, 'native, unit -> unit, unit -> unit>) : Part<'native, 'inst> =
         PlacedPart (
             PlacedKind.Exit,
             Func<obj, obj, obj, obj>(fun instance node _ ->
-                box (Departures.register (unbox node) (fun finish -> exit (unbox instance) (unbox node) finish)))
+                box (Departures.register (unbox node) (Func<_, _>(fun finish -> exit.Invoke (unbox instance, unbox node, finish)))))
         )
 
     /// <summary>
     /// On a region's parent element: <c>Before</c> runs before the first region pass under the element in a flush,
     /// <c>After</c> once the pass's nodes and commits are in place. The server omits the hook.
     /// </summary>
-    member _.reflow(measure: 'inst -> 'native -> Reflow) : Part<'native, 'inst> =
+    member _.reflow(measure: Func<'inst, 'native, Reflow>) : Part<'native, 'inst> =
         PlacedPart (
             PlacedKind.Reflow,
-            Func<obj, obj, obj, obj>(fun instance node _ -> box (Departures.registerReflow (unbox node) (measure (unbox instance) (unbox node))))
+            Func<obj, obj, obj, obj>(fun instance node _ ->
+                box (Departures.registerReflow (unbox node) (measure.Invoke (unbox instance, unbox node))))
         )
+
+    /// <summary>
+    /// <c>first</c> and <c>second</c> on one element as one part: the hook of <c>second</c> runs after the hook of
+    /// <c>first</c>, and the cleanup of <c>second</c> before the cleanup of <c>first</c>. Both are hook parts, at most one
+    /// of them other than a motion hook, and the part has that hook's kind; other parts raise.
+    /// </summary>
+    member _.both(first: Part<'native, 'inst>, second: Part<'native, 'inst>) : Part<'native, 'inst> =
+        match first, second with
+        | PlacedPart (PlacedKind.Motion, firstHook), PlacedPart (kind, secondHook)
+        | PlacedPart (kind, firstHook), PlacedPart (PlacedKind.Motion, secondHook) ->
+            PlacedPart (
+                kind,
+                Func<obj, obj, obj, obj>(fun instance node flags ->
+                    let before: unit -> unit = unbox (firstHook.Invoke (instance, node, flags))
+                    let after: unit -> unit = unbox (secondHook.Invoke (instance, node, flags))
+
+                    box (fun () ->
+                        try
+                            if not (isNull (box after)) then
+                                after ()
+                        finally
+                            if not (isNull (box before)) then
+                                before ()))
+            )
+        | _ -> invalidArg "second" "Hooks.both combines two hook parts, at most one of them other than a motion hook"
 
 /// <summary>Raw-HTML parts: the element's whole content, parsed without escaping.</summary>
 [<Sealed>]
