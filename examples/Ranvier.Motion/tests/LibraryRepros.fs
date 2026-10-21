@@ -1,4 +1,7 @@
-/// <summary>Minimal reproductions of library bugs met while building the pages; each states the correct behaviour.</summary>
+/// <summary>
+/// Minimal reproductions of library bugs met while building the pages, each stating the correct behaviour; the fixed ones
+/// stay as regression checks.
+/// </summary>
 module LibraryRepros
 
 open global.Ranvier
@@ -28,9 +31,9 @@ let private fadingIn =
         })
 
 /// <summary>
-/// Motion.flip with Motion.enter (or presence) on the same rows: an entering row's opacity enter completes at 100 ms, the
-/// layout completes at 300 ms, and the row is expected at opacity 1. The layout writes back the inline opacity it
-/// measured when the pass's layout was animated, the enter's first frame, 0.
+/// Motion.flip with an opacity enter on the same rows: the enter completes at 100 ms, the layout at 300 ms, and the row
+/// stays at opacity 1. A regression check of a fixed bug: the layout wrote back the opacity it measured at the enter's
+/// first frame, 0.
 /// </summary>
 let private flipRestoresEnteringOpacity (clock: Clock) =
     use graph = new Graph ()
@@ -92,9 +95,8 @@ let private armReadPendsBoundary (clock: Clock) =
     equal ((1, 0), (0, 0, [| "0.9high" |])) (waiting, revealed)
 
 /// <summary>
-/// An SVG element's camel-case attribute, <c>viewBox</c>: expected to be accepted as written. The attribute-name check
-/// rejects every name with an upper-case letter; the lower-case spelling reaches the SVG element as <c>viewBox</c> only
-/// through the HTML parser of synchronous commits.
+/// An SVG element's camel-case attribute, <c>viewBox</c>, is written as given under queued commits. A regression check of
+/// a fixed bug: the attribute-name check rejected every name with an upper-case letter.
 /// </summary>
 let private svgCamelCaseAttribute (_: Clock) =
     let chart =
@@ -104,8 +106,10 @@ let private svgCamelCaseAttribute (_: Clock) =
     let target = host ()
 
     let mounted =
-        Mounting.mountWith SynchronousCommits graph None report target None (fun context -> Program.run (Component.render chart ()) context.Backend)
+        Mounting.mountWith (QueuedCommits (CollectAndContinue, ignore)) graph None report target None (fun context ->
+            Program.run (Component.render chart ()) context.Backend)
 
+    mounted.Flush ()
     let written = attributeOf (find target "svg") "viewBox"
     mounted.Dispose ()
     equal "0 0 10 10" written
@@ -135,17 +139,11 @@ let private svgUnderQueuedCommits (_: Clock) =
 
 let cases: Case list =
     [
-        bug
-            "Motion.flip's layout restores the inline opacity measured at its animate() when it completes"
-            "flip restores an entering row's opacity to the enter's first frame"
-            flipRestoresEnteringOpacity
+        case "flip keeps an entering row's opacity enter" flipRestoresEnteringOpacity
         bug
             "an arm region's selection raises a pending read inside a boundary's content instead of waiting"
             "a show condition reading a pending value inside a boundary waits with the boundary"
             armReadPendsBoundary
-        bug
-            "Attrs.attribute rejects upper-case attribute names, SVG's viewBox among them"
-            "an SVG camel-case attribute is written as given"
-            svgCamelCaseAttribute
+        case "an SVG camel-case attribute is written as given under queued commits" svgCamelCaseAttribute
         case "an SVG path tag mounted under queued commits is in the SVG namespace" svgUnderQueuedCommits
     ]

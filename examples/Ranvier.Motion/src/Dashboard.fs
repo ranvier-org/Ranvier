@@ -178,16 +178,6 @@ type Panel =
         + (tween.To - tween.From)
           * easeOut tween.Progress.Value
 
-[<Emit("$0.setAttribute('viewBox', $1)")>]
-let private setViewBox (element: obj) (box: string) : unit = jsNative
-
-// Attrs.attribute rejects upper-case names, and only the HTML parser maps a lower-case viewbox to viewBox
-// (LibraryRepros: "an SVG camel-case attribute is written as given"); the hook sets it on the placed element.
-let private viewBox (box: string) =
-    Hooks.mounted (fun (_: Panel) element ->
-        setViewBox element box
-        ignore)
-
 let private percent (value: float) =
     sprintf "%.0f%%" (value * 100.)
 
@@ -296,7 +286,7 @@ let private content (store: Store) =
             }
 
             article (Attrs.className "tile ring") {
-                svg (Attrs.attribute ("class", "ring-svg"), viewBox "0 0 100 100") {
+                svg (Attrs.attribute ("class", "ring-svg"), Attrs.attribute ("viewBox", "0 0 100 100")) {
                     circle (
                         Attrs.attribute ("class", "ring-track"),
                         Attrs.attribute ("cx", "50"),
@@ -335,7 +325,24 @@ let private content (store: Store) =
                     span (Attrs.className "note") { fun (panel: Panel) -> sprintf "%d of %d" panel.Cpu.Value.Length capacity }
                 }
 
-                svg (Attrs.attribute ("class", "chart-svg"), viewBox "0 0 600 200", Attrs.attribute ("preserveaspectratio", "none")) {
+                svg (
+                    Attrs.attribute ("class", "chart-svg"),
+                    Attrs.attribute ("viewBox", "0 0 600 200"),
+                    Attrs.attribute ("preserveAspectRatio", "none")
+                ) {
+                    defs () {
+                        linearGradient (
+                            Attrs.attribute ("id", "cpu-fill"),
+                            Attrs.attribute ("x1", "0"),
+                            Attrs.attribute ("y1", "0"),
+                            Attrs.attribute ("x2", "0"),
+                            Attrs.attribute ("y2", "1")
+                        ) {
+                            stop (Attrs.attribute ("offset", "0%"), Attrs.attribute ("class", "fill-top")) { () }
+                            stop (Attrs.attribute ("offset", "100%"), Attrs.attribute ("class", "fill-bottom")) { () }
+                        }
+                    }
+
                     path (
                         Attrs.attribute ("class", "chart-area"),
                         Motion.morph (Anim (duration = 700, ease = Ease.outQuart)) (fun (panel: Panel) -> areaPath panel.Cpu.Value)

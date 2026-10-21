@@ -196,12 +196,8 @@ let dropLane (column: int) (width: float) (dx: float) =
     else
         max 0 (min (lanes.Length - 1) (column + int (System.Math.Round (dx / width))))
 
-// The enter scales and lifts the card inside the row element, and the board's layout fades the row in. While Motion.flip's
-// layout animates, it holds the inline opacity it measured on the row and its descendants and writes it back when it
-// completes, so an opacity enter in the same pass would end at its first frame
-// (see LibraryRepros "flip restores an entering row's opacity").
 let private enterCard (_: CardRow) (element: Fable.Core.TS.Dom.Element) =
-    Anime.animate (Page.query element ".card", Anim (y = Value.fromTo (18, 0), scale = Value.fromTo (0.6, 1), duration = 360, ease = Ease.outBack))
+    Anime.animate (element, Anim (opacity = Value.fromTo (0, 1), scale = Value.fromTo (0.85, 1), duration = 320, ease = Ease.outBack))
 
 let private leaveCard (_: CardRow) (element: Fable.Core.TS.Dom.Element) =
     Anime.animate (element, Anim (opacity = 0, scale = 0.8, duration = 240, ease = Ease.inQuad))

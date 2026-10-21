@@ -127,15 +127,21 @@ let private deleteHolds queued (clock: Clock) =
 let private addEnters queued (clock: Clock) =
     let graph, target, page = mounted queued
     dispatch graph page (Add 1)
-    let card = find target ".card-slot[data-id=\"6\"] .card"
+    let card = find target ".card-slot[data-id=\"6\"]"
     advance clock 0.
     advance clock 16.
-    let start = styleOf card "transform"
+    let start = styleOf card "opacity", styleOf card "transform"
     run clock 16. 600.
-    let finish = styleOf card "transform"
-    let lane = attributeOf (find target ".card-slot[data-id=\"6\"]") "data-lane"
+    let finish = styleOf card "opacity", styleOf card "transform"
+    let lane = attributeOf card "data-lane"
     close graph page
-    equal (true, "translateY(0px) scale(1)", "1") (start.Contains "scale(0.", finish, lane)
+
+    equal
+        (true, ("1", "translate(0px,0px) scale(1)"), "1")
+        (fst start <> "1"
+         && (snd start).Contains "scale(0.",
+         finish,
+         lane)
 
 let private clearAndUndo queued (clock: Clock) =
     let graph, target, page = mounted queued
@@ -189,7 +195,7 @@ let cases: Case list =
         case "slots number cards per lane, counts tally lanes, and a drop rounds to the nearest lane" laneArithmetic
         yield! modes "the board renders its lanes and cards, and first-pass cards do not enter" rendersBoard
         yield! modes "delete pins the card and holds it until its exit completes" deleteHolds
-        yield! modes "add scales the new card in inside its row" addEnters
+        yield! modes "add fades and scales the new card in" addEnters
         yield! modes "clear holds every card until its exit, and undo brings them back" clearAndUndo
         case "drag: a release one lane over moves the card, a release in its lane springs home" dragDrops
     ]

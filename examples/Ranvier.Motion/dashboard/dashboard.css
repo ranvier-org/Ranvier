@@ -152,8 +152,18 @@
 }
 
 .chart-area {
-  fill: color-mix(in srgb, var(--accent) 14%, transparent);
+  fill: url(#cpu-fill);
   stroke: none;
+}
+
+.fill-top {
+  stop-color: var(--accent);
+  stop-opacity: 0.32;
+}
+
+.fill-bottom {
+  stop-color: var(--accent);
+  stop-opacity: 0;
 }
 
 .alert {

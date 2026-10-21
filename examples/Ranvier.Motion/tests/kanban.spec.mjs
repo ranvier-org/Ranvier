@@ -19,19 +19,18 @@ test("renders three lanes and five cards, and exposes the loop", async ({ page }
   await shoot(page, "kanban");
 });
 
-test("add: the new card enters, scaled by presence and faded by the layout, on the page clock", async ({ page }) => {
+test("add: the new card fades and scales in with presence on the page clock", async ({ page }) => {
   await page.click("button.add");
   const added = page.locator(card(6));
-  const inner = page.locator(`${card(6)} .card`);
   await expect(added).toHaveCount(1);
   await page.clock.runFor(16);
-  const early = { opacity: await opacityOf(added), scale: await scaleOf(inner) };
+  const early = { opacity: await opacityOf(added), scale: await scaleOf(added) };
   await page.clock.runFor(48);
-  const middle = { opacity: await opacityOf(added), scale: await scaleOf(inner) };
+  const middle = { opacity: await opacityOf(added), scale: await scaleOf(added) };
   await page.clock.runFor(800);
-  const settled = { opacity: await opacityOf(added), scale: await scaleOf(inner) };
+  const settled = { opacity: await opacityOf(added), scale: await scaleOf(added) };
   expect(early.opacity).toBeLessThan(0.5);
-  expect(early.scale).toBeLessThan(0.9);
+  expect(early.scale).toBeLessThan(0.95);
   expect(middle.opacity).toBeGreaterThan(early.opacity);
   expect(middle.scale).toBeGreaterThan(early.scale);
   expect(settled).toEqual({ opacity: 1, scale: 1 });

@@ -266,11 +266,8 @@ let private about =
             p (Attrs.className "note") { "Built with Ranvier's view sugar, Ranvier.Elmish and anime.js." }
         })
 
-// The page's root is the arm's root: presence lifts the content in, and the shell's layout fades the root in. The
-// layout writes back the inline opacity it measured when it completes, so an opacity enter on an arm root under the
-// shell's flip would end at its first frame (LibraryRepros: "flip restores an entering row's opacity").
 let private arrive (_: unit -> unit) (element: TS.Dom.Element) =
-    Anime.animate (Page.query element ".page-body", Anim (y = Value.fromTo (24, 0), duration = 420, ease = Ease.outQuart))
+    Anime.animate (element, Anim (opacity = Value.fromTo (0, 1), y = Value.fromTo (24, 0), duration = 420, ease = Ease.outQuart))
 
 let private depart (_: unit -> unit) (element: TS.Dom.Element) =
     Anime.animate (element, Anim (opacity = 0, y = -16, duration = 260, ease = Ease.inQuad))
