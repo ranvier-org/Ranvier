@@ -1679,6 +1679,17 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
     member _.LaidOut = laidOut
     member _.Errors = errors
 
+#if RANVIER_VIEW_INSPECT || !FABLE_COMPILER
+    /// <summary>Runs <c>action</c> as a pass of the region's mount, counted by its <c>PassDepth</c>.</summary>
+    member internal _.InPass(action: unit -> 'T) : 'T =
+        state.PassDepth <- state.PassDepth + 1
+
+        try
+            action ()
+        finally
+            state.PassDepth <- state.PassDepth - 1
+#endif
+
     /// <summary>The creation index of the region's next row, counting from 0 for the region's first row.</summary>
     member _.NextRow() : int =
         let row = created
@@ -2027,6 +2038,10 @@ and [<Sealed>] private ViewBoundary
     let mutable failed = false
     // Advances on each failure; a retry of an earlier failure is ignored.
     let mutable generation = 0
+#if RANVIER_VIEW_INSPECT || !FABLE_COMPILER
+    // The first error of the latest failure; null until one.
+    let mutable failure: exn = null
+#endif
     // Failures received while the content sets up.
     let held = ResizeArray<exn>()
     // Failures received after setup, waiting for the boundary's effect.
@@ -2238,6 +2253,9 @@ and [<Sealed>] private ViewBoundary
     /// </summary>
     member private this.TearDown(errors: exn list) =
         failed <- true
+#if RANVIER_VIEW_INSPECT || !FABLE_COMPILER
+        failure <- List.tryHead errors |> Option.toObj
+#endif
         copy <- Unchecked.defaultof<_>
         generation <- generation + 1
         let current = generation
@@ -2396,13 +2414,33 @@ and [<Sealed>] private ViewBoundary
     /// discards the hooks held by an unrevealed content.
     /// </summary>
     member this.Start() =
+#if RANVIER_VIEW_INSPECT || !FABLE_COMPILER
+        Api.onCleanup (
+            Inspect.register
+                regionStart
+                (Inspect.BoundaryProbe (
+                    parentPath.Row (region, -1),
+                    fun () ->
+                        if failed then
+                            Inspect.Failed (failure, generation)
+                        elif waiting > 0 || not revealed then
+                            Inspect.Pending (waiting, revealed)
+                        else
+                            Inspect.Ready
+                ))
+        )
+#endif
         wake <- Api.createSignal 0
         pending <- Api.createSignal false
         status <- { IsPending = fun () -> pending.Value }
 
         Api.createEffect (fun () ->
             wake.Value |> ignore
+#if RANVIER_VIEW_INSPECT || !FABLE_COMPILER
+            Api.untrack (fun () -> site.InPass (fun () -> this.Settle ())))
+#else
             Api.untrack (fun () -> this.Settle ()))
+#endif
 
         Api.onCleanup (fun () ->
             if not (isNull contentContainer) then
@@ -3044,6 +3082,14 @@ and internal MountState
                 cursor <- null
 
             root.MarkAttached ()
+#if RANVIER_VIEW_INSPECT || !FABLE_COMPILER
+            let queued, flushing =
+                match scheduling with
+                | Queued queue -> true, (fun () -> this.PassDepth > 0 || queue.Flushing)
+                | Synchronous -> false, (fun () -> this.PassDepth > 0)
+
+            root.OnCleanup (Inspect.register range.First (Inspect.MountProbe ((fun () -> root.Phase), queued, flushing, identity.Prefix)))
+#endif
             delegateAt host
 
             if not (isNull delegatedNames) then
@@ -3181,6 +3227,11 @@ and internal MountState
 
     /// <summary>The document receiving the mount's head entries: the root mount host's document.</summary>
     member val internal HeadDocument = DocumentHead.documentOf host with get, set
+
+#if RANVIER_VIEW_INSPECT || !FABLE_COMPILER
+    /// <summary>The region passes of this mount running now.</summary>
+    member val internal PassDepth = 0 with get, set
+#endif
 
     /// <summary>
     /// Binds a document head entry for the current owner. Its readers are bindings of this mount; it is shown once
@@ -3976,6 +4027,26 @@ and internal MountState
                     measured ()
 
         site.Own (fun () ->
+#if RANVIER_VIEW_INSPECT || !FABLE_COMPILER
+            Api.onCleanup (
+                Inspect.register
+                    regionStart
+                    (Inspect.ListProbe (
+                        parentPath.Row (region, -1),
+                        fun () ->
+                            if isNull previousKeys then
+                                [||]
+                            else
+                                [|
+                                    for index in 0 .. min previousKeys.Length previousRows.Length - 1 do
+                                        let row = item previousRows index
+
+                                        if not (isNull row) then
+                                            item previousKeys index, row.First
+                                |]
+                    ))
+            )
+#endif
             version <- Api.createSignal 0
 
             projection <-
@@ -3983,7 +4054,11 @@ and internal MountState
                     version.Value |> ignore
                     snapshot :> seq<_>)
 
+#if RANVIER_VIEW_INSPECT || !FABLE_COMPILER
+            Api.untrack (fun () -> Api.createEffect (fun () -> site.InPass reconcile)))
+#else
             Api.untrack (fun () -> Api.createEffect reconcile))
+#endif
 
     /// <summary>
     /// Mounts the arm selected by the region's first item between its markers. An arm stays while its key is unchanged
@@ -4182,6 +4257,25 @@ and internal MountState
                         armItem.Value <- value)
 
         site.Own (fun () ->
+#if RANVIER_VIEW_INSPECT || !FABLE_COMPILER
+            Api.onCleanup (
+                Inspect.register
+                    regionStart
+                    (Inspect.ArmProbe (
+                        parentPath.Row (region, -1),
+                        fun () ->
+                            let definition =
+                                if isNull (box armItem) then
+                                    Unchecked.defaultof<_>
+                                else
+                                    match Api.untrack (fun () -> armItem.Value) with
+                                    | :? Template.Arm as arm -> arm.Definition
+                                    | _ -> Unchecked.defaultof<_>
+
+                            struct (armKey, definition)
+                    ))
+            )
+#endif
             items <- Api.createMemo (fun _ -> read ())
 
             selection <-
@@ -4190,7 +4284,11 @@ and internal MountState
 
                     if current.Length = 0 then null else current[0])
 
+#if RANVIER_VIEW_INSPECT || !FABLE_COMPILER
+            Api.untrack (fun () -> Api.createEffect (fun () -> site.InPass reconcile))
+#else
             Api.untrack (fun () -> Api.createEffect reconcile)
+#endif
             Api.untrack (fun () -> Api.createEffect updatePayload))
 
     /// <summary>Mounts the view read once from the region's single item between its markers.</summary>
@@ -4210,13 +4308,22 @@ and internal MountState
         let view = KeyedItems.value (items[0])
         let holeContainer = Placement parentContainer
 
+#if RANVIER_VIEW_INSPECT || !FABLE_COMPILER
+        let row =
+            site.InPass (fun () ->
+                this.MountRow ((fun () -> view), render, boundary, holeContainer, parentPath, region, site.NextRow (), null, regionStart))
+#else
         let row =
             this.MountRow ((fun () -> view), render, boundary, holeContainer, parentPath, region, site.NextRow (), null, regionStart)
+#endif
 
         Row.MoveBefore (row, site.Parent (), regionEnd)
         row.Mount.Relocate ()
         site.LaidOut.Add row
         holeContainer.Place ()
+#if RANVIER_VIEW_INSPECT || !FABLE_COMPILER
+        Api.onCleanup (Inspect.register regionStart (Inspect.HoleProbe (parentPath.Row (region, -1))))
+#endif
 
     /// <summary>Mounts a boundary between the markers. Its content's bindings report to the boundary, and its pending view's bindings to this mount's boundary, or to the view's own mount outside every boundary.</summary>
     /// <remarks>

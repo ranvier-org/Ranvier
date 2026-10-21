@@ -37,6 +37,7 @@
     <Compile Include="RepresentationChecks.fs" />
     <Compile Include="../../../src/Ranvier.View.Dom/Prepared.fs" Link="Prepared.fs" />
     <Compile Include="../../../src/Ranvier.View.Dom/Placement.fs" Link="Placement.fs" />
+    <Compile Include="../../../src/Ranvier.View.Dom/Inspect.fs" Link="Inspect.fs" />
     <Compile Include="../../../src/Ranvier.View.Dom/TemplateDom.fs" Link="TemplateDom.fs" />
     <Compile Include="../../../src/Ranvier.View.Dom/DocumentHead.fs" Link="DocumentHead.fs" />
     <Compile Include="../../../src/Ranvier.View.Dom/Mounting.fs" Link="Mounting.fs" />

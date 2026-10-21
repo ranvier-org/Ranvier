@@ -1686,6 +1686,10 @@ let rec internal materialise
 
             if compiled.Regions.Length > 0 || children.Length > 0 then
                 path <- identity.Path ()
+#if RANVIER_VIEW_INSPECT || !FABLE_COMPILER
+            else
+                path <- identity.Path ()
+#endif
 
             instance
         finally
@@ -1704,6 +1708,19 @@ let rec internal materialise
         collectAdopted roots compiled state cursor
 
     bind services compiled state roots
+
+#if RANVIER_VIEW_INSPECT || !FABLE_COMPILER
+    let first: Node =
+        if not (isNull roots) then
+            (if roots.Length > 0 then at roots 0 else noNode)
+        elif clone.nodeType = 11.0 then
+            Native.firstChildOf clone
+        else
+            clone
+
+    if not (isNull (box first)) then
+        Api.onCleanup (Inspect.register first (Inspect.InstanceProbe (template, instance, Api.getOwner (), path)))
+#endif
 
     let childBase =
         StateNodes
