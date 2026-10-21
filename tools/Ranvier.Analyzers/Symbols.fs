@@ -450,6 +450,8 @@ module Core =
 
 /// The view layer's builders, sugar and definitions.
 module View =
+    open FSharp.Compiler.Symbols.FSharpExprPatterns
+
     [<Literal>]
     let Builder = "Ranvier.View.Foundation.Template.TemplateBuilder`1"
 
@@ -510,6 +512,47 @@ module View =
         | SugarComponent, ("template" | "ofMembers" | "ofClass")
         | Sugar, ("armOf" | "show" | "showElse") -> true
         | _ -> false
+
+    /// The name of the content part that `expr` is: `Unsafe.html` or `Hooks.widget`.
+    let rec contentPart (expr: FSharpExpr) : string option =
+        match expr with
+        | Coerce (_, inner) -> contentPart inner
+        | Call (_, m, _, _, _) when enclosing m = Unsafe && m.LogicalName = "html" -> Some "Unsafe.html"
+        | Call (_, m, _, _, _) when enclosing m = Hooks && m.LogicalName = "widget" -> Some "Hooks.widget"
+        | _ -> None
+
+    /// The void HTML elements.
+    let voidTags =
+        set
+            [
+                "area"
+                "base"
+                "br"
+                "col"
+                "embed"
+                "hr"
+                "img"
+                "input"
+                "link"
+                "meta"
+                "source"
+                "track"
+                "wbr"
+            ]
+
+    /// The raw-text HTML elements.
+    let rawTextTags =
+        set
+            [
+                "script"
+                "style"
+                "iframe"
+                "noscript"
+                "xmp"
+                "noembed"
+                "noframes"
+                "plaintext"
+            ]
 
 /// The calls that make a list key unstable.
 module Keys =

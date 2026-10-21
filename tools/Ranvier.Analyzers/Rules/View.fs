@@ -423,3 +423,149 @@ let ran022: Rule =
         Gate = Symbols.Assemblies.View
         Run = regionDefinitions
     }
+
+/// An element written with literal parts: an explicit `t.tag parts children` call or a sugar tag.
+[<NoEquality; NoComparison>]
+type ElementSite =
+    {
+        Tag: string
+        Parts: FSharpExpr list
+        HasChildren: bool
+        Range: range
+        /// The tags of the literal enclosing elements, nearest first, lower case.
+        Ancestors: string list
+    }
+
+let rec private items (expr: FSharpExpr) : FSharpExpr list =
+    match expr with
+    | NewArray (_, elements) -> List.collect items elements
+    | Coerce (_, inner) -> items inner
+    | _ -> [ expr ]
+
+/// Whether a call of `m` with `arguments` writes an element: a generated tag member of the builder, `t.div parts
+/// children`, or `t.br parts` for a void element.
+let private isTagMember (m: FSharpMemberOrFunctionOrValue) (arguments: FSharpExpr list) =
+    m.IsExtensionMember
+    && Symbols.enclosing m = Builder
+    && (arguments.Length = 1 || arguments.Length = 2)
+    && arguments.Head.Type.IsArrayType
+
+let private sugarTag (m: FSharpMemberOrFunctionOrValue) =
+    match m.ApparentEnclosingEntity with
+    | Some entity when
+        m.IsConstructor
+        && (Symbols.enclosing m).StartsWith(Elements + ".")
+        ->
+        Some (entity.DisplayName.Trim '`')
+    | _ -> None
+
+/// The literal elements of the file, each with its literal ancestors.
+let elements (input: Input) : ElementSite list =
+    let calls = input.Index.Calls
+
+    let builders =
+        calls
+        |> Array.choose (fun site ->
+            match sugarTag site.Callee, site.Path with
+            | Some tag, Step.Applied parameter :: _ -> Some (parameter, tag)
+            | _ -> None)
+
+    let builderTag (parameter: FSharpMemberOrFunctionOrValue) =
+        builders
+        |> Array.tryPick (fun (b, tag) -> if b = parameter then Some tag else None)
+
+    let ancestors (path: Step list) =
+        path
+        |> List.choose (fun step ->
+            match step with
+            | Step.Argument (callee, 1, 2) when
+                callee.IsExtensionMember
+                && Symbols.enclosing callee = Builder
+                ->
+                Some callee.LogicalName
+            | Step.Lambda (Some parameter, true) -> builderTag parameter
+            | _ -> None)
+        |> List.map (fun tag -> tag.ToLowerInvariant ())
+
+    [
+        for site in calls do
+            if isTagMember site.Callee site.Arguments then
+                {
+                    Tag = site.Callee.LogicalName.ToLowerInvariant ()
+                    Parts = items site.Arguments[0]
+                    HasChildren =
+                        site.Arguments.Length = 2
+                        && not (items site.Arguments[1]).IsEmpty
+                    Range = site.Range
+                    Ancestors = ancestors site.Path
+                }
+            else
+                match sugarTag site.Callee, site.Path with
+                | Some tag, Step.Applied parameter :: outer ->
+                    let children =
+                        calls
+                        |> Array.exists (fun call ->
+                            (call.Callee.LogicalName = "Yield"
+                             || call.Callee.LogicalName = "YieldFrom")
+                            && Symbols.enclosing call.Callee = Element
+                            && (match call.Receiver with
+                                | Some (Value receiver) -> receiver = parameter
+                                | _ -> false))
+
+                    {
+                        Tag = tag.ToLowerInvariant ()
+                        Parts = List.collect items site.Arguments
+                        HasChildren = children
+                        Range = site.Range
+                        Ancestors = ancestors outer
+                    }
+                | _ -> ()
+    ]
+
+let private invalidContent (input: Input) : Message list =
+    [
+        for element in elements input do
+            let contents =
+                element.Parts
+                |> List.choose (fun part ->
+                    Symbols.View.contentPart part
+                    |> Option.map (fun name -> name, part))
+
+            match contents with
+            | (first, _) :: (second, part) :: _ ->
+                message
+                    "RAN023"
+                    Severity.Error
+                    part.Range
+                    $"This element has two content parts (`{first}` and `{second}`), which fails when the definition is created. Give each content part its own element."
+                    []
+            | [ name, part ] when element.HasChildren ->
+                message
+                    "RAN023"
+                    Severity.Error
+                    part.Range
+                    $"This element has a content part (`{name}`) and template children, which fails when the definition is created. Move the children into another element."
+                    []
+            | [ "Unsafe.html", part ] when
+                Symbols.View.voidTags.Contains element.Tag
+                || Symbols.View.rawTextTags.Contains element.Tag
+                || element.Tag = "template"
+                || element.Tag = "textarea"
+                || element.Tag = "title"
+                ->
+                message
+                    "RAN023"
+                    Severity.Error
+                    part.Range
+                    $"`Unsafe.html` sets the content of `{element.Tag}`, whose children the HTML parser does not build from markup, which fails when the definition is created. Put the markup in an element such as `div`."
+                    []
+            | _ -> ()
+    ]
+
+let ran023: Rule =
+    {
+        Code = "RAN023"
+        Title = "Invalid content parts on an element"
+        Gate = Symbols.Assemblies.View
+        Run = invalidContent
+    }

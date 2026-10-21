@@ -30,6 +30,7 @@ cause, its fix and an example.
 | [RAN020](ran020.md) | Reactive read at template build time | Warning |
 | [RAN021](ran021.md) | Unstable list key | Warning / Info |
 | [RAN022](ran022.md) | Definition created on every region read | Warning |
+| [RAN023](ran023.md) | Invalid content parts on an element | Error |
 
 ## Running the analyzers
 
