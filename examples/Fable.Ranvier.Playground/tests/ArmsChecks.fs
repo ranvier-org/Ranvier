@@ -203,6 +203,15 @@ let private rowList =
                 })
         })
 
+[<Emit("Array.from($0.querySelectorAll('li'))")>]
+let private rowNodes (target: HTMLElement) : obj array = jsNative
+
+[<Emit("$0.firstElementChild")>]
+let private firstChildOf (node: obj) : obj = jsNative
+
+[<Emit("$0 === $1")>]
+let private sameNode (left: obj) (right: obj) : bool = jsNative
+
 [<Emit("Array.from($0.querySelectorAll('li'), n => n.textContent)")>]
 let private rowTexts (target: HTMLElement) : string array = jsNative
 
@@ -228,10 +237,24 @@ let private siteInRows queued () =
 
     mounted.Flush ()
     equal [| "a"; "b"; "c" |] (rowTexts target)
+    let before = rowNodes target
     write graph [ mounted ] (fun () -> rows.Value <- Array.rev rows.Value)
     equal [| "c"; "b"; "a" |] (rowTexts target)
+    let reordered = rowNodes target
+    equal (true, true, true) (sameNode reordered[0] before[2], sameNode reordered[1] before[1], sameNode reordered[2] before[0])
+    let payloadNodes = [| for row in reordered -> firstChildOf row |]
     write graph [ mounted ] (fun () -> rows.Value[2].State.Value <- Loaded ("z", 1))
     equal [| "c"; "b"; "z" |] (rowTexts target)
+    let after = rowNodes target
+
+    equal
+        (true, true, true, true, true)
+        (sameNode after[0] reordered[0],
+         sameNode after[1] reordered[1],
+         sameNode after[2] reordered[2],
+         sameNode (firstChildOf after[0]) payloadNodes[0],
+         sameNode (firstChildOf after[1]) payloadNodes[1])
+
     write graph [ mounted ] (fun () -> rows.Value[0].State.Value <- Idle)
     equal [| "Other"; "b"; "z" |] (rowTexts target)
     mounted.Dispose ()
@@ -246,13 +269,14 @@ let private switchBackInOneBatch queued () =
         mountTemplate queued graph strict target (Component.render loader state)
 
     mounted.Flush ()
+    let before = queryNode target "pre"
 
     write graph [ mounted ] (fun () ->
         Api.batch (fun () ->
             state.Value <- Idle
             state.Value <- Loaded ("b", 2)))
 
-    equal "b x2" (textOf target "pre")
+    equal ("b x2", true) (textOf target "pre", sameNode before (queryNode target "pre"))
     mounted.Dispose ()
 
 [<Emit("$0.firstElementChild")>]

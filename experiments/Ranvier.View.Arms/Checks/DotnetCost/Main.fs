@@ -3,8 +3,9 @@
 /// Arms.Match runs, the mean of 200 more, and server renders of a 1,000-row site against its armOf twin.
 /// </summary>
 /// <remarks>
-/// <c>--timing</c> fails the run when the mean lowering exceeds 4 ms. <c>--twin-first</c> builds the armOf twin before the
-/// first lowering, so the first figure excludes the view's own cold start.
+/// <c>--timing</c> fails the run when the mean lowering exceeds 4 ms. <c>--prepare</c> calls <c>Arms.Prepare</c> first.
+/// <c>--twin-first</c> builds the armOf twin before the first lowering, so the first figure excludes the view's own
+/// cold start.
 /// </remarks>
 module DotnetCost.Main
 
@@ -105,9 +106,21 @@ let main args =
         rowsTwin () |> ignore
         printfn "twin|cold-first=%.2fms" w.Elapsed.TotalMilliseconds
 
+    if args |> Array.contains "--prepare" then
+        let w = Stopwatch.StartNew ()
+        Arms.Prepare ()
+        printfn "prepare|%.2fms" w.Elapsed.TotalMilliseconds
+
+    let jitBefore = Runtime.JitInfo.GetCompilationTime(false).TotalMilliseconds
     let watch = Stopwatch.StartNew ()
     fiveTargets () |> ignore
     let first = watch.Elapsed.TotalMilliseconds
+
+    printfn
+        "first-site|jit=%.2fms"
+        (Runtime.JitInfo.GetCompilationTime(false).TotalMilliseconds
+         - jitBefore)
+
     watch.Restart ()
 
     for _ in 1..200 do

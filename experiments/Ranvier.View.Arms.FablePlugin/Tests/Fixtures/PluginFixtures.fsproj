@@ -13,6 +13,7 @@
     <Compile Include="Bad/AM001-simple.fs" />
     <Compile Include="Bad/AM002.fs" />
     <Compile Include="Bad/AM002-wildcard.fs" />
+    <Compile Include="Bad/AM002-wildcard-simple.fs" />
     <Compile Include="Bad/AM003.fs" />
     <Compile Include="Bad/AM003-local.fs" />
     <Compile Include="Bad/AM004.fs" />

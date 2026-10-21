@@ -3,6 +3,7 @@ module internal Ranvier.View.Arms.Quoted
 
 #if !FABLE_COMPILER
 open System
+open System.Threading
 open Microsoft.FSharp.Quotations
 open Microsoft.FSharp.Quotations.Patterns
 open Microsoft.FSharp.Reflection
@@ -157,8 +158,8 @@ let private raising =
 let rec private isThrow (expr: Expr) =
     match expr with
     | Call (None, info, _) -> raising.Contains (info.DeclaringType.FullName + "." + info.Name)
+    | Application (Let (_, value, _), _) -> isThrow value
     | Application (f, _) -> isThrow f
-    | Let (_, value, _) -> isThrow value
     | Coerce (inner, _) -> isThrow inner
     | _ -> false
 
@@ -221,23 +222,49 @@ let private evaluate (interpret: bool) (expr: Expr) : obj =
         .Compile(preferInterpretation = interpret)
         .Invoke()
 
-/// <summary>The number of calls a per-call lambda runs interpreted before it is compiled.</summary>
+/// <summary>Compiles a closed lambda, so a later hot compile on the thread pool starts warm.</summary>
+let warmCompile () =
+    evaluate false <@ fun (text: string) -> text.Length @>
+    |> ignore
+
+/// <summary>Interpreted calls of a per-call lambda before its compilation is queued.</summary>
 [<Literal>]
 let hotCalls = 64
 
-/// <summary>A function that runs interpreted for its first <c>hotCalls</c> calls, then compiled.</summary>
+/// <summary>
+/// A function that runs interpreted until its <c>hotCalls</c>-th call queues its compilation on the thread pool, and
+/// runs the compiled delegate once that is published. Safe for concurrent calls: exactly one call queues the compile,
+/// calls keep running interpreted meanwhile, and a failed compile leaves the function interpreted.
+/// </summary>
 [<Sealed>]
 type internal Hot<'a, 'b>(interpreted: 'a -> 'b, compile: unit -> obj) =
     inherit FSharpFunc<'a, 'b>()
+
+    [<VolatileField>]
     let mutable current = interpreted
+
+    [<VolatileField>]
+    let mutable pending = compile
+
     let mutable calls = 0
 
-    override _.Invoke(argument: 'a) : 'b =
-        if calls < hotCalls then
-            calls <- calls + 1
+    member private _.Compile() =
+        let compile = pending
+        pending <- Unchecked.defaultof<_>
 
-            if calls = hotCalls then
+        if not (isNull (box compile)) then
+            try
                 current <- unbox<'a -> 'b>(compile ())
+            with _ ->
+                ()
+
+    override this.Invoke(argument: 'a) : 'b =
+        if
+            Volatile.Read &calls < hotCalls
+            && Threading.Interlocked.Increment &calls = hotCalls
+        then
+            Threading.ThreadPool.UnsafeQueueUserWorkItem ((fun _ -> this.Compile ()), null)
+            |> ignore
 
         current argument
 

@@ -34,7 +34,7 @@ Every task's requirements include this section.
 - The .NET `Arms.Match` carries `[<RequiresUnreferencedCode>]` and `[<RequiresDynamicCode>]` with the text `"Arms.Match lowers a quotation through reflection and System.Linq.Expressions. Use matchWith with armOf in trimmed or NativeAOT apps."`. `tests/Ranvier.AotSmoke` is unchanged.
 - Diagnostic texts are fixed (spec, "The payload rule"); they live once, in `experiments/Ranvier.View.Arms/Diagnostics.fs`, which the plugin links. .NET prefixes `<file>(<line>): ` to every site-build-time message.
 - Bundle budget: `Arms.Match` entry vs its explicit twin ≤ 250 B gzip; each further site ≤ 60 B gzip; an app without `Arms.Match` 0 B; the Playground `sugar-size.mjs` explicit entry 0 B before and after; no `quotation` code in an `Arms.Match` entry; 0 `curry`, `uncurry`, `partialApply` in the emitted `Ranvier.View.Arms` modules and prologues.
-- .NET lowering budget: ≤ 10 ms for the first five-target site of a process, ≤ 4 ms mean over 200 more.
+- .NET lowering budget: ≤ 4 ms mean over 200 lowerings of a five-target site. The first site of a fresh process is measured by `Checks/DotnetCost` and recorded, not budgeted (spec, "The .NET quotation path": 125-146 ms cold, 9-12 ms after `Arms.Prepare ()`, 7 ms after both `Prepare` and a ReadyToRun publish).
 - Chromium gate: each of `armsCreate1k`, `armsSwitch1k`, `armsPayload1k`, `armsClear1k` within 5 % of `ranvier-sugar` by median, or the ranges overlap. Heap: retained bytes per row within 10 % of `ranvier-sugar` plus the cells entries.
 - Work in `C:\Users\shaya\RiderProjects\Ranvier-arms-research` on branch `feat/arms-match`. Merge `origin/master` (never rebase) at the start of each phase; a parallel effort (`feat/dom-twin`, adding `Native.fs` in Portable and a .NET DOM twin) may land first, and every task that edits `DomTests.fsproj`, `RepresentationChecks.fsproj` or `RepresentationChecks.fsx` (Tasks 3-8, 10) merges master before it starts.
 - Commits: one conventional line, a blank line, then exactly:
@@ -77,7 +77,7 @@ git checkout -- ../../docs/research/framework-performance/investigation/view-sug
 
 The explicit entry's bytes equal the record Task 1 Step 1 takes before any change (Ruling 12); the regenerated file is not committed. When a merge of `origin/master` changes a file the explicit entry compiles (anything under `experiments/Ranvier.View.Portable`, `experiments/Ranvier.View.Foundation` or `src/`), retake the record from the merged master: `git worktree add C:/Users/shaya/.claude/jobs/7fee9ca9/tmp/arms-baseline origin/master`, run Task 1 Step 1 there (its own `npm ci`), copy the file, then `git worktree remove C:/Users/shaya/.claude/jobs/7fee9ca9/tmp/arms-baseline`.
 
-and, from Task 9 on, `node experiments/Ranvier.View.Arms/Checks/size.mjs` from the worktree root. The PluginTests line applies from Task 2 on; `npm run test:arms` from Task 4 on.
+and, from Task 9 on, `node experiments/Ranvier.View.Arms/Checks/size.mjs` and `dotnet run --project experiments/Ranvier.View.Arms/Checks/DotnetCost/DotnetCost.fsproj -c Release -- --timing` (the mean budget, and the cold figures for the research note) from the worktree root. The PluginTests line applies from Task 2 on; `npm run test:arms` from Task 4 on.
 
 ### Repo hazards
 
@@ -117,10 +117,13 @@ Each ruling picks an implementation where the spec leaves one open, or settles a
 23. **The `.targets` names its plugin folder `RanvierArmsPluginDir`** (default: the Release output) and fails the Fable compile when the plugin assembly is missing there; Fable's cracking runs the check (`BeforeTargets="ResolveAssemblyReferences"`, verified in Phase 1).
 24. **The simple-match AM001b shape does not occur under Fickl 0.3.0.** For `| Loaded (text, _) -> span () { text } | _ -> ...`, FCS hands Fable a bound `text`, so the plugin reports AM001; the `AM001-simple` fixture (`BAD_AM001_SIMPLE`) asserts that. The AM001b path is unreachable under Fickl 0.3.0 and stays for an FCS that inlines `matched.fields[k]` outside a reader; no fixture reaches it.
 25. **A named arms function arrives eta-expanded.** Fable passes `Arms.Match (read, arms)` as `fun _arg1 -> arms _arg1`, a lambda over a compiler-generated parameter whose body applies a value to it; the plugin reports AM003 for that shape.
+26. **`Quoted.Hot` compiles on the thread pool** (Phase 3 review I1): an `Interlocked` call count; exactly the 64th call queues the compile with `ThreadPool.UnsafeQueueUserWorkItem`; calls keep running interpreted until the compiled delegate is published through a volatile field; a compile failure leaves the lambda interpreted; the compile closure is dropped once taken. Tests: `hotDoesNotBlock`, `hotCompileFailure`, `hotCompilesOnce`.
+27. **`Arms.Prepare ()`** (Phase 3 review, cold start): a public static member that lowers, renders and compiles a built-in site on .NET and does nothing under Fable. It cuts the first user site from 125-146 ms to 9-12 ms (7 ms with ReadyToRun). The direct `Expr` evaluator the review costed is not built: after `Prepare` and ReadyToRun the remaining first-site cost is about 7 ms, inside the draft's 10 ms.
+28. **`Cells` reads without the lock** (Phase 3 review M2/M3): each target's entries are an array replaced under the instance's lock and read without it, so readers run outside every monitor; a withdrawal records its entry only when it holds values; an entry or withdrawn entry with a null graph serves any graph, and a withdrawn entry serves only its own graph otherwise.
 
 ## Review Focus
 
-1. Two .NET server renders of one site on two threads at once, each with its own graph and instance: each response shows its own instance's payload. Test: `concurrentRenders` (Task 5).
+1. Two .NET server renders of one site on two threads at once, one shared instance, a payload per graph: each response shows its own graph's payload. Test: `concurrentRenders` (Task 5; a `ThreadLocal` read, killed by a mutant that drops the graph filter).
 2. An arm hidden by an enclosing `show` and shown again for the same instance: the remounted arm's readers follow later writes, not the withdrawn snapshot. Test: `remountAfterHide` (Task 5).
 3. A helper view typed `TemplateView<'inst>` that takes a reader, called in a case body as `labelled (fun _ -> text)`: the reader is rewritten and the helper's markup matches its twin. Test: the `helper` fixture (Task 4).
 4. One `Arms.Match` site per row of a keyed list (the instance is the row item): after a reorder, each row shows its own payload, and a payload write reaches only its row. Test: `siteInRows` (Task 6).
@@ -803,10 +806,10 @@ let noArm =
 [<Literal>]
 let unsupported = "Arms.Match: this pattern form is not supported."
 
-/// <summary>A call with no source location, from which the plugin names its emitted locals.</summary>
+/// <summary>A call with no source location; the plugin derives the names of a site's emitted locals from it.</summary>
 [<Literal>]
 let noRange =
-    "Arms.Match: the call carries no source location, from which the emitted names of its site derive."
+    "Arms.Match: the call has no source location; the plugin derives the names of a site's emitted locals from it."
 ```
 
 `experiments/Ranvier.View.Arms/Errors.fs`:
@@ -1109,6 +1112,10 @@ open System.Diagnostics.CodeAnalysis
 open Ranvier.View.Foundation.Template
 #if !FABLE_COMPILER
 open Microsoft.FSharp.Quotations
+open Ranvier.View.Foundation.Sugar
+
+/// <summary>The instance of the site <c>Arms.Prepare</c> lowers.</summary>
+type internal Warmup = { Text: string option }
 #endif
 
 /// <summary>Arm sites written as a plain F# match: one arm per match target.</summary>
@@ -1152,10 +1159,44 @@ type Arms =
                 Line = defaultArg line 0
             }
 
+        Quoted.checkInstance at typeof<'inst>
         let cells = Cells.create ()
         let select, bodies = Quoted.lower cells at arms
         Site.create cells read select bodies
 #endif
+#endif
+
+    /// <summary>
+    /// Lowers, renders and compiles a built-in site on .NET, so the app's first <c>Arms.Match</c> costs a warm lowering.
+    /// Call it at start-up, on the calling thread or on the thread pool; it returns when the warm-up is done. Under
+    /// Fable it does nothing.
+    /// </summary>
+#if !FABLE_COMPILER
+    [<RequiresUnreferencedCode(Diagnostics.reflection); RequiresDynamicCode(Diagnostics.reflection)>]
+#endif
+    static member Prepare() : unit =
+#if !FABLE_COMPILER
+        let site =
+            Component.define (fun _ (warmup: Warmup) -> warmup) (fun _ ->
+                Arms.Match (
+                    (fun (warmup: Warmup) -> warmup.Text),
+                    function
+                    | Some text -> b () { fun _ -> text }
+                    | None -> span () { "none" }
+                ))
+
+        let omit =
+            { Ranvier.View.Foundation.Server.Options.defaults with
+                Policy = Ranvier.View.Foundation.Representation.Omit
+            }
+
+        for text in [ Some "a"; None ] do
+            Ranvier.View.Foundation.Server.render omit site { Text = text }
+            |> ignore
+
+        Quoted.warmCompile ()
+#else
+        ()
 #endif
 ```
 
@@ -1707,6 +1748,11 @@ let bad =
         "Arms.Match: 'text' is read inside a lambda over 'unit -> string', which is not the instance type 'Signal<Load>'. Pass the value to the nested view through its items or props."
         "BAD_AM002_WILDCARD",
         "AM002-wildcard.fs",
+        17,
+        None,
+        "Arms.Match: 'text' is read inside a lambda over 'unit -> string', which is not the instance type 'Signal<Load>'. Pass the value to the nested view through its items or props."
+        "BAD_AM002_WILDCARD_SIMPLE",
+        "AM002-wildcard-simple.fs",
         17,
         None,
         "Arms.Match: 'text' is read inside a lambda over 'unit -> string', which is not the instance type 'Signal<Load>'. Pass the value to the nested view through its items or props."
@@ -2763,7 +2809,7 @@ let private loweringBudget () =
         Environment.GetCommandLineArgs ()
         |> Array.contains "--timing"
     then
-        equal (true, true) (first <= 10.0, mean <= 4.0)
+        equal true (mean <= 4.0)
 
 let cases: (string * (unit -> unit)) array =
     [|
@@ -2796,27 +2842,53 @@ let private noArm () =
         "Arms.Match: no arm of this site is mounted for the instance this reader received. A lambda over the instance type inside a case body runs with the arm's instance."
         message
 
-/// <summary>Sixteen threads render one site for one shared instance, each under its own graph, 50 times each (Review Focus 1).</summary>
+/// <summary>The payload each thread's renders read for the shared instance.</summary>
+let private perThread = new Threading.ThreadLocal<int> ()
+
+/// <summary>A site over a shared instance whose payload is the reading thread's number.</summary>
+let private perThreadSite =
+    Component.template
+        (fun _ (score: ArmsFixtures.Score) -> score)
+        (div () {
+            Arms.Match (
+                (fun (score: ArmsFixtures.Score) -> { score with Points = perThread.Value }),
+                function
+                | { Points = 0 } -> span () { "no points" }
+                | { Name = name; Points = points } -> pre () { fun _ -> name + ":" + string points }
+            )
+        })
+
+/// <summary>
+/// Sixteen threads render one site for one shared instance, each under its own graph with a payload of its own; each
+/// response shows its own thread's payload (Review Focus 1).
+/// </summary>
 let private concurrentRenders () =
     let score: ArmsFixtures.Score = { Name = "ada"; Points = 5 }
-    let expected = Server.render omit ArmsFixtures.plainScore score
     let failures = Collections.Concurrent.ConcurrentBag<string>()
     use barrier = new Threading.Barrier 16
 
     let threads =
         [|
-            for _ in 1..16 ->
+            for index in 0..15 ->
                 Threading.Thread (fun () ->
+                    perThread.Value <- index
+
+                    let expected =
+                        if index = 0 then
+                            "<span>no points</span>"
+                        else
+                            sprintf "<pre>ada:%d</pre>" index
+
                     barrier.SignalAndWait ()
 
-                    for _ in 1..50 do
+                    for _ in 1..200 do
                         try
-                            let html = Server.render omit ArmsFixtures.plainScore score
+                            let html = Server.render omit perThreadSite score
 
-                            if html <> expected then
-                                failures.Add html
+                            if not (html.Contains expected) then
+                                failures.Add (sprintf "thread %d: %s" index html)
                         with error ->
-                            failures.Add error.Message)
+                            failures.Add (sprintf "thread %d: %s" index error.Message))
         |]
 
     for thread in threads do
@@ -2825,12 +2897,93 @@ let private concurrentRenders () =
     for thread in threads do
         thread.Join ()
 
-    equal ("<!--[r--><div><!--[a:", []) (expected.Substring (0, 21), List.ofSeq failures)
+    equal [] (List.ofSeq failures |> List.truncate 3)
+
+/// <summary>The 64th call of a hot lambda queues its compile and returns without waiting for it.</summary>
+let private hotDoesNotBlock () =
+    use release = new Threading.ManualResetEventSlim false
+
+    let compile () =
+        release.Wait 10000 |> ignore
+        box (fun (x: int) -> x + 2)
+
+    let hot =
+        Ranvier.View.Arms.Quoted.Hot<int, int>((fun x -> x + 1), compile)
+        |> box
+        |> unbox<int -> int>
+
+    let watch = Diagnostics.Stopwatch.StartNew ()
+
+    for _ in 1 .. Ranvier.View.Arms.Quoted.hotCalls do
+        hot 1 |> ignore
+
+    let elapsed = watch.ElapsedMilliseconds
+    let interpreted = hot 1
+    release.Set ()
+    let deadline = Diagnostics.Stopwatch.StartNew ()
+
+    while hot 1 = 2 && deadline.ElapsedMilliseconds < 10000 do
+        Threading.Thread.Sleep 10
+
+    equal (true, 2, 3) (elapsed < 1000, interpreted, hot 1)
+
+/// <summary>A hot lambda whose compile fails keeps running interpreted.</summary>
+let private hotCompileFailure () =
+    let compile () : obj =
+        failwith "compile failed"
+
+    let hot =
+        Ranvier.View.Arms.Quoted.Hot<int, int>((fun x -> x + 1), compile)
+        |> box
+        |> unbox<int -> int>
+
+    let results = [ for _ in 1..200 -> hot 1 ]
+    Threading.Thread.Sleep 200
+    equal (true, 2) (results |> List.forall ((=) 2), hot 1)
+
+/// <summary>Sixteen threads calling one hot lambda at once queue its compile exactly once.</summary>
+let private hotCompilesOnce () =
+    let compiles = ref 0
+
+    let compile () =
+        Threading.Interlocked.Increment &compiles.contents
+        |> ignore
+
+        box (fun (x: int) -> x + 1)
+
+    let hot =
+        Ranvier.View.Arms.Quoted.Hot<int, int>((fun x -> x + 1), compile)
+        |> box
+        |> unbox<int -> int>
+
+    use barrier = new Threading.Barrier 16
+
+    let threads =
+        [|
+            for _ in 1..16 ->
+                Threading.Thread (fun () ->
+                    barrier.SignalAndWait ()
+
+                    for _ in 1..200 do
+                        hot 1 |> ignore)
+        |]
+
+    for thread in threads do
+        thread.Start ()
+
+    for thread in threads do
+        thread.Join ()
+
+    Threading.Thread.Sleep 200
+    equal 1 compiles.Value
 
 let runtimeCases: (string * (unit -> unit)) array =
     [|
         "a reader with no arm for its instance raises AM006", noArm
-        "concurrent server renders of one instance read their own arms", concurrentRenders
+        "concurrent server renders of one shared instance read their own graph's payload", concurrentRenders
+        "the 64th call of a hot lambda does not wait for its compile", hotDoesNotBlock
+        "a hot lambda whose compile fails keeps running interpreted", hotCompileFailure
+        "concurrent calls of a hot lambda compile it once", hotCompilesOnce
     |]
 ```
 
@@ -2867,6 +3020,7 @@ module internal Ranvier.View.Arms.Quoted
 
 #if !FABLE_COMPILER
 open System
+open System.Threading
 open Microsoft.FSharp.Quotations
 open Microsoft.FSharp.Quotations.Patterns
 open Microsoft.FSharp.Reflection
@@ -3021,8 +3175,8 @@ let private raising =
 let rec private isThrow (expr: Expr) =
     match expr with
     | Call (None, info, _) -> raising.Contains (info.DeclaringType.FullName + "." + info.Name)
+    | Application (Let (_, value, _), _) -> isThrow value
     | Application (f, _) -> isThrow f
-    | Let (_, value, _) -> isThrow value
     | Coerce (inner, _) -> isThrow inner
     | _ -> false
 
@@ -3085,23 +3239,49 @@ let private evaluate (interpret: bool) (expr: Expr) : obj =
         .Compile(preferInterpretation = interpret)
         .Invoke()
 
-/// <summary>The number of calls a per-call lambda runs interpreted before it is compiled.</summary>
+/// <summary>Compiles a closed lambda, so a later hot compile on the thread pool starts warm.</summary>
+let warmCompile () =
+    evaluate false <@ fun (text: string) -> text.Length @>
+    |> ignore
+
+/// <summary>Interpreted calls of a per-call lambda before its compilation is queued.</summary>
 [<Literal>]
 let hotCalls = 64
 
-/// <summary>A function that runs interpreted for its first <c>hotCalls</c> calls, then compiled.</summary>
+/// <summary>
+/// A function that runs interpreted until its <c>hotCalls</c>-th call queues its compilation on the thread pool, and
+/// runs the compiled delegate once that is published. Safe for concurrent calls: exactly one call queues the compile,
+/// calls keep running interpreted meanwhile, and a failed compile leaves the function interpreted.
+/// </summary>
 [<Sealed>]
 type internal Hot<'a, 'b>(interpreted: 'a -> 'b, compile: unit -> obj) =
     inherit FSharpFunc<'a, 'b>()
+
+    [<VolatileField>]
     let mutable current = interpreted
+
+    [<VolatileField>]
+    let mutable pending = compile
+
     let mutable calls = 0
 
-    override _.Invoke(argument: 'a) : 'b =
-        if calls < hotCalls then
-            calls <- calls + 1
+    member private _.Compile() =
+        let compile = pending
+        pending <- Unchecked.defaultof<_>
 
-            if calls = hotCalls then
+        if not (isNull (box compile)) then
+            try
                 current <- unbox<'a -> 'b>(compile ())
+            with _ ->
+                ()
+
+    override this.Invoke(argument: 'a) : 'b =
+        if
+            Volatile.Read &calls < hotCalls
+            && Threading.Interlocked.Increment &calls = hotCalls
+        then
+            Threading.ThreadPool.UnsafeQueueUserWorkItem ((fun _ -> this.Compile ()), null)
+            |> ignore
 
         current argument
 
@@ -3291,7 +3471,7 @@ In `experiments/Ranvier.View.Arms/Arms.fs`, .NET branch, insert before `let cell
 dotnet run --project experiments/Ranvier.View.Foundation/RepresentationChecks.fsproj -c Release -- --timing
 ```
 
-Expected: `PASS` for every `ArmsLoweringChecks` case and a line `lowering|first=<≤ 10>ms mean=<≤ 4>ms` (about 1.4 ms and 1.0 ms on the development machine). If the budget fails, run it three times; a mean above 4 ms in all three is a spec conflict: stop and report the three lines. If `delegateReader` fails inside `RebuildShapeCombination`, the quotation holds the delegate's lambdas under a shape the `NewDelegate` case does not match: print `arms` for that site and add the matching case.
+Expected: `PASS` for every `ArmsLoweringChecks` case and a line `lowering|warm-first=...ms mean=<≤ 4>ms` (about 1.5 ms and 1.0-1.4 ms on the development machine). If the budget fails, run it three times; a mean above 4 ms in all three is a spec conflict: stop and report the three lines. If `delegateReader` fails inside `RebuildShapeCombination`, the quotation holds the delegate's lambdas under a shape the `NewDelegate` case does not match: print `arms` for that site and add the matching case.
 
 - [ ] **Step 5: Record the lowering cost**
 
@@ -3310,7 +3490,7 @@ more times, compiling the selector and the bodies as one LINQ lambda. Three runs
 | 2 | <first> | <mean> |
 | 3 | <first> | <mean> |
 
-Budget: ≤ 10 ms first, ≤ 4 ms mean (spec, "The .NET quotation path"). The probe compiled one lambda per body and the
+Budget: ≤ 4 ms mean (spec, "The .NET quotation path"); the cold first site is measured by `Checks/DotnetCost`. The probe compiled one lambda per body and the
 selector: 9.06 ms first, 8.55 ms mean.
 ```
 
@@ -4044,6 +4224,19 @@ let incompleteTwin =
                 | Loaded _ -> arm otherArm ())
         })
 
+// A failwithf case body: no arm; the selector raises it at the region read.
+let failing =
+    Component.template
+        (fun _ (state: Signal<Load>) -> state)
+        (div () {
+            Arms.Match (
+                read,
+                function
+                | Loaded _ -> failwithf "bad %s" "state"
+                | _ -> span () { "Other" }
+            )
+        })
+
 let private panels =
     [
         "Loaded open",
@@ -4241,13 +4434,55 @@ let private sameHtml (options: Server.Options) () =
 
         equal (case.Fixture, case.State, twin) (case.Fixture, case.State, site)
 
+/// <summary>A failwithf case body raises its message at the region read; another case renders.</summary>
+let private failwithfRaisesAtRead () =
+    let render state =
+        try
+            use graph = new Graph ()
+            let props = graph.Run (fun () -> Api.createSignal state)
+            Server.render omit failing props
+        with error ->
+            "raised: " + error.Message
+
+    equal (true, "raised: bad state") ((render Idle).Contains "<span>Other</span>", render (Loaded ("x", 1)))
+
 let cases: (string * (unit -> unit)) array =
     [|
         "Arms.Match fixtures share their twins' layouts and hashes", sameLayouts
         "Arms.Match fixtures render their twins' server HTML under Reject", sameHtml Server.Options.defaults
         "Arms.Match fixtures render their twins' server HTML under Omit", sameHtml omit
         "an incomplete Arms.Match raises for its unmatched case", (fun () -> equal true (incompleteRaises ()))
+        "a failwithf case body raises its message at the region read", failwithfRaisesAtRead
     |]
+
+/// <summary>One line per fixture state: fixture, state, the site's structural hash and its server HTML under Omit.</summary>
+let goldenLines () : string array =
+    [|
+        for case in all -> sprintf "%s|%s|%s|%s" case.Fixture case.State (structuralHash case.Site) (fst (case.Render omit))
+    |]
+
+#if !FABLE_COMPILER
+let private goldenPath =
+    System.IO.Path.Combine (__SOURCE_DIRECTORY__, "arms-server.golden.txt")
+
+/// <summary>Compares the .NET lines with the committed file; <c>--update</c> rewrites the file instead.</summary>
+let private golden () =
+    let lines = goldenLines ()
+
+    if
+        System.Environment.GetCommandLineArgs ()
+        |> Array.contains "--update"
+    then
+        System.IO.File.WriteAllText (goldenPath, String.concat "\n" lines + "\n")
+    else
+        let committed =
+            System.IO.File.ReadAllText(goldenPath).Replace("\r\n", "\n").TrimEnd('\n').Split '\n'
+
+        equal (List.ofArray committed) (List.ofArray lines)
+
+let dotnetCases: (string * (unit -> unit)) array =
+    [| "the .NET server HTML of every fixture equals the golden file", golden |]
+#endif
 ```
 
 `examples/Fable.Ranvier.Playground/tests/arms-server.test.mjs`:
@@ -4434,6 +4669,7 @@ open Ranvier.View.Foundation
 open Ranvier.View.Foundation.Representation
 open Ranvier.View.Foundation.Template
 open CheckSupport
+open TwinTrace
 open Ranvier.View.Foundation.Sugar
 open Ranvier.View.Arms
 open ArmsFixtures
@@ -4441,6 +4677,10 @@ open ArmsFixtures
 /// <summary>The text of the first element matching the selector, or null.</summary>
 [<Emit("($0.querySelector($1)?.textContent ?? null)")>]
 let private textOf (target: HTMLElement) (selector: string) : string = jsNative
+
+/// <summary>The first element matching the selector, or null.</summary>
+[<Emit("$0.querySelector($1)")>]
+let private queryNode (target: HTMLElement) (selector: string) : obj = jsNative
 
 let private write (graph: Graph) (mounted: Mounting.Mounted list) (change: unit -> unit) =
     graph.Run change
@@ -4500,12 +4740,376 @@ let private remountAfterHide queued () =
     equal "c x3" (textOf target "pre")
     mounted.Dispose ()
 
+let private initial (graph: Graph) =
+    graph.Run (fun () -> Api.createSignal (Loading 10))
+
+let private loadWrites (state: Signal<Load>) =
+    [ for step in loadSteps -> Write (fun () -> state.Value <- step) ]
+
+/// <summary>The probe's nine-step trace of each Load fixture equals its twin's (Testing 3).</summary>
+let private traces queued () =
+    for twin, site in
+        [
+            loaderTwin, loader
+            richTwin, rich
+            rowsTwin, rows
+            rowsTupleTwin, rowsTuple
+            tupledTwin, tupled
+            wholeTwin, whole
+            formsTwin, forms
+            helperTwin, helper
+        ] do
+        pair queued initial (Component.render twin) (Component.render site) loadWrites
+
+/// <summary>Every value-type payload case on the client equals its twin (Testing 6).</summary>
+let private valueTraces queued () =
+    let make (graph: Graph) =
+        graph.Run (fun () -> Api.createSignal (Count 0))
+
+    let steps (state: Signal<Value>) =
+        [
+            for value in
+                [
+                    Ratio 1.5
+                    Ratio 2.5
+                    Money 2.25m
+                    Flag true
+                    Flag false
+                    Letter 'q'
+                    At { X = 3; Y = 4 }
+                    At { X = 5; Y = 6 }
+                    Maybe (ValueSome 7)
+                    Maybe ValueNone
+                    Count 9
+                ] -> Write (fun () -> state.Value <- value)
+        ]
+
+    pair queued make (Component.render valuesTwin) (Component.render values) steps
+
+let private editorState (graph: Graph) =
+    graph.Run (fun () ->
+        ({
+            State = Api.createSignal (Loaded ("a", 1))
+            Saved = Api.createSignal ""
+        }
+        : Editor))
+
+/// <summary>An event handler reads its arm's payload at event time (Testing 5).</summary>
+let private eventsReadLatest queued () =
+    use graph = new Graph ()
+    let state = editorState graph
+    let target = host ()
+
+    let mounted =
+        mountTemplate queued graph strict target (Component.render editor state)
+
+    mounted.Flush ()
+
+    let press () =
+        click "button" target
+        mounted.Flush ()
+
+    write graph [ mounted ] (fun () -> state.State.Value <- Loaded ("b", 1))
+    write graph [ mounted ] (fun () -> state.State.Value <- Loaded ("c", 1))
+    press ()
+    equal "c" (graph.Run (fun () -> state.Saved.Value))
+    write graph [ mounted ] (fun () -> state.State.Value <- Idle)
+    write graph [ mounted ] (fun () -> state.State.Value <- Loaded ("d", 1))
+    press ()
+    equal "d" (graph.Run (fun () -> state.Saved.Value))
+    mounted.Dispose ()
+
+let private editorTrace queued () =
+    pair queued editorState (Component.render editorTwin) (Component.render editor) (fun state ->
+        [
+            Write (fun () -> state.State.Value <- Loaded ("b", 1))
+            Each (click "button")
+            Write (fun () -> state.State.Value <- Idle)
+            Write (fun () -> state.State.Value <- Loaded ("c", 2))
+            Each (click "button")
+        ])
+
+/// <summary>Rows fed by the items reader keep their elements across payload updates and show the new payload (Testing 7).</summary>
+let private rowsKeep queued () =
+    use graph = new Graph ()
+    let state = graph.Run (fun () -> Api.createSignal (Loaded ("a", 2)))
+    let target = host ()
+
+    let mounted =
+        mountTemplate queued graph strict target (Component.render rowsTuple state)
+
+    mounted.Flush ()
+    let first = queryNode target "li"
+    write graph [ mounted ] (fun () -> state.Value <- Loaded ("b", 2))
+    equal (true, "b0b1") (obj.ReferenceEquals (first, queryNode target "li"), textOf target "ul")
+    mounted.Dispose ()
+
+type private Row = { Id: int; State: Signal<Load> }
+
+let private rowList =
+    Component.template
+        (fun _ (rows: Signal<Row array>) -> rows)
+        (ul () {
+            forEachFixed
+                (fun (row: Row) -> row.Id)
+                (fun (rows: Signal<Row array>) -> rows.Value)
+                (li () {
+                    Arms.Match (
+                        (fun (row: Row) -> row.State.Value),
+                        function
+                        | Loaded (text, _) -> b () { fun _ -> text }
+                        | _ -> span () { "Other" }
+                    )
+                })
+        })
+
+[<Emit("Array.from($0.querySelectorAll('li'))")>]
+let private rowNodes (target: HTMLElement) : obj array = jsNative
+
+[<Emit("$0.firstElementChild")>]
+let private firstChildOf (node: obj) : obj = jsNative
+
+[<Emit("$0 === $1")>]
+let private sameNode (left: obj) (right: obj) : bool = jsNative
+
+[<Emit("Array.from($0.querySelectorAll('li'), n => n.textContent)")>]
+let private rowTexts (target: HTMLElement) : string array = jsNative
+
+/// <summary>One site per row: after a reorder each row shows its own payload, and a write reaches its row only (Review Focus 4).</summary>
+let private siteInRows queued () =
+    use graph = new Graph ()
+
+    let rows =
+        graph.Run (fun () ->
+            Api.createSignal
+                [|
+                    for id, text in [ 1, "a"; 2, "b"; 3, "c" ] ->
+                        {
+                            Id = id
+                            State = Api.createSignal (Loaded (text, id))
+                        }
+                |])
+
+    let target = host ()
+
+    let mounted =
+        mountTemplate queued graph strict target (Component.render rowList rows)
+
+    mounted.Flush ()
+    equal [| "a"; "b"; "c" |] (rowTexts target)
+    let before = rowNodes target
+    write graph [ mounted ] (fun () -> rows.Value <- Array.rev rows.Value)
+    equal [| "c"; "b"; "a" |] (rowTexts target)
+    let reordered = rowNodes target
+    equal (true, true, true) (sameNode reordered[0] before[2], sameNode reordered[1] before[1], sameNode reordered[2] before[0])
+    let payloadNodes = [| for row in reordered -> firstChildOf row |]
+    write graph [ mounted ] (fun () -> rows.Value[2].State.Value <- Loaded ("z", 1))
+    equal [| "c"; "b"; "z" |] (rowTexts target)
+    let after = rowNodes target
+
+    equal
+        (true, true, true, true, true)
+        (sameNode after[0] reordered[0],
+         sameNode after[1] reordered[1],
+         sameNode after[2] reordered[2],
+         sameNode (firstChildOf after[0]) payloadNodes[0],
+         sameNode (firstChildOf after[1]) payloadNodes[1])
+
+    write graph [ mounted ] (fun () -> rows.Value[0].State.Value <- Idle)
+    equal [| "Other"; "b"; "z" |] (rowTexts target)
+    mounted.Dispose ()
+
+/// <summary>A batch that leaves a target and returns to it shows the last payload and reports nothing (Review Focus 5).</summary>
+let private switchBackInOneBatch queued () =
+    use graph = new Graph ()
+    let state = graph.Run (fun () -> Api.createSignal (Loaded ("a", 1)))
+    let target = host ()
+
+    let mounted =
+        mountTemplate queued graph strict target (Component.render loader state)
+
+    mounted.Flush ()
+    let before = queryNode target "pre"
+
+    write graph [ mounted ] (fun () ->
+        Api.batch (fun () ->
+            state.Value <- Idle
+            state.Value <- Loaded ("b", 2)))
+
+    equal ("b x2", true) (textOf target "pre", sameNode before (queryNode target "pre"))
+    mounted.Dispose ()
+
+[<Emit("$0.firstElementChild")>]
+let private firstElement (target: HTMLElement) : obj = jsNative
+
+/// <summary>
+/// Each Load fixture hydrates the served HTML of its <c>Loaded done 3</c> state under Strict, then three writes; the
+/// site's markup after each, and whether the served root element was adopted, equal its twin's from the same HTML.
+/// </summary>
+let hydrations: (string * (string -> unit)) array =
+    [|
+        for name, site, twin in
+            [
+                "loader", loader, loaderTwin
+                "rich", rich, richTwin
+                "rows", rows, rowsTwin
+                "rowsTuple", rowsTuple, rowsTupleTwin
+                "tupled", tupled, tupledTwin
+                "whole", whole, wholeTwin
+                "helper", helper, helperTwin
+            ] ->
+            name,
+            fun (served: string) ->
+                let shots (definition: Component<Signal<Load>>) =
+                    use graph = new Graph ()
+                    let state = graph.Run (fun () -> Api.createSignal (Loaded ("done", 3)))
+                    let target = host ()
+                    loadServed target served
+                    let root = firstElement target
+
+                    let mounted =
+                        Hydration.hydrate
+                            graph
+                            None
+                            strict
+                            { Hydration.HydrationOptions.defaults with
+                                Strict = true
+                            }
+                            target
+                            definition
+                            state
+
+                    let shots =
+                        ResizeArray
+                            [
+                                sprintf "adopted=%b %s" (obj.ReferenceEquals (root, firstElement target)) target.innerHTML
+                            ]
+
+                    for step in [ Loaded ("later", 4); Loading 5; Loaded ("again", 1) ] do
+                        graph.Run (fun () -> state.Value <- step)
+                        mounted.Flush ()
+                        shots.Add target.innerHTML
+
+                    mounted.Dispose ()
+                    List.ofSeq shots
+
+                let twinShots = shots twin
+                equal true (twinShots.Head.StartsWith "adopted=true")
+                equal twinShots (shots site)
+    |]
+
+let private finishes = ResizeArray<unit -> unit>()
+
+/// <summary>A site whose Loaded body holds its root on exit until <c>finish</c> runs.</summary>
+let private held =
+    Component.template
+        (fun _ (state: Signal<Load>) -> state)
+        (div () {
+            Arms.Match (
+                (fun (state: Signal<Load>) -> state.Value),
+                function
+                | Loaded (text, count) ->
+                    pre (
+                        Hooks.exit (
+                            Func<_, _, _, _>(fun (_: Signal<Load>) (_: HTMLPreElement) finish ->
+                                finishes.Add finish
+                                ignore)
+                        )
+                    ) {
+                        fun _ -> text
+                        " x"
+                        fun _ -> string count
+                    }
+                | _ -> span () { "Other" }
+            )
+        })
+
+/// <summary>The outgoing arm, held by its exit, keeps its own case's values until finish (Testing 9).</summary>
+let private heldExit queued () =
+    finishes.Clear ()
+    use graph = new Graph ()
+    let state = graph.Run (fun () -> Api.createSignal (Loaded ("a", 1)))
+    let target = host ()
+    let mounted = mountTemplate queued graph strict target (Component.render held state)
+    mounted.Flush ()
+    write graph [ mounted ] (fun () -> state.Value <- Idle)
+    equal ("a x1", "Other") (textOf target "pre", textOf target "span")
+    write graph [ mounted ] (fun () -> state.Value <- Loading 3)
+    equal ("a x1", "Other") (textOf target "pre", textOf target "span")
+    let pending = List.ofSeq finishes
+    finishes.Clear ()
+
+    for finish in pending do
+        finish ()
+
+    mounted.Flush ()
+    equal (null, "Other") (textOf target "pre", textOf target "span")
+    mounted.Dispose ()
+
+[<Emit("$0.querySelectorAll($1).length")>]
+let private countOf (target: HTMLElement) (selector: string) : int = jsNative
+
+let private pendingView =
+    Component.template (fun _ () -> ()) (p (Attrs.className "pending") { "pending" })
+
+let private failedView =
+    Component.template (fun _ (failure: BoundaryFailure) -> failure) (p (Attrs.className "failed") { fun failure -> failure.Error.Message })
+
+/// <summary>A boundary whose content is an Arms.Match site over an async value.</summary>
+let private bounded (flight: Signal<AsyncSource<int>>) =
+    let content =
+        Component.template
+            (fun _ (status: BoundaryStatus) -> status)
+            (div (Attrs.className "level") {
+                Arms.Match (
+                    (fun (_: BoundaryStatus) -> flight.Value.Value),
+                    function
+                    | 0 -> em () { "none" }
+                    | n -> b () { fun _ -> string n }
+                )
+            })
+
+    Component.template (fun _ () -> ()) (section () { boundary pendingView failedView content })
+
+/// <summary>A pending read waits with the boundary, as matchWith does (Testing 10).</summary>
+let private pendingSource queued () =
+    use graph = new Graph ()
+    let flight = graph.Run (fun () -> Api.createSignal (Api.createAsyncSource<int>()))
+    let target = host ()
+
+    let mounted =
+        Mounting.mountWith (modeOf queued) graph None strict target None (fun context ->
+            Program.run (Component.render (bounded flight) ()) context.Backend)
+
+    let state () =
+        mounted.Flush ()
+        mounted.Flush ()
+        countOf target ".pending", countOf target ".failed", textOf target ".level"
+
+    equal (1, 0, null) (state ())
+    graph.Run (fun () -> flight.Value.Settle 2)
+    equal (0, 0, "2") (state ())
+    graph.Run (fun () -> flight.Value <- Api.createAsyncSource<int>())
+    graph.Run (fun () -> flight.Value.Settle 0)
+    equal (0, 0, "none") (state ())
+    mounted.Dispose ()
+    equal "" target.textContent
+
 let cases: (string * (unit -> unit)) array =
     strictCases (
         Array.concat
             [
                 templated "one site shown twice for one instance reads live values through either disposal" twiceShown
                 templated "an arm hidden and shown again follows later writes" remountAfterHide
+                templated "each Load fixture's nine-step trace equals its twin's" traces
+                templated "value-type payload fields equal their twin" valueTraces
+                templated "an event handler reads its arm's payload at event time" eventsReadLatest
+                templated "an event handler's trace equals its twin's" editorTrace
+                templated "rows fed by the items reader keep their elements across payload updates" rowsKeep
+                templated "one site per keyed row follows its own row through a reorder" siteInRows
+                templated "a batch that leaves a target and returns to it shows the last payload" switchBackInOneBatch
+                templated "an outgoing arm held by its exit keeps its own case's values until finish" heldExit
+                templated "a pending source inside a boundary waits with the boundary" pendingSource
             ]
     )
 ```
@@ -4623,33 +5227,53 @@ type Entry(graph: obj, values: unit -> obj array) =
     member _.Values = values
     member val Last: obj array = null with get, set
 
-/// <summary>The live entries of one instance per target, and the values the last withdrawn entry of each target held.</summary>
+/// <summary>Whether an entry serves a read under the graph: a null graph or a null tag matches any.</summary>
+let private serves (graph: obj) (entry: Entry) =
+    isNull graph
+    || isNull entry.Graph
+    || obj.ReferenceEquals (entry.Graph, graph)
+
+/// <summary>
+/// The live entries of an instance per target, as arrays replaced on each change, and each target's last withdrawn
+/// entry that held values.
+/// </summary>
 [<AllowNullLiteral>]
 type Slots() =
-    let live = ResizeArray<ResizeArray<Entry>>()
-    let withdrawn = ResizeArray<obj array>()
+    let mutable live: Entry array array = [||]
+    let mutable withdrawn: Entry array = [||]
 
     member private _.Ensure(target: int) =
-        while live.Count <= target do
-            live.Add (ResizeArray ())
-            withdrawn.Add null
+        if live.Length <= target then
+            live <- Array.append live (Array.create (target + 1 - live.Length) [||])
+            withdrawn <- Array.append withdrawn (Array.create (target + 1 - withdrawn.Length) null)
 
     member this.Add(target: int, entry: Entry) =
         this.Ensure target
-        live[target].Add entry
+        let next = Array.copy live
+        next[target] <- Array.append live[target] [| entry |]
+        live <- next
 
     member this.Withdraw(target: int, entry: Entry) =
         this.Ensure target
-        live[target].Remove entry |> ignore
-        withdrawn[target] <- entry.Last
+        let next = Array.copy live
 
-    member this.Live(target: int) : ResizeArray<Entry> =
-        this.Ensure target
-        live[target]
+        next[target] <-
+            live[target]
+            |> Array.filter (fun other -> not (obj.ReferenceEquals (other, entry)))
 
-    member this.Withdrawn(target: int) : obj array =
-        this.Ensure target
-        withdrawn[target]
+        live <- next
+
+        if not (isNull entry.Last) then
+            withdrawn[target] <- entry
+
+    /// <summary>The live entries of the target; the array is never changed after it is returned.</summary>
+    member _.Live(target: int) : Entry array =
+        let current = live
+        if target < current.Length then current[target] else [||]
+
+    member _.Withdrawn(target: int) : Entry =
+        let current = withdrawn
+        if target < current.Length then current[target] else null
 
 #if FABLE_COMPILER
 open Fable.Core
@@ -4686,7 +5310,7 @@ let private slotsOf (table: obj) (instance: obj) : Slots =
 #endif
 
 /// <summary>Runs <c>action</c> holding the instance's lock on .NET; Fable runs it directly.</summary>
-let inline private guarded (slots: Slots) ([<InlineIfLambda>] action: unit -> 'a) : 'a =
+let inline private guarded (slots: Slots) ([<InlineIfLambda>] action: unit -> unit) : unit =
 #if FABLE_COMPILER
     action ()
 #else
@@ -4713,36 +5337,32 @@ let enter (cells: Cells) (setup: Setup) (instance: obj) (target: int) (values: u
     setup.OnCleanup (fun () -> guarded slots (fun () -> slots.Withdraw (target, entry)))
 
 /// <summary>
-/// The bound values of the reader's own arm: the pattern variables, then the matched value. Reads every live entry of
-/// the ambient graph (every entry when no graph is ambient) and returns the first; with no live entry, the values the
-/// last withdrawn entry held.
+/// The bound values of the reader's own arm: the pattern variables, then the matched value. Reads every live entry
+/// serving the ambient graph and returns the first; with none, the values held by the target's last withdrawn entry
+/// when it serves the ambient graph. Reads run outside the instance's lock.
 /// </summary>
 let values (cells: Cells) (instance: obj) (target: int) : obj array =
     match tryFind cells.Table instance with
     | null -> Errors.noArm ()
     | slots ->
         let graph = ambient ()
+        let mutable first: obj array = null
 
-        guarded slots (fun () ->
-            let mutable first: obj array = null
+        for entry in slots.Live target do
+            if serves graph entry then
+                let read = entry.Values ()
+                entry.Last <- read
 
-            for entry in slots.Live target do
-                if
-                    isNull graph
-                    || obj.ReferenceEquals (entry.Graph, graph)
-                then
-                    let read = entry.Values ()
-                    entry.Last <- read
+                if isNull first then
+                    first <- read
 
-                    if isNull first then
-                        first <- read
-
-            if not (isNull first) then
-                first
-            else
-                match slots.Withdrawn target with
-                | null -> Errors.noArm ()
-                | held -> held)
+        if not (isNull first) then
+            first
+        else
+            match slots.Withdrawn target with
+            | null -> Errors.noArm ()
+            | held when serves graph held -> held.Last
+            | _ -> Errors.noArm ()
 ```
 
 - [ ] **Step 5: Run the checks to verify they pass**
@@ -6159,8 +6779,10 @@ payload; another target remounts, including a guard, a literal pattern or an `if
 selects another branch. `Loaded "x"` to `Loaded ""` above remounts from the `<pre>` to the "Empty" `<span>`.
 
 **Costs.** Under Fable the first site of a bundle adds the runtime, at most 250 B gzip, and each further site at most
-60 B. On .NET each evaluation of the `Arms.Match` call lowers the quotation, a few milliseconds per site: bind sites
-with `let`, as arm definitions are bound above. Trimmed and NativeAOT apps use `matchWith` with `armOf`; `Arms.Match`
+60 B. On .NET each evaluation of the `Arms.Match` call lowers the quotation, about 1 ms per site once the process is
+warm: bind sites with `let`, as arm definitions are bound above. The first site of a process pays the JIT of the
+quotation machinery, about 130 ms; call `Arms.Prepare ()` at start-up (on the calling thread or the thread pool) and the
+first site costs about 10 ms, and publish servers with `-p:PublishReadyToRun=true` to bring it to about 7 ms. Trimmed and NativeAOT apps use `matchWith` with `armOf`; `Arms.Match`
 carries `RequiresUnreferencedCode` and `RequiresDynamicCode`, so a trimmed publish warns at each call.
 
 The diagnostics, AM001 to AM007, are listed in [Troubleshooting](troubleshooting.md).
@@ -6185,7 +6807,7 @@ Expected: `Arms.fs` gains `open Ranvier.View.Arms`, `loaderMatch`, `Folder` and 
 
 | Module | Contents | Page |
 | --- | --- | --- |
-| [`Ranvier.View.Arms`](https://github.com/shayanhabibi/Ranvier/blob/master/experiments/Ranvier.View.Arms/Arms.fs) | `Arms.Match`; on .NET `BuildTimeReadException` and `ArmsMatchException` (both inherit `InvalidOperationException`, which shared code catches on both targets) | [Conditional arms](arms.md) |
+| [`Ranvier.View.Arms`](https://github.com/shayanhabibi/Ranvier/blob/master/experiments/Ranvier.View.Arms/Arms.fs) | `Arms.Match`, `Arms.Prepare`; on .NET `BuildTimeReadException` and `ArmsMatchException` (both inherit `InvalidOperationException`, which shared code catches on both targets) | [Conditional arms](arms.md) |
 | [`Ranvier.View.Arms.FablePlugin`](https://github.com/shayanhabibi/Ranvier/tree/master/experiments/Ranvier.View.Arms.FablePlugin) | `CaseArmsAttribute`: the Fable plugin that lowers `Arms.Match` calls, referenced through `Ranvier.View.Arms.targets` | [Conditional arms](arms.md) |
 ```
 

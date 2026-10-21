@@ -45,9 +45,8 @@ site against its `armOf` twin. Three processes per row:
 | all compiled (`preferInterpretation = false`) | 132, 134, 163 | 117, 126, 126 | 9.41-10.11 |
 | hot lambdas compiled at lowering | | 126, 132, 122 | 6.09-6.44 |
 
-Building the `armOf` twin first, cold, takes 29-32 ms (the view's own JIT). The rest of the first `Arms.Match`, about
-75-110 ms in every mode, is the cold start of quotation deserialisation, `LeafExpressionConverter` and
-`System.Linq.Expressions`. No mode meets the spec's 10 ms for the first site of a process; the mean meets the 4 ms
+Building the `armOf` twin first, cold, takes 29-32 ms (the view's own JIT). The rest of the first `Arms.Match` is JIT
+of FSharp.Core's quotation deserialiser, `LeafExpressionConverter` and the Arms lowering ("Cold start" below). No mode meets the spec's 10 ms for the first site of a process; the mean meets the 4 ms
 budget. The mitigation is the spec's start-up advice: bind sites at module level and render once at start-up, before
 the first request. `RepresentationChecks` prints `lowering|warm-first=...` (about 1.5-2.5 ms) for a site lowered after
 earlier ones.
@@ -66,6 +65,46 @@ reader-heavy page. Compiling each per-call lambda after 64 calls matches the twi
 the all-interpreted cost.
 
 The probe compiled one lambda per body and the selector: 9.06 ms first (warm), 8.55 ms mean.
+
+## Cold start
+
+Measured with `Checks/DotnetCost` (FSharp.Core 10.1.401, the app's pin; the library's floor is 8.0.100), Release,
+net10.0, a fresh process per run, under the benchmark lock.
+
+**Where the first site's time goes** (the Phase 3 review's phase profiler, each stage warmed separately, in order;
+`System.Runtime.JitInfo` deltas, three processes):
+
+| Stage | Wall (ms) | JIT (ms) | Methods |
+|---|---|---|---|
+| the view's cold start (an `armOf`/`matchWith` site) | 8.7-8.9 | 8.1-8.4 | 98 |
+| quotation deserialisation (a quoted `match` of the same shape) | 30-33 | 26-29 | 382 |
+| `LeafExpressionConverter.QuotationToExpression` | 50-54 | 46-49 | 335 |
+| `System.Linq.Expressions` interpreter | 3.1-3.5 | 0.4-0.5 | 9 |
+| the first `Arms.Match` after those (lowering, `Hot` reflection, `Site.create`, F# collection generics) | 37-40 | 32-33 | 358 |
+
+The cost is JIT of IL-only code: FSharp.Core from NuGet is not ReadyToRun, and the shared framework is, so
+`DOTNET_ReadyToRun=0` raises the first site only to 192 ms; tiered-compilation settings change nothing.
+
+**`Arms.Prepare` and ReadyToRun** (`dotnet publish -r win-x64 -p:PublishReadyToRun=true`), three processes each; "first
+site" is the five-target site, timed after `Prepare` when it runs:
+
+| Build | `Arms.Prepare ()` (ms) | First site (ms) | First site JIT (ms) |
+|---|---|---|---|
+| JIT | — | 125-146 | 111-128 |
+| JIT, after `Prepare` | 167-182 | 9.2-11.9 | 5.7-7.4 |
+| ReadyToRun (first run after publish: 113) | — | 56-57 | 30-31 |
+| ReadyToRun, after `Prepare` | 68-75 | 6.9-7.4 | 3.3-3.5 |
+
+`Prepare` moves the cost to start-up, on the calling thread or on the thread pool; ReadyToRun removes about two thirds
+of it. With both, the first user site costs about 7 ms, within the draft's 10 ms. The remaining JIT is generic
+instantiation over the app's own types, which ReadyToRun cannot pregenerate. Removing the rest needs a build-time
+lowering (spec Decision 15).
+
+**Hot compiles.** A per-call lambda queues its compilation on the thread pool at its 64th call and keeps running
+interpreted until the compiled delegate is published, so no render waits for a compile (the review measured an inline
+compile at 8.2-9.1 ms for the first of a process). `Prepare` compiles one lambda, so the pool's first compile starts warm.
+A lambda that closes over a variable of its case body (`let suffix = "!" in pre () { fun _ -> t + suffix }`) is not
+closed, so it is never compiled and stays interpreted for the life of the site.
 
 ## Fickl
 

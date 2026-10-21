@@ -58,7 +58,7 @@ let noArm =
 [<Literal>]
 let unsupported = "Arms.Match: this pattern form is not supported."
 
-/// <summary>A call with no source location; the plugin names a site's emitted locals from it.</summary>
+/// <summary>A call with no source location; the plugin derives the names of a site's emitted locals from it.</summary>
 [<Literal>]
 let noRange =
-    "Arms.Match: the call has no source location; the plugin names a site's emitted locals from it."
+    "Arms.Match: the call has no source location; the plugin derives the names of a site's emitted locals from it."

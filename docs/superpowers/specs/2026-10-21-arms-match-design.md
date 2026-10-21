@@ -119,7 +119,13 @@ its rows and updates them.
     and module-level sites lower once already. The one-expression lowering (≤ 4 ms mean) and the binding rule in the
     docs ship instead.
 15. **No NativeAOT-compatible .NET path.** It would need a build-time lowering, the machinery the plugin avoids. Trimmed
-    and NativeAOT apps use `matchWith`, and the annotation says so at publish.
+    and NativeAOT apps use `matchWith`, and the annotation says so at publish. A build-time lowering is also the
+    follow-on that removes the remaining cold cost: emitting each site as `armOf`/`matchWith` code before compilation
+    (a source generator over the typed tree, as the analyzer of the follow-up spec reads it) drops the quotation
+    deserialiser, `LeafExpressionConverter` and the interpreter from the .NET path. Estimate: the first site falls to
+    the view's own cold start (29-32 ms, 8-11 ms of it for a twin site after R2R), each lowering to 0 ms, and the
+    per-call lambdas are ordinary compiled code; about two weeks of work, most of it the typed-tree walk the plugin
+    already does on the Fable AST.
 16. **One package at graduation.** `Ranvier.View.Arms` carries the plugin assembly and an auto-imported `.targets`, so
     an app adds one reference and always gets the runtime with the plugin. The package declares `Fable.AST` as a NuGet
     dependency, so NuGet unifies it with the `Fable.AST` of other plugin packages (a .NET build carries an unused
@@ -204,6 +210,8 @@ type Arms =
             -> TemplateView<'inst>
 #endif
 #endif
+    /// <summary>Warms the .NET lowering on a built-in site; does nothing under Fable.</summary>
+    static member Prepare: unit -> unit
 
 // .NET only: shared code catches InvalidOperationException, which both types inherit and Fable raises.
 #if !FABLE_COMPILER
@@ -357,8 +365,12 @@ through the items reader, which runs over the instance:
 the selector. The shipped lowering forms one LINQ expression per site, runs its construction once in the LINQ
 interpreter, and compiles each per-call lambda (selector, readers, row readers, handlers) after 64 calls; the budget is
 ≤ 4 ms mean per five-target site, measured by `Checks/DotnetCost` and the `lowering|` line in the checks. The first site
-of a fresh process costs 105-160 ms in every measured mode, 75-110 ms above the view's own cold start, which the
-≤ 10 ms first-call figure of the draft did not account for; module-level sites and one render at start-up keep it out
+of a fresh process costs 125-146 ms: JIT of FSharp.Core's quotation deserialiser (about 30 ms) and
+`LeafExpressionConverter` (about 50 ms) and of the Arms lowering and view generics (about 38 ms); it is measured and
+recorded, not budgeted. Two measures cut it. `Arms.Prepare ()` at start-up (on the calling thread or the thread pool)
+lowers, renders and compiles a built-in site, after which the app's first five-target site costs 9-12 ms. A ReadyToRun
+publish (`-p:PublishReadyToRun=true`) precompiles FSharp.Core and the view: 56-57 ms for the first site without
+`Prepare`, 7 ms after it (`Prepare` itself 68-75 ms). Module-level sites and one render at start-up keep the rest out
 of the first request (research note, ".NET lowering cost").
 
 **When it runs.** Once per evaluation of the call. A site bound at module level, or inside a template's build
@@ -370,8 +382,11 @@ docs page states the binding rule that `armOf` already has (`docs/content/view/a
 **Caching.** None in v1 (decision 14). A quotation captures the call's free locals as values, so a cache keyed by
 call site would serve the first call's captures to later calls.
 
-**Thread safety.** The lowering keeps no shared mutable state; each call creates its own cells, definitions and
-compiled delegates, so concurrent calls are independent. The cells' entry lists are locked. Arm readers are installed
+**Thread safety.** Each call creates its own cells and definitions, so concurrent calls of `Arms.Match` are independent.
+A site's per-call lambdas are shared by every render of the site: each counts its calls with `Interlocked`, and exactly
+one call queues its compilation on the thread pool; renders keep running the interpreted delegate until the compiled one
+is published, and a failed compile leaves it interpreted. The cells' entry arrays are replaced under the instance's
+lock and read without it. Arm readers are installed
 with `Interlocked.CompareExchange` by the existing `arm` (`Template.fs:2307-2319`).
 
 **Trimming and NativeAOT.** `[<ReflectedDefinition>]` stores the argument as a serialized quotation that FSharp.Core

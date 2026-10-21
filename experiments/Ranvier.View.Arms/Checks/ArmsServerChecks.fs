@@ -37,12 +37,25 @@ let private sameHtml (options: Server.Options) () =
 
         equal (case.Fixture, case.State, twin) (case.Fixture, case.State, site)
 
+/// <summary>A failwithf case body raises its message at the region read; another case renders.</summary>
+let private failwithfRaisesAtRead () =
+    let render state =
+        try
+            use graph = new Graph ()
+            let props = graph.Run (fun () -> Api.createSignal state)
+            Server.render omit failing props
+        with error ->
+            "raised: " + error.Message
+
+    equal (true, "raised: bad state") ((render Idle).Contains "<span>Other</span>", render (Loaded ("x", 1)))
+
 let cases: (string * (unit -> unit)) array =
     [|
         "Arms.Match fixtures share their twins' layouts and hashes", sameLayouts
         "Arms.Match fixtures render their twins' server HTML under Reject", sameHtml Server.Options.defaults
         "Arms.Match fixtures render their twins' server HTML under Omit", sameHtml omit
         "an incomplete Arms.Match raises for its unmatched case", (fun () -> equal true (incompleteRaises ()))
+        "a failwithf case body raises its message at the region read", failwithfRaisesAtRead
     |]
 
 /// <summary>One line per fixture state: fixture, state, the site's structural hash and its server HTML under Omit.</summary>

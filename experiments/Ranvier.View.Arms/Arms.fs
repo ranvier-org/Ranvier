@@ -5,6 +5,10 @@ open System.Diagnostics.CodeAnalysis
 open Ranvier.View.Foundation.Template
 #if !FABLE_COMPILER
 open Microsoft.FSharp.Quotations
+open Ranvier.View.Foundation.Sugar
+
+/// <summary>The instance of the site <c>Arms.Prepare</c> lowers.</summary>
+type internal Warmup = { Text: string option }
 #endif
 
 /// <summary>Arm sites written as a plain F# match: one arm per match target.</summary>
@@ -53,4 +57,37 @@ type Arms =
         let select, bodies = Quoted.lower cells at arms
         Site.create cells read select bodies
 #endif
+#endif
+
+    /// <summary>
+    /// Lowers, renders and compiles a built-in site on .NET, so the app's first <c>Arms.Match</c> costs a warm lowering.
+    /// Call it at start-up, on the calling thread or on the thread pool; it returns when the warm-up is done. Under
+    /// Fable it does nothing.
+    /// </summary>
+#if !FABLE_COMPILER
+    [<RequiresUnreferencedCode(Diagnostics.reflection); RequiresDynamicCode(Diagnostics.reflection)>]
+#endif
+    static member Prepare() : unit =
+#if !FABLE_COMPILER
+        let site =
+            Component.define (fun _ (warmup: Warmup) -> warmup) (fun _ ->
+                Arms.Match (
+                    (fun (warmup: Warmup) -> warmup.Text),
+                    function
+                    | Some text -> b () { fun _ -> text }
+                    | None -> span () { "none" }
+                ))
+
+        let omit =
+            { Ranvier.View.Foundation.Server.Options.defaults with
+                Policy = Ranvier.View.Foundation.Representation.Omit
+            }
+
+        for text in [ Some "a"; None ] do
+            Ranvier.View.Foundation.Server.render omit site { Text = text }
+            |> ignore
+
+        Quoted.warmCompile ()
+#else
+        ()
 #endif

@@ -135,6 +135,11 @@ let bad =
         17,
         None,
         "Arms.Match: 'text' is read inside a lambda over 'unit -> string', which is not the instance type 'Signal<Load>'. Pass the value to the nested view through its items or props."
+        "BAD_AM002_WILDCARD_SIMPLE",
+        "AM002-wildcard-simple.fs",
+        17,
+        None,
+        "Arms.Match: 'text' is read inside a lambda over 'unit -> string', which is not the instance type 'Signal<Load>'. Pass the value to the nested view through its items or props."
         "BAD_AM003", "AM003.fs", 16, Some 72, "Arms.Match takes a function literal as its second argument, such as (function | Case x -> ...)."
         "BAD_AM003_LOCAL",
         "AM003-local.fs",

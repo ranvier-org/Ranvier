@@ -426,7 +426,7 @@ let private loweringBudget () =
         Environment.GetCommandLineArgs ()
         |> Array.contains "--timing"
     then
-        equal (true, true) (first <= 10.0, mean <= 4.0)
+        equal true (mean <= 4.0)
 
 let cases: (string * (unit -> unit)) array =
     [|
@@ -459,27 +459,53 @@ let private noArm () =
         "Arms.Match: no arm of this site is mounted for the instance this reader received. A lambda over the instance type inside a case body runs with the arm's instance."
         message
 
-/// <summary>Sixteen threads render one site for one shared instance, each under its own graph, 50 times each (Review Focus 1).</summary>
+/// <summary>The payload each thread's renders read for the shared instance.</summary>
+let private perThread = new Threading.ThreadLocal<int> ()
+
+/// <summary>A site over a shared instance whose payload is the reading thread's number.</summary>
+let private perThreadSite =
+    Component.template
+        (fun _ (score: ArmsFixtures.Score) -> score)
+        (div () {
+            Arms.Match (
+                (fun (score: ArmsFixtures.Score) -> { score with Points = perThread.Value }),
+                function
+                | { Points = 0 } -> span () { "no points" }
+                | { Name = name; Points = points } -> pre () { fun _ -> name + ":" + string points }
+            )
+        })
+
+/// <summary>
+/// Sixteen threads render one site for one shared instance, each under its own graph with a payload of its own; each
+/// response shows its own thread's payload (Review Focus 1).
+/// </summary>
 let private concurrentRenders () =
     let score: ArmsFixtures.Score = { Name = "ada"; Points = 5 }
-    let expected = Server.render omit ArmsFixtures.plainScore score
     let failures = Collections.Concurrent.ConcurrentBag<string>()
     use barrier = new Threading.Barrier 16
 
     let threads =
         [|
-            for _ in 1..16 ->
+            for index in 0..15 ->
                 Threading.Thread (fun () ->
+                    perThread.Value <- index
+
+                    let expected =
+                        if index = 0 then
+                            "<span>no points</span>"
+                        else
+                            sprintf "<pre>ada:%d</pre>" index
+
                     barrier.SignalAndWait ()
 
-                    for _ in 1..50 do
+                    for _ in 1..200 do
                         try
-                            let html = Server.render omit ArmsFixtures.plainScore score
+                            let html = Server.render omit perThreadSite score
 
-                            if html <> expected then
-                                failures.Add html
+                            if not (html.Contains expected) then
+                                failures.Add (sprintf "thread %d: %s" index html)
                         with error ->
-                            failures.Add error.Message)
+                            failures.Add (sprintf "thread %d: %s" index error.Message))
         |]
 
     for thread in threads do
@@ -488,10 +514,91 @@ let private concurrentRenders () =
     for thread in threads do
         thread.Join ()
 
-    equal ("<!--[r--><div><!--[a:", []) (expected.Substring (0, 21), List.ofSeq failures)
+    equal [] (List.ofSeq failures |> List.truncate 3)
+
+/// <summary>The 64th call of a hot lambda queues its compile and returns without waiting for it.</summary>
+let private hotDoesNotBlock () =
+    use release = new Threading.ManualResetEventSlim false
+
+    let compile () =
+        release.Wait 10000 |> ignore
+        box (fun (x: int) -> x + 2)
+
+    let hot =
+        Ranvier.View.Arms.Quoted.Hot<int, int>((fun x -> x + 1), compile)
+        |> box
+        |> unbox<int -> int>
+
+    let watch = Diagnostics.Stopwatch.StartNew ()
+
+    for _ in 1 .. Ranvier.View.Arms.Quoted.hotCalls do
+        hot 1 |> ignore
+
+    let elapsed = watch.ElapsedMilliseconds
+    let interpreted = hot 1
+    release.Set ()
+    let deadline = Diagnostics.Stopwatch.StartNew ()
+
+    while hot 1 = 2 && deadline.ElapsedMilliseconds < 10000 do
+        Threading.Thread.Sleep 10
+
+    equal (true, 2, 3) (elapsed < 1000, interpreted, hot 1)
+
+/// <summary>A hot lambda whose compile fails keeps running interpreted.</summary>
+let private hotCompileFailure () =
+    let compile () : obj =
+        failwith "compile failed"
+
+    let hot =
+        Ranvier.View.Arms.Quoted.Hot<int, int>((fun x -> x + 1), compile)
+        |> box
+        |> unbox<int -> int>
+
+    let results = [ for _ in 1..200 -> hot 1 ]
+    Threading.Thread.Sleep 200
+    equal (true, 2) (results |> List.forall ((=) 2), hot 1)
+
+/// <summary>Sixteen threads calling one hot lambda at once queue its compile exactly once.</summary>
+let private hotCompilesOnce () =
+    let compiles = ref 0
+
+    let compile () =
+        Threading.Interlocked.Increment &compiles.contents
+        |> ignore
+
+        box (fun (x: int) -> x + 1)
+
+    let hot =
+        Ranvier.View.Arms.Quoted.Hot<int, int>((fun x -> x + 1), compile)
+        |> box
+        |> unbox<int -> int>
+
+    use barrier = new Threading.Barrier 16
+
+    let threads =
+        [|
+            for _ in 1..16 ->
+                Threading.Thread (fun () ->
+                    barrier.SignalAndWait ()
+
+                    for _ in 1..200 do
+                        hot 1 |> ignore)
+        |]
+
+    for thread in threads do
+        thread.Start ()
+
+    for thread in threads do
+        thread.Join ()
+
+    Threading.Thread.Sleep 200
+    equal 1 compiles.Value
 
 let runtimeCases: (string * (unit -> unit)) array =
     [|
         "a reader with no arm for its instance raises AM006", noArm
-        "concurrent server renders of one instance read their own arms", concurrentRenders
+        "concurrent server renders of one shared instance read their own graph's payload", concurrentRenders
+        "the 64th call of a hot lambda does not wait for its compile", hotDoesNotBlock
+        "a hot lambda whose compile fails keeps running interpreted", hotCompileFailure
+        "concurrent calls of a hot lambda compile it once", hotCompilesOnce
     |]

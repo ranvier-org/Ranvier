@@ -688,6 +688,19 @@ let incompleteTwin =
                 | Loaded _ -> arm otherArm ())
         })
 
+// A failwithf case body: no arm; the selector raises it at the region read.
+let failing =
+    Component.template
+        (fun _ (state: Signal<Load>) -> state)
+        (div () {
+            Arms.Match (
+                read,
+                function
+                | Loaded _ -> failwithf "bad %s" "state"
+                | _ -> span () { "Other" }
+            )
+        })
+
 let private panels =
     [
         "Loaded open",
