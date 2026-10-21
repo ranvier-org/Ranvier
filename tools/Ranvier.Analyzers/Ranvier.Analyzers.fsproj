@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+    <ItemGroup>
+        <Compile Include="Symbols.fs" />
+        <Compile Include="Index.fs" />
+        <Compile Include="Rule.fs" />
+        <Compile Include="Analyzers.fs" />
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="FSharp.Analyzers.SDK" Version="0.41.0" PrivateAssets="all" />
+        <PackageReference Update="FSharp.Core" Version="10.1.402" />
+    </ItemGroup>
+</Project>
