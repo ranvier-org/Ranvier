@@ -48,7 +48,7 @@ function resetDocument() {
 for (const [moduleName, cases] of modules) {
   for (const [name, run] of cases) {
     if (skippedOn("jsdom", name)) { test(`${moduleName}: ${name}`, { skip: "another host's case" }, () => {}); continue; }
-    test(`${moduleName}: ${name}`, () => {
+    test(`${moduleName}: ${name}`, async () => {
       const directory = new URL(`${moduleName}/${slug(name)}/`, root);
       let count = 0;
       resetDocument();
@@ -76,7 +76,16 @@ for (const [moduleName, cases] of modules) {
       const intercept = interceptIn(dom.window);
       const restores = [];
       let left = [];
-      try { run(create(dom.window.document, host)); }
+      try {
+        const result = run(create(dom.window.document, host));
+        // A case that returns a promise awaits JavaScript promise delivery: the real timer and microtask functions
+        // return, with the work queued so far, before the await.
+        if (result && typeof result.then === "function") {
+          mock.timers.reset();
+          clock.handOff();
+          await result;
+        }
+      }
       finally {
         for (const restore of restores.reverse()) restore();
         clock.restore();

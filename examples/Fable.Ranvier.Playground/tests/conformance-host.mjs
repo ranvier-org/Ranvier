@@ -69,6 +69,15 @@ export function makeClock(targets, onAdvance = () => {}) {
       for (const [target, names] of saved)
         for (const [name, descriptor] of names) { if (descriptor) Object.defineProperty(target, name, descriptor); else delete target[name]; }
     },
+    // Restores the real functions and hands them the work still queued: microtasks to queueMicrotask and timers to
+    // setTimeout with their remaining delay, for a case that goes on to await real promise delivery.
+    handOff: () => {
+      for (const [target, names] of saved)
+        for (const [name, descriptor] of names) { if (descriptor) Object.defineProperty(target, name, descriptor); else delete target[name]; }
+      const real = targets[0];
+      for (const callback of queue.splice(0)) real.queueMicrotask(callback);
+      for (const timer of timers.splice(0)) real.setTimeout(timer.run, Math.max(0, timer.due - now));
+    },
   };
 }
 

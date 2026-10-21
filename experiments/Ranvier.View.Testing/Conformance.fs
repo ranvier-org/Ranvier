@@ -168,7 +168,31 @@ let ofChecks (checks: (string * (unit -> unit)) array) : Case array =
     checks
     |> Array.map (fun (name, check) -> name, (fun value -> run value check))
 
-let platformOnly (platform: string) (reason: string) (name: string, check: unit -> unit) =
+/// <summary>
+/// The cases of checks that return a JavaScript promise, which the jsdom runner awaits. The case's harness is current
+/// until the check returns its promise, so a check reads the document before its first await. On .NET the check runs
+/// and its result is dropped.
+/// </summary>
+let ofPromiseChecks (checks: (string * (unit -> obj)) array) : Case array =
+    checks
+    |> Array.map (fun (name, check) ->
+#if FABLE_COMPILER
+        name,
+        unbox<Harness -> unit>(
+            box (fun (value: Harness) ->
+                let previous = read ()
+                write (Running value)
+
+                try
+                    check ()
+                finally
+                    write previous)
+        ))
+#else
+        name, (fun value -> run value (fun () -> check () |> ignore)))
+#endif
+
+let platformOnly (platform: string) (reason: string) (name: string, check: 'check) =
     $"[{platform}] {name} ({reason})", check
 
 let skippedOn (platform: string) (name: string) =
