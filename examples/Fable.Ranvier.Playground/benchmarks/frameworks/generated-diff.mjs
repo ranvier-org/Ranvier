@@ -1,5 +1,6 @@
-// Gate 3 of the DOM twin spec (§7.1): the Fable output files that differ between a base and a branch directory, with
-// lines starting `import ` ignored and `fable_modules/` (package output, which `build.fsx test` deletes) skipped. Exits 1 when a differing file does not match the allowed pattern.
+// Gate 3 of the DOM twin spec (§7.1): the Fable output files that differ between a base and a branch directory,
+// with lines starting `import ` ignored and `fable_modules/` (package output) skipped. Exits 1 when a differing file
+// does not match the allowed pattern, by default the Native module of Portable.
 // Usage: node benchmarks/frameworks/generated-diff.mjs <base dir> <branch dir> [--allow <regex>]
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
@@ -20,6 +21,9 @@ const filesUnder = root => {
 
 const body = path => readFileSync(path, "utf8").split("\n").filter(line => !line.startsWith("import ")).join("\n");
 
+/** The allow pattern of the command line when `--allow` is absent. */
+export const defaultAllow = /^experiments\/Ranvier\.View\.Portable\/Native\.js$/;
+
 export function diffDirectories(base, branch, allow) {
   const names = new Set([...filesUnder(base), ...filesUnder(branch)]);
   const differing = [];
@@ -35,7 +39,7 @@ export function diffDirectories(base, branch, allow) {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const [base, branch] = process.argv.slice(2);
   const index = process.argv.indexOf("--allow");
-  const allow = new RegExp(index < 0 ? "(^|/)Native\\.js$" : process.argv[index + 1]);
+  const allow = index < 0 ? defaultAllow : new RegExp(process.argv[index + 1]);
   const { differing, disallowed } = diffDirectories(base, branch, allow);
   for (const name of differing) console.log(`${disallowed.includes(name) ? "DIFFERS" : "allowed"} ${name}`);
   process.exitCode = disallowed.length ? 1 : 0;

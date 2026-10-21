@@ -1,6 +1,6 @@
 /// <summary>
-/// The host primitives of the view sources. Under Fable each is the Emit text it replaced; on .NET each is F# over the
-/// <c>Fable.Core.TS.Dom</c> interfaces, the installed host, or .NET collections.
+/// The host primitives of the view sources. Under Fable each primitive is an Emit expression inlined at its call sites; on
+/// .NET each is F# over the <c>Fable.Core.TS.Dom</c> interfaces, the installed host, or .NET collections.
 /// </summary>
 module internal Ranvier.View.Foundation.Native
 
@@ -32,14 +32,29 @@ type private HostSlot =
         with get () = HostSlot.current
         and set (value: IHost) = HostSlot.current <- value
 
-/// <summary>Installs <c>host</c> for the current thread until the returned value is disposed.</summary>
+/// <summary>
+/// Installs <c>host</c> for the current thread until the returned value is disposed. Disposal restores the previous
+/// host; it raises <c>InvalidOperationException</c> on another thread or while a later installation is current.
+/// </summary>
 let install (host: IHost) : System.IDisposable =
     let previous = HostSlot.Current
+    let thread = System.Environment.CurrentManagedThreadId
     HostSlot.Current <- host
+    let disposed = ref false
 
     { new System.IDisposable with
         member _.Dispose() =
-            HostSlot.Current <- previous
+            if not disposed.Value then
+                let current = System.Environment.CurrentManagedThreadId
+
+                if current <> thread then
+                    raise (System.InvalidOperationException $"A DOM host installed on thread {thread} was disposed on thread {current}")
+
+                if not (obj.ReferenceEquals (HostSlot.Current, host)) then
+                    raise (System.InvalidOperationException "A DOM host was disposed while a later installation is current")
+
+                disposed.Value <- true
+                HostSlot.Current <- previous
     }
 
 let private host () : IHost =

@@ -54,7 +54,7 @@ let private browserEmits () =
     let offending =
         [
             for file in compiled () do
-                // Native.fs holds the host primitives; each Emit there has a .NET body, which nativeBodies checks.
+                // Native.fs is checked by nativeStructure.
                 if file <> "Native.fs" then
                     let text =
                         File.ReadAllLines (Path.Combine (portable, file))
@@ -68,39 +68,114 @@ let private browserEmits () =
 
     equal [] offending
 
-/// <summary>Every <c>#if FABLE_COMPILER</c> block of <c>Native.fs</c> has an <c>#else</c>, and the file has no Import or Global attribute.</summary>
+let private fableBlock =
+    Regex (
+        @"^[ \t]*#if FABLE_COMPILER[ \t]*\r?$(?<fable>.*?)^[ \t]*#else[ \t]*\r?$(?<net>.*?)^[ \t]*#endif",
+        RegexOptions.Singleline ||| RegexOptions.Multiline
+    )
+
+let private topLevelLet =
+    Regex (@"^let (?:inline )?(?:private )?(?:internal )?(?:rec )?(\w+)", RegexOptions.Multiline)
+
+/// <summary>
+/// The violations of Native.fs's shape in <c>text</c>: each <c>#if FABLE_COMPILER</c> block has an <c>#else</c> that
+/// defines the same top-level names, every attribute is an Emit inside a Fable branch, and every guard naming
+/// <c>FABLE_COMPILER</c> is <c>#if FABLE_COMPILER</c> or <c>#if !FABLE_COMPILER</c>.
+/// </summary>
+let nativeStructure (text: string) : string list =
+    let text =
+        text.Split '\n'
+        |> Array.filter (fun line -> not (line.TrimStart().StartsWith "//"))
+        |> String.concat "\n"
+
+    let blocks = [ for found in fableBlock.Matches text -> found ]
+
+    let names (group: Group) =
+        set [ for found in topLevelLet.Matches group.Value -> found.Groups[1].Value ]
+
+    let inFable (index: int) =
+        blocks
+        |> List.exists (fun block ->
+            let fable = block.Groups["fable"]
+
+            index >= fable.Index
+            && index < fable.Index + fable.Length)
+
+    [
+        let guards =
+            text.Split '\n'
+            |> Array.map _.Trim()
+            |> Array.filter (fun line ->
+                line.StartsWith "#if"
+                && line.Contains "FABLE_COMPILER")
+
+        for guard in guards do
+            if
+                guard <> "#if FABLE_COMPILER"
+                && guard <> "#if !FABLE_COMPILER"
+            then
+                "unsupported guard: " + guard
+
+        let opened =
+            guards
+            |> Array.filter ((=) "#if FABLE_COMPILER")
+            |> Array.length
+
+        if opened <> blocks.Length then
+            $"{opened - blocks.Length} #if FABLE_COMPILER block(s) without an #else"
+
+        for block in blocks do
+            let fable, net = block.Groups["fable"], block.Groups["net"]
+
+            if
+                fable.Value.Contains "#if"
+                || fable.Value.Contains "#endif"
+            then
+                "a #if FABLE_COMPILER block without an #else before the next directive"
+            elif names fable <> names net then
+                $"Fable names %A{names fable} differ from .NET names %A{names net}"
+
+        for found in browserAttribute.Matches text do
+            if found.Groups[1].Value <> "Emit" then
+                "attribute other than Emit: " + found.Value
+            elif not (inFable found.Index) then
+                "Emit outside a #if FABLE_COMPILER block: "
+                + found.Value
+    ]
+
 let private nativeBodies () =
-    let lines =
-        File.ReadAllLines (Path.Combine (portable, "Native.fs"))
-        |> Array.map _.Trim()
+    equal [] (nativeStructure (File.ReadAllText (Path.Combine (portable, "Native.fs"))))
 
-    let fableBlocks =
-        lines
-        |> Array.filter ((=) "#if FABLE_COMPILER")
-        |> Array.length
+let private nativeStructureRejects () =
+    let guarded =
+        "#if FABLE_COMPILER\n[<Emit(\"document\")>]\nlet document () : Document = jsNative\n#else\nlet document () : Document = host ()\n#endif\n"
 
-    let netBlocks =
-        lines
-        |> Array.filter ((=) "#else")
-        |> Array.length
+    equal [] (nativeStructure guarded)
 
-    equal fableBlocks netBlocks
+    let unguarded =
+        guarded
+        + "[<Emit(\"document.body\")>]\nlet body () : HTMLElement = jsNative\n"
 
-    let text = String.concat "\n" lines
+    equal 1 (nativeStructure unguarded).Length
 
-    let imports =
-        [
-            for found in browserAttribute.Matches text do
-                if found.Groups[1].Value <> "Emit" then
-                    found.Value
-        ]
+    let missing =
+        "#if FABLE_COMPILER\n[<Emit(\"$0.a\")>]\nlet a x = jsNative\n[<Emit(\"$0.b\")>]\nlet b x = jsNative\n#else\nlet a x = x\n#endif\n"
 
-    equal [] imports
+    equal 1 (nativeStructure missing).Length
+
+    let noElse =
+        "#if FABLE_COMPILER\n[<Emit(\"$0.a\")>]\nlet a x = jsNative\n#endif\n"
+        + guarded
+
+    equal true ((nativeStructure noElse).Length >= 1)
+
+    equal 1 (nativeStructure "#if FABLE_COMPILER && X\nlet a = 1\n#endif\n").Length
 
 let cases: (string * (unit -> unit)) array =
     [|
         "the portable project references only src/Ranvier and the Xantham type bindings", browserReferences
         "the portable project's attributes use no Import or Global, and no Emit outside Native.fs touches document, window or addEventListener",
         browserEmits
-        "each Emit block of Native.fs has a .NET body, and Native.fs uses no Import or Global", nativeBodies
+        "every Emit of Native.fs sits in a #if FABLE_COMPILER block whose #else defines the same names", nativeBodies
+        "the Native.fs shape check rejects an unguarded Emit, a missing .NET body, a block without #else and other guards", nativeStructureRejects
     |]

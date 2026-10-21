@@ -41,7 +41,7 @@ Repository constraints:
 
 - Work in `C:\Users\shaya\RiderProjects\Ranvier-dom-twin` on branch `feat/dom-twin`. Merge `origin/master` (`git fetch origin && git merge origin/master`); never rebase, amend a pushed commit or force-push. Push with `git push origin HEAD:feat/dom-twin`.
 - View-side only: no file under `src/` changes. A task that finds a core change necessary stops and raises it with the user (`.claude/rules/view-uses-core.md`).
-- Every existing test passes unchanged, except the check modules that a task moves onto the conformance harness (Tasks 13, 15, 16, 17, 18, 19), whose runner and document access change as that task says. Any other test that has to change is a plan conflict: stop and report it.
+- Every existing test passes unchanged, except the check modules that a task moves onto the conformance harness (Tasks 13, 15, 16, 17, 18, 19), whose runner and document access change as that task says, and `experiments/Ranvier.View.Portable/Checks/PackagingChecks.fs`, which since Task 3 exempts `Native.fs` from its document-Emit rule and checks `Native.fs`'s structure instead (every Emit inside a `#if FABLE_COMPILER` block whose `#else` defines the same names; Amendment A1), pending the user's objection. Any other test that has to change is a plan conflict: stop and report it.
 - Comments follow `.claude/rules/comments.md`; `///` docs follow the `fsharp-xml-docs` skill. No `FOR-REVIEW` comment is committed.
 - Commits: one conventional line, a blank line, then exactly these two lines:
   ```
@@ -146,6 +146,114 @@ The five inputs the spec implies and no task's spec-derived tests exercise, most
 3. **Text and attribute values holding U+00A0, `&`, `<`, `>`, `"` and a carriage return.** A person expects `Html.inner` to match jsdom's `innerHTML` and `Html.server (parse s)` to return `s`. Pinned by Task 8's `serialisers escape the jsdom and server sets` test.
 4. **Two twin sessions on two threads at once**, as Expecto runs tests in parallel. A person expects each session to see only its own document and a cross-thread use to raise. Pinned by Task 12's `sessions on two threads are isolated` test.
 5. **A dump of an instance holding a cyclic value, a 10 000-character string and 200 levels of nesting.** A person expects the dump to terminate, cut the string at `MaxText` and stop at `MaxDepth`. Pinned by Task 21's `dump bounds cyclic, long and deep values` test.
+
+## Amendments after the phase 0 review
+
+These rulings override the task text they name. Each task they touch carries a one-line pointer here.
+
+**A1. The packaging rule for `Native.fs`** (review I1, I2). `PackagingChecks.fs` exempts `Native.fs` from the rule that
+no Portable Emit touches `document`, `window` or `addEventListener`, and checks `Native.fs`'s structure instead: every
+Emit attribute lies inside a `#if FABLE_COMPILER` block, each such block has an `#else` defining the same top-level
+names, every guard naming `FABLE_COMPILER` is `#if FABLE_COMPILER` or `#if !FABLE_COMPILER`, and no Import or Global
+attribute appears. A self-test runs the checker over an unguarded Emit, a missing .NET body, a block without `#else` and
+another guard, and expects each to fail. The change to an existing test stands pending the user's objection.
+
+**A2. No inline aliases; helpers used many times keep their declaration under a local `#if`** (review I3,
+ruling at Task 4). An inline alias changes the emitted JavaScript (Task 3). Two forms keep it unchanged:
+
+- A helper with few uses, or one already moved (Hydration's), is deleted and its uses call `Native.<name>`.
+- A helper with many uses (`at`, `item`, `setItem`, `isNullish` and the table helpers in `Mounting.fs`, whose
+  names are also common variable names) keeps its `[<Emit>]` declaration verbatim under `#if FABLE_COMPILER`; its
+  `#else` declaration has the same name and signature and calls the `Native` .NET primitive. The Fable side is then
+  textually unchanged. The tables of Tasks 4 and 5 list the `Native` primitive each `#else` body calls; "delete; each
+  use calls `Native.x`" in a row means either form, chosen by the use count.
+- A public Emit helper that other files inline (`DocumentHead.documentOf`, `TemplateDom.attachState`) always takes the
+  second form.
+- `experiments/Ranvier.View.Foundation` is not scanned by `PackagingChecks`; Task 6's A3 rule applies to Portable.
+
+**A3. Portable Emits outside `Native.fs`** (review M6). At the end of Task 6, when every host primitive without a .NET
+body has moved, `PackagingChecks`' `browserEmits` changes for Portable files other than `Native.fs`: an Emit attribute
+or `emitJsExpr` call is allowed only inside a `#if FABLE_COMPILER` block with an `#else` (the block logic of
+`nativeStructure`). `Departures.fs`'s `setTimeout` Emit, which the old rule passed, is covered by this. Add a self-test
+case for an unguarded `emitJsExpr`.
+
+**A4. Listener failures are collected on both hosts** (review I4). A listener that raises does not stop the dispatch
+and does not raise from it by default, as under jsdom.
+
+- Task 7: `TwinDocument` gains `member val ListenerErrors = ResizeArray<exn> ()` and
+  `member val RaiseListenerErrors = false with get, set`.
+- Task 10: `Events.dispatch` adds each listener failure to `target.Document.ListenerErrors`. When the outermost dispatch
+  ends and `RaiseListenerErrors` is true, it raises `TwinListenerException` for the first failure of that dispatch.
+  The test "a listener's exception surfaces after the dispatch ends" sets `RaiseListenerErrors <- true` first. Add a
+  test "a listener's exception is collected by default" that dispatches, returns normally, and finds one entry in
+  `ListenerErrors`.
+- Task 12: under `Reports.Raise` the session sets `RaiseListenerErrors <- true`. Under `Reports.Collect`, after each
+  dispatch the session moves `ListenerErrors` into `Session.Reports`, one `[ TwinListenerException (...) ]` entry per
+  failure. The Collect test asserts exactly one report.
+- Task 13: `Harness` gains `abstract ListenerErrors: unit -> string list`, which returns and clears the messages of
+  the listener failures since the last call. The jsdom harness reads them from a `VirtualConsole` passed to `JSDOM`
+  (`virtualConsole.on("jsdomError", e => errors.push(e.detail?.message ?? e.message))`, handed to `create` as a third
+  callback). The twin harness reads `ListenerErrors` and maps each to its inner exception's `Message`.
+- Task 14: after recording `innerHTML`, each `Interact` function records a `listener-errors` artefact when the list is
+  not empty, one message per line, so failure paths compare across hosts like any other step.
+- A case asserts its listener failures with `Conformance.harness().ListenerErrors ()`. The `[twin]` and `[jsdom]` tags
+  are not used for listener failures.
+
+**A5. The dump's flush check covers every view pass** (review I5).
+
+- Task 20: `MountState` keeps `member val internal PassDepth = 0 with get, set` under
+  `#if RANVIER_VIEW_INSPECT || !FABLE_COMPILER`. Every region pass increments it in `try`/`finally`: the keyed list's
+  reconcile, the arm switch, the boundary's reveal and teardown effect, and the hole's render, as does the queue's
+  flush. The mount probe's `flushing` closure reads `PassDepth > 0`.
+- `Debug.capture` checks the flag of every mount probe it meets on its walk.
+- The list probe's closure stops at `min keys.Length rows.Length` and skips a null row.
+- Task 20 adds the test "a dump from a placed hook during a synchronous keyed pass raises": a placed hook on a row
+  calls `Debug.capture`, and the test expects `InvalidOperationException "Debug.dump ran inside a flush"`.
+- Spec §4.5 and §5 state that a dump called from inside a core computation that is not a view pass is not detected.
+
+**A6. The non-interference test observes interference** (review I6). Task 21 replaces
+"a dump changes no observer count and leaves a stale memo stale" with this test:
+
+- **Setup.** The fixture `probe` is a component whose instance value is `{ Source: Signal<int>; Doubled: Memo<int> }`.
+  `Doubled` counts its runs and is not bound to any node; `Source` is bound through a `t.text`.
+- **Steps.** The test reads `Doubled.Value` once inside `graph.Run`, writes `Source`, which makes `Doubled` stale, and
+  calls `session.Dump ()`.
+- **Assertions.**
+  - The run count is unchanged by the dump.
+  - The dump text shows `Doubled`'s previous value.
+  - Reading `Doubled.Value` afterwards runs it once, which proves it was still stale.
+- **Counter and trace legs.** G-NET for Tasks 21 and 22 adds two legs, run sequenced so that no other test moves the
+  process-wide counters:
+
+  ```bash
+  dotnet run --project tests/Ranvier.View.Twin.Tests -c Release -p:RanvierCounters=true -- --sequenced --filter-test-list Dump
+  dotnet run --project tests/Ranvier.View.Twin.Tests -c Release -p:RanvierTrace=true -- --sequenced --filter-test-list Dump
+  ```
+
+  - Under `RANVIER_COUNTERS`, the test compares `Counters` snapshots before and after `capture`; read its public
+    snapshot member from `src/Ranvier/Counters.fs`.
+  - Under `RANVIER_TRACE`, it asserts that the trace log's event count is unchanged and that `Trace.reconcile graph`
+    is empty.
+
+**A7. `NodeIds`, trace paths, `stale` and `nodeAt`** (review I7). Task 21 Step 3 adds the following.
+
+- **`NodeIds = true`.** A field line ends with `  node=<INode.Id>`, and under `RANVIER_TRACE` also with
+  `  trace=<the node's path in Trace.snapshot>`, for example `  columns  memo  [|…|] (3)  node=17  trace=r-0/columns`.
+- **The `stale` suffix.** A region whose source changed after its last pass shows `  stale` at the end of its line: a
+  list whose projection version is ahead of `previousVersion`, or an arm whose selection memo is stale.
+- **Tests.**
+  - The `NodeIds` line form.
+  - `Debug.nodeAt (session.Mounted, "<instance path>.Count")` returns the counter's signal, compared by reference.
+  - A list whose source was written inside `graph.Run` and dumped before the pass ran shows `stale`. Under synchronous
+    commits that means dumping from inside the write's `batch`; under queued commits, before `RunMicrotasks`.
+
+**A8. Smaller corrections** (review M5, M9, M10).
+
+- `Twin.hydrateHtml` raises `NotSupportedException` for `Commits.Queued` (Task 18 code amended).
+- Task 5's `ModuleInitTests` adds "disposing an installation on another thread or out of order raises", against
+  `Native.install`'s checks.
+- `Selector.fs` tests options with `match` (Task 11 code amended).
+
 
 ---
 
@@ -522,7 +630,7 @@ This task fixes the form every later `Native` entry takes and proves gates 1 and
 - Produces (module `internal Ranvier.View.Foundation.Native`, both hosts unless marked):
   - `isNullish: 'T -> bool`, `nextOrNull: Node -> Node`, `firstChildOf: Node -> Node`, `removeNode: Node -> unit`, `textContentOf: Node -> string`, `elementById: string -> Element`, `document: unit -> Document`
   - .NET only: `type IHost` (members below), `install: IHost -> System.IDisposable`
-- Every `Native` primitive has this shape: one `#if FABLE_COMPILER` declaration with the exact Emit text, and its `#else` F# body directly after it. Files that use a primitive call it as `Native.<name>` at each call site, and the file's private declaration is deleted. (Ruling, Task 3: an inline alias `let inline private following node = Native.nextOrNull node` makes Fable bind each argument to a temporary, `node_2 = node_1`, which gate 3 shows in `Hydration.js`; a direct call substitutes the argument into the Emit text and leaves the JavaScript unchanged. Every "alias" row in Tasks 4 and 5 means this: delete the declaration and call the `Native` function at its uses.)
+- Every `Native` primitive has this shape: one `#if FABLE_COMPILER` declaration with the exact Emit text, and its `#else` F# body directly after it. Files that use a primitive call it as `Native.<name>` at each call site, and the file's private declaration is deleted. (Ruling, Task 3: an inline alias delete; each use calls `Native.nextOrNull` makes Fable bind each argument to a temporary, `node_2 = node_1`, which gate 3 shows in `Hydration.js`; a direct call substitutes the argument into the Emit text and leaves the JavaScript unchanged. Every "alias" row in Tasks 4 and 5 means this: delete the declaration and call the `Native` function at its uses.)
 
 - [ ] **Step 1: Write `Native.fs`**
 
@@ -656,7 +764,7 @@ let private isRootMarker (node: Node) : bool =
 #endif
 ```
 
-and keep `let inline private removeNode (node: Node) : unit = Native.removeNode node` where `removeNode` was declared. Replace `:297-301` with:
+and keep delete; each use calls `Native.removeNode` where `removeNode` was declared. Replace `:297-301` with:
 
 ```fsharp
 let inline private elementById (id: string) : Element = Native.elementById id
@@ -689,6 +797,8 @@ Paths: `Native.fs`, `Ranvier.View.Portable.fsproj`, `Hydration.fs`, `DomTests.fs
 ## Phase 1: `Native.fs`
 
 ### Task 4: Collections, arrays and expandos, and the twin test project
+
+> Amended by A2 (Amendments after the phase 0 review).
 
 **Files:**
 - Modify: `experiments/Ranvier.View.Portable/Native.fs` (append the collection, array and expando groups)
@@ -1123,45 +1233,45 @@ let setExpando (target: obj) (name: string) (value: 'T) : unit =
 
 The named expando helpers keep their own Emit text (Step 5); under Fable, `expando` and `setExpando` serve only code that runs on both hosts by design, such as Inspect (Task 20).
 
-- [ ] **Step 5: Replace the helpers with aliases**
+- [ ] **Step 5: Replace the helpers with direct `Native` calls**
 
-Each row replaces one declaration in place with the alias shown; call sites stay unchanged. Step 7's gate 3 confirms that each `Native` Emit string is the text of the row's original.
+Each row deletes the declaration and changes its uses to the `Native` call shown (the Task 3 ruling: an inline alias makes Fable bind arguments to temporaries, which gate 3 rejects). Step 7's gate 3 confirms that each `Native` Emit string is the text of the row's original.
 
 | File | Declaration | Replacement |
 |---|---|---|
-| `Mounting.fs:112-113` | `isDelegated` | `let inline private isDelegated (events: obj) (eventName: string) : bool = Native.has events eventName` |
-| `Mounting.fs:183-184` | `at` | `let inline private at (items: ResizeArray<'T>) (index: int) : 'T = Native.listAt items index` |
-| `Mounting.fs:187-188` | `setAt` | `let inline private setAt (items: ResizeArray<'T>) (index: int) (value: 'T) : unit = Native.listSet items index value` |
-| `Mounting.fs:191-192` | `truncate` | `let inline private truncate (items: ResizeArray<'T>) (count: int) : unit = Native.listTruncate items count` |
-| `Mounting.fs:195-196` | `item` | `let inline private item (items: 'T array) (index: int) : 'T = Native.arrayAt items index` |
-| `Mounting.fs:199-200` | `setItem` | `let inline private setItem (items: 'T array) (index: int) (value: 'T) : unit = Native.arraySet items index value` |
-| `Mounting.fs:202-203` | `isNullish` | `let inline private isNullish (value: 'T) : bool = Native.isNullish value` |
-| `Mounting.fs:205-206` | `copyRows` | `let inline private copyRows (rows: 'T array) : 'T array = Native.arrayCopy rows` |
-| `Mounting.fs:213-214` | `spliceList` | `let inline private spliceList (items: ResizeArray<'T>) (start: int) (count: int) (inserted: 'T array) : unit = Native.listSplice items start count inserted` |
-| `Mounting.fs:216-217` | `sliceRows` | `let inline private sliceRows (rows: 'T array) (start: int) (finish: int) : 'T array = Native.arraySlice rows start finish` |
-| `Mounting.fs:222-223` | `rowMap` | `let inline private rowMap () : obj = Native.newMap ()` |
-| `Mounting.fs:225-226` | `rowMapSet` | `let inline private rowMapSet (map: obj) (key: 'T) (value: int) : unit = Native.set map key value` |
-| `Mounting.fs:229-230` | `rowMapGet` | `let inline private rowMapGet (map: obj) (key: 'T) : int = Native.getIndex map key` |
-| `Mounting.fs:232-233` | `rowSet` | `let inline private rowSet () : obj = Native.newSet ()` |
-| `Mounting.fs:235-236` | `rowSetAdd` | `let inline private rowSetAdd (set: obj) (value: 'T) : unit = Native.add set value` |
-| `Mounting.fs:238-239` | `rowSetHas` | `let inline private rowSetHas (set: obj) (value: 'T) : bool = Native.has set value` |
-| `Mounting.fs:301-302` | `nameSet` | `let inline private nameSet () : obj = Native.newSet ()` |
-| `Mounting.fs:304-305` | `setHas` | `let inline private setHas (set: obj) (name: string) : bool = Native.has set name` |
-| `Mounting.fs:307-308` | `setAdd` | `let inline private setAdd (set: obj) (name: string) : unit = Native.add set name` |
-| `Mounting.fs:310-311` | `setIter` | `let inline private setIter (set: obj) (action: string -> unit) : unit = Native.forEach set action` |
-| `Mounting.fs:118-119` | `createSharedListeners` | `let inline private createSharedListeners () : obj = Native.newMap ()` |
-| `Mounting.fs:124-125` | `createHostCounts` | `let inline private createHostCounts () : obj = Native.newWeakMap ()` |
-| `TemplateDom.fs:709-710` | `allocate` | `let inline private allocate (length: int) : obj array = Native.allocate length` |
-| `TemplateDom.fs:713-714` | `at` | `let inline private at (array: 'T array) (index: int) : 'T = Native.arrayAt array index` |
-| `TemplateDom.fs:717-718` | `store` | `let inline private store (array: obj array) (index: int) (value: obj) : unit = Native.arraySet array index value` |
-| `Departures.fs:55-56` | `weakMap` | `let inline private weakMap () : obj = Native.newWeakMap ()` |
-| `Departures.fs:58-59` | `weakSet` | `let inline private weakSet () : obj = Native.newWeakSet ()` |
-| `Departures.fs:61-62` | `lookup` | `let inline private lookup (table: obj) (key: 'K) : 'T = Native.get table key` |
-| `Departures.fs:64-65` | `store` | `let inline private store (table: obj) (key: 'K) (value: 'T) : unit = Native.set table key value` |
-| `Departures.fs:67-68` | `holds` | `let inline private holds (table: obj) (key: 'K) : bool = Native.has table key` |
-| `Departures.fs:70-71` | `forget` | `let inline private forget (table: obj) (key: 'K) : unit = Native.delete table key` |
-| `Departures.fs:73-74` | `mark` | `let inline private mark (table: obj) (node: Node) : unit = Native.add table node` |
-| `Departures.fs:76-77` | `isNullish` | `let inline private isNullish (value: 'T) : bool = Native.isNullish value` |
+| `Mounting.fs:112-113` | `isDelegated` | delete; each use calls `Native.has` |
+| `Mounting.fs:183-184` | `at` | delete; each use calls `Native.listAt` |
+| `Mounting.fs:187-188` | `setAt` | delete; each use calls `Native.listSet` |
+| `Mounting.fs:191-192` | `truncate` | delete; each use calls `Native.listTruncate` |
+| `Mounting.fs:195-196` | `item` | delete; each use calls `Native.arrayAt` |
+| `Mounting.fs:199-200` | `setItem` | delete; each use calls `Native.arraySet` |
+| `Mounting.fs:202-203` | `isNullish` | delete; each use calls `Native.isNullish` |
+| `Mounting.fs:205-206` | `copyRows` | delete; each use calls `Native.arrayCopy` |
+| `Mounting.fs:213-214` | `spliceList` | delete; each use calls `Native.listSplice` |
+| `Mounting.fs:216-217` | `sliceRows` | delete; each use calls `Native.arraySlice` |
+| `Mounting.fs:222-223` | `rowMap` | delete; each use calls `Native.newMap` |
+| `Mounting.fs:225-226` | `rowMapSet` | delete; each use calls `Native.set` |
+| `Mounting.fs:229-230` | `rowMapGet` | delete; each use calls `Native.getIndex` |
+| `Mounting.fs:232-233` | `rowSet` | delete; each use calls `Native.newSet` |
+| `Mounting.fs:235-236` | `rowSetAdd` | delete; each use calls `Native.add` |
+| `Mounting.fs:238-239` | `rowSetHas` | delete; each use calls `Native.has` |
+| `Mounting.fs:301-302` | `nameSet` | delete; each use calls `Native.newSet` |
+| `Mounting.fs:304-305` | `setHas` | delete; each use calls `Native.has` |
+| `Mounting.fs:307-308` | `setAdd` | delete; each use calls `Native.add` |
+| `Mounting.fs:310-311` | `setIter` | delete; each use calls `Native.forEach` |
+| `Mounting.fs:118-119` | `createSharedListeners` | delete; each use calls `Native.newMap` |
+| `Mounting.fs:124-125` | `createHostCounts` | delete; each use calls `Native.newWeakMap` |
+| `TemplateDom.fs:709-710` | `allocate` | delete; each use calls `Native.allocate` |
+| `TemplateDom.fs:713-714` | `at` | delete; each use calls `Native.arrayAt` |
+| `TemplateDom.fs:717-718` | `store` | delete; each use calls `Native.arraySet` |
+| `Departures.fs:55-56` | `weakMap` | delete; each use calls `Native.newWeakMap` |
+| `Departures.fs:58-59` | `weakSet` | delete; each use calls `Native.newWeakSet` |
+| `Departures.fs:61-62` | `lookup` | delete; each use calls `Native.get` |
+| `Departures.fs:64-65` | `store` | delete; each use calls `Native.set` |
+| `Departures.fs:67-68` | `holds` | delete; each use calls `Native.has` |
+| `Departures.fs:70-71` | `forget` | delete; each use calls `Native.delete` |
+| `Departures.fs:73-74` | `mark` | delete; each use calls `Native.add` |
+| `Departures.fs:76-77` | `isNullish` | delete; each use calls `Native.isNullish` |
 
 The module-level tables keep their place (spec risk 4). `createDelegatedEvents` keeps its Emit under `#if FABLE_COMPILER` and gains a .NET body:
 
@@ -1245,6 +1355,8 @@ Then G-BUNDLE (no disallowed file), G-DOM, G-VIEW-NET, G-SUGAR, G-NET, G-FORMAT.
 Paths: `Native.fs`, `Mounting.fs`, `TemplateDom.fs`, `Departures.fs`, `Ranvier.View.Foundation.fsproj`, `Ranvier.slnx`, the three test-project files. Message: `refactor(view): Native collections, arrays and expandos with .NET bodies`.
 
 ### Task 5: Node primitives, globals and the host
+
+> Amended by A2, A8 (Amendments after the phase 0 review).
 
 **Files:**
 - Modify: `experiments/Ranvier.View.Portable/Native.fs` (append the node, document, timer and microtask groups)
@@ -1509,18 +1621,18 @@ Read the members of `Fable.Core.TS.Es.WeakSet<'T>` with `fcs_nuget_members` on `
 | File | Declarations | Replacement |
 |---|---|---|
 | `Mounting.fs:16-20` | `[<Global>] globalThis`, `[<Global "document">] document` | delete both; `createClaims ()` returns `Native.newNodeWeakSet ()`; each `document.` use becomes `(Native.document ()).` |
-| `Mounting.fs:150-154`, `:163-164`, `:168-169`, `:179-180` | `isChildOf`, `isDetached`, `nextOrNull`, `clearChildren`, `parentOrNull` | inline aliases to the `Native` functions of the same name |
+| `Mounting.fs:150-154`, `:163-164`, `:168-169`, `:179-180` | `isChildOf`, `isDetached`, `nextOrNull`, `clearChildren`, `parentOrNull` | delete; each use calls the `Native` function of the same name |
 | `Mounting.fs:176-177`, `:243-250` | `fillsFragment`, `isSeparator`, `isRowMarker`, `commentData` | local `#if` pairs; .NET bodies over `Native.parentOrNull`, `isComment`, `dataOf`, `firstChildOf`, `lastChildOf` and `nodeType = 11.0` |
 | `TemplateDom.fs:11-12` | `[<Global "document">] document` | delete; each use becomes `(Native.document ())` |
-| `TemplateDom.fs:156-166` | `absent`, `isComment`, `dataOf`, `following` | inline aliases to `Native.isNullish`, `isComment`, `dataOf`, `nextOrNull` |
+| `TemplateDom.fs:156-166` | `absent`, `isComment`, `dataOf`, `following` | delete; each use calls `Native.isNullish`, `Native.isComment`, `Native.dataOf` or `Native.nextOrNull` |
 | `TemplateDom.fs:169-170`, `:424-425`, `:1143-1144`, `:1190-1195`, `:1260-1261` | `isStartMarker`, `isRegionStart`, `isEmptyText`, `sameElementName`, `isElementNamed`, `isRcdataElement` | local `#if` pairs; each .NET body transcribes its JavaScript expression over the `Native` node primitives and `Element.localName`, `Element.prefix` (an option) and `Node.nodeName` |
-| `TemplateDom.fs:427-428`, `:720-724`, `:1134-1141` | `importDeep`, `setData`, `setAttribute`, `replaceNode`, `appendNode`, `removeNode` | inline aliases (`setAttribute` → `Native.setAttributeOrRemove`) |
+| `TemplateDom.fs:427-428`, `:720-724`, `:1134-1141` | `importDeep`, `setData`, `setAttribute`, `replaceNode`, `appendNode`, `removeNode` | delete; each use calls the `Native` function of the same name (`setAttribute`'s uses call `Native.setAttributeOrRemove`) |
 | `TemplateDom.fs:737-745` | `dataDiffers`, `attributeDiffers`, `defaultValueDiffers` | local `#if` pairs; .NET: `Native.dataOf (unbox node) <> (if isNull value then "" else string value)`; `Option.toObj ((unbox<Element> node).getAttribute name) <> (if isNull value then null else string value)`; `defaultValue` read through `unbox<HTMLInputElement>` (the twin bridge serves `defaultValue` on every form control) |
-| `DocumentHead.fs:12-40`, `:131-142` | the head helpers | `createElement` → alias of `Native.createElementIn`; `documentOf` → alias; `replaceWith`, `detach`, `isConnected`, `markOf`, `appendToHead`, `marked`, `hasMarked`, `removeUnclaimed`, `titleOf`, `textOf`, `setTitleOf` → local `#if` pairs, the .NET bodies over `Document.head`, `head.querySelectorAll "[data-ranvier-head]"`, `getAttribute "data-ranvier-head"`, `ChildNode.replaceWith`, `Node.isConnected` and `Document.title` |
-| `Placement.fs:222-227` | `parentOf`, `atRoot` | alias; local `#if` pair for `atRoot` (`parentOrNull node` null or `nodeType = 11.0`) |
+| `DocumentHead.fs:12-40`, `:131-142` | the head helpers | `createElement`: delete, and each use calls `Native.createElementIn`; `documentOf` is public and inlined into other files (`Hydration.fs`), so it keeps its own Emit under `#if FABLE_COMPILER` with an `#else` body that calls `Native.documentOf` (a plain function would emit a call where Fable now inlines the expression); `replaceWith`, `detach`, `isConnected`, `markOf`, `appendToHead`, `marked`, `hasMarked`, `removeUnclaimed`, `titleOf`, `textOf`, `setTitleOf` → local `#if` pairs, the .NET bodies over `Document.head`, `head.querySelectorAll "[data-ranvier-head]"`, `getAttribute "data-ranvier-head"`, `ChildNode.replaceWith`, `Node.isConnected` and `Document.title` |
+| `Placement.fs:222-227` | `parentOf`, `atRoot` | `parentOf`: delete, and its uses call `Native.parentOrNull`; a local `#if` pair for `atRoot` (`parentOrNull node` null or `nodeType = 11.0`) |
 | `Prepared.fs:20-21` | `[<Global "document">] document` | delete; uses become `(Native.document ())` |
 | `Microtask.fs:6-10` | `[<Global>] globalThis`, `post` | `let private post callback = Native.queueMicrotask callback` |
-| `Departures.fs:79-92` | `nextOrNull`, `parentOf`, `detach`, `startTimer`, `stopTimer` | inline aliases (`startTimer` → `Native.setTimeout`, `stopTimer` → `Native.clearTimeout`) |
+| `Departures.fs:79-92` | `nextOrNull`, `parentOf`, `detach`, `startTimer`, `stopTimer` | delete; each use calls the `Native` function of the same name (`startTimer`'s uses call `Native.setTimeout`, `stopTimer`'s `Native.clearTimeout`) |
 
 Where a .NET body reads a DOM member that returns an option (`nextSibling`, `parentNode`, `firstChild`, `lastChild`, `getAttribute`, `prefix`), unwrap it with `Option.toObj` or a `Native` primitive; never compare an option with `null`. `DomEvents.listenDirect` and the hand-ported blocks are Task 6's.
 
@@ -1538,6 +1650,8 @@ G-BUNDLE, G-DOM, G-VIEW-NET, G-SUGAR, G-NET, G-FORMAT.
 Paths: `Native.fs`, `Mounting.fs`, `TemplateDom.fs`, `DocumentHead.fs`, `Placement.fs`, `Prepared.fs`, `Microtask.fs`, `Departures.fs`, `ModuleInitTests.fs`, the test project file. Message: `refactor(view): Native node primitives and host globals; Foundation initialises on .NET`.
 
 ### Task 6: The hand-ported blocks
+
+> Amended by A3 (Amendments after the phase 0 review).
 
 **Files:**
 - Modify: `experiments/Ranvier.View.Foundation/Mounting.fs:129-139` (delegated listener and its removal), `:147-148` (`overlaps`), `:172-173` (`deleteBetween`)
@@ -1946,6 +2060,8 @@ Paths: `Mounting.fs`, `TemplateDom.fs`, `DocumentHead.fs`, `DomEvents.fs`, `Depa
 The twin project starts here. Each task below adds one file to `experiments/Ranvier.View.Twin` and its tests to `tests/Ranvier.View.Twin.Tests`; the order (tree, HTML, bridge, events, selectors, clock and session) is the dependency order.
 
 ### Task 7: The node tree and form-control state
+
+> Amended by A4 (Amendments after the phase 0 review).
 
 **Files:**
 - Create: `experiments/Ranvier.View.Twin/Ranvier.View.Twin.fsproj`, `experiments/Ranvier.View.Twin/Tree.fs`
@@ -3533,6 +3649,8 @@ Paths: `Bridge.fs`, `members.txt`, `BridgeTests.fs`, the twin and test project f
 
 ### Task 10: Events, activation and focus
 
+> Amended by A4 (Amendments after the phase 0 review).
+
 **Files:**
 - Create: `experiments/Ranvier.View.Twin/Events.fs`
 - Create: `experiments/Ranvier.View.Testing/Ranvier.View.Testing.fsproj`, `experiments/Ranvier.View.Testing/EventSpec.fs`
@@ -4137,6 +4255,8 @@ Paths: `Events.fs`, the testing project file and `EventSpec.fs`, `EventTests.fs`
 
 ### Task 11: The selector engine
 
+> Amended by A8 (Amendments after the phase 0 review).
+
 **Files:**
 - Create: `experiments/Ranvier.View.Testing/Selector.fs` (after `EventSpec.fs`)
 - Create: `experiments/Ranvier.View.Twin/SelectorMembers.fs` (after `Events.fs`)
@@ -4424,10 +4544,15 @@ let private siblings (element: Element) : Element list =
         let mutable child = (unbox<Node> parent).firstChild
         let result = ResizeArray<Element>()
 
-        while child.IsSome do
-            let node = unbox<Node> child.Value
-            if node.nodeType = 1.0 then result.Add (unbox<Element> node)
-            child <- node.nextSibling
+        let mutable going = true
+
+        while going do
+            match child with
+            | Some value ->
+                let node = unbox<Node> value
+                if node.nodeType = 1.0 then result.Add (unbox<Element> node)
+                child <- node.nextSibling
+            | None -> going <- false
 
         List.ofSeq result
     | None -> [ element ]
@@ -4496,8 +4621,13 @@ let queryAll (root: Node) (selector: string) : Element array =
     let rec walk (node: Node) =
         let mutable child = node.firstChild
 
-        while child.IsSome do
-            let current = unbox<Node> child.Value
+        let mutable going = true
+
+        while going do
+          match child with
+          | None -> going <- false
+          | Some value ->
+            let current = unbox<Node> value
 
             if current.nodeType = 1.0 then
                 let element = unbox<Element> current
@@ -4512,7 +4642,7 @@ let queryAll (root: Node) (selector: string) : Element array =
 let query (root: Node) (selector: string) : Element option = queryAll root selector |> Array.tryHead
 ```
 
-Each compound carries the combinator that joins it to the compound on its left; `parse` reverses the list so matching starts at the subject. Check that `complex ()` stores the combinator with the right-hand compound (the one `matchFrom` reads from `List.head compounds`): a test of `"ul > li > input"` and `"div button"` in Step 1 fails if they are paired the wrong way, and the fix is to store `(compound, combinatorToItsLeft)`. Under Fable, `child.IsSome` on an erased option is a null test; leave the `match` form if the precompile rejects `.IsSome` (repository hazard).
+Each compound carries the combinator that joins it to the compound on its left; `parse` reverses the list so matching starts at the subject. Check that `complex ()` stores the combinator with the right-hand compound (the one `matchFrom` reads from `List.head compounds`): a test of `"ul > li > input"` and `"div button"` in Step 1 fails if they are paired the wrong way, and the fix is to store `(compound, combinatorToItsLeft)`. The two child walks test the option with `match`, per the repository hazard; indent the body of `walk`'s `Some` branch (the `if` and the `child <- current.nextSibling` line) under it, which Fantomas lays out.
 
 `SelectorMembers.fs`:
 
@@ -4562,6 +4692,8 @@ G-NET, G-FORMAT.
 Paths: `Selector.fs`, `SelectorMembers.fs`, `SelectorTests.fs`, the testing, twin and test project files. Message: `feat(testing): selector engine for both hosts; the twin's queries use it`.
 
 ### Task 12: The clock, the host and the session
+
+> Amended by A4 (Amendments after the phase 0 review).
 
 **Files:**
 - Create: `experiments/Ranvier.View.Twin/Clock.fs`, `Host.fs`, `Session.fs` (in that order after `SelectorMembers.fs`)
@@ -4749,8 +4881,9 @@ let tests =
             <| fun () ->
                 use session = Twin.mountWith { TwinMount.defaults with Reports = Reports.Collect } failing ()
                 let button = (session.Host.querySelector "button").Value |> unbox<HTMLElement>
-                try button.click () with :? TwinListenerException -> ()
-                Expect.isTrue (session.Reports.Length >= 0) "collected without raising"
+                button.click ()
+                Expect.equal session.Reports.Length 1 "one report, and the click returned"
+                Expect.stringContains (session.Reports |> List.concat |> List.head).Message "handler failed" "the handler's error"
 
             testCase "queued commits apply when the session settles"
             <| fun () ->
@@ -4763,7 +4896,7 @@ let tests =
         ]
 ```
 
-A handler failure on a template node goes to the mount's `report` when the handler is outside a boundary, or raises out of the delegated listener; the third test accepts either outcome, and Task 13 pins the one jsdom shows. The Collect test's assertion is weak by design until the conformance run fixes the path; strengthen it to `Expect.equal session.Reports.Length 1` once the failing handler's route is known.
+A handler failure on a template node goes to the mount's `report` when the handler is outside a boundary, or raises out of the delegated listener; the third test accepts either outcome, and Task 13 pins the one jsdom shows. Under `Reports.Collect` the session also collects listener failures (Amendment A4), so the Collect test holds whichever route the failure takes: a mount report or a `TwinListenerException`, each one entry of `Session.Reports`.
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
@@ -5154,6 +5287,8 @@ Paths: `Clock.fs`, `Host.fs`, `Session.fs`, `Tree.fs`, `Events.fs`, `Bridge.fs` 
 
 ### Task 13: The conformance harness, both runners and the first three modules
 
+> Amended by A4 (Amendments after the phase 0 review).
+
 **Files:**
 - Create: `experiments/Ranvier.View.Testing/Conformance.fs` (after `Selector.fs`)
 - Create: `examples/Fable.Ranvier.Playground/tests/JsdomHarness.fs`, `ConformanceCases.fs`, `conformance.test.mjs`
@@ -5495,6 +5630,8 @@ Paths: every file this task lists. Message: `test(view): shared conformance case
 ## Phase 3: testing library and artefact diff
 
 ### Task 14: Queries, interactions and expectations
+
+> Amended by A4 (Amendments after the phase 0 review).
 
 **Files:**
 - Create: `experiments/Ranvier.View.Testing/Query.fs`, `Interact.fs`, `Expect.fs` (after `Conformance.fs`)
@@ -6071,6 +6208,8 @@ Message: `test(view): queued commits and async settling on the twin; pending-reg
 
 ### Task 18: Document head, hydration and server parity
 
+> Amended by A8 (Amendments after the phase 0 review).
+
 **Files:**
 - Modify: `experiments/Ranvier.View.Twin/Session.fs` (`Twin.hydrate`, `Twin.hydrateHtml`)
 - Modify: `examples/Fable.Ranvier.Playground/tests/DocumentChecks.fs`, `HydrationChecks.fs`, `ConformanceCases.fs`, `package.json`; delete `document.test.mjs`, `hydration.test.mjs`
@@ -6133,7 +6272,11 @@ Expected: FAIL to compile, `hydrateHtml is not defined`.
 ```fsharp
     /// <summary>Hydrates the given server HTML instead of rendering it.</summary>
     let hydrateHtml (options: TwinMount) (hydration: Hydration.HydrationOptions) (body: string) (definition: Component<'props>) (props: 'props) : Session =
-        let host, element, graph, session = start { options with Host = options.Host }
+        match options.Commits with
+        | Commits.Queued _ -> raise (NotSupportedException "Hydration supports synchronous commits only")
+        | Commits.Synchronous -> ()
+
+        let host, element, graph, session = start options
 
         try
             Html.parseInto element body
@@ -6221,6 +6364,8 @@ Message: `test(view): departures and the safety timeout on the twin clock; depar
 ## Phase 5: inspection and `Debug.dump`
 
 ### Task 20: The inspection registry under `RANVIER_VIEW_INSPECT`
+
+> Amended by A5 (Amendments after the phase 0 review).
 
 **Files:**
 - Create: `experiments/Ranvier.View.Foundation/Inspect.fs` (after `Placement.fs` in the Foundation project and in `DomTests.fsproj`'s links)
@@ -6420,6 +6565,8 @@ Message: `feat(view): inspection registry for regions and instances under RANVIE
 
 ### Task 21: `Debug.capture`, the text and JSON forms, and `Session.Dump`
 
+> Amended by A6, A7 (Amendments after the phase 0 review).
+
 **Files:**
 - Create: `experiments/Ranvier.View.Foundation/Debug.fs` (after `Hydration.fs`; and in `DomTests.fsproj`'s links)
 - Modify: `experiments/Ranvier.View.Foundation/Mounting.fs` (`Mounted.Range`, internal: first and last node of the mount's range)
@@ -6574,6 +6721,8 @@ G-BUNDLE (gate 1: hashes equal with the define off), `node benchmarks/frameworks
 Message: `feat(view): Debug.dump text and JSON of a mounted view, read through Peek and Status`.
 
 ### Task 22: Golden dumps on both hosts, failure excerpts and the inspect cost
+
+> Amended by A6 (Amendments after the phase 0 review).
 
 **Files:**
 - Create: `examples/Fable.Ranvier.Playground/tests/DumpChecks.fs` (the golden fixtures as conformance cases), added to `ConformanceCases.modules` under `#if RANVIER_VIEW_INSPECT || !FABLE_COMPILER`

@@ -23,8 +23,6 @@ module HydrationOptions =
     /// <summary>The prefix of <c>Server.Options.defaults</c>, with mismatches re-rendered and reported.</summary>
     let defaults = { IdPrefix = "r"; Strict = false }
 
-
-
 #if FABLE_COMPILER
 [<Emit("$0.nodeType === 8 && $0.data === '[r'")>]
 let private isRootMarker (node: Node) : bool = jsNative
@@ -43,7 +41,6 @@ let private rootMarker (host: Node) : Node =
         node <- Native.nextOrNull node
 
     node
-
 
 /// <summary>Removes the siblings after <c>start</c> up to <c>finish</c>, or to the last sibling when <c>finish</c> is null.</summary>
 let private clearAfter (start: Node) (finish: Node) =
@@ -291,8 +288,6 @@ let hydrateWith
             reraise ()
     finally
         served.Release ()
-
-
 
 /// <summary>
 /// The <c>textContent</c> of the global <c>document</c>'s element with id <c>id</c>, such as the JSON a

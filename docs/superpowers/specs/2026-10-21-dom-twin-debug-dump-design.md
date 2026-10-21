@@ -338,6 +338,10 @@ hosts and by the twin's own `querySelector` and `querySelectorAll`. jsdom and th
   listeners, then bubble listeners when the event bubbles. `stopPropagation`, `stopImmediatePropagation`,
   `cancelBubble`, `preventDefault` (when `cancelable`) and `defaultPrevented` behave as in the DOM standard; the
   delegated listener reads `cancelBubble` (`Mounting.fs:134`).
+- **Listener failures** are collected, as jsdom reports them to its virtual console: a raising listener does not stop
+  the dispatch, and the dispatch returns normally. The conformance harness exposes the collected messages on both hosts
+  and records them as an artefact. A session under `Reports.Raise` raises the first as `TwinListenerException` when the
+  outermost dispatch ends; under `Reports.Collect` it adds each to `Session.Reports`.
 - **Activation behaviour**, the only default actions modelled:
   - `click ()` on a checkbox or radio toggles `checked` before dispatch, restores it when the click is cancelled, and
     fires `input` then `change` when it is not;
@@ -727,12 +731,14 @@ head
 - Instance fields are read as stored values: F# record fields, anonymous record fields and tuple items on .NET through
   `FSharp.Reflection`, own properties under Fable. Class instances show public properties whose values are core nodes;
   their getters run untracked.
-- `capture` raises `InvalidOperationException "Debug.dump ran inside a flush"` when called during the mount's commit
-  flush, and `InvalidOperationException "Debug.dump ran off the graph's thread"` when `Graph.IsOnGraphThread` is false.
+- `capture` raises `InvalidOperationException "Debug.dump ran inside a flush"` when called during a view pass of any
+  mount it walks (a keyed reconcile, an arm switch, a boundary's reveal or teardown, a hole's render, or a queued
+  commit flush), counted by a pass depth each mount keeps under the inspect define. It raises
+  `InvalidOperationException "Debug.dump ran off the graph's thread"` when `Graph.IsOnGraphThread` is false.
   `Trace.dumpText` (`src/Ranvier/TraceApi.fs:278-302`) also detects a core flush through the trace log and the
   internal `Graph.CurrentComputation`; the core exposes neither to the view, so a dump called from inside a core
-  computation reads the last-pass values that `Peek` returns. A core-wide check is a core change and needs its own
-  decision.
+  computation that is not a view pass is not detected and reads the last-pass values that `Peek` returns. A core-wide
+  check is a core change and needs its own decision.
 - Region probes read the region's variables, which are last-pass values. A region marked stale but not yet
   recomputed shows its last pass and the line suffix `stale`.
 
@@ -761,7 +767,8 @@ on screen and which values they show. The two connect through node identity:
 | `Settle` exceeding `maxRounds` (default 10 000) | `TwinRunawayException` naming the queue that kept refilling and its last callback's origin |
 | A `Native` global read with no host on the thread | `InvalidOperationException` naming `TwinDocument` |
 | A twin document used from another thread | `InvalidOperationException`, as the graph's thread guard does |
-| `Debug.capture` during the mount's commit flush or off-thread | `InvalidOperationException` (§4.5) |
+| `Debug.capture` during a view pass or off-thread | `InvalidOperationException` (§4.5); a dump inside a core computation that is not a view pass is not detected |
+| A listener that raises during a dispatch | collected; under `Reports.Raise`, `TwinListenerException` when the outermost dispatch ends (§3.7) |
 | `Debug` called from a Fable build without the define | compile error: the module is absent, as `Trace` queries are in untraced builds (`tracing.md:77-78`) |
 
 ## 6. Testing strategy
@@ -914,7 +921,9 @@ The user approved each of these on 2026-10-21.
   module-level `[<Global>]` values. `RangeChecks` takes its place in the first conformance set.
 - **The harness and both runners land in phase 2**, with the first three modules; phase 3 adds queries,
   interactions, expectations, the artefact diff and the next five modules.
-- **Already-dual helpers and module-level values stay in their files** (§3.2, risk 4).
+- **Already-dual helpers and module-level values stay in their files** (§3.2, risk 4): the module-level tables `delegatedEvents`, `claims`, `sharedListeners` and `hostCounts` keep their place with .NET initialisers; the `[<Global "document">]` values do move, to `Native.document ()`.
+- **Call sites call `Native.<name>` directly.** A file-local inline alias makes Fable bind arguments to temporaries, which changes the emitted JavaScript (found in phase 0).
+- **`PackagingChecks` exempts `Native.fs`** from its no-document-Emit rule and checks its structure instead: every Emit inside a `#if FABLE_COMPILER` block with an `#else` defining the same names, pending the user's objection.
 - **The dump's flush check covers the mount's commit flush only** (§4.5).
 - **Hydration is synchronous on the twin**, as on the client: `hydrateWith` raises `NotSupportedException` for
   `QueuedCommits` (`Hydration.fs:143`).
