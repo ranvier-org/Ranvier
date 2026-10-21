@@ -31,6 +31,35 @@ module Spec =
         projects
         |> List.filter _.RelativePath.StartsWith("src")
 
+    /// The source projects in build order. Each tier references source projects of earlier tiers only; the first holds
+    /// the projects that reference none.
+    let sourceTiers =
+        let fullPath (path: string) =
+            System.IO.Path.GetFullPath (System.IO.Path.Combine (__REPOSITORY_DIRECTORY__, path))
+
+        let sources =
+            sourceProjects
+            |> List.map (fun project -> fullPath project.Path)
+            |> Set.ofList
+
+        let references (project: string) =
+            let directory = System.IO.Path.GetDirectoryName project
+
+            System.Text.RegularExpressions.Regex.Matches (System.IO.File.ReadAllText project, "<ProjectReference Include=\"([^\"]+)\"")
+            |> Seq.map (fun found -> fullPath (System.IO.Path.Combine (directory, found.Groups[1].Value.Replace('\\', '/'))))
+            |> Seq.filter sources.Contains
+            |> List.ofSeq
+
+        let rec depth (project: string) : int =
+            match references project with
+            | [] -> 0
+            | referenced -> 1 + (referenced |> List.map depth |> List.max)
+
+        sourceProjects
+        |> List.groupBy (fun project -> depth (fullPath project.Path))
+        |> List.sortBy fst
+        |> List.map snd
+
     /// The source projects that pack: every one except those with `<IsPackable>false</IsPackable>`.
     let packableProjects =
         sourceProjects
@@ -182,10 +211,11 @@ module Stage =
         input {
             let! config = Options.config
 
-            // The core builds once, first; the packages then build in parallel against its outputs.
+            // The core builds once, first; each later tier then builds in parallel against the outputs of the tiers before it.
             let core, packages =
-                Spec.sourceProjects
-                |> List.partition (fun project -> project.Name = "Ranvier")
+                match Spec.sourceTiers with
+                | core :: packages -> core, packages
+                | [] -> [], []
 
             return
                 stage "build" {
@@ -194,12 +224,13 @@ module Stage =
                     for { Name = name; Path = project } in core do
                         stage $"build {name}" { run (cmd $"dotnet build {project} -c {config} -v q") }
 
-                    stage "build packages" {
-                        parallel'
+                    for tier, projects in List.indexed packages do
+                        stage $"build packages, tier {tier + 1}" {
+                            parallel'
 
-                        for { Name = name; Path = project } in packages do
-                            stage $"build {name}" { run (cmd $"dotnet build {project} -c {config} -v q --no-dependencies") }
-                    }
+                            for { Name = name; Path = project } in projects do
+                                stage $"build {name}" { run (cmd $"dotnet build {project} -c {config} -v q --no-dependencies") }
+                        }
                 }
         }
 

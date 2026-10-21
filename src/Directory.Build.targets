@@ -3,6 +3,18 @@
     <PropertyGroup>
         <PackageTags>$(PackageTags);fable-javascript;fable-dotnet</PackageTags>
     </PropertyGroup>
+    <!--
+    `RanvierExactSiblingVersions=true` pins each project reference at the referencing project's own version to exactly
+    that version (`[x]`) in the nuspec. References at another version keep NuGet's minimum-version range.
+    -->
+    <Target Name="PinSiblingProjectVersions" AfterTargets="_GetProjectReferenceVersions"
+            Condition="'$(RanvierExactSiblingVersions)' == 'true'">
+        <ItemGroup>
+            <_ProjectReferencesWithVersions Condition="'%(_ProjectReferencesWithVersions.ProjectVersion)' == '$(PackageVersion)'">
+                <ProjectVersion>[%(_ProjectReferencesWithVersions.ProjectVersion)]</ProjectVersion>
+            </_ProjectReferencesWithVersions>
+        </ItemGroup>
+    </Target>
     <Target Name="CreateStandaloneFableProject" AfterTargets="CreateFablePackageFiles"
             Condition="'$(FablePackageType)' == 'library'">
         <ItemGroup>

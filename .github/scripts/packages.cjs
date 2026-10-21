@@ -1,5 +1,8 @@
 // The packages `build.fsx -- publish` pushes: for each src/<Name>/<Name>.fsproj, `<PackageId>` and `<PackageId>.Traced`
-// at the project's `<Version>`, each with a lib/<tfm>/<AssemblyName>.dll per `<TargetFrameworks>` entry.
+// at the project's `<Version>`, each with a lib/<tfm>/<AssemblyName>.dll per `<TargetFrameworks>` entry. A traced package
+// depends on the traced packages of other src projects and an untraced one on their untraced packages; with
+// `<RanvierExactSiblingVersions>true</RanvierExactSiblingVersions>`, a dependency on a src project at the package's own
+// version is that exact version.
 const fs = require('node:fs');
 const path = require('node:path');
 const zlib = require('node:zlib');
@@ -20,6 +23,7 @@ function projectPackage(xml, name) {
     version: property(xml, 'Version'),
     assembly: property(xml, 'AssemblyName') ?? name,
     frameworks: (frameworks ?? '').split(';').map(f => f.trim()).filter(Boolean).sort(),
+    exactSiblings: property(xml, 'RanvierExactSiblingVersions') === 'true',
   };
 }
 
@@ -58,8 +62,19 @@ function zipEntries(buffer) {
   return entries;
 }
 
-// The problems of one .nupkg against its expected package; empty when it matches.
-function checkPackage(buffer, expected) {
+// The id and version range of each `<dependency>` of a nuspec, across its framework groups.
+function dependencies(manifest) {
+  const found = new Map();
+  for (const [element] of manifest.matchAll(/<dependency\b[^>]*>/g)) {
+    const id = /\bid="([^"]+)"/.exec(element);
+    const version = /\bversion="([^"]+)"/.exec(element);
+    if (id) found.set(id[1], version ? version[1] : null);
+  }
+  return found;
+}
+
+// The problems of one .nupkg against its expected package and the src projects it may depend on; empty when it matches.
+function checkPackage(buffer, expected, projects = []) {
   const problems = [];
   const entries = zipEntries(buffer);
   const nuspec = [...entries.keys()].find(name => !name.includes('/') && name.endsWith('.nuspec'));
@@ -71,6 +86,16 @@ function checkPackage(buffer, expected) {
   const frameworks = [...new Set(libs.map(name => name.split('/')[1]))].sort();
   if (frameworks.join(';') !== expected.frameworks.join(';')) {
     problems.push(`${expected.id}: lib frameworks are [${frameworks}], expected [${expected.frameworks}]`);
+  }
+  for (const [id, version] of dependencies(manifest)) {
+    const base = id.endsWith('.Traced') ? id.slice(0, -'.Traced'.length) : id;
+    const sibling = projects.find(project => project.id === base);
+    if (!sibling) continue;
+    const wanted = expected.traced ? `${base}.Traced` : base;
+    if (id !== wanted) problems.push(`${expected.id}: depends on ${id}, expected ${wanted}`);
+    if (expected.exactSiblings && sibling.version === expected.version && version !== `[${sibling.version}]`) {
+      problems.push(`${expected.id}: depends on ${id} ${version}, expected [${sibling.version}]`);
+    }
   }
   for (const framework of expected.frameworks) {
     const dll = `lib/${framework}/${expected.assembly}.dll`;
@@ -101,12 +126,12 @@ function check(packagesDirectory, sourceDirectory) {
       problems.push(`missing package ${file}`);
       continue;
     }
-    problems.push(...checkPackage(fs.readFileSync(path.join(packagesDirectory, file)), pkg));
+    problems.push(...checkPackage(fs.readFileSync(path.join(packagesDirectory, file)), pkg, projects));
   }
   return problems;
 }
 
-module.exports = { traceMarker, projectPackage, expectedPackages, zipEntries, checkPackage, check };
+module.exports = { traceMarker, projectPackage, expectedPackages, zipEntries, dependencies, checkPackage, check };
 
 if (require.main === module) {
   // node packages.cjs <packages directory> <src directory>: exits non-zero listing each problem.
