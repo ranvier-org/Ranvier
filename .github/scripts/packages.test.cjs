@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs'), os = require('node:os'), path = require('node:path'), zlib = require('node:zlib');
-const { traceMarker, projectPackage, expectedPackages, zipEntries, dependencies, checkPackage, checkAnalyzerPackage, check } = require('./packages.cjs');
+const { traceMarker, projectPackage, expectedPackages, zipEntries, dependencies, siblingVersionProblems, checkPackage, checkAnalyzerPackage, check } = require('./packages.cjs');
 
 // A zip archive of the entries, the even-indexed ones deflated and the rest stored.
 function zip(entries) {
@@ -106,17 +106,34 @@ test('a package depends on the src packages of its own trace build', () => {
     'Lib: depends on Core.Traced, expected Core',
   ]);
 });
-test('with exact sibling versions, a dependency at the package version is exact', () => {
-  const exact = projectPackage(project.replace('</PropertyGroup>', '<RanvierExactSiblingVersions>true</RanvierExactSiblingVersions></PropertyGroup>'), 'Lib');
-  const sibling = projectPackage(project.replace(/Lib/g, 'Sibling'), 'Sibling');
-  const core = projectPackage(project.replace(/Lib/g, 'Core').replace('0.1.0-preview.2', '0.1.0-preview.6'), 'Core');
+const exactProject = (name, version) => projectPackage(project.replace(/Lib/g, name).replace('0.1.0-preview.2', version)
+  .replace('</PropertyGroup>', '<RanvierExactSiblingVersions>true</RanvierExactSiblingVersions></PropertyGroup>'), name);
+test('an exact sibling depends on each other exact sibling at exactly its version', () => {
+  const exact = exactProject('Lib', '0.1.0-preview.2');
+  const sibling = exactProject('Sibling', '0.1.0-preview.2');
+  const core = projectPackage(project.replace(/Lib/g, 'Core').replace('0.1.0-preview.2', '0.1.0-preview.2'), 'Core');
   const pkg = expectedPackages([exact]).get('Lib.0.1.0-preview.2.nupkg');
   const projects = [exact, sibling, core];
-  assert.deepEqual(checkPackage(nupkg('Lib', { dependencies: { Sibling: '[0.1.0-preview.2]', Core: '0.1.0-preview.6' } }), pkg, projects), []);
+  assert.deepEqual(checkPackage(nupkg('Lib', { dependencies: { Sibling: '[0.1.0-preview.2]', Core: '0.1.0-preview.2' } }), pkg, projects), []);
   assert.deepEqual(checkPackage(nupkg('Lib', { dependencies: { Sibling: '0.1.0-preview.2' } }), pkg, projects), [
     'Lib: depends on Sibling 0.1.0-preview.2, expected [0.1.0-preview.2]',
   ]);
   assert.deepEqual(checkPackage(nupkg('Lib', { dependencies: { Sibling: '0.1.0-preview.2' } }), untraced, projects), []);
+});
+test('a drifted exact sibling is still pinned at its own version', () => {
+  const exact = exactProject('Lib', '0.1.0-preview.2');
+  const sibling = exactProject('Sibling', '0.1.0-preview.3');
+  const pkg = expectedPackages([exact]).get('Lib.0.1.0-preview.2.nupkg');
+  assert.deepEqual(checkPackage(nupkg('Lib', { dependencies: { Sibling: '0.1.0-preview.3' } }), pkg, [exact, sibling]), [
+    'Lib: depends on Sibling 0.1.0-preview.3, expected [0.1.0-preview.3]',
+  ]);
+});
+test('exact-sibling projects must share one version', () => {
+  const core = projectPackage(project.replace(/Lib/g, 'Core').replace('0.1.0-preview.2', '0.1.0-preview.6'), 'Core');
+  assert.deepEqual(siblingVersionProblems([exactProject('Lib', '0.1.0-alpha.1'), exactProject('Sibling', '0.1.0-alpha.1'), core]), []);
+  assert.deepEqual(siblingVersionProblems([exactProject('Lib', '0.1.0-alpha.1'), exactProject('Sibling', '0.1.0-alpha.2'), core]), [
+    'exact-sibling projects have different versions: Lib 0.1.0-alpha.1, Sibling 0.1.0-alpha.2',
+  ]);
 });
 test('a directory must hold exactly the expected packages', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'packages-'));

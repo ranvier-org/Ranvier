@@ -1,8 +1,8 @@
 // The packages `build.fsx -- publish` pushes: for each src/<Name>/<Name>.fsproj, `<PackageId>` and `<PackageId>.Traced`
 // at the project's `<Version>`, each with a lib/<tfm>/<AssemblyName>.dll per `<TargetFrameworks>` entry. A traced package
-// depends on the traced packages of other src projects and an untraced one on their untraced packages; with
-// `<RanvierExactSiblingVersions>true</RanvierExactSiblingVersions>`, a dependency on a src project at the package's own
-// version is that exact version.
+// depends on the traced packages of other src projects and an untraced one on their untraced packages. The projects
+// with `<RanvierExactSiblingVersions>true</RanvierExactSiblingVersions>` share one version and depend on each other at
+// exactly that version.
 // Each analyzer project passed on the command line packs once, with its assembly under analyzers/dotnet/fs.
 const fs = require('node:fs');
 const path = require('node:path');
@@ -94,7 +94,7 @@ function checkPackage(buffer, expected, projects = []) {
     if (!sibling) continue;
     const wanted = expected.traced ? `${base}.Traced` : base;
     if (id !== wanted) problems.push(`${expected.id}: depends on ${id}, expected ${wanted}`);
-    if (expected.exactSiblings && sibling.version === expected.version && version !== `[${sibling.version}]`) {
+    if (expected.exactSiblings && sibling.exactSiblings && version !== `[${sibling.version}]`) {
       problems.push(`${expected.id}: depends on ${id} ${version}, expected [${sibling.version}]`);
     }
   }
@@ -125,6 +125,13 @@ function checkAnalyzerPackage(buffer, expected) {
   return problems;
 }
 
+// One problem when the exact-sibling projects declare more than one version, listing each project's version.
+function siblingVersionProblems(projects) {
+  const siblings = projects.filter(project => project.exactSiblings);
+  if (new Set(siblings.map(project => project.version)).size <= 1) return [];
+  return [`exact-sibling projects have different versions: ${siblings.map(project => `${project.id} ${project.version}`).join(', ')}`];
+}
+
 // The problems of a package directory against the packable projects under src and the analyzer projects; empty when
 // it holds exactly the expected packages.
 function check(packagesDirectory, sourceDirectory, analyzerProjects = []) {
@@ -134,13 +141,13 @@ function check(packagesDirectory, sourceDirectory, analyzerProjects = []) {
     .filter(({ xml }) => property(xml, 'IsPackable') !== 'false')
     .map(({ name, xml }) => projectPackage(xml, name));
   if (projects.length === 0) return [`no project under ${sourceDirectory}`];
+  const problems = siblingVersionProblems(projects);
   const expected = expectedPackages(projects);
   const analyzers = new Map(analyzerProjects.map(file => {
     const pkg = { ...projectPackage(fs.readFileSync(file, 'utf8'), path.basename(file, '.fsproj')), analyzer: true };
     return [`${pkg.id}.${pkg.version}.nupkg`, pkg];
   }));
   const files = fs.existsSync(packagesDirectory) ? fs.readdirSync(packagesDirectory) : [];
-  const problems = [];
   for (const file of files.filter(f => f.endsWith('.nupkg') && !expected.has(f) && !analyzers.has(f))) problems.push(`unexpected package ${file}`);
   for (const [file, pkg] of expected) {
     if (!files.includes(file)) {
@@ -156,7 +163,7 @@ function check(packagesDirectory, sourceDirectory, analyzerProjects = []) {
   return problems;
 }
 
-module.exports = { traceMarker, projectPackage, expectedPackages, zipEntries, dependencies, checkPackage, checkAnalyzerPackage, check };
+module.exports = { traceMarker, projectPackage, expectedPackages, zipEntries, dependencies, siblingVersionProblems, checkPackage, checkAnalyzerPackage, check };
 
 if (require.main === module) {
   // node packages.cjs <packages directory> <src directory> [analyzer .fsproj ...]: exits non-zero listing each problem.
