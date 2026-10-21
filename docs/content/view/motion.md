@@ -50,8 +50,8 @@ animate(card, { x: 100, opacity: [0, 1], duration: 400, ease: "outQuart" });
   composes transforms in a fixed order: perspective, translations, rotations, scales, skews.
 - **`.With (name, value)` adds a property the constructor lacks**, such as a CSS variable:
   `Anim(duration = 300).With ("--hue", 120)`.
-- **Every function is imported from `animejs` on its own**, so a bundle holds the anime features it
-  calls and no others.
+- **Every function is imported from `animejs` on its own**, so a bundle holds exactly the anime features it
+  calls.
 - **Members carry anime's JavaScript names**: `play`, `pause`, `seek`, `progress`, `revert`, and
   `setX` on a draggable.
 - **`Targets` converts from `TS.Dom.Element` and `TS.Dom.Element array`.** `Targets.selector ".card"`
@@ -86,7 +86,7 @@ let settle (card: TS.Dom.Element) (cards: TS.Dom.Element array) =
     Anime.animate (cards, Anim (y = Value.tween (``to`` = 0, duration = 200, ease = Ease.outQuad), x = Value.per (fun _ index _ -> Value.op_Implicit (index * 10))))
 ```
 
-F# converts silently at method arguments only. An element of `Value.keys` and the result of a
+F# converts implicitly at method arguments. An element of `Value.keys` and the result of a
 `Value.per` function convert with `Value.op_Implicit`, as above; an array element left to convert
 implicitly raises warning FS3391, and a function's result fails to type-check. `modifier` parameters
 take a `float -> float`.
@@ -112,7 +112,7 @@ let overshoot (card: TS.Dom.Element) =
     Anime.animate (card, Anim (scale = Value.fromTo (0.7, 1), duration = 420, ease = Ease.outBackBy 2.))
 ```
 
-Every named curve of anime is a member (`Ease.linear`, `Ease.outQuad` through `Ease.inOutElastic`).
+Every named curve of anime is a member (from `Ease.linear` through `Ease.outInElastic`).
 Parameterised curves are functions: `Ease.outPower 2.`, `Ease.outBackBy 2.`,
 `Ease.outElasticBy (1., 0.3)`. `Ease.spring` as an animation's `ease` also sets the animation's
 duration to the spring's settling time; given `duration` or `bounce`, the spring derives its
@@ -132,7 +132,7 @@ let ripple (cells: TS.Dom.Element array) =
 ```
 
 `Value.stagger each` takes its options as named arguments: `start`, `from`, `reversed`, `grid`,
-`axis`, `total`, `ease`, `modifier`, `jitter` and `seed`. `from` is `StaggerFrom.first`, `center`,
+`axis`, `use`, `total`, `ease`, `modifier`, `jitter` and `seed`. `from` is `StaggerFrom.first`, `center`,
 `last`, `random`, `index n`, or, on a grid, `StaggerFrom.at (x, y)`, with `x` and `y` fractions of
 the grid's width and height in 0..1. `Grid.size (columns, rows)` gives the grid; `Grid.auto` reads it
 from the targets' layout. `each` given as `Value.fromTo (0, 400)` distributes the range across the

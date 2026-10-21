@@ -6,7 +6,7 @@ description: Deterministic animation tests on a manual anime clock under jsdom a
 ## A manual clock under jsdom
 
 anime reads time from `Date.now` and ticks on `requestAnimationFrame`. It captures both, and
-evaluates whether it runs in a browser, when `animejs` is first imported. A Node test therefore
+evaluates whether it runs in a browser, when `animejs` is first imported. A Node test
 sets the DOM globals and mocks `Date` **before** a dynamic `import ()` of anything importing
 `animejs`:
 
@@ -98,7 +98,7 @@ holds these steps.
 ## Server checks
 
 A portable template with Motion parts renders on .NET with `Server.render`. Comparing that HTML with
-the render of a twin without the parts checks that the parts added nothing to the markup, as the
+the render of a twin without the parts checks that the parts leave the markup unchanged, as the
 [server checks of the Motion parts](https://github.com/shayanhabibi/Ranvier/blob/master/fable/Ranvier.View.Anime.Tests/ServerChecks.fs)
 do under the default `Reject` policy. A page with event handlers renders under `Omit`: the
 [story example's check](https://github.com/shayanhabibi/Ranvier/blob/master/examples/Ranvier.Motion/Server/Program.fs)
@@ -141,9 +141,9 @@ checks and the client element refusals add a few hundred bytes more on the same 
 [motion research note](https://github.com/shayanhabibi/Ranvier/blob/master/docs/research/2026-10-21-motion.md#motion-parts-steps-89)
 records each measurement.
 
-- An entry using one Motion part declares the anime feature classes of the functions that part calls
-  and no others: `flip` brings `AutoLayout`, `WAAPIAnimation` and `Timeline`; `scroll`
-  `ScrollObserver`; `drag` `Draggable`; `split` `TextSplitter`; the lifecycle and reactive parts none.
+- An entry using one Motion part declares exactly the anime feature classes of the functions that part calls
+  (`flip` brings `AutoLayout`, `WAAPIAnimation` and `Timeline`; `scroll`
+  `ScrollObserver`; `drag` `Draggable`; `split` `TextSplitter`; the lifecycle and reactive parts none).
 - The emitted `Ranvier.View.Anime` and `Fable.Ranvier.Anime` modules hold no `curry`, `uncurry`,
   `partialApply` or `createObj`.
 - Per instance, each part adds one placed hook and the anime objects it creates; `follow`,

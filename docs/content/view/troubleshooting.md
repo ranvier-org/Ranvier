@@ -67,7 +67,7 @@ policy"**, **"Template elements are not supported in templates"** and **"A void 
 children"**.
 
 **"Tag names must contain lowercase letters, digits or hyphens, or be a case-sensitive SVG name"**
-or **"Attribute names must be lowercase or a case-sensitive SVG name, …"**: a name has uppercase
+or **"Attribute names must be lowercase or a case-sensitive SVG name, …"**: a tag name holds a character other than lowercase letters, digits and hyphens, an attribute name one other than those and underscores, or a name has uppercase
 letters and is not one of the SVG names, or, under Fable, the module defining the template loads
 before any module with an SVG tag. Write the name in lowercase, or import an SVG tag in that module.
 

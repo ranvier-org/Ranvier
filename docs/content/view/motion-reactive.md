@@ -70,13 +70,13 @@ let scrubbed (stage: TS.Dom.Element) (position: Signal<float>) =
 ```
 
 `Reactive.scrub read tickable` is an effect that sets the tickable's `progress` to `read ()`, in
-0..1, whenever the value changes. A tickable created with `autoplay = false` moves only when the
-value changes, so a range input bound to the signal seeks the timeline.
+0..1, once with the current value and then whenever it changes. A tickable created with `autoplay = false` seeks to the first value and then follows each change of the
+value, so a range input bound to the signal seeks the timeline.
 
 ## `drive`
 
 `Reactive.drive read animatable property` is an effect that animates `property` of the animatable to
-`read ()` whenever the value changes, with the property's duration and ease. The animation starts from
+`read ()`, once with the current value and then whenever it changes, with the property's duration and ease. The animation starts from
 the property's current value, so a change while a previous one plays continues from where it is.
 
 ## `policy`

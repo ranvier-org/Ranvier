@@ -51,7 +51,7 @@ let taskList =
         })
 ```
 
-`Motion` requires qualified access: its `exit` would otherwise shadow FSharp.Core's.
+`Motion` requires qualified access: `Motion.exit` shadows FSharp.Core's `exit` when `Motion` is opened.
 
 ## Play functions
 
@@ -140,7 +140,7 @@ policy reads `Reactive.policy ()` itself. See [policy](motion-reactive.md#policy
 
 ## Server rendering and hydration
 
-The parts add no markup. `Server.render` omits them under both the `Reject` and `Omit` policies, so a
+The parts leave the markup unchanged. `Server.render` omits them under both the `Reject` and `Omit` policies, so a
 template with Motion parts renders the HTML of its twin without them. `taskList` above renders:
 
 ```html
@@ -150,7 +150,7 @@ template with Motion parts renders the HTML of its twin without them. `taskList`
 Hydration adopts the served elements. `appear` and `enter` leave them as served, and `on` plays.
 `follow` sets its first value at once.
 
-A page whose template holds event handlers renders under `Omit`, since `Reject` refuses listeners and
+A page whose template holds event handlers renders under `Omit`; `Reject` refuses listeners, and
 hydration attaches them. The story example renders its whole page that way with
 `Server.renderDocument` (see [The page](../server/deployment.md#the-page)).
 

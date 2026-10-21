@@ -53,7 +53,7 @@ let rule = Component.template (fun _ () -> ()) (hr (Attrs.className "rule")).Vie
 
 ## Element names
 
-Tag and attribute names are lowercase letters, digits and hyphens, starting with a letter. The
+Tag names are lowercase letters, digits and hyphens, starting with a letter; attribute names also allow underscores. The
 case-sensitive SVG names the HTML parser restores (`viewBox`, `preserveAspectRatio`,
 `linearGradient`, `foreignObject`, `feGaussianBlur`, `refX` and the others) are written as given,
 each matched as a whole name. Under Fable the module of the sugar's SVG tags registers them when it
