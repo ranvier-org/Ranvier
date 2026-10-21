@@ -15,7 +15,11 @@ let inline create (cells: Cells.Cells) (read: 'inst -> 'u) (select: 'u -> int * 
             Component.define
                 (fun setup (current: unit -> 'inst * obj array) ->
                     let instance = fst (current ())
+#if FABLE_COMPILER
+                    Cells.enter cells setup (box instance) target (unbox<unit -> obj * obj array>(box current))
+#else
                     Cells.enter cells setup (box instance) target (fun () -> snd (current ()))
+#endif
                     instance)
                 (fun _ -> body))
 

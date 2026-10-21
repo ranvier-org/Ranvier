@@ -78,8 +78,9 @@ try {
   for (let replicate = 0; replicate < processes; replicate++) {
     const { page, cdp, errors, chromium } = await open();
     chromiumVersion = chromium;
-    ({ modes, names } = await page.evaluate(() => ({ modes: window.keyedPerf.modes, names: window.keyedPerf.operations })));
-    modes = only(modes, "modes"); names = only(names, "ops");
+    let armModes;
+    ({ modes, armModes, names } = await page.evaluate(() => ({ modes: window.keyedPerf.modes, armModes: window.keyedPerf.armModes, names: window.keyedPerf.operations })));
+    modes = argument("modes") ? only([...modes, ...armModes], "modes") : modes; names = only(names, "ops");
     // MEASUREMENT (measure/keyed-rows-on-core): an operation runs only when every selected mode has an adapter for its fixture.
     const supported = await page.evaluate(({ modes, names }) => names.filter(name => modes.every(mode => window.keyedPerf.supports(mode, name))), { modes, names });
     if (replicate === 0 && supported.length < names.length) console.log(`Skipped ${names.filter(name => !supported.includes(name)).join(", ")}: no adapter for every mode`);
@@ -110,8 +111,10 @@ try {
         }
         console.log(`Measured ${name}, process ${replicate + 1}`);
       }
-      for (const count of [1000, 10000]) for (let offset = 0; offset < modes.length; offset++) {
-        const mode = modes[(offset + replicate) % modes.length];
+      // The retained heap of the keyed rows, for the modes with a rows adapter.
+      const rowModes = modes.filter(mode => !armModes.includes(mode));
+      for (const count of [1000, 10000]) for (let offset = 0; offset < rowModes.length; offset++) {
+        const mode = rowModes[(offset + replicate) % rowModes.length];
         await cdp.send("HeapProfiler.collectGarbage");
         const before = await cdp.send("Runtime.getHeapUsage");
         await page.evaluate(({ mode, count }) => { window.releaseKeyed = window.keyedPerf.retain(mode, count); }, { mode, count });

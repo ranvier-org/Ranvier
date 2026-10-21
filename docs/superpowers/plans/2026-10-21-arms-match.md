@@ -122,7 +122,8 @@ Each ruling picks an implementation where the spec leaves one open, or settles a
 28. **`Cells` reads without the lock** (Phase 3 review M2/M3): each target's entries are an array replaced under the instance's lock and read without it, so readers run outside every monitor; a withdrawal records its entry only when it holds values; an entry or withdrawn entry with a null graph serves any graph, and a withdrawn entry serves only its own graph otherwise.
 29. **A per-call lambda over let-bound case-body values compiles too** (Phase 4 review M1-M3): `compileHot` replaces such a lambda by a `HotFactory` applied to its free variables, a closed lambda over them interpreted once per site construction and compiled once, on the thread pool, by the first of its `Hot` functions to reach 64 calls. Lambdas over lambda-bound variables stay interpreted. Each `Hot` exposes `IHot` (`Compiled`, `Failed`, `Queued`) and writes a `Trace` warning when its compile fails; `Quoted.collectHots` returns the `Hot` functions created while a site is built, so the checks wait on compile completion instead of sleeping and assert that a lowered site's functions compile.
 30. **Hydration parity covers every golden line, the fallback and the Strict mismatch** (Phase 4 review I2, M4, M5): `ArmsFixtures.Case.Run` runs a site and its twin under a `Runner`; `ArmsChecks.hydrations` takes the golden lines and returns `strictCases` that hydrate each line under Strict (served root adopted, no node inserted, markup equal to the twin's), and for each Load fixture the writes after hydration, the non-Strict fallback from a client at `Idle` (reports, markup and writes equal to the twin's) and the Strict mismatch (the twin's message, host left as served). `heldExit` reads its pattern variables in the exit callback, so the withdrawn read runs; `pendingSource` runs pending, settle, re-pend, settle and fail against a `matchWith` twin. `Arms.Prepare ()` runs in `ArmsLoweringChecks.runtimeCases`, in `DotnetCost --prepare` on net10.0 and net8.0 (twice, then on four threads with a site lowered on each), and in a Fable check.
-31. **The Fable cells are JavaScript objects and the first-site budget does not hold** (Task 9): under Fable, `Cells` is a `WeakMap` of `{ l, w }` slots holding `{ g, v, l }` entries through `Emit` helpers, and `Site.create` is `inline`; the F# classes over fable-library arrays cost 771 B gzip. The first site costs 460 B gzip over its twin against 250: the AM006 and AM005 texts cost 141 B and the code 319 B. `size.mjs` exits 1 on the breach, so CI's budget step fails until the budget or the texts change (a spec conflict, reported). The plan's Task 11 labels name the TrimCallSite files by their full paths.
+31. **The Fable cells are JavaScript objects and the first-site budget does not hold** (Task 9): under Fable, `Cells` is a `WeakMap` of `{ l, w }` slots holding `{ g, v, l }` entries through `Emit` helpers, and `Site.create` is `inline`; the F# classes over fable-library arrays cost 771 B gzip. The first site costs 496 B gzip over its twin against 250 (after Ruling 32): the AM006 and AM005 texts cost 141 B and the code 355 B. `size.mjs` exits 1 on the breach, so CI's budget step fails until the budget or the texts change (a spec conflict, reported). The plan's Task 11 labels name the TrimCallSite files by their full paths.
+32. **The Fable cells hold a target's single live entry without an array, and an entry keeps the arm's `current`** (Task 10): slots are a plain object with the live entry (or, once two are live, an array) of target t at key t and the withdrawn entry at key ~t; an entry reads `current()[1]` instead of a values thunk. The first cells cost +14.2-14.5 % heap per row and +18.6 % on armsSwitch1k; these cost +9.6-9.9 % heap (the gate holds) and 66 B more bundle. `keyed-rows.mjs` measures the rows heap only for modes with a rows adapter, since `ranvier-arms-match` has the arm fixture only.
 
 ## Review Focus
 
@@ -6623,6 +6624,15 @@ becomes
     let armModes;
     ({ modes, armModes, names } = await page.evaluate(() => ({ modes: window.keyedPerf.modes, armModes: window.keyedPerf.armModes, names: window.keyedPerf.operations })));
     modes = argument("modes") ? only([...modes, ...armModes], "modes") : modes; names = only(names, "ops");
+```
+
+and the retained-heap loop runs over the modes with a rows adapter:
+
+```js
+      // The retained heap of the keyed rows, for the modes with a rows adapter.
+      const rowModes = modes.filter(mode => !armModes.includes(mode));
+      for (const count of [1000, 10000]) for (let offset = 0; offset < rowModes.length; offset++) {
+        const mode = rowModes[(offset + replicate) % rowModes.length];
 ```
 
 `benchmarks/frameworks/keyed-heap.mjs`:

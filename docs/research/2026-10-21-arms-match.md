@@ -123,17 +123,50 @@ numbers are in [`arms-match/bundle.json`](arms-match/bundle.json).
 | Entry | raw | gzip | Brotli |
 |---|---|---|---|
 | explicit loader | 207,850 | 60,202 | 52,828 |
-| Arms.Match loader | 208,908 | 60,662 | 53,190 |
+| Arms.Match loader | 209,050 | 60,698 | 53,170 |
 | two explicit sites | 208,693 | 60,411 | 52,980 |
-| two Arms.Match sites | 209,753 | 60,856 | 53,359 |
+| two Arms.Match sites | 209,895 | 60,890 | 53,345 |
 
-The first site costs 460 B gzip over its twin, against a budget of 250 B; the budget does not hold. The second site
-costs -15 B (budget 60). An entry that calls no `Arms.Match` holds no `Ranvier.View.Arms` module, the `Arms.Match`
+The first site costs 496 B gzip over its twin, against a budget of 250 B; the budget does not hold. The second site
+costs -17 B (budget 60). An entry that calls no `Arms.Match` holds no `Ranvier.View.Arms` module, the `Arms.Match`
 entry holds no quotation code, the emitted modules hold no curry helper, and `Arms.Prepare ()` in the entry adds no
 bytes.
 
 The first-site cost is the runtime shared by every site: the two fixed message texts (AM006 and AM005) cost 141 B, and
-the code costs 319 B (the cells with live lists per target, graph tags and the withdrawn entry; `Site.create`, inlined
+the code costs 355 B (the cells with live entries per target, graph tags and the withdrawn entry; `Site.create`, inlined
 into `Arms.Match`; the AM005 check). The probe's single-slot cells cost 139 B. The Fable cells are plain JavaScript
-objects in a `WeakMap`; the first version, F# classes over fable-library arrays, cost 771 B. With both texts removed,
-the code alone exceeds the budget by 69 B.
+objects in a `WeakMap`; the first version, F# classes over fable-library arrays, cost 771 B. A target's single live
+entry is held without an array: that costs 66 B of bundle (430 B with an array per target) and saves about 90 B of heap per row (see
+"Heap"). With both texts removed, the code alone exceeds the budget by 105 B.
+
+## Chromium
+
+`keyed-rows.mjs --modes=ranvier-sugar,ranvier-arms-match --ops=armsCreate1k,armsSwitch1k,armsPayload1k,armsClear1k
+--processes=3 --rounds=15`, under the benchmark and browser locks; results in `arms-match/arms-match.json`. The machine
+ran other agents' builds during the run (CPU load 66-77 %), so every figure is about 35 % above a quiet run's.
+
+| Operation | ranvier-sugar median (range), ms | ranvier-arms-match median (range), ms | Δ median |
+|---|---|---|---|
+| armsCreate1k | 18.46 (15.99-19.33) | 19.22 (17.00-19.75) | +4.1 % |
+| armsSwitch1k | 10.05 (8.48-10.72) | 10.76 (9.59-11.90) | +7.1 % |
+| armsPayload1k | 1.63 (1.29-1.80) | 1.78 (1.57-1.90) | +9.5 % |
+| armsClear1k | 2.95 (2.62-3.30) | 3.34 (2.82-3.62) | +13.2 % |
+
+Ranges are the three processes' medians. armsCreate1k holds the 5 % gate; the other three exceed 5 % and hold the gate
+by overlapping ranges only. On a quieter machine with the first JavaScript cells (an array per target, a values thunk
+per arm), armsSwitch1k cost 8.41 ms (8.08-8.76) against 7.09 ms (6.97-7.18), +18.6 % without overlap; the current cells
+remove the per-arm thunk and the single-entry array, and need a quiet rerun to settle the switch and clear figures.
+
+## Heap
+
+`keyed-heap.mjs --modes=ranvier-sugar,ranvier-arms-match --fixture=arms --counts=1000,10000`; results in
+`arms-match/arms-match-heap.json`.
+
+| Rows | ranvier-sugar bytes per row | ranvier-arms-match bytes per row | Δ |
+|---|---|---|---|
+| 1,000 | 3,511 | 3,847 | +336 (+9.6 %) |
+| 10,000 | 3,528 | 3,877 | +349 (+9.9 %) |
+
+The gate holds: both counts stay within 10 % of `ranvier-sugar` before the allowance for a `WeakMap` entry and an entry
+list per row. The extra bytes are the slots object and entry, the arm's cleanup closure, and the arm's `current`
+closure kept by the entry. The first JavaScript cells cost +500 B (+14.2 %) and +513 B (+14.5 %).

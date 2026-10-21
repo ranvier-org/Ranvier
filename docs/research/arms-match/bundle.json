@@ -6,9 +6,9 @@
       "brotli": 52828
     },
     "matchOne": {
-      "raw": 208908,
-      "gzip": 60662,
-      "brotli": 53190
+      "raw": 209050,
+      "gzip": 60698,
+      "brotli": 53170
     },
     "explicitTwo": {
       "raw": 208693,
@@ -16,9 +16,9 @@
       "brotli": 52980
     },
     "matchTwo": {
-      "raw": 209753,
-      "gzip": 60856,
-      "brotli": 53359
+      "raw": 209895,
+      "gzip": 60890,
+      "brotli": 53345
     },
     "plain": {
       "raw": 205886,
@@ -27,12 +27,12 @@
     }
   },
   "one": {
-    "deltaGzip": 460,
+    "deltaGzip": 496,
     "budgetGzip": 250,
     "withinBudget": false
   },
   "perSite": {
-    "deltaGzip": -15,
+    "deltaGzip": -17,
     "budgetGzip": 60,
     "withinBudget": true
   },

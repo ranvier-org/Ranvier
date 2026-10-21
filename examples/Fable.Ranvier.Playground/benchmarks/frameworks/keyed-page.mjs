@@ -1,5 +1,6 @@
 import { mountKeyed as ranvierKeyed, mountArms as ranvierArmsMount } from "../../generated-tests/KeyedRowsPerf.js";
 import { mountKeyed as sugarKeyed, mountArms as sugarArmsMount } from "../../generated-tests/KeyedRowsSugarPerf.js";
+import { mountArms as armsMatchMount } from "../../generated-tests/KeyedRowsArmsMatchPerf.js";
 import { mountKeyed as solidKeyed, mountArms as solidArms } from "./keyed-solid.jsx";
 
 // MEASUREMENT (measure/poc-rerun-2026-10-15): production rows and the production arm adapter against Solid 2.
@@ -23,7 +24,12 @@ const sugarArms = host => {
   const ops = sugarArmsMount(host);
   return { create: n => ops.Create(n), switch: () => ops.Switch(), payload: () => ops.Payload(), clear: () => ops.Clear(), dispose: () => ops.Dispose() };
 };
-const armAdapters = { ranvier: ranvierArms, "ranvier-sugar": sugarArms, solid: solidArms };
+// ranvier-arms-match: the sugared arm fixture with its site written as Arms.Match (arm operations only).
+const armsMatchArms = host => {
+  const ops = armsMatchMount(host);
+  return { create: n => ops.Create(n), switch: () => ops.Switch(), payload: () => ops.Payload(), clear: () => ops.Clear(), dispose: () => ops.Dispose() };
+};
+const armAdapters = { ranvier: ranvierArms, "ranvier-sugar": sugarArms, "ranvier-arms-match": armsMatchArms, solid: solidArms };
 const adapterFor = (operation, mode) => (operation.fixture === "arms" ? armAdapters : adapters)[mode];
 
 // Each operation: untimed setup on a fresh list, then the timed step, then the expected row count.
@@ -63,6 +69,8 @@ function measuredRun(operation, list) {
 
 window.keyedPerf = {
   modes: Object.keys(adapters),
+  /// Modes with an arm adapter only; selectable with --modes.
+  armModes: Object.keys(armAdapters).filter(mode => !(mode in adapters)),
   /// Whether `mode` has an adapter for the fixture of operation `name`.
   supports(mode, name) { return Boolean(adapterFor(operations[name], mode)); },
   operations: Object.keys(operations),
@@ -104,8 +112,8 @@ window.keyedPerf = {
     return () => { list.dispose(); node.remove(); };
   },
   /// Mounts an empty list and returns its create and release steps; used by the heap-snapshot diff.
-  mounted(mode) {
-    const node = host(), list = adapters[mode](node);
+  mounted(mode, fixture) {
+    const node = host(), list = (fixture === "arms" ? armAdapters : adapters)[mode](node);
     return { create: count => list.create(count), release: () => { list.dispose(); node.remove(); } };
   },
   /// Counts DOM calls made by the timed step.
