@@ -4,7 +4,7 @@
 //             run, with `--noCache`; primed is the second, which rebuilds the cache; warm is the rest
 //   watch:    the time from the edit to the rewrite of generated-tests/DelegationChecks.js under `dotnet fickl watch`;
 //             cold is the first edit, warm the rest
-//   node:     `node --test tests/delegation.test.mjs`; cold is the first run, warm the rest
+//   node:     the delegation cases of `node --test tests/conformance.test.mjs`; cold is the first run, warm the rest
 // Writes { loop, runs, steps }, each step { cold: [ms], primed?: [ms], warm: { samples, median, min, max } }. The edited
 // file is restored on exit and on Ctrl+C.
 import { execFileSync, spawn } from "node:child_process";
@@ -38,7 +38,7 @@ try {
   for (let i = 0; i < runs; i++) {
     edit(i);
     samples.compile.push(time(() => run("dotnet", ["fickl", "tests/DomTests.fsproj", "--outDir", "generated-tests", "--configuration", "Release", ...(i === 0 ? ["--noCache"] : [])])));
-    samples.node.push(time(() => run(process.execPath, ["--test", "tests/delegation.test.mjs"])));
+    samples.node.push(time(() => run(process.execPath, ["--test", "--test-name-pattern=^DelegationChecks: ", "tests/conformance.test.mjs"])));
   }
   const watcher = spawn("dotnet", ["fickl", "watch", "tests/DomTests.fsproj", "--outDir", "generated-tests", "--configuration", "Release"], { cwd, stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
   let errors = "";

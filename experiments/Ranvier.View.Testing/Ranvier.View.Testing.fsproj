@@ -8,6 +8,7 @@
     <ItemGroup>
         <Compile Include="EventSpec.fs" />
         <Compile Include="Selector.fs" />
+        <Compile Include="Conformance.fs" />
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="../Ranvier.View.Foundation/Ranvier.View.Foundation.fsproj" />

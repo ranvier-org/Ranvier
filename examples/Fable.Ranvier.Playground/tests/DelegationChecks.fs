@@ -3,32 +3,61 @@ module DelegationChecks
 open global.Ranvier
 open Fable.Core
 open Fable.Core.TS.Dom
+open Ranvier.View.Testing
 open Ranvier.View.Foundation
 open Ranvier.View.Foundation.Representation
 
 module H = Ranvier.View.Foundation.Generated.Html
 
+#if FABLE_COMPILER
 [<Global>]
 let private globalThis: TS.Es.GlobalThis = jsNative
+#endif
 
 let private equal expected actual =
     if expected <> actual then
         failwithf "Expected %A; got %A" expected actual
 
 let private element (tag: string) =
-    globalThis.document.createElement tag
+    (Conformance.document ()).createElement tag
 
 let private mount graph host view =
     Mounting.mount graph None (fun errors -> failwithf "%A" errors) host None (fun context -> Program.run view context.Backend)
 
+#if FABLE_COMPILER
 [<Emit("(() => { const counts = { add: 0, remove: 0 }; const add = $0.addEventListener.bind($0), remove = $0.removeEventListener.bind($0); $0.addEventListener = (type, listener, options) => { if (type === 'click') counts.add++; add(type, listener, options); }; $0.removeEventListener = (type, listener, options) => { if (type === 'click') counts.remove++; remove(type, listener, options); }; return counts; })()")>]
 let private spyClickListeners (host: HTMLElement) : obj = jsNative
+#else
+let private spyClickListeners (host: HTMLElement) : obj =
+    raise (System.NotSupportedException "jsdom only: patches addEventListener on the host")
+#endif
 
+#if FABLE_COMPILER
 [<Emit("[$0.add, $0.remove]")>]
 let private listenerCounts (counts: obj) : int array = jsNative
+#else
+let private listenerCounts (counts: obj) : int array =
+    raise (System.NotSupportedException "jsdom only: patches addEventListener on the host")
+#endif
 
+#if FABLE_COMPILER
 [<Emit("$0.dispatchEvent(new FocusEvent('focus'))")>]
 let private dispatchFocus (node: HTMLElement) : unit = jsNative
+#else
+let private dispatchFocus (node: HTMLElement) : unit =
+    node.dispatchEvent (
+        EventSpec.create
+            (Conformance.document ())
+            {
+                Type = "focus"
+                Kind = Focus
+                Bubbles = false
+                Cancelable = false
+                Init = []
+            }
+    )
+    |> ignore
+#endif
 
 let private detachedHost () =
     use graph = new Graph ()
@@ -42,6 +71,7 @@ let private detachedHost () =
 
     let button =
         host.querySelector "button"
+        |> Option.get
         |> unbox<HTMLButtonElement>
 
     button.click ()
@@ -90,6 +120,7 @@ let private nonBubbling () =
 
     let input =
         host.querySelector "input"
+        |> Option.get
         |> unbox<HTMLInputElement>
 
     dispatchFocus input
@@ -111,6 +142,7 @@ let private moved () =
 
     let button =
         first.querySelector "button"
+        |> Option.get
         |> unbox<HTMLButtonElement>
 
     mounted.MoveBefore (second, None)
@@ -225,7 +257,10 @@ let private nestedHosts stop =
     let a =
         mount graph host (H.Program.div [| H.Events.onClick (fun _ -> outer <- outer + 1) |] [| H.Program.section [||] [||] |])
 
-    let innerHost = host.querySelector "section" |> unbox<HTMLElement>
+    let innerHost =
+        host.querySelector "section"
+        |> Option.get
+        |> unbox<HTMLElement>
 
     let b =
         mount
@@ -290,8 +325,14 @@ let private topLevelList () =
     equal 0. second.childNodes.length
 
 /// <summary>Adds a native click listener that stops propagation.</summary>
+#if FABLE_COMPILER
 [<Emit("$0.addEventListener('click', event => event.stopPropagation())")>]
 let private stopClicks (node: HTMLElement) : unit = jsNative
+#else
+let private stopClicks (node: HTMLElement) : unit =
+    Ranvier.View.Foundation.Native.listen node "click" (fun event -> (unbox<Event> event).stopPropagation())
+    |> ignore
+#endif
 
 let private nativeStopBetween () =
     use graph = new Graph ()
@@ -302,10 +343,16 @@ let private nativeStopBetween () =
         H.Program.div [||] [| H.Program.button [| H.Events.onClick (fun _ -> clicks.Add 1) |] [||] |]
 
     let mounted = mount graph host view
-    let wrapper = host.querySelector "div" |> unbox<HTMLElement>
+
+    let wrapper =
+        host.querySelector "div"
+        |> Option.get
+        |> unbox<HTMLElement>
+
     stopClicks wrapper
 
     (host.querySelector "button"
+     |> Option.get
      |> unbox<HTMLButtonElement>)
         .click()
 
@@ -313,20 +360,33 @@ let private nativeStopBetween () =
     mounted.Dispose ()
 
 /// <summary>Checks delegated event dispatch from mount hosts.</summary>
-let cases =
-    [|
-        "delegated clicks reach handlers in a detached host with the element as currentTarget", detachedHost
-        "nested keyed mounts dispatch a click once per handler", fun () -> nested false
-        "stopPropagation stops delegated ancestors", fun () -> nested true
-        "non-bubbling events use direct listeners removed on disposal", nonBubbling
-        "moved mounts dispatch from their new host", moved
-        "a shared host keeps one listener until its last mount is disposed", sharedHost
-        "disposing a mount on one host leaves another host's dispatch and listener unchanged", independentHosts
-        "a handler disposing its own sole mount removes the delegated listener", selfDisposal
-        "a handler mounting a fresh view on its host leaves later clicks dispatching once", remountDuringDispatch
-        "an inner host's handler resumes dispatch in the outer mount", fun () -> nestedHosts false
-        "stopPropagation in an inner host's handler stops the outer mount's handler", fun () -> nestedHosts true
-        "moving and disposing a mount with only direct listeners leaves the host's delegated dispatch once", directOnlyMove
-        "rows of a top-level keyed list dispatch clicks after attach, an update and a move", topLevelList
-        "a native listener that stops propagation between target and host keeps the delegated handler from running", nativeStopBetween
-    |]
+let cases: Conformance.Case array =
+    Conformance.ofChecks
+        [|
+            "delegated clicks reach handlers in a detached host with the element as currentTarget", detachedHost
+            "nested keyed mounts dispatch a click once per handler", fun () -> nested false
+            "stopPropagation stops delegated ancestors", fun () -> nested true
+            "non-bubbling events use direct listeners removed on disposal", nonBubbling
+            Conformance.platformOnly "jsdom" "patches addEventListener on the host" ("moved mounts dispatch from their new host", moved)
+            Conformance.platformOnly
+                "jsdom"
+                "patches addEventListener on the host"
+                ("a shared host keeps one listener until its last mount is disposed", sharedHost)
+            Conformance.platformOnly
+                "jsdom"
+                "patches addEventListener on the host"
+                ("disposing a mount on one host leaves another host's dispatch and listener unchanged", independentHosts)
+            Conformance.platformOnly
+                "jsdom"
+                "patches addEventListener on the host"
+                ("a handler disposing its own sole mount removes the delegated listener", selfDisposal)
+            Conformance.platformOnly
+                "jsdom"
+                "patches addEventListener on the host"
+                ("a handler mounting a fresh view on its host leaves later clicks dispatching once", remountDuringDispatch)
+            "an inner host's handler resumes dispatch in the outer mount", fun () -> nestedHosts false
+            "stopPropagation in an inner host's handler stops the outer mount's handler", fun () -> nestedHosts true
+            "moving and disposing a mount with only direct listeners leaves the host's delegated dispatch once", directOnlyMove
+            "rows of a top-level keyed list dispatch clicks after attach, an update and a move", topLevelList
+            "a native listener that stops propagation between target and host keeps the delegated handler from running", nativeStopBetween
+        |]

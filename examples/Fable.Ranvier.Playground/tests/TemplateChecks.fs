@@ -4,19 +4,49 @@ open global.Ranvier
 open Fable.Core
 open Fable.Core.JsInterop
 open Fable.Core.TS.Dom
+open Ranvier.View.Testing
 open Ranvier.View.Foundation
 open Ranvier.View.Foundation.Representation
 open Ranvier.View.Foundation.Template
 
+#if FABLE_COMPILER
 [<Global>]
 let private globalThis: TS.Es.GlobalThis = jsNative
+#endif
 
 let private equal expected actual =
     if expected <> actual then
         failwithf "Expected %A; got %A" expected actual
 
+/// <summary>The definition's compiled form in the running case's document, or <c>null</c> before its first use there.</summary>
+let private compiledForm (definition: TemplateDefinition) : obj =
+#if FABLE_COMPILER
+    definition.Compiled
+#else
+    TemplateDom.compiledIn definition
+#endif
+
+#if FABLE_COMPILER
 [<Emit("(() => { const shape = n => n.nodeType + (n.nodeName || '') + '(' + Array.from(n.childNodes).map(shape).join(',') + ')'; const t = document.createElement('template'); t.innerHTML = $0; const first = shape(t.content); const again = document.createElement('template'); again.innerHTML = t.innerHTML; return first === shape(again.content); })()")>]
 let private roundTrips (markup: string) : bool = jsNative
+#else
+let private roundTrips (markup: string) : bool =
+    let rec shape (n: Node) : string =
+        string n.nodeType
+        + n.nodeName
+        + "("
+        + (Ranvier.View.Foundation.Native.childNodesOf n
+           |> Array.map shape
+           |> String.concat ",")
+        + ")"
+
+    let document = Conformance.document ()
+    let first = document.createElement "template" :?> HTMLTemplateElement
+    first.innerHTML <- markup
+    let again = document.createElement "template" :?> HTMLTemplateElement
+    again.innerHTML <- first.innerHTML
+    shape first.content = shape again.content
+#endif
 
 type Greeting = { Title: string; Name: string }
 
@@ -97,20 +127,25 @@ let private row =
                 |])
 
 let private host () =
-    globalThis.document.createElement "main"
+    (Conformance.document ()).createElement "main"
 
 let private mount graph (host: HTMLElement) view =
     Mounting.mount graph None (fun errors -> failwithf "%A" errors) host None (fun context -> Program.run view context.Backend)
 
 let private state (host: HTMLElement) =
-    let div = host.querySelector "div" |> unbox<HTMLElement>
+    let div =
+        host.querySelector "div"
+        |> Option.get
+        |> unbox<HTMLElement>
 
     let input =
         host.querySelector "input"
+        |> Option.get
         |> unbox<HTMLInputElement>
 
     let button =
         host.querySelector "button"
+        |> Option.get
         |> unbox<HTMLButtonElement>
 
     div.getAttribute "class", div.getAttribute "id", div.getAttribute "title", input.value, button.disabled, button.textContent
@@ -170,7 +205,11 @@ let private changedSlotsOnly () =
                     Disabled = disabled
                 })
 
-    let div = host.querySelector "div" |> unbox<HTMLElement>
+    let div =
+        host.querySelector "div"
+        |> Option.get
+        |> unbox<HTMLElement>
+
     let mutable titleWrites = 0
     let setAttribute = div?setAttribute
 
@@ -182,6 +221,7 @@ let private changedSlotsOnly () =
             setAttribute?call (div, name, value)
 
     (host.querySelector "button"
+     |> Option.get
      |> unbox<HTMLButtonElement>)
         .click()
 
@@ -210,10 +250,28 @@ let private readerFailure () =
 
     equal 0 reported.Count
     graph.Run (fun () -> source.Value <- "bad")
-    equal (Some "a", "bad") ((host.querySelector "div" |> unbox<HTMLElement>).getAttribute "title", host.textContent)
+
+    equal
+        (Some "a", "bad")
+        ((host.querySelector "div"
+          |> Option.get
+          |> unbox<HTMLElement>)
+            .getAttribute
+             "title",
+         host.textContent)
+
     equal [ "reader" ] [ for error in reported -> error.Message ]
     graph.Run (fun () -> source.Value <- "c")
-    equal (Some "c", "c") ((host.querySelector "div" |> unbox<HTMLElement>).getAttribute "title", host.textContent)
+
+    equal
+        (Some "c", "c")
+        ((host.querySelector "div"
+          |> Option.get
+          |> unbox<HTMLElement>)
+            .getAttribute
+             "title",
+         host.textContent)
+
     equal 1 reported.Count
     mounted.Dispose ()
 
@@ -279,10 +337,28 @@ let private throwingReporter () =
     let surfaced = run "bad"
     equal None surfaced
     equal [ "title" ] [ for error in reported -> error.Message ]
-    equal (Some "a", "abad!") ((host.querySelector "div" |> unbox<HTMLElement>).getAttribute "title", host.textContent)
+
+    equal
+        (Some "a", "abad!")
+        ((host.querySelector "div"
+          |> Option.get
+          |> unbox<HTMLElement>)
+            .getAttribute
+             "title",
+         host.textContent)
+
     equal None (run "ok")
     equal 1 reported.Count
-    equal (Some "ok", "okok!") ((host.querySelector "div" |> unbox<HTMLElement>).getAttribute "title", host.textContent)
+
+    equal
+        (Some "ok", "okok!")
+        ((host.querySelector "div"
+          |> Option.get
+          |> unbox<HTMLElement>)
+            .getAttribute
+             "title",
+         host.textContent)
+
     mounted.Dispose ()
 
 let private initialReaderFailure () =
@@ -305,7 +381,16 @@ let private initialReaderFailure () =
 
     equal ("bad", 1) (host.textContent, reported.Count)
     graph.Run (fun () -> source.Value <- "ok")
-    equal (Some "ok", "ok") ((host.querySelector "div" |> unbox<HTMLElement>).getAttribute "title", host.textContent)
+
+    equal
+        (Some "ok", "ok")
+        ((host.querySelector "div"
+          |> Option.get
+          |> unbox<HTMLElement>)
+            .getAttribute
+             "title",
+         host.textContent)
+
     mounted.Dispose ()
 
 let private setterRollback () =
@@ -390,7 +475,7 @@ let private compiledOnce () =
                     Disabled = disabled
                 })
 
-    let compiled = (row :> TemplateDefinition).Compiled
+    let compiled = compiledForm row
 
     let b =
         mount
@@ -404,9 +489,10 @@ let private compiledOnce () =
                     Disabled = disabled
                 })
 
-    equal true (obj.ReferenceEquals (compiled, (row :> TemplateDefinition).Compiled))
+    equal true (obj.ReferenceEquals (compiled, compiledForm row))
 
     (first.querySelector "button"
+     |> Option.get
      |> unbox<HTMLButtonElement>)
         .click()
 
@@ -440,7 +526,15 @@ let private keyedRows () =
     graph.Run (fun () -> rows.Value <- [ 1 ])
     graph.Run (fun () -> source.Value <- "b")
     equal (Some "a") (removed.getAttribute "title")
-    equal (Some "b") ((host.querySelector "div" |> unbox<HTMLElement>).getAttribute "title")
+
+    equal
+        (Some "b")
+        ((host.querySelector "div"
+          |> Option.get
+          |> unbox<HTMLElement>)
+            .getAttribute
+            "title")
+
     mounted.Dispose ()
 
 let private nullText () =
@@ -468,7 +562,7 @@ let private staticTemplate () =
         (host.querySelector "div.fixed").Value.textContent
 
     equal ("static", "static") (shape first, shape second)
-    equal 0 ((fixedView :> TemplateDefinition).Compiled :?> TemplateDom.Compiled).RenderSlots.Length
+    equal 0 (compiledForm fixedView :?> TemplateDom.Compiled).RenderSlots.Length
     a.Dispose ()
     b.Dispose ()
 
@@ -536,11 +630,36 @@ let private sourceSlots () =
     let host = host ()
     let mounted = mount graph host (Component.render sourced ())
     graph.Run (fun () -> source.Value <- "b")
-    equal (Some "b", "bb") ((host.querySelector "div" |> unbox<HTMLElement>).getAttribute "title", host.textContent)
+
+    equal
+        (Some "b", "bb")
+        ((host.querySelector "div"
+          |> Option.get
+          |> unbox<HTMLElement>)
+            .getAttribute
+             "title",
+         host.textContent)
+
     mounted.Dispose ()
 
+#if FABLE_COMPILER
 [<Emit("$0.dispatchEvent(new FocusEvent('focus'))")>]
 let private dispatchFocus (node: HTMLElement) : unit = jsNative
+#else
+let private dispatchFocus (node: HTMLElement) : unit =
+    node.dispatchEvent (
+        EventSpec.create
+            (Conformance.document ())
+            {
+                Type = "focus"
+                Kind = Focus
+                Bubbles = false
+                Cancelable = false
+                Init = []
+            }
+    )
+    |> ignore
+#endif
 
 let private twoIsolatedSlots () =
     use graph = new Graph ()
@@ -584,6 +703,7 @@ let private clicks () =
 
     let button =
         host.querySelector "button"
+        |> Option.get
         |> unbox<HTMLButtonElement>
 
     button.click ()
@@ -613,6 +733,7 @@ let private movedClicks () =
 
     let button =
         first.querySelector "button"
+        |> Option.get
         |> unbox<HTMLButtonElement>
 
     mounted.MoveBefore (second, None)
@@ -637,6 +758,7 @@ let private focusBesideClick () =
 
     let input =
         host.querySelector "input"
+        |> Option.get
         |> unbox<HTMLInputElement>
 
     dispatchFocus input
@@ -664,10 +786,26 @@ let private queuedFallback () =
                 context.Backend)
 
     mounted.Flush ()
-    equal (Some "a") ((host.querySelector "div" |> unbox<HTMLElement>).getAttribute "title")
+
+    equal
+        (Some "a")
+        ((host.querySelector "div"
+          |> Option.get
+          |> unbox<HTMLElement>)
+            .getAttribute
+            "title")
+
     graph.Run (fun () -> source.Value <- "b")
     mounted.Flush ()
-    equal (Some "b") ((host.querySelector "div" |> unbox<HTMLElement>).getAttribute "title")
+
+    equal
+        (Some "b")
+        ((host.querySelector "div"
+          |> Option.get
+          |> unbox<HTMLElement>)
+            .getAttribute
+            "title")
+
     mounted.Dispose ()
 
 let private browserInterpreter () =
@@ -682,7 +820,15 @@ let private browserInterpreter () =
     let dispose =
         Browser.mount graph host ignore None (Program.run (Component.render plain source))
 
-    equal (Some "row-1", "a") ((host.querySelector "div" |> unbox<HTMLElement>).getAttribute "id", host.textContent)
+    equal
+        (Some "row-1", "a")
+        ((host.querySelector "div"
+          |> Option.get
+          |> unbox<HTMLElement>)
+            .getAttribute
+             "id",
+         host.textContent)
+
     graph.Run (fun () -> source.Value <- "b")
     equal "b" host.textContent
     dispose ()
@@ -733,7 +879,7 @@ let private restructuredMarkup () =
 
     let cellFailure = mountFailure (Component.render tableCell ())
     equal (true, true) (cellFailure.Length > 0, cellFailure |> List.exists _.Contains("td"))
-    equal true (isNull (tableCell :> TemplateDefinition).Compiled)
+    equal true (isNull (compiledForm tableCell))
     let paragraphFailure = mountFailure (Component.render paragraph ())
     equal true (paragraphFailure |> List.exists _.Contains("root"))
 
@@ -778,7 +924,12 @@ let private nullAttributes () =
 
     let host = host ()
     let mounted = mount graph host (Component.render nulls ())
-    let div = host.querySelector "div" |> unbox<HTMLElement>
+
+    let div =
+        host.querySelector "div"
+        |> Option.get
+        |> unbox<HTMLElement>
+
     let mutable writes = 0
     let setAttribute = div?setAttribute
 
@@ -830,7 +981,12 @@ let private laterSetterFailure () =
         Mounting.mount graph None reported.AddRange host None (fun context -> Program.run (Component.render failing ()) context.Backend)
 
     graph.Run (fun () -> source.Value <- "bad")
-    let button = host.querySelector "button" |> unbox<HTMLElement>
+
+    let button =
+        host.querySelector "button"
+        |> Option.get
+        |> unbox<HTMLElement>
+
     equal ([ "setter" ], Some "bad", "bad") ([ for error in reported -> error.Message ], button.getAttribute "title", host.textContent)
     graph.Run (fun () -> source.Value <- "c")
     equal ([ "a"; "c" ], "c") (List.ofSeq written, host.textContent)
@@ -923,11 +1079,26 @@ let private holeSlotPaths () =
     let markup, _, _ = skeletonMarkup (leading :> TemplateComponent).Root
     equal "<!--[--><!--]--> " markup
 
+#if FABLE_COMPILER
 [<Emit("$0.innerHTML.replace(/<!--.*?-->/g, '')")>]
 let private withoutComments (node: HTMLElement) : string = jsNative
+#else
+let private withoutComments (node: HTMLElement) : string =
+    System.Text.RegularExpressions.Regex.Replace (node.innerHTML, "<!--.*?-->", "")
+#endif
 
+#if FABLE_COMPILER
 [<Emit("Array.from($0.childNodes).filter(n => n.nodeType === 8 && (n.data === '[' || n.data === ']')).length")>]
 let private regionMarkers (node: Node) : int = jsNative
+#else
+let private regionMarkers (node: Node) : int =
+    Ranvier.View.Foundation.Native.childNodesOf node
+    |> Array.filter (fun n ->
+        n.nodeType = 8.0
+        && (Ranvier.View.Foundation.Native.dataOf n = "["
+            || Ranvier.View.Foundation.Native.dataOf n = "]"))
+    |> Array.length
+#endif
 
 let private rootHole =
     Component.define (fun _ (body: Program.View) -> body) (fun t -> t.fragment [| t.view id |])
@@ -947,7 +1118,11 @@ let private viewHole () =
     let mounted =
         mount graph host (Component.render holed { Caption = "A"; Body = body })
 
-    let div = host.querySelector "div" |> unbox<HTMLElement>
+    let div =
+        host.querySelector "div"
+        |> Option.get
+        |> unbox<HTMLElement>
+
     equal ("<div class=\"card\">A<em>x</em></div>", 2) (withoutComments host, regionMarkers div)
     graph.Run (fun () -> label.Value <- "y")
     equal "Ay" host.textContent
@@ -990,7 +1165,11 @@ let private emptyHole () =
                     Body = Program.fragment [||]
                 })
 
-    let div = host.querySelector "div" |> unbox<HTMLElement>
+    let div =
+        host.querySelector "div"
+        |> Option.get
+        |> unbox<HTMLElement>
+
     equal ("<div class=\"card\">E</div>", 2) (withoutComments host, regionMarkers div)
     mounted.Dispose ()
     equal 0. host.childNodes.length
@@ -1050,6 +1229,7 @@ let private rootHoleClicks () =
 
     let button =
         first.querySelector "button"
+        |> Option.get
         |> unbox<HTMLButtonElement>
 
     button.click ()
@@ -1282,11 +1462,18 @@ let private sharedArm () =
     let phase = graph.Run (fun () -> Api.createSignal (Loading 1))
     let host = host ()
     let mounted = mount graph host (Component.render phased phase)
-    let span = host.querySelector "span" |> unbox<HTMLElement>
+
+    let span =
+        host.querySelector "span"
+        |> Option.get
+        |> unbox<HTMLElement>
+
     equal ("working 1", [ "setup working" ]) (host.textContent, List.ofSeq stageLog)
     graph.Run (fun () -> phase.Value <- Saving 2)
 
-    equal ("working 2", [ "setup working" ], true) (host.textContent, List.ofSeq stageLog, obj.ReferenceEquals (span, host.querySelector "span"))
+    equal
+        ("working 2", [ "setup working" ], true)
+        (host.textContent, List.ofSeq stageLog, obj.ReferenceEquals (span, host.querySelector "span" |> Option.get))
 
     graph.Run (fun () -> phase.Value <- Loading 3)
     equal ("working 3", [ "setup working" ]) (host.textContent, List.ofSeq stageLog)
@@ -1516,7 +1703,11 @@ let private armSetupFailure () =
     let mounted =
         Mounting.mount graph None reported.AddRange host None (fun context -> Program.run (Component.render failingStaged stage) context.Backend)
 
-    let div = host.querySelector "div" |> unbox<HTMLElement>
+    let div =
+        host.querySelector "div"
+        |> Option.get
+        |> unbox<HTMLElement>
+
     graph.Run (fun () -> stage.Value <- Complete "x")
 
     equal
@@ -1576,7 +1767,11 @@ let private armPlacementFailure () =
         Component.define
             (fun setup (_: unit -> unit) ->
                 setup.OnCleanup (fun () ->
-                    let div = host.querySelector "div" |> unbox<HTMLElement>
+                    let div =
+                        host.querySelector "div"
+                        |> Option.get
+                        |> unbox<HTMLElement>
+
                     div.removeChild div.firstChild.Value |> ignore))
             (fun t -> t.span [||] [| t.text "detaching" |])
 
@@ -1663,7 +1858,12 @@ let private eachRows () =
 
     let host = host ()
     let mounted = mount graph host (Component.render listed items)
-    let first = host.querySelector "li" |> unbox<HTMLElement>
+
+    let first =
+        host.querySelector "li"
+        |> Option.get
+        |> unbox<HTMLElement>
+
     equal "ab" host.textContent
     graph.Run (fun () -> items.Value <- [| { Id = 2; Text = "B" }; { Id = 1; Text = "a" } |])
     equal ("Ba", true) (host.textContent, obj.ReferenceEquals (first, host.querySelectorAll("li").item 1.))
@@ -1726,17 +1926,43 @@ let private eachDuplicates () =
     equal ("b", 1) (second.textContent, reported.Count)
     mounted.Dispose ()
 
+#if FABLE_COMPILER
 [<Emit("(() => { let count = 0; const old = $0.insertBefore; $0.insertBefore = function(n, b) { count++; return old.call(this, n, b); }; return () => { $0.insertBefore = old; return count; }; })()")>]
 let private countInserts (node: Node) : unit -> int = jsNative
+#else
+let private countInserts (node: Node) : unit -> int =
+    raise (System.NotSupportedException "jsdom only: patches insertBefore")
+#endif
 
+#if FABLE_COMPILER
 [<Emit("Array.from($0.childNodes).filter(n => n.nodeType === 8 && n.data === 'ranvier:row')")>]
 let private rowMarkers (node: Node) : obj array = jsNative
+#else
+let private rowMarkers (node: Node) : obj array =
+    Ranvier.View.Foundation.Native.childNodesOf node
+    |> Array.filter (fun n ->
+        n.nodeType = 8.0
+        && Ranvier.View.Foundation.Native.dataOf n = "ranvier:row")
+    |> Array.map box
+#endif
 
+#if FABLE_COMPILER
 [<Emit("document.activeElement === $0")>]
 let private isFocused (node: obj) : bool = jsNative
+#else
+let private isFocused (node: obj) : bool =
+    match (Conformance.document ()).activeElement with
+    | Some active -> obj.ReferenceEquals (active, node)
+    | None -> false
+#endif
 
+#if FABLE_COMPILER
 [<Emit("$0.selectionStart + ',' + $0.selectionEnd")>]
 let private selectionOf (node: obj) : string = jsNative
+#else
+let private selectionOf (node: obj) : string =
+    raise (System.NotSupportedException "jsdom only: reads text selection")
+#endif
 
 let private reported graph host view =
     let reports = ResizeArray<exn list>()
@@ -1755,7 +1981,12 @@ let private eachSwapMovesTwo () =
 
     let host = host ()
     let mounted = mount graph host (Component.render listed items)
-    let list = host.querySelector "ul" |> unbox<HTMLElement>
+
+    let list =
+        host.querySelector "ul"
+        |> Option.get
+        |> unbox<HTMLElement>
+
     let next = Array.copy items.Value
     let first = next[1]
     next[1] <- next[998]
@@ -1854,11 +2085,21 @@ let private swapShapes () =
         equal (rowMoves keyed / 2) (swapEnds keyed 2 0 1)
         equal true (swapEnds keyed 3 0 2 <= rowMoves keyed)
 
+#if FABLE_COMPILER
 [<Emit("(() => { const w = document.defaultView; if (!w.customElements.get('x-probe')) w.customElements.define('x-probe', class extends w.HTMLElement { disconnectedCallback() { const hook = w.probeHook; w.probeHook = null; if (hook) hook(); } }); })()")>]
 let private defineProbe () : unit = jsNative
+#else
+let private defineProbe () : unit =
+    raise (System.NotSupportedException "jsdom only: defines a custom element")
+#endif
 
+#if FABLE_COMPILER
 [<Emit("document.defaultView.probeHook = $0")>]
 let private setProbeHook (hook: unit -> unit) : unit = jsNative
+#else
+let private setProbeHook (hook: unit -> unit) : unit =
+    raise (System.NotSupportedException "jsdom only: defines a custom element")
+#endif
 
 let private probeRow =
     Component.define (fun _ (item: unit -> Listed) -> item) (fun t -> t.element (HtmlTag "li") [||] [| t.element (HtmlTag "x-probe") [||] [||] |])
@@ -1873,11 +2114,16 @@ let private swapStopsWhenDisposed () =
     let items = graph.Run (fun () -> Api.createSignal (listedItems 6))
     let host = host ()
 
-    globalThis.document.body.appendChild host
+    (Conformance.document ()).body.appendChild host
     |> ignore
 
     let mounted = mount graph host (Component.render probeList items)
-    let list = host.querySelector "ul" |> unbox<HTMLElement>
+
+    let list =
+        host.querySelector "ul"
+        |> Option.get
+        |> unbox<HTMLElement>
+
     let inserts = countInserts list
     let next = Array.copy items.Value
     let held = next[1]
@@ -2084,7 +2330,7 @@ let private foreignNearWindow (keyed: bool) (position: int) (removed: int) (each
         else
             (before[position - 1] :?> Node).nextSibling.Value
 
-    let foreign = globalThis.document.createElement "li"
+    let foreign = (Conformance.document ()).createElement "li"
 
     anchor.parentNode.Value.insertBefore (foreign, anchor)
     |> ignore
@@ -2139,7 +2385,7 @@ let private foreignNearSwap (keyed: bool) (position: int) =
     let mounted, reports = reported graph host (listedView keyed items)
     let before = rowNodes host
     let anchor = before[position] :?> Node
-    let foreign = globalThis.document.createElement "li"
+    let foreign = (Conformance.document ()).createElement "li"
 
     anchor.parentNode.Value.insertBefore (foreign, anchor)
     |> ignore
@@ -2450,9 +2696,9 @@ let private recreatedEqualKeyUpdate (keyed: bool) =
 
     let host = host ()
     let mounted = mount graph host (recreatedView keyed items)
-    let first = host.querySelector "li"
+    let first = host.querySelector "li" |> Option.get
     graph.Run (fun () -> items.Value <- [| { Id = 1; Text = "A" }; { Id = 2; Text = "b" } |])
-    equal ("Ab", true) (host.textContent, obj.ReferenceEquals (first, host.querySelector "li"))
+    equal ("Ab", true) (host.textContent, obj.ReferenceEquals (first, host.querySelector "li" |> Option.get))
     mounted.Dispose ()
 
 let private stableEqualKeyUpdate (keyed: bool) =
@@ -2524,7 +2770,12 @@ let private zeroNodeRows () =
 
     let host = host ()
     let mounted = mount graph host (Component.render emptyListed items)
-    let list = host.querySelector "ul" |> unbox<HTMLElement>
+
+    let list =
+        host.querySelector "ul"
+        |> Option.get
+        |> unbox<HTMLElement>
+
     let markers = rowMarkers list
     equal 3 markers.Length
     graph.Run (fun () -> items.Value <- [| for id in [ 3; 1; 2 ] -> { Id = id; Text = "" } |])
@@ -2605,14 +2856,19 @@ let private clicksFollowMovedRows () =
     let other = host ()
     let host = host ()
 
-    globalThis.document.body.appendChild host
+    (Conformance.document ()).body.appendChild host
     |> ignore
 
-    globalThis.document.body.appendChild other
+    (Conformance.document ()).body.appendChild other
     |> ignore
 
     let mounted = mount graph host (Component.render listed items)
-    let one = host.querySelector "li" |> unbox<HTMLElement>
+
+    let one =
+        host.querySelector "li"
+        |> Option.get
+        |> unbox<HTMLElement>
+
     graph.Run (fun () -> items.Value <- [| for id in [ 3; 1; 2 ] -> { Id = id; Text = string id } |])
     one.click ()
     mounted.MoveBefore (other, None)
@@ -2853,7 +3109,11 @@ let private disposalAfterCleanupFailure placement =
 
     let adopted =
         if placement = "adopted" then
-            let section = host.querySelector "section" |> unbox<HTMLElement>
+            let section =
+                host.querySelector "section"
+                |> Option.get
+                |> unbox<HTMLElement>
+
             other.appendChild section |> ignore
             Some (Mounting.mount graph None ignore other None (fun context -> context.Native (section, Mounting.Owned)))
         else
@@ -2899,7 +3159,11 @@ let private adoptedElementLosesRows () =
                 fun () -> backend.Element (HtmlTag "section", [||], (fun () -> Program.run (Component.render listed items) backend))
             ))
 
-    let section = host.querySelector "section" |> unbox<HTMLElement>
+    let section =
+        host.querySelector "section"
+        |> Option.get
+        |> unbox<HTMLElement>
+
     other.appendChild section |> ignore
 
     let adopted =
@@ -2926,7 +3190,7 @@ let private focusSurvivesOtherMoves () =
 
     let host = host ()
 
-    globalThis.document.body.appendChild host
+    (Conformance.document ()).body.appendChild host
     |> ignore
 
     let mounted = mount graph host (Component.render fields items)
@@ -2944,11 +3208,22 @@ let private focusSurvivesOtherMoves () =
     host.remove ()
     equal (true, "1,3") (focused, selection)
 
+#if FABLE_COMPILER
 [<Emit("(() => { const w = document.defaultView; const protos = [w.Element.prototype, w.CharacterData.prototype]; const olds = protos.map(p => p.remove); let count = 0; protos.forEach((p, i) => { p.remove = function () { count++; return olds[i].call(this); }; }); return () => { protos.forEach((p, i) => { p.remove = olds[i]; }); return count; }; })()")>]
 let private countRemoves () : unit -> int = jsNative
+#else
+let private countRemoves () : unit -> int =
+    raise (System.NotSupportedException "jsdom only: patches Element.prototype.remove")
+#endif
 
+#if FABLE_COMPILER
 [<Emit("Array.from($0.childNodes)")>]
 let private childrenOf (node: Node) : obj array = jsNative
+#else
+let private childrenOf (node: Node) : obj array =
+    Ranvier.View.Foundation.Native.childNodesOf node
+    |> Array.map box
+#endif
 
 let private clearsWithoutRemoves () =
     use graph = new Graph ()
@@ -2956,7 +3231,12 @@ let private clearsWithoutRemoves () =
     let items = graph.Run (fun () -> Api.createSignal (listedItems 1000))
     let host = host ()
     let mounted = mount graph host (Component.render listed items)
-    let list = host.querySelector "ul" |> unbox<HTMLElement>
+
+    let list =
+        host.querySelector "ul"
+        |> Option.get
+        |> unbox<HTMLElement>
+
     let before = childrenOf list
     let removes = countRemoves ()
     graph.Run (fun () -> items.Value <- [||])
@@ -3003,7 +3283,11 @@ let private clearsBetweenSiblings () =
         rooted.Value <- [||])
 
     let removed = removes ()
-    let list = host.querySelector "ul" |> unbox<HTMLElement>
+
+    let list =
+        host.querySelector "ul"
+        |> Option.get
+        |> unbox<HTMLElement>
 
     equal
         (0, 4., "beforeafter", 5., "outside", 0.)
@@ -3032,7 +3316,7 @@ let private clearDeletesForeignNode (between: bool) () =
 
     let mounted, reports = reported graph host view
     let row = (rowNodes host)[4] :?> Node
-    let foreign = globalThis.document.createElement "li"
+    let foreign = (Conformance.document ()).createElement "li"
     foreign.textContent <- "foreign"
 
     row.parentNode.Value.insertBefore (foreign, row)
@@ -3055,8 +3339,13 @@ let private clearReportsMovedMarker () =
     let items = graph.Run (fun () -> Api.createSignal (listedItems 3))
     let host = host ()
     let mounted, reports = reported graph host (Component.render listed items)
-    let list = host.querySelector "ul" |> unbox<HTMLElement>
-    let elsewhere = globalThis.document.createElement "div"
+
+    let list =
+        host.querySelector "ul"
+        |> Option.get
+        |> unbox<HTMLElement>
+
+    let elsewhere = (Conformance.document ()).createElement "div"
 
     elsewhere.appendChild list.lastChild.Value
     |> ignore
@@ -3155,7 +3444,7 @@ let private cleanupsSeeConnectedRows () =
             let node = rendered.item (float index) |> unbox<HTMLElement>
             nodes[int node.textContent] <- node
 
-    globalThis.document.body.appendChild host
+    (Conformance.document ()).body.appendChild host
     |> ignore
 
     let items = graph.Run (fun () -> Api.createSignal (listedItems 4))
@@ -3172,7 +3461,7 @@ let private cleanupsSeeConnectedRows () =
         (6, true)
         (seen.Count,
          seen
-         |> Seq.forall (fun line -> line.EndsWith ":true"))
+         |> Seq.forall (fun line -> line.EndsWith (":" + string true)))
 
 let private failingClearLeavesNoRows () =
     use graph = new Graph ()
@@ -3194,14 +3483,18 @@ let private failingClearLeavesNoRows () =
         Component.define (fun _ (items: Signal<Listed array>) -> items) (fun t ->
             t.element (HtmlTag "ul") [||] [| t.each (fun (item: Listed) -> item.Id) (fun items -> items.Value) throwing |])
 
-    globalThis.document.body.appendChild host
+    (Conformance.document ()).body.appendChild host
     |> ignore
 
     let items = graph.Run (fun () -> Api.createSignal (listedItems 3))
     let mounted, reports = reported graph host (Component.render list items)
     graph.Run (fun () -> items.Value <- [||])
-    let rows = (globalThis.document.querySelectorAll "li").length
-    let list = host.querySelector "ul" |> unbox<HTMLElement>
+    let rows = ((Conformance.document ()).querySelectorAll "li").length
+
+    let list =
+        host.querySelector "ul"
+        |> Option.get
+        |> unbox<HTMLElement>
 
     equal
         (0., 2., [ [ "row cleanup" ] ])
@@ -3237,7 +3530,12 @@ let private failedInsertionLeavesStagingEmpty () =
     let removes = countRemoves ()
     graph.Run (fun () -> items.Value <- [||])
     let removed = removes ()
-    let ul = host.querySelector "ul" |> unbox<HTMLElement>
+
+    let ul =
+        host.querySelector "ul"
+        |> Option.get
+        |> unbox<HTMLElement>
+
     let inserts = countInserts ul
     graph.Run (fun () -> items.Value <- [| { Id = 4; Text = "4," }; { Id = 5; Text = "5," } |])
     equal (0, 1, "4,5,", 1) (removed, inserts (), host.textContent, reports.Count)
@@ -3268,13 +3566,17 @@ let private failedCreateLeavesRegionEmpty (attached: bool) () =
     let host = host ()
 
     if attached then
-        globalThis.document.body.appendChild host
+        (Conformance.document ()).body.appendChild host
         |> ignore
 
     let mounted, reports =
         reported graph host (Component.render failingAtThreeList items)
 
-    let ul = host.querySelector "ul" |> unbox<HTMLElement>
+    let ul =
+        host.querySelector "ul"
+        |> Option.get
+        |> unbox<HTMLElement>
+
     let markers = ul.childNodes.length
     graph.Run (fun () -> items.Value <- listedItems 5)
     let failed = ((host.querySelectorAll "li").length, ul.childNodes.length)
@@ -3336,7 +3638,12 @@ let private retiredRowLeavesWhole () =
 
     let host = host ()
     let mounted = mount graph host (Component.render grouped items)
-    let first = host.querySelector "li" |> unbox<HTMLElement>
+
+    let first =
+        host.querySelector "li"
+        |> Option.get
+        |> unbox<HTMLElement>
+
     let removes = countRemoves ()
     graph.Run (fun () -> items.Value <- items.Value[1..])
     let removed = removes ()
@@ -3397,7 +3704,12 @@ let private disposalLeavesDetachedHeldRows () =
 
     let mounted, reports = reported graph host (Component.render groups items)
     handle <- mounted
-    let list = host.querySelector "ul" |> unbox<HTMLElement>
+
+    let list =
+        host.querySelector "ul"
+        |> Option.get
+        |> unbox<HTMLElement>
+
     graph.Run (fun () -> items.Value <- [| { items.Value[0] with Members = [||] } |])
 
     equal
@@ -3434,7 +3746,12 @@ let private nestedClearKeepsOrder () =
     let items = graph.Run (fun () -> Api.createSignal groups)
     let host = host ()
     let mounted = mount graph host (Component.render loggedGrouped items)
-    let list = host.querySelector "ul" |> unbox<HTMLElement>
+
+    let list =
+        host.querySelector "ul"
+        |> Option.get
+        |> unbox<HTMLElement>
+
     let before = childrenOf list
     listedLog.Clear ()
     graph.Run (fun () -> items.Value <- [||])
@@ -3465,11 +3782,12 @@ let private nestedClearKeepsOrder () =
     equal "1:" host.textContent
     mounted.Dispose ()
 
-let browserCases: (string * (unit -> unit)) array =
-    [|
-        "focus and selection inside a row survive moving another row", focusSurvivesOtherMoves
-        "clearing a list between foreign siblings removes only the list's nodes", clearsBetweenSiblings
-    |]
+let browserCases: Conformance.Case array =
+    Conformance.ofChecks
+        [|
+            "focus and selection inside a row survive moving another row", focusSurvivesOtherMoves
+            "clearing a list between foreign siblings removes only the list's nodes", clearsBetweenSiblings
+        |]
 
 let private eachEmpty () =
     use graph = new Graph ()
@@ -3479,7 +3797,12 @@ let private eachEmpty () =
     let first, second = host (), host ()
     let a = mount graph first (Component.render listed nested)
     let b = mount graph second (Component.render rootListed rooted)
-    let list = first.querySelector "ul" |> unbox<HTMLElement>
+
+    let list =
+        first.querySelector "ul"
+        |> Option.get
+        |> unbox<HTMLElement>
+
     equal (2., 2, "") (list.childNodes.length, regionMarkers second, second.textContent)
 
     graph.Run (fun () ->
@@ -3487,7 +3810,12 @@ let private eachEmpty () =
         rooted.Value <- [| { Id = 2; Text = "b" } |])
 
     equal ("a", "b") (first.textContent, second.textContent)
-    (second.querySelector "li" |> unbox<HTMLElement>).click()
+
+    (second.querySelector "li"
+     |> Option.get
+     |> unbox<HTMLElement>)
+        .click()
+
     equal true (listedLog.Contains "click 2")
 
     graph.Run (fun () ->
@@ -3520,10 +3848,15 @@ let private eachTwin () =
     matches "<ul><li>a</li><li>b</li></ul>"
     graph.Run (fun () -> items.Value <- [| { Id = 2; Text = "b" }; { Id = 1; Text = "a" } |])
     matches "<ul><li>b</li><li>a</li></ul>"
-    let retained = first.querySelector "li" |> unbox<HTMLElement>
+
+    let retained =
+        first.querySelector "li"
+        |> Option.get
+        |> unbox<HTMLElement>
+
     graph.Run (fun () -> items.Value <- [| { Id = 2; Text = "B" }; { Id = 1; Text = "a" } |])
     matches "<ul><li>B</li><li>a</li></ul>"
-    equal true (obj.ReferenceEquals (retained, first.querySelector "li"))
+    equal true (obj.ReferenceEquals (retained, first.querySelector "li" |> Option.get))
     templateMount.Dispose ()
     twinMount.Dispose ()
     equal (0., 0.) (first.childNodes.length, second.childNodes.length)
@@ -3726,7 +4059,16 @@ let private nestedRegions () =
 
     graph.Run (fun () -> items.Value <- [| { JobId = 2; Stage = Working 2 }; { JobId = 1; Stage = Complete "ok" } |])
 
-    equal ("working 2complete ok", true) (host.textContent, obj.ReferenceEquals (second, host.querySelector "li" |> unbox<HTMLElement>))
+    equal
+        ("working 2complete ok", true)
+        (host.textContent,
+         obj.ReferenceEquals (
+             second,
+             host.querySelector "li"
+             |> Option.get
+             |> unbox<HTMLElement>
+         ))
+
     graph.Run (fun () -> items.Value <- [| { JobId = 1; Stage = Complete "ok" } |])
     equal "complete ok" host.textContent
     mounted.Dispose ()
@@ -3871,10 +4213,11 @@ let private inlinedChild () =
     equal ("h2", 1, 2) (host.textContent, props.CardReads.Value, props.BadgeCounter.Value)
     graph.Run (fun () -> props.Heading.Value <- "H")
     equal ("H2", 2, 2) (host.textContent, props.CardReads.Value, props.BadgeCounter.Value)
-    equal true (isNull (badge :> TemplateDefinition).Compiled)
-    equal 1 ((card :> TemplateDefinition).Compiled :?> TemplateDom.Compiled).Children.Length
+    equal true (isNull (compiledForm badge))
+    equal 1 (compiledForm card :?> TemplateDom.Compiled).Children.Length
 
     (host.querySelector "button"
+     |> Option.get
      |> unbox<HTMLButtonElement>)
         .click()
 
@@ -3893,11 +4236,12 @@ let private inlinedGrandchild () =
     graph.Run (fun () -> props.Tally.Value <- 5)
 
     (host.querySelector "button"
+     |> Option.get
      |> unbox<HTMLButtonElement>)
         .click()
 
     equal ("h5", [ "badge 5"; "card" ]) (host.textContent, List.ofSeq props.CardLog)
-    equal 2 ((framed :> TemplateDefinition).Compiled :?> TemplateDom.Compiled).Children.Length
+    equal 2 (compiledForm framed :?> TemplateDom.Compiled).Children.Length
     mounted.Dispose ()
     equal 0. host.childNodes.length
 
@@ -3923,7 +4267,16 @@ let private inlinedRegion () =
     let mounted = mount graph host (Component.render shelfSection items)
     equal "shelf:a" host.textContent
     graph.Run (fun () -> items.Value <- [| { Id = 2; Text = "b" }; { Id = 1; Text = "a" } |])
-    equal ("shelf:ba", 2) (host.textContent, regionMarkers (host.querySelector "ul" |> unbox<HTMLElement>))
+
+    equal
+        ("shelf:ba", 2)
+        (host.textContent,
+         regionMarkers (
+             host.querySelector "ul"
+             |> Option.get
+             |> unbox<HTMLElement>
+         ))
+
     mounted.Dispose ()
     equal 0. host.childNodes.length
 
@@ -3939,7 +4292,12 @@ let private inlinedText () =
     let host = host ()
     let mounted = mount graph host (Component.render besideText value)
     graph.Run (fun () -> value.Value <- "c")
-    let span = host.querySelector "span" |> unbox<HTMLElement>
+
+    let span =
+        host.querySelector "span"
+        |> Option.get
+        |> unbox<HTMLElement>
+
     equal ("ac", 3.) (span.textContent, span.childNodes.length)
     mounted.Dispose ()
 
@@ -4084,12 +4442,20 @@ let private inlinedRootRegion (wrapped: bool) =
 
     let markers (host: HTMLElement) =
         if wrapped then
-            regionMarkers (host.querySelector "div" |> unbox<HTMLElement>)
+            regionMarkers (
+                host.querySelector "div"
+                |> Option.get
+                |> unbox<HTMLElement>
+            )
         else
             regionMarkers host
 
     equal ("<Lab>", 2) (first.textContent, markers first)
-    let retained = first.querySelector "li" |> unbox<HTMLElement>
+
+    let retained =
+        first.querySelector "li"
+        |> Option.get
+        |> unbox<HTMLElement>
 
     graph.Run (fun () ->
         ledger.LedgerLabel.Value <- "M"
@@ -4118,160 +4484,201 @@ let private inlinedRootRegion (wrapped: bool) =
         (List.sort (List.ofSeq listedLog))
 
 /// <summary>Checks template compilation and DOM materialisation.</summary>
-let cases =
-    [|
-        "walk programs reach dynamic nodes in document order", walkPrograms
-        "a compiled skeleton round-trips and records every dynamic node", compiledSkeleton
-        "a template renders the same DOM as its createComponent twin", twinEquality
-        "slot writes happen only for changed values", changedSlotsOnly
-        "a throwing reader fails only its slot", readerFailure
-        "a slot failing on first render is reported without failing the mount", initialReaderFailure
-        "a throwing reporter leaves no failure for the next successful run", throwingReporter
-        "a recurring slot failure object is reported again after the slot recovers", recoveredFailureRecurs
-        "a throwing setter rolls back the mount", setterRollback
-        "template cleanups run in use order without an instance owner", cleanupOrder
-        "adjacent text slots keep separate nodes", adjacentTexts
-        "a definition mounted twice keeps instances independent", compiledOnce
-        "a template inside a removed keyed row stops updating", keyedRows
-        "a null text value renders empty", nullText
-        "a static template mounts without effects", staticTemplate
-        "an isolated slot re-runs only on its own source", isolatedSlots
-        "two isolated slots each compare against their own previous value", twoIsolatedSlots
-        "source slots follow their signal and memo", sourceSlots
-        "template click handlers receive the instance and stop after disposal", clicks
-        "template handlers dispatch after a move", movedClicks
-        "focus uses a direct listener beside a delegated click", focusBesideClick
-        "queued mounts render templates through expansion", queuedFallback
-        "the Browser interpreter renders templates through expansion", browserInterpreter
-        "prepared skeletons reject templates", preparedRejects
-        "server markup under Fable matches the portable expectation", serverMarkup
-        "markup restructured by the HTML parser fails compilation", restructuredMarkup
-        "a pending or failed text slot renders empty", unsetText
-        "null attribute values remove the attribute", nullAttributes
-        "a later setter failure is reported and keeps the other slots", laterSetterFailure
-        "a template whose single root is a text slot mounts, updates and disposes", textRoot
-        "a single root reached through a fragment mounts, updates and disposes", fragmentRoot
-        "a multi-root template moves together and disposes empty", movedRoots
-        "walk programs begin with a collect for the empty path", walkProgramEmptyPath
-        "a single-root definition compiles to an element skeleton", singleRootCompiled
-        "view hole server markup under Fable matches .NET", holeMarkup
-        "a slot after a view hole is indexed past both markers without a separator", holeSlotPaths
-        "a view hole mounts its view between region markers and disposes it", viewHole
-        "a view hole renders the same DOM as its default expansion", holeTwin
-        "an empty view hole keeps its markers", emptyHole
-        "a view hole reads its view once per instance", viewReadOnce
-        "a failing view hole rolls back the mount", failingHole
-        "a root-level view hole dispatches clicks before and after a move", rootHoleClicks
-        "queued mounts and the Browser interpreter render view holes through expansion", holeFallbacks
-        "matchWith switches arms by case and updates payloads in place", matchSwitching
-        "a match changed twice in one flush settles on its final case", matchSameFlush
-        "matchWith renders the same DOM as its default expansion across a switch and a payload change", matchTwin
-        "disposing the mount during an arm's setup ends the switch cleanly", disposedMidSwitch
-        "matchWith server markup under Fable matches .NET", matchMarkup
-        "two cases selecting the same matchWith definition keep the arm and update its payload", sharedArm
-        "branch remounts on a key change and keeps the arm for an equal key", branchSwitching
-        "branch renders the same DOM as its default expansion across a key change", branchTwin
-        "branch server markup under Fable matches .NET", branchMarkup
-        "branch server markup rendered outside graph.Run under Fable matches .NET", branchMarkupAsCaller
-        "branch remounts when its arms select another definition for an equal key", branchDefinitionChange
-        "a switched arm sets up after the previous arm restores its saved state", armSaveRestore
-        "a switched arm whose setup throws leaves the region empty and a later switch mounts", armSetupFailure
-        "a previous arm whose cleanup throws is reported and the switched arm mounts", armCleanupFailure
-        "a switched arm whose placement fails is disposed and reported once", armPlacementFailure
-        "each renders template rows, retains them by key and dispatches their clicks", eachRows
-        "each sets up a replacing row before the replaced row's cleanup", eachReplacement
-        "duplicate each keys fail the mount, are reported on update and keep the rows", eachDuplicates
-        "a two-row swap of 1,000 rows moves two rows", eachSwapMovesTwo
-        "swapping the ends of a changed window moves two rows and keeps node identity", swapShapes
-        "an each end swap stops placing rows once the mount is disposed", swapStopsWhenDisposed
+let cases: Conformance.Case array =
+    Conformance.ofChecks
+        [|
+            "walk programs reach dynamic nodes in document order", walkPrograms
+            "a compiled skeleton round-trips and records every dynamic node", compiledSkeleton
+            "a template renders the same DOM as its createComponent twin", twinEquality
+            Conformance.platformOnly
+                "jsdom"
+                "patches setAttribute on an element instance"
+                ("slot writes happen only for changed values", changedSlotsOnly)
+            "a throwing reader fails only its slot", readerFailure
+            "a slot failing on first render is reported without failing the mount", initialReaderFailure
+            "a throwing reporter leaves no failure for the next successful run", throwingReporter
+            "a recurring slot failure object is reported again after the slot recovers", recoveredFailureRecurs
+            "a throwing setter rolls back the mount", setterRollback
+            "template cleanups run in use order without an instance owner", cleanupOrder
+            "adjacent text slots keep separate nodes", adjacentTexts
+            "a definition mounted twice keeps instances independent", compiledOnce
+            "a template inside a removed keyed row stops updating", keyedRows
+            "a null text value renders empty", nullText
+            "a static template mounts without effects", staticTemplate
+            "an isolated slot re-runs only on its own source", isolatedSlots
+            "two isolated slots each compare against their own previous value", twoIsolatedSlots
+            "source slots follow their signal and memo", sourceSlots
+            "template click handlers receive the instance and stop after disposal", clicks
+            "template handlers dispatch after a move", movedClicks
+            "focus uses a direct listener beside a delegated click", focusBesideClick
+            "queued mounts render templates through expansion", queuedFallback
+            "the Browser interpreter renders templates through expansion", browserInterpreter
+            "prepared skeletons reject templates", preparedRejects
+            "server markup under Fable matches the portable expectation", serverMarkup
+            Conformance.platformOnly
+                "jsdom"
+                "the twin parser rejects a table without tbody, before template compilation"
+                ("markup restructured by the HTML parser fails compilation", restructuredMarkup)
+            "a pending or failed text slot renders empty", unsetText
+            Conformance.platformOnly
+                "jsdom"
+                "patches setAttribute on an element instance"
+                ("null attribute values remove the attribute", nullAttributes)
+            "a later setter failure is reported and keeps the other slots", laterSetterFailure
+            "a template whose single root is a text slot mounts, updates and disposes", textRoot
+            "a single root reached through a fragment mounts, updates and disposes", fragmentRoot
+            "a multi-root template moves together and disposes empty", movedRoots
+            "walk programs begin with a collect for the empty path", walkProgramEmptyPath
+            "a single-root definition compiles to an element skeleton", singleRootCompiled
+            "view hole server markup under Fable matches .NET", holeMarkup
+            "a slot after a view hole is indexed past both markers without a separator", holeSlotPaths
+            "a view hole mounts its view between region markers and disposes it", viewHole
+            "a view hole renders the same DOM as its default expansion", holeTwin
+            "an empty view hole keeps its markers", emptyHole
+            "a view hole reads its view once per instance", viewReadOnce
+            "a failing view hole rolls back the mount", failingHole
+            "a root-level view hole dispatches clicks before and after a move", rootHoleClicks
+            "queued mounts and the Browser interpreter render view holes through expansion", holeFallbacks
+            "matchWith switches arms by case and updates payloads in place", matchSwitching
+            "a match changed twice in one flush settles on its final case", matchSameFlush
+            "matchWith renders the same DOM as its default expansion across a switch and a payload change", matchTwin
+            "disposing the mount during an arm's setup ends the switch cleanly", disposedMidSwitch
+            "matchWith server markup under Fable matches .NET", matchMarkup
+            "two cases selecting the same matchWith definition keep the arm and update its payload", sharedArm
+            "branch remounts on a key change and keeps the arm for an equal key", branchSwitching
+            "branch renders the same DOM as its default expansion across a key change", branchTwin
+            "branch server markup under Fable matches .NET", branchMarkup
+            "branch server markup rendered outside graph.Run under Fable matches .NET", branchMarkupAsCaller
+            "branch remounts when its arms select another definition for an equal key", branchDefinitionChange
+            "a switched arm sets up after the previous arm restores its saved state", armSaveRestore
+            "a switched arm whose setup throws leaves the region empty and a later switch mounts", armSetupFailure
+            "a previous arm whose cleanup throws is reported and the switched arm mounts", armCleanupFailure
+            "a switched arm whose placement fails is disposed and reported once", armPlacementFailure
+            "each renders template rows, retains them by key and dispatches their clicks", eachRows
+            "each sets up a replacing row before the replaced row's cleanup", eachReplacement
+            "duplicate each keys fail the mount, are reported on update and keep the rows", eachDuplicates
+            Conformance.platformOnly
+                "jsdom"
+                "patches insertBefore or remove on the DOM prototypes"
+                ("a two-row swap of 1,000 rows moves two rows", eachSwapMovesTwo)
+            Conformance.platformOnly
+                "jsdom"
+                "patches insertBefore or remove on the DOM prototypes"
+                ("swapping the ends of a changed window moves two rows and keeps node identity", swapShapes)
+            Conformance.platformOnly
+                "jsdom"
+                "defines a custom element"
+                ("an each end swap stops placing rows once the mount is disposed", swapStopsWhenDisposed)
 #if RANVIER_VIEW_COUNTERS
-        "a keyed end swap computes no longest run and a rotation computes one", swapSkipsRun
+            "a keyed end swap computes no longest run and a rotation computes one", swapSkipsRun
 #endif
-        "removing a kept item from each sets up no row and keys no item", eachStableRemove
-        "removing a kept item from Keyed.array sets up no row and keys no item", keyedStableRemove
+            "removing a kept item from each sets up no row and keys no item", eachStableRemove
+            "removing a kept item from Keyed.array sets up no row and keys no item", keyedStableRemove
 #if RANVIER_VIEW_COUNTERS
-        "removing one of 200 each rows validates at most 4 rows and looks up at most 1", eachWindowedRemove
-        "removing one of 200 Keyed.array rows validates at most 4 rows and looks up at most 1", keyedWindowedRemove
-        "swapping two of 1,000 each rows validates at most 6 rows and looks up at most 2", eachWindowedSwap
-        "swapping two of 1,000 Keyed.array rows looks up at most 2", keyedWindowedSwap
+            "removing one of 200 each rows validates at most 4 rows and looks up at most 1", eachWindowedRemove
+            "removing one of 200 Keyed.array rows validates at most 4 rows and looks up at most 1", keyedWindowedRemove
+            "swapping two of 1,000 each rows validates at most 6 rows and looks up at most 2", eachWindowedSwap
+            "swapping two of 1,000 Keyed.array rows looks up at most 2", keyedWindowedSwap
 #endif
-        "each over an array mutated in place matches a fresh array", eachInPlaceMutation
-        "Keyed.array over an array mutated in place matches a fresh array", keyedInPlaceMutation
-        "each after a duplicate-key pass renders the next valid items and keeps their nodes", eachFailedPassThenValid
-        "Keyed.array after a duplicate-key pass renders the next valid items and keeps their nodes", keyedFailedPassThenValid
-        "a foreign row before the row preceding each's changed window is reported on that pass and the next", eachForeignBeforeNeighbour
-        "a foreign row before the row preceding Keyed.array's changed window is reported on that pass and the next", keyedForeignBeforeNeighbour
-        "a foreign row before each's changed window is reported on that pass and the next", eachForeignBeforeWindow
-        "a foreign row before Keyed.array's changed window is reported on that pass and the next", keyedForeignBeforeWindow
-        "a foreign row after each's changed window is reported on that pass and the next", eachForeignAfterWindow
-        "a foreign row after Keyed.array's changed window is reported on that pass and the next", keyedForeignAfterWindow
-        "a foreign row before each's end marker is reported when the last row is removed and on the next pass", eachForeignBeforeEnd
-        "a foreign row before Keyed.array's end marker is reported when the last row is removed and on the next pass", keyedForeignBeforeEnd
-        "a foreign row before a row each swaps across 98 positions is reported", eachForeignBeforeSwapped
-        "a foreign row before the row preceding a row each swaps across 98 positions is reported", eachForeignBeforeSwappedNeighbour
-        "a foreign row after a row each swaps across 98 positions is reported", eachForeignAfterSwapped
-        "a foreign row after the first row each swaps across 98 positions is reported", eachForeignAfterFirstSwapped
-        "a foreign row before a row Keyed.array swaps across 98 positions is reported", keyedForeignBeforeSwapped
-        "each over a 98-position window with a swap and a replacement keeps the unchanged rows' nodes", eachScatteredWindow
-        "Keyed.array over a 98-position window with a swap and a replacement keeps the unchanged rows' nodes", keyedScatteredWindow
-        "list updates match a reference order and keep node identities", eachMatchesReferenceOrder
-        "each over stable items matches a reference order through mixed edits and keeps node identities", eachStableItemsMatchReferenceOrder
-        "Keyed.array over stable items matches a reference order through mixed edits and keeps node identities", keyedStableItemsMatchReferenceOrder
-        "each over recreated items keeps order and node identities", eachRecreatedRows
-        "Keyed.array over recreated items keeps order and node identities", keyedRecreatedRows
-        "each over recreated items reports a duplicate key and keeps the rows", eachRecreatedDuplicates
-        "Keyed.array over recreated items reports a duplicate key and keeps the rows", keyedRecreatedDuplicates
-        "each over recreated items updates the text of an equal-key row", eachRecreatedEqualKeyUpdate
-        "Keyed.array over recreated items updates the text of an equal-key row", keyedRecreatedEqualKeyUpdate
-        "each over stable items updates the text of an equal-key row and keeps every node", eachStableEqualKeyUpdate
-        "Keyed.array over stable items updates the text of an equal-key row and keeps every node", keyedStableEqualKeyUpdate
-        "zero-node rows keep their place through their marker", zeroNodeRows
-        "disposing a mount runs every row cleanup before a node leaves", fun () -> disposalCleansBeforeRelease false
-        "disposing a mount runs every root-level row cleanup before a node leaves", fun () -> disposalCleansBeforeRelease true
-        "an arm switch and a mount disposal run the arm's cleanups before its nodes leave", armCleansBeforeRelease
-        "delegated clicks reach a moved row and stop after its removal", clicksFollowMovedRows
-        "a throwing row cleanup is reported once with its update after the row leaves", throwingRowCleanup
-        "disposing the mount from a row's setup ends the update silently", disposalFromRowSetup
-        "rows holding nested lists move and leave whole", nestedListsMoveWhole
-        "boxed keys of different types keep separate rows", boxedKeys
-        "a cleanup failure before a row cleanup disposes the mount is reported once", fun () -> disposalAfterCleanupFailure "element"
-        "a row cleanup disposing the mount leaves no row nodes at the mount's top level", fun () -> disposalAfterCleanupFailure "root"
-        "a row cleanup disposing the mount leaves no row nodes in an adopted element", fun () -> disposalAfterCleanupFailure "adopted"
-        "an adopted element holding a list keeps no row nodes after its mount is disposed", adoptedElementLosesRows
-        "clearing 1,000 each rows removes no row node by itself and keeps the region's markers", clearsWithoutRemoves
-        "clearing a list between foreign siblings removes only the list's nodes", clearsBetweenSiblings
-        "clearing Keyed.array rows holding nested lists keeps their cleanup order", keyedClearKeepsOrder
-        "row cleanups see their row connected on remove, clear and mount disposal", cleanupsSeeConnectedRows
-        "a clear whose row cleanup throws reports it and leaves no row nodes", failingClearLeavesNoRows
-        "a clear and an insertion after a failed row setup each take one operation", failedInsertionLeavesStagingEmpty
-        "a row setup failure while filling an empty list leaves only the markers", failedCreateLeavesRegionEmpty false
-        "a row setup failure while filling an empty attached list leaves only the markers", failedCreateLeavesRegionEmpty true
-        "rows created into an empty list keep their order through an insertion and a reversal", createdRowsKeepOrder
-        "a clear after a swap removes the rows in one operation", clearAfterSwapRemovesInOneOperation
-        "a clear deletes a foreign node between the markers and reports nothing", clearDeletesForeignNode false
-        "a clear between siblings deletes a foreign node between the markers and reports nothing", clearDeletesForeignNode true
-        "a clear after the end marker moves to another parent reports the boundaries", clearReportsMovedMarker
-        "a retired row holding a nested list leaves whole in one remove", retiredRowLeavesWhole
-        "a nested row cleanup disposing the mount leaves no nodes and reports nothing", disposalLeavesDetachedHeldRows
-        "clearing template rows holding nested lists keeps their cleanup order and markers", nestedClearKeepsOrder
-        "an empty each region keeps its markers, fills and empties", eachEmpty
-        "each renders the same DOM as its default expansion across insert, remove, reorder and an item change", eachTwin
-        "each rows match their items and keep their nodes across seeded random edits", eachRandomEdits
-        "root-level each regions beside other roots update, reorder, move and dispose", rootRegions
-        "a matchWith inside each rows follows, moves and leaves with its row", nestedRegions
-        "clearing each rows holding matchWith arms removes no arm node by itself", clearsArmRowsWithoutRemoves
-        "removing an each row holding a matchWith arm takes the removes of a plain row", removesArmRowLikePlainRow
-        "each server markup under Fable matches .NET", eachMarkup
-        "an inlined child shares the clone and keeps its own instance, effect and handlers", inlinedChild
-        "a grandchild inlined through a child is hoisted and updates", inlinedGrandchild
-        "an inlined child's region reads the child instance", inlinedRegion
-        "text beside an inlined text root keeps separate nodes", inlinedText
-        "a failing inlined child setup rolls back the mount", inlinedFailure
-        "inlined children render the same DOM as their default expansion across parent and child updates", inlinedTwin
-        "region and child skeletons round-trip", structureRoundTrips
-        "inlined child server markup under Fable matches .NET", inlinedMarkup
-        "an inlined child's root-level region beside text updates, reorders, moves and disposes at a mount's top level",
-        fun () -> inlinedRootRegion false
-        "an inlined child's root-level region beside text updates, reorders, moves and disposes inside an authored element",
-        fun () -> inlinedRootRegion true
-    |]
+            "each over an array mutated in place matches a fresh array", eachInPlaceMutation
+            "Keyed.array over an array mutated in place matches a fresh array", keyedInPlaceMutation
+            "each after a duplicate-key pass renders the next valid items and keeps their nodes", eachFailedPassThenValid
+            "Keyed.array after a duplicate-key pass renders the next valid items and keeps their nodes", keyedFailedPassThenValid
+            "a foreign row before the row preceding each's changed window is reported on that pass and the next", eachForeignBeforeNeighbour
+            "a foreign row before the row preceding Keyed.array's changed window is reported on that pass and the next", keyedForeignBeforeNeighbour
+            "a foreign row before each's changed window is reported on that pass and the next", eachForeignBeforeWindow
+            "a foreign row before Keyed.array's changed window is reported on that pass and the next", keyedForeignBeforeWindow
+            "a foreign row after each's changed window is reported on that pass and the next", eachForeignAfterWindow
+            "a foreign row after Keyed.array's changed window is reported on that pass and the next", keyedForeignAfterWindow
+            "a foreign row before each's end marker is reported when the last row is removed and on the next pass", eachForeignBeforeEnd
+            "a foreign row before Keyed.array's end marker is reported when the last row is removed and on the next pass", keyedForeignBeforeEnd
+            "a foreign row before a row each swaps across 98 positions is reported", eachForeignBeforeSwapped
+            "a foreign row before the row preceding a row each swaps across 98 positions is reported", eachForeignBeforeSwappedNeighbour
+            "a foreign row after a row each swaps across 98 positions is reported", eachForeignAfterSwapped
+            "a foreign row after the first row each swaps across 98 positions is reported", eachForeignAfterFirstSwapped
+            "a foreign row before a row Keyed.array swaps across 98 positions is reported", keyedForeignBeforeSwapped
+            "each over a 98-position window with a swap and a replacement keeps the unchanged rows' nodes", eachScatteredWindow
+            "Keyed.array over a 98-position window with a swap and a replacement keeps the unchanged rows' nodes", keyedScatteredWindow
+            "list updates match a reference order and keep node identities", eachMatchesReferenceOrder
+            "each over stable items matches a reference order through mixed edits and keeps node identities", eachStableItemsMatchReferenceOrder
+            "Keyed.array over stable items matches a reference order through mixed edits and keeps node identities",
+            keyedStableItemsMatchReferenceOrder
+            "each over recreated items keeps order and node identities", eachRecreatedRows
+            "Keyed.array over recreated items keeps order and node identities", keyedRecreatedRows
+            "each over recreated items reports a duplicate key and keeps the rows", eachRecreatedDuplicates
+            "Keyed.array over recreated items reports a duplicate key and keeps the rows", keyedRecreatedDuplicates
+            "each over recreated items updates the text of an equal-key row", eachRecreatedEqualKeyUpdate
+            "Keyed.array over recreated items updates the text of an equal-key row", keyedRecreatedEqualKeyUpdate
+            "each over stable items updates the text of an equal-key row and keeps every node", eachStableEqualKeyUpdate
+            "Keyed.array over stable items updates the text of an equal-key row and keeps every node", keyedStableEqualKeyUpdate
+            "zero-node rows keep their place through their marker", zeroNodeRows
+            "disposing a mount runs every row cleanup before a node leaves", fun () -> disposalCleansBeforeRelease false
+            "disposing a mount runs every root-level row cleanup before a node leaves", fun () -> disposalCleansBeforeRelease true
+            "an arm switch and a mount disposal run the arm's cleanups before its nodes leave", armCleansBeforeRelease
+            "delegated clicks reach a moved row and stop after its removal", clicksFollowMovedRows
+            "a throwing row cleanup is reported once with its update after the row leaves", throwingRowCleanup
+            "disposing the mount from a row's setup ends the update silently", disposalFromRowSetup
+            "rows holding nested lists move and leave whole", nestedListsMoveWhole
+            "boxed keys of different types keep separate rows", boxedKeys
+            "a cleanup failure before a row cleanup disposes the mount is reported once", fun () -> disposalAfterCleanupFailure "element"
+            "a row cleanup disposing the mount leaves no row nodes at the mount's top level", fun () -> disposalAfterCleanupFailure "root"
+            "a row cleanup disposing the mount leaves no row nodes in an adopted element", fun () -> disposalAfterCleanupFailure "adopted"
+            "an adopted element holding a list keeps no row nodes after its mount is disposed", adoptedElementLosesRows
+            Conformance.platformOnly
+                "jsdom"
+                "patches insertBefore or remove on the DOM prototypes"
+                ("clearing 1,000 each rows removes no row node by itself and keeps the region's markers", clearsWithoutRemoves)
+            Conformance.platformOnly
+                "jsdom"
+                "patches insertBefore or remove on the DOM prototypes"
+                ("clearing a list between foreign siblings removes only the list's nodes", clearsBetweenSiblings)
+            "clearing Keyed.array rows holding nested lists keeps their cleanup order", keyedClearKeepsOrder
+            "row cleanups see their row connected on remove, clear and mount disposal", cleanupsSeeConnectedRows
+            "a clear whose row cleanup throws reports it and leaves no row nodes", failingClearLeavesNoRows
+            Conformance.platformOnly
+                "jsdom"
+                "patches insertBefore or remove on the DOM prototypes"
+                ("a clear and an insertion after a failed row setup each take one operation", failedInsertionLeavesStagingEmpty)
+            "a row setup failure while filling an empty list leaves only the markers", failedCreateLeavesRegionEmpty false
+            "a row setup failure while filling an empty attached list leaves only the markers", failedCreateLeavesRegionEmpty true
+            "rows created into an empty list keep their order through an insertion and a reversal", createdRowsKeepOrder
+            Conformance.platformOnly
+                "jsdom"
+                "patches insertBefore or remove on the DOM prototypes"
+                ("a clear after a swap removes the rows in one operation", clearAfterSwapRemovesInOneOperation)
+            "a clear deletes a foreign node between the markers and reports nothing", clearDeletesForeignNode false
+            "a clear between siblings deletes a foreign node between the markers and reports nothing", clearDeletesForeignNode true
+            "a clear after the end marker moves to another parent reports the boundaries", clearReportsMovedMarker
+            Conformance.platformOnly
+                "jsdom"
+                "patches insertBefore or remove on the DOM prototypes"
+                ("a retired row holding a nested list leaves whole in one remove", retiredRowLeavesWhole)
+            "a nested row cleanup disposing the mount leaves no nodes and reports nothing", disposalLeavesDetachedHeldRows
+            "clearing template rows holding nested lists keeps their cleanup order and markers", nestedClearKeepsOrder
+            "an empty each region keeps its markers, fills and empties", eachEmpty
+            "each renders the same DOM as its default expansion across insert, remove, reorder and an item change", eachTwin
+            "each rows match their items and keep their nodes across seeded random edits", eachRandomEdits
+            "root-level each regions beside other roots update, reorder, move and dispose", rootRegions
+            "a matchWith inside each rows follows, moves and leaves with its row", nestedRegions
+            Conformance.platformOnly
+                "jsdom"
+                "patches insertBefore or remove on the DOM prototypes"
+                ("clearing each rows holding matchWith arms removes no arm node by itself", clearsArmRowsWithoutRemoves)
+            Conformance.platformOnly
+                "jsdom"
+                "patches insertBefore or remove on the DOM prototypes"
+                ("removing an each row holding a matchWith arm takes the removes of a plain row", removesArmRowLikePlainRow)
+            "each server markup under Fable matches .NET", eachMarkup
+            "an inlined child shares the clone and keeps its own instance, effect and handlers", inlinedChild
+            "a grandchild inlined through a child is hoisted and updates", inlinedGrandchild
+            "an inlined child's region reads the child instance", inlinedRegion
+            "text beside an inlined text root keeps separate nodes", inlinedText
+            "a failing inlined child setup rolls back the mount", inlinedFailure
+            "inlined children render the same DOM as their default expansion across parent and child updates", inlinedTwin
+            "region and child skeletons round-trip", structureRoundTrips
+            "inlined child server markup under Fable matches .NET", inlinedMarkup
+            "an inlined child's root-level region beside text updates, reorders, moves and disposes at a mount's top level",
+            fun () -> inlinedRootRegion false
+            "an inlined child's root-level region beside text updates, reorders, moves and disposes inside an authored element",
+            fun () -> inlinedRootRegion true
+        |]

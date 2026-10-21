@@ -1646,6 +1646,15 @@ let internal compiledOf (definition: TemplateDefinition) : Compiled =
         let created = compile (definition :?> TemplateComponent)
         compiled[definition] <- created
         created
+
+/// <summary>The definition's compiled form in the host document, or <c>null</c> before its first use there.</summary>
+let internal compiledIn (definition: TemplateDefinition) : obj =
+    match compiledByDocument.TryGetValue (box (Native.document ())) with
+    | true, compiled ->
+        match compiled.TryGetValue definition with
+        | true, existing -> box existing
+        | false, _ -> null
+    | false, _ -> null
 #endif
 
 /// <summary>

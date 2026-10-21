@@ -20,6 +20,14 @@
         <Compile Include="SessionTests.fs" />
         <Compile Include="../../experiments/Ranvier.View.Portable/Checks/ServerFixtures.fs" Link="Checks/ServerFixtures.fs" />
         <Compile Include="OracleTests.fs" />
+        <Compile Include="../../examples/Fable.Ranvier.Playground/tests/RangeChecks.fs" Link="Checks/RangeChecks.fs" />
+        <Compile Include="../../examples/Fable.Ranvier.Playground/tests/DelegationChecks.fs" Link="Checks/DelegationChecks.fs" />
+        <Compile Include="../../experiments/Ranvier.View.Foundation/Browser.fs" Link="Checks/Browser.fs" />
+        <Compile Include="../../examples/Fable.Ranvier.Playground/tests/TemplateChecks.fs" Link="Checks/TemplateChecks.fs" />
+        <Compile Include="../../examples/Fable.Ranvier.Playground/tests/ConformanceCases.fs" Link="Checks/ConformanceCases.fs" />
+        <Compile Include="TwinHarness.fs" />
+        <Compile Include="ConformanceTests.fs" />
+        <Compile Include="MembersTests.fs" />
         <Compile Include="Main.fs" />
     </ItemGroup>
     <ItemGroup>
@@ -31,6 +39,7 @@
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="../../src/Ranvier/Ranvier.fsproj" />
+        <ProjectReference Include="../../src/Fable.Ranvier/Fable.Ranvier.fsproj" />
         <ProjectReference Include="../../experiments/Ranvier.View.Portable/Ranvier.View.Portable.fsproj" />
         <ProjectReference Include="../../experiments/Ranvier.View.Foundation/Ranvier.View.Foundation.fsproj" />
         <ProjectReference Include="../../experiments/Ranvier.View.Twin/Ranvier.View.Twin.fsproj" />
