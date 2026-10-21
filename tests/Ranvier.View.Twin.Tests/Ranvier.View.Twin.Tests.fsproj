@@ -10,17 +10,18 @@
         <Compile Include="NativeTests.fs" />
         <Compile Include="ModuleInitTests.fs" />
         <Compile Include="SeamTests.fs" />
+        <Compile Include="TreeTests.fs" />
         <Compile Include="Main.fs" />
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="Expecto" Version="11.0.0-alpha8" />
         <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.5" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.4.0" />
-        <PackageReference Update="FSharp.Core" Version="10.1.401" />
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="../../src/Ranvier/Ranvier.fsproj" />
         <ProjectReference Include="../../experiments/Ranvier.View.Portable/Ranvier.View.Portable.fsproj" />
         <ProjectReference Include="../../experiments/Ranvier.View.Foundation/Ranvier.View.Foundation.fsproj" />
+        <ProjectReference Include="../../experiments/Ranvier.View.Twin/Ranvier.View.Twin.fsproj" />
     </ItemGroup>
 </Project>
