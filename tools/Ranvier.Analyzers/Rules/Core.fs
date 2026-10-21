@@ -60,16 +60,16 @@ let private ownedInPure (input: Input) : Message list =
                     Index.arguments isTransparent site.Path
                     |> List.tryPick (fun (callee, index, count, lambdas) ->
                         match pureContext callee index count with
-                        | Some pure when pure.Layers = lambdas -> Some (callee, pure)
+                        | Some purity when purity.Layers = lambdas -> Some (callee, purity)
                         | _ -> None)
 
                 match context with
-                | Some (callee, pure) ->
+                | Some (callee, purity) ->
                     let contextName = Symbols.display callee
-                    let where, fix = failure pure.Kind contextName pure.Owning
+                    let where, fix = failure purity.Kind contextName purity.Owning
 
                     let fixes =
-                        match pure.Owning with
+                        match purity.Owning with
                         | Some owner ->
                             // The innermost call of the context's callee around the creator: a memo can nest in a memo.
                             let contextSite =

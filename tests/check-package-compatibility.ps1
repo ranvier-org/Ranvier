@@ -124,6 +124,50 @@ System.Console.WriteLine("Package consumer runs with FSharp.Core 8.0.100");
             $fableEntries += $entryPoints[0].FullName
         }
     }
+    if (-not $CheckFable) {
+        # An F# consumer of Ranvier.Analyzers: RanvierAnalyze reports RAN002 as a build warning through the package's
+        # build/ targets and the fsharp-analyzers tool.
+        Invoke-DotNet pack (Join-Path $repo 'tools/Ranvier.Analyzers/Ranvier.Analyzers.fsproj') -c Release -o $feed
+        $analyzerConsumer = Join-Path $temp 'analyzer-consumer'
+        New-Item -ItemType Directory -Path (Join-Path $analyzerConsumer '.config') | Out-Null
+        Copy-Item (Join-Path $consumer 'NuGet.Config') $analyzerConsumer
+        Copy-Item (Join-Path $repo 'global.json') $analyzerConsumer
+        @'
+{ "version": 1, "isRoot": true, "tools": { "fsharp-analyzers": { "version": "0.41.0", "commands": [ "fsharp-analyzers" ], "rollForward": false } } }
+'@ | Set-Content -LiteralPath (Join-Path $analyzerConsumer '.config/dotnet-tools.json')
+        $analyzerVersion = ([xml](Get-Content -LiteralPath (Join-Path $repo 'tools/Ranvier.Analyzers/Ranvier.Analyzers.fsproj') -Raw)).Project.PropertyGroup.Version | Where-Object { $_ }
+        @"
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RanvierAnalyze>true</RanvierAnalyze>
+    <RestorePackagesPath>$temp/packages</RestorePackagesPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Library.fs" />
+    <PackageReference Include="Fable.Core" Version="5.3.0" />
+    <PackageReference Include="Ranvier.Analyzers" Version="$analyzerVersion" PrivateAssets="all" />
+  </ItemGroup>
+</Project>
+"@ | Set-Content -LiteralPath (Join-Path $analyzerConsumer 'AnalyzerConsumer.fsproj')
+        @'
+module Library
+
+type Policy =
+    | Queue
+    | Drop of int
+
+let queued (policy: Policy) = policy.IsQueue
+'@ | Set-Content -LiteralPath (Join-Path $analyzerConsumer 'Library.fs')
+        Push-Location $analyzerConsumer
+        try {
+            Invoke-DotNet tool restore
+            $build = & dotnet build AnalyzerConsumer.fsproj -c Release 2>&1 | Out-String
+            if ($LASTEXITCODE -ne 0) { throw "The analyzer consumer failed to build:`n$build" }
+            if ($build -notmatch 'warning RAN002') { throw "The analyzer consumer's build reported no RAN002:`n$build" }
+        } finally { Pop-Location }
+        Write-Host 'Analyzer package consumer reports RAN002'
+    }
     if ($CheckFable) {
         & node (Join-Path $repo 'fable/Ranvier.Tests.Fable/Report.mjs') @fableEntries (Join-Path $temp 'fable-compat.md')
         if ($LASTEXITCODE -ne 0) { throw 'Fable package consumer compatibility check failed' }

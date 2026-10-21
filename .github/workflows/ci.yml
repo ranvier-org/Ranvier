@@ -102,8 +102,8 @@ jobs:
         run: ./artifacts/aot/Ranvier.AotSmoke
 
   # The publish command's release pipeline with the push replaced by a listing: builds, packs every source project
-  # untraced and traced, then checks each package's id, version, lib frameworks and trace build. The .NET tests job
-  # runs the suites, so --skip-tests leaves them out here.
+  # untraced and traced and the analyzers, then checks each package's id, version, lib frameworks and trace build, and
+  # the analyzer package's layout. The .NET tests job runs the suites, so --skip-tests leaves them out here.
   packages:
     name: Packages
     needs: changes
@@ -120,7 +120,7 @@ jobs:
       - name: Pack and dry-publish
         run: dotnet fsi build.fsx -- publish --dry-publish --skip-tests
       - name: Check the packages
-        run: node .github/scripts/packages.cjs bin src
+        run: node .github/scripts/packages.cjs bin src tools/Ranvier.Analyzers/Ranvier.Analyzers.fsproj
 
   format:
     name: Formatting

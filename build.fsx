@@ -307,6 +307,22 @@ module Stage =
                 }
         }
 
+    /// Packs the analyzers into the output directory; publish pushes them with the libraries.
+    let packAnalyzers =
+        input {
+            let! config = Options.config
+
+            return
+                stage "pack analyzers" {
+                    quiet
+
+                    run (
+                        cmd
+                            $"dotnet pack tools/Ranvier.Analyzers/Ranvier.Analyzers.fsproj -c {config} -v q -o {Repo.VirtualFileSystem.bin.ToString ()}"
+                    )
+                }
+        }
+
     /// Pushes every package in the output directory to NuGet, with the key masked in every printed form of the step.
     /// `--dry-publish` lists them instead, fails when there are none, and pushes nothing, whatever key is set. Without
     /// a key or `--dry-publish`, the stage is inactive and fails the pipeline.
@@ -998,6 +1014,7 @@ exit
         Stage.fableClean
         Stage.pack
         Stage.packTraced
+        Stage.packAnalyzers
         Stage.publish
     }
 

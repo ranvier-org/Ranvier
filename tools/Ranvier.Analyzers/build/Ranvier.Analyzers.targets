@@ -1,0 +1,8 @@
+<Project>
+    <!-- RanvierAnalyze=true runs the analyzers after each compile; `dotnet msbuild -t:AnalyzeFSharpProject` runs them on
+         demand. -->
+    <PropertyGroup>
+        <FSharpAnalyzersOtherFlags>$(FSharpAnalyzersOtherFlags) --analyzers-path &quot;$(MSBuildThisFileDirectory)../analyzers/dotnet/fs&quot;</FSharpAnalyzersOtherFlags>
+        <RunAnalyzersDuringBuild Condition="'$(RanvierAnalyze)' == 'true'">true</RunAnalyzersDuringBuild>
+    </PropertyGroup>
+</Project>

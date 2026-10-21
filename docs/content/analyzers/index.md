@@ -4,7 +4,16 @@ order: 1
 ---
 
 :::info
-Preview: the analyzers run in this repository and ship in `Ranvier.Analyzers` after phase 1.
+Preview: `Ranvier.Analyzers` is packed with the next release. Reference it and set `RanvierAnalyze`:
+
+```xml
+<PackageReference Include="Ranvier.Analyzers" Version="0.1.0-preview.1" PrivateAssets="all" />
+<PropertyGroup>
+  <RanvierAnalyze>true</RanvierAnalyze>
+</PropertyGroup>
+```
+
+with the CLI in the tool manifest: `dotnet tool install fsharp-analyzers --version 0.41.0`.
 :::
 
 `Ranvier.Analyzers` reports Ranvier traps at build time, at the source range of the cause. Each code below links to its
