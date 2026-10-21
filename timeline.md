@@ -59,6 +59,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 83,284 | 127,178 | 1,734,155 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 83,044 | 127,150 | 1,734,108 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 83,044 | 127,109 | 1,734,259 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 83,018 | 127,158 | 1,734,028 |
 
 ## app-table
 
@@ -119,6 +120,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 4,416,366 | 9,320,151 | 107,579,948 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 4,416,210 | 9,320,035 | 107,302,072 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 4,416,154 | 9,203,687 | 107,708,264 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 4,416,115 | 9,320,259 | 107,301,908 |
 
 ## async-recover
 
@@ -179,6 +181,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 138,992 | 39,724 | 440,650 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 138,992 | 39,721 | 440,644 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 138,992 | 39,720 | 440,650 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 139,024 | 39,725 | 440,657 |
 
 ## async-resolve
 
@@ -239,6 +242,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 2,791,509 | 1,085,565 | 12,314,034 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 2,791,510 | 1,085,374 | 12,314,033 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 2,791,509 | 1,085,437 | 12,317,226 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 2,791,509 | 1,085,574 | 12,317,097 |
 
 ## chain
 
@@ -299,6 +303,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 
 ## chain-affinity
 
@@ -359,6 +364,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 2,549 | 3,067 | 2,496 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 2,549 | 3,067 | 2,496 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 2,549 | 3,067 | 2,496 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 2,549 | 3,067 | 2,496 |
 
 ## control
 
@@ -419,6 +425,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 74,709 | 833,967 | 2,605,089 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 74,709 | 833,986 | 2,605,089 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 74,709 | 833,924 | 2,605,062 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 74,709 | 833,926 | 2,605,031 |
 
 ## create
 
@@ -479,6 +486,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 13,449,944 | 2,859,678 | 2,532,361 | 2,131,856 | 4,003,995 | 34,066,518 | 49,723,693 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 13,450,079 | 2,859,678 | 2,532,361 | 2,131,028 | 4,004,129 | 34,063,281 | 49,723,741 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 13,450,044 | 2,875,677 | 2,532,362 | 2,131,829 | 4,003,596 | 34,063,832 | 49,723,813 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 13,449,958 | 2,859,679 | 2,532,361 | 2,131,745 | 4,003,679 | 34,066,647 | 49,723,316 |
 
 ## create-on
 
@@ -539,6 +547,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 2,910,531 | 4,147,579 | 54,424,865 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 2,926,483 | 4,147,607 | 54,424,898 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 2,910,484 | 4,147,496 | 54,424,776 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 2,910,483 | 4,147,438 | 54,424,708 |
 
 ## cutoff
 
@@ -599,6 +608,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 
 ## derive-effect
 
@@ -659,6 +669,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 765 | 768 | 16,102 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 765 | 768 | 16,102 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 765 | 768 | 16,102 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 765 | 768 | 16,102 |
 
 ## derive-on
 
@@ -719,6 +730,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 737 | 775 | 16,261 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 737 | 775 | 16,261 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 737 | 775 | 16,261 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 737 | 775 | 16,261 |
 
 ## dispose
 
@@ -779,6 +791,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 2,707,644 | 806,291 | 367,497 | 466,121 | 485,066 | 13,195,020 | 9,106,226 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 2,707,646 | 806,291 | 367,497 | 466,079 | 485,247 | 13,195,636 | 9,106,272 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 2,707,644 | 806,291 | 367,497 | 465,801 | 485,236 | 13,195,316 | 9,105,912 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 2,707,646 | 806,291 | 367,497 | 465,654 | 485,338 | 13,195,132 | 9,105,877 |
 
 ## dispose-on
 
@@ -839,6 +852,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 346,497 | 478,762 | 8,902,680 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 346,497 | 478,707 | 8,901,848 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 346,497 | 478,520 | 8,902,234 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 346,497 | 478,841 | 8,902,586 |
 
 ## editable-edit
 
@@ -899,6 +913,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 180,106 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 180,106 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 180,106 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 180,106 |
 
 ## editable-upstream
 
@@ -959,6 +974,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 231,255 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 231,255 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 231,255 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 231,255 |
 
 ## fail-recompute
 
@@ -1019,6 +1035,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 65,130 | 1,366 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 65,130 | 1,366 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 65,130 | 1,366 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 65,082 | 1,366 |
 
 ## flight
 
@@ -1079,6 +1096,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 
 ## keyed-insert
 
@@ -1139,6 +1157,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 1,921,809 | 53,951 | 54,952 | 3,218,712 | 661,698 | 176,544 | 44,849,835 | 2,634,964 | 2,654,183 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 1,921,809 | 53,951 | 54,946 | 3,218,693 | 661,749 | 176,629 | 44,851,072 | 2,634,967 | 2,654,213 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 1,921,809 | 53,951 | 54,942 | 3,218,727 | 661,707 | 176,576 | 44,849,857 | 2,634,923 | 2,654,118 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 1,921,825 | 53,951 | 54,960 | 3,218,685 | 661,945 | 176,561 | 44,849,869 | 2,634,924 | 2,654,178 |
 
 ## keyed-remove
 
@@ -1199,6 +1218,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 1,920,739 | 43,628 | 45,284 | 3,245,053 | 593,000 | 605,219 | 44,798,156 | 1,924,904 | 1,958,568 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 1,920,730 | 43,628 | 45,284 | 3,245,079 | 593,035 | 605,264 | 44,798,124 | 1,924,928 | 1,958,574 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 1,920,744 | 43,628 | 45,285 | 3,245,033 | 593,260 | 605,129 | 44,798,152 | 1,924,857 | 1,958,555 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 1,920,750 | 43,628 | 45,300 | 3,245,048 | 593,248 | 605,283 | 44,798,162 | 1,924,836 | 1,958,495 |
 
 ## keyed-swap
 
@@ -1259,6 +1279,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 1,973,428 | 46,161 | 46,916 | 3,565,407 | 148,776 | 511,384 | 45,980,674 | 916,497 | 932,852 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 1,973,428 | 46,161 | 46,915 | 3,560,726 | 148,809 | 511,217 | 45,980,647 | 916,465 | 932,928 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 1,973,428 | 46,161 | 46,915 | 3,562,791 | 148,813 | 511,376 | 45,980,235 | 916,544 | 932,813 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 1,973,444 | 46,161 | 46,931 | 3,565,335 | 148,793 | 511,395 | 45,980,246 | 916,486 | 932,898 |
 
 ## mvu-dispatch
 
@@ -1319,6 +1340,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 58,261 | 772 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 58,261 | 772 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 58,261 | 772 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 58,261 | 772 |
 
 ## project-chain
 
@@ -1379,6 +1401,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 1,070,308 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 1,070,391 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 1,070,200 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 1,070,358 |
 
 ## project-churn
 
@@ -1439,6 +1462,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 36,490 | 34,326 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 36,506 | 34,342 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 36,490 | 34,326 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 36,586 | 34,422 |
 
 ## project-edit
 
@@ -1499,6 +1523,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 50,431 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 50,431 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 50,431 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 50,513 |
 
 ## project-reorder
 
@@ -1559,6 +1584,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 779,170 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 779,170 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 779,170 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 779,267 |
 
 ## server-render
 
@@ -1619,6 +1645,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 676,230 | 1,130,643 | 9,834,145 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 676,230 | 1,131,227 | 9,834,142 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 676,230 | 1,131,183 | 9,833,800 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 675,723 | 1,131,493 | 9,833,582 |
 
 ## shape-diamond
 
@@ -1679,6 +1706,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 59,899 | 79,968 | 1,763,357 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 59,899 | 79,968 | 1,763,357 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 59,899 | 79,968 | 1,763,357 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 59,899 | 79,968 | 1,763,357 |
 
 ## shape-dynamic
 
@@ -1739,6 +1767,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 82,921 | 107,033 | 2,006,140 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 82,921 | 107,033 | 2,006,140 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 82,921 | 107,031 | 2,006,140 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 82,921 | 107,030 | 2,006,140 |
 
 ## stream-burst-1
 
@@ -1799,6 +1828,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 1,974 | 1,572 | 2,491 | 4,671 | 3,644 | 13,369 | 47,201 | 45,417 | 55,167 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 1,974 | 1,572 | 2,507 | 4,671 | 3,644 | 13,368 | 47,201 | 45,417 | 55,171 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 1,974 | 1,572 | 2,491 | 4,672 | 3,644 | 13,367 | 47,201 | 45,417 | 55,168 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 1,974 | 1,572 | 2,491 | 4,672 | 3,644 | 13,372 | 47,199 | 45,417 | 55,171 |
 
 ## stream-burst-16
 
@@ -1859,6 +1889,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 5,631 | 25,017 | 5,701 | 9,501 | 49,601 | 8,051 | 120,973 | 714,180 | 113,522 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 5,631 | 25,017 | 5,717 | 9,501 | 49,601 | 8,051 | 120,969 | 714,180 | 113,522 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 5,631 | 25,017 | 5,701 | 9,500 | 49,598 | 8,051 | 120,973 | 714,180 | 113,519 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 5,631 | 25,017 | 5,701 | 9,503 | 49,601 | 8,051 | 120,973 | 714,180 | 113,518 |
 
 ## stream-burst-256
 
@@ -1919,6 +1950,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 64,131 | 400,101 | 57,040 | 127,472 | 787,263 | 74,605 | 1,301,575 | 11,413,287 | 1,046,488 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 64,131 | 400,101 | 57,056 | 127,440 | 787,189 | 74,605 | 1,301,511 | 11,413,287 | 1,046,550 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 64,131 | 400,101 | 57,040 | 127,397 | 787,203 | 74,605 | 1,301,517 | 11,413,352 | 1,046,482 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 64,131 | 400,101 | 57,040 | 127,431 | 787,263 | 74,605 | 1,301,530 | 11,413,287 | 1,046,549 |
 
 ## stream-restart
 
@@ -1979,6 +2011,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 4,187 | 5,008 | 6,106 | 16,356 | 41,497 | 70,403 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 4,187 | 4,992 | 6,106 | 16,354 | 41,498 | 70,406 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 4,187 | 4,976 | 6,106 | 16,353 | 41,497 | 70,402 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 4,187 | 4,976 | 6,106 | 16,359 | 41,500 | 70,406 |
 
 ## timed-admit-both
 
@@ -2039,6 +2072,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 118,591 | 134,961 | 2,679,928 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 118,591 | 134,965 | 2,679,929 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 118,591 | 134,962 | 2,679,929 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 118,591 | 134,964 | 2,679,929 |
 
 ## timed-admit-debounce
 
@@ -2099,6 +2133,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 117,496 | 133,558 | 2,640,284 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 117,496 | 133,556 | 2,640,272 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 117,496 | 133,555 | 2,640,285 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 117,496 | 133,558 | 2,640,272 |
 
 ## timed-admit-first
 
@@ -2159,6 +2194,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 69,479 | 79,052 | 1,611,692 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 69,479 | 79,053 | 1,611,692 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 69,479 | 79,051 | 1,611,692 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 69,479 | 79,053 | 1,611,692 |
 
 ## timed-admit-last
 
@@ -2219,6 +2255,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 117,758 | 133,852 | 2,650,140 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 117,758 | 133,872 | 2,650,141 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 117,758 | 133,874 | 2,650,128 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 117,758 | 133,852 | 2,650,128 |
 
 ## timed-capture-both
 
@@ -2279,6 +2316,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 35,726 | 44,808 | 846,997 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 35,726 | 44,807 | 846,997 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 35,726 | 44,808 | 846,997 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 35,726 | 44,806 | 846,997 |
 
 ## timed-capture-debounce
 
@@ -2339,6 +2377,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 35,598 | 44,104 | 847,375 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 35,598 | 44,104 | 847,375 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 35,598 | 44,104 | 847,375 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 35,598 | 44,104 | 847,375 |
 
 ## timed-capture-first
 
@@ -2399,6 +2438,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 32,078 | 36,611 | 745,370 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 32,078 | 36,612 | 745,370 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 32,078 | 36,612 | 745,372 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 32,078 | 36,612 | 745,370 |
 
 ## timed-capture-last
 
@@ -2459,6 +2499,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 35,534 | 44,040 | 839,503 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 35,534 | 44,040 | 839,503 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 35,534 | 44,040 | 839,503 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 35,534 | 44,040 | 839,503 |
 
 ## update
 
@@ -2519,6 +2560,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 1,087,690 | 38,805 | 82,505 | 262,564 | 151,702 | 3,350,265 | 2,502,828 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 1,087,690 | 38,805 | 82,505 | 262,537 | 151,712 | 3,350,266 | 2,502,845 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 1,087,690 | 38,805 | 82,505 | 262,876 | 151,656 | 3,350,234 | 2,502,817 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 1,087,690 | 38,805 | 82,505 | 262,575 | 151,734 | 3,350,265 | 2,502,848 |
 
 ## update-on
 
@@ -2579,6 +2621,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 93,005 | 165,221 | 2,830,436 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 93,005 | 165,202 | 2,830,408 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 93,005 | 165,212 | 2,830,406 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 93,005 | 165,181 | 2,830,412 |
 
 ## work-form
 
@@ -2639,6 +2682,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 170,300 | 163,392 | 295,929 | 291,359 | 5,349,306 | 5,295,404 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 170,300 | 163,392 | 295,960 | 291,401 | 5,349,263 | 5,295,443 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 170,300 | 163,392 | 295,918 | 291,433 | 5,349,208 | 5,295,435 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 170,300 | 163,392 | 295,967 | 291,427 | 5,349,179 | 5,295,442 |
 
 ## work-status
 
@@ -2699,6 +2743,7 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 100,445 | 78,815 | 264,858 | 152,941 | 2,610,945 | 2,360,863 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 100,445 | 78,815 | 264,849 | 152,963 | 2,611,016 | 2,360,859 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 100,445 | 78,815 | 264,866 | 152,944 | 2,611,050 | 2,360,865 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 100,445 | 78,815 | 264,829 | 152,965 | 2,611,039 | 2,360,842 |
 
 ## work-value
 
@@ -2759,4 +2804,5 @@
 | `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | 107,569 | 119,470 | 265,070 | 279,895 | 2,595,625 | 2,920,163 |
 | `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | 107,569 | 119,469 | 265,103 | 279,880 | 2,595,722 | 2,920,176 |
 | `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | 107,569 | 119,470 | 265,095 | 279,908 | 2,595,573 | 2,920,217 |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | 107,570 | 119,469 | 265,101 | 279,915 | 2,595,703 | 2,920,165 |
 
