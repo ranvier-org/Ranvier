@@ -1422,6 +1422,40 @@ let private windowlessHeadRestored () =
 
     equal (true, servedHead, "Lamp · Shop") (failed, headHtmlOf other, titleOf other)
 
+/// <summary>
+/// The head of the page document and of a document without a window, each kept and then given more children than it
+/// held: a restore leaves each with the children it held.
+/// </summary>
+let private addedHeadChildrenRemoved () =
+    let other = otherDocument "Other"
+    let page = currentDocument ()
+
+    let restored =
+        [
+            for document in [ other; page ] do
+                setHeadOf document "<title>Kept</title><meta name=\"a\">"
+                let served = DocumentHead.keep document
+
+                document.head.appendChild (document.createElement "link")
+                |> ignore
+
+                document.head.appendChild (document.createComment "extra")
+                |> ignore
+
+                served.Restore ()
+                served.Release ()
+                headHtmlOf document
+        ]
+
+    setHeadOf page ""
+
+    equal
+        [
+            "<title>Kept</title><meta name=\"a\">"
+            "<title>Kept</title><meta name=\"a\">"
+        ]
+        restored
+
 let private metaRow =
     Component.define (fun _ (item: unit -> int) -> item) (fun t ->
         t.fragment
@@ -1600,6 +1634,7 @@ let private checks: (string * (unit -> unit)) array =
                     "a failed hydration sets back the attributes setup wrote on an unmarked head element", unmarkedEditRestored
                     "a failed hydration keeps the head edits made after an earlier hydration returned", earlierEditsKept
                     "a failed hydration in a document without a window leaves its head as the server wrote it", windowlessHeadRestored
+                    "a kept head restored after children were added holds the children it held", addedHeadChildrenRemoved
                     "a Strict mismatch in a row's nested list leaves the head as the server wrote it, attributes written at bind included",
                     nestedStrictRestoresHead
                     "a re-rendered list region recreates its rows' head elements and unadopted elements are removed once, after hydrate returns",

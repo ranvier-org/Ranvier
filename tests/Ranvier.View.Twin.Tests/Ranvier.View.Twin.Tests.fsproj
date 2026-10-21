@@ -20,6 +20,7 @@
         <Compile Include="SessionTests.fs" />
         <Compile Include="AsyncTests.fs" />
         <Compile Include="DepartureTests.fs" />
+        <Compile Include="HeadTests.fs" />
         <Compile Include="../../experiments/Ranvier.View.Portable/Checks/ServerFixtures.fs" Link="Checks/ServerFixtures.fs" />
         <Compile Include="../../experiments/Ranvier.View.Portable/Checks/ServerChecks.fs" Link="Checks/ServerChecks.fs" />
         <Compile Include="OracleTests.fs" />

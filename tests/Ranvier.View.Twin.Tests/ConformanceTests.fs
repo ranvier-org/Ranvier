@@ -65,9 +65,6 @@ let private cleared =
          if Directory.Exists root then
              Directory.Delete (root, true))
 
-// The modules whose cases run one at a time, after the parallel ones.
-let private sequencedModules = [ "DocumentChecks"; "HydrationChecks" ]
-
 let private runCase (moduleName: string) (name: string) (run: Conformance.Harness -> unit) () =
     cleared.Force ()
     runIn (Path.Combine (output (), moduleName, TwinHarness.slug name)) run
@@ -84,20 +81,13 @@ let tests =
                     Expect.equal (List.distinct slugs).Length slugs.Length $"{moduleName}: distinct slugs"
 
             for moduleName, cases in ConformanceCases.modules do
-                let tests =
-                    testList
-                        moduleName
-                        [
-                            for name, run in cases do
-                                if Conformance.skippedOn "twin" name then
-                                    ptestCase name ignore
-                                else
-                                    testCase name (runCase moduleName name run)
-                        ]
-
-                // Their mounts write document head entries, whose registry list Foundation keeps per process.
-                if List.contains moduleName sequencedModules then
-                    testSequenced tests
-                else
-                    tests
+                testList
+                    moduleName
+                    [
+                        for name, run in cases do
+                            if Conformance.skippedOn "twin" name then
+                                ptestCase name ignore
+                            else
+                                testCase name (runCase moduleName name run)
+                    ]
         ]
