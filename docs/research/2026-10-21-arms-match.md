@@ -3,6 +3,12 @@
 Measurements of the `Arms.Match` implementation ([spec](../superpowers/specs/2026-10-21-arms-match-design.md),
 [plan](../superpowers/plans/2026-10-21-arms-match.md)). Fickl 0.3.0 (Fable 5.22), net10.0, Node 26; the Phase 1 discovery ran under Fable 5.18.0 and again under Fickl.
 
+**Summary.** The plugin is found through a project reference and the `.targets`. On .NET a site lowers in about
+1.1-1.4 ms once the process is warm; the first five-target site of a process costs 125-146 ms, 9-12 ms after
+`Arms.Prepare ()` and about 7 ms with ReadyToRun as well. Under Fable the first `Arms.Match` site costs 370 B gzip over
+its twin (budget 400 B) and each further site -22 B (budget 60 B). The retained heap per row is within 10 % of
+`ranvier-sugar`. The Chromium arm operations are compared by paired ratio in "Chromium".
+
 ## Plugin discovery
 
 From `experiments/Ranvier.View.Arms/Checks/Discovery`, an app with a project reference to `Ranvier.View.Arms` and an
