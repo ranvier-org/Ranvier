@@ -231,3 +231,137 @@ let ran020: Rule =
         Gate = Symbols.Assemblies.View
         Run = buildTimeReads
     }
+
+let private isKeyed (m: FSharpMemberOrFunctionOrValue) =
+    let entity = Symbols.enclosing m
+
+    (entity = Builder && m.LogicalName = "each")
+    || (entity = Sugar
+        && (m.LogicalName = "each"
+            || m.LogicalName = "forEach"
+            || m.LogicalName = "forEachFixed"))
+
+let rec private subExpressions (expr: FSharpExpr) : FSharpExpr list =
+    expr
+    :: List.collect subExpressions expr.ImmediateSubExpressions
+
+let private isPrimitive (t: FSharpType) =
+    t.HasTypeDefinition
+    && (t.TypeDefinition.IsValueType
+        || t.TypeDefinition.TryFullName = Some "System.String")
+
+let private comparedByReference (t: FSharpType) =
+    t.HasTypeDefinition
+    && (let entity = t.TypeDefinition
+
+        entity.IsClass
+        && not entity.IsFSharpRecord
+        && not entity.IsFSharpUnion
+        && entity.TryFullName <> Some "System.String"
+        && not (
+            entity.MembersFunctionsAndValues
+            |> Seq.exists (fun m ->
+                m.LogicalName = "Equals"
+                && m.IsOverrideOrExplicitInterfaceImplementation)
+        ))
+
+let private unstableKeys (input: Input) : Message list =
+    [
+        for site in input.Index.Calls do
+            if isKeyed site.Callee && not site.Arguments.IsEmpty then
+                let key = site.Arguments[0]
+
+                match key with
+                | Lambda (item, body) ->
+                    let inner = subExpressions body
+
+                    let impure =
+                        inner
+                        |> List.tryPick (fun expr ->
+                            match expr with
+                            | Call (_, m, _, _, _)
+                            | NewObject (m, _, _) when Symbols.Keys.impureCall m -> Some (text input expr.Range)
+                            | ValueSet (v, _) when not (Range.rangeContainsRange key.Range v.DeclarationLocation) -> Some (text input expr.Range)
+                            | _ -> None)
+
+                    let positional =
+                        inner
+                        |> List.tryPick (fun expr ->
+                            match expr with
+                            | Call (_, m, _, _, _) when Symbols.Keys.positionalCall m ->
+                                // The call as written, up to its arguments: `Array.IndexOf`, `List.findIndex`.
+                                let written = text input expr.Range
+                                let stop = written.IndexOfAny [| ' '; '(' |]
+                                Some (if stop > 0 then written.Substring (0, stop) else written)
+                            | _ -> None)
+
+                    let tracked =
+                        inner
+                        |> List.tryPick (fun expr ->
+                            match expr with
+                            | Call (Some _, m, _, _, _) when Symbols.Core.isReactiveRead m -> Some (text input expr.Range)
+                            | _ -> None)
+
+                    let structuredItem =
+                        item.FullType.HasTypeDefinition
+                        && (item.FullType.TypeDefinition.IsFSharpRecord
+                            || item.FullType.TypeDefinition.IsFSharpUnion)
+
+                    let identity =
+                        site.Callee.LogicalName = "forEach"
+                        && structuredItem
+                        && (match body with
+                            | Value v -> v = item
+                            | Call (None, m, _, _, [ Value v ]) -> m.LogicalName = "id" && v = item
+                            | _ -> false)
+
+                    match impure, positional, tracked with
+                    | Some call, _, _ ->
+                        message
+                            "RAN021"
+                            Severity.Warning
+                            key.Range
+                            $"This key changes on every pass (`{call}`), so every row remounts. Key by a value unique to the item, such as an id."
+                            []
+                    | None, Some call, _ ->
+                        message
+                            "RAN021"
+                            Severity.Warning
+                            key.Range
+                            $"This key is the item's position (`{call}`), so moving or inserting an item remounts every row after it. Key by a value unique to the item, such as an id."
+                            []
+                    | None, None, Some read ->
+                        message
+                            "RAN021"
+                            Severity.Warning
+                            key.Range
+                            $"This key reads `{read}`, a tracked value outside the item, so a change to it re-keys the rows. Key by a value of the item."
+                            []
+                    | None, None, None when identity ->
+                        message
+                            "RAN021"
+                            Severity.Info
+                            key.Range
+                            "The key is the item itself, so a replaced item gets a new key and its row remounts instead of following the item. Key by an id field."
+                            []
+                    | None, None, None when
+                        comparedByReference body.Type
+                        && not (isPrimitive body.Type)
+                        ->
+                        message
+                            "RAN021"
+                            Severity.Info
+                            key.Range
+                            $"The key `{body.Type.Format FSharpDisplayContext.Empty}` is compared by reference, so a rebuilt item gets a new key and its row remounts. Key by a value with structural equality, such as an id."
+                            []
+                    | _ -> ()
+                | _ -> ()
+    ]
+
+let ran021: Rule =
+    {
+        Code = "RAN021"
+        Title = "Unstable list key"
+        Gate = Symbols.Assemblies.View
+        Run = unstableKeys
+    }

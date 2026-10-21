@@ -502,3 +502,24 @@ module View =
             | ("matchWith" | "branch"), 1 -> true
             | ("each" | "forEach" | "forEachFixed"), (0 | 1) -> true
             | _ -> false)
+
+/// The calls that make a list key unstable.
+module Keys =
+    /// Whether a call of `m` in a key function gives a new key on every pass.
+    let impureCall (m: FSharpMemberOrFunctionOrValue) =
+        match enclosing m, m.LogicalName with
+        | "System.Guid", "NewGuid"
+        | "System.DateTime", ("get_Now" | "get_UtcNow")
+        | "System.Object", ".ctor"
+        | "Microsoft.FSharp.Core.FSharpRef`1", ("set_Value" | "set_contents")
+        | Operators, (":=" | "op_ColonEquals" | "incr" | "decr") -> true
+        | ("System.Random" | "System.Diagnostics.Stopwatch"), _ -> true
+        | _ -> false
+
+    /// Whether a call of `m` in a key function computes the item's position.
+    let positionalCall (m: FSharpMemberOrFunctionOrValue) =
+        match enclosing m, m.LogicalName with
+        | ("Microsoft.FSharp.Collections.ArrayModule" | "Microsoft.FSharp.Collections.ListModule" | "Microsoft.FSharp.Collections.SeqModule"),
+          ("indexOf" | "findIndex" | "tryFindIndex") -> true
+        | _, "IndexOf" -> true
+        | _ -> false

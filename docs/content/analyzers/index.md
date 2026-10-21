@@ -28,6 +28,7 @@ cause, its fix and an example.
 | [RAN012](ran012.md) | Reactive read after the first await of an async memo | Warning |
 | [RAN013](ran013.md) | Signal write or Pump on a thread-pool callback | Warning |
 | [RAN020](ran020.md) | Reactive read at template build time | Warning |
+| [RAN021](ran021.md) | Unstable list key | Warning / Info |
 
 ## Running the analyzers
 
