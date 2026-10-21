@@ -32,7 +32,7 @@ for (const name of globals.slice(1)) globalThis[name] = name === "document" ? do
 after(() => { dom.window.close(); for (const name of globals) delete globalThis[name]; });
 
 // The listeners and expandos a case leaves on the shared window, document, html, head and body fail it.
-const { leftovers } = trackShared(dom.window);
+const { begin, leftovers } = trackShared(dom.window);
 
 // The document as a new one has it: empty head and body without attributes, and nothing focused.
 function resetDocument() {
@@ -53,6 +53,7 @@ for (const [moduleName, cases] of modules) {
       let count = 0;
       resetDocument();
       listenerErrors.length = 0;
+      begin();
       mock.timers.enable({ apis: ["Date"] });
       const clock = makeClock([globalThis, dom.window], milliseconds => { if (milliseconds > 0) mock.timers.tick(milliseconds); });
       const host = {
@@ -74,13 +75,14 @@ for (const [moduleName, cases] of modules) {
       };
       const intercept = interceptIn(dom.window);
       const restores = [];
+      let left = [];
       try { run(create(dom.window.document, host)); }
       finally {
         for (const restore of restores.reverse()) restore();
         clock.restore();
         mock.timers.reset();
+        left = leftovers();
       }
-      const left = leftovers();
       if (left.length > 0) throw new Error(`The case left state on the shared document: ${left.join("; ")}`);
     });
   }
