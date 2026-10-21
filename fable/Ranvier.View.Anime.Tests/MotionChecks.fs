@@ -1024,20 +1024,71 @@ let private layoutFieldsPinned (clock: Clock) =
     layout.revert ()
     equal true shaped
 
+let private failureOf queued (build: unit -> Component<unit>) =
+    try
+        let view = build ()
+        use graph = new Graph ()
+        (mountIn queued graph (host ()) (Component.render view ())).Dispose()
+        ""
+    with error ->
+        error.Message
+
 let private mixedCaseHandlerRaises queued (clock: Clock) =
-    let failure =
-        try
-            let view =
-                Component.template (fun _ () -> ()) (div (Attrs.attribute ("oNclick", "alert(1)")) { "x" })
+    let failures =
+        [
+            failureOf queued (fun () -> Component.template (fun _ () -> ()) (div (Attrs.attribute ("oNclick", "alert(1)")) { "x" }))
+            failureOf queued (fun () -> Component.template (fun _ () -> ()) (div (Attrs.attribute ("refX refY", "1")) { "x" }))
+            failureOf queued (fun () -> Component.define (fun _ () -> ()) (fun t -> t.element (HtmlTag "feBlend feColorMatrix") [||] [||]))
+        ]
 
-            use graph = new Graph ()
-            (mountIn queued graph (host ()) (Component.render view ())).Dispose()
-            ""
-        with error ->
-            error.Message
+    equal [ true; true; true ] [ for failure in failures -> failure.Contains "names must" ]
 
-    if not (failure.Contains "Attribute names must") then
-        failwithf "Expected the attribute-name failure; got %s" failure
+/// <summary>Each element templates reject on every path, with the phrase its failure holds.</summary>
+let private refused: (string * (TemplateBuilder<unit> -> TemplateView<unit>)) list =
+    [
+        "Raw-text", (fun t -> t.div [||] [| t.element (HtmlTag "script") [||] [| t.text "globalThis.pwned = 1" |] |])
+        "Raw-text", (fun t -> t.element (HtmlTag "style") [||] [| t.text "p {}" |])
+        "Raw-text", (fun t -> t.element (HtmlTag "iframe") [||] [| t.text "<p>" |])
+        "Template elements", (fun t -> t.element (HtmlTag "template") [||] [| t.span [||] [||] |])
+        "void element", (fun t -> t.element (HtmlTag "br") [||] [| t.span [||] [||] |])
+        "rcdata", (fun t -> t.element (HtmlTag "textarea") [||] [| t.span [||] [||] |])
+        "rcdata", (fun t -> t.element (HtmlTag "title") [||] [| t.span [||] [||] |])
+    ]
+
+[<Emit("globalThis.pwned")>]
+let private pwned () : obj = jsNative
+
+let private refusedElements queued (clock: Clock) =
+    let failures =
+        [
+            for phrase, view in refused ->
+                let failure = failureOf queued (fun () -> Component.define (fun _ () -> ()) view)
+                failure.ToLowerInvariant().Contains(phrase.ToLowerInvariant ())
+        ]
+
+    equal (List.replicate refused.Length true, true) (failures, isNull (pwned ()))
+
+type Captions = { Captions: Signal<string array> }
+
+let private captioned =
+    Component.template
+        (fun _ (s: Captions) -> s)
+        (svg () { forEach id (fun (s: Captions) -> s.Captions.Value) (title' () { fun (caption: unit -> string) -> caption () }) })
+
+let private titleRows queued (clock: Clock) =
+    use graph = new Graph ()
+    let target = host ()
+
+    let state =
+        {
+            Captions = graph.Run (fun () -> Api.createSignal [| "a" |])
+        }
+
+    let mounted = mountIn queued graph target (Component.render captioned state)
+    let spaces = List.ofArray (namespacesOf target "svg > title")
+    mounted.Dispose ()
+    // A title row is an SVG element when created under its svg parent, and an HTML title when parsed on its own.
+    equal (if queued then [ "svg" ] else [ "html" ]) spaces
 
 let private modes (name: string) (check: bool -> Clock -> unit) =
     [|
@@ -1079,7 +1130,9 @@ let cases: (string * (Clock -> unit)) array =
                 "drag writes its position once a release's motion ends, without echo", dragWritesSettle
             |]
             [| "anime's layout keeps the property Sets flip edits", layoutFieldsPinned |]
-            modes "an attribute name that lowercases to an event handler raises" mixedCaseHandlerRaises
+            modes "an attribute name that lowercases to an event handler, or joins listed SVG names, raises" mixedCaseHandlerRaises
+            modes "raw-text, template, void-with-children and RCDATA-with-elements raise on the client" refusedElements
+            modes "a title row under svg follows the commit mode's documented namespace" titleRows
             modes "flip records before and animates after each pass, without leaving rows, and fades rows with no running Motion part" flipOrder
             [|
                 "follow sets its first value and animates to each write", followReaches
