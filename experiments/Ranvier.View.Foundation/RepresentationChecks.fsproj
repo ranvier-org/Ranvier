@@ -12,8 +12,10 @@
     <Compile Include="../Ranvier.View.Portable/Checks/ServerChecks.fs" Link="Checks/ServerChecks.fs" />
     <Compile Include="../Ranvier.View.Portable/Checks/SugarFixtures.fs" Link="Checks/SugarFixtures.fs" />
     <Compile Include="../Ranvier.View.Portable/Checks/SugarServerChecks.fs" Link="Checks/SugarServerChecks.fs" />
+    <Compile Include="../Ranvier.View.Arms/Checks/ArmsLoweringChecks.fs" Link="Checks/ArmsLoweringChecks.fs" />
     <Compile Include="RepresentationChecks.fsx" />
     <ProjectReference Include="../Ranvier.View.Portable/Ranvier.View.Portable.fsproj" />
+    <ProjectReference Include="../Ranvier.View.Arms/Ranvier.View.Arms.fsproj" />
     <PackageReference Update="FSharp.Core" Version="10.1.401" />
   </ItemGroup>
 </Project>

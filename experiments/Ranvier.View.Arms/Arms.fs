@@ -48,6 +48,7 @@ type Arms =
                 Line = defaultArg line 0
             }
 
+        Quoted.checkInstance at typeof<'inst>
         let cells = Cells.create ()
         let select, bodies = Quoted.lower cells at arms
         Site.create cells read select bodies

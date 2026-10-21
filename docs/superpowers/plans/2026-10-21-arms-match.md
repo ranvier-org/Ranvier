@@ -100,7 +100,7 @@ Each ruling picks an implementation where the spec leaves one open, or settles a
 6. **Two files beyond the spec's list:** `Errors.fs` (the exception types and raise helpers, runtime only) and the plugin's link of `Diagnostics.fs`. Exceptions cannot live in the linked file: the plugin assembly is a reference of every Fable compilation, and two public `ArmsMatchException` types would collide.
 7. **`Site` and `Cells` are internal.** `Site.create` takes the internal `Cells` type, so it cannot be public. *If wrong:* none; the spec's API names no caller outside the package.
 8. **Under Fable, an instance type that is a generic parameter passes AM004 at compile time.** Only a concrete type can be judged; `WeakMap.set` raises at mount for a primitive. *If wrong:* a generic helper instantiated at `int` fails at mount instead of at compile.
-9. **The one-lambda compile lands with the .NET lowering (Task 3)**, and the `lowering|` budget is enforced when `RepresentationChecks` runs with `--timing`, which Task 3's steps and the research note use. CI prints the line without failing on it: shared runners are not the budget's machine. *If wrong:* a CI job fails on runner noise.
+9. **The .NET lowering evaluates the site as one LINQ expression through the interpreter** (`Compile(preferInterpretation = true)`), landing in Task 3. Compiling it measured 6.8 ms mean, most of it the first call's JIT of the emitted method, over the 4 ms budget; the interpreter measures about 1 ms, and server renders show no measurable difference (research note). The `lowering|` budget is enforced when `RepresentationChecks` runs with `--timing`, which Task 3's steps and the research note use. CI prints the line without failing on it: shared runners are not the budget's machine. *If wrong:* a CI job fails on runner noise.
 10. **The plugin tests are a `dotnet fsi` script** (`PluginTests.fsx`), as the generator's `GeneratorTests.fsx` is. A bad fixture asserts exit code 1, the file, the line and the exact message, and the column where the range is the identifier or the call: AM001, AM003, AM004 (and the AM001b fixture, which reports AM001; see Ruling 24). Fable prints a plugin error's column 0-based (an FCS error's 1-based: the no-targets FS0101 at `Site.fs(12,13)`). AM002 and AM007 assert the line only.
 11. **A prologue carries the range of the first pattern-variable reference inside its reader.** A Fable `Lambda` has no range of its own.
 12. **The 0 B rule for an app that references the package and calls no `Arms.Match`** is checked as the absence of every `Ranvier.View.Arms` module from that entry's bundle, plus the Playground explicit entry's bytes before (recorded in Task 1) and after. A second Fable compilation without the reference would cost a full compile per size run for the same evidence.
@@ -2294,7 +2294,7 @@ Message subject: `feat(arms): plugin lowering rules and diagnostics under plugin
 
 ---
 
-### Task 3: The .NET lowering rules, rejections and the one-lambda compile
+### Task 3: The .NET lowering rules, rejections and the one-expression evaluation
 
 Merge `origin/master` before starting (this task edits `RepresentationChecks.*`).
 
@@ -2347,7 +2347,8 @@ let private omit =
         Policy = Omit
     }
 
-let private read (state: Signal<Load>) = state.Value
+let private read (state: Signal<Load>) =
+    state.Value
 
 /// <summary>What building a site raised: the kind and variable, and the message after the location prefix.</summary>
 let private raised (build: unit -> obj) =
@@ -2372,7 +2373,8 @@ let private notObject (name: string) =
 
 let private am001 () =
     equal
-        ("BuildTimeRead text", "Arms.Match: 'text' is read outside a reader of the instance. Read it inside a lambda over the instance, such as (fun _ -> text).")
+        ("BuildTimeRead text",
+         "Arms.Match: 'text' is read outside a reader of the instance. Read it inside a lambda over the instance, such as (fun _ -> text).")
         (raised (fun () ->
             box (
                 Component.template
@@ -2406,7 +2408,7 @@ let private am002 () =
             )))
 
 let private am003 () =
-    let arms =
+    let arms: Load -> TemplateView<Signal<Load>> =
         function
         | Idle -> span () { "Idle" }
         | _ -> span () { "Other" }
@@ -2419,19 +2421,50 @@ let private am004 () =
     equal
         (notObject "int")
         (raised (fun () ->
-            box (Component.template (fun _ (n: int) -> n) (div () { Arms.Match ((fun (n: int) -> n), function 0 -> span () { "zero" } | _ -> span () { "other" }) }))))
+            box (
+                Component.template
+                    (fun _ (n: int) -> n)
+                    (div () {
+                        Arms.Match (
+                            (fun (n: int) -> n),
+                            function
+                            | 0 -> span () { "zero" }
+                            | _ -> span () { "other" }
+                        )
+                    })
+            )))
 
     equal
         (notObject "string")
         (raised (fun () ->
             box (
-                Component.template (fun _ (s: string) -> s) (div () { Arms.Match ((fun (s: string) -> s.Length), function 0 -> span () { "zero" } | _ -> span () { "other" }) })
+                Component.template
+                    (fun _ (s: string) -> s)
+                    (div () {
+                        Arms.Match (
+                            (fun (s: string) -> s.Length),
+                            function
+                            | 0 -> span () { "zero" }
+                            | _ -> span () { "other" }
+                        )
+                    })
             )))
 
     equal
         (notObject "unit")
         (raised (fun () ->
-            box (Component.template (fun _ (u: unit) -> u) (div () { Arms.Match ((fun (_: unit) -> 0), function 0 -> span () { "zero" } | _ -> span () { "other" }) }))))
+            box (
+                Component.template
+                    (fun _ (u: unit) -> u)
+                    (div () {
+                        Arms.Match (
+                            (fun (_: unit) -> 0),
+                            function
+                            | 0 -> span () { "zero" }
+                            | _ -> span () { "other" }
+                        )
+                    })
+            )))
 
     equal
         (notObject "int option")
@@ -2439,13 +2472,31 @@ let private am004 () =
             box (
                 Component.template
                     (fun _ (o: int option) -> o)
-                    (div () { Arms.Match ((fun (o: int option) -> defaultArg o 0), function 0 -> span () { "zero" } | _ -> span () { "other" }) })
+                    (div () {
+                        Arms.Match (
+                            (fun (o: int option) -> defaultArg o 0),
+                            function
+                            | 0 -> span () { "zero" }
+                            | _ -> span () { "other" }
+                        )
+                    })
             )))
 
     equal
         (notObject "Point")
         (raised (fun () ->
-            box (Component.template (fun _ (p: Point) -> p) (div () { Arms.Match ((fun (p: Point) -> p.X), function 0 -> span () { "zero" } | _ -> span () { "other" }) }))))
+            box (
+                Component.template
+                    (fun _ (p: Point) -> p)
+                    (div () {
+                        Arms.Match (
+                            (fun (p: Point) -> p.X),
+                            function
+                            | 0 -> span () { "zero" }
+                            | _ -> span () { "other" }
+                        )
+                    })
+            )))
 
 let private am007 () =
     equal
@@ -2460,7 +2511,11 @@ let private am007 () =
                             function
                             | Loaded (text, _) ->
                                 (Console.Write ""
-                                 if text = "" then span () { "empty" } else span () { "full" })
+
+                                 if text = "" then
+                                     span () { "empty" }
+                                 else
+                                     span () { "full" })
                             | _ -> span () { "Other" }
                         )
                     })
@@ -2509,7 +2564,9 @@ let private delegateReader () =
                         span (
                             Hooks.exit (
                                 Func<_, _, _, _>(fun (_: Signal<Load>) (_: Fable.Core.TS.Dom.HTMLSpanElement) finish ->
-                                    if text = "" then finish ()
+                                    if text = "" then
+                                        finish ()
+
                                     ignore)
                             )
                         ) {
@@ -2558,7 +2615,14 @@ let private bodyForms () =
                     | _ -> arm otherArm ())
             })
 
-    for state in [ Loaded ("x", 2000); Loaded ("x", 200); Loaded ("x", 0); Loaded ("y", 3); Idle ] do
+    for state in
+        [
+            Loaded ("x", 2000)
+            Loaded ("x", 200)
+            Loaded ("x", 0)
+            Loaded ("y", 3)
+            Idle
+        ] do
         equal (state, render twin state) (state, render site state)
 
 /// <summary>Milliseconds for the first and the mean of 200 further lowerings of a five-target site.</summary>
@@ -2590,7 +2654,10 @@ let private loweringBudget () =
     let first, mean = loweringCost ()
     printfn "lowering|first=%.2fms mean=%.3fms" first mean
 
-    if Environment.GetCommandLineArgs () |> Array.contains "--timing" then
+    if
+        Environment.GetCommandLineArgs ()
+        |> Array.contains "--timing"
+    then
         equal (true, true) (first <= 10.0, mean <= 4.0)
 
 let cases: (string * (unit -> unit)) array =
@@ -2649,36 +2716,57 @@ open Ranvier.View.Foundation.Template
 /// <summary>The call site of an Arms.Match call, prefixed to its exception messages.</summary>
 type At = { File: string; Line: int }
 
-let private located (at: At) (message: string) = sprintf "%s(%d): %s" at.File at.Line message
+let private located (at: At) (message: string) =
+    sprintf "%s(%d): %s" at.File at.Line message
 
 /// <summary>An F# rendering of a type, for diagnostics; the same text as the plugin's for the same type.</summary>
 let rec show (t: Type) : string =
-    if t = typeof<unit> then "unit"
-    elif t = typeof<int> then "int"
-    elif t = typeof<string> then "string"
-    elif t = typeof<bool> then "bool"
-    elif t = typeof<char> then "char"
-    elif t = typeof<float> then "float"
-    elif t = typeof<decimal> then "decimal"
-    elif t = typeof<int64> then "int64"
-    elif t = typeof<float32> then "float32"
-    elif t = typeof<byte> then "byte"
-    elif t = typeof<obj> then "obj"
+    if t = typeof<unit> then
+        "unit"
+    elif t = typeof<int> then
+        "int"
+    elif t = typeof<string> then
+        "string"
+    elif t = typeof<bool> then
+        "bool"
+    elif t = typeof<char> then
+        "char"
+    elif t = typeof<float> then
+        "float"
+    elif t = typeof<decimal> then
+        "decimal"
+    elif t = typeof<int64> then
+        "int64"
+    elif t = typeof<float32> then
+        "float32"
+    elif t = typeof<byte> then
+        "byte"
+    elif t = typeof<obj> then
+        "obj"
     elif FSharpType.IsFunction t then
         let domain, range = FSharpType.GetFunctionElements t
         atom domain + " -> " + show range
     elif FSharpType.IsTuple t then
-        FSharpType.GetTupleElements t |> Array.map atom |> String.concat " * "
+        FSharpType.GetTupleElements t
+        |> Array.map atom
+        |> String.concat " * "
     elif t.IsArray then
         atom (t.GetElementType ()) + " array"
     elif t.IsGenericType then
         let definition = t.GetGenericTypeDefinition ()
         let args = t.GetGenericArguments ()
 
-        if definition = typedefof<option<_>> then atom args[0] + " option"
-        elif definition = typedefof<voption<_>> then atom args[0] + " voption"
-        elif definition = typedefof<list<_>> then atom args[0] + " list"
-        else t.Name.Substring (0, t.Name.IndexOf '`') + "<" + (args |> Array.map show |> String.concat ", ") + ">"
+        if definition = typedefof<option<_>> then
+            atom args[0] + " option"
+        elif definition = typedefof<voption<_>> then
+            atom args[0] + " voption"
+        elif definition = typedefof<list<_>> then
+            atom args[0] + " list"
+        else
+            t.Name.Substring (0, t.Name.IndexOf '`')
+            + "<"
+            + (args |> Array.map show |> String.concat ", ")
+            + ">"
     else
         t.Name
 
@@ -2694,7 +2782,8 @@ let checkInstance (at: At) (t: Type) =
         t.IsValueType
         || t = typeof<string>
         || t = typeof<unit>
-        || (t.IsGenericType && t.GetGenericTypeDefinition () = typedefof<option<_>>)
+        || (t.IsGenericType
+            && t.GetGenericTypeDefinition () = typedefof<option<_>>)
     then
         raise (ArmsMatchException (located at (Diagnostics.notObject (show t))))
 
@@ -2706,7 +2795,9 @@ let rec private refersOutsideLambdas (control: Set<Var>) (expr: Expr) =
     | Var var -> control.Contains var
     | Lambda _ -> false
     | Let (_, value, body) -> refers value || refers body
-    | LetRecursive (bindings, body) -> List.exists (snd >> refers) bindings || refers body
+    | LetRecursive (bindings, body) ->
+        List.exists (snd >> refers) bindings
+        || refers body
     | ExprShape.ShapeVar _
     | ExprShape.ShapeLambda _ -> false
     | ExprShape.ShapeCombination (_, args) -> List.exists refers args
@@ -2757,7 +2848,9 @@ let private raising = set [ "Raise"; "FailWith"; "InvalidOp"; "InvalidArg" ]
 /// <summary>Whether a case body is a raised exception, which builds no definition.</summary>
 let private isThrow (expr: Expr) =
     match expr with
-    | Call (None, info, _) -> info.DeclaringType.FullName = "Microsoft.FSharp.Core.Operators" && raising.Contains info.Name
+    | Call (None, info, _) ->
+        info.DeclaringType.FullName = "Microsoft.FSharp.Core.Operators"
+        && raising.Contains info.Name
     | _ -> false
 
 let private retype (t: Type) (expr: Expr) =
@@ -2772,7 +2865,7 @@ let private find (slots: Set<Var>) (expr: Expr) : (Var * Type option) option =
         | Var var when slots.Contains var -> Some (var, over)
         | Let (_, value, body) -> go over value |> Option.orElse (go over body)
         | ExprShape.ShapeVar _ -> None
-        | ExprShape.ShapeLambda (var, body) when var.Type = typeof<unit> -> go over body
+        | ExprShape.ShapeLambda (var, body) when var.Type = typeof<unit> || var.Name.Contains "@" -> go over body
         | ExprShape.ShapeLambda (var, body) -> go (Some var.Type) body
         | ExprShape.ShapeCombination (_, args) -> List.tryPick (go over) args
 
@@ -2794,8 +2887,8 @@ let private valuesMethod =
     | _ -> failwith "Cells.values"
 
 /// <summary>
-/// Lowers <c>arms</c> into a target selector and one body per target, for the site's cells, compiled as one LINQ
-/// lambda.
+/// Lowers <c>arms</c> into a target selector and one body per target, for the site's cells, evaluated as one LINQ
+/// expression by the interpreter.
 /// </summary>
 let lower (cells: Cells.Cells) (at: At) (arms: Expr<'u -> TemplateView<'inst>>) : ('u -> int * obj array) * TemplateView<'inst> array =
     let matched, tree =
@@ -2817,7 +2910,13 @@ let lower (cells: Cells.Cells) (at: At) (arms: Expr<'u -> TemplateView<'inst>>) 
     // The target of each leaf; a raising leaf has none.
     let targets =
         leaves
-        |> Seq.fold (fun (acc, next) (_, body) -> if isThrow body then None :: acc, next else Some next :: acc, next + 1) ([], 0)
+        |> Seq.fold
+            (fun (acc, next) (_, body) ->
+                if isThrow body then
+                    None :: acc, next
+                else
+                    Some next :: acc, next + 1)
+            ([], 0)
         |> fst
         |> List.rev
         |> Array.ofList
@@ -2853,18 +2952,33 @@ let lower (cells: Cells.Cells) (at: At) (arms: Expr<'u -> TemplateView<'inst>>) 
             let substituted =
                 inner.Substitute (fun var ->
                     match List.tryFindIndex ((=) var) slots with
-                    | Some field -> Some (Expr.Call (unboxMethod.MakeGenericMethod var.Type, [ Expr.Call (getMethod, [ Expr.Var values; Expr.Value field ]) ]))
+                    | Some field ->
+                        Some (Expr.Call (unboxMethod.MakeGenericMethod var.Type, [ Expr.Call (getMethod, [ Expr.Var values; Expr.Value field ]) ]))
                     | None -> None)
 
             let current =
-                Expr.Call (valuesMethod, [ Expr.Value (box cells, typeof<Cells.Cells>); Expr.Coerce (Expr.Var argument, typeof<obj>); Expr.Value target ])
+                Expr.Call (
+                    valuesMethod,
+                    [
+                        Expr.Value (box cells, typeof<Cells.Cells>)
+                        Expr.Coerce (Expr.Var argument, typeof<obj>)
+                        Expr.Value target
+                    ]
+                )
 
             Expr.Let (values, current, substituted)
 
         let rec visit (expr: Expr) =
             match expr with
-            | Lambda (argument, inner) when argument.Type = typeof<'inst> && refersTo slotSet inner -> Expr.Lambda (argument, prologue argument inner)
-            | NewDelegate (delegateType, argument :: rest, inner) when argument.Type = typeof<'inst> && refersTo slotSet inner ->
+            | Lambda (argument, inner) when
+                argument.Type = typeof<'inst>
+                && refersTo slotSet inner
+                ->
+                Expr.Lambda (argument, prologue argument inner)
+            | NewDelegate (delegateType, argument :: rest, inner) when
+                argument.Type = typeof<'inst>
+                && refersTo slotSet inner
+                ->
                 Expr.NewDelegate (delegateType, argument :: rest, prologue argument inner)
             | ExprShape.ShapeVar _ -> expr
             | ExprShape.ShapeLambda (var, inner) -> Expr.Lambda (var, visit inner)
@@ -2886,8 +3000,14 @@ let lower (cells: Cells.Cells) (at: At) (arms: Expr<'u -> TemplateView<'inst>>) 
                 | None -> ()
         ]
 
-    Expr.NewTuple [ selector; Expr.NewArray (typeof<TemplateView<'inst>>, bodies) ]
-    |> LeafExpressionConverter.EvaluateQuotation
+    let site =
+        LeafExpressionConverter.QuotationToExpression (Expr.NewTuple [ selector; Expr.NewArray (typeof<TemplateView<'inst>>, bodies) ])
+
+    // The site expression runs once, through the LINQ interpreter.
+    Linq.Expressions.Expression
+        .Lambda<Func<obj>>(Linq.Expressions.Expression.Convert (site, typeof<obj>))
+        .Compile(preferInterpretation = true)
+        .Invoke()
     |> unbox<('u -> int * obj array) * TemplateView<'inst> array>
 #endif
 ```
@@ -2904,7 +3024,7 @@ In `experiments/Ranvier.View.Arms/Arms.fs`, .NET branch, insert before `let cell
 dotnet run --project experiments/Ranvier.View.Foundation/RepresentationChecks.fsproj -c Release -- --timing
 ```
 
-Expected: `PASS` for every `ArmsLoweringChecks` case and a line `lowering|first=<≤ 10>ms mean=<≤ 4>ms`. If the budget fails, run it three times; a mean above 4 ms in all three is a spec conflict: stop and report the three lines. If `delegateReader` fails inside `RebuildShapeCombination`, the quotation holds the delegate's lambdas under a shape the `NewDelegate` case does not match: print `arms` for that site and add the matching case.
+Expected: `PASS` for every `ArmsLoweringChecks` case and a line `lowering|first=<≤ 10>ms mean=<≤ 4>ms` (about 1.4 ms and 1.0 ms on the development machine). If the budget fails, run it three times; a mean above 4 ms in all three is a spec conflict: stop and report the three lines. If `delegateReader` fails inside `RebuildShapeCombination`, the quotation holds the delegate's lambdas under a shape the `NewDelegate` case does not match: print `arms` for that site and add the matching case.
 
 - [ ] **Step 5: Record the lowering cost**
 

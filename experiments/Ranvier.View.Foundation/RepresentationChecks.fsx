@@ -617,3 +617,4 @@ runCases ServerChecks.cases
 runCases ServerChecks.dotnetCases
 runCases SugarServerChecks.cases
 runCases SugarServerChecks.dotnetCases
+runCases ArmsLoweringChecks.cases

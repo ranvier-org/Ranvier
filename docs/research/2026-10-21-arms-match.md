@@ -26,3 +26,23 @@ import of `Ranvier.View.Arms.targets`:
   `BeforeTargets="ResolveAssemblyReferences"`; the `.targets` check for a missing plugin assembly fires under
   `dotnet fable`.
 - **`dotnet fsi build.fsx -- test` cleans the plugin's `bin` folder** with every other; the plugin is rebuilt after it.
+
+## .NET lowering cost
+
+`ArmsLoweringChecks` lowers the five-target site of the research (or-pattern, literal pattern, guard) once, then 200
+more times. The selector and the bodies form one LINQ expression, run once through the LINQ interpreter
+(`Compile(preferInterpretation = true)`). Three runs of `RepresentationChecks -- --timing` on the development machine:
+
+| Run | First site (ms) | Mean of 200 (ms) |
+|---|---|---|
+| 1 | 1.43 | 1.047 |
+| 2 | 1.73 | 0.977 |
+| 3 | 1.39 | 0.932 |
+
+Budget: ≤ 10 ms first, ≤ 4 ms mean (spec, "The .NET quotation path"). The probe compiled one lambda per body and the
+selector: 9.06 ms first, 8.55 ms mean. Compiling the one expression instead of interpreting it measured 6.73 ms first
+and 6.84 ms mean, of which about 1.2 ms is `Compile` and the rest the first call's JIT of the emitted method.
+
+Server render of a two-target site, 5,000 renders per measurement, mean per render: `Arms.Match` 0.0047 ms compiled and
+0.0046-0.0050 ms interpreted, against 0.0035-0.0058 ms for its `armOf` twin; the interpreter adds no measurable cost at
+this size.
