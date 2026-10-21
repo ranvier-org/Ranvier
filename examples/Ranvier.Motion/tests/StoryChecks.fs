@@ -22,9 +22,18 @@ let private fireEnter (observer: ScrollObserver) : unit = jsNative
 [<Emit("(() => { const r = $0.ownerDocument.createRange(); r.selectNodeContents($0); $0.replaceChildren(r.createContextualFragment($1)); })()")>]
 let private loadServed (target: obj) (html: string) : unit = jsNative
 
+let private options =
+    { Server.Options.defaults with
+        Policy = Representation.Omit
+    }
+
+// The story's render in a new host, and its head entries in the document's head in place of any earlier ones.
 let private served () =
     let target = host ()
-    loadServed target (Server.render Story.serverOptions Story.view ignore)
+    let page = Server.renderPage options Story.view ignore
+    Page.document.head.replaceChildren ()
+    loadServed Page.document.head page.Head
+    loadServed target page.Body
     target
 
 let private hydratesStrictly (clock: Clock) =

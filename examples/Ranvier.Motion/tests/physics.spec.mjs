@@ -40,6 +40,7 @@ test("a mouse throw moves the puck, the release settles it in the arena, and the
   expect(box.x + box.width).toBeLessThanOrEqual(arena.x + arena.width + 1);
   const caught = await centreOf(page.locator('[data-follower="4"]'));
   const at = await centreOf(page.locator(".puck"));
+  expect(Math.abs(at.x - start.x - settled[0])).toBeLessThan(0.5);
   expect(Math.abs(caught.x - at.x)).toBeLessThan(0.5);
   await shoot(page, "physics");
 });
@@ -54,6 +55,24 @@ test("spring home brings the puck back along a spring", async ({ page }) => {
   expect(midway).toBeGreaterThan(0);
   expect(midway).toBeLessThan(160);
   expect(await puck(page)).toEqual([0, 0]);
+});
+
+test("a grab during the spring home stops the spring, and the puck stays with the pointer", async ({ page }) => {
+  await page.evaluate(() => window.__motion.place(160, 60));
+  await page.clock.runFor(32);
+  await page.click("button.home");
+  await page.click("button.home");
+  await page.clock.runFor(120);
+  const at = await centreOf(page.locator(".puck"));
+  await page.mouse.move(at.x, at.y);
+  await page.mouse.down();
+  await page.mouse.move(at.x + 10, at.y + 10);
+  await page.clock.runFor(32);
+  const held = await puck(page);
+  await page.clock.runFor(1500);
+  expect(await puck(page)).toEqual(held);
+  expect(held[0]).toBeGreaterThan(0);
+  await page.mouse.up();
 });
 
 test("the slider seeks the timeline forward and back", async ({ page }) => {
@@ -82,21 +101,4 @@ test("the reduced policy shows the tips without their rise and sends the puck st
   await page.evaluate(() => window.__motion.place(80, 20));
   await page.click("button.home");
   expect(await puck(page)).toEqual([0, 0]);
-});
-
-// A regression check of a fixed bug: Motion.drag's Position held the position at anime's settle callback, before the
-// release animation ended.
-test("after a throw settles, Motion.drag's Position equals the element's offset", async ({ page }) => {
-  const start = await centreOf(page.locator(".puck"));
-  await page.mouse.move(start.x, start.y);
-  await page.mouse.down();
-  for (let step = 1; step <= 8; step++) {
-    await page.mouse.move(start.x + step * 30, start.y + step * 8);
-    await page.clock.runFor(16);
-  }
-  await page.mouse.up();
-  await page.clock.runFor(3000);
-  const [x] = await puck(page);
-  const at = await centreOf(page.locator(".puck"));
-  expect(Math.abs(at.x - start.x - x)).toBeLessThan(0.5);
 });

@@ -13,6 +13,7 @@
     "serve:test": "vite --host 127.0.0.1 --port 5179 --strictPort",
     "build": "npm run compile && vite build",
     "size": "npm run build && node size.mjs",
+    "size:only": "vite build && node size.mjs",
     "test:dom": "npm run compile:tests && node --test tests/pages.test.mjs",
     "test:browser": "npm run compile && npm run server && playwright test",
     "test": "npm run test:dom && npm run test:browser"

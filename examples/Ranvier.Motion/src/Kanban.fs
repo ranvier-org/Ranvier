@@ -187,6 +187,8 @@ type CardRow =
         Current: unit -> Slot
         Position: Signal<struct (float * float)>
         Dragging: Signal<bool>
+        /// <summary>The spring returning the card to its slot; a grab or the row's disposal cancels it.</summary>
+        Spring: Page.Slot
     }
 
 /// <summary>The lane a card dragged by <c>dx</c> pixels lands in, from lane <c>column</c> on lanes <c>width</c> wide.</summary>
@@ -206,16 +208,17 @@ let private leaveCard (_: CardRow) (element: Fable.Core.TS.Dom.Element) =
 let private springHome (graph: Graph) (row: CardRow) (struct (x, y)) =
     let point = Page.point x y
 
-    Anime.animate (
-        Targets.object point,
-        Anim (
-            x = 0,
-            y = 0,
-            ease = Ease.spring (stiffness = 260., damping = 20.),
-            onUpdate = fun _ -> graph.Batch (fun () -> row.Position.Value <- struct (point.x, point.y))
+    row.Spring.Start (
+        Anime.animate (
+            Targets.object point,
+            Anim (
+                x = 0,
+                y = 0,
+                ease = Ease.spring (stiffness = 260., damping = 20.),
+                onUpdate = fun _ -> graph.Batch (fun () -> row.Position.Value <- struct (point.x, point.y))
+            )
         )
     )
-    |> ignore
 
 let private cardRow (board: Board) =
     Component.template
@@ -227,12 +230,15 @@ let private cardRow (board: Board) =
                     Current = current
                     Position = Api.createSignal (struct (0., 0.))
                     Dragging = Api.createSignal false
+                    Spring = Page.ownedSlot ()
                 }
 
             Api.createEffectOn (fun () -> row.Dragging.Value) (fun dragging ->
                 let struct (dx, dy) = Api.untrack (fun () -> row.Position.Value)
 
-                if not dragging && (dx <> 0. || dy <> 0.) then
+                if dragging then
+                    row.Spring.Stop ()
+                elif dx <> 0. || dy <> 0. then
                     let slot = Api.untrack current
 
                     let width =
@@ -254,12 +260,6 @@ let private cardRow (board: Board) =
                     "card-slot dragging"
                 else
                     "card-slot"),
-            Attrs.attribute (
-                "style",
-                fun (row: CardRow) ->
-                    let slot = row.Current ()
-                    Some (sprintf "grid-column:%d;grid-row:%d" (slot.Card.Column + 1) (slot.Row + 1))
-            ),
             Attrs.data ("id", fun (row: CardRow) -> Some (string (row.Current ()).Card.Id)),
             Attrs.data ("lane", fun (row: CardRow) -> Some (string (row.Current ()).Card.Column)),
             Motion.presence enterCard leaveCard,

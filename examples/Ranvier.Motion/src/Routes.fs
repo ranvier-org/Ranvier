@@ -295,11 +295,12 @@ let view (shell: Shell) : Component<unit> =
                         titleOf route
                     }
 
+                // The indicator is as wide as a tab at every breakpoint, so its offset is the route's index in widths of its own.
                 span (
                     Attrs.className "indicator",
-                    Motion.follow "x" (AnimatableParams (duration = 420, ease = Ease.outBack)) (fun (s: Shell) ->
+                    Motion.follow "x" (AnimatableParams (x = AnimatableProp (unit = "%", duration = 420., ease = Ease.outBack))) (fun (s: Shell) ->
                         float (Array.findIndex ((=) s.Route.Value) routes)
-                        * 116.)
+                        * 100.)
                 ) {
                     ()
                 }

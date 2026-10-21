@@ -276,18 +276,13 @@ let private content (store: Store) =
             }
 
             article (Attrs.className "tile ring") {
-                svg (Attrs.attribute ("class", "ring-svg"), Attrs.attribute ("viewBox", "0 0 100 100")) {
-                    circle (
-                        Attrs.attribute ("class", "ring-track"),
-                        Attrs.attribute ("cx", "50"),
-                        Attrs.attribute ("cy", "50"),
-                        Attrs.attribute ("r", "42")
-                    ) {
+                svg (Attrs.className "ring-svg", Attrs.attribute ("viewBox", "0 0 100 100")) {
+                    circle (Attrs.className "ring-track", Attrs.attribute ("cx", "50"), Attrs.attribute ("cy", "50"), Attrs.attribute ("r", "42")) {
                         ()
                     }
 
                     circle (
-                        Attrs.attribute ("class", "ring-value"),
+                        Attrs.className "ring-value",
                         Attrs.attribute ("cx", "50"),
                         Attrs.attribute ("cy", "50"),
                         Attrs.attribute ("r", "42"),
@@ -315,11 +310,7 @@ let private content (store: Store) =
                     span (Attrs.className "note") { fun (panel: Panel) -> sprintf "%d of %d" panel.Cpu.Value.Length capacity }
                 }
 
-                svg (
-                    Attrs.attribute ("class", "chart-svg"),
-                    Attrs.attribute ("viewBox", "0 0 600 200"),
-                    Attrs.attribute ("preserveAspectRatio", "none")
-                ) {
+                svg (Attrs.className "chart-svg", Attrs.attribute ("viewBox", "0 0 600 200"), Attrs.attribute ("preserveAspectRatio", "none")) {
                     defs () {
                         linearGradient (
                             Attrs.attribute ("id", "cpu-fill"),
@@ -328,20 +319,20 @@ let private content (store: Store) =
                             Attrs.attribute ("x2", "0"),
                             Attrs.attribute ("y2", "1")
                         ) {
-                            stop (Attrs.attribute ("offset", "0%"), Attrs.attribute ("class", "fill-top")) { () }
-                            stop (Attrs.attribute ("offset", "100%"), Attrs.attribute ("class", "fill-bottom")) { () }
+                            stop (Attrs.attribute ("offset", "0%"), Attrs.className "fill-top") { () }
+                            stop (Attrs.attribute ("offset", "100%"), Attrs.className "fill-bottom") { () }
                         }
                     }
 
                     path (
-                        Attrs.attribute ("class", "chart-area"),
+                        Attrs.className "chart-area",
                         Motion.morph (Anim (duration = 700, ease = Ease.outQuart)) (fun (panel: Panel) -> areaPath panel.Cpu.Value)
                     ) {
                         ()
                     }
 
                     path (
-                        Attrs.attribute ("class", "chart-line"),
+                        Attrs.className "chart-line",
                         Motion.morph (Anim (duration = 700, ease = Ease.outQuart)) (fun (panel: Panel) -> linePath panel.Cpu.Value)
                     ) {
                         ()

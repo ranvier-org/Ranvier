@@ -10,28 +10,18 @@ open Ranvier.View.Foundation.Scheduling
 /// <summary>Advances the mocked <c>Date</c> and timers by the given milliseconds.</summary>
 type Clock = float -> unit
 
-/// <summary>A check by name, with the reason it is expected to fail while a library bug stands.</summary>
-type Case =
-    {
-        Name: string
-        Check: Clock -> unit
-        /// <summary>The library bug the check reproduces; the runner reports the check as a todo while it fails.</summary>
-        Bug: string option
-    }
+type Case = { Name: string; Check: Clock -> unit }
 
 let case (name: string) (check: Clock -> unit) =
-    {
-        Name = name
-        Check = check
-        Bug = None
-    }
+    { Name = name; Check = check }
 
-let bug (reason: string) (name: string) (check: Clock -> unit) =
-    {
-        Name = name
-        Check = check
-        Bug = Some reason
-    }
+/// <summary>Registers <c>dispose</c> to run at the next <c>release</c>; the runner releases after every check, failed or not.</summary>
+[<Emit("(globalThis.motionOpen ??= []).push($0)")>]
+let owned (dispose: unit -> unit) : unit = jsNative
+
+/// <summary>Runs every disposal registered since the last release, latest first.</summary>
+[<Emit("globalThis.motionRelease()")>]
+let release () : unit = jsNative
 
 /// <summary>The same check under synchronous and queued commits.</summary>
 let modes (name: string) (check: bool -> Clock -> unit) =
