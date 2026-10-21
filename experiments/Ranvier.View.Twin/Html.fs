@@ -41,7 +41,9 @@ let private voids =
             "wbr"
         ]
 
-let private rawText = HashSet<string> [ "script"; "style" ]
+let private rawText =
+    HashSet<string> [ "script"; "style"; "xmp"; "iframe"; "noembed"; "noframes" ]
+
 let private escapableRaw = HashSet<string> [ "textarea"; "title" ]
 
 let private serialisedRaw =
@@ -612,6 +614,18 @@ let private parseNodes (parent: TwinNode) (html: string) (documentMode: bool) =
             | _ -> None)
         |> List.ofSeq
 
+    // The form element pointer a fragment parse starts with: set when the parse root has a form ancestor, as the
+    // context element's nearest form sets it; a template boundary ends the search.
+    let contextForm =
+        let rec walk (node: TwinNode) =
+            match node with
+            | null -> false
+            | :? TwinElement as e when e.Namespace = "html" && e.LocalName = "form" -> true
+            | :? TwinElement as e when e.LocalName = "template" -> false
+            | _ -> walk node.Parent
+
+        not documentMode && walk parent
+
     // HTML's "has an element in scope", in button scope when `button` is set.
     let inScope (target: string) (button: bool) =
         let rec walk (elements: TwinElement list) =
@@ -907,8 +921,13 @@ let private parseNodes (parent: TwinNode) (html: string) (documentMode: bool) =
                     ->
                     reader.Fail "a nested <a>"
                 | "form" when
-                    openElements ()
-                    |> List.exists (fun e -> e.Namespace = "html" && e.LocalName = "form")
+                    (contextForm
+                     && not (
+                         openElements ()
+                         |> List.exists (fun e -> e.Namespace = "html" && e.LocalName = "template")
+                     ))
+                    || openElements ()
+                       |> List.exists (fun e -> e.Namespace = "html" && e.LocalName = "form")
                     ->
                     reader.Fail "a nested <form>"
                 | "button" when inScope "button" false -> reader.Fail "a nested <button>"

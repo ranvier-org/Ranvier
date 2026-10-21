@@ -262,7 +262,8 @@ module Events =
             path.Add cursor
             cursor <- cursor.Parent
 
-        let failures = ResizeArray<exn>()
+        // Each failure is recorded as it happens, so a nested dispatch's follow the outer ones before them.
+        let failures = target.Document.ListenerErrors
 
         // The capturing pass ends at the target's capture listeners; the bubbling pass starts at its other listeners,
         // whether or not the event bubbles.
@@ -284,7 +285,6 @@ module Events =
         event.Phase <- 0
         event.CurrentTarget <- null
         event.CurrentTargetOverride <- Unchecked.defaultof<_>
-        target.Document.ListenerErrors.AddRange failures
         not event.DefaultPrevented
 
     /// <summary>Dispatches <c>event</c> at <c>target</c> through the capture, target and bubble phases; false when cancelled.</summary>
@@ -304,11 +304,7 @@ module Events =
                 })
 
     let private isDisabled (e: TwinElement) =
-        e.HasAttribute "disabled"
-        && (e.LocalName = "button"
-            || e.LocalName = "input"
-            || e.LocalName = "select"
-            || e.LocalName = "textarea")
+        e.IsActuallyDisabled
 
     let private formOf (e: TwinElement) =
         let mutable cursor = e.Parent
@@ -477,7 +473,6 @@ module Events =
     let blur (element: TwinElement) : unit =
         outermost element.Document (fun () -> blurNow element)
 
-    // Per node: the listeners added through addEventListener, by type and callback object, with their removal.
     // Per node: the listeners added through addEventListener, keyed as the DOM keys them by type, callback object
     // and capture, with the entry that runs them.
     let private added =

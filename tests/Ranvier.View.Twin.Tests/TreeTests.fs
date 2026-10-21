@@ -16,6 +16,15 @@ let tests =
     testList
         "Tree"
         [
+            testCase "deselecting the selected option of a single select selects the first enabled option"
+            <| fun () ->
+                use document = new TwinDocument ()
+                let select = document.CreateElement "select"
+                Html.parseInto select "<option>a</option><option selected>b</option>"
+                let b = select.LastChild :?> TwinElement
+                b.Selected <- false
+                Expect.equal select.Value "a" "reset to the first option"
+
             testCase "a new document has html, head and body"
             <| fun () ->
                 use document = new TwinDocument ()

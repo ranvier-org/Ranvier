@@ -48,7 +48,10 @@ let create (host: TwinHost) (directory: string) : Harness =
             messages
 
         member _.Intercept(target, memberName, wrap) =
-            Bridge.intercept host.Document (Bridge.nodeOf target) memberName wrap
+            match target, Bridge.nodeOf target with
+            | null, _ -> Bridge.intercept host.Document null memberName wrap
+            | _, null -> raise (NotSupportedException $"The twin intercepts the members of nodes only, not of a {target.GetType().Name}")
+            | _, node -> Bridge.intercept host.Document node memberName wrap
 
         member _.Record(name, text) =
             count <- count + 1

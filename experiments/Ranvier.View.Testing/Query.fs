@@ -7,8 +7,40 @@ exception QueryException of selector: string * count: int * excerpt: string with
     override this.Message =
         $"Expected one match for '{this.selector}', found {this.count}.{this.excerpt}"
 
-/// <summary>The dump excerpt appended to query and expectation failures.</summary>
-let mutable internal excerptOf: Node -> string = fun _ -> ""
+#if FABLE_COMPILER
+let mutable private excerpt: Node -> string = Unchecked.defaultof<_>
+
+let private readExcerpt () = excerpt
+
+let private writeExcerpt (value: Node -> string) =
+    excerpt <- value
+#else
+// Per thread, as the conformance harness and the twin documents are.
+[<Sealed; AbstractClass>]
+type private ExcerptSlot =
+    [<System.ThreadStatic; DefaultValue>]
+    static val mutable private current: Node -> string
+
+    static member Current
+        with get () = ExcerptSlot.current
+        and set (value: Node -> string) = ExcerptSlot.current <- value
+
+let private readExcerpt () =
+    ExcerptSlot.Current
+
+let private writeExcerpt (value: Node -> string) =
+    ExcerptSlot.Current <- value
+#endif
+
+/// <summary>Sets the dump excerpt appended to query and expectation failures on this thread.</summary>
+let internal setExcerpt (excerptOf: Node -> string) =
+    writeExcerpt excerptOf
+
+/// <summary>The dump excerpt of <c>root</c> appended to query and expectation failures; empty until one is set.</summary>
+let internal excerptOf (root: Node) : string =
+    match box (readExcerpt ()) with
+    | null -> ""
+    | _ -> (readExcerpt ()) root
 
 let query (root: Node) (selector: string) : Element option =
     Selector.query root selector

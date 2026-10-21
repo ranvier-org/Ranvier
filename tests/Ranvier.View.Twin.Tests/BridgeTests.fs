@@ -10,6 +10,45 @@ let tests =
     testList
         "Bridge"
         [
+            testCase "replaceWith keeps a node among its own replacements and does nothing without a parent"
+            <| fun () ->
+                use document = new TwinDocument ()
+                let parent = document.CreateElement "div"
+                Html.parseInto parent "<a></a><b></b><i></i>"
+                let a = parent.FirstChild
+                (a.Native :?> ChildNode).replaceWith [| Fable.Core.U2.Case2 a.Native |]
+                Expect.equal (Html.inner parent) "<a></a><b></b><i></i>" "self"
+
+                (a.Native :?> ChildNode).replaceWith [| Fable.Core.U2.Case2 a.NextSibling.Native; Fable.Core.U2.Case2 a.Native |]
+
+                Expect.equal (Html.inner parent) "<b></b><a></a><i></i>" "the next sibling, then self"
+                let lone = document.CreateElement "u"
+                (lone.Native :?> ChildNode).replaceWith [| Fable.Core.U2.Case1 "t" |]
+                Expect.isNull lone.Parent "parentless"
+
+            testCase "list items are read without rebuilding the list"
+            <| fun () ->
+                use document = new TwinDocument ()
+                let div = document.CreateElement "div"
+
+                for i in 1..2000 do
+                    div.AppendChild (document.CreateElement "i")
+                    |> ignore
+
+                let list = div.Native.childNodes
+                let watch = System.Diagnostics.Stopwatch.StartNew ()
+
+                for i in 0 .. int list.length - 1 do
+                    list.item (float i) |> ignore
+
+                Expect.isLessThan watch.ElapsedMilliseconds 200L "indexed iteration is linear"
+
+                div.AppendChild (document.CreateElement "b")
+                |> ignore
+
+                Expect.equal list.length 2001.0 "the cache follows a mutation"
+                Expect.equal (unbox<Element>(list.item 2000.)).localName "b" "the appended item"
+
             testCase "a node has one bridged object"
             <| fun () ->
                 use document = new TwinDocument ()

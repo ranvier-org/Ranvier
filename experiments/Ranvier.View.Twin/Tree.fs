@@ -81,6 +81,9 @@ type TwinNode internal (kind: NodeKind, owner: TwinDocument) =
 
         cursor.Kind = NodeKind.Document
 
+    /// <summary>Changes with every insertion and removal of a child; the bridge's live lists rebuild when it moves.</summary>
+    member val internal ChildVersion = 0 with get, set
+
     member private this.Unlink(child: TwinNode) =
         let previous, next = child.PreviousSibling, child.NextSibling
 
@@ -95,6 +98,8 @@ type TwinNode internal (kind: NodeKind, owner: TwinDocument) =
             next.SetPrevious previous
 
         child.SetLinks (null, null, null)
+        this.ChildVersion <- this.ChildVersion + 1
+        this.Document.FocusFixup child
 
     member this.RemoveChild(child: TwinNode) : TwinNode =
         if
@@ -204,6 +209,7 @@ type TwinNode internal (kind: NodeKind, owner: TwinDocument) =
             else
                 reference.SetPrevious node
 
+            this.ChildVersion <- this.ChildVersion + 1
             node
 
     member this.AppendChild(node: TwinNode) =
@@ -357,6 +363,49 @@ and [<Sealed; AllowNullLiteral>] TwinElement internal (owner: TwinDocument, loca
 
         attributes.RemoveAll (fun (n, _) -> n = name)
         |> ignore
+
+    /// <summary>
+    /// HTML's "actually disabled": a button, input, select, textarea or fieldset with a disabled attribute, or inside a
+    /// disabled fieldset outside that fieldset's first legend; an option or optgroup with the attribute, or an option in
+    /// a disabled optgroup.
+    /// </summary>
+    member this.IsActuallyDisabled: bool =
+        let own = this.HasAttribute "disabled"
+
+        match localName with
+        | "optgroup" -> own
+        | "option" ->
+            own
+            || (match this.Parent with
+                | :? TwinElement as group when group.LocalName = "optgroup" -> group.HasAttribute "disabled"
+                | _ -> false)
+        | "button"
+        | "input"
+        | "select"
+        | "textarea"
+        | "fieldset" ->
+            let firstLegend (fieldset: TwinElement) =
+                fieldset.Children
+                |> List.tryPick (fun c ->
+                    match c with
+                    | :? TwinElement as e when e.LocalName = "legend" -> Some (e :> TwinNode)
+                    | _ -> None)
+                |> Option.toObj
+
+            let rec inDisabledFieldset (inside: TwinNode) (node: TwinNode) =
+                match node with
+                | null -> false
+                | :? TwinElement as e when
+                    e.LocalName = "fieldset"
+                    && e.HasAttribute "disabled"
+                    && not (obj.ReferenceEquals (inside, firstLegend e))
+                    ->
+                    true
+                | _ -> inDisabledFieldset node node.Parent
+
+            own
+            || inDisabledFieldset (this :> TwinNode) this.Parent
+        | _ -> false
 
     /// <summary>The input's type keyword; a missing or unknown <c>type</c> attribute reads as <c>text</c>.</summary>
     member internal this.InputType =
@@ -562,7 +611,19 @@ and [<Sealed; AllowNullLiteral>] TwinElement internal (owner: TwinDocument, loca
                 for option in select.Options do
                     if not (obj.ReferenceEquals (option, this)) then
                         option.SetSelectedness false
-            | _ -> ()
+            // The selectedness setting algorithm's reset: a single select with no option selected selects its first
+            // enabled option.
+            | select ->
+                if
+                    select.Options
+                    |> List.forall (fun o -> not o.RawSelected)
+                then
+                    match
+                        select.Options
+                        |> List.tryFind (fun o -> not o.OptionDisabled)
+                    with
+                    | Some first -> first.SetSelectedness true
+                    | None -> ()
 
     member internal _.SetSelectedness(value: bool) =
         dirtySelected <- true
@@ -612,6 +673,14 @@ and [<Sealed; AllowNullLiteral>] TwinDocument() as this =
     member _.Body = body
     member _.OwnerThread = ownerThread
     member val private Focused: TwinElement = null with get, set
+
+    // HTML's focus fixup: removing the focused element, or a subtree holding it, leaves nothing focused.
+    member internal this.FocusFixup(removed: TwinNode) =
+        if
+            not (isNull this.Focused)
+            && removed.Contains this.Focused
+        then
+            this.Focused <- null
 
     /// <summary>The focused element; null when nothing is focused or the focused element has left the document.</summary>
     member this.ActiveElement

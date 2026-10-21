@@ -1,0 +1,18 @@
+[
+  ["<p><span><div>x</div></span></p>", "implied end tag (<p> closed by <div>)"],
+  ["<p><li>x</li></p>", "implied end tag (<p> closed by <li>)"],
+  ["<p><dd>x</dd></p>", "implied end tag (<p> closed by <dd>)"],
+  ["<p><center>x</center></p>", "implied end tag (<p> closed by <center>)"],
+  ["<p><summary>x</summary></p>", "implied end tag (<p> closed by <summary>)"],
+  ["<h1><h2>x</h2></h1>", "implied end tag (<h1> closed by <h2>)"],
+  ["<a><a>x</a></a>", "nested <a>"],
+  ["<a><span><a>x</a></span></a>", "nested <a>"],
+  ["<button><span><button>x</button></span></button>", "nested <button>"],
+  ["<form><div><form></form></div></form>", "nested <form>"],
+  ["<ul><li><p>a<li>b</li></p></li></ul>", "implied end tag (<li> inside <li>)"],
+  ["<ul><li><span><li>b</li></span></li></ul>", "implied end tag (<li> inside <li>)"],
+  ["<dl><dd><dt>x</dt></dd></dl>", "implied end tag (<dt> inside <dd>)"],
+  ["<svg><div>x</div></svg>", "HTML element <div> inside foreign content"],
+  ["<math><p>x</p></math>", "HTML element <p> inside foreign content"],
+  ["<math><mi><b>x</b></mi></math>", "an element inside a MathML text integration point"]
+]

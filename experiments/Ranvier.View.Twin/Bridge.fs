@@ -33,10 +33,22 @@ type internal ServedOnThread =
 /// A live list of twin nodes, which the bridge presents as the declared list interface. <c>Key</c> names the list on
 /// its owner, so every read of the same list returns the same object.
 /// </summary>
-type internal ListValue(owner: obj, key: string, nodes: unit -> TwinNode seq) =
+type internal ListValue(owner: obj, key: string, nodes: unit -> TwinNode seq, version: unit -> int) =
+    let mutable items: TwinNode array = null
+    let mutable itemsVersion = -1
+
     member _.Owner = owner
     member _.Key = key
-    member _.Nodes = nodes ()
+
+    /// <summary>The list's nodes, rebuilt only when <c>version</c> has moved since the last read.</summary>
+    member _.Items: TwinNode array =
+        let current = version ()
+
+        if isNull items || current <> itemsVersion then
+            items <- Array.ofSeq (nodes ())
+            itemsVersion <- current
+
+        items
 
 /// <summary>An element's attributes, which the bridge presents as <c>NamedNodeMap</c>.</summary>
 type internal AttributesValue(element: TwinElement) =
@@ -194,7 +206,7 @@ and internal BridgeCore private () =
                 match m.Name with
                 | "get_length" ->
                     BridgeCore.ServeMethod m
-                    box (float (Seq.length list.Nodes))
+                    box (float list.Items.Length)
                 | "item"
                 | "get_Item" ->
                     BridgeCore.ServeMethod m
@@ -204,7 +216,7 @@ and internal BridgeCore private () =
                         if index < 0 then
                             null
                         else
-                            list.Nodes |> Seq.tryItem index |> Option.toObj
+                            Array.tryItem index list.Items |> Option.toObj
 
                     BridgeCore.Wrap (m, m.ReturnType, box item)
                 | _ -> raise (BridgeCore.Unsupported m)
@@ -486,7 +498,7 @@ module Bridge =
         }
 
     let private childList (owner: TwinNode) (key: string) (nodes: unit -> TwinNode seq) : obj =
-        box (ListValue (owner, key, nodes))
+        box (ListValue (owner, key, nodes, (fun () -> owner.ChildVersion)))
 
     let private nodes = [ "Node" ]
     let private elements = [ "Element" ]
@@ -740,7 +752,7 @@ module Bridge =
 
              for name in [ "Ranvier.View.Twin.Events"; "Ranvier.View.Twin.SelectorMembers" ] do
                  match assembly.GetType name with
-                 | null -> ()
+                 | null -> invalidOp $"Bridge.ensureAll: the type {name} was not found"
                  | t ->
                      match
                          t.GetMethod (
@@ -750,7 +762,7 @@ module Bridge =
                              ||| BindingFlags.Static
                          )
                      with
-                     | null -> ()
+                     | null -> invalidOp $"Bridge.ensureAll: {name}.ensure was not found"
                      | ensure -> ensure.Invoke (null, [||]) |> ignore)
 
     /// <summary>Registers the core members once per process; every entry point that creates a proxy calls it first.</summary>

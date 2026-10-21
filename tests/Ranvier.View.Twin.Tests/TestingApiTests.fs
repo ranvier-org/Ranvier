@@ -9,6 +9,18 @@ let tests =
     testList
         "Testing API"
         [
+            testCase "the twin harness raises for an interception target that is not a node"
+            <| fun () ->
+                let host = TwinHost.Create ()
+                use _ = host.Document
+                let harness = TwinHarness.create host (System.IO.Path.GetTempPath ())
+
+                Expect.throwsT<System.NotSupportedException>
+                    (fun () ->
+                        harness.Intercept (box "a window", "addEventListener", System.Func<_, _, _>(fun original args -> original.Invoke args))
+                        |> ignore)
+                    "not a node"
+
             testCase "a conformance case that leaves a listener on the body fails"
             <| fun () ->
                 let scratch =
