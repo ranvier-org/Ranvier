@@ -45,6 +45,24 @@ type Seam =
     /// </summary>
     abstract Before: System.Func<Node, (unit -> unit) -> unit, unit -> unit> with get, set
 
+    /// <summary>
+    /// Creates the element named by the string under the node: in the SVG namespace for an svg element and under an SVG
+    /// element other than a foreignObject. Null until <c>enableSvg</c>, while the mount paths create HTML elements.
+    /// </summary>
+    abstract CreateElement: System.Func<Node, string, HTMLElement> with get, set
+
+    /// <summary>
+    /// Records that the elements created at the top level of the fragment take the namespace of the region start's
+    /// parent. Null until <c>enableSvg</c>.
+    /// </summary>
+    abstract Nest: System.Action<Node, Node> with get, set
+
+    /// <summary>
+    /// Parses the markup into the template's content, in the SVG namespace when the markup's first element is an SVG tag
+    /// other than svg. Null until <c>enableSvg</c>.
+    /// </summary>
+    abstract Parse: System.Action<HTMLTemplateElement, string> with get, set
+
 /// <summary>The seam, an empty object until the first registration; null on .NET.</summary>
 #if FABLE_COMPILER
 let seam: Seam = Fable.Core.JsInterop.emitJsExpr () "{}"
@@ -174,7 +192,7 @@ let private endAll (held: ResizeArray<unit -> unit>) (errors: ResizeArray<exn>) 
 // that removes the node and drops the end action; `safetyTimeout` milliseconds later `finish` runs unless it ran earlier.
 // The end action cancels the exit, then removes the node. A failure of the exit finishes it and is raised.
 let private retire (node: Node) (held: ResizeArray<unit -> unit>) : bool =
-    let exit: (unit -> unit) -> (unit -> unit) = lookup exits node
+    let exit: System.Func<unit -> unit, unit -> unit> = lookup exits node
 
     if isNullish exit then
         false
@@ -218,7 +236,7 @@ let private retire (node: Node) (held: ResizeArray<unit -> unit>) : bool =
         timer <- startTimer finish safetyTimeout
 
         try
-            cancel <- exit finish
+            cancel <- exit.Invoke finish
         with _ ->
             finish ()
             reraise ()
@@ -259,7 +277,7 @@ let private before (regionStart: Node) (post: (unit -> unit) -> unit) : unit -> 
 /// marks the node's exit as following: from then until the row retires the node, <c>Within</c> holds for the node and
 /// its descendants, so nested mounts leave their nodes in place.
 /// </summary>
-let register (node: Node) (exit: (unit -> unit) -> (unit -> unit)) : unit -> unit =
+let register (node: Node) (exit: System.Func<unit -> unit, unit -> unit>) : unit -> unit =
     if not seam.Enabled then
         seam.Retire <- System.Func<_, _, _> retire
         seam.NextLive <- System.Func<_, _> nextLive
@@ -304,3 +322,31 @@ let registerReflow (node: Node) (reflow: Reflow) : unit -> unit =
     fun () ->
         if obj.ReferenceEquals (lookup reflows node, entry) then
             forget reflows node
+
+// The parent recorded for each row fragment by `Nest`.
+let private nests = weakMap ()
+
+[<Emit("((p, tag) => tag === 'svg' || p.namespaceURI === 'http://www.w3.org/2000/svg' && p.localName !== 'foreignObject' ? document.createElementNS('http://www.w3.org/2000/svg', tag) : document.createElement(tag))($2.get($0) || $0, $1)")>]
+let private createUnder (parent: Node) (tag: string) (nested: obj) : HTMLElement = jsNative
+
+// Parses SVG-rooted markup inside an svg element, then lifts the parsed nodes into the template's content.
+[<Emit("((t, m) => { if (/^(?:<!--[^]*?-->)*<(?:g|path|circle|ellipse|line|polyline|polygon|rect)[ >/]/.test(m)) { t.innerHTML = '<svg>' + m + '</svg>'; t.content.replaceChildren(...t.content.firstChild.childNodes); } else t.innerHTML = m; })($0, $1)")>]
+let private parseUnder (template: HTMLTemplateElement) (markup: string) : unit = jsNative
+
+// Records the region start's parent, or the parent recorded for the fragment holding the region start.
+[<Emit("((m, f, s) => { const p = s.parentNode; if (p != null) m.set(f, m.get(p) || p); })($0, $1, $2)")>]
+let private nestUnder (nested: obj) (fragment: Node) (regionStart: Node) : unit = jsNative
+
+/// <summary>
+/// Makes the expanded path create an svg element, and every element under an SVG element other than a foreignObject, in
+/// the SVG namespace.
+/// </summary>
+let enableSvg () =
+#if FABLE_COMPILER
+    if isNullish seam.CreateElement then
+        seam.CreateElement <- System.Func<_, _, _>(fun parent tag -> createUnder parent tag nests)
+        seam.Nest <- System.Action<_, _>(fun fragment regionStart -> nestUnder nests fragment regionStart)
+        seam.Parse <- System.Action<_, _>(fun template markup -> parseUnder template markup)
+#else
+    ()
+#endif

@@ -99,22 +99,6 @@ module Motion =
     [<Emit("$0.style.overflow = $1")>]
     let private overflow (element: obj) (value: string) : unit = jsNative
 
-#if FABLE_COMPILER
-    // The exit part, with the motion part's hook run first under the same placement; the cleanup runs the motion
-    // cleanup, then the exit's.
-    [<Emit("((e, m) => new e.constructor(e.tag, [e.fields[0], (i, n, f) => { const c = m.fields[1](i, n, f); const p = e.fields[1](i, n, f); return () => { try { c(); } finally { p(); } }; }]))($0, $1)")>]
-    let private joined (exit: Part<'native, 'inst>) (motion: Part<'native, 'inst>) : Part<'native, 'inst> = jsNative
-#else
-    let private joined (exit: Part<'native, 'inst>) (_: Part<'native, 'inst>) : Part<'native, 'inst> = exit
-#endif
-
-    // The one call of each curried seam member: the parts pass delegates, which compile to plain functions.
-    let private motionPart (hook: Func<'inst, 'native, MotionContext, unit -> unit>) : Part<'native, 'inst> =
-        Hooks.motion (fun inst node context -> hook.Invoke (inst, node, context))
-
-    let private exitPart (exit: Func<'inst, 'native, unit -> unit, unit -> unit>) : Part<'native, 'inst> =
-        Hooks.exit (fun inst node finish -> exit.Invoke (inst, node, finish))
-
     let inline private targetsOf (node: 'native) : Targets =
         Erased.cast node
 
@@ -175,11 +159,11 @@ module Motion =
 
     /// <summary>Plays on every placement, hydration included; the cleanup reverts the animation.</summary>
     let on (play: 'inst -> TS.Dom.Element -> #IRevertible) : Part<'native, 'inst> =
-        motionPart (Func<_, _, _, _>(fun inst node context -> settle context (play inst (elementOf node) :> IRevertible)))
+        Hooks.motion (Func<_, _, _, _>(fun inst node context -> settle context (play inst (elementOf node) :> IRevertible)))
 
     /// <summary>Plays on every placement of an element created on the client; an element adopted from server HTML stays as served.</summary>
     let appear (play: 'inst -> TS.Dom.Element -> #IRevertible) : Part<'native, 'inst> =
-        motionPart (
+        Hooks.motion (
             Func<_, _, _, _>(fun inst node context ->
                 if context.Hydrated then
                     nothing
@@ -192,14 +176,14 @@ module Motion =
     /// hydrated rows and rows nested inside an entering row stay still.
     /// </summary>
     let enter (play: 'inst -> TS.Dom.Element -> #ITickable) : Part<'native, 'inst> =
-        motionPart (entering play)
+        Hooks.motion (entering play)
 
     /// <summary>
     /// On a row or arm root element: plays when the row is retired, and the element leaves when the tickable completes.
     /// </summary>
     /// <remarks>A forced removal, as when the mount is disposed, cancels the tickable and removes the element at once.</remarks>
     let exit (play: 'inst -> TS.Dom.Element -> #ITickable) : Part<'native, 'inst> =
-        exitPart (departure false play)
+        Hooks.exit (departure false play)
 
     /// <summary>
     /// On a row or arm root element: <c>enter</c> and <c>exit</c> together. The leaving element is pinned out of flow,
@@ -207,7 +191,7 @@ module Motion =
     /// </summary>
     /// <remarks>The element's offset parent is the containing block of the pinned box; position the list's container.</remarks>
     let presence (enter: 'inst -> TS.Dom.Element -> #ITickable) (exit: 'inst -> TS.Dom.Element -> #ITickable) : Part<'native, 'inst> =
-        joined (exitPart (departure true exit)) (motionPart (entering enter))
+        Hooks.both (Hooks.motion (entering enter), Hooks.exit (departure true exit))
 
     /// <summary>Presence that fades the element in over 240 ms and out over 180 ms.</summary>
     let fade<'native, 'inst> : Part<'native, 'inst> =
@@ -255,7 +239,7 @@ module Motion =
     /// it plays.
     /// </summary>
     let collapse<'native, 'inst> : Part<'native, 'inst> =
-        joined (exitPart (departure false fold)) (motionPart (entering unfold))
+        Hooks.both (Hooks.motion (entering unfold), Hooks.exit (departure false fold))
 
     /// <summary>
     /// FLIP for the rows of every region under the element: anime's <c>createLayout</c> over the element's element
@@ -301,7 +285,7 @@ module Motion =
     /// </summary>
     /// <remarks><c>parameters</c> without an entry for <c>property</c> give it the shared defaults.</remarks>
     let follow (property: string) (parameters: AnimatableParams) (read: 'inst -> float) : Part<'native, 'inst> =
-        motionPart (
+        Hooks.motion (
             Func<_, _, _, _>(fun inst node context ->
                 let animatable =
                     Anime.animatable (targetsOf node, withDefault parameters property (AnimatableProp ()))
@@ -324,7 +308,7 @@ module Motion =
     /// </summary>
     /// <remarks>The cleanup reverts the latest animation.</remarks>
     let animateOn (read: 'inst -> 'v) (play: 'inst -> TS.Dom.Element -> 'v -> #ITickable) : Part<'native, 'inst> =
-        motionPart (
+        Hooks.motion (
             Func<_, _, _, _>(fun inst node context ->
                 let current: ITickable ref = ref null
 
@@ -348,7 +332,7 @@ module Motion =
     /// to each new fraction; the first fraction is drawn at once.
     /// </summary>
     let draw (parameters: AnimatableParams) (read: 'inst -> float) : Part<'native, 'inst> =
-        motionPart (
+        Hooks.motion (
             Func<_, _, _, _>(fun inst node context ->
                 let initial = read inst
                 let drawable = (Svg.drawable (targetsOf node, 0., initial))[0]
@@ -366,7 +350,7 @@ module Motion =
     /// completed morph leaves exactly the shape read.
     /// </summary>
     let morph (parameters: Anim) (read: 'inst -> string) : Part<'native, 'inst> =
-        motionPart (
+        Hooks.motion (
             Func<_, _, _, _>(fun inst node context ->
                 let element = box node
                 let attribute = shapeAttribute element
@@ -400,7 +384,7 @@ module Motion =
     /// </summary>
     /// <remarks>The observer requires <c>ResizeObserver</c>.</remarks>
     let scroll (parameters: ScrollParams) (bind: 'inst -> ScrollBinding) (play: 'inst -> TS.Dom.Element -> #ITickable) : Part<'native, 'inst> =
-        motionPart (
+        Hooks.motion (
             Func<_, _, _, _>(fun inst node context ->
                 let binding = bind inst
                 let graph = Graph.Current
@@ -433,7 +417,7 @@ module Motion =
     /// </summary>
     /// <remarks>The draggable requires <c>DOMPoint</c>, <c>DOMMatrix</c> and <c>ResizeObserver</c>.</remarks>
     let drag (parameters: DraggableParams) (bind: 'inst -> DragBinding) : Part<'native, 'inst> =
-        motionPart (
+        Hooks.motion (
             Func<_, _, _, _>(fun inst node context ->
                 let binding = bind inst
                 let graph = Graph.Current
@@ -463,7 +447,7 @@ module Motion =
     /// </summary>
     /// <remarks>The element's content must be static text: a text slot or region inside it stops updating once split.</remarks>
     let split (parameters: SplitParams) (play: 'inst -> TextSplitter -> #ITickable) : Part<'native, 'inst> =
-        motionPart (
+        Hooks.motion (
             Func<_, _, _, _>(fun inst node context ->
                 let splitter = Anime.splitText (elementOf node, parameters)
                 let tickable = play inst splitter :> ITickable

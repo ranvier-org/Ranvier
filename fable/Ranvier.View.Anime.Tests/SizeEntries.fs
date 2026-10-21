@@ -65,18 +65,22 @@ let private whenComplete (animation: JSAnimation) (action: unit -> unit) : unit 
 /// <summary>Rows with a motion hook and an exit hook calling <c>animate</c> by hand.</summary>
 let presenceTwin (target: HTMLElement) =
     let enter =
-        Hooks.motion (fun (item: unit -> int) (node: HTMLLIElement) context ->
-            if context.Inserted then
-                let animation = rowEnter item node
-                fun () -> animation.revert ()
-            else
-                ignore)
+        Hooks.motion (
+            System.Func<_, _, _, _>(fun (item: unit -> int) (node: HTMLLIElement) context ->
+                if context.Inserted then
+                    let animation = rowEnter item node
+                    fun () -> animation.revert ()
+                else
+                    ignore)
+        )
 
     let exit =
-        Hooks.exit (fun (item: unit -> int) (node: HTMLLIElement) finish ->
-            let animation = rowExit item node
-            whenComplete animation finish
-            fun () -> animation.cancel ())
+        Hooks.exit (
+            System.Func<_, _, _, _>(fun (item: unit -> int) (node: HTMLLIElement) finish ->
+                let animation = rowExit item node
+                whenComplete animation finish
+                fun () -> animation.cancel ())
+        )
 
     let view =
         Component.template

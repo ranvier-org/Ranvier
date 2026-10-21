@@ -110,13 +110,16 @@ let private storyTwin =
         })
 
 let private chartTwin =
-    Component.define
+    Component.template
         (fun _ () ->
             {
                 Fraction = Api.createSignal 0.
                 Line = Api.createSignal "M0 0 L100 0"
             })
-        (fun t -> t.element (HtmlTag "svg") [||] [| t.element (HtmlTag "path") [||] [||]; t.element (HtmlTag "path") [||] [||] |])
+        (svg () {
+            path () { () }
+            path () { () }
+        })
 
 type Shelf = { Books: string array }
 

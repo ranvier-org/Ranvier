@@ -47,8 +47,14 @@ let private contexts =
     Component.template
         (fun _ (state: Rows) -> state)
         (div () {
-            ul () { forEach id (fun (s: Rows) -> s.Items.Value) (li (Hooks.motion rowMotion) { fun (row: unit -> int) -> string (row ()) }) }
-            show (fun s -> s.Shown.Value) (span (Hooks.motion shownMotion) { "on" })
+            ul () {
+                forEach
+                    id
+                    (fun (s: Rows) -> s.Items.Value)
+                    (li (Hooks.motion (System.Func<_, _, _, _> rowMotion)) { fun (row: unit -> int) -> string (row ()) })
+            }
+
+            show (fun s -> s.Shown.Value) (span (Hooks.motion (System.Func<_, _, _, _> shownMotion)) { "on" })
         })
 
 let private innerMotion (row: unit -> int) (_: HTMLElement) (motion: MotionContext) =
@@ -63,11 +69,11 @@ let private nested =
             forEach
                 id
                 (fun (s: Rows) -> s.Items.Value)
-                (li (Hooks.motion rowMotion) {
+                (li (Hooks.motion (System.Func<_, _, _, _> rowMotion)) {
                     forEach
                         id
                         (fun (row: unit -> int) -> [| row () * 10; row () * 10 + 1 |])
-                        (b (Hooks.motion innerMotion) { fun (row: unit -> int) -> string (row ()) })
+                        (b (Hooks.motion (System.Func<_, _, _, _> innerMotion)) { fun (row: unit -> int) -> string (row ()) })
                 })
         })
 
@@ -188,15 +194,15 @@ let private exiting =
                 forEach
                     id
                     (fun (s: Rows) -> s.Items.Value)
-                    (li (Hooks.exit (fun (_: unit -> int) (node: HTMLLIElement) finish -> exitOf node finish)) {
+                    (li (Hooks.exit (System.Func<_, _, _, _>(fun (_: unit -> int) (node: HTMLLIElement) finish -> exitOf node finish))) {
                         fun (row: unit -> int) -> string (row ())
                     })
             }
 
             showElse
                 (fun s -> s.Shown.Value)
-                (span (Hooks.exit (fun (_: Rows) (node: HTMLSpanElement) finish -> exitOf node finish)) { "on" })
-                (em (Hooks.exit (fun (_: Rows) (node: HTMLElement) finish -> exitOf node finish)) { "off" })
+                (span (Hooks.exit (System.Func<_, _, _, _>(fun (_: Rows) (node: HTMLSpanElement) finish -> exitOf node finish))) { "on" })
+                (em (Hooks.exit (System.Func<_, _, _, _>(fun (_: Rows) (node: HTMLElement) finish -> exitOf node finish))) { "off" })
         })
 
 /// <summary>A list whose row roots' exits call <c>finish</c> at once.</summary>
@@ -208,9 +214,11 @@ let private immediate =
                 id
                 (fun (s: Rows) -> s.Items.Value)
                 (li (
-                    Hooks.exit (fun (_: unit -> int) (_: HTMLLIElement) finish ->
-                        finish ()
-                        ignore)
+                    Hooks.exit (
+                        System.Func<_, _, _, _>(fun (_: unit -> int) (_: HTMLLIElement) finish ->
+                            finish ()
+                            ignore)
+                    )
                 ) {
                     fun (row: unit -> int) -> string (row ())
                 })
@@ -365,7 +373,7 @@ let private grouped =
                         forEach
                             (fun (pair: int * int) -> pair)
                             (fun (row: unit -> int) -> [| for inner in sharedInner.Value -> row (), inner |])
-                            (b (Hooks.exit (fun (_: unit -> int * int) (node: HTMLElement) finish -> exitOf node finish)) {
+                            (b (Hooks.exit (System.Func<_, _, _, _>(fun (_: unit -> int * int) (node: HTMLElement) finish -> exitOf node finish))) {
                                 fun (pair: unit -> int * int) -> string (fst (pair ())) + string (snd (pair ()))
                             })
                     }
@@ -671,7 +679,7 @@ let private nestedContent =
             forEach
                 id
                 (fun (s: Rows) -> s.Items.Value)
-                (li (Hooks.exit (fun (_: unit -> int) (node: HTMLLIElement) finish -> exitOf node finish)) {
+                (li (Hooks.exit (System.Func<_, _, _, _>(fun (_: unit -> int) (node: HTMLLIElement) finish -> exitOf node finish))) {
                     forEach id (fun (row: unit -> int) -> [| row () * 10 + 1; row () * 10 + 2 |]) (b () { fun (row: unit -> int) -> string (row ()) })
                     show (fun (_: unit -> int) -> true) (i () { "x" })
                     boundary waiting failed ready
@@ -715,7 +723,11 @@ let private raisingFirstRoot =
                 (fun (s: Rows) -> s.Items.Value)
                 (fragment
                     [|
-                        b (Hooks.exit (fun (_: unit -> int) (_: HTMLElement) _ -> raise (InvalidOperationException "exit failed"))) {
+                        b (
+                            Hooks.exit (
+                                System.Func<_, _, _, _>(fun (_: unit -> int) (_: HTMLElement) _ -> raise (InvalidOperationException "exit failed"))
+                            )
+                        ) {
                             fun (row: unit -> int) -> string (row ())
                         }
                         i () { "tail" }
@@ -757,14 +769,22 @@ let private pendingExits =
             forEach
                 id
                 (fun (s: Rows) -> s.Items.Value)
-                (li (Hooks.motion pendingMotion, Hooks.exit (fun (_: unit -> int) (node: HTMLLIElement) finish -> exitOf node finish)) {
-                    b (Hooks.motion pendingMotion) { fun (row: unit -> int) -> string (row ()) }
+                (li (
+                    Hooks.motion (System.Func<_, _, _, _> pendingMotion),
+                    Hooks.exit (System.Func<_, _, _, _>(fun (_: unit -> int) (node: HTMLLIElement) finish -> exitOf node finish))
+                ) {
+                    b (Hooks.motion (System.Func<_, _, _, _> pendingMotion)) { fun (row: unit -> int) -> string (row ()) }
                 })
 
             forEach
                 id
                 (fun (s: Rows) -> if s.Shown.Value then [| 7 |] else [||])
-                (li (Hooks.exit (fun (_: unit -> int) (node: HTMLLIElement) finish -> exitOf node finish), Hooks.motion pendingMotion) { "after" })
+                (li (
+                    Hooks.exit (System.Func<_, _, _, _>(fun (_: unit -> int) (node: HTMLLIElement) finish -> exitOf node finish)),
+                    Hooks.motion (System.Func<_, _, _, _> pendingMotion)
+                ) {
+                    "after"
+                })
         })
 
 let private motionCleanupSeesExit queued () =

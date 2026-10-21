@@ -210,7 +210,7 @@ let story =
 
 **`split` takes static text.** A text slot or region inside the split element stops updating once its text is split. `splitText`, `onScroll` and `createDraggable` require `ResizeObserver`, and the draggable `DOMPoint` and `DOMMatrix`.
 
-**`draw` and `morph` need SVG elements.** The tags of the sugar are HTML tags; an SVG element is written with `t.element (HtmlTag ...)` inside an `svg` element, which the template's HTML parse places in the SVG namespace:
+**`draw` and `morph` need SVG elements.** The SVG tags of the sugar (`svg`, `g`, `path`, `circle`, `ellipse`, `line`, `polyline`, `polygon`, `rect`) create their elements, and every element under an `svg` element, in the SVG namespace under both commit modes:
 
 ```fsharp
 type Chart =
@@ -220,28 +220,19 @@ type Chart =
     }
 
 let chart =
-    Component.define
+    Component.template
         (fun _ () ->
             {
                 Fraction = Api.createSignal 0.
                 Line = Api.createSignal "M0 0 L100 0"
             })
-        (fun t ->
-            t.element
-                (HtmlTag "svg")
-                [||]
-                [|
-                    t.element
-                        (HtmlTag "path")
-                        [|
-                            Motion.draw (AnimatableParams (duration = 300)) (fun c -> c.Fraction.Value)
-                        |]
-                        [||]
-                    t.element (HtmlTag "path") [| Motion.morph (Anim (duration = 300)) (fun c -> c.Line.Value) |] [||]
-                |])
+        (svg () {
+            path (Motion.draw (AnimatableParams (duration = 300)) (fun c -> c.Fraction.Value)) { () }
+            path (Motion.morph (Anim (duration = 300)) (fun c -> c.Line.Value)) { () }
+        })
 ```
 
-Under queued commits a template is built element by element through the mount's backend, in the HTML namespace, so `draw` and `morph` drive SVG elements under synchronous commits only.
+A list row or arm rooted at an SVG tag is an SVG element too, under both commit modes.
 
 ## Reduced motion
 
@@ -257,9 +248,9 @@ The three hook kinds behind the parts (motion, exit and reflow) add no markup, a
 
 | Entry | Against | Δ gzip | Budget |
 |---|---|--:|--:|
-| rows with `Motion.presence` | the same rows with `Hooks.motion` and `Hooks.exit` calling `animate` by hand | +489 B | 900 B |
-| a list with `Motion.flip` | the same list with `Hooks.reflow` calling `createLayout` by hand | +336 B | 600 B |
+| rows with `Motion.presence` | the same rows with `Hooks.motion` and `Hooks.exit` calling `animate` by hand | +586 B | 900 B |
+| a list with `Motion.flip` | the same list with `Hooks.reflow` calling `createLayout` by hand | +337 B | 600 B |
 
-An entry using one Motion part declares no anime feature class (`AutoLayout`, `Draggable`, `ScrollObserver`, `TextSplitter`, `WAAPIAnimation`, `Timeline`) beyond those of the anime functions that part calls. The emitted module holds no `curry`, `partialApply` or `createObj`, and `uncurry4` only at its one call of `Hooks.motion` and its one call of `Hooks.exit`, whose curried function parameters the seam adapts.
+An entry using one Motion part declares no anime feature class (`AutoLayout`, `Draggable`, `ScrollObserver`, `TextSplitter`, `WAAPIAnimation`, `Timeline`) beyond those of the anime functions that part calls. The emitted module holds no `curry`, `uncurry`, `partialApply` or `createObj`.
 
 **Per instance:** each part adds one placed hook and the anime objects it creates; `follow`, `animateOn`, `draw`, `morph` and `drag` add one core effect.
