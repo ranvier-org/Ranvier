@@ -25,7 +25,7 @@ let private baseOptions =
          |> Async.AwaitTask
          |> Async.RunSynchronously)
 
-/// The base project options with a `-r:` option for each of `assemblies`, files of the output directory.
+/// The base project options with a `-r:` option for each of `assemblies` that the output directory holds.
 let withReferences (assemblies: string list) : FSharpProjectOptions =
     let options = baseOptions.Force ()
 
@@ -34,9 +34,11 @@ let withReferences (assemblies: string list) : FSharpProjectOptions =
             Array.append
                 options.OtherOptions
                 [|
-                    for assembly in assemblies ->
-                        "-r:"
-                        + Path.Combine (AppContext.BaseDirectory, assembly)
+                    for assembly in assemblies do
+                        let path = Path.Combine (AppContext.BaseDirectory, assembly)
+
+                        if File.Exists path then
+                            "-r:" + path
                 |]
     }
 
@@ -48,7 +50,6 @@ let ranvier: Lazy<FSharpProjectOptions> =
                 "Ranvier.dll"
                 "Ranvier.View.Portable.dll"
                 "Ranvier.View.Foundation.dll"
-                "Fable.Ranvier.dll"
                 "Fable.Core.dll"
                 "Xantham.Fable.Core.dll"
                 "Xantham.Fable.Core.TS.dll"
