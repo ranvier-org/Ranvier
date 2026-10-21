@@ -1,7 +1,7 @@
 # Arms.Match design: a plain F# `match` as an arm site, opt-in
 
 > **Status 2026-10-21:** approved, with the eight open questions decided as recommended (Decisions 11-18). Written
-> against master at `bcdb561`; citations refreshed against master at `5afc604` (PR #140, motion parts and client
+> against master at `bcdb561`; citations refreshed against master at `0ba119a` (PR #140, motion parts and client
 > element refusals). Inputs: the research note
 > [`docs/research/2026-10-21-idiomatic-arms.md`](../../research/2026-10-21-idiomatic-arms.md) and its probes in
 > [`experiments/arms-probes`](../../../experiments/arms-probes), plus one probe added for this spec
@@ -468,9 +468,9 @@ recommendation rejects, and the plugin and quotation cover both targets from the
 generates in an MSBuild target before `CoreCompile`, which `dotnet fable` does not run, so generated files would have to
 be committed or produced by a separate step.
 
-**CI.** A new `arms` job mirroring `playground` (`ci.yml:172-213`): build the plugin, run `RepresentationChecks` with
+**CI.** A new `arms` job mirroring `playground` (`ci.yml:172-212`): build the plugin, run `RepresentationChecks` with
 the arms checks, `npm run test:arms` and the arms size script in the Playground, and the trim check; added to
-`result.needs` (`ci.yml:320`). The benchmark and heap profile run on demand, with results recorded in
+`result.needs` (`ci.yml:367`). The benchmark and heap profile run on demand, with results recorded in
 `docs/research/2026-10-21-arms-match.md`.
 
 ## Docs

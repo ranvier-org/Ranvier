@@ -310,6 +310,8 @@ Expected: FAIL, the referenced project `../../Ranvier.View.Arms.fsproj` does not
     <TargetFramework>netstandard2.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!-- Copies Fable.AST.dll beside the plugin, where Ranvier.View.Arms.targets references it. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../Ranvier.View.Arms/Diagnostics.fs" Link="Diagnostics.fs" />
@@ -516,7 +518,7 @@ let site (helper: PluginHelper) (read: Expr) (arms: Expr) (r: SourceLocation opt
             | other -> other
 
         let control = Set.singleton matched.Name
-        let leaves = ResizeArray<Ident list * Expr>()
+        let leaves = System.Collections.Generic.List<Ident list * Expr>()
 
         mapLeaves
             control
@@ -681,6 +683,8 @@ type CaseArmsAttribute() =
   -->
   <ItemGroup Condition="'$(FABLE_COMPILER)' == 'true'">
     <Reference Include="$(MSBuildThisFileDirectory)../Ranvier.View.Arms.FablePlugin/bin/Release/netstandard2.0/Ranvier.View.Arms.FablePlugin.dll" />
+    <!-- The plugin attribute on Arms.Match derives from a Fable.AST type, so the compilation references Fable.AST too. -->
+    <Reference Include="$(MSBuildThisFileDirectory)../Ranvier.View.Arms.FablePlugin/bin/Release/netstandard2.0/Fable.AST.dll" />
   </ItemGroup>
 </Project>
 ```
@@ -1111,7 +1115,7 @@ Expected: both succeed; `experiments/Ranvier.View.Arms.FablePlugin/bin/Release/n
 dotnet run --project experiments/Ranvier.View.Arms/Checks/Discovery/Discovery.fsproj -c Release > C:/Users/shaya/.claude/jobs/7fee9ca9/tmp/arms-discovery-net.txt
 dotnet fable experiments/Ranvier.View.Arms/Checks/Discovery/Discovery.fsproj --outDir experiments/Ranvier.View.Arms/Checks/Discovery/out -c Release --noCache
 node experiments/Ranvier.View.Arms/Checks/Discovery/out/Main.js > C:/Users/shaya/.claude/jobs/7fee9ca9/tmp/arms-discovery-fable.txt
-diff C:/Users/shaya/.claude/jobs/7fee9ca9/tmp/arms-discovery-net.txt C:/Users/shaya/.claude/jobs/7fee9ca9/tmp/arms-discovery-fable.txt
+diff --strip-trailing-cr C:/Users/shaya/.claude/jobs/7fee9ca9/tmp/arms-discovery-net.txt C:/Users/shaya/.claude/jobs/7fee9ca9/tmp/arms-discovery-fable.txt
 rtk grep -c "armsValues_L" experiments/Ranvier.View.Arms/Checks/Discovery/out/Main.js
 ```
 
@@ -1804,7 +1808,7 @@ let site (helper: PluginHelper) (read: Expr) (arms: Expr) (r: SourceLocation opt
     | Lambda (matched, tree, _) ->
         let name = siteName r
         let control = Set.singleton matched.Name
-        let leaves = ResizeArray<Ident list * Expr>()
+        let leaves = System.Collections.Generic.List<Ident list * Expr>()
 
         mapLeaves
             control
@@ -5174,7 +5178,7 @@ In `.github/workflows/ci.yml`, before the `result:` job, add:
         run: bash experiments/Ranvier.View.Arms/Checks/TrimCallSite/check.sh linux-x64
 ```
 
-and change `needs: [changes, scripts, dotnet, aot, packages, format, fable, playground, sugar, anime, motion-view]` to `needs: [changes, scripts, dotnet, aot, packages, format, fable, playground, sugar, anime, motion-view, arms]`.
+and change `needs: [changes, scripts, dotnet, aot, packages, format, fable, playground, sugar, anime, motion-view, motion]` to `needs: [changes, scripts, dotnet, aot, packages, format, fable, playground, sugar, anime, motion-view, motion, arms]`.
 
 - [ ] **Step 4: Run the phase gates, commit and check CI**
 
