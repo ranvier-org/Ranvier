@@ -1846,6 +1846,246 @@ let private stateScriptEscapes () =
 
     equal "<script type=\"application/json\" id=\"s\">[\"\\u2029\\u003c!--&amp;>\"]</script>" (Server.stateScript "s" "[\"\u2029<!--&amp;>\"]")
 
+let private documentLog = ResizeArray<string>()
+
+let private documentPage =
+    Component.define
+        (fun _ (page: PageProps) ->
+            documentLog.Add "setup"
+            page)
+        (fun t ->
+            t.div
+                [||]
+                [|
+                    t.Document.title (fun (page: PageProps) -> page.Title)
+                    description t
+                    t.p [||] [| t.text (fun (page: PageProps) -> page.Description) |]
+                |])
+
+let private documentProps =
+    {
+        Title = "Tides"
+        Description = "moons"
+    }
+
+let private documentHead =
+    """<title data-ranvier-head="title">Tides</title>"""
+    + """<meta data-ranvier-head="meta:name=description" name="description" content="moons">"""
+
+let private fullDocument =
+    { Server.Document.defaults with
+        Lang = Some "en"
+        State = [ "page-props", "{\"title\":\"Tides\"}" ]
+        Stylesheets = [ "/site.css" ]
+        Scripts = [ Server.Script.Module "/main.js"; Server.Script.InlineModule "start();" ]
+        HtmlAttributes = [ "data-theme", "dark" ]
+        BodyAttributes = [ "class", "page" ]
+    }
+
+let private documentOutput () =
+    equal
+        ("<!doctype html><html><head><meta charset=\"utf-8\">"
+         + documentHead
+         + "</head><body><div id=\"app\"><!--[r--><div><p>moons</p></div><!--]--></div></body></html>")
+        (Server.renderDocument Server.Options.defaults Server.Document.defaults documentPage documentProps)
+
+    equal
+        ("<!doctype html><html lang=\"en\" data-theme=\"dark\"><head><meta charset=\"utf-8\">"
+         + documentHead
+         + "<link rel=\"stylesheet\" href=\"/site.css\"></head><body class=\"page\"><div id=\"app\">"
+         + "<!--[r--><div><p>moons</p></div><!--]--></div>"
+         + "<script type=\"application/json\" id=\"page-props\">{\"title\":\"Tides\"}</script>"
+         + "<script type=\"module\" src=\"/main.js\"></script><script type=\"module\">start();</script></body></html>")
+        (Server.renderDocument Server.Options.defaults fullDocument documentPage documentProps)
+
+let private documentOrder () =
+    let page = Server.renderPage Server.Options.defaults documentPage documentProps
+
+    let html =
+        Server.renderDocument Server.Options.defaults fullDocument documentPage documentProps
+
+    let at (part: string) =
+        html.IndexOf part
+
+    let host = "<div id=\"app\">" + page.Body + "</div>"
+
+    equal
+        (true, true, true, true, true)
+        (at page.Head > at "<meta charset"
+         && at page.Head < at "</head>",
+         at "<link rel=\"stylesheet\"" > at page.Head,
+         at host > at "<body",
+         at "<script type=\"application/json\"" = at host + host.Length,
+         at "<script type=\"module\"" > at "<script type=\"application/json\"")
+
+    let written = ResizeArray<string>()
+    Server.renderDocumentTo Server.Options.defaults fullDocument documentPage documentProps written.Add
+    equal html (String.concat "" written)
+
+let private documentEscapes () =
+    let hostile = "\"><script>alert(1)</script>&"
+    let escaped = "&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;&amp;"
+
+    let document =
+        { Server.Document.defaults with
+            Lang = Some hostile
+            HostId = "a\"b"
+            State = [ "s\"", "\"</script>\"" ]
+            Stylesheets = [ hostile ]
+            Scripts = [ Server.Script.Module hostile ]
+            HtmlAttributes = [ "data-x", hostile ]
+            BodyAttributes = [ "class", hostile ]
+        }
+
+    let empty = Component.define (fun _ () -> ()) (fun t -> t.span [||] [||])
+
+    equal
+        ("<!doctype html><html lang=\""
+         + escaped
+         + "\" data-x=\""
+         + escaped
+         + "\"><head><meta charset=\"utf-8\"><link rel=\"stylesheet\" href=\""
+         + escaped
+         + "\"></head><body class=\""
+         + escaped
+         + "\"><div id=\"a&quot;b\"><!--[r--><span></span><!--]--></div>"
+         + "<script type=\"application/json\" id=\"s&quot;\">\"\\u003c/script>\"</script>"
+         + "<script type=\"module\" src=\""
+         + escaped
+         + "\"></script></body></html>")
+        (Server.renderDocument Server.Options.defaults document empty ())
+
+let private documentRejections () =
+    let rejected (document: Server.Document) =
+        documentLog.Clear ()
+        let written = ResizeArray<string>()
+
+        let error =
+            failure (fun () -> Server.renderDocumentTo Server.Options.defaults document documentPage documentProps written.Add)
+
+        let direct =
+            failure (fun () ->
+                Server.renderDocument Server.Options.defaults document documentPage documentProps
+                |> ignore)
+
+        error.Message, direct.Message = error.Message, written.Count, documentLog.Count
+
+    let inlineScript text =
+        { Server.Document.defaults with
+            Scripts = [ Server.Script.InlineModule text ]
+        }
+
+    let invalidId = "An element id must be non-empty and contain no ASCII whitespace"
+    let invalidInline = "Inline module text cannot contain </script or <!--"
+
+    let messages =
+        [
+            for document in
+                [
+                    { Server.Document.defaults with
+                        HostId = ""
+                    }
+                    { Server.Document.defaults with
+                        HostId = null
+                    }
+                    { Server.Document.defaults with
+                        HostId = " "
+                    }
+                    { Server.Document.defaults with
+                        HostId = "a b"
+                    }
+                    { Server.Document.defaults with
+                        HostId = "a\tb"
+                    }
+                    { Server.Document.defaults with
+                        HostId = "a\u000Cb"
+                    }
+                    { Server.Document.defaults with
+                        State = [ "", "1" ]
+                    }
+                    { Server.Document.defaults with
+                        State = [ "s\n", "1" ]
+                    }
+                ] ->
+                let message, same, written, setups = rejected document
+                message.StartsWith (invalidId, StringComparison.Ordinal), same, written, setups
+            for text in [ "</script>"; "a</SCRIPT"; "x = 1 </ScRiPt "; "<!--"; "a<!-- b" ] ->
+                let message, same, written, setups = rejected (inlineScript text)
+                message.StartsWith (invalidInline, StringComparison.Ordinal), same, written, setups
+        ]
+
+    equal (List.replicate 13 (true, true, 0, 0)) messages
+
+    let duplicates =
+        [
+            { Server.Document.defaults with
+                State = [ "app", "1" ]
+            }
+            { Server.Document.defaults with
+                State = [ "s", "1"; "s", "2" ]
+            }
+            { Server.Document.defaults with
+                Lang = Some "en"
+                HtmlAttributes = [ "lang", "fr" ]
+            }
+            { Server.Document.defaults with
+                BodyAttributes = [ "class", "a"; "class", "b" ]
+            }
+        ]
+        |> List.map (fun document ->
+            let message, _, written, setups = rejected document
+            message.Contains "twice", written, setups)
+
+    equal (List.replicate 4 (true, 0, 0)) duplicates
+
+    let names =
+        [ "onclick"; "Class"; ""; "a b" ]
+        |> List.map (fun name ->
+            let message, _, written, _ =
+                rejected
+                    { Server.Document.defaults with
+                        BodyAttributes = [ name, "x" ]
+                    }
+
+            message.Contains "names must", written)
+
+    equal (List.replicate 4 (true, 0)) names
+
+    let accepted =
+        [ "if (a < b) {}"; "</scrip"; "</style>"; "<!-"; "'<\\/script>'"; "" ]
+        |> List.map (fun text ->
+            (Server.renderDocument Server.Options.defaults (inlineScript text) documentPage documentProps)
+                .Contains("<script type=\"module\">" + text + "</script>"))
+
+    equal (List.replicate 6 true) accepted
+
+let private documentFailures () =
+    attemptLog.Clear ()
+    let written = ResizeArray<string>()
+
+    let pending =
+        failure (fun () -> Server.renderDocumentTo Server.Options.defaults Server.Document.defaults unguarded () written.Add)
+
+    let isPending =
+        match pending with
+        | Server.ServerPendingException _ -> true
+        | _ -> false
+
+    let cleanupFails =
+        Component.define (fun setup () -> setup.OnCleanup (fun () -> failwith "cleanup failed")) (fun t -> t.span [||] [||])
+
+    let cleanup =
+        failure (fun () ->
+            Server.renderDocument Server.Options.defaults Server.Document.defaults cleanupFails ()
+            |> ignore)
+
+    equal
+        (true, [ "unguarded cleanup" ], 0, true)
+        (isPending,
+         List.ofSeq attemptLog,
+         written.Count,
+         cleanup.Message.StartsWith ("Server render cleanup failed: cleanup failed", StringComparison.Ordinal))
+
 let cases: (string * (unit -> unit)) array =
     [|
         "CreateId numbers inlined children in pre-order and puts an inlined child's rows under its path", nestedIdentity
@@ -1925,6 +2165,13 @@ let cases: (string * (unit -> unit)) array =
         "a region inside a textarea or title fails at plan compile", rcdataRegion
         "void elements with children and template elements fail at plan compile", templateElement
         "stateScript escapes the script end and line separators", stateScriptEscapes
+        "renderDocument writes the doctype, html, head entries, stylesheets, host, state and scripts", documentOutput
+        "renderDocument places head entries in the head, only the body in the host, then state, then scripts; renderDocumentTo writes the same document",
+        documentOrder
+        "renderDocument escapes every attribute value and the state script's id", documentEscapes
+        "renderDocument rejects invalid or repeated ids and attributes and closing inline script text before the render", documentRejections
+        "renderDocument raises ServerPendingException and the cleanup aggregate as renderPage does, and renderDocumentTo writes nothing then",
+        documentFailures
     |]
 
 #if !FABLE_COMPILER

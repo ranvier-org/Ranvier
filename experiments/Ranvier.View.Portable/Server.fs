@@ -287,3 +287,228 @@ let renderPage (options: Options) (definition: Component<'props>) (props: 'props
         Body = sink.ToString ()
         Head = heads.ToString ()
     }
+
+/// <summary>A module script of a document, written after the host element and the state elements.</summary>
+[<RequireQualifiedAccess>]
+type Script =
+    /// <summary><c>&lt;script type="module" src&gt;</c> loading the escaped URL.</summary>
+    | Module of src: string
+    /// <summary>
+    /// <c>&lt;script type="module"&gt;</c> holding the text as given. Text containing <c>&lt;/script</c> in any ASCII
+    /// case, or <c>&lt;!--</c>, is rejected.
+    /// </summary>
+    | InlineModule of text: string
+
+/// <summary>The HTML document <c>renderDocument</c> writes around a component.</summary>
+type Document =
+    {
+        /// <summary>The <c>lang</c> attribute of <c>&lt;html&gt;</c>; <c>None</c> omits it.</summary>
+        Lang: string option
+        /// <summary>The id of the <c>&lt;div&gt;</c> holding the rendered body.</summary>
+        HostId: string
+        /// <summary>The state elements after the host, each an id and its JSON as <c>stateScript</c> takes them.</summary>
+        State: (string * string) list
+        /// <summary>The <c>href</c> of each <c>&lt;link rel="stylesheet"&gt;</c>, written after the head entries.</summary>
+        Stylesheets: string list
+        /// <summary>The scripts after the state elements, in order.</summary>
+        Scripts: Script list
+        /// <summary>The further attributes of <c>&lt;html&gt;</c>, after <c>lang</c>.</summary>
+        HtmlAttributes: (string * string) list
+        /// <summary>The attributes of <c>&lt;body&gt;</c>.</summary>
+        BodyAttributes: (string * string) list
+    }
+
+module Document =
+    /// <summary>A document with the host id <c>app</c> and every other field empty.</summary>
+    let defaults =
+        {
+            Lang = None
+            HostId = "app"
+            State = []
+            Stylesheets = []
+            Scripts = []
+            HtmlAttributes = []
+            BodyAttributes = []
+        }
+
+let private validateId (id: string) =
+    let whitespace (c: char) =
+        c = ' '
+        || c = '\t'
+        || c = '\n'
+        || c = '\u000C'
+        || c = '\r'
+
+    if
+        String.IsNullOrEmpty id
+        || Seq.exists whitespace id
+    then
+        raise (
+            ArgumentException (
+                "An element id must be non-empty and contain no ASCII whitespace: \""
+                + id
+                + "\"",
+                "document"
+            )
+        )
+
+/// <summary>Whether <c>pattern</c>, lowercase ASCII, occurs at <c>index</c> of <c>text</c> in any ASCII case.</summary>
+let private occursAt (text: string) (index: int) (pattern: string) =
+    let lower (c: char) =
+        if c >= 'A' && c <= 'Z' then char (int c + 32) else c
+
+    let mutable matched = index + pattern.Length <= text.Length
+    let mutable offset = 0
+
+    while matched && offset < pattern.Length do
+        matched <- lower text[index + offset] = pattern[offset]
+        offset <- offset + 1
+
+    matched
+
+let private validateInline (text: string) =
+    let mutable index = text.IndexOf '<'
+
+    while index >= 0 do
+        if
+            occursAt text index "</script"
+            || occursAt text index "<!--"
+        then
+            raise (ArgumentException ("Inline module text cannot contain </script or <!--", "document"))
+
+        index <- text.IndexOf ('<', index + 1)
+
+/// <summary>The attributes as <c> name="value"</c> pairs; a name repeated or among <c>reserved</c> raises.</summary>
+let private attributes (reserved: string list) (pairs: (string * string) list) : string =
+    let seen = ResizeArray<string> reserved
+
+    pairs
+    |> List.map (fun (name, value) ->
+        validateAttribute name
+
+        if seen.Contains name then
+            raise (ArgumentException ("The attribute " + name + " is written twice", "document"))
+
+        seen.Add name
+        " " + name + "=\"" + Html.escape true value + "\"")
+    |> String.concat ""
+
+/// <summary>
+/// The document's markup before the head entries, between the head entries and the body, and after the body; an
+/// invalid document raises <c>ArgumentException</c>.
+/// </summary>
+let private shell (document: Document) : string * string * string =
+    validateId document.HostId
+    let ids = ResizeArray<string> [ document.HostId ]
+
+    for id, _ in document.State do
+        validateId id
+
+        if ids.Contains id then
+            raise (ArgumentException ("The element id " + id + " is written twice", "document"))
+
+        ids.Add id
+
+    let lang, reserved =
+        match document.Lang with
+        | Some lang -> " lang=\"" + Html.escape true lang + "\"", [ "lang" ]
+        | None -> "", []
+
+    let start =
+        "<!doctype html><html"
+        + lang
+        + attributes reserved document.HtmlAttributes
+        + "><head><meta charset=\"utf-8\">"
+
+    let middle =
+        (document.Stylesheets
+         |> List.map (fun href ->
+             "<link rel=\"stylesheet\" href=\""
+             + Html.escape true href
+             + "\">")
+         |> String.concat "")
+        + "</head><body"
+        + attributes [] document.BodyAttributes
+        + "><div id=\""
+        + Html.escape true document.HostId
+        + "\">"
+
+    let scripts =
+        document.Scripts
+        |> List.map (function
+            | Script.Module src ->
+                "<script type=\"module\" src=\""
+                + Html.escape true src
+                + "\"></script>"
+            | Script.InlineModule text ->
+                let text = if isNull text then "" else text
+                validateInline text
+                "<script type=\"module\">" + text + "</script>")
+        |> String.concat ""
+
+    let finish =
+        "</div>"
+        + (document.State
+           |> List.map (fun (id, json) -> stateScript id json)
+           |> String.concat "")
+        + scripts
+        + "</body></html>"
+
+    start, middle, finish
+
+/// <summary>
+/// Renders as <c>renderPage</c> does, then passes the HTML document holding the page to <c>write</c> in order; an
+/// invalid <c>document</c> raises before the render, and a failed render writes nothing.
+/// </summary>
+/// <remarks>
+/// <para>
+/// The document is <c>&lt;!doctype html&gt;</c>, then <c>&lt;html&gt;</c> with <c>lang</c> and <c>HtmlAttributes</c>.
+/// Its <c>&lt;head&gt;</c> holds <c>&lt;meta charset="utf-8"&gt;</c>, the page's head entries and the stylesheets.
+/// Its <c>&lt;body&gt;</c> holds the host <c>&lt;div&gt;</c>, whose only content is the page's body, then the state
+/// elements, then the scripts. Elements are written without whitespace between them.
+/// </para>
+/// <para>
+/// Every attribute value is escaped as <c>Html.escape true</c> escapes it. <c>ArgumentException</c> is raised for an
+/// id that is empty or contains ASCII whitespace, an id written twice, an attribute name <c>validateAttribute</c>
+/// rejects, an attribute written twice on an element, and inline module text containing <c>&lt;/script</c> in any
+/// ASCII case or <c>&lt;!--</c>.
+/// </para>
+/// </remarks>
+/// <exception cref="T:System.ArgumentException">The document is invalid.</exception>
+/// <exception cref="T:Ranvier.View.Foundation.Server.ServerPendingException">
+/// A read outside every boundary is pending, and the request's cleanup succeeds.
+/// </exception>
+/// <exception cref="T:System.AggregateException">
+/// The request's cleanup fails. The inner exceptions are the render's failure, when it failed, then the cleanup's.
+/// </exception>
+let renderDocumentTo (options: Options) (document: Document) (definition: Component<'props>) (props: 'props) (write: string -> unit) : unit =
+    let start, middle, finish = shell document
+    let sink = HtmlSink ()
+    let heads = HeadCollector ()
+
+    do
+        use graph = new Graph (options.GraphOptions)
+        renderOn graph heads options definition props sink
+
+    let head = heads.ToString ()
+    write start
+
+    if head.Length > 0 then
+        write head
+
+    write middle
+    sink.Segments write
+    write finish
+
+/// <summary>Renders the HTML document <c>renderDocumentTo</c> writes, as one string.</summary>
+/// <exception cref="T:System.ArgumentException">The document is invalid.</exception>
+/// <exception cref="T:Ranvier.View.Foundation.Server.ServerPendingException">
+/// A read outside every boundary is pending, and the request's cleanup succeeds.
+/// </exception>
+/// <exception cref="T:System.AggregateException">
+/// The request's cleanup fails. The inner exceptions are the render's failure, when it failed, then the cleanup's.
+/// </exception>
+let renderDocument (options: Options) (document: Document) (definition: Component<'props>) (props: 'props) : string =
+    let start, middle, finish = shell document
+    let page = renderPage options definition props
+    start + page.Head + middle + page.Body + finish
