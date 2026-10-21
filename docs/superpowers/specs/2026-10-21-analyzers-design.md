@@ -1,6 +1,7 @@
 # Ranvier analyzers: build-time diagnostics for traps that surface late
 
-> **Status 2026-10-21:** proposed. Written against master at `bcdb561` (#139). No implementation. Every SDK, CLI and
+> **Status 2026-10-21:** approved, with Decisions 8-17. Written against master at `bcdb561` (#139); citations refreshed
+> at `5afc604` (#140). No implementation. Every SDK, CLI and
 > Fable fact below was read from the published packages or measured in a scratch probe; the probes are in
 > `C:\Users\shaya\.claude\jobs\7fee9ca9\tmp\{fableprobe,fcsprobe,anaprobe}`, and phase 0 copies them into
 > `docs/research/analyzers/`.
@@ -52,7 +53,7 @@ to a docs page with the cause, the fix and a before/after example.
    `HelpUri` of the analyzer attribute does. *One entry per rule gives each code its own SARIF rule and docs link.*
 4. **One shared traversal per file.** A memoised index (a `ConditionalWeakTable` keyed on the
    `FSharpImplementationFileContents`) records, in one walk, each call with its lambda-context stack. Every rule reads
-   the index. *Eighteen walks of `Template.fs` (2,670 lines) would dominate the budget.*
+   the index. *Eighteen walks of `Template.fs` (2,784 lines) would dominate the budget.*
 5. **Rules gate on references.** A rule set runs only when the project's `-r:` options name `Ranvier.dll`,
    `Ranvier.View.Portable.dll` or `Fable.Core.dll`. *A project without Ranvier pays one list scan.*
 6. **Diagnostics surface through MSBuild.** The package's `build/` targets set `RunAnalyzersDuringBuild` and
@@ -60,7 +61,31 @@ to a docs page with the cause, the fix and a before/after example.
    canonical `file(line,col): warning CODE: text` form becomes MSBuild warnings, and `ContinueOnError=true` (the
    FSharp.Analyzers.Build default) demotes `error RANnnn` to warnings and passes the build.*
 7. **In-repo first.** The view rules target `experiments/` projects that are not packed (`IsPackable=false`,
-   `Ranvier.View.Portable.fsproj:6`). The package is published once the core rules are stable (Open question 6).
+   `Ranvier.View.Portable.fsproj:5`). The package is published once the core rules are stable (Decision 13).
+8. **SDK 0.41.0 for the CLI and the build.** The gate needs `--fail-on-type-errors` and crash isolation, both 0.41.0.
+   The Ionide-loadable build is added once FsAutoComplete moves to SDK 0.41; the package never ships two builds,
+   because the CLI fails on the mismatched one.
+9. **RAN002 covers every union declared in the analyzed assembly, at Warning.** `dotnet fable precompile` (Fable
+   5.18.0) on a fixture library fails with `MethodDefNotFound` for a tester of a public, an internal and a private
+   non-generic union. Testers of generic unions, struct or reference, precompile; RAN002 still reports them, since
+   the `match` costs nothing and a later Fable can change the generic case. The fixture is RAN002's truth test.
+10. **Repository builds do not run the analyzers by default.** `RanvierAnalyze=true`, `build.fsx analyze` and the CI
+    job are the entry points.
+11. **The Fable-only projects are not analyzed in phases 0-2.** Their shared sources are analyzed through
+    `tests/Ranvier.Tests`. `--property DefineConstants=FABLE_COMPILER` is revisited once a probe shows the project
+    type-checks that way.
+12. **Rule pages live in `docs/content/analyzers/`,** one page per code, so the `HelpUri` stays stable when guide
+    pages move.
+13. **The package is published after phase 1,** with the Fable and core rules. The view rules ship in the same
+    package once the view is packed; until then they gate on `Ranvier.View.Portable.dll` and run in the repository
+    only.
+14. **RAN024 shares the library's nesting rules.** `ContentModel` (`Template.fs:650-1081`) moves to its own file in
+    `Ranvier.View.Portable`, and the analyzer compile-links that file, so one implementation decides both the server
+    refusal and the diagnostic.
+15. **RAN020 sites 4-5 report at Warning,** like sites 1-3. A suppression comment records an intended snapshot.
+16. **`FSharpAnalyzersAlwaysRunAfterBuild` stays unset.** Agents run `build.fsx analyze` for a complete report; a
+    no-op build matches the compiler, which re-emits nothing.
+17. **RAN030-RAN032 land with the `Arms.Match` runtime,** in its PR, with the probe's failure-mode table as fixtures.
 
 ## Platform facts (verified)
 
@@ -74,6 +99,8 @@ to a docs page with the cause, the fix and a before/after example.
 | `dotnet fsharp-analyzers` under SDK 11.0.100-rc.1 fails project loading with `Could not load ... System.Runtime, Version=11.0.0.0` | probe without a `global.json` |
 | `RunAnalyzersDuringBuild=true` runs the CLI after `CoreCompile` and reuses `FscCommandLineArgs` through an `.rsp` file; it is skipped when `CoreCompile` is up to date unless `FSharpAnalyzersAlwaysRunAfterBuild=true` | FSharp.Analyzers.Build 0.5.0 targets; probe |
 | CLI wall time on `src/Ranvier/Ranvier.fsproj` with one rule: 8.0 s; on `Ranvier.View.Portable.fsproj`: 13.9 s (its `dotnet build`: 14.5 s) | probe |
+| `src/Ranvier` references Fable.Core 5.3.0 on every target, so each project that references Ranvier has `Fable.Core.dll` in its `-r:` options and runs RAN001-RAN002 | `Ranvier.fsproj:41` |
+| `dotnet fable precompile` (Fable 5.18.0) fails with `MethodDefNotFound` on a tester of a non-generic union of any accessibility and succeeds on generic unions | fixture probe, Decision 9 |
 | `fable/Ranvier.Tests.Fable` does not type-check as a .NET project (FS0740 in shared test sources); `--fail-on-type-errors` exits non-zero | probe |
 
 ## Rules
@@ -162,8 +189,8 @@ whose attributes include `System.Runtime.CompilerServices.CompilerGeneratedAttri
 referenced assemblies are out of scope: they compile against the referenced assembly, and the precompile failure
 concerned the library's own members.
 
-**False-positive risk.** Low: the replacement `match` is equivalent and allocation-free. Whether an internal union's
-testers also break the precompile is unverified (Open question 2).
+**False-positive risk.** Low: the replacement `match` is equivalent and allocation-free. The precompile breaks on
+internal and private unions too (Decision 9).
 
 **Message.** ```policy.IsQueue` calls a compiler-generated union tester, which a Fable precompiled assembly does not
 declare. Write `(match policy with FlightPolicy.Queue -> true | _ -> false)`.``
@@ -291,19 +318,19 @@ value is the smallest of the set.
 
 ### RAN020: Reactive read at template build time
 
-**Trap.** `Component.define` builds a template once, when the definition is created (`Template.fs:2656-2663`), and
+**Trap.** `Component.define` builds a template once, when the definition is created (`Template.fs:2770-2777`), and
 `setup` and `render`'s props reader run once per instance, untracked (`TemplateSugar.fs:174-176`). A reactive read in
 those positions is a snapshot that never updates: "A child does not follow a parent value"
 (`docs/content/view/troubleshooting.md:75-76`).
 
 **Flagged sites, each with a reactive read anywhere in the expression and not under a lambda inside it:**
 
-1. a static text yield: `Element.Yield (value: string)` (`TemplateSugar.fs:55`) and `TemplateParts.text`
-   (`Template.fs:2214`);
+1. a static text yield: `Element.Yield (value: string)` (`TemplateSugar.fs:55`) and `TemplateBuilder.text (value:
+   string)` (`Template.fs:2652`); `TemplateParts` is internal (`Template.fs:2237`) and unreachable from user code;
 2. a static attribute or property overload: a member of `AttributeBuilder`, `PropertyBuilder` or the generated
    builders whose parameter is named `value` and is neither a function nor a `Source` (for example
    `className (value: string)`, `Generated/HtmlTemplate.fs:585`, against the reader overload at `:591`), and
-   `attribute (name, value: string)` (`Template.fs:2246`);
+   `attribute (name, value: string)` (`Template.fs:2324`);
 3. the props argument of `renderOf` (`TemplateSugar.fs:179`);
 4. the returned expression of a `setup` lambda (`Component.define`, `Component.template`, `ComponentTag`), or a field
    of a record or tuple constructed in that return position, when it is a reactive read;
@@ -327,7 +354,7 @@ event handler; setup that reads a value to seed `createSignal`.
 ### RAN021: Unstable list key
 
 **Trap.** `forEach`, `forEachFixed` and `each` keep a row for an item whose key is equal under `=`
-(`TemplateSugar.fs:117-139`, `Template.fs:2635-2648`); "a key function must be pure"
+(`TemplateSugar.fs:117-139`, `Template.fs:2749-2762`); "a key function must be pure"
 (`docs/content/view/collections.md:58-63`). The key function receives the item only, so an index is reachable only
 through a search or captured state.
 
@@ -354,13 +381,13 @@ every row after it. Key by a value unique to the item, such as an id.``
 **Trap.** A definition (`armOf`, `Component.define`, `Component.template`, `Component.ofMembers`,
 `Component.ofClass`, and `show`/`showElse`, which define two components per call, `TemplateSugar.fs:142-168`)
 created inside an `arms` function or a list's items reader runs on every region read
-(`Template.fs:2609`, `:2625`, `:2643`). The arm remounts on every update; Fable Debug builds raise "a template
-definition was created while a region was read" (`Template.fs:2657-2660`). A definition read from a non-auto
+(`Template.fs:2723`, `:2739`, `:2757`). The arm remounts on every update; Fable Debug builds raise "a template
+definition was created while a region was read" (`Template.fs:2771-2774`). A definition read from a non-auto
 `static member` property is recreated on every read with the same effect
 (`docs/content/view/troubleshooting.md:52-54`, `:68-69`).
 
 **Detection.** A definition creator inside the `arms` lambda of `matchWith`/`branch` (`TemplateSugar.fs:110`, `:114`;
-`Template.fs:2603`, `:2618`), or inside the items or key lambda of `each`/`forEach`/`forEachFixed`. A static property
+`Template.fs:2717`, `:2732`), or inside the items or key lambda of `each`/`forEach`/`forEachFixed`. A static property
 getter returning `Component<_>` read in those lambdas, whose implementation (found through
 `CheckProjectResults.AssemblyContents`) calls a creator. The static-property check runs in the CLI only: an editor
 context may lack project results.
@@ -378,7 +405,7 @@ outside regions.
 
 **Trap.** `TemplateParts.element` raises `ArgumentException` when an element has two content parts (`Unsafe.html`,
 `Hooks.widget`), a content part and template children, or raw HTML on a void, raw-text, `template`, `textarea` or
-`title` element (`Template.fs:2129`, `:2132`, `:2134-2145`). The exception fires when the definition is created, on
+`title` element (`Template.fs:2174`, `:2210`, `:2212-2222`). The exception fires when the definition is created, on
 every target (`docs/content/view/troubleshooting.md:62-64`).
 
 **Detection.** The parts of an element are a literal array (`t.div [| ... |] [| ... |]`) or the constructor arguments
@@ -393,21 +420,26 @@ is created. Give each content part its own element.``
 ### RAN024: Markup the server render refuses
 
 **Trap.** The server plan raises for raw-text elements (`script`, `style`, `iframe`, `noscript`, `xmp`, `noembed`,
-`noframes`, `plaintext`; `Template.fs:298-308`, `:1187-1188`, `Representation.fs:936-949`) and for `template`
-elements (`Template.fs:1190-1195`), and for nesting the HTML parser restructures (`ContentModel`,
-`Template.fs:610-1042`; "The HTML parser restructures this markup (table-row) at table/tr",
-`docs/content/view/troubleshooting.md:43-45`). Each surfaces at the first server render.
+`noframes`, `plaintext`; `Template.fs:298-308`, `:1228-1229`, `Representation.fs:991-1004`) and for `template`
+elements (`Template.fs:1231-1237`), and for nesting the HTML parser restructures (`ContentModel`,
+`Template.fs:650-1081`; "The HTML parser restructures this markup (table-row) at table/tr",
+`docs/content/view/troubleshooting.md:43-45`). Each surfaces at the first server render. Since #140 the client paths
+also refuse `script`, a raw-text element with children (or `plaintext`), `template`, and a void element with children
+(`refusal`, `Template.fs:330-354`, raised at `:475` and `:2000`), with the script message of
+`Representation.fs:285-286`; those fail at the first render on every target.
 
 **Detection.** A generated sugar tag type or a `TemplateBuilder` member for a refused tag inside a definition. For
 nesting, the parent and child tags are both literal (CE nesting or literal child arrays) and match a `ContentModel`
 rule. The rule calls the library's `ContentModel` check on the literal path instead of re-implementing it
-(Open question 7).
+(Decision 14).
 
 **False-positive risk.** Low. A client-only template with a refused tag is the false positive; the message names the
 server render.
 
-**Message.** ```script` is a raw-text element, which the server render refuses ("Raw-text elements require an
-explicit HTML serialization policy"). Write it outside the template, for example in `Server.Page` scripts.``
+**Message.** ```script` is refused by every render ("Script elements are not created by templates or typed
+views"). Load scripts through the server document shell, for example `Server.Page` scripts.`` The other raw-text
+elements: ```style` is a raw-text element, which the server render refuses ("Raw-text elements require an explicit
+HTML serialization policy"). Write it outside the template.``
 
 ### RAN025: `hydrateWith` with queued commits
 
@@ -508,11 +540,11 @@ msbuild -t:AnalyzeFSharpProject` runs the analyzers on demand, and `dotnet fshar
 
 **Gate project list (phase 0 confirms each type-checks under the CLI):** `src/Ranvier`, `src/Ranvier.Query`,
 `src/Ranvier.Elmish`, `src/Ranvier.Wire`, `src/Fable.Ranvier`, `src/Fable.Ranvier.Anime`,
-`experiments/Ranvier.View.Portable`, `experiments/Ranvier.View.Foundation`,
+`experiments/Ranvier.View.Portable`, `experiments/Ranvier.View.Foundation`, `experiments/Ranvier.View.Anime`,
 `examples/Fable.Ranvier.Playground/Playground.fsproj`, `examples/Fable.Ranvier.Playground/tests/DomTests.fsproj`,
 `examples/Ranvier.Query.Dictionary`, `examples/Ranvier.FuncUI.Workload` (both projects),
 `docs/samples/view/Ranvier.Docs.ViewSamples.fsproj`, `tests/Ranvier.Tests`, `tests/Ranvier.Wire.Tests`. The
-`IsExcludedFromRootBuild` projects (`fable/*`, `docs/maps/Ranvier.Docs.Maps.fsproj`) are left out (Open question 4).
+`IsExcludedFromRootBuild` projects (`fable/*`, `docs/maps/Ranvier.Docs.Maps.fsproj`) are left out (Decision 11).
 
 ### CI job
 
@@ -545,7 +577,7 @@ msbuild -t:AnalyzeFSharpProject` runs the analyzers on demand, and `dotnet fshar
           path: artifacts/analyzers/
 ```
 
-`analyzers` joins the `needs` list of `result` (`.github/workflows/ci.yml:282`). The build step is required: the CLI
+`analyzers` joins the `needs` list of `result` (`.github/workflows/ci.yml:320`). The build step is required: the CLI
 type-checks against referenced projects' outputs, and `--fail-on-type-errors` turns a missing output into a failure
 instead of an empty clean run.
 
@@ -585,15 +617,16 @@ instead of an empty clean run.
 - **Check:** the test suite times each rule over `Template.fs` and `Core.fs` and fails above 250 ms per file on the CI
   runner.
 - `FSharpAnalyzersAlwaysRunAfterBuild` stays unset: a no-op build re-emits no compiler warnings and no analyzer
-  warnings either (Open question 9).
+  warnings either (Decision 16).
 
 ## Testing
 
 1. **Unit tests per rule.** `FSharp.Analyzers.SDK.Testing.mkOptionsFromProject "net10.0" []` gives base options;
    `Options.fs` appends `-r:` for the Release outputs of `src/Ranvier`, `experiments/Ranvier.View.Portable` and
    `Fable.Core`, because the view assemblies are not on NuGet. `getContext options source` builds a `CliContext`.
-   RAN001 needs two files: a helper type-checks a two-file project with `FSharpChecker.ParseAndCheckProject` and
-   builds one context per file through `Utils.createContext`, as the fcsprobe script does.
+   RAN001 needs two files: `FSharp.Analyzers.SDK.Testing.getContextFor` type-checks a list of `SourceFile`s and
+   returns the context of one of them. `getContext` and `getContextFor` load the analyzers in the working directory,
+   so the suite runs from its own output directory, which holds `Ranvier.Analyzers.dll`.
 2. **Cases.** Each rule has at least three positive and three negative cases, the cases named in its section, and an
    exact-message assertion for one positive case. A fix is applied to the source and the result re-checked: it
    type-checks and the rule no longer fires.
@@ -601,8 +634,8 @@ instead of an empty clean run.
    `ElmishNestedChecks.fs:29-30` with `let mutable` changed to `let` and fires.
 4. **Fable truth tests.** The Fable test job compiles RAN001's positive fixtures with Fable Release and asserts the
    emitted JavaScript reads the mutable at the use site. A Fable upgrade that stops inlining fails this test, which
-   is the signal to retire or rescope RAN001. RAN002 gets the same treatment once the precompile is reproducible in
-   CI (Open question 2).
+   is the signal to retire or rescope RAN001. RAN002's truth test runs `dotnet fable precompile` on a fixture whose
+   non-generic union tester fails with `MethodDefNotFound` (Decision 9). Both run in the `analyzers` job.
 5. **Corpus gate.** `build.fsx analyze` over the gate list with `--treat-as-error "RAN*"` reports zero findings. The
    two current RAN002 findings (`Core.fs:4506`, `:4563`) are fixed in the phase 0 PR. A new finding on master is a
    bug in the rule or in the code; neither is merged.
@@ -624,44 +657,15 @@ instead of an empty clean run.
 
 | Risk | Mitigation |
 |---|---|
-| No IDE shows the diagnostics inline today: FsAutoComplete is on SDK 0.37.2, Rider and Visual Studio host none | build output carries them for agents and Rider's build window; Open question 1 |
+| No IDE shows the diagnostics inline today: FsAutoComplete is on SDK 0.37.2, Rider and Visual Studio host none | build output carries them for agents and Rider's build window; Decision 8 |
 | Typed-tree shapes change between FCS versions (CE desugaring for RAN012, quotations for RAN030) | per-rule fixtures run against the CLI's FCS |
 | RAN001 describes Fable 5.18's optimiser; another Fable version can change it | Fable truth test (Testing 4) |
 | Fable-only branches (`#if FABLE_COMPILER`) are invisible | documented non-goal; RAN001/RAN002 code in shared code is still seen |
-| Fable-only projects fail `--fail-on-type-errors` | excluded from the gate (Open question 4) |
+| Fable-only projects fail `--fail-on-type-errors` | excluded from the gate (Decision 11) |
 | The CLI breaks under a newer SDK (`System.Runtime 11.0.0.0` probe failure) | the repo's `global.json` pins SDK 10; consumers need the same |
 | False positives on intended snapshots (RAN020 sites 4-5) and affinity-free graphs (RAN013) | Warning severity, suppression comments with reasons, docs pages show both |
 | Rules duplicate library invariants and drift from them | each rule cites the runtime check it mirrors; fixtures use the real assemblies |
 | View rules bind to `Ranvier.View.Foundation.*` names that change when the view graduates from `experiments/` | `Symbols.fs` is the single place to change |
-
-## Open questions
-
-1. **Which SDK minor to target, given FsAutoComplete is on 0.37.2?** *Recommendation:* 0.41.0 for the CLI and build.
-   The gate needs `--fail-on-type-errors` and crash isolation (0.41.0). Add the Ionide-loadable build when
-   FsAutoComplete moves to 0.41; do not ship two builds in one package, because the CLI fails on the mismatched one.
-2. **Does RAN002 cover internal unions?** *Recommendation:* yes, at Warning, until phase 0 reproduces the docs
-   precompile (`dotnet run --project docs/docs.fsproj -- build`) on a fixture library with one public and one
-   internal union tester use. If the internal use compiles, RAN002 drops internal unions.
-3. **Do repository builds run the analyzers by default?** *Recommendation:* no. `RanvierAnalyze=true`, `build.fsx
-   analyze` and the CI job are the entry points; a default build would need the analyzer built first and adds its
-   cost to every inner loop.
-4. **How are the Fable-only projects analyzed?** *Recommendation:* leave them out in phases 0-2. The shared sources
-   they compile are analyzed through `tests/Ranvier.Tests`. Revisit with `--property DefineConstants=FABLE_COMPILER`
-   once a probe shows the project type-checks that way.
-5. **Where do the rule pages live?** *Recommendation:* `docs/content/analyzers/`, one page per code, so the
-   `HelpUri` stays stable when guide pages move.
-6. **When is the package published?** *Recommendation:* after phase 1, with the Fable and core rules. The view rules
-   ship in the same package once the view is packed; until then they gate on `Ranvier.View.Portable.dll` and run in
-   the repository only.
-7. **How does RAN024 share the HTML nesting rules?** *Recommendation:* move `ContentModel` (`Template.fs:610-1042`) to
-   its own file in `Ranvier.View.Portable` and compile-link it into the analyzer, so one implementation decides both
-   the server refusal and the diagnostic.
-8. **What severity for RAN020 sites 4-5 (setup and `render` props snapshots)?** *Recommendation:* Warning, like sites
-   1-3. The troubleshooting page lists the symptom as a bug, and the suppression comment records an intended snapshot.
-9. **Should `FSharpAnalyzersAlwaysRunAfterBuild` be on for agents?** *Recommendation:* no. Agents run `build.fsx
-   analyze` for a complete report; a no-op build then matches the compiler, which re-emits nothing.
-10. **Do the `Arms.Match` rules wait for its runtime?** *Recommendation:* yes. RAN030-RAN032 land in the PR that adds
-    `Arms.Match`, with the probe's failure-mode table as fixtures.
 
 ## Implementation outline
 
@@ -671,7 +675,7 @@ instead of an empty clean run.
 2. Add `tools/Ranvier.Analyzers` and `tools/Ranvier.Analyzers.Tests`, `Symbols.fs`, `Index.fs`, the test option
    helpers, and the slnx entries.
 3. RAN001 and RAN002 with fixes, tests and docs pages; the Fable truth test for RAN001.
-4. Fix `Core.fs:4506` and `:4563` with matches; answer Open question 2 with the precompile fixture.
+4. Fix `Core.fs:4506` and `:4563` with matches; the precompile fixture of Decision 9 becomes RAN002's truth test.
 5. Tool manifest entry, `Directory.Build.props`/`.targets` opt-in, `build.fsx analyze`, the CI job; confirm every
    gate project type-checks; verify `MSBuildWarningsAsMessages`.
 
@@ -679,7 +683,7 @@ instead of an empty clean run.
 Pack `Ranvier.Analyzers` and check a consumer project picks up the `build/` targets (`tests/check-package-compatibility.ps1`
 gains the case). Publish.
 
-**Phase 2: view rules.** RAN020-RAN025; extract `ContentModel` (Open question 7); links from
+**Phase 2: view rules.** RAN020-RAN025; extract `ContentModel` (Decision 14); links from
 `docs/content/view/troubleshooting.md`.
 
 **Phase 3: the rest.** RAN030-RAN032 with `Arms.Match`; RAN015; the Ionide-loadable build once FsAutoComplete moves
