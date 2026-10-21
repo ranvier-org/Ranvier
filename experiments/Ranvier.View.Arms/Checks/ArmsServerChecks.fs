@@ -44,3 +44,32 @@ let cases: (string * (unit -> unit)) array =
         "Arms.Match fixtures render their twins' server HTML under Omit", sameHtml omit
         "an incomplete Arms.Match raises for its unmatched case", (fun () -> equal true (incompleteRaises ()))
     |]
+
+/// <summary>One line per fixture state: fixture, state, the site's structural hash and its server HTML under Omit.</summary>
+let goldenLines () : string array =
+    [|
+        for case in all -> sprintf "%s|%s|%s|%s" case.Fixture case.State (structuralHash case.Site) (fst (case.Render omit))
+    |]
+
+#if !FABLE_COMPILER
+let private goldenPath =
+    System.IO.Path.Combine (__SOURCE_DIRECTORY__, "arms-server.golden.txt")
+
+/// <summary>Compares the .NET lines with the committed file; <c>--update</c> rewrites the file instead.</summary>
+let private golden () =
+    let lines = goldenLines ()
+
+    if
+        System.Environment.GetCommandLineArgs ()
+        |> Array.contains "--update"
+    then
+        System.IO.File.WriteAllText (goldenPath, String.concat "\n" lines + "\n")
+    else
+        let committed =
+            System.IO.File.ReadAllText(goldenPath).Replace("\r\n", "\n").TrimEnd('\n').Split '\n'
+
+        equal (List.ofArray committed) (List.ofArray lines)
+
+let dotnetCases: (string * (unit -> unit)) array =
+    [| "the .NET server HTML of every fixture equals the golden file", golden |]
+#endif

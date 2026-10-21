@@ -255,6 +255,65 @@ let private switchBackInOneBatch queued () =
     equal "b x2" (textOf target "pre")
     mounted.Dispose ()
 
+[<Emit("$0.firstElementChild")>]
+let private firstElement (target: HTMLElement) : obj = jsNative
+
+/// <summary>
+/// Each Load fixture hydrates the served HTML of its <c>Loaded done 3</c> state under Strict, then three writes; the
+/// site's markup after each, and whether the served root element was adopted, equal its twin's from the same HTML.
+/// </summary>
+let hydrations: (string * (string -> unit)) array =
+    [|
+        for name, site, twin in
+            [
+                "loader", loader, loaderTwin
+                "rich", rich, richTwin
+                "rows", rows, rowsTwin
+                "rowsTuple", rowsTuple, rowsTupleTwin
+                "tupled", tupled, tupledTwin
+                "whole", whole, wholeTwin
+                "helper", helper, helperTwin
+            ] ->
+            name,
+            fun (served: string) ->
+                let shots (definition: Component<Signal<Load>>) =
+                    use graph = new Graph ()
+                    let state = graph.Run (fun () -> Api.createSignal (Loaded ("done", 3)))
+                    let target = host ()
+                    loadServed target served
+                    let root = firstElement target
+
+                    let mounted =
+                        Hydration.hydrate
+                            graph
+                            None
+                            strict
+                            { Hydration.HydrationOptions.defaults with
+                                Strict = true
+                            }
+                            target
+                            definition
+                            state
+
+                    let shots =
+                        ResizeArray
+                            [
+                                sprintf "adopted=%b %s" (obj.ReferenceEquals (root, firstElement target)) target.innerHTML
+                            ]
+
+                    for step in [ Loaded ("later", 4); Loading 5; Loaded ("again", 1) ] do
+                        graph.Run (fun () -> state.Value <- step)
+                        mounted.Flush ()
+                        shots.Add target.innerHTML
+
+                    mounted.Dispose ()
+                    List.ofSeq shots
+
+                let twinShots = shots twin
+                equal true (twinShots.Head.StartsWith "adopted=true")
+                equal twinShots (shots site)
+    |]
+
 let cases: (string * (unit -> unit)) array =
     strictCases (
         Array.concat
