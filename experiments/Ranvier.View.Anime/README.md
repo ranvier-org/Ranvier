@@ -115,8 +115,8 @@ let toasts =
 
 `Motion.flip parameters` on a list's container wraps anime's `createLayout`. Before the first region pass under the container in a flush it records the layout of the container's element children, and once the pass's nodes and commits are in place it animates them from the recorded layout to the new one. A pass with no recorded layout before it, such as the first, does not animate.
 
-- **The rows are the container's direct element children.** `parameters`' `children` is replaced by those children, measured at both moments. A row whose Motion enter or exit is running is left out, so the layout neither moves nor fades it while that plays.
-- **The layout moves and resizes; Motion parts keep the visual properties.** Opacity, colours, borders, filters, clip paths and font size of every element under the container stay with the parts that animate them (an opacity `enter` or `presence` under `flip` ends at its last frame). Name a property in `properties`, `enterFrom`, `leaveTo` or `swapAt` to have the layout animate it.
+- **The rows are the container's direct element children.** `parameters`' `children` is replaced by those children, measured at both moments. A row whose Motion exit has started, or whose Motion enter started in the pass, is left out of that pass's measurements.
+- **Motion parts keep the visual properties.** In a pass where an element under the container carries a Motion part, the layout animates position and size only, and the opacity, colours, borders, filters, clip paths and font size stay with the parts (an opacity `enter` or `presence` under `flip` ends at its last frame). In a pass with no such element, anime's default fades apply. A property named in `properties`, `enterFrom`, `leaveTo` or `swapAt` is always the layout's.
 - **The container is positioned.** anime animates moved rows with `position: absolute` and a translation through the Web Animations API during the animation.
 - **The layout is created on the first recording,** and reverted with the instance.
 
@@ -129,7 +129,7 @@ let toasts =
 | `Motion.draw parameters read` | the stroke of an SVG geometry element, drawn from its start to the fraction `read` returns |
 | `Motion.morph parameters read` | the `d` (path) or `points` (polygon, polyline) of an SVG shape towards the shape `read` returns; each completed morph leaves exactly that shape |
 | `Motion.scroll parameters bind play` | `play`'s tickable linked to an `onScroll` observer of the element (or of `parameters`' target); the observer's progress and in-view state written into the signals of a `ScrollBinding` |
-| `Motion.drag parameters bind` | a draggable element, two-way through a `DragBinding`: dragging writes `Position`, and a write to `Position` from elsewhere moves the element with its update callback muted, so the write is not echoed |
+| `Motion.drag parameters bind` | a draggable element, two-way through a `DragBinding`: dragging, and the end of a release's motion, write `Position`, and a write to `Position` from elsewhere moves the element with its update callback muted, so the write is not echoed |
 | `Motion.split parameters play` | anime's `splitText` over the element's static text, and `play` over its lines, words or characters |
 
 ```fsharp

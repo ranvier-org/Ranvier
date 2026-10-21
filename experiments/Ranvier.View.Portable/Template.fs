@@ -296,7 +296,7 @@ let private isText node =
     | _ -> false
 
 let private rawText tag =
-    match name tag with
+    match (name tag).ToLowerInvariant() with
     | "script"
     | "style"
     | "iframe"
@@ -598,13 +598,16 @@ type internal ServerPlan =
     }
 
 /// <summary>Elements whose first child text loses one leading line feed when parsed.</summary>
-let private dropsLeadingLineFeed tagName =
+let private dropsLeadingLineFeed (tagName: string) =
+    let tagName = tagName.ToLowerInvariant ()
+
     tagName = "pre"
     || tagName = "textarea"
     || tagName = "listing"
 
 /// <summary>Elements whose content is parsed as a single text node.</summary>
-let private isRcdata tagName =
+let private isRcdata (tagName: string) =
+    let tagName = tagName.ToLowerInvariant ()
     tagName = "textarea" || tagName = "title"
 
 /// <summary>
@@ -1183,25 +1186,26 @@ let private compilePlan (root: TemplateNode) : ServerPlan =
             emit (TextOp (slot, leading, marksEmpty))
         | ElementNode (tag, attributes, properties, slots, events, placed, nodes) ->
             let tagName = name tag
+            let lowered = tagName.ToLowerInvariant ()
 
             if rawText tag then
                 raise (InvalidOperationException "Raw-text elements require an explicit HTML serialization policy")
 
-            if tagName = "template" then
+            if lowered = "template" then
                 raise (
                     InvalidOperationException (
                         "Template elements are not supported in templates at "
-                        + ContentModel.path ancestors tagName
+                        + ContentModel.path ancestors lowered
                     )
                 )
 
-            ContentModel.check ancestors tagName
+            ContentModel.check ancestors lowered
 
             if isVoid tag && not (List.isEmpty (flatten nodes)) then
                 raise (
                     InvalidOperationException (
                         "A void element has children at "
-                        + ContentModel.path ancestors tagName
+                        + ContentModel.path ancestors lowered
                     )
                 )
 
@@ -1306,7 +1310,7 @@ let private compilePlan (root: TemplateNode) : ServerPlan =
                 match contentSlot slots with
                 | Some content -> emit (ContentOp (content, leadingLineFeed))
                 | None when childText.Length = 1 -> emit childText[0]
-                | None -> compileChildren nodes leadingLineFeed (not rcdata) (tagName :: ancestors)
+                | None -> compileChildren nodes leadingLineFeed (not rcdata) (lowered :: ancestors)
 
                 write ("</" + tagName + ">")
         | RegionNode region ->
@@ -2135,7 +2139,7 @@ let private elementNode tag (parts: Part<'native, 'inst> array) (children: Templ
         rawContents = 1
         && (isVoid tag
             || rawText tag
-            || (match name tag with
+            || (match (name tag).ToLowerInvariant() with
                 | "template"
                 | "textarea"
                 | "title" -> true

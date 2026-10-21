@@ -336,7 +336,9 @@ let private flipOrder queued (clock: Clock) =
     let reduced = logged ()
     mounted.Dispose ()
 
-    equal ([||], [| "animate 3 1 2" |], [| "record 3 1 2"; "animate 3 1" |], [ "3"; "1"; "2" ], [||]) (mounting, created, removed, held, reduced)
+    equal
+        ([||], [| "animate 3 1 2 fade" |], [| "record 3 1 2 fade"; "animate 3 1" |], [ "3"; "1"; "2" ], [||])
+        (mounting, created, removed, held, reduced)
 
 type Level = { Level: Signal<float> }
 
@@ -971,6 +973,9 @@ let private flipKeepsEnters queued (clock: Clock) =
 
     equal (("1", "1"), ("1", "1")) (ends flippedEnter, ends flippedPresence)
 
+[<Emit("$0.animate[$0.xProp]($1, $2)")>]
+let private releaseTo (draggable: Draggable) (x: float) (duration: float) : unit = jsNative
+
 [<Emit("$0.onSettle($0)")>]
 let private fireSettle (draggable: Draggable) : unit = jsNative
 
@@ -987,14 +992,52 @@ let private dragWritesSettle (clock: Clock) =
 
     let mounted = mountIn false graph target (Component.render dragged puck)
     let draggable = lastDraggable ()
-    draggable.setX (42., true) |> ignore
+    // anime reports the settle while the release animation still runs, then moves the element with no callback.
+    releaseTo draggable 42. 100.
     advance clock 0.
-    advance clock 16.
-    let sets = draggableSets ()
+    advance clock 48.
     fireSettle draggable
-    let settled = graph.Run (fun () -> puck.Position.Value), draggableSets () - sets
+    let early = draggable.x
+    let sets = draggableSets ()
+
+    for _ in 1..10 do
+        advance clock 16.
+
+    let settled =
+        graph.Run (fun () -> puck.Position.Value), draggable.x, draggableSets () - sets
+
     mounted.Dispose ()
-    equal (struct (42., 0.), 0) settled
+    equal (true, (struct (42., 0.), 42., 0)) (early < 42., settled)
+
+[<Emit("(l => [l.properties, l.recordedProperties].every(s => s instanceof Set && s.has('opacity') && s.has('color') && s.has('filter')))($0)")>]
+let private layoutShape (layout: AutoLayout) : bool = jsNative
+
+let private layoutFieldsPinned (clock: Clock) =
+    let root = host ()
+
+    root.appendChild (document.createElement "p")
+    |> ignore
+
+    let layout = Anime.layout root
+    layout.animate () |> ignore
+    let shaped = layoutShape layout
+    layout.revert ()
+    equal true shaped
+
+let private mixedCaseHandlerRaises queued (clock: Clock) =
+    let failure =
+        try
+            let view =
+                Component.template (fun _ () -> ()) (div (Attrs.attribute ("oNclick", "alert(1)")) { "x" })
+
+            use graph = new Graph ()
+            (mountIn queued graph (host ()) (Component.render view ())).Dispose()
+            ""
+        with error ->
+            error.Message
+
+    if not (failure.Contains "Attribute names must") then
+        failwithf "Expected the attribute-name failure; got %s" failure
 
 let private modes (name: string) (check: bool -> Clock -> unit) =
     [|
@@ -1033,9 +1076,11 @@ let cases: (string * (Clock -> unit)) array =
             |]
             modes "under flip, an opacity enter or presence enter ends at its last frame" flipKeepsEnters
             [|
-                "drag writes its position when a release settles, without echo", dragWritesSettle
+                "drag writes its position once a release's motion ends, without echo", dragWritesSettle
             |]
-            modes "flip records before and animates after each pass, without leaving rows" flipOrder
+            [| "anime's layout keeps the property Sets flip edits", layoutFieldsPinned |]
+            modes "an attribute name that lowercases to an event handler raises" mixedCaseHandlerRaises
+            modes "flip records before and animates after each pass, without leaving rows, and fades rows with no running Motion part" flipOrder
             [|
                 "follow sets its first value and animates to each write", followReaches
                 "animateOn replaces a running animation and settles on the last value", animateOnReplaces
