@@ -116,7 +116,8 @@ type MountLifetime private (graph: Graph, owner: Owner, report: exn list -> unit
     /// Wraps <c>owner</c> and registers the release as its first cleanup. Call before anything else registers with
     /// <c>owner</c>.
     /// </summary>
-    static member internal Create(graph: Graph, owner: Owner, report: exn list -> unit, release: unit -> unit, parent: MountLifetime) =
+    /// <remarks>Part of the view runtime seam: Ranvier.View.Foundation mounts through it, and both packages change it together.</remarks>
+    static member Create(graph: Graph, owner: Owner, report: exn list -> unit, release: unit -> unit, parent: MountLifetime) =
         let lifetime = MountLifetime (graph, owner, report, release, parent)
         owner.OnCleanup (Action (fun () -> lifetime.Finish ()))
         lifetime
@@ -129,7 +130,8 @@ type MountLifetime private (graph: Graph, owner: Owner, report: exn list -> unit
     /// Runs <c>body</c> in a new teardown window serving <c>report</c>, and returns the window's errors with the
     /// exception <c>body</c> raised.
     /// </summary>
-    static member internal Capture(graph: Graph, report: exn list -> unit, body: unit -> unit) : exn list * exn option =
+    /// <remarks>Part of the view runtime seam: Ranvier.View.Foundation mounts through it, and both packages change it together.</remarks>
+    static member Capture(graph: Graph, report: exn list -> unit, body: unit -> unit) : exn list * exn option =
         let root = graph.Root
         let windows = MountLifetime.Windows
         let window = TeardownWindow (root, root.ErrorCount, report)
@@ -389,7 +391,8 @@ type MountLifetime private (graph: Graph, owner: Owner, report: exn list -> unit
             failure |> Option.iter raise
 
     /// <summary>Tears the lifetime down. Inside a teardown window serving this lifetime's reporter the errors join that window.</summary>
-    member internal this.Abandon() =
+    /// <remarks>Part of the view runtime seam: Ranvier.View.Foundation mounts through it, and both packages change it together.</remarks>
+    member this.Abandon() =
         if not (this.Serves MountLifetime.CurrentWindow) then
             this.Dispose ()
         elif not owner.IsDisposed then

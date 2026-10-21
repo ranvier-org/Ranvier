@@ -3,7 +3,8 @@ namespace Ranvier.View.Foundation
 open Ranvier
 
 /// <summary>The receiver of the pending reads and failures of the bindings, rows and handlers mounted under it.</summary>
-type internal ViewScope =
+/// <remarks>Part of the view runtime seam: Ranvier.View.Foundation mounts through it, and both packages change it together.</remarks>
+type ViewScope =
     /// <summary>True for a boundary: its bindings report pending reads through <c>Wait</c> and <c>Ready</c>.</summary>
     abstract Tracks: bool
     /// <summary>Records a binding whose read is pending.</summary>
@@ -21,10 +22,11 @@ type internal ViewScope =
     abstract FailAll: exn list -> unit
 
 /// <summary>The bits of a binding's state word, and its transitions.</summary>
-module internal BindingState =
+/// <remarks>Part of the view runtime seam: Ranvier.View.Foundation mounts through it, and both packages change it together.</remarks>
+module BindingState =
     /// <summary>The binding's last read raised an exception other than a pending read.</summary>
     [<Literal>]
-    let ReadFailed = 1
+    let internal ReadFailed = 1
 
     /// <summary>The binding's last read was pending and the binding is registered with its scope.</summary>
     [<Literal>]
