@@ -687,6 +687,33 @@ module View =
         || isMember Sugar "forEach" m
         || isMember Sugar "forEachFixed" m
 
+    /// Whether `m` is the element CE's `Delay`, or the body argument of its `For`: code that runs when the template is
+    /// built, with the CE.
+    let isElementBuildLambda (m: FSharpMemberOrFunctionOrValue) (index: int) : bool =
+        isMember Element "Delay" m
+        || (isMember Element "For" m && index = 1)
+
+    /// Whether argument `index` of the element CE's member `m` is CE structure built once: `Run`, `Combine`, or the
+    /// sequence of `For`.
+    let isElementStructure (m: FSharpMemberOrFunctionOrValue) (index: int) : bool =
+        isMember Element "Run" m
+        || isMember Element "Combine" m
+        || (isMember Element "For" m && index = 0)
+
+    /// Whether `m` constructs a component tag: a type whose base types include `ComponentTag`.
+    let isComponentTagConstructor (m: FSharpMemberOrFunctionOrValue) : bool =
+        let rec inherits (t: FSharpType option) (depth: int) =
+            match t with
+            | Some t when depth < 8 && t.HasTypeDefinition ->
+                t.TypeDefinition.TryFullName = Some ComponentTag
+                || inherits t.TypeDefinition.BaseType (depth + 1)
+            | _ -> false
+
+        m.IsConstructor
+        && (match m.ApparentEnclosingEntity with
+            | Some entity -> inherits entity.BaseType 0
+            | None -> false)
+
     /// Whether `m` is the sugar's `forEach`, whose rows follow the current item.
     let isForEach (m: FSharpMemberOrFunctionOrValue) : bool =
         isMember Sugar "forEach" m

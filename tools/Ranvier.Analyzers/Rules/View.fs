@@ -24,6 +24,7 @@ type private BuildSite =
     | Text
     | Part of kind: string
     | RenderOf
+    | Structure
 
 let private parameterAt (m: FSharpMemberOrFunctionOrValue) (index: int) : FSharpParameter option =
     m.CurriedParameterGroups
@@ -59,6 +60,12 @@ let private buildSite (m: FSharpMemberOrFunctionOrValue) (index: int) : BuildSit
         ->
         Some (BuildSite.Part (if entity = Attributes then "attribute" else "property"))
     | Some _ when isRenderOf m && index = 1 -> Some BuildSite.RenderOf
+    | Some parameter when
+        isComponentTagConstructor m
+        && isStatic parameter.Type
+        ->
+        Some BuildSite.RenderOf
+    | _ when isElementStructure m index -> Some BuildSite.Structure
     | _ -> None
 
 /// The build-time site whose argument holds the expression at `path` outside any lambda, with the callee and index.
@@ -67,6 +74,7 @@ let private buildSiteOf (path: Step list) =
         match steps with
         | [] -> None
         | Step.Lambda (_, true) :: rest -> go rest
+        | Step.Lambda (_, false) :: (Step.Argument (callee, index, _) :: _ as rest) when isElementBuildLambda callee index -> go rest
         | Step.Lambda (_, false) :: _ -> None
         | Step.Argument (callee, index, _) :: rest ->
             match buildSite callee index with
@@ -76,8 +84,11 @@ let private buildSiteOf (path: Step list) =
 
     go path
 
-/// Whether `m` has an overload of the same name that takes a reader (a parameter named `read`).
-let private hasReaderOverload (m: FSharpMemberOrFunctionOrValue) =
+let private shape (t: FSharpType) =
+    (t.StripAbbreviations ()).Format FSharpDisplayContext.Empty
+
+/// Whether `m` has an overload of the same name whose reader (a parameter named `read`) returns `value`'s type.
+let private hasReaderOverload (m: FSharpMemberOrFunctionOrValue) (value: FSharpType) =
     match m.DeclaringEntity with
     | Some entity ->
         entity.MembersFunctionsAndValues
@@ -85,7 +96,13 @@ let private hasReaderOverload (m: FSharpMemberOrFunctionOrValue) =
             candidate.LogicalName = m.LogicalName
             && candidate.CurriedParameterGroups
                |> Seq.concat
-               |> Seq.exists (fun p -> p.Name = Some ReaderParameter))
+               |> Seq.exists (fun p ->
+                   let t = p.Type.StripAbbreviations ()
+
+                   p.Name = Some ReaderParameter
+                   && t.IsFunctionType
+                   && t.GenericArguments.Count = 2
+                   && shape t.GenericArguments[1] = shape value))
     | None -> false
 
 /// The expressions in the return position of `expr`: through `let`, sequencing, records and tuples.
@@ -94,7 +111,10 @@ let rec private returned (expr: FSharpExpr) : FSharpExpr list =
     | Let (_, body) -> returned body
     | Sequential (_, last) -> returned last
     | NewRecord (_, fields) -> fields
+    | NewAnonRecord (_, fields) -> fields
     | NewTuple (_, items) -> items
+    | IfThenElse (_, whenTrue, whenFalse) -> returned whenTrue @ returned whenFalse
+    | DecisionTree (_, targets) -> targets |> List.collect (snd >> returned)
     | _ -> [ expr ]
 
 let rec private bodyAfter (layers: int) (expr: FSharpExpr) =
@@ -110,6 +130,8 @@ let private readCall (expr: FSharpExpr) =
 let private buildTimeReads (input: Input) : Message list =
     let calls = input.Index.Calls
 
+    let structureReads = ResizeArray<CallSite>()
+
     let staticSites =
         [
             for read in calls do
@@ -118,6 +140,7 @@ let private buildTimeReads (input: Input) : Message list =
                     && not (inRegion read.Path)
                 then
                     match buildSiteOf read.Path with
+                    | Some (_, _, BuildSite.Structure) -> structureReads.Add read
                     | Some (callee, index, site) ->
                         let owner =
                             calls
@@ -134,6 +157,15 @@ let private buildTimeReads (input: Input) : Message list =
         |> List.distinctBy (fun (call, index, _, _) -> call.Range, index)
 
     [
+        // A read that the element expression's own code makes: a guard, a match or a loop's sequence.
+        for read in structureReads do
+            message
+                "RAN020"
+                Severity.Warning
+                read.Range
+                $"`{text input read.Range}` is read once, when the template is built, so the element's structure never follows it. Read it in a reader, or choose the views with matchWith or forEach."
+                []
+
         for call, index, site, read in staticSites do
             let readText = text input read.Range
             let argument = call.Arguments[index]
@@ -149,7 +181,12 @@ let private buildTimeReads (input: Input) : Message list =
                     [ replace argument.Range argumentText $"fun _ -> {argumentText}" ]
             | BuildSite.Part kind ->
                 let fixes =
-                    if hasReaderOverload call.Callee then
+                    let value = parameterAt call.Callee index |> Option.map _.Type
+
+                    if
+                        value
+                        |> Option.exists (hasReaderOverload call.Callee)
+                    then
                         [ replace argument.Range argumentText $"fun _ -> {argumentText}" ]
                     else
                         []
@@ -167,6 +204,7 @@ let private buildTimeReads (input: Input) : Message list =
                     read.Range
                     $"`{readText}` is read once, when the template is built, so the child's props never update. Pass the signal or memo in the props and read it in the child."
                     []
+            | BuildSite.Structure -> ()
 
         for call in calls do
             let entity = Symbols.enclosing call.Callee
@@ -184,8 +222,15 @@ let private buildTimeReads (input: Input) : Message list =
                             $"`{text input expr.Range}` is read once per instance, when setup runs untracked, so the instance holds the value at mount. Return the signal or memo itself and read it in the template."
                             []
 
-            if renderProps && call.Arguments.Length = 2 then
-                for expr in returned (bodyAfter 1 call.Arguments[1]) do
+            let propsReader =
+                match call.Arguments with
+                | [ _; reader ] when renderProps -> Some reader
+                | [ reader ] when isComponentTagConstructor call.Callee -> Some reader
+                | _ -> None
+
+            match propsReader with
+            | Some (Lambda (parameter, _) as reader) ->
+                for expr in returned (bodyAfter 1 reader) do
                     if readCall expr then
                         let readText = text input expr.Range
 
@@ -198,8 +243,9 @@ let private buildTimeReads (input: Input) : Message list =
                             "RAN020"
                             Severity.Warning
                             expr.Range
-                            $"`render`'s props reader runs once per instance, so the child receives the value of `{readText}` at mount. Pass the signal: `fun s -> {signal}`."
+                            $"`render`'s props reader runs once per instance, so the child receives the value of `{readText}` at mount. Pass the signal: `fun {parameter.DisplayName} -> {signal}`."
                             []
+            | _ -> ()
     ]
 
 let ran020: Rule =
