@@ -11,7 +11,7 @@ type ClockPending =
         NextTimerAt: float option
     }
 
-/// <summary>A queue that kept refilling past <c>Settle</c>'s round limit; <c>origin</c> names its last callback.</summary>
+/// <summary>A queue that kept refilling past its limit; <c>origin</c> names its last callback.</summary>
 exception TwinRunawayException of queue: string * origin: string with
     override this.Message =
         $"The twin's {this.queue} kept refilling; the last callback was {this.origin}"
@@ -24,18 +24,28 @@ type private Timer =
         Callback: unit -> unit
     }
 
-/// <summary>The twin's event loop: microtasks, timers and animation frames, run only when the test asks.</summary>
+/// <summary>
+/// The twin's event loop: microtasks, timers and animation frames, run only when the test asks. It belongs to the
+/// thread that creates it; a call from another thread raises <c>InvalidOperationException</c>.
+/// </summary>
 [<Sealed>]
 type TwinClock() as this =
     let microtasks = Queue<unit -> unit>()
     let timers = ResizeArray<Timer>()
     let frames = ResizeArray<int * (float -> unit)>()
+    let ownerThread = Environment.CurrentManagedThreadId
     let mutable now = 0.0
     let mutable sequence = 0
     let mutable lastOrigin = ""
 
     let origin (callback: obj) =
         callback.GetType().FullName
+
+    let check (operation: string) =
+        let current = Environment.CurrentManagedThreadId
+
+        if current <> ownerThread then
+            raise (InvalidOperationException $"The twin clock of thread {ownerThread} was used on thread {current} ({operation})")
 
     let provider =
         { new TimeProvider() with
@@ -48,36 +58,57 @@ type TwinClock() as this =
                 int64 (now * 10_000.0)
 
             override _.CreateTimer(callback, state, dueTime, period) =
-                let mutable id = -1
-                let mutable periodMs = -1.0
+                // The id of the scheduled run; a run reschedules only while it is still the scheduled one.
+                let id = ref -1
+                let periodMs = ref -1.0
+                let disposed = ref false
 
                 let rec schedule (delay: float) =
-                    id <-
+                    let mine = ref -1
+
+                    mine.Value <-
                         this.SetTimeout (
                             (fun () ->
                                 callback.Invoke state
 
-                                if periodMs > 0.0 then
-                                    schedule periodMs),
+                                if
+                                    not disposed.Value
+                                    && id.Value = mine.Value
+                                    && periodMs.Value > 0.0
+                                then
+                                    schedule periodMs.Value),
                             delay
                         )
 
+                    id.Value <- mine.Value
+
                 let change (due: TimeSpan) (every: TimeSpan) =
-                    if id >= 0 then
-                        this.ClearTimeout id
+                    if disposed.Value then
+                        false
+                    else
+                        if id.Value >= 0 then
+                            this.ClearTimeout id.Value
 
-                    id <- -1
+                        id.Value <- -1
 
-                    periodMs <-
-                        (if every = Threading.Timeout.InfiniteTimeSpan then
-                             -1.0
-                         else
-                             every.TotalMilliseconds)
+                        periodMs.Value <-
+                            (if every = Threading.Timeout.InfiniteTimeSpan then
+                                 -1.0
+                             else
+                                 every.TotalMilliseconds)
 
-                    if due <> Threading.Timeout.InfiniteTimeSpan then
-                        schedule due.TotalMilliseconds
+                        if due <> Threading.Timeout.InfiniteTimeSpan then
+                            schedule due.TotalMilliseconds
 
-                    true
+                        true
+
+                let dispose () =
+                    disposed.Value <- true
+
+                    if id.Value >= 0 then
+                        this.ClearTimeout id.Value
+
+                    id.Value <- -1
 
                 change dueTime period |> ignore
 
@@ -86,13 +117,10 @@ type TwinClock() as this =
                         change due every
 
                     member _.Dispose() =
-                        if id >= 0 then
-                            this.ClearTimeout id
+                        dispose ()
 
                     member _.DisposeAsync() =
-                        (if id >= 0 then
-                             this.ClearTimeout id)
-
+                        dispose ()
                         System.Threading.Tasks.ValueTask ()
                 }
         }
@@ -101,11 +129,24 @@ type TwinClock() as this =
     member _.TimeProvider: TimeProvider = provider
     member val FrameMs = 16.0 with get, set
 
+    /// <summary>
+    /// The most microtasks one drain runs; a drain that reaches it with work left raises <c>TwinRunawayException</c>.
+    /// </summary>
+    member val MicrotaskLimit = 100_000 with get, set
+
     member _.Post(callback: unit -> unit) =
+        check "Post"
         microtasks.Enqueue callback
 
+    /// <summary>Runs queued microtasks, including those they queue, until none remain.</summary>
     member this.RunMicrotasks() : int =
-        this.Drain System.Int32.MaxValue
+        check "RunMicrotasks"
+        let ran = this.Drain this.MicrotaskLimit
+
+        if microtasks.Count > 0 then
+            raise (TwinRunawayException ("microtasks", lastOrigin))
+
+        ran
 
     /// <summary>Runs queued microtasks, including those they queue, until none remain or <c>limit</c> have run.</summary>
     member internal _.Drain(limit: int) : int =
@@ -120,6 +161,7 @@ type TwinClock() as this =
         count
 
     member _.SetTimeout(callback: unit -> unit, milliseconds: float) : int =
+        check "SetTimeout"
         sequence <- sequence + 1
 
         timers.Add
@@ -133,14 +175,17 @@ type TwinClock() as this =
         sequence
 
     member _.ClearTimeout(id: int) =
+        check "ClearTimeout"
         timers.RemoveAll (fun t -> t.Id = id) |> ignore
 
     member _.RequestAnimationFrame(callback: float -> unit) : int =
+        check "RequestAnimationFrame"
         sequence <- sequence + 1
         frames.Add ((sequence, callback))
         sequence
 
     member _.CancelAnimationFrame(id: int) =
+        check "CancelAnimationFrame"
         frames.RemoveAll (fun (i, _) -> i = id) |> ignore
 
     member private this.RunTimer(timer: Timer) =
@@ -151,6 +196,7 @@ type TwinClock() as this =
         this.RunMicrotasks () |> ignore
 
     member this.Frame() =
+        check "Frame"
         let due = List.ofSeq frames
         frames.Clear ()
 
@@ -160,6 +206,11 @@ type TwinClock() as this =
             this.RunMicrotasks () |> ignore
 
     member this.AdvanceBy(milliseconds: float) =
+        check "AdvanceBy"
+
+        if milliseconds < 0.0 then
+            raise (ArgumentOutOfRangeException ("milliseconds", milliseconds, "The twin clock does not move backwards"))
+
         let target = now + milliseconds
         let mutable going = true
 
@@ -201,9 +252,14 @@ type TwinClock() as this =
                     Some (timers |> Seq.map (fun t -> t.Due) |> Seq.min)
         }
 
-    /// <summary>Pumps the graph's inbox, drains microtasks and runs due timers until all three are empty.</summary>
+    /// <summary>
+    /// Pumps the graph's inbox, drains microtasks and runs due timers until all three are empty. A round drains at most
+    /// 1,000 microtasks. After <c>maxRounds</c> busy rounds (default 1,000), or when a drain after a timer reaches
+    /// <c>MicrotaskLimit</c>, it raises <c>TwinRunawayException</c> naming the busiest queue and its last callback.
+    /// </summary>
     member this.Settle(graph: Ranvier.Graph, ?maxRounds: int) =
-        let limit = defaultArg maxRounds 10_000
+        check "Settle"
+        let limit = defaultArg maxRounds 1_000
         let counts = Dictionary<string, int>()
 
         let bump name n =
@@ -218,7 +274,7 @@ type TwinClock() as this =
 
         while busy do
             let pumped = graph.Pump ()
-            let ran = this.Drain limit
+            let ran = this.Drain 1_000
 
             let due =
                 timers
@@ -227,7 +283,8 @@ type TwinClock() as this =
                 |> List.ofSeq
 
             for timer in due do
-                this.RunTimer timer
+                if timers.Contains timer then
+                    this.RunTimer timer
 
             bump "inbox" pumped
             bump "microtasks" ran
