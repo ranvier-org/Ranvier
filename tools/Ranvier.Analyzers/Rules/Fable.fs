@@ -32,37 +32,33 @@ let private generatedTester (input: Input) (m: FSharpMemberOrFunctionOrValue) : 
             None
     | _ -> None
 
-/// The pattern of `case` written where `opened` names paths unqualified: the union's access path relative to the
-/// innermost of `opened` that contains it, or the whole access path, then the union and the case. A case with fields
+/// The pattern of `case` written where `opened` names paths unqualified: the union's source path relative to the
+/// innermost of `opened` that contains it, or the whole source path, then the union and the case. A case with fields
 /// takes one wildcard.
 let private casePattern (opened: string list) (union: FSharpEntity) (case: FSharpUnionCase) : string =
-    let access =
-        match union.AccessPath with
-        | null
-        | ""
-        | "global" -> ""
-        | path -> path
+    let container = Symbols.containerOf union
 
     let qualifier =
         opened
         |> List.tryPick (fun path ->
-            if access = path then
+            if container = path then
                 Some ""
-            elif access.StartsWith (path + ".") then
-                Some (access.Substring (path.Length + 1))
+            elif container.StartsWith (path + ".") then
+                Some (container.Substring (path.Length + 1))
             else
                 None)
-        |> Option.defaultValue access
+        |> Option.defaultValue container
 
     let name =
-        if qualifier = "" then
-            union.DisplayName + "." + case.Name
-        else
-            qualifier
-            + "."
-            + union.DisplayName
-            + "."
-            + case.Name
+        String.Join (
+            ".",
+            [
+                if qualifier <> "" then
+                    qualifier
+                union.DisplayName
+                case.Name
+            ]
+        )
 
     if case.Fields.Count = 0 then name else name + " _"
 
@@ -72,23 +68,30 @@ let private testers (input: Input) : Message list =
             match generatedTester input site.Callee, site.Receiver with
             | Some (union, case), Some receiver ->
                 let receiverText = text input receiver.Range
+                let callText = text input site.Range
                 let pattern = casePattern site.Opened union case
 
-                // `_.IsQueue` is a lambda over the receiver; the replacement is a function too.
-                let shorthand = receiverText = "_"
+                let named =
+                    union.DisplayName
+                    + "."
+                    + Symbols.TesterProperty
+                    + case.Name
 
+                // The shorthand `_.IsQueue` or `_.Inner.IsQueue` is replaced with a function.
                 let tester, replacement =
-                    if shorthand then
-                        $"{union.DisplayName}.Is{case.Name}", $"(function {pattern} -> true | _ -> false)"
+                    if receiverText = "_" then
+                        named, $"(function {pattern} -> true | _ -> false)"
+                    elif receiverText.StartsWith "_." then
+                        named, $"(fun value -> match value{receiverText.Substring 1} with {pattern} -> true | _ -> false)"
                     else
-                        $"{receiverText}.Is{case.Name}", $"(match {receiverText} with {pattern} -> true | _ -> false)"
+                        callText, $"(match {receiverText} with {pattern} -> true | _ -> false)"
 
                 message
                     "RAN002"
                     Severity.Warning
                     site.Range
                     $"`{tester}` calls a compiler-generated union tester, which a Fable precompiled assembly does not declare. Write `{replacement}`."
-                    [ replace site.Range (text input site.Range) replacement ]
+                    [ replace site.Range callText replacement ]
             | _ -> ()
     ]
 

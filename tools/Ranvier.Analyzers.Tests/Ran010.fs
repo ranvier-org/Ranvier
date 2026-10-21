@@ -94,6 +94,21 @@ let tests =
                 Expect.equal (codes "let m () = (fun _ -> createEffect ignore; 1) |> createMemo\n") [ "RAN010" ] "pipe"
             }
 
+            test "a stored callback inside a projection factory" {
+                Expect.isEmpty
+                    (codes
+                        "let p (handlers: ResizeArray<unit -> unit>) = createProjectionWith id (fun item -> handlers.Add (fun () -> createEffect ignore); fun () -> item ()) (fun () -> [ 1 ])
+")
+                    "the callback runs later, not as the row's reader"
+            }
+
+            test "the finding's range is the creator call" {
+                let range =
+                    (findings "let m () = createMemo (fun _ -> createEffect ignore; 1)\n").Head.Range
+
+                Expect.equal (range.StartLine, range.StartColumn, range.EndColumn) (4, 32, 51) "createEffect ignore"
+            }
+
             test "createMemoWith owns its nodes" {
                 Expect.isEmpty (codes "let m () = createMemoWith (fun _ -> createEffect ignore; 1)\n") "owning memo"
             }
@@ -123,6 +138,29 @@ let tests =
             test "a project without Ranvier is not analyzed" {
                 let source = "module Fixture\nlet x = 1\n"
                 Expect.isEmpty (run Analyzers.ran010Cli (context (plain.Force ()) source)) "no Ranvier reference"
+            }
+
+            test "the fixes rename the comparer, async and policy forms" {
+                for before, after in
+                    [
+                        "createMemoWithComparer HashIdentity.Structural (fun _ -> createEffect ignore; 1)",
+                        "createOwningMemoWithComparer HashIdentity.Structural (fun _"
+                        "createAsync (fun _ _ -> createEffect ignore; Task.FromResult 1)", "createAsyncWith (fun _ _"
+                        "createAsyncWithPolicy FlightPolicy.KeepLatest (fun _ _ -> createEffect ignore; Task.FromResult 1)",
+                        "createOwningAsyncWithPolicy FlightPolicy.KeepLatest (fun _ _"
+                    ] do
+                    let source =
+                        "module Fixture\nopen Ranvier\nopen System.Threading.Tasks\nlet m () = "
+                        + before
+                        + "\n"
+
+                    let fix =
+                        (run Analyzers.ran010Cli (context (ranvier.Force ()) source)).Head.Fixes
+                        |> List.exactlyOne
+
+                    let repaired = applyFix source fix
+                    Expect.stringContains repaired after "renamed"
+                    Expect.isEmpty (run Analyzers.ran010Cli (context (ranvier.Force ()) repaired)) "no finding after the fix"
             }
 
             test "the fix renames createMemo to createMemoWith" {

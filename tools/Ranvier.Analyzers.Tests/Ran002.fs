@@ -247,6 +247,81 @@ let queued (p: Defs.Policy) = p.IsQueue
                 Expect.isEmpty (findings repaired) "the fix compiles and clears the finding"
             }
 
+            test "a union in a companion module with the Module suffix, used outside and inside it" {
+                let source =
+                    "module Fixture
+type Policy = { Name: string }
+module Policy =
+    type Kind =
+        | Fast
+        | Slow
+    let slow (k: Kind) = k.IsSlow
+let slowOutside (k: Policy.Kind) = k.IsSlow
+"
+
+                let messages = findings source
+                Expect.equal messages.Length 2 "both testers"
+                Expect.stringContains messages[0].Message "(match k with Kind.Slow -> true | _ -> false)" "inside"
+                Expect.stringContains messages[1].Message "(match k with Policy.Kind.Slow -> true | _ -> false)" "outside"
+
+                let repaired =
+                    messages
+                    |> List.rev
+                    |> List.fold (fun text m -> applyFix text m.Fixes.Head) source
+
+                Expect.isEmpty (findings repaired) "both fixes compile and clear the findings"
+            }
+
+            test "a union in an explicit ModuleSuffix module" {
+                let source =
+                    "module Fixture
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module Shapes =
+    type Kind =
+        | Fast
+        | Slow
+    let slow (k: Kind) = k.IsSlow
+let slowOutside (k: Shapes.Kind) = k.IsSlow
+"
+
+                let messages = findings source
+                Expect.stringContains messages[1].Message "(match k with Shapes.Kind.Slow -> true | _ -> false)" "source name"
+
+                let repaired =
+                    messages
+                    |> List.rev
+                    |> List.fold (fun text m -> applyFix text m.Fixes.Head) source
+
+                Expect.isEmpty (findings repaired) "both fixes compile and clear the findings"
+            }
+
+            test "the chained shorthand _.Inner.IsCase, fixed with a lambda" {
+                let source =
+                    policy
+                    + "type Box = { Inner: Policy }
+let queued (bs: Box list) = bs |> List.filter _.Inner.IsQueue
+"
+
+                let messages = findings source
+                Expect.stringContains messages.Head.Message "`Policy.IsQueue`" "the union's tester"
+                let repaired = applyFix source messages.Head.Fixes.Head
+
+                Expect.stringContains repaired "(fun value -> match value.Inner with Policy.Queue -> true | _ -> false)" "a lambda"
+
+                Expect.isEmpty (findings repaired) "the fix compiles and clears the finding"
+            }
+
+            test "a parenthesised receiver keeps its parentheses in the message" {
+                let messages =
+                    findings (
+                        policy
+                        + "let first (ps: Policy list) = (List.head ps).IsQueue
+"
+                    )
+
+                Expect.stringContains messages.Head.Message "`(List.head ps).IsQueue`" "the call as written"
+            }
+
             test "a tester inside a quotation is reported" {
                 Expect.equal
                     (findings (
@@ -256,7 +331,7 @@ let queued (p: Defs.Policy) = p.IsQueue
                      )
                      |> List.map _.Code)
                     [ "RAN002" ]
-                    "the quotation's code is compiled with the library"
+                    "pinned: testers in quotations are reported"
             }
 
             test "the editor entry reports the tester, and an ignore-file comment silences it" {

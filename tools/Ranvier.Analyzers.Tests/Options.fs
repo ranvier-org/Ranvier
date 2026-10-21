@@ -124,7 +124,8 @@ let context (options: FSharpProjectOptions) (source: string) : CliContext =
 let run (analyzer: Analyzer<CliContext>) (context: CliContext) : Message list =
     analyzer context |> Async.RunSynchronously
 
-/// `source` with `fix` applied; line ends are normalised to `\n`.
+/// `source` with `fix` applied, after checking that `fix.FromText` is the text at its range; line ends are normalised
+/// to `\n`.
 let applyFix (source: string) (fix: Fix) : string =
     let normal = source.Replace ("\r\n", "\n")
     let lines = normal.Split '\n'
@@ -137,6 +138,12 @@ let applyFix (source: string) (fix: Fix) : string =
 
     let start = offset fix.FromRange.StartLine fix.FromRange.StartColumn
     let finish = offset fix.FromRange.EndLine fix.FromRange.EndColumn
+
+    if
+        normal.Substring (start, finish - start)
+        <> fix.FromText
+    then
+        failwith $"The fix's FromText {fix.FromText} differs from the text at its range"
 
     normal.Substring (0, start)
     + fix.ToText

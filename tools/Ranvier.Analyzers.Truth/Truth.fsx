@@ -145,7 +145,7 @@ let build () =
                 "-p:MSBuildWarningsAsMessages=RAN001"
             ]
 
-    // At detailed verbosity the demoted finding prints as `message RAN001`: the analyzers ran and reported no warning.
+    // Detailed verbosity prints the demoted finding as `message RAN001`.
     check
         "MSBuildWarningsAsMessages demotes RAN001"
         (quiet = 0

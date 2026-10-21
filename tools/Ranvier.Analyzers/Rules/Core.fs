@@ -52,16 +52,28 @@ let private calleeName (input: Input) (range: range) (name: string) : range opti
     else
         None
 
+/// The pure context whose body holds the expression at `path`, and the context's callee: the search stops at the
+/// first argument of another call reached through a lambda, since that lambda is the other call's to run.
+let private pureContextOf (path: Step list) : (FSharpMemberOrFunctionOrValue * PureContext) option =
+    let rec go (lambdas: int) (steps: Step list) =
+        match Index.lambdaStep isTransparent steps, steps with
+        | Some (added, rest), _ -> go (lambdas + added) rest
+        | None, [] -> None
+        | None, Step.Argument (callee, index, count) :: rest ->
+            match pureContext callee index count with
+            | Some purity when purity.Layers = lambdas -> Some (callee, purity)
+            | Some _ -> None
+            | None when lambdas = 0 -> go lambdas rest
+            | None -> None
+        | None, _ :: rest -> go lambdas rest
+
+    go 0 path
+
 let private ownedInPure (input: Input) : Message list =
     [
         for site in input.Index.Calls do
             if isCreator site.Callee then
-                let context =
-                    Index.arguments isTransparent site.Path
-                    |> List.tryPick (fun (callee, index, count, lambdas) ->
-                        match pureContext callee index count with
-                        | Some purity when purity.Layers = lambdas -> Some (callee, purity)
-                        | _ -> None)
+                let context = pureContextOf site.Path
 
                 match context with
                 | Some (callee, purity) ->
@@ -104,18 +116,6 @@ let ran010: Rule =
         Run = ownedInPure
     }
 
-/// The lambdas on `steps` that run outside the enclosing run: immediate and transparent lambdas do not count.
-let private lambdaCount (steps: Step list) =
-    let rec go count steps =
-        match steps with
-        | [] -> count
-        | Step.Lambda (_, true) :: rest -> go count rest
-        | Step.Lambda (_, false) :: Step.Argument (callee, _, _) :: rest when isTransparent callee -> go count rest
-        | Step.Lambda (_, false) :: rest -> go (count + 1) rest
-        | _ :: rest -> go count rest
-
-    go 0 steps
-
 let private recreated (input: Input) : Message list =
     // The paths of the `let`s whose bound expression creates an async value, keyed by the bound value.
     let asyncLets =
@@ -157,7 +157,7 @@ let private recreated (input: Input) : Message list =
                          | Some (Value value) -> value = site.Value
                          | _ -> false)
                         && (match Index.within site.Path call.Path with
-                            | Some inner -> lambdaCount inner = 0
+                            | Some inner -> Index.lambdaCount isTransparent inner = 0
                             | None -> false))
 
                 if readInBody then
@@ -181,37 +181,56 @@ let ran011: Rule =
         Run = recreated
     }
 
-/// Whether the expression at `path` sits in the continuation of a computation-expression bind inside the compute of
-/// an async value's creator, outside the body of a node created there and outside `untrack`.
-let private afterAwait (path: Step list) : bool =
+let rec private containsAwait (expr: FSharpExpr) : bool =
+    match expr with
+    | Call (_, m, _, _, _) when isBind m -> true
+    | _ -> List.exists containsAwait expr.ImmediateSubExpressions
+
+/// Whether argument `index` of `callee` is a tracked body: a pure context, an owner body, or `untrack`'s body.
+let private trackedBody (callee: FSharpMemberOrFunctionOrValue) (index: int) (count: int) : bool =
+    (pureContext callee index count).IsSome
+    || (ownerBody callee index count).IsSome
+    || isUntrack callee
+
+/// Whether the read at `site` runs after an await inside the compute of an async value's creator: in a bind's
+/// continuation, or after a `Combine` whose first part awaits. A read in a tracked body that the continuation creates,
+/// or under `untrack`, is outside the async value's tracking.
+let private afterAwait (input: Input) (site: CallSite) : bool =
+    // The `Combine` call at `outer`, the path of the call itself, holds the read in its second argument.
+    let awaitsBefore (combine: FSharpMemberOrFunctionOrValue) (outer: Step list) =
+        input.Index.Calls
+        |> Array.exists (fun call ->
+            call.Callee = combine
+            && obj.ReferenceEquals (call.Path, outer)
+            && call.Arguments.Length = 2
+            && containsAwait call.Arguments[0])
+
     let rec go (awaited: bool) (steps: Step list) =
         match steps with
         | [] -> false
-        | Step.Lambda (_, false) :: (Step.Argument (callee, index, count) :: _ as rest) when
-            callee.LogicalName.StartsWith "Bind"
-            && index = count - 1
-            ->
-            go true rest
-        // A node created in the continuation, or `untrack`, owns the reads of its own body.
+        | Step.Lambda (_, false) :: (Step.Argument (callee, index, count) :: _ as rest) when isBind callee && index = count - 1 -> go true rest
         | Step.Lambda (_, false) :: Step.Argument (callee, index, count) :: _ when
             asyncComputeIndex callee count <> Some index
-            && (isCreator callee
-                || Symbols.isMember Api "untrack" callee)
+            && trackedBody callee index count
             ->
             false
+        | Step.Argument (callee, 1, 2) :: rest when isCombine callee -> go (awaited || awaitsBefore callee rest) rest
         | Step.Argument (callee, index, count) :: rest ->
             match asyncComputeIndex callee count with
             | Some compute when compute = index -> awaited
             | _ -> go awaited rest
         | _ :: rest -> go awaited rest
 
-    go false path
+    go false site.Path
 
 let private untrackedReads (input: Input) : Message list =
     [
         for site in input.Index.Calls do
             match site.Receiver with
-            | Some receiver when isReactiveRead site.Callee && afterAwait site.Path ->
+            | Some receiver when
+                isReactiveRead site.Callee
+                && afterAwait input site
+                ->
                 let read = text input site.Range
                 let source = text input receiver.Range
 
@@ -256,15 +275,43 @@ let private offThreadWrites (input: Input) : Message list =
         input.Index.Calls
         |> Array.filter (fun call -> threadStarter call.Callee)
 
-    // A target bound inside the delegate belongs to a graph the delegate's thread owns.
+    let within (outer: range) (inner: range) =
+        Range.rangeContainsRange outer inner
+
+    let innermostStarter (site: CallSite) =
+        starters
+        |> Array.filter (fun starter -> within starter.Range site.Range)
+        |> Array.sortBy (fun starter ->
+            starter.Range.EndLine - starter.Range.StartLine,
+            starter.Range.EndColumn
+            - starter.Range.StartColumn)
+        |> Array.tryHead
+
+    // A graph that the innermost starter's delegate constructs, and a node it constructs over that graph, belong to
+    // the delegate's thread.
     let ownedByThread (site: CallSite) =
-        match writeTarget site with
-        | Some target ->
-            starters
-            |> Array.exists (fun starter ->
-                Range.rangeContainsRange starter.Range site.Range
-                && Range.rangeContainsRange starter.Range target.DeclarationLocation)
-        | None -> false
+        match innermostStarter site, writeTarget site with
+        | Some starter, Some target ->
+            let lets =
+                input.Index.Lets
+                |> Array.filter (fun binding -> within starter.Range binding.Value.DeclarationLocation)
+
+            let graphs =
+                lets
+                |> Array.choose (fun binding ->
+                    match binding.Bound with
+                    | NewObject (constructor, _, _) when isGraphConstructor constructor -> Some binding.Value
+                    | _ -> None)
+
+            let overGraph (expr: FSharpExpr) =
+                match expr with
+                | NewObject (constructor, _, Value graph :: _) when isNodeConstructor constructor -> graphs |> Array.contains graph
+                | _ -> false
+
+            graphs |> Array.contains target
+            || lets
+               |> Array.exists (fun binding -> binding.Value = target && overGraph binding.Bound)
+        | _ -> false
 
     [
         for site in input.Index.Calls do

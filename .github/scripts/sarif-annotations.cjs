@@ -1,5 +1,5 @@
-// GitHub annotations for the results of SARIF reports, with SARIF's 1-based columns. The fsharp-analyzers CLI's own
-// `--output-format github` prints 0-based columns, one column left of the cause.
+// GitHub annotations for the results of SARIF reports, at SARIF's 1-based columns. A single-line region's exclusive
+// SARIF end column becomes GitHub's inclusive one.
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -11,6 +11,14 @@ function escapeData(text) {
 
 function escapeProperty(text) {
   return escapeData(text).replace(/:/g, '%3A').replace(/,/g, '%2C');
+}
+
+// GitHub's inclusive end column of a SARIF region, whose end column is exclusive.
+function inclusiveEnd(region) {
+  const start = region.startColumn ?? 1;
+  const end = region.endColumn ?? start;
+  const singleLine = (region.endLine ?? region.startLine) === region.startLine;
+  return singleLine && end > start ? end - 1 : end;
 }
 
 // One workflow command per result of the SARIF document.
@@ -25,7 +33,7 @@ function annotations(sarif) {
         `line=${region.startLine ?? 1}`,
         `col=${region.startColumn ?? 1}`,
         `endLine=${region.endLine ?? region.startLine ?? 1}`,
-        `endColumn=${region.endColumn ?? region.startColumn ?? 1}`,
+        `endColumn=${inclusiveEnd(region)}`,
         `title=${escapeProperty(result.ruleId ?? '')}`,
       ];
       lines.push(`::${levels[result.level] ?? 'warning'} ${properties.join(',')}::${escapeData(result.message?.text ?? '')}`);

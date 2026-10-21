@@ -381,7 +381,6 @@ jobs:
         run: dotnet build Ranvier.slnx -c Release
       - name: Run the analyzers over the repository
         run: dotnet fsi build.fsx -- analyze
-      # SARIF's 1-based columns; the CLI's own GitHub format prints 0-based ones.
       - name: Annotate the findings
         if: always()
         run: node .github/scripts/sarif-annotations.cjs artifacts/analyzers

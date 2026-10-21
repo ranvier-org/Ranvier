@@ -34,6 +34,18 @@ let tests =
                     "one message"
             }
 
+            test "the finding's range is the binding identifier" {
+                let range =
+                    (findings
+                        "let view () =
+    createSuspense (fun _ -> 0) (fun () ->
+        let report = createAsync (fun _ _ -> Task.FromResult 1)
+        report.Value)\n")
+                        .Head.Range
+
+                Expect.equal (range.StartLine, range.StartColumn, range.EndColumn) (6, 12, 18) "report"
+            }
+
             test "an owning memo" {
                 Expect.equal
                     (codes "let m () =\n    createMemoWith (fun _ ->\n        let a = createAsync (fun _ _ -> Task.FromResult 1)\n        a.Value)\n")

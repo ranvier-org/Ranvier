@@ -35,20 +35,39 @@ let PipeLeft = "op_PipeLeft"
 [<Literal>]
 let CompilerGenerated = "System.Runtime.CompilerServices.CompilerGeneratedAttribute"
 
+/// The case-name prefix of a tester property: `IsQueue` tests `Queue`.
+[<Literal>]
+let TesterProperty = "Is"
+
 /// The prefix of a generated union case tester's getter: `get_IsQueue` tests `Queue`.
 [<Literal>]
-let TesterPrefix = "get_Is"
+let TesterPrefix = "get_" + TesterProperty
 
 /// The names of the equality, hashing and comparison members the compiler generates for a type.
 let generatedComparisons = set [ "CompareTo"; "Equals"; "GetHashCode" ]
 
-/// The logical path of a module, namespace or type: its access path and its display name.
-let pathOf (entity: FSharpEntity) : string =
-    match entity.AccessPath with
-    | null
-    | ""
-    | "global" -> entity.DisplayName
-    | access -> access + "." + entity.DisplayName
+/// The path that source code names a module, namespace or type by: its namespace, then the display names of its
+/// enclosing modules and types. A module compiled with the `Module` suffix keeps its source name.
+let rec pathOf (entity: FSharpEntity) : string =
+    if entity.IsNamespace then
+        match entity.AccessPath with
+        | null
+        | ""
+        | "global" -> entity.DisplayName
+        | access -> access + "." + entity.DisplayName
+    else
+        match entity.DeclaringEntity with
+        | Some parent -> pathOf parent + "." + entity.DisplayName
+        | None ->
+            match entity.Namespace with
+            | Some space when space <> "" -> space + "." + entity.DisplayName
+            | _ -> entity.DisplayName
+
+/// The source path of the module, namespace or type that declares `entity`; empty at the global level.
+let containerOf (entity: FSharpEntity) : string =
+    match entity.DeclaringEntity with
+    | Some parent -> pathOf parent
+    | None -> defaultArg entity.Namespace ""
 
 let private referencedFiles (options: AnalyzerProjectOptions) : string seq =
     options.OtherOptions
@@ -327,8 +346,38 @@ module Core =
         | "System.Threading.Thread", ".ctor"
         | "System.Threading.Tasks.Parallel", "For"
         | "System.Threading.Tasks.Parallel", "ForEach"
+        | "System.Threading.Tasks.Parallel", "Invoke"
+        | "System.Threading.Tasks.Task", "ContinueWith"
+        | "System.Threading.Tasks.Task`1", "ContinueWith"
         | "System.Threading.Timer", ".ctor" -> true
         | _ -> false
+
+    /// Whether `m` is a computation-expression bind, whose last argument is the continuation after an await:
+    /// `Bind`, `BindReturn`, `Bind2` and the like.
+    let isBind (m: FSharpMemberOrFunctionOrValue) : bool =
+        m.LogicalName.StartsWith "Bind"
+
+    /// Whether `m` is a computation-expression `Combine`, whose second argument runs after its first.
+    let isCombine (m: FSharpMemberOrFunctionOrValue) : bool =
+        m.LogicalName = "Combine"
+
+    /// Whether `m` constructs a graph.
+    let isGraphConstructor (m: FSharpMemberOrFunctionOrValue) : bool =
+        m.IsConstructor && enclosing m = "Ranvier.Graph"
+
+    /// Whether `m` constructs a node over the graph it takes first: a signal, an async source or a memo.
+    let isNodeConstructor (m: FSharpMemberOrFunctionOrValue) : bool =
+        m.IsConstructor
+        && (match enclosing m with
+            | "Ranvier.Signal`1"
+            | "Ranvier.AsyncSource`1"
+            | "Ranvier.Memo`1"
+            | "Ranvier.AsyncMemo`1" -> true
+            | _ -> false)
+
+    /// Whether `m` is `untrack`.
+    let isUntrack (m: FSharpMemberOrFunctionOrValue) : bool =
+        isMember Api "untrack" m
 
 /// The view layer's builders, sugar and definitions.
 module View =

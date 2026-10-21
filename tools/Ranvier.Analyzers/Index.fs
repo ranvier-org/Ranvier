@@ -223,19 +223,36 @@ let ofFile (file: FSharpImplementationFileContents) : FileIndex =
 
 /// The call arguments on `path`, innermost first, each with the number of lambdas between it and the expression.
 /// Immediately applied lambdas, and the lambda argument of a call that `transparent` accepts, are not counted.
+/// The lambdas that the lambda at the head of `steps` adds to a count, and the steps after it; None when the head is
+/// not a lambda. An immediately applied lambda, and the lambda argument of a call that `transparent` accepts, add none.
+let lambdaStep (transparent: FSharpMemberOrFunctionOrValue -> bool) (steps: Step list) : (int * Step list) option =
+    match steps with
+    | Step.Lambda (_, true) :: rest -> Some (0, rest)
+    | Step.Lambda (_, false) :: Step.Argument (callee, _, _) :: rest when transparent callee -> Some (0, rest)
+    | Step.Lambda (_, false) :: rest -> Some (1, rest)
+    | _ -> None
+
 let arguments (transparent: FSharpMemberOrFunctionOrValue -> bool) (path: Step list) : (FSharpMemberOrFunctionOrValue * int * int * int) list =
     let rec go (lambdaCount: int) (steps: Step list) =
-        match steps with
-        | [] -> []
-        | Step.Lambda (_, true) :: rest -> go lambdaCount rest
-        | Step.Lambda (_, false) :: Step.Argument (callee, _, _) :: rest when transparent callee -> go lambdaCount rest
-        | Step.Lambda (_, false) :: rest -> go (lambdaCount + 1) rest
-        | Step.Argument (callee, index, count) :: rest ->
+        match lambdaStep transparent steps, steps with
+        | Some (added, rest), _ -> go (lambdaCount + added) rest
+        | None, [] -> []
+        | None, Step.Argument (callee, index, count) :: rest ->
             (callee, index, count, lambdaCount)
             :: go lambdaCount rest
-        | _ :: rest -> go lambdaCount rest
+        | None, _ :: rest -> go lambdaCount rest
 
     go 0 path
+
+/// The lambdas on `steps` that `lambdaStep` counts.
+let lambdaCount (transparent: FSharpMemberOrFunctionOrValue -> bool) (steps: Step list) : int =
+    let rec go (count: int) (steps: Step list) =
+        match lambdaStep transparent steps, steps with
+        | Some (added, rest), _ -> go (count + added) rest
+        | None, [] -> count
+        | None, _ :: rest -> go count rest
+
+    go 0 steps
 
 /// The steps of `path` inside `ancestor`, innermost first, when `ancestor` is a tail of `path` by reference.
 let rec within (ancestor: Step list) (path: Step list) : Step list option =

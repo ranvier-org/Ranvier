@@ -91,6 +91,96 @@ let tests =
                     "untracked by intent"
             }
 
+            test "a read in createRoot's body after the await" {
+                Expect.equal
+                    (codes (
+                        asyncMemo
+                            "            do! Task.Yield ()
+            return createRoot (fun _ -> userId.Value)
+"
+                    ))
+                    [ "RAN012" ]
+                    "a root tracks nothing"
+            }
+
+            test "a read in createEffectOn's act after the await" {
+                Expect.equal
+                    (codes (
+                        asyncMemo
+                            "            do! Task.Yield ()
+            createEffectOn (fun () -> 1) (fun _ -> userId.Value |> ignore)
+            return 1
+"
+                    ))
+                    [ "RAN012" ]
+                    "act is untracked"
+            }
+
+            test "a read in an onCleanup callback after the await" {
+                Expect.equal
+                    (codes (
+                        asyncMemo
+                            "            do! Task.Yield ()
+            onCleanup (fun () -> userId.Value |> ignore)
+            return 1
+"
+                    ))
+                    [ "RAN012" ]
+                    "a cleanup tracks nothing"
+            }
+
+            test "a read after an await inside if" {
+                let body =
+                    "let load (userId: Signal<int>) (flag: bool) =
+    createAsync (fun _ _ ->
+        task {
+            if flag then
+                do! Task.Yield ()
+
+            return userId.Value
+        })
+"
+
+                Expect.equal (codes body) [ "RAN012" ] "the branch awaits"
+            }
+
+            test "a read after an await inside for" {
+                let body =
+                    "let load (userId: Signal<int>) =
+    createAsync (fun _ _ ->
+        task {
+            for _ in 1..2 do
+                do! Task.Yield ()
+
+            return userId.Value
+        })
+"
+
+                Expect.equal (codes body) [ "RAN012" ] "the loop awaits"
+            }
+
+            test "a read after a branch without an await" {
+                let body =
+                    "let load (userId: Signal<int>) (flag: bool) (log: ResizeArray<int>) =
+    createAsync (fun _ _ ->
+        task {
+            if flag then
+                log.Add 1
+
+            return userId.Value
+        })
+"
+
+                Expect.isEmpty (codes body) "no await before the read"
+            }
+
+            test "the finding's range is the read" {
+                let range =
+                    (findings (asyncMemo "            do! Task.Yield ()\n            return userId.Value\n")).Head.Range
+
+                Expect.equal (range.StartLine, range.StartColumn, range.EndColumn) (8, 19, 31) "userId.Value"
+            }
+
             test "a user Value property after an await is not a reactive read" {
                 let body =
                     "type Box() =\n    member _.Value = 1\nlet load (box: Box) =\n    createAsync (fun _ _ ->\n        task {\n            do! Task.Yield ()\n            return box.Value\n        })\n"

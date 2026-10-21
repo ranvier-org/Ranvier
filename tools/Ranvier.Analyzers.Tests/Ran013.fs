@@ -52,6 +52,71 @@ let tests =
                 Expect.isEmpty (codes "let f (source: AsyncSource<int>) = Task.Run (fun () -> source.Settle 1)\n") "settle waits in the inbox"
             }
 
+            test "a write to each signal of a collection in Parallel.ForEach" {
+                Expect.equal
+                    (codes
+                        "let f (signals: Signal<int> list) = Parallel.ForEach (signals, fun (s: Signal<int>) -> s.Value <- 0) |> ignore
+")
+                    [ "RAN013" ]
+                    "lambda parameter"
+            }
+
+            test "Signal.update of each signal in Parallel.ForEach" {
+                Expect.equal
+                    (codes
+                        "let f (signals: Signal<int> list) = Parallel.ForEach (signals, fun s -> Signal.update s ((+) 1)) |> ignore
+")
+                    [ "RAN013" ]
+                    "update target"
+            }
+
+            test "a write to a loop variable in Task.Run" {
+                Expect.equal
+                    (codes
+                        "let f (signals: Signal<int> list) = Task.Run (fun () -> for s in signals do s.Value <- 1)
+")
+                    [ "RAN013" ]
+                    "loop variable"
+            }
+
+            test "a write to an alias of an outer signal in Task.Run" {
+                Expect.equal
+                    (codes
+                        "let f (shared: Signal<int>) = Task.Run (fun () -> let s = shared in s.Value <- 1)
+")
+                    [ "RAN013" ]
+                    "alias"
+            }
+
+            test "a write in a pool task nested in the thread that owns the graph" {
+                let body =
+                    "let f () =
+    Thread (fun () ->
+        use g = new Graph ()
+        let s = Signal (g, 0)
+        Task.Run (fun () -> s.Value <- 1) |> ignore)
+"
+
+                Expect.equal (codes body) [ "RAN013" ] "the pool runs the write"
+            }
+
+            test "a write in Parallel.Invoke and in ContinueWith" {
+                let body =
+                    "let f (s: Signal<int>) (t: Task) =
+    Parallel.Invoke (fun () -> s.Value <- 1)
+    t.ContinueWith (fun (_: Task) -> s.Value <- 2) |> ignore
+"
+
+                Expect.equal (codes body) [ "RAN013"; "RAN013" ] "both starters"
+            }
+
+            test "the finding's range is the write" {
+                let range =
+                    (findings "let f (temperature: Signal<int>) = Task.Run (fun () -> temperature.Value <- 25)\n").Head.Range
+
+                Expect.equal (range.StartLine, range.StartColumn, range.EndColumn) (5, 55, 78) "the assignment"
+            }
+
             test "a write to a graph the thread creates" {
                 Expect.isEmpty
                     (codes

@@ -11,7 +11,7 @@ const result = (extra) => ({
 
 test('a result becomes an annotation at its 1-based SARIF columns', () => {
   assert.deepEqual(annotations({ runs: [{ results: [result({})] }] }), [
-    '::warning file=tools/B.fs,line=4,col=9,endLine=4,endColumn=13,title=RAN001::Fable Release compiles `seen` as a second read, 100%25%0Anext',
+    '::warning file=tools/B.fs,line=4,col=9,endLine=4,endColumn=12,title=RAN001::Fable Release compiles `seen` as a second read, 100%25%0Anext',
   ]);
 });
 
