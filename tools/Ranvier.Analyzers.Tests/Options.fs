@@ -59,8 +59,8 @@ let plain: Lazy<FSharpProjectOptions> = lazy (withReferences [])
 
 let private checker = lazy (FSharpChecker.Create (keepAssemblyContents = true))
 
-/// The context of the last of `files`, each a file name and its source, compiled in order as one project; raises on
-/// a type error.
+/// The context of the last of `files`, each a relative path and its source, compiled in order as one project in a
+/// fresh temporary directory; raises on a type error.
 let contextOf (options: FSharpProjectOptions) (files: (string * string) list) : CliContext =
     let directory =
         Path.Combine (Path.GetTempPath (), "ranvier-analyzers-tests", Guid.NewGuid().ToString "N")
@@ -71,6 +71,10 @@ let contextOf (options: FSharpProjectOptions) (files: (string * string) list) : 
         [|
             for name, source in files ->
                 let path = Path.Combine (directory, name)
+
+                Directory.CreateDirectory (Path.GetDirectoryName path)
+                |> ignore
+
                 File.WriteAllText (path, source)
                 path
         |]
