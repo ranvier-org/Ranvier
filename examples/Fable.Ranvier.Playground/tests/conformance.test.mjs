@@ -22,8 +22,9 @@ export const slug = name => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").repla
 const listenerErrors = [];
 const virtualConsole = new VirtualConsole();
 virtualConsole.on("jsdomError", e => {
-  const message = e.detail?.message ?? e.message;
-  if (!String(message).startsWith("Not implemented")) listenerErrors.push(message);
+  if (e.type === "not-implemented" || String(e.message).startsWith("Not implemented")) return;
+  // jsdom wraps an uncaught listener exception; `cause` is the thrown value.
+  listenerErrors.push(e.cause?.message ?? e.detail?.message ?? e.message);
 });
 const dom = new JSDOM("<!doctype html><html><head></head><body></body></html>", { virtualConsole, pretendToBeVisual: true });
 globalThis.window = dom.window;

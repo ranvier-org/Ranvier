@@ -106,6 +106,10 @@ let harness () : Harness =
 let document () : Document =
     (harness ()).Document
 
+/// <summary>Whether a conformance case is running on this thread.</summary>
+let isRunning () : bool =
+    not (isNull (box (read ())))
+
 /// <summary>
 /// The running case's value under <c>key</c>, created by <c>create</c> on its first use in the case: state a check
 /// module keeps per case, so cases on different threads or hosts share none.

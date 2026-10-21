@@ -25,6 +25,9 @@
         <Compile Include="../../experiments/Ranvier.View.Foundation/Browser.fs" Link="Checks/Browser.fs" />
         <Compile Include="../../examples/Fable.Ranvier.Playground/tests/TemplateChecks.fs" Link="Checks/TemplateChecks.fs" />
         <Compile Include="../../examples/Fable.Ranvier.Playground/tests/TestingApiChecks.fs" Link="Checks/TestingApiChecks.fs" />
+        <Compile Include="../../examples/Fable.Ranvier.Playground/tests/BoundaryChecks.fs" Link="Checks/BoundaryChecks.fs" />
+        <Compile Include="../../examples/Fable.Ranvier.Playground/tests/CheckSupport.fs" Link="Checks/CheckSupport.fs" />
+        <Compile Include="../../examples/Fable.Ranvier.Playground/tests/PlacementChecks.fs" Link="Checks/PlacementChecks.fs" />
         <Compile Include="../../examples/Fable.Ranvier.Playground/tests/ConformanceCases.fs" Link="Checks/ConformanceCases.fs" />
         <Compile Include="TwinHarness.fs" />
         <Compile Include="ConformanceTests.fs" />

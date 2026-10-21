@@ -112,6 +112,7 @@ let private nested stop =
         |> unbox<HTMLButtonElement>
 
     second.click ()
+    Conformance.recordIfRunning "after the second row's click" host.innerHTML
     equal [ 2 ] (List.ofSeq rowClicks)
     equal (if stop then 0 else 1) outerClicks.Count
     mounted.Dispose ()
@@ -282,6 +283,7 @@ let private nestedHosts stop =
                 [||])
 
     (button innerHost 0.).click()
+    Conformance.recordIfRunning "after the inner host's click" host.innerHTML
     equal 1 inner
     equal (if stop then 0 else 1) outer
     b.Dispose ()
@@ -361,6 +363,7 @@ let private nativeStopBetween () =
      |> unbox<HTMLButtonElement>)
         .click()
 
+    Conformance.recordIfRunning "after the click stopped between target and host" host.innerHTML
     equal 0 clicks.Count
     mounted.Dispose ()
 

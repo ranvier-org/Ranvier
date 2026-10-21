@@ -26,6 +26,7 @@ EventTarget.removeEventListener
 HTMLButtonElement.disabled
 HTMLCollectionBase.length
 HTMLElement.click
+HTMLElement.title
 HTMLInputElement.checked
 HTMLInputElement.value
 HTMLTemplateElement.content
@@ -46,6 +47,7 @@ Node.parentNode
 Node.removeChild
 Node.textContent
 NodeList.length
+NodeListOf.Item
 NodeListOf.item
 ParentNode.children
 ParentNode.querySelector

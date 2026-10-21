@@ -93,13 +93,17 @@ export function interceptIn(window) {
 }
 
 // Runs one conformance case on a browser or benchmark page: the clock replaces the page window's timer functions for
-// the case only; the page records no artefacts and reports no listener failures.
+// the case only. The page records no artefacts; listener failures are the window's error events, marked handled.
 export function runOnPage(window, create, run) {
   const clock = makeClock([window]);
+  const errors = [];
+  const onError = e => { errors.push(e.error ? e.error.message : String(e.message)); e.preventDefault(); };
+  window.addEventListener("error", onError);
   try {
-    const host = { post: clock.post, runMicrotasks: clock.runMicrotasks, advanceBy: clock.advanceBy, record: () => {}, errors: () => [], intercept: interceptIn(window) };
+    const host = { post: clock.post, runMicrotasks: clock.runMicrotasks, advanceBy: clock.advanceBy, record: () => {}, errors: () => errors.splice(0), intercept: interceptIn(window) };
     return run(create(window.document, host));
   } finally {
+    window.removeEventListener("error", onError);
     clock.restore();
   }
 }

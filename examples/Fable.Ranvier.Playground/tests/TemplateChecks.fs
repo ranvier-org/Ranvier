@@ -3806,6 +3806,38 @@ let browserCases: Conformance.Case array =
             "clearing a list between foreign siblings removes only the list's nodes", clearsBetweenSiblings
         |]
 
+let private referenceRow =
+    Component.define (fun _ (item: unit -> Listed) -> item) (fun t -> t.element (HtmlTag "li") [||] [| t.text (fun item -> string (item ()).Id) |])
+
+let private referenceKeyed =
+    Component.define (fun _ (items: Signal<Listed array>) -> items) (fun t ->
+        t.element
+            (HtmlTag "ul")
+            [||]
+            [|
+                t.each (fun (item: Listed) -> item) (fun items -> items.Value) referenceRow
+            |])
+
+// Keys compare by F# equality on both hosts: two equal records are one key, so the second is a duplicate.
+let private structurallyEqualKeys () =
+    use graph = new Graph ()
+
+    let items =
+        graph.Run (fun () -> Api.createSignal [| { Id = 1; Text = "" }; { Id = 1; Text = "" } |])
+
+    let host = host ()
+
+    let message =
+        try
+            (mount graph host (Component.render referenceKeyed items)).Dispose()
+            ""
+        with error ->
+            error.Message
+
+    Conformance.recordIfRunning "the mount's failure" message
+    Conformance.recordIfRunning "after the failed mount" host.innerHTML
+    equal true (message.Contains "twice in one pass")
+
 let private eachEmpty () =
     use graph = new Graph ()
     (listedLog ()).Clear()
@@ -4647,6 +4679,7 @@ let cases: Conformance.Case array =
             "clearing template rows holding nested lists keeps their cleanup order and markers", nestedClearKeepsOrder
             "an empty each region keeps its markers, fills and empties", eachEmpty
             "each renders the same DOM as its default expansion across insert, remove, reorder and an item change", eachTwin
+            "rows keyed by structurally equal records share one key and fail as duplicates", structurallyEqualKeys
             "each rows match their items and keep their nodes across seeded random edits", eachRandomEdits
             "root-level each regions beside other roots update, reorder, move and dispose", rootRegions
             "a matchWith inside each rows follows, moves and leaves with its row", nestedRegions

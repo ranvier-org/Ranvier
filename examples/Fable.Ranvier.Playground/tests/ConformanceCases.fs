@@ -8,4 +8,6 @@ let modules: (string * Conformance.Case array) array =
         "TemplateChecks", TemplateChecks.cases
         "DelegationChecks", DelegationChecks.cases
         "TestingApiChecks", TestingApiChecks.cases
+        "BoundaryChecks", BoundaryChecks.cases
+        "PlacementChecks", PlacementChecks.cases
     |]
