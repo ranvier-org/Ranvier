@@ -306,8 +306,8 @@ let private offThreadWrites (input: Input) : Message list =
             - starter.Range.StartColumn)
         |> Array.tryHead
 
-    // A graph that the innermost starter's delegate constructs, and a node it constructs over that graph, belong to
-    // the delegate's thread.
+    // A graph that the innermost starter's delegate constructs, a node it constructs over that graph, and a write in
+    // that graph's `Run`, belong to the delegate's thread.
     let ownedByThread (site: CallSite) =
         match innermostStarter site, writeTarget site with
         | Some starter, Some target ->
@@ -329,7 +329,18 @@ let private offThreadWrites (input: Input) : Message list =
                 | Call (None, m, _, _, Value graph :: _) when isGraphRun m -> graphs |> Array.contains graph
                 | _ -> false
 
+            let insideRun =
+                input.Index.Calls
+                |> Array.exists (fun call ->
+                    isGraphRun call.Callee
+                    && within call.Range site.Range
+                    && (match call.Receiver, call.Arguments with
+                        | Some (Value graph), _
+                        | None, Value graph :: _ -> graphs |> Array.contains graph
+                        | _ -> false))
+
             graphs |> Array.contains target
+            || insideRun
             || lets
                |> Array.exists (fun binding -> binding.Value = target && overGraph binding.Bound)
         | _ -> false
@@ -366,7 +377,7 @@ let private ignoredTokens (input: Input) : Message list =
             | [ NewUnionCase (_, case, []); Lambda (_, Lambda (token, body)) ] when
                 policyForm
                 && isCancelPrevious case
-                && (token.DisplayName.StartsWith "_"
+                && (token.DisplayName.StartsWith ("_", System.StringComparison.Ordinal)
                     || (Index.uses token body).IsEmpty)
                 ->
                 message

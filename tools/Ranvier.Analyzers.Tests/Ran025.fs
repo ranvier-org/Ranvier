@@ -108,6 +108,13 @@ let h () = Hydration.hydrateWith (Scheduling.QueuedCommits 1) ()
                 Expect.isEmpty (codes body) "synchronous"
             }
 
+            test "a same-file function whose argument chooses the synchronous branch" {
+                let body =
+                    "    ()\nlet modeFor hydrating failure = if hydrating then SynchronousCommits else Microtask.mode failure\nlet other graph host definition =\n    hydrateWith (modeFor true CollectAndContinue) graph None ignore HydrationOptions.defaults host definition ()\n"
+
+                Expect.isEmpty (codes body) "the arguments choose the branch"
+            }
+
             test "SynchronousCommits" { Expect.isEmpty (codes (call "SynchronousCommits")) "supported" }
 
             test "a mode parameter" {

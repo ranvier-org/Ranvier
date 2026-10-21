@@ -136,6 +136,27 @@ and contextLayout
         Utils.createContext projectResults target sourceText (parseResults, fileResults) (AnalyzerProjectOptions.BackgroundCompilerOptions project)
     | FSharpCheckFileAnswer.Aborted -> failwith $"The check of {target} was aborted"
 
+/// `options` with the compile symbol that `RanvierFableAnalyzers=true` defines.
+let optedIn (options: FSharpProjectOptions) : FSharpProjectOptions =
+    { options with
+        OtherOptions =
+            Array.append
+                options.OtherOptions
+                [|
+                    "--define:"
+                    + Ranvier.Analyzers.Symbols.Compilers.OptInDefine
+                |]
+    }
+
+/// Writes a project file that references the package `package` at the project file of `context`.
+let writeProjectFile (context: CliContext) (package: string) : CliContext =
+    File.WriteAllText (
+        context.ProjectOptions.ProjectFileName,
+        $"<Project Sdk=\"Microsoft.NET.Sdk\"><ItemGroup><PackageReference Include=\"{package}\" Version=\"1.0.0\" /></ItemGroup></Project>"
+    )
+
+    context
+
 /// The context of the last of `files` in a project whose manifest declares Fable 5.18.0.
 let contextOf (options: FSharpProjectOptions) (files: (string * string) list) : CliContext =
     contextIn (Some (manifest "fable" "5.18.0")) options files

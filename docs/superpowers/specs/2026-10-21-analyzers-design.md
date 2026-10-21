@@ -71,9 +71,13 @@ to a docs page with the cause, the fix and a before/after example.
    the `match` costs nothing and a later Fable can change the generic case. The fixture is RAN002's truth test. Since #152 the
    repository compiles with Fickl 0.3.0 (Fable 5.22), whose precompile declares the testers of every shape; the truth
    test pins the Fable 5.18.0 failure through `dotnet dnx fable@5.18.0` and records Fickl's acceptance. Fable 5.19-5.21 fail
-   too; 5.22 declares the testers. RAN002 therefore runs when the project's tool manifests (searched upward to the
-   first root manifest) declare `fable` before 5.22, or declare no compiler. RAN001, whose inlining Fable 5.18-5.22 and
-   Fickl 0.3.0 all perform, runs whenever Fable.Core is referenced.
+   too; 5.22 declares the testers. Every Ranvier project references Fable.Core, so a Fable.Core reference does not
+   show that Fable compiles the project. RAN001 and RAN002 run only on a positive signal: a tool manifest (searched
+   upward to the first root manifest) that declares `fable` or `fickl`, a `Fable.*` package reference in the project
+   file, or `RanvierFableAnalyzers=true`, which the package's build targets turn into the `RANVIER_FABLE_ANALYZERS`
+   compile symbol for global, `--tool-path` and `dotnet dnx` installs. A .NET-only project gets neither rule. RAN001,
+   whose inlining Fable 5.18-5.22 and Fickl 0.3.0 all perform, runs on any signal. RAN002 also needs a declared `fable`
+   before 5.22, or no declared compiler.
 10. **Repository builds do not run the analyzers by default.** `RanvierAnalyze=true`, `build.fsx analyze` and the CI
     job are the entry points.
 11. **The Fable-only projects are not analyzed in phases 0-2.** Their shared sources are analyzed through
@@ -104,7 +108,7 @@ to a docs page with the cause, the fix and a before/after example.
 | `dotnet fsharp-analyzers` under SDK 11.0.100-rc.1 fails project loading with `Could not load ... System.Runtime, Version=11.0.0.0` | probe without a `global.json` |
 | `RunAnalyzersDuringBuild=true` runs the CLI after `CoreCompile` and reuses `FscCommandLineArgs` through an `.rsp` file; it is skipped when `CoreCompile` is up to date unless `FSharpAnalyzersAlwaysRunAfterBuild=true` | FSharp.Analyzers.Build 0.5.0 targets; probe |
 | CLI wall time on `src/Ranvier/Ranvier.fsproj` with one rule: 8.0 s; on `Ranvier.View.Portable.fsproj`: 13.9 s (its `dotnet build`: 14.5 s) | probe |
-| `src/Ranvier` references Fable.Core 5.3.0 on every target, so each project that references Ranvier has `Fable.Core.dll` in its `-r:` options and runs RAN001-RAN002 | `Ranvier.fsproj:41` |
+| `src/Ranvier` references Fable.Core 5.3.0 on every target, so each project that references Ranvier has `Fable.Core.dll` in its `-r:` options, so RAN001-RAN002 gate on a Fable signal (Decision 9) | `Ranvier.fsproj:41` |
 | `dotnet fable precompile` (Fable 5.18.0) fails with `MethodDefNotFound` on a tester of a non-generic union of any accessibility and succeeds on generic unions | fixture probe, Decision 9 |
 | `fable/Ranvier.Tests.Fable` does not type-check as a .NET project (FS0740 in shared test sources); `--fail-on-type-errors` exits non-zero | probe |
 
@@ -120,8 +124,8 @@ lookup. `Peek` (`Core.fs:3010`) is an untracked read and never counts.
 
 | Code | Title | Default severity | Scope | Fix | Phase |
 |---|---|---|---|---|---|
-| RAN001 | Fable inlines a snapshot of a module `mutable` | Warning | `Fable.Core` referenced | yes | 0 |
-| RAN002 | Generated union case tester in a Fable library | Warning | `Fable.Core` referenced, union in the analyzed assembly | yes | 0 |
+| RAN001 | Fable inlines a snapshot of a module `mutable` | Warning | `Fable.Core` referenced and a Fable signal (Decision 9) | yes | 0 |
+| RAN002 | Generated union case tester in a Fable library | Warning | `Fable.Core` referenced, a Fable signal (Decision 9), union in the analyzed assembly | yes | 0 |
 | RAN010 | Owned node created in a pure derivation | Error | `Ranvier` referenced | partial | 1 |
 | RAN011 | Async value created and read in the owner that replaces it | Warning | `Ranvier` | no | 1 |
 | RAN012 | Reactive read after the first await of an async memo | Warning | `Ranvier` | no | 1 |

@@ -23,7 +23,7 @@ let rules: Rule list =
     ]
 
 /// Whether `rule` runs on a file of the project: the project references the rule's gate assembly, or, for a view rule,
-/// the file calls into the view layer, which a project can compile from source.
+/// the file calls a member of the view namespace.
 let enabled (rule: Rule) (options: AnalyzerProjectOptions) (index: Index.FileIndex) : bool =
     Symbols.references rule.Gate options
     || ((rule.Gate = Symbols.Assemblies.View

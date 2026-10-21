@@ -217,6 +217,92 @@ module Compilers =
         else
             up (Path.GetDirectoryName (Path.GetFullPath projectFile))
 
+    /// The compile symbol that opts a project into the Fable rules: `RanvierFableAnalyzers=true` defines it.
+    [<Literal>]
+    let OptInDefine = "RANVIER_FABLE_ANALYZERS"
+
+    /// Whether the project's compiler options define `OptInDefine`.
+    let optedIn (options: AnalyzerProjectOptions) : bool =
+        options.OtherOptions
+        |> Seq.exists (fun option ->
+            option = "--define:" + OptInDefine
+            || option = "-d:" + OptInDefine)
+
+    let private readsFable (file: string) : bool =
+        try
+            Xml.Linq.XDocument.Load(file).Descendants()
+            |> Seq.exists (fun element ->
+                element.Name.LocalName = "PackageReference"
+                && (match element.Attribute (Xml.Linq.XName.Get "Include") with
+                    | null -> false
+                    | include -> include.Value.StartsWith ("Fable.", StringComparison.OrdinalIgnoreCase)))
+        with _ ->
+            false
+
+    // Each project file's reading, keyed by its path and valid while its last write time is unchanged.
+    let private projectReadings = ConcurrentDictionary<string, DateTime * bool>()
+
+    let private referencesFable (file: string) : bool =
+        let written = File.GetLastWriteTimeUtc file
+
+        match projectReadings.TryGetValue file with
+        | true, (stamp, reading) when stamp = written -> reading
+        | _ ->
+            let reading = readsFable file
+            projectReadings[file] <- (written, reading)
+            reading
+
+    /// The project files of the project that compiles `source`: the options' project file when it exists, otherwise
+    /// the project files of the nearest directory above `source` that holds one.
+    let private projectFiles (options: AnalyzerProjectOptions) (source: string) : string list =
+        if File.Exists options.ProjectFileName then
+            [ options.ProjectFileName ]
+        else
+            let rec up (directory: string) =
+                if String.IsNullOrEmpty directory then
+                    []
+                else
+                    match
+                        Directory.GetFiles (directory, "*.fsproj")
+                        |> List.ofArray
+                    with
+                    | [] -> up (Path.GetDirectoryName directory)
+                    | found -> found
+
+            try
+                up (Path.GetDirectoryName (Path.GetFullPath source))
+            with _ ->
+                []
+
+    /// The Fable signals of a project: the compiler its tool manifests declare, and whether anything says that Fable
+    /// compiles it.
+    type Signal =
+        {
+            Declared: Declared option
+            CompilesWithFable: bool
+        }
+
+    /// The Fable signals of the project that compiles `source`. Fable compiles the project when a tool manifest
+    /// declares `fable` or `fickl`, the project file references a `Fable.*` package, or the options define
+    /// `OptInDefine`.
+    let signal (options: AnalyzerProjectOptions) (source: string) : Signal =
+        let anchor =
+            if File.Exists options.ProjectFileName then
+                options.ProjectFileName
+            else
+                source
+
+        let declared = declared anchor
+
+        {
+            Declared = declared
+            CompilesWithFable =
+                declared.IsSome
+                || optedIn options
+                || projectFiles options source
+                   |> List.exists referencesFable
+        }
+
 /// The core node types, their creators and their pure contexts.
 module Core =
     [<Literal>]
@@ -441,8 +527,8 @@ module Core =
         (m.IsConstructor
          && enclosing m = "Ranvier.AsyncMemo`1")
         || (enclosing m = Api
-            && (m.LogicalName.StartsWith "createAsync"
-                || m.LogicalName.StartsWith "createStream"
+            && (m.LogicalName.StartsWith ("createAsync", StringComparison.Ordinal)
+                || m.LogicalName.StartsWith ("createStream", StringComparison.Ordinal)
                 || m.LogicalName = "createOwningAsyncWithPolicy"))
 
     /// Whether a call of `m` writes a signal or pumps the graph: work the graph's owning thread must do.
@@ -474,7 +560,7 @@ module Core =
     /// Whether `m` is a computation-expression bind, whose last argument is the continuation after an await:
     /// `Bind`, `BindReturn`, `Bind2` and the like.
     let isBind (m: FSharpMemberOrFunctionOrValue) : bool =
-        m.LogicalName.StartsWith "Bind"
+        m.LogicalName.StartsWith ("Bind", StringComparison.Ordinal)
 
     /// Whether `m` is a computation-expression `Combine`, whose second argument runs after its first.
     let isCombine (m: FSharpMemberOrFunctionOrValue) : bool =
@@ -597,7 +683,7 @@ module View =
 
     /// Whether `m` belongs to the view layer, by its enclosing entity's namespace.
     let isViewMember (m: FSharpMemberOrFunctionOrValue) : bool =
-        enclosing(m).StartsWith(Root + ".")
+        enclosing(m).StartsWith(Root + ".", StringComparison.Ordinal)
 
     /// Whether argument `index` of a call of `m` is read per region read: the arms of `matchWith` and `branch`, the
     /// key and items of `each`, `forEach` and `forEachFixed`.

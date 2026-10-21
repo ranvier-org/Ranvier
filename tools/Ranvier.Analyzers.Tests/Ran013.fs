@@ -132,6 +132,13 @@ let tests =
                     "g.Run on the owning thread"
             }
 
+            test "a write inside the thread's own graph's Run" {
+                Expect.isEmpty
+                    (codes
+                        "let f () =\n    Thread (fun () ->\n        use g = new Graph ()\n        g.Run (fun () -> let s = createSignal 0 in s.Value <- 1))\n")
+                    "the owning thread"
+            }
+
             test "a write in an ordinary lambda" {
                 Expect.isEmpty (codes "let f (s: Signal<int>) = List.iter (fun x -> s.Value <- x) [ 1 ]\n") "same thread"
             }

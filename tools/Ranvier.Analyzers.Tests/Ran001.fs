@@ -117,7 +117,27 @@ let matched () =
 
                 Expect.equal (codesWith (Some (manifest "fickl" "0.3.0"))) [ "RAN001" ] "Fickl 0.3.0 inlines"
                 Expect.equal (codesWith (Some (manifest "fable" "5.22.0"))) [ "RAN001" ] "Fable 5.22 inlines"
-                Expect.equal (codesWith None) [ "RAN001" ] "every Fable and Fickl release inlines"
+                Expect.isEmpty (codesWith None) "no signal that Fable compiles the project"
+            }
+
+            test "an opt-in define or a direct Fable package reference enables the rule without a manifest" {
+                let files = [ "Loops.fs", loops; "Probe.fs", snapshot ]
+
+                Expect.equal
+                    (run Analyzers.ran001Cli (contextIn None (optedIn (ranvier.Force ())) files)
+                     |> List.map _.Code)
+                    [ "RAN001" ]
+                    "RanvierFableAnalyzers=true"
+
+                Expect.equal
+                    (run Analyzers.ran001Cli (writeProjectFile (contextIn None (ranvier.Force ()) files) "Fable.Core")
+                     |> List.map _.Code)
+                    [ "RAN001" ]
+                    "a direct Fable.Core reference"
+
+                Expect.isEmpty
+                    (run Analyzers.ran001Cli (writeProjectFile (contextIn None (ranvier.Force ()) files) "Ranvier"))
+                    "Ranvier alone brings Fable.Core transitively"
             }
 
             test "the fix type-checks and clears the finding" {

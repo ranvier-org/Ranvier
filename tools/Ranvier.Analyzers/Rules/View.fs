@@ -450,12 +450,13 @@ let rec private createsDefinition (expr: FSharpExpr) =
     | _ -> List.exists createsDefinition expr.ImmediateSubExpressions
 
 /// The project's static `Component` getters whose implementations create a definition.
+let private isComponentGetter (m: FSharpMemberOrFunctionOrValue) =
+    m.IsPropertyGetterMethod
+    && not m.IsInstanceMember
+    && m.ReturnParameter.Type.HasTypeDefinition
+    && m.ReturnParameter.Type.TypeDefinition.TryFullName = Some ComponentType
+
 let private recreatingProperties (project: FSharpCheckProjectResults option) : FSharpMemberOrFunctionOrValue list =
-    let isComponentGetter (m: FSharpMemberOrFunctionOrValue) =
-        m.IsPropertyGetterMethod
-        && not m.IsInstanceMember
-        && m.ReturnParameter.Type.HasTypeDefinition
-        && m.ReturnParameter.Type.TypeDefinition.TryFullName = Some ComponentType
 
     let rec find (item: FSharpImplementationFileDeclaration) =
         match item with
@@ -469,6 +470,19 @@ let private recreatingProperties (project: FSharpCheckProjectResults option) : F
     | Some results ->
         results.AssemblyContents.ImplementationFiles
         |> List.collect (fun file -> List.collect find file.Declarations)
+    | None -> []
+
+// Each project's recreating getters, computed once per check results.
+let private propertiesByProject =
+    System.Runtime.CompilerServices.ConditionalWeakTable<FSharpCheckProjectResults, FSharpMemberOrFunctionOrValue list>()
+
+let private projectProperties (project: FSharpCheckProjectResults option) : FSharpMemberOrFunctionOrValue list =
+    match project with
+    | Some results ->
+        propertiesByProject.GetValue (
+            results,
+            System.Runtime.CompilerServices.ConditionalWeakTable.CreateValueCallback (Some >> recreatingProperties)
+        )
     | None -> []
 
 /// Whether `definition` is a function: it takes parameters, or its body is a lambda.
@@ -503,7 +517,7 @@ let private calleeRange (input: Input) (range: range) : range =
     Range.mkRange range.FileName range.Start (Position.mkPos range.StartLine (range.StartColumn + callee.Length))
 
 let private regionDefinitions (input: Input) : Message list =
-    let properties = lazy (recreatingProperties input.Project)
+    let properties = lazy (projectProperties input.Project)
 
     // The bodies of same-file functions passed by name as a region's lambda, `matchWith reader arms`, which the
     // compiler may pass as `fun x -> arms x`.
@@ -529,10 +543,12 @@ let private regionDefinitions (input: Input) : Message list =
     [
         for site in input.Index.Calls do
             let cause =
-                if isDefinitionCreator site.Callee then
+                if not (perRead site) then
+                    None
+                elif isDefinitionCreator site.Callee then
                     Some (writtenCallee input site.Range)
                 elif
-                    site.Callee.IsPropertyGetterMethod
+                    isComponentGetter site.Callee
                     && properties.Value
                        |> List.exists site.Callee.IsEffectivelySameAs
                 then
@@ -550,14 +566,14 @@ let private regionDefinitions (input: Input) : Message list =
                     None
 
             match cause with
-            | Some name when perRead site ->
+            | Some name ->
                 message
                     "RAN022"
                     Severity.Warning
                     site.Range
                     $"`{name}` runs on every read of this region, so the definition is new each time and remounts. Bind the definition with `let` outside the template."
                     []
-            | _ -> ()
+            | None -> ()
     ]
 
 let ran022: Rule =
@@ -605,7 +621,7 @@ let private sugarTag (m: FSharpMemberOrFunctionOrValue) =
     match m.ApparentEnclosingEntity with
     | Some entity when
         m.IsConstructor
-        && (Symbols.enclosing m).StartsWith(Elements + ".")
+        && (Symbols.enclosing m).StartsWith(Elements + ".", System.StringComparison.Ordinal)
         ->
         Some (entity.DisplayName.Trim('`').TrimEnd ''')
     | _ -> None
@@ -779,8 +795,16 @@ let ran024: Rule =
     }
 
 /// Whether `expr` evaluates to a queued commit mode, following the file's lets and its module values and functions.
-let rec private queuedMode (index: FileIndex) (depth: int) (expr: FSharpExpr) : bool =
-    let follow = queuedMode index (depth + 1)
+/// With `every`, each branch must be queued: a function's arguments choose its branch. Without it, one branch
+/// suffices.
+let rec private queuedMode (index: FileIndex) (depth: int) (every: bool) (expr: FSharpExpr) : bool =
+    let follow = queuedMode index (depth + 1) every
+
+    let branches (exprs: FSharpExpr list) =
+        if every then
+            List.forall follow exprs
+        else
+            List.exists follow exprs
 
     depth < 8
     && match expr with
@@ -788,7 +812,7 @@ let rec private queuedMode (index: FileIndex) (depth: int) (expr: FSharpExpr) : 
        | Call (None, m, _, _, _) when Symbols.View.isQueuedModeFunction m -> true
        | Call (None, m, _, _, _) ->
            Index.definition index m
-           |> Option.exists (fun definition -> follow definition.Body)
+           |> Option.exists (fun definition -> queuedMode index (depth + 1) (every || not definition.Parameters.IsEmpty) definition.Body)
        | Value value ->
            index.Lets
            |> Array.exists (fun site -> site.Value = value && follow site.Bound)
@@ -799,8 +823,8 @@ let rec private queuedMode (index: FileIndex) (depth: int) (expr: FSharpExpr) : 
        | Coerce (_, inner)
        | Let (_, inner)
        | Sequential (_, inner) -> follow inner
-       | IfThenElse (_, whenTrue, whenFalse) -> follow whenTrue || follow whenFalse
-       | DecisionTree (_, targets) -> targets |> List.exists (snd >> follow)
+       | IfThenElse (_, whenTrue, whenFalse) -> branches [ whenTrue; whenFalse ]
+       | DecisionTree (_, targets) -> branches (List.map snd targets)
        | _ -> false
 
 /// The range of `mode` as written, through the compiler-generated local that a piped call binds it to.
@@ -819,7 +843,7 @@ let private queuedHydration (input: Input) : Message list =
             match site.Arguments with
             | mode :: _ when
                 Symbols.View.isHydrateWith site.Callee
-                && queuedMode input.Index 0 mode
+                && queuedMode input.Index 0 false mode
                 ->
                 message
                     "RAN025"

@@ -330,7 +330,17 @@ let queued (bs: Box list) = bs |> List.filter _.Inner.IsQueue\n"
                 Expect.equal (codesWith (Some (manifest "fable" "5.21.0"))) [ "RAN002" ] "Fable 5.21 drops the testers"
                 Expect.isEmpty (codesWith (Some (manifest "fable" "5.22.0"))) "Fable 5.22 declares them"
                 Expect.isEmpty (codesWith (Some (manifest "fickl" "0.3.0"))) "Fickl 0.3.0 declares them"
-                Expect.equal (codesWith None) [ "RAN002" ] "no declared compiler: Fable.Core alone decides"
+                Expect.isEmpty (codesWith None) "no signal that Fable compiles the project"
+
+                Expect.equal
+                    (run Analyzers.ran002Cli (contextIn None (optedIn (ranvier.Force ())) [ "Fixture.fs", source ])
+                     |> List.map _.Code)
+                    [ "RAN002" ]
+                    "opted in, with no declared compiler"
+
+                Expect.isEmpty
+                    (run Analyzers.ran002Cli (contextIn (Some (manifest "fickl" "0.3.0")) (optedIn (ranvier.Force ())) [ "Fixture.fs", source ]))
+                    "opted in, with a declared Fickl"
 
                 Expect.equal (codesWith (Some (manifest "fable" "5.22.0-alpha.1"))) [ "RAN002" ] "a prerelease of 5.22 precedes the fix"
 
@@ -354,7 +364,7 @@ let queued (bs: Box list) = bs |> List.filter _.Inner.IsQueue\n"
                     |> List.map _.Code
 
                 Expect.isEmpty (codesIn "false") "the root manifest declares Fickl"
-                Expect.equal (codesIn "true") [ "RAN002" ] "a root manifest without a compiler ends the search"
+                Expect.isEmpty (codesIn "true") "a root manifest without a compiler ends the search"
             }
 
             test "an edited tool manifest takes effect in the same process" {

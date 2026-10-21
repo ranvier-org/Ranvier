@@ -43,7 +43,7 @@ let private casePattern (opened: string list) (union: FSharpEntity) (case: FShar
         |> List.tryPick (fun path ->
             if container = path then
                 Some ""
-            elif container.StartsWith (path + ".") then
+            elif container.StartsWith (path + ".", System.StringComparison.Ordinal) then
                 Some (container.Substring (path.Length + 1))
             else
                 None)
@@ -62,12 +62,19 @@ let private casePattern (opened: string list) (union: FSharpEntity) (case: FShar
 
     if case.Fields.Count = 0 then name else name + " _"
 
-/// Whether the project's Fable precompile fails on generated union testers: a declared Fable before 5.22, or no
-/// declared compiler.
+/// Whether Fable compiles the project.
+let private compilesWithFable (input: Input) =
+    (Symbols.Compilers.signal input.Options input.FileName).CompilesWithFable
+
+/// Whether the project's Fable precompile fails on generated union testers: Fable compiles the project, and the
+/// declared compiler is a Fable before 5.22 or undeclared.
 let private precompileDropsTesters (input: Input) =
-    match Symbols.Compilers.declared input.Options.ProjectFileName with
-    | Some declared -> Symbols.Compilers.precedesTesterFix declared
-    | None -> true
+    let signal = Symbols.Compilers.signal input.Options input.FileName
+
+    signal.CompilesWithFable
+    && (match signal.Declared with
+        | Some declared -> Symbols.Compilers.precedesTesterFix declared
+        | None -> true)
 
 let private testers (input: Input) : Message list =
     [
@@ -88,7 +95,7 @@ let private testers (input: Input) : Message list =
                 let tester, replacement =
                     if receiverText = "_" then
                         named, $"(function {pattern} -> true | _ -> false)"
-                    elif receiverText.StartsWith "_." then
+                    elif receiverText.StartsWith ("_.", System.StringComparison.Ordinal) then
                         named, $"(fun value -> match value{receiverText.Substring 1} with {pattern} -> true | _ -> false)"
                     else
                         callText, $"(match {receiverText} with {pattern} -> true | _ -> false)"
@@ -180,5 +187,5 @@ let ran001: Rule =
         Code = "RAN001"
         Title = "Fable inlines a snapshot of a module mutable"
         Gate = Symbols.Assemblies.Fable
-        Run = snapshots
+        Run = fun input -> if compilesWithFable input then snapshots input else []
     }
