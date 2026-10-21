@@ -235,7 +235,7 @@ module Compilers =
                 element.Name.LocalName = "PackageReference"
                 && (match element.Attribute (Xml.Linq.XName.Get "Include") with
                     | null -> false
-                    | include -> include.Value.StartsWith ("Fable.", StringComparison.OrdinalIgnoreCase)))
+                    | reference -> reference.Value.StartsWith ("Fable.", StringComparison.OrdinalIgnoreCase)))
         with _ ->
             false
 

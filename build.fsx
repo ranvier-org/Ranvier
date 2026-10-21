@@ -43,29 +43,39 @@ module Spec =
     /// The signal map model reads the trace log, so its tests compile only in a traced build.
     let mapsTests = "docs/maps/tests"
 
-    /// The projects `analyze` checks; each type-checks under the analyzers CLI. Fable-only projects are left out, and so
-    /// is examples/Ranvier.FuncUI.Workload/Workload.fsproj, which references a FuncUI checkout through $(FuncUIRoot).
-    let analyzedProjects =
+    /// The projects `analyze` checks, by group; each type-checks under the analyzers CLI. Fable-only projects are left
+    /// out, and so is examples/Ranvier.FuncUI.Workload/Workload.fsproj, which references a FuncUI checkout through
+    /// $(FuncUIRoot). The `library` group also runs the traced pass over src/Ranvier.
+    let analyzedGroups =
         [
-            "src/Ranvier/Ranvier.fsproj"
-            "src/Ranvier.Query/Ranvier.Query.fsproj"
-            "src/Ranvier.Elmish/Ranvier.Elmish.fsproj"
-            "src/Ranvier.Wire/Ranvier.Wire.fsproj"
-            "src/Fable.Ranvier/Fable.Ranvier.fsproj"
-            "src/Fable.Ranvier.Anime/Fable.Ranvier.Anime.fsproj"
-            "experiments/Ranvier.View.Portable/Ranvier.View.Portable.fsproj"
-            "experiments/Ranvier.View.Foundation/Ranvier.View.Foundation.fsproj"
-            "experiments/Ranvier.View.Anime/Ranvier.View.Anime.fsproj"
-            "examples/Fable.Ranvier.Playground/Playground.fsproj"
-            "examples/Fable.Ranvier.Playground/tests/DomTests.fsproj"
-            "examples/Ranvier.Motion/Motion.fsproj"
-            "examples/Ranvier.Motion/Server/ServerChecks.fsproj"
-            "examples/Ranvier.Motion/tests/MotionTests.fsproj"
-            "examples/Ranvier.Query.Dictionary/Ranvier.Query.Dictionary.fsproj"
-            "examples/Ranvier.FuncUI.Workload/Workload.Model.fsproj"
-            "docs/samples/view/Ranvier.Docs.ViewSamples.fsproj"
-            "tests/Ranvier.Tests/Ranvier.Tests.fsproj"
-            "tests/Ranvier.Wire.Tests/Ranvier.Wire.Tests.fsproj"
+            "library",
+            [
+                "src/Ranvier/Ranvier.fsproj"
+                "src/Ranvier.Query/Ranvier.Query.fsproj"
+                "src/Ranvier.Elmish/Ranvier.Elmish.fsproj"
+                "src/Ranvier.Wire/Ranvier.Wire.fsproj"
+                "src/Fable.Ranvier/Fable.Ranvier.fsproj"
+                "src/Fable.Ranvier.Anime/Fable.Ranvier.Anime.fsproj"
+                "tests/Ranvier.Tests/Ranvier.Tests.fsproj"
+                "tests/Ranvier.Wire.Tests/Ranvier.Wire.Tests.fsproj"
+            ]
+            "view",
+            [
+                "experiments/Ranvier.View.Portable/Ranvier.View.Portable.fsproj"
+                "experiments/Ranvier.View.Foundation/Ranvier.View.Foundation.fsproj"
+                "experiments/Ranvier.View.Anime/Ranvier.View.Anime.fsproj"
+                "examples/Fable.Ranvier.Playground/Playground.fsproj"
+                "examples/Fable.Ranvier.Playground/tests/DomTests.fsproj"
+                "docs/samples/view/Ranvier.Docs.ViewSamples.fsproj"
+            ]
+            "examples",
+            [
+                "examples/Ranvier.Motion/Motion.fsproj"
+                "examples/Ranvier.Motion/Server/ServerChecks.fsproj"
+                "examples/Ranvier.Motion/tests/MotionTests.fsproj"
+                "examples/Ranvier.Query.Dictionary/Ranvier.Query.Dictionary.fsproj"
+                "examples/Ranvier.FuncUI.Workload/Workload.Model.fsproj"
+            ]
         ]
 
     /// The Motion example pages, which the docs site serves under examples/motion/.
@@ -117,6 +127,21 @@ module Options =
         Baked.NuGet.apiKey.option
         |> Input.alias "--api-key"
         |> Input.alias "-k"
+
+    let analyzeGroups =
+        Input.option<string list> "--group"
+        |> Input.arity Arity.ZeroOrMore
+        |> Input.allowMultipleArgumentsPerToken
+        |> Input.acceptOnlyFromAmong (
+            Spec.analyzedGroups
+            |> List.map fst
+            |> List.toArray
+        )
+        |> Input.description "The analyzed project groups; every group when omitted"
+
+    let analyzeBuild =
+        Input.option<bool> "--build"
+        |> Input.description "Builds the analyzed projects first"
 
     let projects =
         Input.option<string list> "--project"
@@ -496,51 +521,101 @@ module private Analyze =
             report
         ]
 
-    /// Builds the analyzers and the analyzed projects outside Ranvier.slnx, then runs the analyzers over
-    /// `Spec.analyzedProjects` with every RAN code an error, writing SARIF reports to artifacts/analyzers. The
-    /// solution's projects must be built first.
+    /// Builds the analyzers, then runs them over the projects of the chosen `Spec.analyzedGroups` with every RAN code an
+    /// error, writing a SARIF report per group to artifacts/analyzers. With `--build` the stage builds the analyzed
+    /// projects first; without it, the solution must be built already.
     let stage =
         input {
+            let! groups = Options.analyzeGroups
+            and! build = Options.analyzeBuild
+
+            let chosen =
+                Spec.analyzedGroups
+                |> List.filter (fun (name, _) -> List.isEmpty groups || List.contains name groups)
+
             return
                 stage "analyze" {
                     stage "build analyzers" { run (cmd $"dotnet build tools/Ranvier.Analyzers/Ranvier.Analyzers.fsproj -c Release -v q") }
 
                     // The CLI reads a project's references from its build outputs.
-                    stage "build projects outside the solution" {
-                        run (cmd $"dotnet build examples/Ranvier.Query.Dictionary/Ranvier.Query.Dictionary.fsproj -c Release -v q")
-                    }
+                    for name, projects in chosen do
+                        // One parallel build of the group, through a solution of its projects.
+                        if build then
+                            stage $"build the {name} projects" {
+                                run (
+                                    Cmd.ofList
+                                        "dotnet"
+                                        [
+                                            "new"
+                                            "sln"
+                                            "--format"
+                                            "slnx"
+                                            "--name"
+                                            name
+                                            "--output"
+                                            "artifacts/analyzers/build"
+                                            "--force"
+                                        ]
+                                )
 
-                    stage "run analyzers" {
-                        run (fun _ ->
-                            System.IO.Directory.CreateDirectory "artifacts/analyzers"
-                            |> ignore)
+                                run (
+                                    Cmd.ofList
+                                        "dotnet"
+                                        ([ "sln"; $"artifacts/analyzers/build/{name}.slnx"; "add" ]
+                                         @ projects)
+                                )
 
-                        run (
-                            Cmd.ofList
-                                "dotnet"
-                                ([ "fsharp-analyzers"; "--project" ]
-                                 @ Spec.analyzedProjects
-                                 @ [ "--exclude-files"; "**/Generated/**" ]
-                                 @ flags "artifacts/analyzers/ranvier.sarif")
-                        )
-                    }
+                                run (
+                                    Cmd.ofList
+                                        "dotnet"
+                                        [
+                                            "build"
+                                            $"artifacts/analyzers/build/{name}.slnx"
+                                            "-c"
+                                            "Release"
+                                            "-m"
+                                            "-v"
+                                            "q"
+                                        ]
+                                )
+                            }
+                        elif name = "examples" then
+                            stage "build projects outside the solution" {
+                                run (cmd $"dotnet build examples/Ranvier.Query.Dictionary/Ranvier.Query.Dictionary.fsproj -c Release -v q")
+                            }
 
-                    // Checks the library again with RanvierTrace=true, the configuration of the docs precompile: the
-                    // [<Conditional("RANVIER_TRACE")>] Tracer calls are in the typed tree only then.
-                    stage "run analyzers over the traced library" {
-                        run (
-                            Cmd.ofList
-                                "dotnet"
-                                ([
-                                    "fsharp-analyzers"
-                                    "--project"
-                                    "src/Ranvier/Ranvier.fsproj"
-                                    "--property"
-                                    "RanvierTrace=true"
-                                 ]
-                                 @ flags "artifacts/analyzers/ranvier-traced.sarif")
-                        )
-                    }
+                        stage $"run analyzers over the {name} projects" {
+                            run (fun _ ->
+                                System.IO.Directory.CreateDirectory "artifacts/analyzers"
+                                |> ignore)
+
+                            run (
+                                Cmd.ofList
+                                    "dotnet"
+                                    ([ "fsharp-analyzers"; "--project" ]
+                                     @ projects
+                                     @ [ "--exclude-files"; "**/Generated/**" ]
+                                     @ flags $"artifacts/analyzers/ranvier-{name}.sarif")
+                            )
+                        }
+
+                        // Checks the library again with RanvierTrace=true, the configuration of the docs precompile:
+                        // the [<Conditional("RANVIER_TRACE")>] Tracer calls are in the typed tree only then.
+                        if name = "library" then
+                            stage "run analyzers over the traced library" {
+                                run (
+                                    Cmd.ofList
+                                        "dotnet"
+                                        ([
+                                            "fsharp-analyzers"
+                                            "--project"
+                                            "src/Ranvier/Ranvier.fsproj"
+                                            "--property"
+                                            "RanvierTrace=true"
+                                         ]
+                                         @ flags "artifacts/analyzers/ranvier-traced.sarif")
+                                )
+                            }
                 }
         }
 
@@ -1062,7 +1137,7 @@ exit
     }
 
     command "analyze" {
-        description "Runs the Ranvier analyzers over the repository's projects, every finding an error; build first"
+        description "Runs the Ranvier analyzers over the repository's projects, every finding an error; build first, or pass --build"
         Stage.restore
         Analyze.stage
     }

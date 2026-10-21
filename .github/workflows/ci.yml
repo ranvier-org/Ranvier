@@ -362,25 +362,51 @@ jobs:
 
   # Runs the Ranvier analyzers' unit tests, then the analyzers over the repository's projects with every RAN code
   # promoted to an error: any finding fails the job.
-  analyzers:
-    name: Analyzers
+  analyzer-tests:
+    name: Analyzer tests
     needs: changes
     if: needs.changes.outputs.docs != 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
-      - name: Restore tools
-        run: dotnet tool restore
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-analyzer-tests-${{ hashFiles('Directory.Packages.props', 'tools/**/*.fsproj', 'src/**/*.fsproj', 'experiments/**/*.fsproj') }}
+          restore-keys: nuget-analyzer-tests-
       - name: Test the analyzers
         run: dotnet test tools/Ranvier.Analyzers.Tests -c Release
-      - name: Build the analyzed projects
-        run: dotnet build Ranvier.slnx -c Release
-      - name: Run the analyzers over the repository
-        run: dotnet fsi build.fsx -- analyze
+
+  # The repository run, one group of analyzed projects per leg (build.fsx Spec.analyzedGroups): each leg builds its
+  # projects once, in parallel, and the CLI reads those outputs.
+  analyzers:
+    name: Analyzers (${{ matrix.group }})
+    needs: changes
+    if: needs.changes.outputs.docs != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [library, view, examples]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-analyzers-${{ matrix.group }}-${{ hashFiles('Directory.Packages.props', '**/*.fsproj') }}
+          restore-keys: nuget-analyzers-${{ matrix.group }}-
+      - name: Restore tools
+        run: dotnet tool restore
+      - name: Build the group and run the analyzers over it
+        run: dotnet fsi build.fsx -- analyze --group ${{ matrix.group }} --build
       - name: Annotate the findings
         if: always()
         run: node .github/scripts/sarif-annotations.cjs artifacts/analyzers
@@ -388,8 +414,8 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: analyzers-sarif
-          path: artifacts/analyzers/
+          name: analyzers-sarif-${{ matrix.group }}
+          path: artifacts/analyzers/*.sarif
 
   # The external facts the analyzers describe: Fable Release's inlining of module-mutable snapshots (RAN001), the Fable
   # precompile failure on union testers (RAN002), and the MSBuild integration. A failure means a rule needs retiring or
@@ -414,7 +440,7 @@ jobs:
   # build and test jobs were skipped for a documentation-only change.
   result:
     name: CI result
-    needs: [changes, scripts, dotnet, aot, packages, format, fable, playground, sugar, anime, motion-view, motion, analyzers, analyzer-truth]
+    needs: [changes, scripts, dotnet, aot, packages, format, fable, playground, sugar, anime, motion-view, motion, analyzer-tests, analyzers, analyzer-truth]
     if: always()
     runs-on: ubuntu-latest
     steps:

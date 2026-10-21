@@ -60,7 +60,7 @@ dotnet fsi build.fsx -- analyze
 ```
 
 The command builds the analyzers, runs them over the repository's projects with every code promoted to an error, and
-writes `artifacts/analyzers/ranvier.sarif`. A project that sets `<RanvierAnalyze>true</RanvierAnalyze>` reports them in
+writes a SARIF report per project group to `artifacts/analyzers`. A project that sets `<RanvierAnalyze>true</RanvierAnalyze>` reports them in
 its own `dotnet build` output after each compile.
 
 ## Suppression
