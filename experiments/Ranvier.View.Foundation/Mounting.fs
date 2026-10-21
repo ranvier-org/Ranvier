@@ -3185,7 +3185,8 @@ and internal MountState
     /// <summary>
     /// Binds a document head entry for the current owner. Its readers are bindings of this mount; it is shown once
     /// <c>target</c> is placed and withdrawn when the owner is disposed. A meta or link element shows the entry's
-    /// attribute values from the bind on, and each attribute is written only when it differs.
+    /// attribute values from the bind on, and each attribute is written only when it differs. A failure to show the
+    /// entry fails the mount as a placed hook's failure does.
     /// </summary>
     member internal this.HeadIn(target: Placement, entry: HeadEntry) =
         let owner = Api.getOwner ()
@@ -3204,7 +3205,19 @@ and internal MountState
             for name, read in entry.Readers do
                 startBinding scope attributeEquals read (DocumentHead.writeAttribute element name)
 
-        target.Add (owner, (fun () -> DocumentHead.activate record))
+        target.Add (
+            owner,
+            fun () ->
+                try
+                    DocumentHead.activate record
+                with error ->
+                    let root = target.Root
+
+                    if not scope.Tracks && root.Placing then
+                        root.Hold error
+                    else
+                        scope.FailAll [ error ]
+        )
 
     override this.Listen(eventName, handler) =
         let node = currentElement ()

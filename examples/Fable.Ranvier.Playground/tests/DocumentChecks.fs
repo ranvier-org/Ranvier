@@ -170,6 +170,40 @@ let private outerMeta =
                 t.branch (fun (opened: Signal<bool>) -> opened.Value) (fun opened -> if opened then t.arm innerMeta () else t.arm noMeta ())
             |])
 
+/// <summary>A meta entry whose insertion into the head raises: the failure reaches the mount's caller or its report.</summary>
+let private headPlacementFailureSurfaces queued () =
+    use graph = new Graph ()
+    let reports = ResizeArray<string>()
+
+    let restore =
+        Conformance.intercept (currentDocument ()).head "appendChild" (fun _ _ -> raise (exn "head refused"))
+
+    let outcome =
+        try
+            let mounted =
+                mountTemplate
+                    queued
+                    graph
+                    (fun errors ->
+                        for error in errors do
+                            reports.Add error.Message)
+                    (host ())
+                    (Component.render innerMeta ignore)
+
+            mounted.Flush ()
+            mounted.Dispose ()
+            "mounted"
+        with error ->
+            error.Message
+
+    restore ()
+    Conformance.recordIfRunning "outcome" (outcome + " / " + String.Join (", ", reports))
+
+    equal
+        true
+        (outcome = "head refused"
+         || List.ofSeq reports = [ "head refused" ])
+
 let private latestShown queued () =
     use graph = new Graph ()
     let opened = graph.Run (fun () -> Api.createSignal true)
@@ -1591,6 +1625,7 @@ let private checks: (string * (unit -> unit)) array =
             [
                 templated "a title entry sets document.title once placed and restores the previous title when disposed" titleRestored
                 templated "the most recent entry for a key is shown and the previous one returns when it withdraws" latestShown
+                templated "a head entry whose insertion raises fails the mount or reports" headPlacementFailureSurfaces
                 templated "unkeyed links are each present while live; a canonical link is keyed" linkKeys
                 templated "a link with the explicit key canonical and a canonical link are both shown" explicitKeyDistinct
                 templated "an inlined child's title entry is shown over its parent's later title entry" templateNestedTitle
