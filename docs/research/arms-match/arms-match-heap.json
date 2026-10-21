@@ -1,8 +1,12 @@
 {
-  "measuredAt": "2026-10-21T17:12:06.173Z",
-  "commit": "945dd4ca53ea541bee55d7a556dfe5e09dffe713",
+  "measuredAt": "2026-10-21T21:28:11.088Z",
+  "commit": "2667e8e52ad59eb90e4281847424d314fb4fb909",
   "dirty": [
-    "M docs/research/arms-match/arms-match.json"
+    "M docs/research/arms-match/arms-match.json",
+    " M docs/research/arms-match/splice-probe.fsx",
+    " M docs/superpowers/plans/2026-10-21-arms-match.md",
+    " M docs/superpowers/specs/2026-10-21-arms-match-design.md",
+    "?? experiments/Ranvier.View.Arms/Checks/chromium-gate.mjs"
   ],
   "node": "v26.7.0",
   "chromium": "153.0.8010.12",
@@ -38,9 +42,9 @@
       "replicate": 0,
       "after": "create",
       "jsBytesPerRow": 3511.4,
-      "codeBytesPerRow": 79.3,
-      "nativeBytesPerRow": 4495.6,
-      "removedBytesPerRow": 14.2,
+      "codeBytesPerRow": 78.6,
+      "nativeBytesPerRow": 4495.5,
+      "removedBytesPerRow": 13.9,
       "js": [
         {
           "kind": "array (object elements)",
@@ -176,13 +180,6 @@
           "bytes": 24692
         },
         {
-          "kind": "object RegionErrors",
-          "perRow": 1,
-          "bytesPerRow": 24,
-          "count": 1000,
-          "bytes": 24000
-        },
-        {
           "kind": "object Arm",
           "perRow": 1,
           "bytesPerRow": 24,
@@ -190,11 +187,11 @@
           "bytes": 24000
         },
         {
-          "kind": "object ArmRow",
+          "kind": "object RegionErrors",
           "perRow": 1,
-          "bytesPerRow": 20,
+          "bytesPerRow": 24,
           "count": 1000,
-          "bytes": 20000
+          "bytes": 24000
         },
         {
           "kind": "object Setup",
@@ -204,10 +201,17 @@
           "bytes": 20000
         },
         {
+          "kind": "object ArmRow",
+          "perRow": 1,
+          "bytesPerRow": 20,
+          "count": 1000,
+          "bytes": 20000
+        },
+        {
           "kind": "string",
-          "perRow": 24.522,
+          "perRow": 24.579,
           "bytesPerRow": 14.4,
-          "count": 24522,
+          "count": 24579,
           "bytes": 14416
         },
         {
@@ -226,9 +230,9 @@
         },
         {
           "kind": "number",
-          "perRow": 22.393,
+          "perRow": 22.45,
           "bytesPerRow": 0,
-          "count": 22393,
+          "count": 22450,
           "bytes": 0
         }
       ],
@@ -293,10 +297,10 @@
       "holders": [
         {
           "kind": "OwnerLink.child -> object Effect$1",
-          "perRow": 2.684,
-          "bytesPerRow": 204,
-          "count": 2684,
-          "bytes": 203984
+          "perRow": 2.626,
+          "bytesPerRow": 199.6,
+          "count": 2626,
+          "bytes": 199576
         },
         {
           "kind": "Effect$1.sources -> object SourceList",
@@ -306,11 +310,11 @@
           "bytes": 140000
         },
         {
-          "kind": "Effect$1.body > context -> object system / Context",
-          "perRow": 2.158,
-          "bytesPerRow": 98,
-          "count": 2158,
-          "bytes": 98008
+          "kind": "Array.0 -> object Memo$1",
+          "perRow": 1.204,
+          "bytesPerRow": 106,
+          "count": 1204,
+          "bytes": 105952
         },
         {
           "kind": "Effect$1.body -> closure",
@@ -327,6 +331,13 @@
           "bytes": 84000
         },
         {
+          "kind": "Effect$1.body > context -> object system / Context",
+          "perRow": 1.93,
+          "bytesPerRow": 80.7,
+          "count": 1930,
+          "bytes": 80680
+        },
+        {
           "kind": "Memo$1.sources -> object SourceList",
           "perRow": 2,
           "bytesPerRow": 80,
@@ -334,14 +345,14 @@
           "bytes": 80000
         },
         {
-          "kind": "RegionSite.laidOut > elements -> array (object elements)",
-          "perRow": 1,
-          "bytesPerRow": 76,
-          "count": 1000,
-          "bytes": 76000
+          "kind": "system / Context.previous > previous -> object system / Context",
+          "perRow": 2.475,
+          "bytesPerRow": 76.1,
+          "count": 2475,
+          "bytes": 76100
         },
         {
-          "kind": "RootScope.cleanupOrder > elements -> array (object elements)",
+          "kind": "RegionSite.laidOut > elements -> array (object elements)",
           "perRow": 1,
           "bytesPerRow": 76,
           "count": 1000,
@@ -355,32 +366,18 @@
           "bytes": 76000
         },
         {
+          "kind": "RootScope.cleanupOrder > elements -> array (object elements)",
+          "perRow": 1,
+          "bytesPerRow": 76,
+          "count": 1000,
+          "bytes": 76000
+        },
+        {
           "kind": "system / Context.site -> object RegionSite",
-          "perRow": 0.861,
-          "bytesPerRow": 68.9,
-          "count": 861,
-          "bytes": 68880
-        },
-        {
-          "kind": "OwnerLink.child -> object RootScope",
-          "perRow": 1.016,
-          "bytesPerRow": 65,
-          "count": 1016,
-          "bytes": 65024
-        },
-        {
-          "kind": "OwnerLink.Prev@ -> object OwnerLink",
-          "perRow": 1.801,
-          "bytesPerRow": 64.8,
-          "count": 1801,
-          "bytes": 64836
-        },
-        {
-          "kind": "OwnerLink.child -> object Memo$1",
-          "perRow": 0.702,
-          "bytesPerRow": 61.8,
-          "count": 702,
-          "bytes": 61776
+          "perRow": 0.837,
+          "bytesPerRow": 67,
+          "count": 837,
+          "bytes": 66960
         },
         {
           "kind": "Effect$1.scope -> object Owner",
@@ -390,39 +387,18 @@
           "bytes": 60000
         },
         {
+          "kind": "OnceRow$3.Scope@ -> object Owner",
+          "perRow": 0.994,
+          "bytesPerRow": 59.6,
+          "count": 994,
+          "bytes": 59640
+        },
+        {
           "kind": "system / Context.state > elements -> array (object elements)",
           "perRow": 1.5,
           "bytesPerRow": 58,
           "count": 1500,
           "bytes": 58000
-        },
-        {
-          "kind": "system / Context.previous > previous -> object system / Context",
-          "perRow": 2.228,
-          "bytesPerRow": 57.3,
-          "count": 2228,
-          "bytes": 57328
-        },
-        {
-          "kind": "Array.0 -> object Memo$1",
-          "perRow": 0.64,
-          "bytesPerRow": 56.3,
-          "count": 640,
-          "bytes": 56320
-        },
-        {
-          "kind": "Memo$1.compute -> closure",
-          "perRow": 2,
-          "bytesPerRow": 56,
-          "count": 2000,
-          "bytes": 56000
-        },
-        {
-          "kind": "Memo$1.observers -> object ObserverSet",
-          "perRow": 2,
-          "bytesPerRow": 56,
-          "count": 2000,
-          "bytes": 56000
         },
         {
           "kind": "ObserverSet.items -> object Array",
@@ -439,14 +415,35 @@
           "bytes": 56000
         },
         {
-          "kind": "ObserverSet.slots > elements -> array (object elements)",
+          "kind": "Memo$1.compute -> closure",
+          "perRow": 2,
+          "bytesPerRow": 56,
+          "count": 2000,
+          "bytes": 56000
+        },
+        {
+          "kind": "Memo$1.observers -> object ObserverSet",
+          "perRow": 2,
+          "bytesPerRow": 56,
+          "count": 2000,
+          "bytes": 56000
+        },
+        {
+          "kind": "OwnerLink.Prev@ -> object OwnerLink",
+          "perRow": 1.505,
+          "bytesPerRow": 54.2,
+          "count": 1505,
+          "bytes": 54180
+        },
+        {
+          "kind": "ObserverSet.items > elements -> array (object elements)",
           "perRow": 3.5,
           "bytesPerRow": 54,
           "count": 3500,
           "bytes": 54000
         },
         {
-          "kind": "ObserverSet.items > elements -> array (object elements)",
+          "kind": "ObserverSet.slots > elements -> array (object elements)",
           "perRow": 3.5,
           "bytesPerRow": 54,
           "count": 3500,
@@ -460,56 +457,63 @@
           "bytes": 52000
         },
         {
-          "kind": "OwnerLink.Next@ -> object OwnerLink",
-          "perRow": 1.307,
-          "bytesPerRow": 47.1,
-          "count": 1307,
-          "bytes": 47052
+          "kind": "OwnerLink.owner -> object RootScope",
+          "perRow": 0.791,
+          "bytesPerRow": 50.6,
+          "count": 791,
+          "bytes": 50624
         },
         {
-          "kind": "RootScope.head -> object OwnerLink",
-          "perRow": 1.304,
-          "bytesPerRow": 46.9,
-          "count": 1304,
-          "bytes": 46944
+          "kind": "OwnerLink.child -> object RootScope",
+          "perRow": 0.751,
+          "bytesPerRow": 48.1,
+          "count": 751,
+          "bytes": 48064
         },
         {
           "kind": "Array.0 -> object Effect$1",
-          "perRow": 0.56,
-          "bytesPerRow": 42.6,
-          "count": 560,
-          "bytes": 42560
+          "perRow": 0.609,
+          "bytesPerRow": 46.3,
+          "count": 609,
+          "bytes": 46284
         },
         {
-          "kind": "OwnerLink.owner -> object RootScope",
-          "perRow": 0.63,
-          "bytesPerRow": 40.3,
-          "count": 630,
-          "bytes": 40320
-        },
-        {
-          "kind": "RegionSite.builder -> object RowBuilder",
-          "perRow": 0.803,
-          "bytesPerRow": 38.5,
-          "count": 803,
-          "bytes": 38544
-        },
-        {
-          "kind": "SourceList.first -> object Memo$1",
-          "perRow": 0.425,
-          "bytesPerRow": 37.4,
-          "count": 425,
-          "bytes": 37400
+          "kind": "RootScope.head -> object OwnerLink",
+          "perRow": 1.116,
+          "bytesPerRow": 40.2,
+          "count": 1116,
+          "bytes": 40176
         },
         {
           "kind": "system / Context.rows > context -> object system / Context",
-          "perRow": 1,
-          "bytesPerRow": 36,
-          "count": 1000,
-          "bytes": 36000
+          "perRow": 0.996,
+          "bytesPerRow": 35.9,
+          "count": 996,
+          "bytes": 35856
         },
         {
-          "kind": "system / Context.armPlacement -> object PlacementPass",
+          "kind": "RegionSite.builder -> object RowBuilder",
+          "perRow": 0.719,
+          "bytesPerRow": 34.5,
+          "count": 719,
+          "bytes": 34512
+        },
+        {
+          "kind": "Effect$1.link -> object OwnerLink",
+          "perRow": 0.91,
+          "bytesPerRow": 32.8,
+          "count": 910,
+          "bytes": 32760
+        },
+        {
+          "kind": "OwnerLink.Next@ -> object OwnerLink",
+          "perRow": 0.903,
+          "bytesPerRow": 32.5,
+          "count": 903,
+          "bytes": 32508
+        },
+        {
+          "kind": "ArmRow.Mode -> object Signal$1",
           "perRow": 1,
           "bytesPerRow": 32,
           "count": 1000,
@@ -524,10 +528,45 @@
         },
         {
           "kind": "system / Context.parentPath -> object InstancePath",
-          "perRow": 0.993,
-          "bytesPerRow": 31.8,
-          "count": 993,
-          "bytes": 31776
+          "perRow": 1,
+          "bytesPerRow": 32,
+          "count": 1000,
+          "bytes": 32000
+        },
+        {
+          "kind": "system / Context.armPlacement -> object PlacementPass",
+          "perRow": 1,
+          "bytesPerRow": 32,
+          "count": 1000,
+          "bytes": 32000
+        },
+        {
+          "kind": "OnceRow$3.Value@ -> object Row$2",
+          "perRow": 0.999,
+          "bytesPerRow": 32,
+          "count": 999,
+          "bytes": 31968
+        },
+        {
+          "kind": "Owner.parentLink -> object OwnerLink",
+          "perRow": 0.841,
+          "bytesPerRow": 30.3,
+          "count": 841,
+          "bytes": 30276
+        },
+        {
+          "kind": "Memo$1.link -> object OwnerLink",
+          "perRow": 0.824,
+          "bytesPerRow": 29.7,
+          "count": 824,
+          "bytes": 29664
+        },
+        {
+          "kind": "SourceList.first -> object Memo$1",
+          "perRow": 0.331,
+          "bytesPerRow": 29.1,
+          "count": 331,
+          "bytes": 29128
         },
         {
           "kind": "(none) -> array (object elements)",
@@ -535,6 +574,62 @@
           "bytesPerRow": 28.1,
           "count": 3,
           "bytes": 28068
+        },
+        {
+          "kind": "system / Context.armOwner -> object RootScope",
+          "perRow": 0.438,
+          "bytesPerRow": 28,
+          "count": 438,
+          "bytes": 28032
+        },
+        {
+          "kind": "RootScope.firstCleanup -> closure",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 1000,
+          "bytes": 28000
+        },
+        {
+          "kind": "RowBuilder.hydration -> closure",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 1000,
+          "bytes": 28000
+        },
+        {
+          "kind": "Owner.firstCleanup -> closure",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 1000,
+          "bytes": 28000
+        },
+        {
+          "kind": "Setup.OnCleanup -> closure",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 1000,
+          "bytes": 28000
+        },
+        {
+          "kind": "Setup.CreateId -> closure",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 1000,
+          "bytes": 28000
+        },
+        {
+          "kind": "system / Context.f -> closure",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 1000,
+          "bytes": 28000
+        },
+        {
+          "kind": "system / Context.f > context -> object system / Context",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 1000,
+          "bytes": 28000
         },
         {
           "kind": "system / Context.rows -> closure",
@@ -558,95 +653,32 @@
           "bytes": 28000
         },
         {
-          "kind": "Owner.firstCleanup -> closure",
-          "perRow": 1,
-          "bytesPerRow": 28,
-          "count": 1000,
-          "bytes": 28000
-        },
-        {
-          "kind": "system / Context.f -> closure",
-          "perRow": 1,
-          "bytesPerRow": 28,
-          "count": 1000,
-          "bytes": 28000
-        },
-        {
-          "kind": "Setup.OnCleanup -> closure",
-          "perRow": 1,
-          "bytesPerRow": 28,
-          "count": 1000,
-          "bytes": 28000
-        },
-        {
-          "kind": "Setup.CreateId -> closure",
-          "perRow": 1,
-          "bytesPerRow": 28,
-          "count": 1000,
-          "bytes": 28000
-        },
-        {
-          "kind": "system / Context.f > context -> object system / Context",
-          "perRow": 1,
-          "bytesPerRow": 28,
-          "count": 1000,
-          "bytes": 28000
-        },
-        {
-          "kind": "RowBuilder.hydration -> closure",
-          "perRow": 1,
-          "bytesPerRow": 28,
-          "count": 1000,
-          "bytes": 28000
-        },
-        {
-          "kind": "RootScope.firstCleanup -> closure",
-          "perRow": 1,
-          "bytesPerRow": 28,
-          "count": 1000,
-          "bytes": 28000
-        },
-        {
           "kind": "Array.0 -> closure",
-          "perRow": 0.985,
-          "bytesPerRow": 27.6,
-          "count": 985,
-          "bytes": 27580
-        },
-        {
-          "kind": "system / Context.armItem -> object Signal$1",
-          "perRow": 0.856,
-          "bytesPerRow": 27.4,
-          "count": 856,
-          "bytes": 27392
+          "perRow": 0.995,
+          "bytesPerRow": 27.9,
+          "count": 995,
+          "bytes": 27860
         },
         {
           "kind": "RootScope.parentLink -> object OwnerLink",
-          "perRow": 0.721,
-          "bytesPerRow": 26,
-          "count": 721,
-          "bytes": 25956
-        },
-        {
-          "kind": "Array.0 > context -> object system / Context",
-          "perRow": 0.925,
-          "bytesPerRow": 25.9,
-          "count": 925,
-          "bytes": 25900
-        },
-        {
-          "kind": "OwnerLink.child -> object Owner",
-          "perRow": 0.431,
-          "bytesPerRow": 25.9,
-          "count": 431,
-          "bytes": 25860
+          "perRow": 0.757,
+          "bytesPerRow": 27.3,
+          "count": 757,
+          "bytes": 27252
         },
         {
           "kind": "Owner.head -> object OwnerLink",
-          "perRow": 0.699,
-          "bytesPerRow": 25.2,
-          "count": 699,
-          "bytes": 25164
+          "perRow": 0.705,
+          "bytesPerRow": 25.4,
+          "count": 705,
+          "bytes": 25380
+        },
+        {
+          "kind": "Owner.tail -> object OwnerLink",
+          "perRow": 0.687,
+          "bytesPerRow": 24.7,
+          "count": 687,
+          "bytes": 24732
         },
         {
           "kind": "(none) -> array ",
@@ -656,18 +688,11 @@
           "bytes": 24692
         },
         {
-          "kind": "ArmRow.Mode -> object Signal$1",
-          "perRow": 0.769,
-          "bytesPerRow": 24.6,
-          "count": 769,
-          "bytes": 24608
-        },
-        {
-          "kind": "Effect$1.link -> object OwnerLink",
-          "perRow": 0.675,
-          "bytesPerRow": 24.3,
-          "count": 675,
-          "bytes": 24300
+          "kind": "Array.0 > context -> object system / Context",
+          "perRow": 0.871,
+          "bytesPerRow": 24.4,
+          "count": 871,
+          "bytes": 24388
         },
         {
           "kind": "system / Context.state -> object Array",
@@ -692,24 +717,31 @@
         },
         {
           "kind": "Setup.OnCleanup > context -> object system / Context",
-          "perRow": 0.999,
-          "bytesPerRow": 24,
-          "count": 999,
-          "bytes": 23976
+          "perRow": 0.997,
+          "bytesPerRow": 23.9,
+          "count": 997,
+          "bytes": 23928
         },
         {
-          "kind": "Memo$1.link -> object OwnerLink",
-          "perRow": 0.589,
-          "bytesPerRow": 21.2,
-          "count": 589,
-          "bytes": 21204
+          "kind": "system / Context.armItem -> object Signal$1",
+          "perRow": 0.71,
+          "bytesPerRow": 22.7,
+          "count": 710,
+          "bytes": 22720
         },
         {
-          "kind": "Owner.tail -> object OwnerLink",
-          "perRow": 0.57,
-          "bytesPerRow": 20.5,
-          "count": 570,
-          "bytes": 20520
+          "kind": "OwnerLink.child -> object Memo$1",
+          "perRow": 0.246,
+          "bytesPerRow": 21.6,
+          "count": 246,
+          "bytes": 21648
+        },
+        {
+          "kind": "Memo$1.value -> object Array",
+          "perRow": 1.269,
+          "bytesPerRow": 20.3,
+          "count": 1269,
+          "bytes": 20304
         },
         {
           "kind": "Array.elements -> array (object elements)",
@@ -719,14 +751,14 @@
           "bytes": 20040
         },
         {
-          "kind": "Owner.firstCleanup > context -> object system / Context",
+          "kind": "RowBuilder.setup -> object Setup",
           "perRow": 1,
           "bytesPerRow": 20,
           "count": 1000,
           "bytes": 20000
         },
         {
-          "kind": "RootScope.firstCleanup > context -> object system / Context",
+          "kind": "Owner.firstCleanup > context -> object system / Context",
           "perRow": 1,
           "bytesPerRow": 20,
           "count": 1000,
@@ -740,7 +772,7 @@
           "bytes": 20000
         },
         {
-          "kind": "RowBuilder.setup -> object Setup",
+          "kind": "RootScope.firstCleanup > context -> object system / Context",
           "perRow": 1,
           "bytesPerRow": 20,
           "count": 1000,
@@ -748,80 +780,24 @@
         },
         {
           "kind": "Array.1 -> object Arm",
-          "perRow": 0.817,
-          "bytesPerRow": 19.6,
-          "count": 817,
-          "bytes": 19608
+          "perRow": 0.794,
+          "bytesPerRow": 19.1,
+          "count": 794,
+          "bytes": 19056
         },
         {
-          "kind": "Memo$1.value -> object Array",
-          "perRow": 1.17,
-          "bytesPerRow": 18.7,
-          "count": 1170,
-          "bytes": 18720
+          "kind": "system / Context.selection -> object Memo$1",
+          "perRow": 0.196,
+          "bytesPerRow": 17.2,
+          "count": 196,
+          "bytes": 17248
         },
         {
-          "kind": "Array.0 -> object Row$2",
-          "perRow": 0.58,
-          "bytesPerRow": 18.6,
-          "count": 580,
-          "bytes": 18560
-        },
-        {
-          "kind": "system / Context.armOwner -> object RootScope",
-          "perRow": 0.29,
-          "bytesPerRow": 18.6,
-          "count": 290,
-          "bytes": 18560
-        },
-        {
-          "kind": "Owner.parentLink -> object OwnerLink",
-          "perRow": 0.472,
-          "bytesPerRow": 17,
-          "count": 472,
-          "bytes": 16992
-        },
-        {
-          "kind": "OwnerLink.owner -> object Owner",
-          "perRow": 0.275,
-          "bytesPerRow": 16.5,
-          "count": 275,
-          "bytes": 16500
-        },
-        {
-          "kind": "OnceRow$3.Scope@ -> object Owner",
-          "perRow": 0.271,
+          "kind": "Memo$1.value > elements -> array (object elements)",
+          "perRow": 1.269,
           "bytesPerRow": 16.3,
-          "count": 271,
-          "bytes": 16260
-        },
-        {
-          "kind": "array (object elements).0 -> object Effect$1",
-          "perRow": 0.212,
-          "bytesPerRow": 16.1,
-          "count": 212,
-          "bytes": 16112
-        },
-        {
-          "kind": "RegionSite.laidOut -> object Array",
-          "perRow": 1,
-          "bytesPerRow": 16,
-          "count": 1000,
-          "bytes": 16000
-        },
-        {
-          "kind": "RegionSite.pending -> object Array",
-          "perRow": 1,
-          "bytesPerRow": 16,
-          "count": 1000,
-          "bytes": 16000
-        },
-        {
-          "kind": "RowBuilder.roots -> object Array",
-          "perRow": 1,
-          "bytesPerRow": 16,
-          "count": 1000,
-          "bytes": 16000
+          "count": 1269,
+          "bytes": 16304
         },
         {
           "kind": "RootScope.cleanups -> object Array",
@@ -838,18 +814,46 @@
           "bytes": 16000
         },
         {
-          "kind": "Memo$1.value > elements -> array (object elements)",
-          "perRow": 1.17,
-          "bytesPerRow": 14.7,
-          "count": 1170,
-          "bytes": 14720
+          "kind": "RowBuilder.roots -> object Array",
+          "perRow": 1,
+          "bytesPerRow": 16,
+          "count": 1000,
+          "bytes": 16000
+        },
+        {
+          "kind": "RegionSite.laidOut -> object Array",
+          "perRow": 1,
+          "bytesPerRow": 16,
+          "count": 1000,
+          "bytes": 16000
+        },
+        {
+          "kind": "RegionSite.pending -> object Array",
+          "perRow": 1,
+          "bytesPerRow": 16,
+          "count": 1000,
+          "bytes": 16000
+        },
+        {
+          "kind": "Array.0 -> object Row$2",
+          "perRow": 0.49,
+          "bytesPerRow": 15.7,
+          "count": 490,
+          "bytes": 15680
+        },
+        {
+          "kind": "array (object elements).0 -> object Effect$1",
+          "perRow": 0.199,
+          "bytesPerRow": 15.1,
+          "count": 199,
+          "bytes": 15124
         },
         {
           "kind": "Array.6 -> string",
-          "perRow": 0.901,
-          "bytesPerRow": 14.4,
-          "count": 901,
-          "bytes": 14416
+          "perRow": 0.895,
+          "bytesPerRow": 14.3,
+          "count": 895,
+          "bytes": 14320
         }
       ],
       "native": [
@@ -905,9 +909,9 @@
         {
           "kind": "native <td>",
           "perRow": 2,
-          "bytesPerRow": 219,
+          "bytesPerRow": 219.1,
           "count": 2000,
-          "bytes": 219024
+          "bytes": 219104
         },
         {
           "kind": "native Comment",
@@ -1015,14 +1019,14 @@
           "bytes": 64000
         },
         {
-          "kind": "native <span",
+          "kind": "native <b>",
           "perRow": 0.5,
           "bytesPerRow": 60,
           "count": 500,
           "bytes": 60000
         },
         {
-          "kind": "native <b>",
+          "kind": "native <span",
           "perRow": 0.5,
           "bytesPerRow": 60,
           "count": 500,
@@ -1058,19 +1062,19 @@
         },
         {
           "kind": "native system",
-          "perRow": 0.239,
-          "bytesPerRow": 14.3,
-          "count": 239,
-          "bytes": 14264
+          "perRow": 0.232,
+          "bytesPerRow": 13.8,
+          "count": 232,
+          "bytes": 13836
         }
       ],
       "removed": [
         {
           "kind": "native system",
-          "perRow": 0.085,
-          "bytesPerRow": 7.1,
-          "count": 85,
-          "bytes": 7100
+          "perRow": 0.08,
+          "bytesPerRow": 6.8,
+          "count": 80,
+          "bytes": 6832
         },
         {
           "kind": "code system",
@@ -1213,10 +1217,10 @@
       "rows": 1000,
       "replicate": 0,
       "after": "create",
-      "jsBytesPerRow": 3843.4,
-      "codeBytesPerRow": 100.6,
-      "nativeBytesPerRow": 4509.4,
-      "removedBytesPerRow": 38.1,
+      "jsBytesPerRow": 3839.4,
+      "codeBytesPerRow": 104.2,
+      "nativeBytesPerRow": 4509,
+      "removedBytesPerRow": 35.8,
       "js": [
         {
           "kind": "array (object elements)",
@@ -1235,9 +1239,9 @@
         {
           "kind": "object system / Context",
           "perRow": 17.5,
-          "bytesPerRow": 484,
+          "bytesPerRow": 476,
           "count": 17500,
-          "bytes": 484000
+          "bytes": 476000
         },
         {
           "kind": "object OwnerLink",
@@ -1317,6 +1321,13 @@
           "bytes": 64000
         },
         {
+          "kind": "object Object",
+          "perRow": 2,
+          "bytesPerRow": 52,
+          "count": 2000,
+          "bytes": 52000
+        },
+        {
           "kind": "object OnceRow$3",
           "perRow": 1,
           "bytesPerRow": 52,
@@ -1328,13 +1339,6 @@
           "perRow": 1,
           "bytesPerRow": 48,
           "count": 1000,
-          "bytes": 48000
-        },
-        {
-          "kind": "object Object",
-          "perRow": 2,
-          "bytesPerRow": 48,
-          "count": 2000,
           "bytes": 48000
         },
         {
@@ -1359,14 +1363,14 @@
           "bytes": 24692
         },
         {
-          "kind": "object RegionErrors",
+          "kind": "object Arm",
           "perRow": 1,
           "bytesPerRow": 24,
           "count": 1000,
           "bytes": 24000
         },
         {
-          "kind": "object Arm",
+          "kind": "object RegionErrors",
           "perRow": 1,
           "bytesPerRow": 24,
           "count": 1000,
@@ -1388,9 +1392,9 @@
         },
         {
           "kind": "string",
-          "perRow": 24.575,
+          "perRow": 24.63,
           "bytesPerRow": 14.4,
-          "count": 24575,
+          "count": 24630,
           "bytes": 14416
         },
         {
@@ -1409,9 +1413,9 @@
         },
         {
           "kind": "number",
-          "perRow": 22.446,
+          "perRow": 22.501,
           "bytesPerRow": 0,
-          "count": 22446,
+          "count": 22501,
           "bytes": 0
         }
       ],
@@ -1476,10 +1480,10 @@
       "holders": [
         {
           "kind": "OwnerLink.child -> object Effect$1",
-          "perRow": 2.514,
-          "bytesPerRow": 191.1,
-          "count": 2514,
-          "bytes": 191064
+          "perRow": 2.63,
+          "bytesPerRow": 199.9,
+          "count": 2630,
+          "bytes": 199880
         },
         {
           "kind": "Effect$1.sources -> object SourceList",
@@ -1496,11 +1500,11 @@
           "bytes": 98000
         },
         {
-          "kind": "Array.0 -> object Memo$1",
-          "perRow": 1.068,
-          "bytesPerRow": 94,
-          "count": 1068,
-          "bytes": 93984
+          "kind": "Effect$1.body > context -> object system / Context",
+          "perRow": 2.02,
+          "bytesPerRow": 87.5,
+          "count": 2020,
+          "bytes": 87520
         },
         {
           "kind": "Signal$1.observers -> object ObserverSet",
@@ -1515,13 +1519,6 @@
           "bytesPerRow": 80,
           "count": 2000,
           "bytes": 80000
-        },
-        {
-          "kind": "Effect$1.body > context -> object system / Context",
-          "perRow": 1.912,
-          "bytesPerRow": 79.3,
-          "count": 1912,
-          "bytes": 79312
         },
         {
           "kind": "RegionSite.laidOut > elements -> array (object elements)",
@@ -1546,17 +1543,24 @@
         },
         {
           "kind": "system / Context.previous > previous -> object system / Context",
-          "perRow": 2.463,
-          "bytesPerRow": 75.2,
-          "count": 2463,
-          "bytes": 75188
+          "perRow": 2.472,
+          "bytesPerRow": 75.9,
+          "count": 2472,
+          "bytes": 75872
+        },
+        {
+          "kind": "Array.0 -> object Memo$1",
+          "perRow": 0.816,
+          "bytesPerRow": 71.8,
+          "count": 816,
+          "bytes": 71808
         },
         {
           "kind": "system / Context.site -> object RegionSite",
-          "perRow": 0.832,
-          "bytesPerRow": 66.6,
-          "count": 832,
-          "bytes": 66560
+          "perRow": 0.823,
+          "bytesPerRow": 65.8,
+          "count": 823,
+          "bytes": 65840
         },
         {
           "kind": "Effect$1.scope -> object Owner",
@@ -1566,32 +1570,11 @@
           "bytes": 60000
         },
         {
-          "kind": "OnceRow$3.Scope@ -> object Owner",
-          "perRow": 0.981,
-          "bytesPerRow": 58.9,
-          "count": 981,
-          "bytes": 58860
-        },
-        {
           "kind": "system / Context.state > elements -> array (object elements)",
           "perRow": 1.5,
           "bytesPerRow": 58,
           "count": 1500,
           "bytes": 58000
-        },
-        {
-          "kind": "Memo$1.compute -> closure",
-          "perRow": 2,
-          "bytesPerRow": 56,
-          "count": 2000,
-          "bytes": 56000
-        },
-        {
-          "kind": "Memo$1.observers -> object ObserverSet",
-          "perRow": 2,
-          "bytesPerRow": 56,
-          "count": 2000,
-          "bytes": 56000
         },
         {
           "kind": "ObserverSet.items -> object Array",
@@ -1605,6 +1588,20 @@
           "perRow": 3.5,
           "bytesPerRow": 56,
           "count": 3500,
+          "bytes": 56000
+        },
+        {
+          "kind": "Memo$1.compute -> closure",
+          "perRow": 2,
+          "bytesPerRow": 56,
+          "count": 2000,
+          "bytes": 56000
+        },
+        {
+          "kind": "Memo$1.observers -> object ObserverSet",
+          "perRow": 2,
+          "bytesPerRow": 56,
+          "count": 2000,
           "bytes": 56000
         },
         {
@@ -1622,11 +1619,11 @@
           "bytes": 54000
         },
         {
-          "kind": "OwnerLink.Prev@ -> object OwnerLink",
-          "perRow": 1.489,
-          "bytesPerRow": 53.6,
-          "count": 1489,
-          "bytes": 53604
+          "kind": "OwnerLink.owner -> object RootScope",
+          "perRow": 0.84,
+          "bytesPerRow": 53.8,
+          "count": 840,
+          "bytes": 53760
         },
         {
           "kind": "closure.context > previous -> object system / Context",
@@ -1636,81 +1633,88 @@
           "bytes": 52000
         },
         {
-          "kind": "OwnerLink.owner -> object RootScope",
-          "perRow": 0.801,
+          "kind": "OwnerLink.Prev@ -> object OwnerLink",
+          "perRow": 1.426,
           "bytesPerRow": 51.3,
-          "count": 801,
-          "bytes": 51264
+          "count": 1426,
+          "bytes": 51336
         },
         {
-          "kind": "array (object elements).0 -> object Effect$1",
-          "perRow": 0.608,
-          "bytesPerRow": 46.2,
-          "count": 608,
-          "bytes": 46208
+          "kind": "SourceList.first -> object Memo$1",
+          "perRow": 0.57,
+          "bytesPerRow": 50.2,
+          "count": 570,
+          "bytes": 50160
         },
         {
-          "kind": "Effect$1.link -> object OwnerLink",
-          "perRow": 1.143,
-          "bytesPerRow": 41.1,
-          "count": 1143,
-          "bytes": 41148
+          "kind": "OnceRow$3.Scope@ -> object Owner",
+          "perRow": 0.771,
+          "bytesPerRow": 46.3,
+          "count": 771,
+          "bytes": 46260
         },
         {
-          "kind": "Memo$1.link -> object OwnerLink",
-          "perRow": 1.123,
-          "bytesPerRow": 40.4,
-          "count": 1123,
-          "bytes": 40428
+          "kind": "Array.0 -> object Effect$1",
+          "perRow": 0.524,
+          "bytesPerRow": 39.8,
+          "count": 524,
+          "bytes": 39824
+        },
+        {
+          "kind": "RootScope.head -> object OwnerLink",
+          "perRow": 1.05,
+          "bytesPerRow": 37.8,
+          "count": 1050,
+          "bytes": 37800
         },
         {
           "kind": "RegionSite.builder -> object RowBuilder",
-          "perRow": 0.811,
-          "bytesPerRow": 38.9,
-          "count": 811,
-          "bytes": 38928
-        },
-        {
-          "kind": "system / Context.selection -> object Memo$1",
-          "perRow": 0.435,
-          "bytesPerRow": 38.3,
-          "count": 435,
-          "bytes": 38280
+          "perRow": 0.78,
+          "bytesPerRow": 37.4,
+          "count": 780,
+          "bytes": 37440
         },
         {
           "kind": "OwnerLink.child -> object RootScope",
-          "perRow": 0.592,
-          "bytesPerRow": 37.9,
-          "count": 592,
-          "bytes": 37888
-        },
-        {
-          "kind": "system / Context.rows > context -> object system / Context",
-          "perRow": 0.999,
-          "bytesPerRow": 36,
-          "count": 999,
-          "bytes": 35964
+          "perRow": 0.573,
+          "bytesPerRow": 36.7,
+          "count": 573,
+          "bytes": 36672
         },
         {
           "kind": "system / Context.armOwner -> object RootScope",
-          "perRow": 0.56,
-          "bytesPerRow": 35.8,
-          "count": 560,
-          "bytes": 35840
+          "perRow": 0.566,
+          "bytesPerRow": 36.2,
+          "count": 566,
+          "bytes": 36224
+        },
+        {
+          "kind": "system / Context.rows > context -> object system / Context",
+          "perRow": 1,
+          "bytesPerRow": 36,
+          "count": 1000,
+          "bytes": 36000
         },
         {
           "kind": "OwnerLink.Next@ -> object OwnerLink",
-          "perRow": 0.992,
-          "bytesPerRow": 35.7,
-          "count": 992,
-          "bytes": 35712
+          "perRow": 0.974,
+          "bytesPerRow": 35.1,
+          "count": 974,
+          "bytes": 35064
         },
         {
-          "kind": "RootScope.parentLink -> object OwnerLink",
-          "perRow": 0.939,
-          "bytesPerRow": 33.8,
-          "count": 939,
-          "bytes": 33804
+          "kind": "Memo$1.link -> object OwnerLink",
+          "perRow": 0.922,
+          "bytesPerRow": 33.2,
+          "count": 922,
+          "bytes": 33192
+        },
+        {
+          "kind": "ArmRow.Mode -> object Signal$1",
+          "perRow": 1,
+          "bytesPerRow": 32,
+          "count": 1000,
+          "bytes": 32000
         },
         {
           "kind": "system / Context.armPlacement -> object PlacementPass",
@@ -1727,21 +1731,14 @@
           "bytes": 32000
         },
         {
-          "kind": "ArmRow.Mode -> object Signal$1",
-          "perRow": 0.998,
+          "kind": "system / Context.parentPath -> object InstancePath",
+          "perRow": 0.996,
           "bytesPerRow": 31.9,
-          "count": 998,
-          "bytes": 31936
+          "count": 996,
+          "bytes": 31872
         },
         {
           "kind": "OnceRow$3.Value@ -> object Row$2",
-          "perRow": 0.992,
-          "bytesPerRow": 31.7,
-          "count": 992,
-          "bytes": 31744
-        },
-        {
-          "kind": "system / Context.parentPath -> object InstancePath",
           "perRow": 0.973,
           "bytesPerRow": 31.1,
           "count": 973,
@@ -1749,24 +1746,31 @@
         },
         {
           "kind": "Owner.parentLink -> object OwnerLink",
-          "perRow": 0.803,
-          "bytesPerRow": 28.9,
-          "count": 803,
-          "bytes": 28908
+          "perRow": 0.864,
+          "bytesPerRow": 31.1,
+          "count": 864,
+          "bytes": 31104
+        },
+        {
+          "kind": "Effect$1.link -> object OwnerLink",
+          "perRow": 0.861,
+          "bytesPerRow": 31,
+          "count": 861,
+          "bytes": 30996
         },
         {
           "kind": "system / Context.f -> closure",
-          "perRow": 1.003,
+          "perRow": 1.004,
           "bytesPerRow": 28.1,
-          "count": 1003,
-          "bytes": 28084
+          "count": 1004,
+          "bytes": 28112
         },
         {
           "kind": "system / Context.f > context -> object system / Context",
-          "perRow": 1.003,
+          "perRow": 1.004,
           "bytesPerRow": 28.1,
-          "count": 1003,
-          "bytes": 28084
+          "count": 1004,
+          "bytes": 28080
         },
         {
           "kind": "(none) -> array (object elements)",
@@ -1774,6 +1778,55 @@
           "bytesPerRow": 28.1,
           "count": 3,
           "bytes": 28068
+        },
+        {
+          "kind": "Owner.head -> object OwnerLink",
+          "perRow": 0.779,
+          "bytesPerRow": 28,
+          "count": 779,
+          "bytes": 28044
+        },
+        {
+          "kind": "RowBuilder.hydration -> closure",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 1000,
+          "bytes": 28000
+        },
+        {
+          "kind": "RootScope.firstCleanup -> closure",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 1000,
+          "bytes": 28000
+        },
+        {
+          "kind": "Array.0 -> closure",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 1000,
+          "bytes": 28000
+        },
+        {
+          "kind": "Array.1 -> closure",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 1000,
+          "bytes": 28000
+        },
+        {
+          "kind": "Setup.OnCleanup -> closure",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 1000,
+          "bytes": 28000
+        },
+        {
+          "kind": "Setup.CreateId -> closure",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 1000,
+          "bytes": 28000
         },
         {
           "kind": "system / Context.rows -> closure",
@@ -1797,42 +1850,7 @@
           "bytes": 28000
         },
         {
-          "kind": "RootScope.firstCleanup -> closure",
-          "perRow": 1,
-          "bytesPerRow": 28,
-          "count": 1000,
-          "bytes": 28000
-        },
-        {
-          "kind": "RowBuilder.hydration -> closure",
-          "perRow": 1,
-          "bytesPerRow": 28,
-          "count": 1000,
-          "bytes": 28000
-        },
-        {
           "kind": "Owner.firstCleanup -> closure",
-          "perRow": 1,
-          "bytesPerRow": 28,
-          "count": 1000,
-          "bytes": 28000
-        },
-        {
-          "kind": "system / Context.current -> closure",
-          "perRow": 1,
-          "bytesPerRow": 28,
-          "count": 1000,
-          "bytes": 28000
-        },
-        {
-          "kind": "Setup.OnCleanup -> closure",
-          "perRow": 1,
-          "bytesPerRow": 28,
-          "count": 1000,
-          "bytes": 28000
-        },
-        {
-          "kind": "Setup.CreateId -> closure",
           "perRow": 1,
           "bytesPerRow": 28,
           "count": 1000,
@@ -1846,53 +1864,39 @@
           "bytes": 28000
         },
         {
-          "kind": "Array.0 -> closure",
-          "perRow": 0.999,
+          "kind": "system / Context.current -> closure",
+          "perRow": 1,
           "bytesPerRow": 28,
-          "count": 999,
-          "bytes": 27972
-        },
-        {
-          "kind": "Array.1 -> closure",
-          "perRow": 0.999,
-          "bytesPerRow": 28,
-          "count": 999,
-          "bytes": 27972
-        },
-        {
-          "kind": "Object.w > context -> object system / Context",
-          "perRow": 0.997,
-          "bytesPerRow": 27.9,
-          "count": 997,
-          "bytes": 27916
+          "count": 1000,
+          "bytes": 28000
         },
         {
           "kind": "Object.w -> closure",
-          "perRow": 0.997,
+          "perRow": 0.996,
           "bytesPerRow": 27.9,
-          "count": 997,
-          "bytes": 27916
+          "count": 996,
+          "bytes": 27888
         },
         {
-          "kind": "system / Context.armItem -> object Signal$1",
-          "perRow": 0.797,
-          "bytesPerRow": 25.5,
-          "count": 797,
-          "bytes": 25504
+          "kind": "RootScope.parentLink -> object OwnerLink",
+          "perRow": 0.731,
+          "bytesPerRow": 26.3,
+          "count": 731,
+          "bytes": 26316
+        },
+        {
+          "kind": "Owner.tail -> object OwnerLink",
+          "perRow": 0.726,
+          "bytesPerRow": 26.1,
+          "count": 726,
+          "bytes": 26136
         },
         {
           "kind": "Array.0 > context -> object system / Context",
-          "perRow": 0.903,
-          "bytesPerRow": 25.3,
-          "count": 903,
-          "bytes": 25284
-        },
-        {
-          "kind": "RootScope.head -> object OwnerLink",
-          "perRow": 0.701,
+          "perRow": 0.9,
           "bytesPerRow": 25.2,
-          "count": 701,
-          "bytes": 25236
+          "count": 900,
+          "bytes": 25200
         },
         {
           "kind": "(none) -> array ",
@@ -1902,24 +1906,24 @@
           "bytes": 24692
         },
         {
-          "kind": "Owner.head -> object OwnerLink",
-          "perRow": 0.675,
-          "bytesPerRow": 24.3,
-          "count": 675,
-          "bytes": 24300
-        },
-        {
-          "kind": "RegionSite.errors -> object RegionErrors",
-          "perRow": 1,
-          "bytesPerRow": 24,
-          "count": 1000,
-          "bytes": 24000
+          "kind": "array (object elements).0 -> object Effect$1",
+          "perRow": 0.317,
+          "bytesPerRow": 24.1,
+          "count": 317,
+          "bytes": 24092
         },
         {
           "kind": "system / Context.state -> object Array",
           "perRow": 1.5,
           "bytesPerRow": 24,
           "count": 1500,
+          "bytes": 24000
+        },
+        {
+          "kind": "RegionSite.errors -> object RegionErrors",
+          "perRow": 1,
+          "bytesPerRow": 24,
+          "count": 1000,
           "bytes": 24000
         },
         {
@@ -1930,6 +1934,13 @@
           "bytes": 24000
         },
         {
+          "kind": "system / Context.armItem -> object Signal$1",
+          "perRow": 0.75,
+          "bytesPerRow": 24,
+          "count": 750,
+          "bytes": 24000
+        },
+        {
           "kind": "Setup.OnCleanup > context -> object system / Context",
           "perRow": 0.999,
           "bytesPerRow": 24,
@@ -1937,25 +1948,25 @@
           "bytes": 23976
         },
         {
-          "kind": "Array.0 -> object Effect$1",
-          "perRow": 0.31,
-          "bytesPerRow": 23.6,
-          "count": 310,
-          "bytes": 23560
-        },
-        {
-          "kind": "SourceList.first -> object Memo$1",
-          "perRow": 0.244,
-          "bytesPerRow": 21.5,
-          "count": 244,
-          "bytes": 21472
+          "kind": "Array.1 -> object Arm",
+          "perRow": 0.919,
+          "bytesPerRow": 22.1,
+          "count": 919,
+          "bytes": 22056
         },
         {
           "kind": "Memo$1.value -> object Array",
-          "perRow": 1.318,
-          "bytesPerRow": 21.1,
-          "count": 1318,
-          "bytes": 21088
+          "perRow": 1.349,
+          "bytesPerRow": 21.6,
+          "count": 1349,
+          "bytes": 21584
+        },
+        {
+          "kind": "system / Context.selection -> object Memo$1",
+          "perRow": 0.236,
+          "bytesPerRow": 20.8,
+          "count": 236,
+          "bytes": 20768
         },
         {
           "kind": "Array.elements -> array (object elements)",
@@ -1972,7 +1983,7 @@
           "bytes": 20000
         },
         {
-          "kind": "Owner.firstCleanup > context -> object system / Context",
+          "kind": "RootScope.firstCleanup > context -> object system / Context",
           "perRow": 1,
           "bytesPerRow": 20,
           "count": 1000,
@@ -1986,7 +1997,14 @@
           "bytes": 20000
         },
         {
-          "kind": "RootScope.firstCleanup > context -> object system / Context",
+          "kind": "Array.1 > context -> object system / Context",
+          "perRow": 1,
+          "bytesPerRow": 20,
+          "count": 1000,
+          "bytes": 20000
+        },
+        {
+          "kind": "Owner.firstCleanup > context -> object system / Context",
           "perRow": 1,
           "bytesPerRow": 20,
           "count": 1000,
@@ -2000,39 +2018,25 @@
           "bytes": 20000
         },
         {
-          "kind": "Array.1 > context -> object system / Context",
-          "perRow": 0.999,
-          "bytesPerRow": 20,
-          "count": 999,
-          "bytes": 19980
-        },
-        {
-          "kind": "Array.1 -> object Arm",
-          "perRow": 0.778,
-          "bytesPerRow": 18.7,
-          "count": 778,
-          "bytes": 18672
-        },
-        {
-          "kind": "OwnerLink.child -> object Memo$1",
-          "perRow": 0.207,
-          "bytesPerRow": 18.2,
-          "count": 207,
-          "bytes": 18216
+          "kind": "Object.w > context -> object system / Context",
+          "perRow": 0.996,
+          "bytesPerRow": 19.9,
+          "count": 996,
+          "bytes": 19920
         },
         {
           "kind": "Memo$1.value > elements -> array (object elements)",
-          "perRow": 1.318,
-          "bytesPerRow": 17.1,
-          "count": 1318,
-          "bytes": 17088
+          "perRow": 1.349,
+          "bytesPerRow": 17.6,
+          "count": 1349,
+          "bytes": 17584
         },
         {
-          "kind": "RegionSite.laidOut -> object Array",
-          "perRow": 1,
-          "bytesPerRow": 16,
-          "count": 1000,
-          "bytes": 16000
+          "kind": "OwnerLink.child -> object Memo$1",
+          "perRow": 0.192,
+          "bytesPerRow": 16.9,
+          "count": 192,
+          "bytes": 16896
         }
       ],
       "native": [
@@ -2227,10 +2231,10 @@
         },
         {
           "kind": "native system",
-          "perRow": 1.206,
-          "bytesPerRow": 33.3,
-          "count": 1206,
-          "bytes": 33256
+          "perRow": 1.207,
+          "bytesPerRow": 32.9,
+          "count": 1207,
+          "bytes": 32928
         },
         {
           "kind": "native blink::HeapVectorBacking<blink::HarfBuzzRunGlyphData>",
@@ -2250,10 +2254,10 @@
       "removed": [
         {
           "kind": "code system",
-          "perRow": 0.1,
-          "bytesPerRow": 19,
-          "count": 100,
-          "bytes": 18992
+          "perRow": 0.092,
+          "bytesPerRow": 16.9,
+          "count": 92,
+          "bytes": 16916
         },
         {
           "kind": "native blink::HeapHashTableBacking<blink::HashTable<cppgc::internal::BasicMember<const",
@@ -2265,9 +2269,9 @@
         {
           "kind": "native system",
           "perRow": 0.068,
-          "bytesPerRow": 6.6,
+          "bytesPerRow": 6.4,
           "count": 68,
-          "bytes": 6612
+          "bytes": 6396
         },
         {
           "kind": "native blink::HeapVectorBacking<blink::PendingLayer>",
@@ -2281,7 +2285,7 @@
           "perRow": 0.005,
           "bytesPerRow": 0.5,
           "count": 5,
-          "bytes": 532
+          "bytes": 536
         },
         {
           "kind": "native blink::HeapVectorBacking<blink::PaintChunk>",
@@ -2397,9 +2401,9 @@
       "replicate": 0,
       "after": "create",
       "jsBytesPerRow": 3527.6,
-      "codeBytesPerRow": 14.3,
-      "nativeBytesPerRow": 4471.6,
-      "removedBytesPerRow": 6.5,
+      "codeBytesPerRow": 14.2,
+      "nativeBytesPerRow": 4468.7,
+      "removedBytesPerRow": 6.8,
       "js": [
         {
           "kind": "array (object elements)",
@@ -2521,14 +2525,14 @@
           "bytes": 393332
         },
         {
-          "kind": "object InstancePath",
+          "kind": "object PlacementPass",
           "perRow": 1,
           "bytesPerRow": 32,
           "count": 10000,
           "bytes": 320000
         },
         {
-          "kind": "object PlacementPass",
+          "kind": "object InstancePath",
           "perRow": 1,
           "bytesPerRow": 32,
           "count": 10000,
@@ -2564,9 +2568,9 @@
         },
         {
           "kind": "string",
-          "perRow": 11.007,
+          "perRow": 11.012,
           "bytesPerRow": 15.8,
-          "count": 110070,
+          "count": 110125,
           "bytes": 158420
         },
         {
@@ -2585,9 +2589,9 @@
         },
         {
           "kind": "number",
-          "perRow": 9.894,
+          "perRow": 9.9,
           "bytesPerRow": 0,
-          "count": 98941,
+          "count": 98996,
           "bytes": 0
         }
       ],
@@ -2652,10 +2656,10 @@
       "holders": [
         {
           "kind": "OwnerLink.child -> object Effect$1",
-          "perRow": 1.906,
-          "bytesPerRow": 144.9,
-          "count": 19061,
-          "bytes": 1448636
+          "perRow": 1.994,
+          "bytesPerRow": 151.6,
+          "count": 19941,
+          "bytes": 1515516
         },
         {
           "kind": "Effect$1.sources -> object SourceList",
@@ -2708,17 +2712,24 @@
         },
         {
           "kind": "system / Context.previous > previous -> object system / Context",
-          "perRow": 2.394,
-          "bytesPerRow": 70,
-          "count": 23943,
-          "bytes": 699668
+          "perRow": 2.358,
+          "bytesPerRow": 67.2,
+          "count": 23578,
+          "bytes": 671928
         },
         {
           "kind": "Effect$1.body > context -> object system / Context",
-          "perRow": 1.748,
-          "bytesPerRow": 66.9,
-          "count": 17484,
-          "bytes": 668784
+          "perRow": 1.746,
+          "bytesPerRow": 66.7,
+          "count": 17458,
+          "bytes": 666808
+        },
+        {
+          "kind": "system / Context.site -> object RegionSite",
+          "perRow": 0.754,
+          "bytesPerRow": 60.3,
+          "count": 7540,
+          "bytes": 603200
         },
         {
           "kind": "Effect$1.scope -> object Owner",
@@ -2763,13 +2774,6 @@
           "bytes": 560000
         },
         {
-          "kind": "ObserverSet.slots > elements -> array (object elements)",
-          "perRow": 3.5,
-          "bytesPerRow": 54,
-          "count": 35000,
-          "bytes": 540000
-        },
-        {
           "kind": "ObserverSet.items > elements -> array (object elements)",
           "perRow": 3.5,
           "bytesPerRow": 54,
@@ -2777,11 +2781,11 @@
           "bytes": 540000
         },
         {
-          "kind": "system / Context.site -> object RegionSite",
-          "perRow": 0.663,
-          "bytesPerRow": 53,
-          "count": 6631,
-          "bytes": 530480
+          "kind": "ObserverSet.slots > elements -> array (object elements)",
+          "perRow": 3.5,
+          "bytesPerRow": 54,
+          "count": 35000,
+          "bytes": 540000
         },
         {
           "kind": "closure.context > previous -> object system / Context",
@@ -2792,66 +2796,59 @@
         },
         {
           "kind": "OwnerLink.Next@ -> object OwnerLink",
-          "perRow": 1.361,
-          "bytesPerRow": 49,
-          "count": 13605,
-          "bytes": 489780
-        },
-        {
-          "kind": "Memo$1.link -> object OwnerLink",
-          "perRow": 1.345,
-          "bytesPerRow": 48.4,
-          "count": 13454,
-          "bytes": 484344
-        },
-        {
-          "kind": "OwnerLink.child -> object Owner",
-          "perRow": 0.769,
-          "bytesPerRow": 46.1,
-          "count": 7690,
-          "bytes": 461400
-        },
-        {
-          "kind": "Array.0 -> object Memo$1",
-          "perRow": 0.499,
-          "bytesPerRow": 43.9,
-          "count": 4994,
-          "bytes": 439472
-        },
-        {
-          "kind": "OwnerLink.child -> object RootScope",
-          "perRow": 0.685,
-          "bytesPerRow": 43.8,
-          "count": 6851,
-          "bytes": 438464
-        },
-        {
-          "kind": "Array.0 -> object Effect$1",
-          "perRow": 0.556,
-          "bytesPerRow": 42.2,
-          "count": 5556,
-          "bytes": 422256
-        },
-        {
-          "kind": "system / Context.selection -> object Memo$1",
-          "perRow": 0.476,
-          "bytesPerRow": 41.9,
-          "count": 4756,
-          "bytes": 418528
+          "perRow": 1.404,
+          "bytesPerRow": 50.5,
+          "count": 14036,
+          "bytes": 505296
         },
         {
           "kind": "OwnerLink.Prev@ -> object OwnerLink",
-          "perRow": 1.11,
-          "bytesPerRow": 40,
-          "count": 11100,
-          "bytes": 399600
+          "perRow": 1.309,
+          "bytesPerRow": 47.1,
+          "count": 13086,
+          "bytes": 471096
+        },
+        {
+          "kind": "Memo$1.link -> object OwnerLink",
+          "perRow": 1.208,
+          "bytesPerRow": 43.5,
+          "count": 12077,
+          "bytes": 434772
         },
         {
           "kind": "array (object elements).0 -> object Effect$1",
-          "perRow": 0.525,
+          "perRow": 0.541,
+          "bytesPerRow": 41.2,
+          "count": 5415,
+          "bytes": 411540
+        },
+        {
+          "kind": "Array.0 -> object Memo$1",
+          "perRow": 0.463,
+          "bytesPerRow": 40.8,
+          "count": 4632,
+          "bytes": 407616
+        },
+        {
+          "kind": "Array.0 -> object Effect$1",
+          "perRow": 0.533,
+          "bytesPerRow": 40.5,
+          "count": 5327,
+          "bytes": 404852
+        },
+        {
+          "kind": "system / Context.selection -> object Memo$1",
+          "perRow": 0.46,
+          "bytesPerRow": 40.4,
+          "count": 4595,
+          "bytes": 404360
+        },
+        {
+          "kind": "OwnerLink.child -> object RootScope",
+          "perRow": 0.623,
           "bytesPerRow": 39.9,
-          "count": 5248,
-          "bytes": 398848
+          "count": 6229,
+          "bytes": 398656
         },
         {
           "kind": "(none) -> array ",
@@ -2862,38 +2859,45 @@
         },
         {
           "kind": "Effect$1.link -> object OwnerLink",
-          "perRow": 0.965,
-          "bytesPerRow": 34.7,
-          "count": 9645,
-          "bytes": 347220
+          "perRow": 1.057,
+          "bytesPerRow": 38.1,
+          "count": 10574,
+          "bytes": 380664
+        },
+        {
+          "kind": "OwnerLink.child -> object Owner",
+          "perRow": 0.626,
+          "bytesPerRow": 37.6,
+          "count": 6261,
+          "bytes": 375660
+        },
+        {
+          "kind": "OwnerLink.owner -> object RootScope",
+          "perRow": 0.566,
+          "bytesPerRow": 36.2,
+          "count": 5655,
+          "bytes": 361920
+        },
+        {
+          "kind": "RegionSite.builder -> object RowBuilder",
+          "perRow": 0.735,
+          "bytesPerRow": 35.3,
+          "count": 7354,
+          "bytes": 352992
         },
         {
           "kind": "system / Context.items -> object Memo$1",
-          "perRow": 0.387,
-          "bytesPerRow": 34.1,
-          "count": 3871,
-          "bytes": 340648
-        },
-        {
-          "kind": "Owner.head -> object OwnerLink",
-          "perRow": 0.939,
-          "bytesPerRow": 33.8,
-          "count": 9385,
-          "bytes": 337860
+          "perRow": 0.392,
+          "bytesPerRow": 34.5,
+          "count": 3916,
+          "bytes": 344608
         },
         {
           "kind": "RootScope.parentLink -> object OwnerLink",
-          "perRow": 0.927,
-          "bytesPerRow": 33.4,
-          "count": 9271,
-          "bytes": 333756
-        },
-        {
-          "kind": "OnceRow$3.item -> object Signal$1",
-          "perRow": 1,
-          "bytesPerRow": 32,
-          "count": 10000,
-          "bytes": 320000
+          "perRow": 0.915,
+          "bytesPerRow": 32.9,
+          "count": 9147,
+          "bytes": 329292
         },
         {
           "kind": "system / Context.armPlacement -> object PlacementPass",
@@ -2903,18 +2907,39 @@
           "bytes": 320000
         },
         {
-          "kind": "OwnerLink.owner -> object RootScope",
-          "perRow": 0.484,
-          "bytesPerRow": 31,
-          "count": 4839,
-          "bytes": 309696
+          "kind": "OnceRow$3.item -> object Signal$1",
+          "perRow": 1,
+          "bytesPerRow": 32,
+          "count": 10000,
+          "bytes": 320000
+        },
+        {
+          "kind": "system / Context.armOwner -> object RootScope",
+          "perRow": 0.491,
+          "bytesPerRow": 31.4,
+          "count": 4911,
+          "bytes": 314304
         },
         {
           "kind": "ArmRow.Mode -> object Signal$1",
-          "perRow": 0.888,
-          "bytesPerRow": 28.4,
-          "count": 8876,
-          "bytes": 284032
+          "perRow": 0.943,
+          "bytesPerRow": 30.2,
+          "count": 9434,
+          "bytes": 301888
+        },
+        {
+          "kind": "Memo$1.compute > context -> object system / Context",
+          "perRow": 0.396,
+          "bytesPerRow": 30.1,
+          "count": 3964,
+          "bytes": 301264
+        },
+        {
+          "kind": "OwnerLink.child -> object Memo$1",
+          "perRow": 0.332,
+          "bytesPerRow": 29.2,
+          "count": 3319,
+          "bytes": 292072
         },
         {
           "kind": "(none) -> array (object elements)",
@@ -2924,7 +2949,7 @@
           "bytes": 283588
         },
         {
-          "kind": "Owner.firstCleanup -> closure",
+          "kind": "RegionSite.releaseNodes -> closure",
           "perRow": 1,
           "bytesPerRow": 28,
           "count": 10000,
@@ -2945,7 +2970,14 @@
           "bytes": 280000
         },
         {
-          "kind": "RegionSite.releaseNodes -> closure",
+          "kind": "Owner.firstCleanup -> closure",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 10000,
+          "bytes": 280000
+        },
+        {
+          "kind": "RowBuilder.hydration -> closure",
           "perRow": 1,
           "bytesPerRow": 28,
           "count": 10000,
@@ -2959,7 +2991,14 @@
           "bytes": 280000
         },
         {
-          "kind": "RowBuilder.hydration -> closure",
+          "kind": "system / Context.f > context -> object system / Context",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 10000,
+          "bytes": 280000
+        },
+        {
+          "kind": "system / Context.f -> closure",
           "perRow": 1,
           "bytesPerRow": 28,
           "count": 10000,
@@ -2980,77 +3019,35 @@
           "bytes": 280000
         },
         {
-          "kind": "system / Context.f -> closure",
-          "perRow": 1,
-          "bytesPerRow": 28,
-          "count": 10000,
-          "bytes": 280000
-        },
-        {
-          "kind": "system / Context.f > context -> object system / Context",
-          "perRow": 1,
-          "bytesPerRow": 28,
-          "count": 10000,
-          "bytes": 280000
-        },
-        {
-          "kind": "array (object elements).0 -> object Memo$1",
-          "perRow": 0.315,
-          "bytesPerRow": 27.7,
-          "count": 3147,
-          "bytes": 276936
-        },
-        {
-          "kind": "Memo$1.compute > context -> object system / Context",
-          "perRow": 0.357,
-          "bytesPerRow": 27.2,
-          "count": 3573,
-          "bytes": 271548
-        },
-        {
-          "kind": "system / Context.this$ -> object RegionSite",
-          "perRow": 0.337,
-          "bytesPerRow": 27,
-          "count": 3369,
-          "bytes": 269520
-        },
-        {
-          "kind": "OwnerLink.child -> object Memo$1",
-          "perRow": 0.305,
-          "bytesPerRow": 26.9,
-          "count": 3053,
-          "bytes": 268664
-        },
-        {
-          "kind": "RegionSite.builder -> object RowBuilder",
-          "perRow": 0.525,
-          "bytesPerRow": 25.2,
-          "count": 5248,
-          "bytes": 251904
-        },
-        {
-          "kind": "Memo$1.value -> object Array",
-          "perRow": 1.519,
-          "bytesPerRow": 24.3,
-          "count": 15190,
-          "bytes": 243040
-        },
-        {
           "kind": "RootScope.head -> object OwnerLink",
-          "perRow": 0.673,
-          "bytesPerRow": 24.2,
-          "count": 6728,
-          "bytes": 242208
+          "perRow": 0.762,
+          "bytesPerRow": 27.4,
+          "count": 7622,
+          "bytes": 274392
+        },
+        {
+          "kind": "Owner.head -> object OwnerLink",
+          "perRow": 0.737,
+          "bytesPerRow": 26.5,
+          "count": 7365,
+          "bytes": 265140
+        },
+        {
+          "kind": "Array.0 -> closure",
+          "perRow": 0.9,
+          "bytesPerRow": 25.2,
+          "count": 8997,
+          "bytes": 251916
+        },
+        {
+          "kind": "system / Context.parentPath -> object InstancePath",
+          "perRow": 0.766,
+          "bytesPerRow": 24.5,
+          "count": 7664,
+          "bytes": 245248
         },
         {
           "kind": "RegionSite.errors -> object RegionErrors",
-          "perRow": 1,
-          "bytesPerRow": 24,
-          "count": 10000,
-          "bytes": 240000
-        },
-        {
-          "kind": "RegionSite.releaseNodes > context -> object system / Context",
           "perRow": 1,
           "bytesPerRow": 24,
           "count": 10000,
@@ -3064,60 +3061,60 @@
           "bytes": 240000
         },
         {
+          "kind": "RegionSite.releaseNodes > context -> object system / Context",
+          "perRow": 1,
+          "bytesPerRow": 24,
+          "count": 10000,
+          "bytes": 240000
+        },
+        {
+          "kind": "Array.0 > context -> object system / Context",
+          "perRow": 0.847,
+          "bytesPerRow": 23.7,
+          "count": 8474,
+          "bytes": 237272
+        },
+        {
           "kind": "Setup.OnCleanup > context -> object system / Context",
-          "perRow": 0.98,
-          "bytesPerRow": 23.5,
-          "count": 9800,
-          "bytes": 235200
+          "perRow": 0.989,
+          "bytesPerRow": 23.7,
+          "count": 9885,
+          "bytes": 237240
         },
         {
-          "kind": "system / Context.parentPath -> object InstancePath",
-          "perRow": 0.733,
-          "bytesPerRow": 23.5,
-          "count": 7334,
-          "bytes": 234688
+          "kind": "Memo$1.value -> object Array",
+          "perRow": 1.478,
+          "bytesPerRow": 23.6,
+          "count": 14775,
+          "bytes": 236400
         },
         {
-          "kind": "Array.0 -> closure",
-          "perRow": 0.826,
-          "bytesPerRow": 23.1,
-          "count": 8255,
-          "bytes": 231140
+          "kind": "system / Context.armItem -> object Signal$1",
+          "perRow": 0.732,
+          "bytesPerRow": 23.4,
+          "count": 7322,
+          "bytes": 234304
         },
         {
-          "kind": "system / Context.armOwner -> object RootScope",
-          "perRow": 0.352,
-          "bytesPerRow": 22.5,
-          "count": 3519,
-          "bytes": 225216
-        },
-        {
-          "kind": "Owner.tail -> object OwnerLink",
-          "perRow": 0.611,
-          "bytesPerRow": 22,
-          "count": 6114,
-          "bytes": 220104
-        },
-        {
-          "kind": "system / Context.read > context -> object system / Context",
-          "perRow": 0.578,
-          "bytesPerRow": 20.8,
-          "count": 5782,
-          "bytes": 208152
+          "kind": "system / Context.rows > context -> object system / Context",
+          "perRow": 0.606,
+          "bytesPerRow": 21.8,
+          "count": 6057,
+          "bytes": 218052
         },
         {
           "kind": "Array.1 -> object Effect$1",
-          "perRow": 0.271,
-          "bytesPerRow": 20.6,
-          "count": 2711,
-          "bytes": 206036
+          "perRow": 0.286,
+          "bytesPerRow": 21.8,
+          "count": 2863,
+          "bytes": 217588
         },
         {
-          "kind": "Memo$1.value > elements -> array (object elements)",
-          "perRow": 1.519,
-          "bytesPerRow": 20.3,
-          "count": 15190,
-          "bytes": 203040
+          "kind": "system / Context.row -> object Row$2",
+          "perRow": 0.679,
+          "bytesPerRow": 21.7,
+          "count": 6786,
+          "bytes": 217152
         },
         {
           "kind": "Array.elements -> array (object elements)",
@@ -3128,6 +3125,13 @@
         },
         {
           "kind": "Owner.firstCleanup > context -> object system / Context",
+          "perRow": 1,
+          "bytesPerRow": 20,
+          "count": 10000,
+          "bytes": 200000
+        },
+        {
+          "kind": "RowBuilder.setup -> object Setup",
           "perRow": 1,
           "bytesPerRow": 20,
           "count": 10000,
@@ -3148,46 +3152,32 @@
           "bytes": 200000
         },
         {
-          "kind": "RowBuilder.setup -> object Setup",
-          "perRow": 1,
-          "bytesPerRow": 20,
-          "count": 10000,
-          "bytes": 200000
+          "kind": "system / Context.this$ -> object RegionSite",
+          "perRow": 0.246,
+          "bytesPerRow": 19.7,
+          "count": 2460,
+          "bytes": 196800
         },
         {
-          "kind": "array (object elements).1 -> object Effect$1",
-          "perRow": 0.242,
-          "bytesPerRow": 18.4,
-          "count": 2424,
-          "bytes": 184224
+          "kind": "Memo$1.value > elements -> array (object elements)",
+          "perRow": 1.478,
+          "bytesPerRow": 19.6,
+          "count": 14775,
+          "bytes": 196400
         },
         {
-          "kind": "system / Context.armItem -> object Signal$1",
-          "perRow": 0.574,
-          "bytesPerRow": 18.4,
-          "count": 5735,
-          "bytes": 183520
+          "kind": "array (object elements).0 -> object Memo$1",
+          "perRow": 0.197,
+          "bytesPerRow": 17.3,
+          "count": 1966,
+          "bytes": 173008
         },
         {
-          "kind": "Array.0 > context -> object system / Context",
-          "perRow": 0.647,
-          "bytesPerRow": 18.1,
-          "count": 6471,
-          "bytes": 181188
-        },
-        {
-          "kind": "system / Context.row -> object Row$2",
-          "perRow": 0.527,
-          "bytesPerRow": 16.9,
-          "count": 5275,
-          "bytes": 168800
-        },
-        {
-          "kind": "RegionSite.owner -> object RootScope",
-          "perRow": 0.258,
-          "bytesPerRow": 16.5,
-          "count": 2584,
-          "bytes": 165376
+          "kind": "Array.0 -> object Row$2",
+          "perRow": 0.505,
+          "bytesPerRow": 16.2,
+          "count": 5047,
+          "bytes": 161504
         },
         {
           "kind": "RegionSite.laidOut -> object Array",
@@ -3204,7 +3194,21 @@
           "bytes": 160000
         },
         {
+          "kind": "RowBuilder.roots -> object Array",
+          "perRow": 1,
+          "bytesPerRow": 16,
+          "count": 10000,
+          "bytes": 160000
+        },
+        {
           "kind": "RootScope.cleanups -> object Array",
+          "perRow": 1,
+          "bytesPerRow": 16,
+          "count": 10000,
+          "bytes": 160000
+        },
+        {
+          "kind": "RootScope.cleanupOrder -> object Array",
           "perRow": 1,
           "bytesPerRow": 16,
           "count": 10000,
@@ -3257,9 +3261,9 @@
         {
           "kind": "native <td>",
           "perRow": 2,
-          "bytesPerRow": 229.3,
+          "bytesPerRow": 226.4,
           "count": 20000,
-          "bytes": 2292976
+          "bytes": 2263776
         },
         {
           "kind": "native blink::LayoutText",
@@ -3417,19 +3421,19 @@
         },
         {
           "kind": "native system",
-          "perRow": 0.026,
-          "bytesPerRow": 1.3,
-          "count": 261,
-          "bytes": 12632
+          "perRow": 0.025,
+          "bytesPerRow": 1.2,
+          "count": 254,
+          "bytes": 12264
         }
       ],
       "removed": [
         {
           "kind": "code system",
           "perRow": 0.024,
-          "bytesPerRow": 4.6,
-          "count": 237,
-          "bytes": 46312
+          "bytesPerRow": 5,
+          "count": 242,
+          "bytes": 49784
         },
         {
           "kind": "native blink::HeapHashTableBacking<blink::HashTable<cppgc::internal::BasicMember<const",
@@ -3442,8 +3446,8 @@
           "kind": "native system",
           "perRow": 0.012,
           "bytesPerRow": 0.6,
-          "count": 123,
-          "bytes": 6160
+          "count": 120,
+          "bytes": 5952
         },
         {
           "kind": "native blink::HeapVectorBacking<blink::PendingLayer>",
@@ -3464,7 +3468,7 @@
           "perRow": 0,
           "bytesPerRow": 0,
           "count": 4,
-          "bytes": 492
+          "bytes": 484
         },
         {
           "kind": "native blink::PhysicalBoxFragment",
@@ -3572,10 +3576,10 @@
       "rows": 10000,
       "replicate": 0,
       "after": "create",
-      "jsBytesPerRow": 3872.7,
-      "codeBytesPerRow": 11.6,
-      "nativeBytesPerRow": 4495.3,
-      "removedBytesPerRow": 8.6,
+      "jsBytesPerRow": 3868.7,
+      "codeBytesPerRow": 15.8,
+      "nativeBytesPerRow": 4485.7,
+      "removedBytesPerRow": 9.4,
       "js": [
         {
           "kind": "array (object elements)",
@@ -3594,9 +3598,9 @@
         {
           "kind": "object system / Context",
           "perRow": 17.5,
-          "bytesPerRow": 484,
+          "bytesPerRow": 476,
           "count": 175000,
-          "bytes": 4840000
+          "bytes": 4760000
         },
         {
           "kind": "object OwnerLink",
@@ -3690,17 +3694,17 @@
           "bytes": 520000
         },
         {
+          "kind": "object Object",
+          "perRow": 2,
+          "bytesPerRow": 52,
+          "count": 20000,
+          "bytes": 520000
+        },
+        {
           "kind": "object RowBuilder",
           "perRow": 1,
           "bytesPerRow": 48,
           "count": 10000,
-          "bytes": 480000
-        },
-        {
-          "kind": "object Object",
-          "perRow": 2,
-          "bytesPerRow": 48,
-          "count": 20000,
           "bytes": 480000
         },
         {
@@ -3718,14 +3722,14 @@
           "bytes": 320000
         },
         {
-          "kind": "object Arm",
+          "kind": "object RegionErrors",
           "perRow": 1,
           "bytesPerRow": 24,
           "count": 10000,
           "bytes": 240000
         },
         {
-          "kind": "object RegionErrors",
+          "kind": "object Arm",
           "perRow": 1,
           "bytesPerRow": 24,
           "count": 10000,
@@ -3747,9 +3751,9 @@
         },
         {
           "kind": "string",
-          "perRow": 11.007,
+          "perRow": 11.012,
           "bytesPerRow": 15.8,
-          "count": 110070,
+          "count": 110125,
           "bytes": 158420
         },
         {
@@ -3768,9 +3772,9 @@
         },
         {
           "kind": "number",
-          "perRow": 9.894,
+          "perRow": 9.9,
           "bytesPerRow": 0,
-          "count": 98941,
+          "count": 98996,
           "bytes": 0
         }
       ],
@@ -3834,18 +3838,18 @@
       ],
       "holders": [
         {
+          "kind": "OwnerLink.child -> object Effect$1",
+          "perRow": 2.511,
+          "bytesPerRow": 190.9,
+          "count": 25113,
+          "bytes": 1908588
+        },
+        {
           "kind": "Effect$1.sources -> object SourceList",
           "perRow": 3.5,
           "bytesPerRow": 140,
           "count": 35000,
           "bytes": 1400000
-        },
-        {
-          "kind": "OwnerLink.child -> object Effect$1",
-          "perRow": 1.758,
-          "bytesPerRow": 133.6,
-          "count": 17580,
-          "bytes": 1336080
         },
         {
           "kind": "Effect$1.body -> closure",
@@ -3862,13 +3866,6 @@
           "bytes": 840000
         },
         {
-          "kind": "system / Context.previous > previous -> object system / Context",
-          "perRow": 2.537,
-          "bytesPerRow": 80.8,
-          "count": 25373,
-          "bytes": 808348
-        },
-        {
           "kind": "Memo$1.sources -> object SourceList",
           "perRow": 2,
           "bytesPerRow": 80,
@@ -3876,7 +3873,14 @@
           "bytes": 800000
         },
         {
-          "kind": "RootScope.cleanupOrder > elements -> array (object elements)",
+          "kind": "Effect$1.body > context -> object system / Context",
+          "perRow": 1.891,
+          "bytesPerRow": 77.7,
+          "count": 18906,
+          "bytes": 776856
+        },
+        {
+          "kind": "RegionSite.laidOut > elements -> array (object elements)",
           "perRow": 1,
           "bytesPerRow": 76,
           "count": 10000,
@@ -3890,11 +3894,25 @@
           "bytes": 760000
         },
         {
-          "kind": "RegionSite.laidOut > elements -> array (object elements)",
+          "kind": "RootScope.cleanupOrder > elements -> array (object elements)",
           "perRow": 1,
           "bytesPerRow": 76,
           "count": 10000,
           "bytes": 760000
+        },
+        {
+          "kind": "system / Context.site -> object RegionSite",
+          "perRow": 0.923,
+          "bytesPerRow": 73.9,
+          "count": 9235,
+          "bytes": 738800
+        },
+        {
+          "kind": "system / Context.previous > previous -> object system / Context",
+          "perRow": 2.396,
+          "bytesPerRow": 70.1,
+          "count": 23958,
+          "bytes": 700808
         },
         {
           "kind": "Effect$1.scope -> object Owner",
@@ -3904,32 +3922,18 @@
           "bytes": 600000
         },
         {
+          "kind": "Array.0 -> object Memo$1",
+          "perRow": 0.664,
+          "bytesPerRow": 58.5,
+          "count": 6643,
+          "bytes": 584584
+        },
+        {
           "kind": "system / Context.state > elements -> array (object elements)",
           "perRow": 1.5,
           "bytesPerRow": 58,
           "count": 15000,
           "bytes": 580000
-        },
-        {
-          "kind": "Effect$1.body > context -> object system / Context",
-          "perRow": 1.609,
-          "bytesPerRow": 56.3,
-          "count": 16090,
-          "bytes": 562840
-        },
-        {
-          "kind": "ObserverSet.items -> object Array",
-          "perRow": 3.5,
-          "bytesPerRow": 56,
-          "count": 35000,
-          "bytes": 560000
-        },
-        {
-          "kind": "ObserverSet.slots -> object Array",
-          "perRow": 3.5,
-          "bytesPerRow": 56,
-          "count": 35000,
-          "bytes": 560000
         },
         {
           "kind": "Memo$1.compute -> closure",
@@ -3943,6 +3947,20 @@
           "perRow": 2,
           "bytesPerRow": 56,
           "count": 20000,
+          "bytes": 560000
+        },
+        {
+          "kind": "ObserverSet.items -> object Array",
+          "perRow": 3.5,
+          "bytesPerRow": 56,
+          "count": 35000,
+          "bytes": 560000
+        },
+        {
+          "kind": "ObserverSet.slots -> object Array",
+          "perRow": 3.5,
+          "bytesPerRow": 56,
+          "count": 35000,
           "bytes": 560000
         },
         {
@@ -3960,11 +3978,18 @@
           "bytes": 540000
         },
         {
-          "kind": "OwnerLink.Next@ -> object OwnerLink",
-          "perRow": 1.464,
-          "bytesPerRow": 52.7,
-          "count": 14639,
-          "bytes": 527004
+          "kind": "OwnerLink.child -> object RootScope",
+          "perRow": 0.83,
+          "bytesPerRow": 53.1,
+          "count": 8298,
+          "bytes": 531072
+        },
+        {
+          "kind": "OwnerLink.Prev@ -> object OwnerLink",
+          "perRow": 1.461,
+          "bytesPerRow": 52.6,
+          "count": 14610,
+          "bytes": 525960
         },
         {
           "kind": "(none) -> array ",
@@ -3974,13 +3999,6 @@
           "bytes": 524424
         },
         {
-          "kind": "Memo$1.link -> object OwnerLink",
-          "perRow": 1.453,
-          "bytesPerRow": 52.3,
-          "count": 14529,
-          "bytes": 523044
-        },
-        {
           "kind": "closure.context > previous -> object system / Context",
           "perRow": 2,
           "bytesPerRow": 52,
@@ -3988,109 +4006,74 @@
           "bytes": 520000
         },
         {
-          "kind": "Array.0 -> object Effect$1",
-          "perRow": 0.65,
-          "bytesPerRow": 49.4,
-          "count": 6498,
-          "bytes": 493848
+          "kind": "OwnerLink.Next@ -> object OwnerLink",
+          "perRow": 1.308,
+          "bytesPerRow": 47.1,
+          "count": 13075,
+          "bytes": 470700
         },
         {
           "kind": "system / Context.selection -> object Memo$1",
-          "perRow": 0.534,
-          "bytesPerRow": 47,
-          "count": 5344,
-          "bytes": 470272
-        },
-        {
-          "kind": "Effect$1.link -> object OwnerLink",
-          "perRow": 1.306,
-          "bytesPerRow": 47,
-          "count": 13062,
-          "bytes": 470232
-        },
-        {
-          "kind": "array (object elements).0 -> object Memo$1",
-          "perRow": 0.532,
-          "bytesPerRow": 46.8,
-          "count": 5316,
-          "bytes": 467808
-        },
-        {
-          "kind": "OwnerLink.child -> object Owner",
-          "perRow": 0.779,
-          "bytesPerRow": 46.7,
-          "count": 7786,
-          "bytes": 467160
-        },
-        {
-          "kind": "system / Context.site -> object RegionSite",
-          "perRow": 0.572,
-          "bytesPerRow": 45.8,
-          "count": 5723,
-          "bytes": 457840
-        },
-        {
-          "kind": "RootScope.parentLink -> object OwnerLink",
-          "perRow": 1.267,
-          "bytesPerRow": 45.6,
-          "count": 12673,
-          "bytes": 456228
+          "perRow": 0.453,
+          "bytesPerRow": 39.8,
+          "count": 4526,
+          "bytes": 398288
         },
         {
           "kind": "OwnerLink.owner -> object RootScope",
-          "perRow": 0.637,
-          "bytesPerRow": 40.8,
-          "count": 6375,
-          "bytes": 408000
+          "perRow": 0.613,
+          "bytesPerRow": 39.3,
+          "count": 6133,
+          "bytes": 392512
         },
         {
-          "kind": "system / Context.items -> object Memo$1",
-          "perRow": 0.442,
-          "bytesPerRow": 38.9,
-          "count": 4423,
-          "bytes": 389224
+          "kind": "OwnerLink.child -> object Memo$1",
+          "perRow": 0.446,
+          "bytesPerRow": 39.2,
+          "count": 4459,
+          "bytes": 392392
         },
         {
-          "kind": "array (object elements).0 -> object Effect$1",
-          "perRow": 0.501,
+          "kind": "Memo$1.link -> object OwnerLink",
+          "perRow": 1.07,
+          "bytesPerRow": 38.5,
+          "count": 10697,
+          "bytes": 385092
+        },
+        {
+          "kind": "Array.0 -> object Effect$1",
+          "perRow": 0.502,
           "bytesPerRow": 38.1,
-          "count": 5012,
-          "bytes": 380912
+          "count": 5016,
+          "bytes": 381216
         },
         {
-          "kind": "system / Context.f -> closure",
-          "perRow": 1.284,
-          "bytesPerRow": 35.9,
-          "count": 12837,
-          "bytes": 359436
+          "kind": "RegionSite.builder -> object RowBuilder",
+          "perRow": 0.739,
+          "bytesPerRow": 35.5,
+          "count": 7390,
+          "bytes": 354720
         },
         {
-          "kind": "system / Context.f > context -> object system / Context",
-          "perRow": 1.284,
-          "bytesPerRow": 35.9,
-          "count": 12837,
-          "bytes": 359436
+          "kind": "RootScope.head -> object OwnerLink",
+          "perRow": 0.945,
+          "bytesPerRow": 34,
+          "count": 9447,
+          "bytes": 340092
         },
         {
-          "kind": "system / Context.this$ -> object RegionSite",
-          "perRow": 0.428,
-          "bytesPerRow": 34.2,
-          "count": 4277,
-          "bytes": 342160
+          "kind": "RootScope.parentLink -> object OwnerLink",
+          "perRow": 0.91,
+          "bytesPerRow": 32.8,
+          "count": 9099,
+          "bytes": 327564
         },
         {
-          "kind": "Array.0 -> object Memo$1",
-          "perRow": 0.384,
-          "bytesPerRow": 33.8,
-          "count": 3839,
-          "bytes": 337832
-        },
-        {
-          "kind": "OnceRow$3.item -> object Signal$1",
-          "perRow": 1,
-          "bytesPerRow": 32,
-          "count": 10000,
-          "bytes": 320000
+          "kind": "system / Context.rows > context -> object system / Context",
+          "perRow": 0.89,
+          "bytesPerRow": 32.1,
+          "count": 8904,
+          "bytes": 320544
         },
         {
           "kind": "system / Context.armPlacement -> object PlacementPass",
@@ -4100,25 +4083,25 @@
           "bytes": 320000
         },
         {
-          "kind": "OwnerLink.Prev@ -> object OwnerLink",
-          "perRow": 0.872,
-          "bytesPerRow": 31.4,
-          "count": 8720,
-          "bytes": 313920
+          "kind": "OnceRow$3.item -> object Signal$1",
+          "perRow": 1,
+          "bytesPerRow": 32,
+          "count": 10000,
+          "bytes": 320000
         },
         {
-          "kind": "ArmRow.Mode -> object Signal$1",
-          "perRow": 0.969,
-          "bytesPerRow": 31,
-          "count": 9693,
-          "bytes": 310176
+          "kind": "system / Context.parentPath -> object InstancePath",
+          "perRow": 0.983,
+          "bytesPerRow": 31.5,
+          "count": 9834,
+          "bytes": 314688
         },
         {
-          "kind": "Owner.head -> object OwnerLink",
-          "perRow": 0.82,
-          "bytesPerRow": 29.5,
-          "count": 8195,
-          "bytes": 295020
+          "kind": "system / Context.armOwner -> object RootScope",
+          "perRow": 0.459,
+          "bytesPerRow": 29.4,
+          "count": 4593,
+          "bytes": 293952
         },
         {
           "kind": "(none) -> array (object elements)",
@@ -4128,39 +4111,18 @@
           "bytes": 283588
         },
         {
-          "kind": "Setup.OnCleanup -> closure",
-          "perRow": 1,
-          "bytesPerRow": 28,
-          "count": 10000,
-          "bytes": 280000
+          "kind": "system / Context.f -> closure",
+          "perRow": 1.005,
+          "bytesPerRow": 28.1,
+          "count": 10049,
+          "bytes": 281372
         },
         {
-          "kind": "Setup.CreateId -> closure",
-          "perRow": 1,
-          "bytesPerRow": 28,
-          "count": 10000,
-          "bytes": 280000
-        },
-        {
-          "kind": "RootScope.firstCleanup -> closure",
-          "perRow": 1,
-          "bytesPerRow": 28,
-          "count": 10000,
-          "bytes": 280000
-        },
-        {
-          "kind": "RowBuilder.hydration -> closure",
-          "perRow": 1,
-          "bytesPerRow": 28,
-          "count": 10000,
-          "bytes": 280000
-        },
-        {
-          "kind": "Owner.firstCleanup -> closure",
-          "perRow": 1,
-          "bytesPerRow": 28,
-          "count": 10000,
-          "bytes": 280000
+          "kind": "system / Context.f > context -> object system / Context",
+          "perRow": 1.005,
+          "bytesPerRow": 28.1,
+          "count": 10049,
+          "bytes": 280980
         },
         {
           "kind": "system / Context.rows -> closure",
@@ -4184,7 +4146,42 @@
           "bytes": 280000
         },
         {
+          "kind": "Owner.firstCleanup -> closure",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 10000,
+          "bytes": 280000
+        },
+        {
+          "kind": "RowBuilder.hydration -> closure",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 10000,
+          "bytes": 280000
+        },
+        {
+          "kind": "RootScope.firstCleanup -> closure",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 10000,
+          "bytes": 280000
+        },
+        {
           "kind": "Object.c -> closure",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 10000,
+          "bytes": 280000
+        },
+        {
+          "kind": "Setup.OnCleanup -> closure",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 10000,
+          "bytes": 280000
+        },
+        {
+          "kind": "Setup.CreateId -> closure",
           "perRow": 1,
           "bytesPerRow": 28,
           "count": 10000,
@@ -4198,45 +4195,66 @@
           "bytes": 280000
         },
         {
-          "kind": "system / Context.read > context -> object system / Context",
-          "perRow": 0.751,
-          "bytesPerRow": 27,
-          "count": 7512,
-          "bytes": 270432
+          "kind": "Object.w -> closure",
+          "perRow": 0.995,
+          "bytesPerRow": 27.9,
+          "count": 9949,
+          "bytes": 278572
         },
         {
-          "kind": "Memo$1.compute > context -> object system / Context",
-          "perRow": 0.354,
-          "bytesPerRow": 26.9,
-          "count": 3537,
-          "bytes": 268812
+          "kind": "Owner.head -> object OwnerLink",
+          "perRow": 0.773,
+          "bytesPerRow": 27.8,
+          "count": 7728,
+          "bytes": 278208
         },
         {
-          "kind": "RootScope.head -> object OwnerLink",
-          "perRow": 0.691,
-          "bytesPerRow": 24.9,
-          "count": 6910,
-          "bytes": 248760
+          "kind": "Array.0 -> closure",
+          "perRow": 0.975,
+          "bytesPerRow": 27.3,
+          "count": 9754,
+          "bytes": 273112
         },
         {
-          "kind": "Array.1 -> object Effect$1",
-          "perRow": 0.316,
-          "bytesPerRow": 24,
-          "count": 3164,
-          "bytes": 240464
+          "kind": "Array.1 -> closure",
+          "perRow": 0.975,
+          "bytesPerRow": 27.3,
+          "count": 9754,
+          "bytes": 273112
         },
         {
-          "kind": "system / Context.state -> object Array",
-          "perRow": 1.5,
-          "bytesPerRow": 24,
-          "count": 15000,
-          "bytes": 240000
+          "kind": "ArmRow.Mode -> object Signal$1",
+          "perRow": 0.847,
+          "bytesPerRow": 27.1,
+          "count": 8471,
+          "bytes": 271072
+        },
+        {
+          "kind": "system / Context.items -> object Memo$1",
+          "perRow": 0.291,
+          "bytesPerRow": 25.6,
+          "count": 2914,
+          "bytes": 256432
+        },
+        {
+          "kind": "array (object elements).0 -> object Effect$1",
+          "perRow": 0.331,
+          "bytesPerRow": 25.2,
+          "count": 3311,
+          "bytes": 251636
         },
         {
           "kind": "RegionSite.errors -> object RegionErrors",
           "perRow": 1,
           "bytesPerRow": 24,
           "count": 10000,
+          "bytes": 240000
+        },
+        {
+          "kind": "system / Context.state -> object Array",
+          "perRow": 1.5,
+          "bytesPerRow": 24,
+          "count": 15000,
           "bytes": 240000
         },
         {
@@ -4248,59 +4266,45 @@
         },
         {
           "kind": "Setup.OnCleanup > context -> object system / Context",
-          "perRow": 0.976,
-          "bytesPerRow": 23.4,
-          "count": 9759,
-          "bytes": 234216
+          "perRow": 0.999,
+          "bytesPerRow": 24,
+          "count": 9985,
+          "bytes": 239640
+        },
+        {
+          "kind": "system / Context.armItem -> object Signal$1",
+          "perRow": 0.744,
+          "bytesPerRow": 23.8,
+          "count": 7436,
+          "bytes": 237952
+        },
+        {
+          "kind": "Effect$1.link -> object OwnerLink",
+          "perRow": 0.658,
+          "bytesPerRow": 23.7,
+          "count": 6585,
+          "bytes": 237060
+        },
+        {
+          "kind": "system / Context.registered -> object Object",
+          "perRow": 0.923,
+          "bytesPerRow": 22.2,
+          "count": 9232,
+          "bytes": 221568
         },
         {
           "kind": "Memo$1.value -> object Array",
-          "perRow": 1.457,
-          "bytesPerRow": 23.3,
-          "count": 14571,
-          "bytes": 233136
-        },
-        {
-          "kind": "OwnerLink.child -> object RootScope",
-          "perRow": 0.356,
-          "bytesPerRow": 22.8,
-          "count": 3563,
-          "bytes": 228032
-        },
-        {
-          "kind": "Array.0 -> closure",
-          "perRow": 0.809,
-          "bytesPerRow": 22.6,
-          "count": 8088,
-          "bytes": 226464
-        },
-        {
-          "kind": "Array.1 -> closure",
-          "perRow": 0.809,
-          "bytesPerRow": 22.6,
-          "count": 8088,
-          "bytes": 226464
-        },
-        {
-          "kind": "system / Context.row -> object Row$2",
-          "perRow": 0.692,
-          "bytesPerRow": 22.1,
-          "count": 6916,
-          "bytes": 221312
-        },
-        {
-          "kind": "system / Context.parentPath -> object InstancePath",
-          "perRow": 0.675,
+          "perRow": 1.351,
           "bytesPerRow": 21.6,
-          "count": 6752,
-          "bytes": 216064
+          "count": 13511,
+          "bytes": 216176
         },
         {
-          "kind": "array (object elements).1 -> object Effect$1",
-          "perRow": 0.275,
-          "bytesPerRow": 20.9,
-          "count": 2746,
-          "bytes": 208696
+          "kind": "Array.0 > context -> object system / Context",
+          "perRow": 0.754,
+          "bytesPerRow": 21.1,
+          "count": 7542,
+          "bytes": 211176
         },
         {
           "kind": "Array.elements -> array (object elements)",
@@ -4310,14 +4314,7 @@
           "bytes": 200040
         },
         {
-          "kind": "RowBuilder.hydration > context -> object system / Context",
-          "perRow": 1,
-          "bytesPerRow": 20,
-          "count": 10000,
-          "bytes": 200000
-        },
-        {
-          "kind": "RootScope.firstCleanup > context -> object system / Context",
+          "kind": "Owner.firstCleanup > context -> object system / Context",
           "perRow": 1,
           "bytesPerRow": 20,
           "count": 10000,
@@ -4331,7 +4328,14 @@
           "bytes": 200000
         },
         {
-          "kind": "Owner.firstCleanup > context -> object system / Context",
+          "kind": "RootScope.firstCleanup > context -> object system / Context",
+          "perRow": 1,
+          "bytesPerRow": 20,
+          "count": 10000,
+          "bytes": 200000
+        },
+        {
+          "kind": "RowBuilder.hydration > context -> object system / Context",
           "perRow": 1,
           "bytesPerRow": 20,
           "count": 10000,
@@ -4345,53 +4349,53 @@
           "bytes": 200000
         },
         {
-          "kind": "system / Context.slots_1 > elements -> array (object elements)",
-          "perRow": 0.25,
-          "bytesPerRow": 19.8,
-          "count": 2504,
-          "bytes": 197528
+          "kind": "Object.w > context -> object system / Context",
+          "perRow": 0.995,
+          "bytesPerRow": 19.9,
+          "count": 9949,
+          "bytes": 198980
+        },
+        {
+          "kind": "Array.1 > context -> object system / Context",
+          "perRow": 0.975,
+          "bytesPerRow": 19.5,
+          "count": 9754,
+          "bytes": 195080
+        },
+        {
+          "kind": "Owner.parentLink -> object OwnerLink",
+          "perRow": 0.536,
+          "bytesPerRow": 19.3,
+          "count": 5361,
+          "bytes": 192996
+        },
+        {
+          "kind": "OwnerLink.child -> object Owner",
+          "perRow": 0.308,
+          "bytesPerRow": 18.5,
+          "count": 3084,
+          "bytes": 185040
         },
         {
           "kind": "Memo$1.value > elements -> array (object elements)",
-          "perRow": 1.457,
-          "bytesPerRow": 19.3,
-          "count": 14571,
-          "bytes": 193136
+          "perRow": 1.351,
+          "bytesPerRow": 17.6,
+          "count": 13511,
+          "bytes": 176176
         },
         {
-          "kind": "system / Context.this -> object RowBuilder",
-          "perRow": 0.399,
-          "bytesPerRow": 19.2,
-          "count": 3990,
-          "bytes": 191520
+          "kind": "Array.1 -> object Arm",
+          "perRow": 0.732,
+          "bytesPerRow": 17.6,
+          "count": 7319,
+          "bytes": 175656
         },
         {
-          "kind": "RegionSite.owner -> object RootScope",
-          "perRow": 0.292,
-          "bytesPerRow": 18.7,
-          "count": 2920,
-          "bytes": 186880
-        },
-        {
-          "kind": "Object.w -> closure",
-          "perRow": 0.667,
-          "bytesPerRow": 18.7,
-          "count": 6672,
-          "bytes": 186816
-        },
-        {
-          "kind": "Object.w > context -> object system / Context",
-          "perRow": 0.667,
-          "bytesPerRow": 18.7,
-          "count": 6672,
-          "bytes": 186816
-        },
-        {
-          "kind": "RegionSite.builder -> object RowBuilder",
-          "perRow": 0.375,
-          "bytesPerRow": 18,
-          "count": 3754,
-          "bytes": 180192
+          "kind": "Array.0 -> object Row$2",
+          "perRow": 0.52,
+          "bytesPerRow": 16.6,
+          "count": 5197,
+          "bytes": 166304
         }
       ],
       "native": [
@@ -4438,18 +4442,18 @@
           "bytes": 2400000
         },
         {
-          "kind": "native <td>",
-          "perRow": 2,
-          "bytesPerRow": 232.1,
-          "count": 20000,
-          "bytes": 2320864
-        },
-        {
           "kind": "native blink::LayoutText",
           "perRow": 2,
           "bytesPerRow": 224,
           "count": 20000,
           "bytes": 2240000
+        },
+        {
+          "kind": "native <td>",
+          "perRow": 2,
+          "bytesPerRow": 221.8,
+          "count": 20000,
+          "bytes": 2218416
         },
         {
           "kind": "native Comment",
@@ -4557,14 +4561,14 @@
           "bytes": 640000
         },
         {
-          "kind": "native <span",
+          "kind": "native <b>",
           "perRow": 0.5,
           "bytesPerRow": 60,
           "count": 5000,
           "bytes": 600000
         },
         {
-          "kind": "native <b>",
+          "kind": "native <span",
           "perRow": 0.5,
           "bytesPerRow": 60,
           "count": 5000,
@@ -4593,10 +4597,10 @@
         },
         {
           "kind": "native system",
-          "perRow": 1.02,
-          "bytesPerRow": 22.1,
-          "count": 10199,
-          "bytes": 220844
+          "perRow": 1.032,
+          "bytesPerRow": 22.8,
+          "count": 10321,
+          "bytes": 228016
         },
         {
           "kind": "native blink::HeapVectorBacking<blink::ShapeResultCharacterData>",
@@ -4608,6 +4612,13 @@
       ],
       "removed": [
         {
+          "kind": "code system",
+          "perRow": 0.02,
+          "bytesPerRow": 3.3,
+          "count": 201,
+          "bytes": 33196
+        },
+        {
           "kind": "array ",
           "perRow": 0,
           "bytesPerRow": 3.3,
@@ -4615,18 +4626,11 @@
           "bytes": 33000
         },
         {
-          "kind": "code system",
-          "perRow": 0.018,
-          "bytesPerRow": 2.9,
-          "count": 177,
-          "bytes": 28812
-        },
-        {
           "kind": "native system",
-          "perRow": 0.006,
-          "bytesPerRow": 1.2,
-          "count": 63,
-          "bytes": 11724
+          "perRow": 0.011,
+          "bytesPerRow": 1.5,
+          "count": 107,
+          "bytes": 14964
         },
         {
           "kind": "native blink::HeapHashTableBacking<blink::HashTable<cppgc::internal::BasicMember<const",
@@ -4647,7 +4651,7 @@
           "perRow": 0.001,
           "bytesPerRow": 0.1,
           "count": 5,
-          "bytes": 532
+          "bytes": 536
         },
         {
           "kind": "native blink::HeapVectorBacking<blink::PaintChunk>",
@@ -4690,6 +4694,13 @@
           "bytesPerRow": 0,
           "count": 3,
           "bytes": 216
+        },
+        {
+          "kind": "native blink::HeapHashTableBacking<blink::HashTable<unsigned",
+          "perRow": 0,
+          "bytesPerRow": 0,
+          "count": 1,
+          "bytes": 200
         },
         {
           "kind": "native blink::LayoutResult::RareData",
@@ -4739,13 +4750,6 @@
           "bytesPerRow": 0,
           "count": 1,
           "bytes": 64
-        },
-        {
-          "kind": "native blink::SelectionPaintRange",
-          "perRow": 0,
-          "bytesPerRow": 0,
-          "count": 1,
-          "bytes": 32
         }
       ]
     },
@@ -4755,10 +4759,10 @@
       "rows": 1000,
       "replicate": 1,
       "after": "create",
-      "jsBytesPerRow": 3843.4,
-      "codeBytesPerRow": 94.6,
-      "nativeBytesPerRow": 4521.6,
-      "removedBytesPerRow": 17.5,
+      "jsBytesPerRow": 3839.4,
+      "codeBytesPerRow": 100,
+      "nativeBytesPerRow": 4522.1,
+      "removedBytesPerRow": 17.9,
       "js": [
         {
           "kind": "array (object elements)",
@@ -4777,9 +4781,9 @@
         {
           "kind": "object system / Context",
           "perRow": 17.5,
-          "bytesPerRow": 484,
+          "bytesPerRow": 476,
           "count": 17500,
-          "bytes": 484000
+          "bytes": 476000
         },
         {
           "kind": "object OwnerLink",
@@ -4859,6 +4863,13 @@
           "bytes": 64000
         },
         {
+          "kind": "object Object",
+          "perRow": 2,
+          "bytesPerRow": 52,
+          "count": 2000,
+          "bytes": 52000
+        },
+        {
           "kind": "object OnceRow$3",
           "perRow": 1,
           "bytesPerRow": 52,
@@ -4870,13 +4881,6 @@
           "perRow": 1,
           "bytesPerRow": 48,
           "count": 1000,
-          "bytes": 48000
-        },
-        {
-          "kind": "object Object",
-          "perRow": 2,
-          "bytesPerRow": 48,
-          "count": 2000,
           "bytes": 48000
         },
         {
@@ -4930,9 +4934,9 @@
         },
         {
           "kind": "string",
-          "perRow": 24.528,
+          "perRow": 24.583,
           "bytesPerRow": 14.4,
-          "count": 24528,
+          "count": 24583,
           "bytes": 14416
         },
         {
@@ -4951,9 +4955,9 @@
         },
         {
           "kind": "number",
-          "perRow": 22.399,
+          "perRow": 22.454,
           "bytesPerRow": 0,
-          "count": 22399,
+          "count": 22454,
           "bytes": 0
         }
       ],
@@ -5018,10 +5022,10 @@
       "holders": [
         {
           "kind": "OwnerLink.child -> object Effect$1",
-          "perRow": 2.56,
-          "bytesPerRow": 194.6,
-          "count": 2560,
-          "bytes": 194560
+          "perRow": 2.733,
+          "bytesPerRow": 207.7,
+          "count": 2733,
+          "bytes": 207708
         },
         {
           "kind": "Effect$1.sources -> object SourceList",
@@ -5031,18 +5035,18 @@
           "bytes": 140000
         },
         {
+          "kind": "Effect$1.body > context -> object system / Context",
+          "perRow": 2.181,
+          "bytesPerRow": 99.8,
+          "count": 2181,
+          "bytes": 99756
+        },
+        {
           "kind": "Effect$1.body -> closure",
           "perRow": 3.5,
           "bytesPerRow": 98,
           "count": 3500,
           "bytes": 98000
-        },
-        {
-          "kind": "Effect$1.body > context -> object system / Context",
-          "perRow": 2.071,
-          "bytesPerRow": 91.4,
-          "count": 2071,
-          "bytes": 91396
         },
         {
           "kind": "Signal$1.observers -> object ObserverSet",
@@ -5060,20 +5064,13 @@
         },
         {
           "kind": "system / Context.site -> object RegionSite",
-          "perRow": 0.993,
-          "bytesPerRow": 79.4,
-          "count": 993,
-          "bytes": 79440
+          "perRow": 0.981,
+          "bytesPerRow": 78.5,
+          "count": 981,
+          "bytes": 78480
         },
         {
           "kind": "RegionSite.laidOut > elements -> array (object elements)",
-          "perRow": 1,
-          "bytesPerRow": 76,
-          "count": 1000,
-          "bytes": 76000
-        },
-        {
-          "kind": "RootScope.cleanupOrder > elements -> array (object elements)",
           "perRow": 1,
           "bytesPerRow": 76,
           "count": 1000,
@@ -5087,11 +5084,25 @@
           "bytes": 76000
         },
         {
-          "kind": "system / Context.previous > previous -> object system / Context",
-          "perRow": 2.313,
-          "bytesPerRow": 63.8,
-          "count": 2313,
-          "bytes": 63788
+          "kind": "RootScope.cleanupOrder > elements -> array (object elements)",
+          "perRow": 1,
+          "bytesPerRow": 76,
+          "count": 1000,
+          "bytes": 76000
+        },
+        {
+          "kind": "OwnerLink.child -> object RootScope",
+          "perRow": 1.08,
+          "bytesPerRow": 69.1,
+          "count": 1080,
+          "bytes": 69120
+        },
+        {
+          "kind": "Array.0 -> object Memo$1",
+          "perRow": 0.754,
+          "bytesPerRow": 66.4,
+          "count": 754,
+          "bytes": 66352
         },
         {
           "kind": "Effect$1.scope -> object Owner",
@@ -5108,11 +5119,11 @@
           "bytes": 58000
         },
         {
-          "kind": "OwnerLink.Next@ -> object OwnerLink",
-          "perRow": 1.573,
-          "bytesPerRow": 56.6,
-          "count": 1573,
-          "bytes": 56628
+          "kind": "OwnerLink.child -> object Memo$1",
+          "perRow": 0.648,
+          "bytesPerRow": 57,
+          "count": 648,
+          "bytes": 57024
         },
         {
           "kind": "Memo$1.compute -> closure",
@@ -5157,11 +5168,18 @@
           "bytes": 54000
         },
         {
-          "kind": "array (object elements).0 -> object Effect$1",
-          "perRow": 0.689,
-          "bytesPerRow": 52.4,
-          "count": 689,
-          "bytes": 52364
+          "kind": "system / Context.previous > previous -> object system / Context",
+          "perRow": 2.178,
+          "bytesPerRow": 53.5,
+          "count": 2178,
+          "bytes": 53528
+        },
+        {
+          "kind": "OwnerLink.Prev@ -> object OwnerLink",
+          "perRow": 1.473,
+          "bytesPerRow": 53,
+          "count": 1473,
+          "bytes": 53028
         },
         {
           "kind": "closure.context > previous -> object system / Context",
@@ -5171,67 +5189,39 @@
           "bytes": 52000
         },
         {
-          "kind": "Effect$1.link -> object OwnerLink",
-          "perRow": 1.431,
-          "bytesPerRow": 51.5,
-          "count": 1431,
-          "bytes": 51516
+          "kind": "OwnerLink.Next@ -> object OwnerLink",
+          "perRow": 1.442,
+          "bytesPerRow": 51.9,
+          "count": 1442,
+          "bytes": 51912
         },
         {
-          "kind": "system / Context.selection -> object Memo$1",
-          "perRow": 0.497,
-          "bytesPerRow": 43.7,
-          "count": 497,
-          "bytes": 43736
+          "kind": "OnceRow$3.Scope@ -> object Owner",
+          "perRow": 0.823,
+          "bytesPerRow": 49.4,
+          "count": 823,
+          "bytes": 49380
         },
         {
-          "kind": "OwnerLink.Prev@ -> object OwnerLink",
-          "perRow": 1.2,
-          "bytesPerRow": 43.2,
-          "count": 1200,
-          "bytes": 43200
+          "kind": "RootScope.head -> object OwnerLink",
+          "perRow": 1.253,
+          "bytesPerRow": 45.1,
+          "count": 1253,
+          "bytes": 45108
+        },
+        {
+          "kind": "Array.0 -> object Effect$1",
+          "perRow": 0.547,
+          "bytesPerRow": 41.6,
+          "count": 547,
+          "bytes": 41572
         },
         {
           "kind": "RegionSite.builder -> object RowBuilder",
-          "perRow": 0.89,
-          "bytesPerRow": 42.7,
-          "count": 890,
-          "bytes": 42720
-        },
-        {
-          "kind": "OwnerLink.child -> object RootScope",
-          "perRow": 0.662,
-          "bytesPerRow": 42.4,
-          "count": 662,
-          "bytes": 42368
-        },
-        {
-          "kind": "OwnerLink.owner -> object RootScope",
-          "perRow": 0.634,
-          "bytesPerRow": 40.6,
-          "count": 634,
-          "bytes": 40576
-        },
-        {
-          "kind": "system / Context.armOwner -> object RootScope",
-          "perRow": 0.618,
-          "bytesPerRow": 39.6,
-          "count": 618,
-          "bytes": 39552
-        },
-        {
-          "kind": "OwnerLink.child -> object Memo$1",
-          "perRow": 0.428,
-          "bytesPerRow": 37.7,
-          "count": 428,
-          "bytes": 37664
-        },
-        {
-          "kind": "SourceList.first -> object Memo$1",
-          "perRow": 0.413,
-          "bytesPerRow": 36.3,
-          "count": 413,
-          "bytes": 36344
+          "perRow": 0.837,
+          "bytesPerRow": 40.2,
+          "count": 837,
+          "bytes": 40176
         },
         {
           "kind": "system / Context.rows > context -> object system / Context",
@@ -5241,11 +5231,18 @@
           "bytes": 36000
         },
         {
-          "kind": "Memo$1.link -> object OwnerLink",
-          "perRow": 0.956,
-          "bytesPerRow": 34.4,
-          "count": 956,
-          "bytes": 34416
+          "kind": "OwnerLink.owner -> object RootScope",
+          "perRow": 0.529,
+          "bytesPerRow": 33.9,
+          "count": 529,
+          "bytes": 33856
+        },
+        {
+          "kind": "Owner.parentLink -> object OwnerLink",
+          "perRow": 0.907,
+          "bytesPerRow": 32.7,
+          "count": 907,
+          "bytes": 32652
         },
         {
           "kind": "system / Context.armPlacement -> object PlacementPass",
@@ -5263,45 +5260,38 @@
         },
         {
           "kind": "system / Context.parentPath -> object InstancePath",
-          "perRow": 0.999,
-          "bytesPerRow": 32,
-          "count": 999,
-          "bytes": 31968
+          "perRow": 0.996,
+          "bytesPerRow": 31.9,
+          "count": 996,
+          "bytes": 31872
+        },
+        {
+          "kind": "OnceRow$3.Value@ -> object Row$2",
+          "perRow": 0.916,
+          "bytesPerRow": 29.3,
+          "count": 916,
+          "bytes": 29312
         },
         {
           "kind": "system / Context.armItem -> object Signal$1",
-          "perRow": 0.976,
-          "bytesPerRow": 31.2,
-          "count": 976,
-          "bytes": 31232
+          "perRow": 0.889,
+          "bytesPerRow": 28.4,
+          "count": 889,
+          "bytes": 28448
         },
         {
           "kind": "system / Context.f -> closure",
-          "perRow": 1.093,
-          "bytesPerRow": 30.6,
-          "count": 1093,
-          "bytes": 30604
+          "perRow": 1.011,
+          "bytesPerRow": 28.3,
+          "count": 1011,
+          "bytes": 28308
         },
         {
           "kind": "system / Context.f > context -> object system / Context",
-          "perRow": 1.093,
-          "bytesPerRow": 30.6,
-          "count": 1093,
-          "bytes": 30604
-        },
-        {
-          "kind": "system / Context.items -> object Memo$1",
-          "perRow": 0.335,
-          "bytesPerRow": 29.5,
-          "count": 335,
-          "bytes": 29480
-        },
-        {
-          "kind": "Array.0 -> object Memo$1",
-          "perRow": 0.32,
+          "perRow": 1.011,
           "bytesPerRow": 28.2,
-          "count": 320,
-          "bytes": 28160
+          "count": 1011,
+          "bytes": 28220
         },
         {
           "kind": "(none) -> array (object elements)",
@@ -5309,6 +5299,13 @@
           "bytesPerRow": 28.1,
           "count": 3,
           "bytes": 28068
+        },
+        {
+          "kind": "Owner.firstCleanup -> closure",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 1000,
+          "bytes": 28000
         },
         {
           "kind": "system / Context.rows -> closure",
@@ -5325,14 +5322,35 @@
           "bytes": 28000
         },
         {
-          "kind": "Owner.firstCleanup -> closure",
+          "kind": "RegionSite.releaseNodes -> closure",
           "perRow": 1,
           "bytesPerRow": 28,
           "count": 1000,
           "bytes": 28000
         },
         {
-          "kind": "RegionSite.releaseNodes -> closure",
+          "kind": "Object.c -> closure",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 1000,
+          "bytes": 28000
+        },
+        {
+          "kind": "RowBuilder.hydration -> closure",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 1000,
+          "bytes": 28000
+        },
+        {
+          "kind": "system / Context.current -> closure",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 1000,
+          "bytes": 28000
+        },
+        {
+          "kind": "RootScope.firstCleanup -> closure",
           "perRow": 1,
           "bytesPerRow": 28,
           "count": 1000,
@@ -5353,67 +5371,32 @@
           "bytes": 28000
         },
         {
-          "kind": "Object.c -> closure",
-          "perRow": 1,
-          "bytesPerRow": 28,
-          "count": 1000,
-          "bytes": 28000
-        },
-        {
-          "kind": "system / Context.current -> closure",
-          "perRow": 1,
-          "bytesPerRow": 28,
-          "count": 1000,
-          "bytes": 28000
-        },
-        {
-          "kind": "RowBuilder.hydration -> closure",
-          "perRow": 1,
-          "bytesPerRow": 28,
-          "count": 1000,
-          "bytes": 28000
-        },
-        {
-          "kind": "RootScope.firstCleanup -> closure",
-          "perRow": 1,
-          "bytesPerRow": 28,
-          "count": 1000,
-          "bytes": 28000
-        },
-        {
-          "kind": "ArmRow.Mode -> object Signal$1",
-          "perRow": 0.871,
-          "bytesPerRow": 27.9,
-          "count": 871,
-          "bytes": 27872
-        },
-        {
           "kind": "Array.0 -> closure",
-          "perRow": 0.947,
-          "bytesPerRow": 26.5,
-          "count": 947,
-          "bytes": 26516
+          "perRow": 0.996,
+          "bytesPerRow": 27.9,
+          "count": 996,
+          "bytes": 27888
         },
         {
           "kind": "Array.1 -> closure",
-          "perRow": 0.947,
-          "bytesPerRow": 26.5,
-          "count": 947,
-          "bytes": 26516
+          "perRow": 0.996,
+          "bytesPerRow": 27.9,
+          "count": 996,
+          "bytes": 27888
         },
         {
           "kind": "Object.w -> closure",
-          "perRow": 0.907,
-          "bytesPerRow": 25.4,
-          "count": 907,
-          "bytes": 25396
+          "perRow": 0.989,
+          "bytesPerRow": 27.7,
+          "count": 989,
+          "bytes": 27692
         },
         {
-          "kind": "Object.w > context -> object system / Context",
-          "perRow": 0.907,
-          "bytesPerRow": 25.4,
-          "count": 907,
-          "bytes": 25396
+          "kind": "Owner.head -> object OwnerLink",
+          "perRow": 0.69,
+          "bytesPerRow": 24.8,
+          "count": 690,
+          "bytes": 24840
         },
         {
           "kind": "(none) -> array ",
@@ -5423,24 +5406,17 @@
           "bytes": 24692
         },
         {
-          "kind": "RootScope.head -> object OwnerLink",
-          "perRow": 0.679,
-          "bytesPerRow": 24.4,
-          "count": 679,
-          "bytes": 24444
+          "kind": "RegionSite.errors -> object RegionErrors",
+          "perRow": 1,
+          "bytesPerRow": 24,
+          "count": 1000,
+          "bytes": 24000
         },
         {
           "kind": "system / Context.state -> object Array",
           "perRow": 1.5,
           "bytesPerRow": 24,
           "count": 1500,
-          "bytes": 24000
-        },
-        {
-          "kind": "RegionSite.errors -> object RegionErrors",
-          "perRow": 1,
-          "bytesPerRow": 24,
-          "count": 1000,
           "bytes": 24000
         },
         {
@@ -5452,59 +5428,73 @@
         },
         {
           "kind": "Setup.OnCleanup > context -> object system / Context",
-          "perRow": 0.996,
+          "perRow": 0.997,
           "bytesPerRow": 23.9,
-          "count": 996,
-          "bytes": 23904
+          "count": 997,
+          "bytes": 23928
         },
         {
-          "kind": "OnceRow$3.Scope@ -> object Owner",
-          "perRow": 0.396,
-          "bytesPerRow": 23.8,
-          "count": 396,
-          "bytes": 23760
+          "kind": "system / Context.armOwner -> object RootScope",
+          "perRow": 0.349,
+          "bytesPerRow": 22.3,
+          "count": 349,
+          "bytes": 22336
         },
         {
-          "kind": "Owner.parentLink -> object OwnerLink",
-          "perRow": 0.612,
-          "bytesPerRow": 22,
-          "count": 612,
-          "bytes": 22032
+          "kind": "SourceList.first -> object Memo$1",
+          "perRow": 0.253,
+          "bytesPerRow": 22.3,
+          "count": 253,
+          "bytes": 22264
         },
         {
-          "kind": "Owner.head -> object OwnerLink",
-          "perRow": 0.612,
-          "bytesPerRow": 22,
-          "count": 612,
-          "bytes": 22032
+          "kind": "Effect$1.link -> object OwnerLink",
+          "perRow": 0.607,
+          "bytesPerRow": 21.9,
+          "count": 607,
+          "bytes": 21852
+        },
+        {
+          "kind": "Array.0 -> object Row$2",
+          "perRow": 0.681,
+          "bytesPerRow": 21.8,
+          "count": 681,
+          "bytes": 21792
         },
         {
           "kind": "Array.0 > context -> object system / Context",
-          "perRow": 0.783,
-          "bytesPerRow": 21.9,
-          "count": 783,
-          "bytes": 21924
-        },
-        {
-          "kind": "system / Context.row -> object Row$2",
-          "perRow": 0.673,
-          "bytesPerRow": 21.5,
-          "count": 673,
-          "bytes": 21536
-        },
-        {
-          "kind": "RootScope.parentLink -> object OwnerLink",
-          "perRow": 0.589,
+          "perRow": 0.756,
           "bytesPerRow": 21.2,
-          "count": 589,
-          "bytes": 21204
+          "count": 756,
+          "bytes": 21168
+        },
+        {
+          "kind": "Array.1 -> object Arm",
+          "perRow": 0.868,
+          "bytesPerRow": 20.8,
+          "count": 868,
+          "bytes": 20832
+        },
+        {
+          "kind": "Owner.tail -> object OwnerLink",
+          "perRow": 0.571,
+          "bytesPerRow": 20.6,
+          "count": 571,
+          "bytes": 20556
+        },
+        {
+          "kind": "ArmRow.Mode -> object Signal$1",
+          "perRow": 0.633,
+          "bytesPerRow": 20.3,
+          "count": 633,
+          "bytes": 20256
         },
         {
           "kind": "Memo$1.value -> object Array",
-          "perRow": 1.296,
-          "bytesPerRow": 20.7,
-          "count": 1296,
-          "bytes": 20736
+          "perRow": 1.259,
+          "bytesPerRow": 20.1,
+          "count": 1259,
+          "bytes": 20144
         },
         {
           "kind": "Array.elements -> array (object elements)",
@@ -5515,20 +5505,6 @@
         },
         {
           "kind": "Owner.firstCleanup > context -> object system / Context",
-          "perRow": 1,
-          "bytesPerRow": 20,
-          "count": 1000,
-          "bytes": 20000
-        },
-        {
-          "kind": "RowBuilder.hydration > context -> object system / Context",
-          "perRow": 1,
-          "bytesPerRow": 20,
-          "count": 1000,
-          "bytes": 20000
-        },
-        {
-          "kind": "RootScope.firstCleanup > context -> object system / Context",
           "perRow": 1,
           "bytesPerRow": 20,
           "count": 1000,
@@ -5549,32 +5525,60 @@
           "bytes": 20000
         },
         {
-          "kind": "Owner.tail -> object OwnerLink",
-          "perRow": 0.554,
-          "bytesPerRow": 19.9,
-          "count": 554,
-          "bytes": 19944
+          "kind": "RowBuilder.hydration > context -> object system / Context",
+          "perRow": 1,
+          "bytesPerRow": 20,
+          "count": 1000,
+          "bytes": 20000
+        },
+        {
+          "kind": "RootScope.firstCleanup > context -> object system / Context",
+          "perRow": 1,
+          "bytesPerRow": 20,
+          "count": 1000,
+          "bytes": 20000
         },
         {
           "kind": "Array.1 > context -> object system / Context",
-          "perRow": 0.947,
-          "bytesPerRow": 18.9,
-          "count": 947,
-          "bytes": 18940
+          "perRow": 0.996,
+          "bytesPerRow": 19.9,
+          "count": 996,
+          "bytes": 19920
         },
         {
-          "kind": "Array.1 -> object Arm",
-          "perRow": 0.764,
-          "bytesPerRow": 18.3,
-          "count": 764,
-          "bytes": 18336
+          "kind": "RootScope.parentLink -> object OwnerLink",
+          "perRow": 0.55,
+          "bytesPerRow": 19.8,
+          "count": 550,
+          "bytes": 19800
         },
         {
-          "kind": "OwnerLink.owner -> object Owner",
-          "perRow": 0.287,
-          "bytesPerRow": 17.2,
-          "count": 287,
-          "bytes": 17220
+          "kind": "Object.w > context -> object system / Context",
+          "perRow": 0.989,
+          "bytesPerRow": 19.8,
+          "count": 989,
+          "bytes": 19780
+        },
+        {
+          "kind": "system / Context.selection -> object Memo$1",
+          "perRow": 0.212,
+          "bytesPerRow": 18.7,
+          "count": 212,
+          "bytes": 18656
+        },
+        {
+          "kind": "RootScope.tail -> object OwnerLink",
+          "perRow": 0.504,
+          "bytesPerRow": 18.1,
+          "count": 504,
+          "bytes": 18144
+        },
+        {
+          "kind": "Memo$1.link -> object OwnerLink",
+          "perRow": 0.503,
+          "bytesPerRow": 18.1,
+          "count": 503,
+          "bytes": 18108
         }
       ],
       "native": [
@@ -5740,14 +5744,14 @@
           "bytes": 64000
         },
         {
-          "kind": "native <span",
+          "kind": "native <b>",
           "perRow": 0.5,
           "bytesPerRow": 60,
           "count": 500,
           "bytes": 60000
         },
         {
-          "kind": "native <b>",
+          "kind": "native <span",
           "perRow": 0.5,
           "bytesPerRow": 60,
           "count": 500,
@@ -5769,10 +5773,10 @@
         },
         {
           "kind": "native system",
-          "perRow": 1.264,
-          "bytesPerRow": 39.6,
-          "count": 1264,
-          "bytes": 39616
+          "perRow": 1.275,
+          "bytesPerRow": 39.9,
+          "count": 1275,
+          "bytes": 39932
         },
         {
           "kind": "native blink::HeapVectorBacking<blink::HarfBuzzRunGlyphData>",
@@ -5792,10 +5796,10 @@
       "removed": [
         {
           "kind": "native system",
-          "perRow": 0.096,
-          "bytesPerRow": 10.4,
-          "count": 96,
-          "bytes": 10440
+          "perRow": 0.106,
+          "bytesPerRow": 10.6,
+          "count": 106,
+          "bytes": 10612
         },
         {
           "kind": "code system",
@@ -5810,6 +5814,13 @@
           "bytesPerRow": 0.6,
           "count": 1,
           "bytes": 584
+        },
+        {
+          "kind": "object shape system",
+          "perRow": 0.004,
+          "bytesPerRow": 0.5,
+          "count": 4,
+          "bytes": 520
         },
         {
           "kind": "native blink::HeapVectorBacking<blink::PaintChunk>",
@@ -5838,13 +5849,6 @@
           "bytesPerRow": 0.4,
           "count": 3,
           "bytes": 360
-        },
-        {
-          "kind": "object shape system",
-          "perRow": 0.002,
-          "bytesPerRow": 0.3,
-          "count": 2,
-          "bytes": 328
         },
         {
           "kind": "native blink::HitTestData",
@@ -5939,9 +5943,9 @@
       "replicate": 1,
       "after": "create",
       "jsBytesPerRow": 3511.4,
-      "codeBytesPerRow": 83.7,
-      "nativeBytesPerRow": 4487.5,
-      "removedBytesPerRow": 34.2,
+      "codeBytesPerRow": 95.3,
+      "nativeBytesPerRow": 4488.2,
+      "removedBytesPerRow": 37.5,
       "js": [
         {
           "kind": "array (object elements)",
@@ -6056,14 +6060,14 @@
           "bytes": 48000
         },
         {
-          "kind": "object PlacementPass",
+          "kind": "object InstancePath",
           "perRow": 1,
           "bytesPerRow": 32,
           "count": 1000,
           "bytes": 32000
         },
         {
-          "kind": "object InstancePath",
+          "kind": "object PlacementPass",
           "perRow": 1,
           "bytesPerRow": 32,
           "count": 1000,
@@ -6106,9 +6110,9 @@
         },
         {
           "kind": "string",
-          "perRow": 24.575,
+          "perRow": 24.63,
           "bytesPerRow": 14.4,
-          "count": 24575,
+          "count": 24630,
           "bytes": 14416
         },
         {
@@ -6127,9 +6131,9 @@
         },
         {
           "kind": "number",
-          "perRow": 22.446,
+          "perRow": 22.501,
           "bytesPerRow": 0,
-          "count": 22446,
+          "count": 22501,
           "bytes": 0
         }
       ],
@@ -6194,10 +6198,10 @@
       "holders": [
         {
           "kind": "OwnerLink.child -> object Effect$1",
-          "perRow": 2.66,
-          "bytesPerRow": 202.2,
-          "count": 2660,
-          "bytes": 202160
+          "perRow": 2.31,
+          "bytesPerRow": 175.6,
+          "count": 2310,
+          "bytes": 175560
         },
         {
           "kind": "Effect$1.sources -> object SourceList",
@@ -6214,13 +6218,6 @@
           "bytes": 98000
         },
         {
-          "kind": "Array.0 -> object Memo$1",
-          "perRow": 1.023,
-          "bytesPerRow": 90,
-          "count": 1023,
-          "bytes": 90024
-        },
-        {
           "kind": "Signal$1.observers -> object ObserverSet",
           "perRow": 3,
           "bytesPerRow": 84,
@@ -6228,18 +6225,25 @@
           "bytes": 84000
         },
         {
-          "kind": "Effect$1.body > context -> object system / Context",
-          "perRow": 1.923,
-          "bytesPerRow": 80.1,
-          "count": 1923,
-          "bytes": 80148
-        },
-        {
           "kind": "Memo$1.sources -> object SourceList",
           "perRow": 2,
           "bytesPerRow": 80,
           "count": 2000,
           "bytes": 80000
+        },
+        {
+          "kind": "system / Context.previous > previous -> object system / Context",
+          "perRow": 2.516,
+          "bytesPerRow": 79.2,
+          "count": 2516,
+          "bytes": 79216
+        },
+        {
+          "kind": "system / Context.site -> object RegionSite",
+          "perRow": 0.96,
+          "bytesPerRow": 76.8,
+          "count": 960,
+          "bytes": 76800
         },
         {
           "kind": "RegionSite.laidOut > elements -> array (object elements)",
@@ -6263,18 +6267,11 @@
           "bytes": 76000
         },
         {
-          "kind": "system / Context.previous > previous -> object system / Context",
-          "perRow": 2.377,
-          "bytesPerRow": 68.7,
-          "count": 2377,
-          "bytes": 68652
-        },
-        {
-          "kind": "system / Context.site -> object RegionSite",
-          "perRow": 0.851,
-          "bytesPerRow": 68.1,
-          "count": 851,
-          "bytes": 68080
+          "kind": "Effect$1.body > context -> object system / Context",
+          "perRow": 1.862,
+          "bytesPerRow": 75.5,
+          "count": 1862,
+          "bytes": 75512
         },
         {
           "kind": "Effect$1.scope -> object Owner",
@@ -6284,39 +6281,11 @@
           "bytes": 60000
         },
         {
-          "kind": "OnceRow$3.Scope@ -> object Owner",
-          "perRow": 0.983,
-          "bytesPerRow": 59,
-          "count": 983,
-          "bytes": 58980
-        },
-        {
-          "kind": "OwnerLink.Next@ -> object OwnerLink",
-          "perRow": 1.625,
-          "bytesPerRow": 58.5,
-          "count": 1625,
-          "bytes": 58500
-        },
-        {
           "kind": "system / Context.state > elements -> array (object elements)",
           "perRow": 1.5,
           "bytesPerRow": 58,
           "count": 1500,
           "bytes": 58000
-        },
-        {
-          "kind": "ObserverSet.items -> object Array",
-          "perRow": 3.5,
-          "bytesPerRow": 56,
-          "count": 3500,
-          "bytes": 56000
-        },
-        {
-          "kind": "ObserverSet.slots -> object Array",
-          "perRow": 3.5,
-          "bytesPerRow": 56,
-          "count": 3500,
-          "bytes": 56000
         },
         {
           "kind": "Memo$1.compute -> closure",
@@ -6333,6 +6302,27 @@
           "bytes": 56000
         },
         {
+          "kind": "ObserverSet.items -> object Array",
+          "perRow": 3.5,
+          "bytesPerRow": 56,
+          "count": 3500,
+          "bytes": 56000
+        },
+        {
+          "kind": "ObserverSet.slots -> object Array",
+          "perRow": 3.5,
+          "bytesPerRow": 56,
+          "count": 3500,
+          "bytes": 56000
+        },
+        {
+          "kind": "system / Context.selection -> object Memo$1",
+          "perRow": 0.63,
+          "bytesPerRow": 55.4,
+          "count": 630,
+          "bytes": 55440
+        },
+        {
           "kind": "ObserverSet.items > elements -> array (object elements)",
           "perRow": 3.5,
           "bytesPerRow": 54,
@@ -6347,6 +6337,13 @@
           "bytes": 54000
         },
         {
+          "kind": "system / Context.items -> object Memo$1",
+          "perRow": 0.6,
+          "bytesPerRow": 52.8,
+          "count": 600,
+          "bytes": 52800
+        },
+        {
           "kind": "closure.context > previous -> object system / Context",
           "perRow": 2,
           "bytesPerRow": 52,
@@ -6354,60 +6351,88 @@
           "bytes": 52000
         },
         {
-          "kind": "OwnerLink.child -> object RootScope",
-          "perRow": 0.794,
-          "bytesPerRow": 50.8,
-          "count": 794,
-          "bytes": 50816
+          "kind": "Memo$1.link -> object OwnerLink",
+          "perRow": 1.385,
+          "bytesPerRow": 49.9,
+          "count": 1385,
+          "bytes": 49860
         },
         {
           "kind": "OwnerLink.Prev@ -> object OwnerLink",
-          "perRow": 1.374,
-          "bytesPerRow": 49.5,
-          "count": 1374,
-          "bytes": 49464
+          "perRow": 1.378,
+          "bytesPerRow": 49.6,
+          "count": 1378,
+          "bytes": 49608
+        },
+        {
+          "kind": "array (object elements).0 -> object Effect$1",
+          "perRow": 0.652,
+          "bytesPerRow": 49.6,
+          "count": 652,
+          "bytes": 49552
+        },
+        {
+          "kind": "RootScope.parentLink -> object OwnerLink",
+          "perRow": 1.309,
+          "bytesPerRow": 47.1,
+          "count": 1309,
+          "bytes": 47124
         },
         {
           "kind": "OwnerLink.owner -> object RootScope",
-          "perRow": 0.747,
-          "bytesPerRow": 47.8,
-          "count": 747,
-          "bytes": 47808
+          "perRow": 0.713,
+          "bytesPerRow": 45.6,
+          "count": 713,
+          "bytes": 45632
         },
         {
-          "kind": "Effect$1.link -> object OwnerLink",
-          "perRow": 1.314,
-          "bytesPerRow": 47.3,
-          "count": 1314,
-          "bytes": 47304
-        },
-        {
-          "kind": "Array.0 -> object Effect$1",
-          "perRow": 0.587,
-          "bytesPerRow": 44.6,
-          "count": 587,
-          "bytes": 44612
-        },
-        {
-          "kind": "RootScope.head -> object OwnerLink",
-          "perRow": 1.105,
-          "bytesPerRow": 39.8,
-          "count": 1105,
-          "bytes": 39780
-        },
-        {
-          "kind": "system / Context.rows > context -> object system / Context",
-          "perRow": 1,
-          "bytesPerRow": 36,
-          "count": 1000,
-          "bytes": 36000
+          "kind": "system / Context.armOwner -> object RootScope",
+          "perRow": 0.676,
+          "bytesPerRow": 43.3,
+          "count": 676,
+          "bytes": 43264
         },
         {
           "kind": "RegionSite.builder -> object RowBuilder",
-          "perRow": 0.73,
-          "bytesPerRow": 35,
-          "count": 730,
-          "bytes": 35040
+          "perRow": 0.887,
+          "bytesPerRow": 42.6,
+          "count": 887,
+          "bytes": 42576
+        },
+        {
+          "kind": "OnceRow$3.Scope@ -> object Owner",
+          "perRow": 0.7,
+          "bytesPerRow": 42,
+          "count": 700,
+          "bytes": 42000
+        },
+        {
+          "kind": "Effect$1.link -> object OwnerLink",
+          "perRow": 1.097,
+          "bytesPerRow": 39.5,
+          "count": 1097,
+          "bytes": 39492
+        },
+        {
+          "kind": "OwnerLink.child -> object Memo$1",
+          "perRow": 0.422,
+          "bytesPerRow": 37.1,
+          "count": 422,
+          "bytes": 37136
+        },
+        {
+          "kind": "system / Context.rows > context -> object system / Context",
+          "perRow": 0.99,
+          "bytesPerRow": 35.6,
+          "count": 990,
+          "bytes": 35640
+        },
+        {
+          "kind": "OwnerLink.child -> object RootScope",
+          "perRow": 0.545,
+          "bytesPerRow": 34.9,
+          "count": 545,
+          "bytes": 34880
         },
         {
           "kind": "system / Context.armPlacement -> object PlacementPass",
@@ -6425,45 +6450,31 @@
         },
         {
           "kind": "system / Context.parentPath -> object InstancePath",
-          "perRow": 0.996,
-          "bytesPerRow": 31.9,
-          "count": 996,
-          "bytes": 31872
+          "perRow": 0.984,
+          "bytesPerRow": 31.5,
+          "count": 984,
+          "bytes": 31488
         },
         {
-          "kind": "OnceRow$3.Value@ -> object Row$2",
-          "perRow": 0.993,
-          "bytesPerRow": 31.8,
-          "count": 993,
-          "bytes": 31776
+          "kind": "Array.0 -> object Effect$1",
+          "perRow": 0.404,
+          "bytesPerRow": 30.7,
+          "count": 404,
+          "bytes": 30704
         },
         {
-          "kind": "Memo$1.link -> object OwnerLink",
-          "perRow": 0.88,
-          "bytesPerRow": 31.7,
-          "count": 880,
-          "bytes": 31680
+          "kind": "OwnerLink.Next@ -> object OwnerLink",
+          "perRow": 0.837,
+          "bytesPerRow": 30.1,
+          "count": 837,
+          "bytes": 30132
         },
         {
-          "kind": "SourceList.first -> object Memo$1",
-          "perRow": 0.36,
-          "bytesPerRow": 31.7,
-          "count": 360,
-          "bytes": 31680
-        },
-        {
-          "kind": "ArmRow.Mode -> object Signal$1",
-          "perRow": 0.917,
-          "bytesPerRow": 29.3,
-          "count": 917,
-          "bytes": 29344
-        },
-        {
-          "kind": "RootScope.parentLink -> object OwnerLink",
-          "perRow": 0.803,
-          "bytesPerRow": 28.9,
-          "count": 803,
-          "bytes": 28908
+          "kind": "system / Context.armItem -> object Signal$1",
+          "perRow": 0.933,
+          "bytesPerRow": 29.9,
+          "count": 933,
+          "bytes": 29856
         },
         {
           "kind": "(none) -> array (object elements)",
@@ -6471,13 +6482,6 @@
           "bytesPerRow": 28.1,
           "count": 3,
           "bytes": 28068
-        },
-        {
-          "kind": "RegionSite.releaseNodes -> closure",
-          "perRow": 1,
-          "bytesPerRow": 28,
-          "count": 1000,
-          "bytes": 28000
         },
         {
           "kind": "system / Context.rows -> closure",
@@ -6495,6 +6499,13 @@
         },
         {
           "kind": "Owner.firstCleanup -> closure",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 1000,
+          "bytes": 28000
+        },
+        {
+          "kind": "RegionSite.releaseNodes -> closure",
           "perRow": 1,
           "bytesPerRow": 28,
           "count": 1000,
@@ -6544,17 +6555,24 @@
         },
         {
           "kind": "Array.0 -> closure",
-          "perRow": 0.998,
-          "bytesPerRow": 27.9,
-          "count": 998,
-          "bytes": 27944
+          "perRow": 0.994,
+          "bytesPerRow": 27.8,
+          "count": 994,
+          "bytes": 27832
         },
         {
-          "kind": "system / Context.armOwner -> object RootScope",
-          "perRow": 0.418,
-          "bytesPerRow": 26.8,
-          "count": 418,
-          "bytes": 26752
+          "kind": "Array.0 -> object Memo$1",
+          "perRow": 0.292,
+          "bytesPerRow": 25.7,
+          "count": 292,
+          "bytes": 25696
+        },
+        {
+          "kind": "RootScope.head -> object OwnerLink",
+          "perRow": 0.713,
+          "bytesPerRow": 25.7,
+          "count": 713,
+          "bytes": 25668
         },
         {
           "kind": "(none) -> array ",
@@ -6565,10 +6583,10 @@
         },
         {
           "kind": "Array.0 > context -> object system / Context",
-          "perRow": 0.86,
+          "perRow": 0.859,
           "bytesPerRow": 24.1,
-          "count": 860,
-          "bytes": 24080
+          "count": 859,
+          "bytes": 24052
         },
         {
           "kind": "RegionSite.errors -> object RegionErrors",
@@ -6593,31 +6611,38 @@
         },
         {
           "kind": "Setup.OnCleanup > context -> object system / Context",
-          "perRow": 0.999,
+          "perRow": 1,
           "bytesPerRow": 24,
-          "count": 999,
-          "bytes": 23976
+          "count": 1000,
+          "bytes": 24000
         },
         {
-          "kind": "system / Context.selection -> object Memo$1",
-          "perRow": 0.262,
-          "bytesPerRow": 23.1,
-          "count": 262,
-          "bytes": 23056
+          "kind": "ArmRow.Mode -> object Signal$1",
+          "perRow": 0.705,
+          "bytesPerRow": 22.6,
+          "count": 705,
+          "bytes": 22560
         },
         {
-          "kind": "system / Context.armItem -> object Signal$1",
-          "perRow": 0.719,
-          "bytesPerRow": 23,
-          "count": 719,
-          "bytes": 23008
+          "kind": "Owner.head -> object OwnerLink",
+          "perRow": 0.609,
+          "bytesPerRow": 21.9,
+          "count": 609,
+          "bytes": 21924
         },
         {
-          "kind": "Memo$1.value -> object Array",
-          "perRow": 1.299,
+          "kind": "Owner.parentLink -> object OwnerLink",
+          "perRow": 0.578,
           "bytesPerRow": 20.8,
-          "count": 1299,
-          "bytes": 20784
+          "count": 578,
+          "bytes": 20808
+        },
+        {
+          "kind": "Array.1 -> object Arm",
+          "perRow": 0.865,
+          "bytesPerRow": 20.8,
+          "count": 865,
+          "bytes": 20760
         },
         {
           "kind": "Array.elements -> array (object elements)",
@@ -6655,39 +6680,18 @@
           "bytes": 20000
         },
         {
-          "kind": "Array.1 -> object Arm",
-          "perRow": 0.792,
-          "bytesPerRow": 19,
-          "count": 792,
-          "bytes": 19008
+          "kind": "Memo$1.value -> object Array",
+          "perRow": 1.202,
+          "bytesPerRow": 19.2,
+          "count": 1202,
+          "bytes": 19232
         },
         {
-          "kind": "Owner.parentLink -> object OwnerLink",
-          "perRow": 0.526,
-          "bytesPerRow": 18.9,
-          "count": 526,
-          "bytes": 18936
-        },
-        {
-          "kind": "Array.0 -> object Row$2",
-          "perRow": 0.586,
-          "bytesPerRow": 18.8,
-          "count": 586,
-          "bytes": 18752
-        },
-        {
-          "kind": "OwnerLink.child -> object Memo$1",
-          "perRow": 0.212,
-          "bytesPerRow": 18.7,
-          "count": 212,
-          "bytes": 18656
-        },
-        {
-          "kind": "Memo$1.value > elements -> array (object elements)",
-          "perRow": 1.299,
-          "bytesPerRow": 16.8,
-          "count": 1299,
-          "bytes": 16784
+          "kind": "system / Context.row -> object Row$2",
+          "perRow": 0.598,
+          "bytesPerRow": 19.1,
+          "count": 598,
+          "bytes": 19136
         },
         {
           "kind": "RegionSite.laidOut -> object Array",
@@ -6725,25 +6729,11 @@
           "bytes": 16000
         },
         {
-          "kind": "Memo$1.compute > context -> object system / Context",
-          "perRow": 0.2,
+          "kind": "Memo$1.value > elements -> array (object elements)",
+          "perRow": 1.202,
           "bytesPerRow": 15.2,
-          "count": 200,
-          "bytes": 15200
-        },
-        {
-          "kind": "array (object elements).0 -> object Effect$1",
-          "perRow": 0.194,
-          "bytesPerRow": 14.7,
-          "count": 194,
-          "bytes": 14744
-        },
-        {
-          "kind": "Array.6 -> string",
-          "perRow": 0.881,
-          "bytesPerRow": 14.1,
-          "count": 881,
-          "bytes": 14096
+          "count": 1202,
+          "bytes": 15232
         },
         {
           "kind": "system / Context.current -> closure",
@@ -6751,6 +6741,20 @@
           "bytesPerRow": 14,
           "count": 500,
           "bytes": 14000
+        },
+        {
+          "kind": "Array.6 -> string",
+          "perRow": 0.848,
+          "bytesPerRow": 13.6,
+          "count": 848,
+          "bytes": 13568
+        },
+        {
+          "kind": "Owner.tail -> object OwnerLink",
+          "perRow": 0.34,
+          "bytesPerRow": 12.2,
+          "count": 340,
+          "bytes": 12240
         }
       ],
       "native": [
@@ -6806,9 +6810,9 @@
         {
           "kind": "native <td>",
           "perRow": 2,
-          "bytesPerRow": 219,
+          "bytesPerRow": 218.9,
           "count": 2000,
-          "bytes": 218992
+          "bytes": 218896
         },
         {
           "kind": "native Comment",
@@ -6916,14 +6920,14 @@
           "bytes": 64000
         },
         {
-          "kind": "native <span",
+          "kind": "native <b>",
           "perRow": 0.5,
           "bytesPerRow": 60,
           "count": 500,
           "bytes": 60000
         },
         {
-          "kind": "native <b>",
+          "kind": "native <span",
           "perRow": 0.5,
           "bytesPerRow": 60,
           "count": 500,
@@ -6959,19 +6963,19 @@
         },
         {
           "kind": "native system",
-          "perRow": 0.19,
-          "bytesPerRow": 12.1,
-          "count": 190,
-          "bytes": 12136
+          "perRow": 0.205,
+          "bytesPerRow": 12.9,
+          "count": 205,
+          "bytes": 12928
         }
       ],
       "removed": [
         {
           "kind": "code system",
-          "perRow": 0.083,
-          "bytesPerRow": 15.8,
-          "count": 83,
-          "bytes": 15780
+          "perRow": 0.098,
+          "bytesPerRow": 18.6,
+          "count": 98,
+          "bytes": 18600
         },
         {
           "kind": "native blink::HeapHashTableBacking<blink::HashTable<cppgc::internal::BasicMember<const",
@@ -6982,10 +6986,10 @@
         },
         {
           "kind": "native system",
-          "perRow": 0.058,
-          "bytesPerRow": 6,
-          "count": 58,
-          "bytes": 5968
+          "perRow": 0.069,
+          "bytesPerRow": 6.5,
+          "count": 69,
+          "bytes": 6452
         },
         {
           "kind": "native blink::HeapVectorBacking<blink::PendingLayer>",
@@ -7006,7 +7010,7 @@
           "perRow": 0.004,
           "bytesPerRow": 0.5,
           "count": 4,
-          "bytes": 492
+          "bytes": 484
         },
         {
           "kind": "native blink::PhysicalBoxFragment",
@@ -7114,10 +7118,10 @@
       "rows": 10000,
       "replicate": 1,
       "after": "create",
-      "jsBytesPerRow": 3872.7,
-      "codeBytesPerRow": 14,
+      "jsBytesPerRow": 3868.7,
+      "codeBytesPerRow": 14.6,
       "nativeBytesPerRow": 4481,
-      "removedBytesPerRow": 11,
+      "removedBytesPerRow": 10.6,
       "js": [
         {
           "kind": "array (object elements)",
@@ -7136,9 +7140,9 @@
         {
           "kind": "object system / Context",
           "perRow": 17.5,
-          "bytesPerRow": 484,
+          "bytesPerRow": 476,
           "count": 175000,
-          "bytes": 4840000
+          "bytes": 4760000
         },
         {
           "kind": "object OwnerLink",
@@ -7225,6 +7229,13 @@
           "bytes": 524424
         },
         {
+          "kind": "object Object",
+          "perRow": 2,
+          "bytesPerRow": 52,
+          "count": 20000,
+          "bytes": 520000
+        },
+        {
           "kind": "object OnceRow$3",
           "perRow": 1,
           "bytesPerRow": 52,
@@ -7239,21 +7250,14 @@
           "bytes": 480000
         },
         {
-          "kind": "object Object",
-          "perRow": 2,
-          "bytesPerRow": 48,
-          "count": 20000,
-          "bytes": 480000
-        },
-        {
-          "kind": "object InstancePath",
+          "kind": "object PlacementPass",
           "perRow": 1,
           "bytesPerRow": 32,
           "count": 10000,
           "bytes": 320000
         },
         {
-          "kind": "object PlacementPass",
+          "kind": "object InstancePath",
           "perRow": 1,
           "bytesPerRow": 32,
           "count": 10000,
@@ -7289,9 +7293,9 @@
         },
         {
           "kind": "string",
-          "perRow": 11.007,
+          "perRow": 11.012,
           "bytesPerRow": 15.8,
-          "count": 110070,
+          "count": 110125,
           "bytes": 158420
         },
         {
@@ -7310,9 +7314,9 @@
         },
         {
           "kind": "number",
-          "perRow": 9.894,
+          "perRow": 9.9,
           "bytesPerRow": 0,
-          "count": 98941,
+          "count": 98996,
           "bytes": 0
         }
       ],
@@ -7377,10 +7381,10 @@
       "holders": [
         {
           "kind": "OwnerLink.child -> object Effect$1",
-          "perRow": 2.515,
-          "bytesPerRow": 191.2,
-          "count": 25155,
-          "bytes": 1911780
+          "perRow": 2.589,
+          "bytesPerRow": 196.8,
+          "count": 25891,
+          "bytes": 1967716
         },
         {
           "kind": "Effect$1.sources -> object SourceList",
@@ -7405,10 +7409,10 @@
         },
         {
           "kind": "Effect$1.body > context -> object system / Context",
-          "perRow": 1.959,
-          "bytesPerRow": 82.9,
-          "count": 19591,
-          "bytes": 828916
+          "perRow": 1.943,
+          "bytesPerRow": 81.7,
+          "count": 19431,
+          "bytes": 816756
         },
         {
           "kind": "Memo$1.sources -> object SourceList",
@@ -7440,17 +7444,10 @@
         },
         {
           "kind": "system / Context.site -> object RegionSite",
-          "perRow": 0.938,
-          "bytesPerRow": 75,
-          "count": 9376,
-          "bytes": 750080
-        },
-        {
-          "kind": "system / Context.previous > previous -> object system / Context",
-          "perRow": 2.286,
-          "bytesPerRow": 61.7,
-          "count": 22859,
-          "bytes": 617284
+          "perRow": 0.885,
+          "bytesPerRow": 70.8,
+          "count": 8851,
+          "bytes": 708080
         },
         {
           "kind": "Effect$1.scope -> object Owner",
@@ -7460,11 +7457,32 @@
           "bytes": 600000
         },
         {
+          "kind": "OwnerLink.Next@ -> object OwnerLink",
+          "perRow": 1.635,
+          "bytesPerRow": 58.9,
+          "count": 16352,
+          "bytes": 588672
+        },
+        {
+          "kind": "system / Context.previous > previous -> object system / Context",
+          "perRow": 2.245,
+          "bytesPerRow": 58.6,
+          "count": 22447,
+          "bytes": 585972
+        },
+        {
           "kind": "system / Context.state > elements -> array (object elements)",
           "perRow": 1.5,
           "bytesPerRow": 58,
           "count": 15000,
           "bytes": 580000
+        },
+        {
+          "kind": "Array.0 -> object Memo$1",
+          "perRow": 0.644,
+          "bytesPerRow": 56.7,
+          "count": 6445,
+          "bytes": 567160
         },
         {
           "kind": "Memo$1.compute -> closure",
@@ -7495,20 +7513,6 @@
           "bytes": 560000
         },
         {
-          "kind": "OwnerLink.Prev@ -> object OwnerLink",
-          "perRow": 1.554,
-          "bytesPerRow": 55.9,
-          "count": 15537,
-          "bytes": 559332
-        },
-        {
-          "kind": "OwnerLink.child -> object Memo$1",
-          "perRow": 0.616,
-          "bytesPerRow": 54.2,
-          "count": 6158,
-          "bytes": 541904
-        },
-        {
           "kind": "ObserverSet.items > elements -> array (object elements)",
           "perRow": 3.5,
           "bytesPerRow": 54,
@@ -7537,81 +7541,67 @@
           "bytes": 520000
         },
         {
+          "kind": "OwnerLink.Prev@ -> object OwnerLink",
+          "perRow": 1.386,
+          "bytesPerRow": 49.9,
+          "count": 13860,
+          "bytes": 498960
+        },
+        {
           "kind": "OwnerLink.child -> object RootScope",
-          "perRow": 0.806,
-          "bytesPerRow": 51.6,
-          "count": 8056,
-          "bytes": 515584
+          "perRow": 0.779,
+          "bytesPerRow": 49.9,
+          "count": 7793,
+          "bytes": 498752
         },
         {
-          "kind": "system / Context.selection -> object Memo$1",
-          "perRow": 0.536,
-          "bytesPerRow": 47.1,
-          "count": 5356,
-          "bytes": 471328
-        },
-        {
-          "kind": "OwnerLink.Next@ -> object OwnerLink",
-          "perRow": 1.25,
-          "bytesPerRow": 45,
-          "count": 12505,
-          "bytes": 450180
+          "kind": "Effect$1.link -> object OwnerLink",
+          "perRow": 1.142,
+          "bytesPerRow": 41.1,
+          "count": 11422,
+          "bytes": 411192
         },
         {
           "kind": "RegionSite.builder -> object RowBuilder",
-          "perRow": 0.796,
-          "bytesPerRow": 38.2,
-          "count": 7963,
-          "bytes": 382224
+          "perRow": 0.85,
+          "bytesPerRow": 40.8,
+          "count": 8497,
+          "bytes": 407856
         },
         {
-          "kind": "Memo$1.link -> object OwnerLink",
-          "perRow": 1.008,
-          "bytesPerRow": 36.3,
-          "count": 10083,
-          "bytes": 362988
+          "kind": "OwnerLink.child -> object Memo$1",
+          "perRow": 0.443,
+          "bytesPerRow": 38.9,
+          "count": 4426,
+          "bytes": 389488
+        },
+        {
+          "kind": "system / Context.selection -> object Memo$1",
+          "perRow": 0.428,
+          "bytesPerRow": 37.7,
+          "count": 4283,
+          "bytes": 376904
         },
         {
           "kind": "system / Context.rows > context -> object system / Context",
           "perRow": 1,
           "bytesPerRow": 36,
-          "count": 10000,
-          "bytes": 360000
+          "count": 9999,
+          "bytes": 359964
         },
         {
-          "kind": "system / Context.items -> object Memo$1",
-          "perRow": 0.389,
-          "bytesPerRow": 34.2,
-          "count": 3891,
-          "bytes": 342408
+          "kind": "OwnerLink.owner -> object RootScope",
+          "perRow": 0.537,
+          "bytesPerRow": 34.4,
+          "count": 5371,
+          "bytes": 343744
         },
         {
-          "kind": "Effect$1.link -> object OwnerLink",
-          "perRow": 0.924,
-          "bytesPerRow": 33.3,
-          "count": 9241,
-          "bytes": 332676
-        },
-        {
-          "kind": "Array.0 -> object Effect$1",
-          "perRow": 0.436,
-          "bytesPerRow": 33.2,
-          "count": 4363,
-          "bytes": 331588
-        },
-        {
-          "kind": "RootScope.head -> object OwnerLink",
-          "perRow": 0.903,
-          "bytesPerRow": 32.5,
-          "count": 9032,
-          "bytes": 325152
-        },
-        {
-          "kind": "Array.0 -> object Memo$1",
-          "perRow": 0.365,
-          "bytesPerRow": 32.1,
-          "count": 3646,
-          "bytes": 320848
+          "kind": "array (object elements).0 -> object Effect$1",
+          "perRow": 0.452,
+          "bytesPerRow": 34.3,
+          "count": 4515,
+          "bytes": 343140
         },
         {
           "kind": "system / Context.armPlacement -> object PlacementPass",
@@ -7628,39 +7618,46 @@
           "bytes": 320000
         },
         {
-          "kind": "system / Context.armOwner -> object RootScope",
-          "perRow": 0.497,
-          "bytesPerRow": 31.8,
-          "count": 4972,
-          "bytes": 318208
+          "kind": "Memo$1.link -> object OwnerLink",
+          "perRow": 0.88,
+          "bytesPerRow": 31.7,
+          "count": 8796,
+          "bytes": 316656
         },
         {
           "kind": "system / Context.parentPath -> object InstancePath",
-          "perRow": 0.971,
-          "bytesPerRow": 31.1,
-          "count": 9706,
-          "bytes": 310592
-        },
-        {
-          "kind": "OwnerLink.owner -> object RootScope",
-          "perRow": 0.484,
-          "bytesPerRow": 31,
-          "count": 4843,
-          "bytes": 309952
+          "perRow": 0.98,
+          "bytesPerRow": 31.3,
+          "count": 9795,
+          "bytes": 313440
         },
         {
           "kind": "system / Context.f -> closure",
-          "perRow": 1.034,
-          "bytesPerRow": 28.9,
-          "count": 10336,
-          "bytes": 289408
+          "perRow": 1.109,
+          "bytesPerRow": 31.1,
+          "count": 11094,
+          "bytes": 310632
         },
         {
           "kind": "system / Context.f > context -> object system / Context",
-          "perRow": 1.034,
-          "bytesPerRow": 28.9,
-          "count": 10336,
-          "bytes": 289408
+          "perRow": 1.109,
+          "bytesPerRow": 30.2,
+          "count": 11094,
+          "bytes": 301880
+        },
+        {
+          "kind": "ArmRow.Mode -> object Signal$1",
+          "perRow": 0.936,
+          "bytesPerRow": 29.9,
+          "count": 9359,
+          "bytes": 299488
+        },
+        {
+          "kind": "RootScope.head -> object OwnerLink",
+          "perRow": 0.812,
+          "bytesPerRow": 29.2,
+          "count": 8124,
+          "bytes": 292464
         },
         {
           "kind": "(none) -> array (object elements)",
@@ -7670,11 +7667,11 @@
           "bytes": 283588
         },
         {
-          "kind": "ArmRow.Mode -> object Signal$1",
-          "perRow": 0.882,
-          "bytesPerRow": 28.2,
-          "count": 8821,
-          "bytes": 282272
+          "kind": "RegionSite.releaseNodes -> closure",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 10000,
+          "bytes": 280000
         },
         {
           "kind": "system / Context.rows -> closure",
@@ -7685,13 +7682,6 @@
         },
         {
           "kind": "system / Context.read -> closure",
-          "perRow": 1,
-          "bytesPerRow": 28,
-          "count": 10000,
-          "bytes": 280000
-        },
-        {
-          "kind": "RegionSite.releaseNodes -> closure",
           "perRow": 1,
           "bytesPerRow": 28,
           "count": 10000,
@@ -7733,13 +7723,6 @@
           "bytes": 280000
         },
         {
-          "kind": "system / Context.current -> closure",
-          "perRow": 1,
-          "bytesPerRow": 28,
-          "count": 10000,
-          "bytes": 280000
-        },
-        {
           "kind": "Object.c -> closure",
           "perRow": 1,
           "bytesPerRow": 28,
@@ -7747,63 +7730,56 @@
           "bytes": 280000
         },
         {
-          "kind": "system / Context.row -> object Row$2",
-          "perRow": 0.866,
-          "bytesPerRow": 27.7,
-          "count": 8656,
-          "bytes": 276992
-        },
-        {
-          "kind": "RootScope.parentLink -> object OwnerLink",
-          "perRow": 0.769,
-          "bytesPerRow": 27.7,
-          "count": 7691,
-          "bytes": 276876
+          "kind": "system / Context.current -> closure",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 10000,
+          "bytes": 280000
         },
         {
           "kind": "Array.0 -> closure",
-          "perRow": 0.965,
-          "bytesPerRow": 27,
-          "count": 9649,
-          "bytes": 270172
+          "perRow": 0.942,
+          "bytesPerRow": 26.4,
+          "count": 9419,
+          "bytes": 263732
         },
         {
           "kind": "Array.1 -> closure",
-          "perRow": 0.965,
-          "bytesPerRow": 27,
-          "count": 9649,
-          "bytes": 270172
+          "perRow": 0.942,
+          "bytesPerRow": 26.4,
+          "count": 9419,
+          "bytes": 263732
         },
         {
-          "kind": "Object.w > context -> object system / Context",
-          "perRow": 0.962,
-          "bytesPerRow": 26.9,
-          "count": 9617,
-          "bytes": 269276
-        },
-        {
-          "kind": "Object.w -> closure",
-          "perRow": 0.962,
-          "bytesPerRow": 26.9,
-          "count": 9617,
-          "bytes": 269276
+          "kind": "system / Context.armOwner -> object RootScope",
+          "perRow": 0.412,
+          "bytesPerRow": 26.4,
+          "count": 4120,
+          "bytes": 263680
         },
         {
           "kind": "system / Context.armItem -> object Signal$1",
-          "perRow": 0.826,
-          "bytesPerRow": 26.4,
-          "count": 8262,
-          "bytes": 264384
+          "perRow": 0.79,
+          "bytesPerRow": 25.3,
+          "count": 7903,
+          "bytes": 252896
         },
         {
-          "kind": "array (object elements).0 -> object Effect$1",
-          "perRow": 0.341,
-          "bytesPerRow": 25.9,
-          "count": 3409,
-          "bytes": 259084
+          "kind": "Object.w -> closure",
+          "perRow": 0.859,
+          "bytesPerRow": 24,
+          "count": 8587,
+          "bytes": 240436
         },
         {
           "kind": "RegionSite.errors -> object RegionErrors",
+          "perRow": 1,
+          "bytesPerRow": 24,
+          "count": 10000,
+          "bytes": 240000
+        },
+        {
+          "kind": "RegionSite.releaseNodes > context -> object system / Context",
           "perRow": 1,
           "bytesPerRow": 24,
           "count": 10000,
@@ -7817,53 +7793,74 @@
           "bytes": 240000
         },
         {
-          "kind": "RegionSite.releaseNodes > context -> object system / Context",
-          "perRow": 1,
-          "bytesPerRow": 24,
-          "count": 10000,
-          "bytes": 240000
-        },
-        {
           "kind": "Setup.OnCleanup > context -> object system / Context",
           "perRow": 1,
           "bytesPerRow": 24,
-          "count": 10000,
-          "bytes": 240000
+          "count": 9998,
+          "bytes": 239952
+        },
+        {
+          "kind": "Memo$1.compute > context -> object system / Context",
+          "perRow": 0.312,
+          "bytesPerRow": 23.7,
+          "count": 3122,
+          "bytes": 237272
+        },
+        {
+          "kind": "RootScope.parentLink -> object OwnerLink",
+          "perRow": 0.651,
+          "bytesPerRow": 23.4,
+          "count": 6508,
+          "bytes": 234288
         },
         {
           "kind": "Owner.head -> object OwnerLink",
-          "perRow": 0.642,
-          "bytesPerRow": 23.1,
-          "count": 6419,
-          "bytes": 231084
+          "perRow": 0.637,
+          "bytesPerRow": 22.9,
+          "count": 6372,
+          "bytes": 229392
         },
         {
-          "kind": "OwnerLink.owner -> object Owner",
-          "perRow": 0.384,
-          "bytesPerRow": 23,
-          "count": 3839,
-          "bytes": 230340
+          "kind": "system / Context.registered -> object Object",
+          "perRow": 0.949,
+          "bytesPerRow": 22.8,
+          "count": 9486,
+          "bytes": 227664
         },
         {
           "kind": "Memo$1.value -> object Array",
-          "perRow": 1.434,
-          "bytesPerRow": 22.9,
-          "count": 14343,
-          "bytes": 229488
+          "perRow": 1.402,
+          "bytesPerRow": 22.4,
+          "count": 14016,
+          "bytes": 224256
         },
         {
           "kind": "Array.0 > context -> object system / Context",
-          "perRow": 0.739,
-          "bytesPerRow": 20.7,
-          "count": 7392,
-          "bytes": 206976
+          "perRow": 0.783,
+          "bytesPerRow": 21.9,
+          "count": 7828,
+          "bytes": 219184
         },
         {
-          "kind": "Owner.parentLink -> object OwnerLink",
-          "perRow": 0.561,
-          "bytesPerRow": 20.2,
-          "count": 5611,
-          "bytes": 201996
+          "kind": "system / Context.row -> object Row$2",
+          "perRow": 0.682,
+          "bytesPerRow": 21.8,
+          "count": 6825,
+          "bytes": 218400
+        },
+        {
+          "kind": "Array.0 -> object Row$2",
+          "perRow": 0.644,
+          "bytesPerRow": 20.6,
+          "count": 6444,
+          "bytes": 206208
+        },
+        {
+          "kind": "OwnerLink.owner -> object Owner",
+          "perRow": 0.343,
+          "bytesPerRow": 20.6,
+          "count": 3425,
+          "bytes": 205500
         },
         {
           "kind": "Array.elements -> array (object elements)",
@@ -7887,14 +7884,14 @@
           "bytes": 200000
         },
         {
-          "kind": "RootScope.firstCleanup > context -> object system / Context",
+          "kind": "RowBuilder.hydration > context -> object system / Context",
           "perRow": 1,
           "bytesPerRow": 20,
           "count": 10000,
           "bytes": 200000
         },
         {
-          "kind": "RowBuilder.hydration > context -> object system / Context",
+          "kind": "RootScope.firstCleanup > context -> object system / Context",
           "perRow": 1,
           "bytesPerRow": 20,
           "count": 10000,
@@ -7908,32 +7905,39 @@
           "bytes": 200000
         },
         {
-          "kind": "Memo$1.compute > context -> object system / Context",
+          "kind": "OwnerLink.child -> object Owner",
+          "perRow": 0.333,
+          "bytesPerRow": 20,
+          "count": 3327,
+          "bytes": 199620
+        },
+        {
+          "kind": "Array.0 -> object Effect$1",
           "perRow": 0.255,
           "bytesPerRow": 19.4,
-          "count": 2550,
-          "bytes": 193800
+          "count": 2547,
+          "bytes": 193572
+        },
+        {
+          "kind": "Owner.tail -> object OwnerLink",
+          "perRow": 0.526,
+          "bytesPerRow": 18.9,
+          "count": 5258,
+          "bytes": 189288
         },
         {
           "kind": "Array.1 > context -> object system / Context",
-          "perRow": 0.965,
-          "bytesPerRow": 19.3,
-          "count": 9649,
-          "bytes": 192980
+          "perRow": 0.942,
+          "bytesPerRow": 18.8,
+          "count": 9419,
+          "bytes": 188380
         },
         {
           "kind": "Memo$1.value > elements -> array (object elements)",
-          "perRow": 1.434,
-          "bytesPerRow": 18.9,
-          "count": 14343,
-          "bytes": 189488
-        },
-        {
-          "kind": "Array.0 -> object Row$2",
-          "perRow": 0.583,
-          "bytesPerRow": 18.7,
-          "count": 5831,
-          "bytes": 186592
+          "perRow": 1.402,
+          "bytesPerRow": 18.4,
+          "count": 14016,
+          "bytes": 184256
         }
       ],
       "native": [
@@ -7989,9 +7993,9 @@
         {
           "kind": "native <td>",
           "perRow": 2,
-          "bytesPerRow": 218.6,
+          "bytesPerRow": 218.7,
           "count": 20000,
-          "bytes": 2186208
+          "bytes": 2186640
         },
         {
           "kind": "native Comment",
@@ -8099,14 +8103,14 @@
           "bytes": 640000
         },
         {
-          "kind": "native <b>",
+          "kind": "native <span",
           "perRow": 0.5,
           "bytesPerRow": 60,
           "count": 5000,
           "bytes": 600000
         },
         {
-          "kind": "native <span",
+          "kind": "native <b>",
           "perRow": 0.5,
           "bytesPerRow": 60,
           "count": 5000,
@@ -8135,10 +8139,10 @@
         },
         {
           "kind": "native system",
-          "perRow": 1.025,
-          "bytesPerRow": 21.3,
-          "count": 10254,
-          "bytes": 213160
+          "perRow": 1.026,
+          "bytesPerRow": 21.2,
+          "count": 10255,
+          "bytes": 212048
         },
         {
           "kind": "native blink::HeapVectorBacking<blink::ShapeResultCharacterData>",
@@ -8151,10 +8155,10 @@
       "removed": [
         {
           "kind": "code system",
-          "perRow": 0.027,
-          "bytesPerRow": 5.8,
-          "count": 272,
-          "bytes": 58000
+          "perRow": 0.026,
+          "bytesPerRow": 5.4,
+          "count": 256,
+          "bytes": 54380
         },
         {
           "kind": "array ",
@@ -8173,9 +8177,9 @@
         {
           "kind": "native system",
           "perRow": 0.013,
-          "bytesPerRow": 0.7,
+          "bytesPerRow": 0.6,
           "count": 127,
-          "bytes": 6588
+          "bytes": 5812
         },
         {
           "kind": "native blink::HeapVectorBacking<blink::PendingLayer>",
@@ -8189,7 +8193,7 @@
           "perRow": 0.001,
           "bytesPerRow": 0.1,
           "count": 5,
-          "bytes": 532
+          "bytes": 536
         },
         {
           "kind": "native blink::HeapVectorBacking<blink::PaintChunk>",
@@ -8298,9 +8302,9 @@
       "replicate": 1,
       "after": "create",
       "jsBytesPerRow": 3527.6,
-      "codeBytesPerRow": 12.2,
-      "nativeBytesPerRow": 4474.9,
-      "removedBytesPerRow": 4.5,
+      "codeBytesPerRow": 10.9,
+      "nativeBytesPerRow": 4474.7,
+      "removedBytesPerRow": 4.6,
       "js": [
         {
           "kind": "array (object elements)",
@@ -8465,9 +8469,9 @@
         },
         {
           "kind": "string",
-          "perRow": 11.007,
+          "perRow": 11.012,
           "bytesPerRow": 15.8,
-          "count": 110070,
+          "count": 110125,
           "bytes": 158420
         },
         {
@@ -8486,9 +8490,9 @@
         },
         {
           "kind": "number",
-          "perRow": 9.894,
+          "perRow": 9.9,
           "bytesPerRow": 0,
-          "count": 98941,
+          "count": 98996,
           "bytes": 0
         }
       ],
@@ -8552,18 +8556,18 @@
       ],
       "holders": [
         {
-          "kind": "OwnerLink.child -> object Effect$1",
-          "perRow": 1.888,
-          "bytesPerRow": 143.5,
-          "count": 18879,
-          "bytes": 1434804
-        },
-        {
           "kind": "Effect$1.sources -> object SourceList",
           "perRow": 3.5,
           "bytesPerRow": 140,
           "count": 35000,
           "bytes": 1400000
+        },
+        {
+          "kind": "OwnerLink.child -> object Effect$1",
+          "perRow": 1.595,
+          "bytesPerRow": 121.2,
+          "count": 15952,
+          "bytes": 1212352
         },
         {
           "kind": "Effect$1.body -> closure",
@@ -8580,25 +8584,18 @@
           "bytes": 840000
         },
         {
-          "kind": "system / Context.previous > previous -> object system / Context",
-          "perRow": 2.565,
-          "bytesPerRow": 82.9,
-          "count": 25650,
-          "bytes": 829400
-        },
-        {
-          "kind": "Array.0 -> object Memo$1",
-          "perRow": 0.938,
-          "bytesPerRow": 82.5,
-          "count": 9376,
-          "bytes": 825088
-        },
-        {
           "kind": "Memo$1.sources -> object SourceList",
           "perRow": 2,
           "bytesPerRow": 80,
           "count": 20000,
           "bytes": 800000
+        },
+        {
+          "kind": "system / Context.previous > previous -> object system / Context",
+          "perRow": 2.523,
+          "bytesPerRow": 79.8,
+          "count": 25235,
+          "bytes": 797860
         },
         {
           "kind": "RegionSite.laidOut > elements -> array (object elements)",
@@ -8636,6 +8633,13 @@
           "bytes": 580000
         },
         {
+          "kind": "Effect$1.body > context -> object system / Context",
+          "perRow": 1.61,
+          "bytesPerRow": 56.4,
+          "count": 16099,
+          "bytes": 563524
+        },
+        {
           "kind": "ObserverSet.items -> object Array",
           "perRow": 3.5,
           "bytesPerRow": 56,
@@ -8664,18 +8668,18 @@
           "bytes": 560000
         },
         {
-          "kind": "Effect$1.body > context -> object system / Context",
-          "perRow": 1.591,
-          "bytesPerRow": 54.9,
-          "count": 15905,
-          "bytes": 548780
+          "kind": "Array.0 -> object Memo$1",
+          "perRow": 0.628,
+          "bytesPerRow": 55.3,
+          "count": 6280,
+          "bytes": 552640
         },
         {
-          "kind": "ObserverSet.items > elements -> array (object elements)",
-          "perRow": 3.5,
-          "bytesPerRow": 54,
-          "count": 35000,
-          "bytes": 540000
+          "kind": "Memo$1.link -> object OwnerLink",
+          "perRow": 1.532,
+          "bytesPerRow": 55.2,
+          "count": 15322,
+          "bytes": 551592
         },
         {
           "kind": "ObserverSet.slots > elements -> array (object elements)",
@@ -8685,11 +8689,11 @@
           "bytes": 540000
         },
         {
-          "kind": "OwnerLink.child -> object Owner",
-          "perRow": 0.874,
-          "bytesPerRow": 52.5,
-          "count": 8743,
-          "bytes": 524580
+          "kind": "ObserverSet.items > elements -> array (object elements)",
+          "perRow": 3.5,
+          "bytesPerRow": 54,
+          "count": 35000,
+          "bytes": 540000
         },
         {
           "kind": "closure.context > previous -> object system / Context",
@@ -8699,46 +8703,60 @@
           "bytes": 520000
         },
         {
-          "kind": "Memo$1.link -> object OwnerLink",
-          "perRow": 1.268,
-          "bytesPerRow": 45.6,
-          "count": 12677,
-          "bytes": 456372
-        },
-        {
-          "kind": "system / Context.site -> object RegionSite",
-          "perRow": 0.57,
-          "bytesPerRow": 45.6,
-          "count": 5700,
-          "bytes": 456000
-        },
-        {
-          "kind": "OwnerLink.Next@ -> object OwnerLink",
-          "perRow": 1.248,
-          "bytesPerRow": 44.9,
-          "count": 12475,
-          "bytes": 449100
+          "kind": "Effect$1.link -> object OwnerLink",
+          "perRow": 1.396,
+          "bytesPerRow": 50.2,
+          "count": 13956,
+          "bytes": 502416
         },
         {
           "kind": "Array.0 -> object Effect$1",
-          "perRow": 0.586,
-          "bytesPerRow": 44.5,
-          "count": 5856,
-          "bytes": 445056
+          "perRow": 0.641,
+          "bytesPerRow": 48.7,
+          "count": 6414,
+          "bytes": 487464
+        },
+        {
+          "kind": "OwnerLink.Next@ -> object OwnerLink",
+          "perRow": 1.337,
+          "bytesPerRow": 48.1,
+          "count": 13374,
+          "bytes": 481464
+        },
+        {
+          "kind": "OwnerLink.child -> object Owner",
+          "perRow": 0.782,
+          "bytesPerRow": 46.9,
+          "count": 7819,
+          "bytes": 469140
+        },
+        {
+          "kind": "system / Context.this$ -> object RegionSite",
+          "perRow": 0.555,
+          "bytesPerRow": 44.4,
+          "count": 5551,
+          "bytes": 444080
+        },
+        {
+          "kind": "array (object elements).0 -> object Memo$1",
+          "perRow": 0.497,
+          "bytesPerRow": 43.7,
+          "count": 4969,
+          "bytes": 437272
+        },
+        {
+          "kind": "array (object elements).0 -> object Effect$1",
+          "perRow": 0.547,
+          "bytesPerRow": 41.6,
+          "count": 5469,
+          "bytes": 415644
         },
         {
           "kind": "RootScope.parentLink -> object OwnerLink",
-          "perRow": 1.212,
-          "bytesPerRow": 43.6,
-          "count": 12117,
-          "bytes": 436212
-        },
-        {
-          "kind": "Effect$1.link -> object OwnerLink",
           "perRow": 1.119,
           "bytesPerRow": 40.3,
-          "count": 11195,
-          "bytes": 403020
+          "count": 11189,
+          "bytes": 402804
         },
         {
           "kind": "(none) -> array ",
@@ -8748,53 +8766,25 @@
           "bytes": 393332
         },
         {
+          "kind": "system / Context.site -> object RegionSite",
+          "perRow": 0.445,
+          "bytesPerRow": 35.6,
+          "count": 4449,
+          "bytes": 355920
+        },
+        {
           "kind": "system / Context.selection -> object Memo$1",
-          "perRow": 0.425,
-          "bytesPerRow": 37.4,
-          "count": 4254,
-          "bytes": 374352
+          "perRow": 0.372,
+          "bytesPerRow": 32.7,
+          "count": 3718,
+          "bytes": 327184
         },
         {
-          "kind": "OwnerLink.Prev@ -> object OwnerLink",
-          "perRow": 0.98,
-          "bytesPerRow": 35.3,
-          "count": 9795,
-          "bytes": 352620
-        },
-        {
-          "kind": "OwnerLink.owner -> object RootScope",
-          "perRow": 0.547,
-          "bytesPerRow": 35,
-          "count": 5472,
-          "bytes": 350208
-        },
-        {
-          "kind": "OwnerLink.child -> object RootScope",
-          "perRow": 0.543,
-          "bytesPerRow": 34.8,
-          "count": 5434,
-          "bytes": 347776
-        },
-        {
-          "kind": "system / Context.this$ -> object RegionSite",
-          "perRow": 0.43,
-          "bytesPerRow": 34.4,
-          "count": 4300,
-          "bytes": 344000
-        },
-        {
-          "kind": "Owner.head -> object OwnerLink",
-          "perRow": 0.936,
-          "bytesPerRow": 33.7,
-          "count": 9358,
-          "bytes": 336888
-        },
-        {
-          "kind": "RootScope.head -> object OwnerLink",
-          "perRow": 0.928,
-          "bytesPerRow": 33.4,
-          "count": 9279,
-          "bytes": 334044
+          "kind": "array (object elements).1 -> object Effect$1",
+          "perRow": 0.426,
+          "bytesPerRow": 32.4,
+          "count": 4257,
+          "bytes": 323532
         },
         {
           "kind": "system / Context.armPlacement -> object PlacementPass",
@@ -8811,18 +8801,18 @@
           "bytes": 320000
         },
         {
-          "kind": "array (object elements).0 -> object Effect$1",
-          "perRow": 0.406,
-          "bytesPerRow": 30.9,
-          "count": 4063,
-          "bytes": 308788
+          "kind": "OwnerLink.owner -> object RootScope",
+          "perRow": 0.492,
+          "bytesPerRow": 31.5,
+          "count": 4916,
+          "bytes": 314624
         },
         {
-          "kind": "ArmRow.Mode -> object Signal$1",
-          "perRow": 0.892,
-          "bytesPerRow": 28.6,
-          "count": 8922,
-          "bytes": 285504
+          "kind": "Owner.head -> object OwnerLink",
+          "perRow": 0.866,
+          "bytesPerRow": 31.2,
+          "count": 8660,
+          "bytes": 311760
         },
         {
           "kind": "(none) -> array (object elements)",
@@ -8830,13 +8820,6 @@
           "bytesPerRow": 28.4,
           "count": 3,
           "bytes": 283588
-        },
-        {
-          "kind": "Owner.firstCleanup -> closure",
-          "perRow": 1,
-          "bytesPerRow": 28,
-          "count": 10000,
-          "bytes": 280000
         },
         {
           "kind": "system / Context.rows -> closure",
@@ -8853,21 +8836,14 @@
           "bytes": 280000
         },
         {
+          "kind": "Owner.firstCleanup -> closure",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 10000,
+          "bytes": 280000
+        },
+        {
           "kind": "RegionSite.releaseNodes -> closure",
-          "perRow": 1,
-          "bytesPerRow": 28,
-          "count": 10000,
-          "bytes": 280000
-        },
-        {
-          "kind": "RootScope.firstCleanup -> closure",
-          "perRow": 1,
-          "bytesPerRow": 28,
-          "count": 10000,
-          "bytes": 280000
-        },
-        {
-          "kind": "RowBuilder.hydration -> closure",
           "perRow": 1,
           "bytesPerRow": 28,
           "count": 10000,
@@ -8902,32 +8878,88 @@
           "bytes": 280000
         },
         {
-          "kind": "array (object elements).1 -> object Effect$1",
-          "perRow": 0.365,
-          "bytesPerRow": 27.7,
-          "count": 3647,
-          "bytes": 277172
+          "kind": "RootScope.firstCleanup -> closure",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 10000,
+          "bytes": 280000
         },
         {
-          "kind": "array (object elements).0 -> object Memo$1",
-          "perRow": 0.31,
-          "bytesPerRow": 27.3,
-          "count": 3102,
-          "bytes": 272976
-        },
-        {
-          "kind": "system / Context.read > context -> object system / Context",
-          "perRow": 0.752,
-          "bytesPerRow": 27.1,
-          "count": 7524,
-          "bytes": 270864
+          "kind": "RowBuilder.hydration -> closure",
+          "perRow": 1,
+          "bytesPerRow": 28,
+          "count": 10000,
+          "bytes": 280000
         },
         {
           "kind": "Memo$1.compute > context -> object system / Context",
-          "perRow": 0.344,
-          "bytesPerRow": 26.2,
-          "count": 3445,
-          "bytes": 261820
+          "perRow": 0.367,
+          "bytesPerRow": 27.9,
+          "count": 3666,
+          "bytes": 278616
+        },
+        {
+          "kind": "ArmRow.Mode -> object Signal$1",
+          "perRow": 0.851,
+          "bytesPerRow": 27.2,
+          "count": 8508,
+          "bytes": 272256
+        },
+        {
+          "kind": "RegionSite.owner -> object RootScope",
+          "perRow": 0.424,
+          "bytesPerRow": 27.1,
+          "count": 4241,
+          "bytes": 271424
+        },
+        {
+          "kind": "system / Context.read > context -> object system / Context",
+          "perRow": 0.735,
+          "bytesPerRow": 26.5,
+          "count": 7350,
+          "bytes": 264600
+        },
+        {
+          "kind": "Memo$1.value -> object Array",
+          "perRow": 1.632,
+          "bytesPerRow": 26.1,
+          "count": 16319,
+          "bytes": 261104
+        },
+        {
+          "kind": "OwnerLink.child -> object RootScope",
+          "perRow": 0.405,
+          "bytesPerRow": 25.9,
+          "count": 4054,
+          "bytes": 259456
+        },
+        {
+          "kind": "OwnerLink.Prev@ -> object OwnerLink",
+          "perRow": 0.701,
+          "bytesPerRow": 25.2,
+          "count": 7010,
+          "bytes": 252360
+        },
+        {
+          "kind": "system / Context.items -> object Memo$1",
+          "perRow": 0.285,
+          "bytesPerRow": 25.1,
+          "count": 2853,
+          "bytes": 251064
+        },
+        {
+          "kind": "RootScope.head -> object OwnerLink",
+          "perRow": 0.689,
+          "bytesPerRow": 24.8,
+          "count": 6888,
+          "bytes": 247968
+        },
+        {
+          "kind": "system / Context.state -> object Array",
+          "perRow": 1.5,
+          "bytesPerRow": 24,
+          "count": 15000,
+          "bytes": 240000
         },
         {
           "kind": "RegionSite.errors -> object RegionErrors",
@@ -8944,46 +8976,53 @@
           "bytes": 240000
         },
         {
-          "kind": "system / Context.state -> object Array",
-          "perRow": 1.5,
-          "bytesPerRow": 24,
-          "count": 15000,
-          "bytes": 240000
-        },
-        {
           "kind": "Setup.OnCleanup > context -> object system / Context",
-          "perRow": 0.977,
-          "bytesPerRow": 23.5,
-          "count": 9772,
-          "bytes": 234528
+          "perRow": 0.989,
+          "bytesPerRow": 23.7,
+          "count": 9888,
+          "bytes": 237312
         },
         {
-          "kind": "system / Context.parentPath -> object InstancePath",
-          "perRow": 0.727,
-          "bytesPerRow": 23.2,
-          "count": 7265,
-          "bytes": 232480
+          "kind": "system / Context.this -> object RowBuilder",
+          "perRow": 0.482,
+          "bytesPerRow": 23.1,
+          "count": 4819,
+          "bytes": 231312
         },
         {
-          "kind": "RegionSite.owner -> object RootScope",
-          "perRow": 0.362,
-          "bytesPerRow": 23.2,
-          "count": 3623,
-          "bytes": 231872
+          "kind": "system / Context.adopted -> object RootScope",
+          "perRow": 0.349,
+          "bytesPerRow": 22.4,
+          "count": 3494,
+          "bytes": 223616
         },
         {
-          "kind": "Memo$1.value -> object Array",
-          "perRow": 1.448,
-          "bytesPerRow": 23.2,
-          "count": 14481,
-          "bytes": 231696
+          "kind": "Memo$1.value > elements -> array (object elements)",
+          "perRow": 1.632,
+          "bytesPerRow": 22.1,
+          "count": 16319,
+          "bytes": 221104
+        },
+        {
+          "kind": "Array.1 -> object Effect$1",
+          "perRow": 0.291,
+          "bytesPerRow": 22.1,
+          "count": 2908,
+          "bytes": 221008
         },
         {
           "kind": "Array.0 -> closure",
-          "perRow": 0.801,
-          "bytesPerRow": 22.4,
-          "count": 8008,
-          "bytes": 224224
+          "perRow": 0.785,
+          "bytesPerRow": 22,
+          "count": 7853,
+          "bytes": 219884
+        },
+        {
+          "kind": "system / Context.parentPath -> object InstancePath",
+          "perRow": 0.684,
+          "bytesPerRow": 21.9,
+          "count": 6837,
+          "bytes": 218784
         },
         {
           "kind": "Array.elements -> array (object elements)",
@@ -8994,6 +9033,13 @@
         },
         {
           "kind": "Owner.firstCleanup > context -> object system / Context",
+          "perRow": 1,
+          "bytesPerRow": 20,
+          "count": 10000,
+          "bytes": 200000
+        },
+        {
+          "kind": "RowBuilder.setup -> object Setup",
           "perRow": 1,
           "bytesPerRow": 20,
           "count": 10000,
@@ -9014,60 +9060,39 @@
           "bytes": 200000
         },
         {
-          "kind": "RowBuilder.setup -> object Setup",
-          "perRow": 1,
-          "bytesPerRow": 20,
-          "count": 10000,
-          "bytes": 200000
-        },
-        {
-          "kind": "Array.1 -> object Effect$1",
-          "perRow": 0.256,
-          "bytesPerRow": 19.4,
-          "count": 2555,
-          "bytes": 194180
-        },
-        {
           "kind": "system / Context.row -> object Row$2",
-          "perRow": 0.601,
-          "bytesPerRow": 19.2,
-          "count": 6007,
-          "bytes": 192224
-        },
-        {
-          "kind": "Memo$1.value > elements -> array (object elements)",
-          "perRow": 1.448,
-          "bytesPerRow": 19.2,
-          "count": 14481,
-          "bytes": 191696
-        },
-        {
-          "kind": "Owner.tail -> object OwnerLink",
-          "perRow": 0.496,
-          "bytesPerRow": 17.9,
-          "count": 4964,
-          "bytes": 178704
-        },
-        {
-          "kind": "system / Context.this -> object RowBuilder",
-          "perRow": 0.359,
-          "bytesPerRow": 17.2,
-          "count": 3591,
-          "bytes": 172368
-        },
-        {
-          "kind": "RegionSite.builder -> object RowBuilder",
-          "perRow": 0.338,
-          "bytesPerRow": 16.2,
-          "count": 3384,
-          "bytes": 162432
+          "perRow": 0.615,
+          "bytesPerRow": 19.7,
+          "count": 6149,
+          "bytes": 196768
         },
         {
           "kind": "Array.0 > context -> object system / Context",
-          "perRow": 0.573,
-          "bytesPerRow": 16,
-          "count": 5727,
-          "bytes": 160356
+          "perRow": 0.687,
+          "bytesPerRow": 19.2,
+          "count": 6871,
+          "bytes": 192388
+        },
+        {
+          "kind": "RegionSite.builder -> object RowBuilder",
+          "perRow": 0.37,
+          "bytesPerRow": 17.7,
+          "count": 3696,
+          "bytes": 177408
+        },
+        {
+          "kind": "Owner.tail -> object OwnerLink",
+          "perRow": 0.483,
+          "bytesPerRow": 17.4,
+          "count": 4834,
+          "bytes": 174024
+        },
+        {
+          "kind": "system / Context.armOwner -> object RootScope",
+          "perRow": 0.268,
+          "bytesPerRow": 17.2,
+          "count": 2680,
+          "bytes": 171520
         },
         {
           "kind": "RegionSite.laidOut -> object Array",
@@ -9089,27 +9114,6 @@
           "bytesPerRow": 16,
           "count": 10000,
           "bytes": 160000
-        },
-        {
-          "kind": "RootScope.cleanupOrder -> object Array",
-          "perRow": 1,
-          "bytesPerRow": 16,
-          "count": 10000,
-          "bytes": 160000
-        },
-        {
-          "kind": "RowBuilder.roots -> object Array",
-          "perRow": 1,
-          "bytesPerRow": 16,
-          "count": 10000,
-          "bytes": 160000
-        },
-        {
-          "kind": "Array.6 -> string",
-          "perRow": 0.978,
-          "bytesPerRow": 15.6,
-          "count": 9780,
-          "bytes": 156484
         }
       ],
       "native": [
@@ -9158,9 +9162,9 @@
         {
           "kind": "native <td>",
           "perRow": 2,
-          "bytesPerRow": 232.1,
+          "bytesPerRow": 231.8,
           "count": 20000,
-          "bytes": 2320960
+          "bytes": 2318288
         },
         {
           "kind": "native blink::LayoutText",
@@ -9275,14 +9279,14 @@
           "bytes": 640000
         },
         {
-          "kind": "native <b>",
+          "kind": "native <span",
           "perRow": 0.5,
           "bytesPerRow": 60,
           "count": 5000,
           "bytes": 600000
         },
         {
-          "kind": "native <span",
+          "kind": "native <b>",
           "perRow": 0.5,
           "bytesPerRow": 60,
           "count": 5000,
@@ -9318,26 +9322,26 @@
         },
         {
           "kind": "native system",
-          "perRow": 0.021,
-          "bytesPerRow": 1.7,
-          "count": 208,
-          "bytes": 17428
+          "perRow": 0.02,
+          "bytesPerRow": 1.8,
+          "count": 198,
+          "bytes": 17876
         }
       ],
       "removed": [
         {
           "kind": "code system",
-          "perRow": 0.016,
+          "perRow": 0.015,
           "bytesPerRow": 2.3,
-          "count": 158,
-          "bytes": 23248
+          "count": 155,
+          "bytes": 23312
         },
         {
           "kind": "native system",
           "perRow": 0.006,
-          "bytesPerRow": 0.9,
-          "count": 62,
-          "bytes": 9400
+          "bytesPerRow": 1,
+          "count": 61,
+          "bytes": 9764
         },
         {
           "kind": "native blink::HeapHashTableBacking<blink::HashTable<cppgc::internal::BasicMember<const",
@@ -9365,7 +9369,7 @@
           "perRow": 0,
           "bytesPerRow": 0,
           "count": 4,
-          "bytes": 492
+          "bytes": 484
         },
         {
           "kind": "native blink::PhysicalBoxFragment",

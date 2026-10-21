@@ -422,6 +422,9 @@ jobs:
       # needs a local size.mjs run; a difference means they are stale.
       - name: Check the committed bundle numbers
         run: git diff --exit-code -- docs/research/arms-match/bundle.json
+      # The committed Chromium and heap results hold their gates (the benchmark itself needs a quiet machine, not CI).
+      - name: Check the committed Chromium and heap results
+        run: node experiments/Ranvier.View.Arms/Checks/chromium-gate.mjs
       # The timings print without a budget (shared runners are not the budget's machine); a raise or a wrong render from
       # Arms.Prepare, called twice and on four threads at once, fails the step.
       - name: Run Arms.Prepare and the lowering costs on net10.0 and net8.0

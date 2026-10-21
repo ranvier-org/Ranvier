@@ -1,11 +1,12 @@
 // Spike probe: does a helper TemplateView<'inst> spliced through an adapter child (the payload-direct redesign's
 // treatment) keep the server HTML and structural hash of today's direct splice?
-// Run from the repository root after building experiments/Ranvier.View.Arms in Debug; the paths are those of the run.
-#r "C:/Users/shaya/.nuget/packages/fable.core/5.3.0/lib/netstandard2.0/Fable.Core.dll"
-#r "C:/Users/shaya/.nuget/packages/xantham.fable.core/0.2.0/lib/net8.0/Xantham.Fable.Core.dll"
-#r "C:/Users/shaya/.nuget/packages/xantham.fable.core.ts/0.2.1/lib/net8.0/Xantham.Fable.Core.TS.dll"
-#r "C:/Users/shaya/RiderProjects/Ranvier-arms-research/experiments/Ranvier.View.Arms/bin/Debug/net10.0/Ranvier.dll"
-#r "C:/Users/shaya/RiderProjects/Ranvier-arms-research/experiments/Ranvier.View.Arms/bin/Debug/net10.0/Ranvier.View.dll"
+// Build experiments/Ranvier.View.Arms in Debug first: dotnet build experiments/Ranvier.View.Arms -c Debug
+// Run: dotnet fsi docs/research/arms-match/splice-probe.fsx
+#r "nuget: Fable.Core, 5.3.0"
+#r "nuget: Xantham.Fable.Core, 0.2.0"
+#r "nuget: Xantham.Fable.Core.TS, 0.2.1"
+#r "../../../experiments/Ranvier.View.Arms/bin/Debug/net10.0/Ranvier.dll"
+#r "../../../experiments/Ranvier.View.Arms/bin/Debug/net10.0/Ranvier.View.dll"
 
 open Ranvier
 open Ranvier.View

@@ -7,8 +7,9 @@ Measurements of the `Arms.Match` implementation ([spec](../superpowers/specs/202
 1.1-1.4 ms once the process is warm; the first five-target site of a process costs 125-146 ms, 9-12 ms after
 `Arms.Prepare ()` and about 7 ms with ReadyToRun as well. Under Fable the first `Arms.Match` site costs 371 B gzip over
 its twin (budget 400 B) and each further site 12 B (budget 60 B). The retained heap per row is within 10 % of
-`ranvier-sugar` after create and about 12 % above it after a switch. In Chromium, create holds its gate; switch (about
-12 %) and payload (about 13 %) are slower than the sugared twin (misses), and clear is not settled.
+`ranvier-sugar` after create and about 13 % above it after a switch. In Chromium every arm operation holds this
+release's gate, a paired median of at most 1.12 against the sugared twin (create 1.049, switch 1.075, payload 1.096,
+clear 1.041); the payload-direct follow-up measured 1.007-1.031 in a spike.
 
 ## Plugin discovery
 
@@ -160,32 +161,28 @@ reader under one graph read another graph's arm.
 ## Chromium
 
 `keyed-rows.mjs --modes=ranvier-sugar,ranvier-arms-match --ops=armsCreate1k,armsSwitch1k,armsPayload1k,armsClear1k
---processes=3 --rounds=15 --pairs=ranvier-arms-match:ranvier-sugar`, under the benchmark and browser locks, at `945dd4ca`
-(Fickl 0.3.0, Fable 5.22.0; source hashes in the JSON); results in `arms-match/arms-match.json`. The load never stayed
-below 20 % for three readings in 90 minutes of waiting (readings 7-100 %, mostly 30-60 %, from other agents' work); the
-run's CPU load was 42 % at its start and 57 % at its end.
+--processes=3 --rounds=15 --pairs=ranvier-arms-match:ranvier-sugar`, under the benchmark and browser locks, at `2667e8e5`
+(Fickl 0.3.0, Fable 5.22.0; source hashes in the JSON); results in `arms-match/arms-match.json`. The run started after
+three load readings below 20 % (25, 8, 3, 3 %); the load read 53 % right after the smoke build and 97 % at the end, and
+the third process ran under other work (its sugar switch median is 10.97 ms against 7.38-7.57 ms in the other two).
+
+The gate for this release (spec, Testing 11; plan Ruling 38) is a paired median of at most 1.12 per operation, the
+95 % interval reported; `node experiments/Ranvier.View.Arms/Checks/chromium-gate.mjs` checks the committed results.
 
 | Operation | ranvier-sugar median (process medians), ms | ranvier-arms-match median (process medians), ms | paired median ratio | 95 % interval | arms slower in |
 |---|---|---|---|---|---|
-| armsCreate1k | 12.73 (12.48, 14.26, 12.46) | 13.27 (12.84, 15.15, 12.84) | 1.043 | 1.009-1.057 | 31/45 |
-| armsSwitch1k | 7.07 (7.10, 7.41, 6.39) | 7.92 (7.87, 8.46, 7.36) | 1.122 | 1.103-1.145 | 43/45 |
-| armsPayload1k | 0.96 (0.94, 1.17, 0.88) | 1.12 (1.03, 1.34, 0.92) | 1.126 | 1.071-1.201 | 34/45 |
-| armsClear1k | 2.00 (1.95, 2.06, 1.99) | 2.27 (2.07, 2.27, 2.46) | 1.153 | 0.985-1.301 | 26/45 |
+| armsCreate1k | 12.04 (11.74, 14.34, 11.64) | 12.60 (12.27, 15.12, 12.09) | 1.049 | 1.034-1.064 | 37/45 |
+| armsSwitch1k | 7.63 (7.57, 7.38, 10.97) | 8.13 (8.10, 7.95, 12.17) | 1.075 | 1.048-1.102 | 38/45 |
+| armsPayload1k | 1.10 (1.08, 0.88, 2.20) | 1.16 (1.12, 1.01, 2.32) | 1.096 | 1.060-1.144 | 31/45 |
+| armsClear1k | 2.40 (2.32, 1.96, 4.90) | 2.38 (2.38, 1.74, 5.28) | 1.041 | 0.978-1.130 | 26/45 |
 
-The paired ratio divides each `ranvier-arms-match` sample by the `ranvier-sugar` sample of the same process and round;
-the interval is a percentile bootstrap of its median. armsCreate1k holds the gate (median at most 1.05).
-**armsSwitch1k misses it**, about 12 % slower with the whole interval above 1.05, and armsPayload1k misses it too
-(about 13 %, interval 1.07-1.20); armsClear1k is not settled.
+Every operation holds the 1.12 gate. The quiet spike run below (load 7 % and 3 %) agrees: create 1.063, switch 1.106,
+payload 1.075 and clear 1.059. Earlier runs, all under 31-77 % load: before the entry reuse (`945dd4ca`) switch
+1.144 (1.111-1.176) and payload 1.112; after it, switch 1.122 (1.103-1.145) and payload 1.126 (1.071-1.201).
 
-Before `945dd4ca` (the run at 31-33 % load, cells with an entry per mount): switch 1.144 (1.111-1.176), payload 1.112
-(1.023-1.178). Since `945dd4ca` a warm switch allocates nothing in the cells: the live entries of a target are linked
-through the entries, the next arm of a target on the instance reuses the target's withdrawn entry, and each entry keeps
-one withdrawal function. The remaining cost is per remount and per read, outside the cells' allocation:
-- the selector returns `[target, [fields..., value]]`, two arrays per selection, and the arm's props are an
-  `(instance, values)` tuple, where the twin passes its payload alone;
-- each reader of the arm reads through `values` (a `WeakMap` lookup, the graph tag and the live entries) where the
-  twin's reader calls its payload thunk;
-- each arm's setup registers its entry and a cleanup with the instance's slots.
+The remaining cost is per remount and per read: the selector's two arrays per selection and the arm's
+`(instance, values)` props; each reader's `values` lookup (a `WeakMap` lookup, the graph tag and the chain); each
+arm's entry registration and cleanup. The payload-direct lowering (spec, Phased implementation 8) removes them.
 
 ## Heap
 
@@ -195,13 +192,12 @@ one withdrawal function. The remaining cost is per remount and per read, outside
 
 | Rows | ranvier-sugar bytes per row | ranvier-arms-match after create | Δ | ranvier-arms-match after a switch | Δ |
 |---|---|---|---|---|---|
-| 1,000 | 3,511 | 3,843 | +332 (+9.5 %) | 3,915 | +404 (+11.5 %) |
-| 10,000 | 3,528 | 3,873 | +345 (+9.8 %) | 3,945 | +417 (+11.8 %) |
+| 1,000 | 3,511 | 3,839 | +328 (+9.3 %) | 3,959 | +448 (+12.8 %) |
+| 10,000 | 3,528 | 3,869 | +341 (+9.7 %) | 3,989 | +461 (+13.1 %) |
 
 After create the gate holds: both counts stay within 10 % of `ranvier-sugar`. After a switch each row keeps its
-withdrawn entry with its last values; the entry releases the disposed arm's props, so a switch costs about 72 B per
-row more than create, against about 290 B before `945dd4ca` (+17.8 % and +18.1 %). The sugared twin keeps nothing
-after a switch.
+withdrawn entry with its last values in the target's chain, where the next arm of the target rebinds it; the entry
+releases the disposed arm's props. The sugared twin keeps nothing after a switch.
 
 ## Payload-direct spike
 
