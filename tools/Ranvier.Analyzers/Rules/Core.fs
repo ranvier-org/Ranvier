@@ -335,3 +335,32 @@ let ran013: Rule =
         Gate = Symbols.Assemblies.Ranvier
         Run = offThreadWrites
     }
+
+let private ignoredTokens (input: Input) : Message list =
+    [
+        for site in input.Index.Calls do
+            let policyForm = isPolicyCreator site.Callee
+
+            match site.Arguments with
+            | [ NewUnionCase (_, case, []); Lambda (_, Lambda (token, body)) ] when
+                policyForm
+                && isCancelPrevious case
+                && (token.DisplayName.StartsWith "_"
+                    || (Index.uses token body).IsEmpty)
+                ->
+                message
+                    "RAN015"
+                    Severity.Hint
+                    token.DeclarationLocation
+                    "This async memo's body ignores its CancellationToken, so `CancelPrevious` cancels nothing and acts as `KeepLatest`. Pass the token to the awaited work, or use `KeepLatest`."
+                    []
+            | _ -> ()
+    ]
+
+let ran015: Rule =
+    {
+        Code = "RAN015"
+        Title = "CancelPrevious with a body that ignores its token"
+        Gate = Symbols.Assemblies.Ranvier
+        Run = ignoredTokens
+    }

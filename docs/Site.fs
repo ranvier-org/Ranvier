@@ -204,6 +204,7 @@ let theme =
                         Menu.page "analyzers/ran011.md"
                         Menu.page "analyzers/ran012.md"
                         Menu.page "analyzers/ran013.md"
+                        Menu.page "analyzers/ran015.md"
                         Menu.page "analyzers/ran020.md"
                         Menu.page "analyzers/ran021.md"
                         Menu.page "analyzers/ran022.md"

@@ -13,6 +13,7 @@ let rules: Rule list =
         Rules.Core.ran011
         Rules.Core.ran012
         Rules.Core.ran013
+        Rules.Core.ran015
         Rules.View.ran020
         Rules.View.ran021
         Rules.View.ran022
@@ -159,3 +160,11 @@ let ran025Cli: Analyzer<CliContext> =
 [<EditorAnalyzer("RAN025", "hydrateWith with queued commits", "https://shayanhabibi.github.io/Ranvier/analyzers/ran025/")>]
 let ran025Editor: Analyzer<EditorContext> =
     fun context -> async { return runEditor Rules.View.ran025 context }
+
+[<CliAnalyzer("RAN015", "CancelPrevious with a body that ignores its token", "https://shayanhabibi.github.io/Ranvier/analyzers/ran015/")>]
+let ran015Cli: Analyzer<CliContext> =
+    fun context -> async { return runCli Rules.Core.ran015 context }
+
+[<EditorAnalyzer("RAN015", "CancelPrevious with a body that ignores its token", "https://shayanhabibi.github.io/Ranvier/analyzers/ran015/")>]
+let ran015Editor: Analyzer<EditorContext> =
+    fun context -> async { return runEditor Rules.Core.ran015 context }

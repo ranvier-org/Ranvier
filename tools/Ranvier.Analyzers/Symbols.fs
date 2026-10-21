@@ -443,6 +443,17 @@ module Core =
     let isCombine (m: FSharpMemberOrFunctionOrValue) : bool =
         m.LogicalName = "Combine"
 
+    /// Whether `m` creates an async value with a flight policy: `createAsyncWithPolicy` or its owning form.
+    let isPolicyCreator (m: FSharpMemberOrFunctionOrValue) : bool =
+        isMember Api "createAsyncWithPolicy" m
+        || isMember Api "createOwningAsyncWithPolicy" m
+
+    /// Whether `case` is `FlightPolicy.CancelPrevious`, which cancels a superseded flight's token.
+    let isCancelPrevious (case: FSharpUnionCase) : bool =
+        case.Name = "CancelPrevious"
+        && case.ReturnType.HasTypeDefinition
+        && case.ReturnType.TypeDefinition.TryFullName = Some "Ranvier.FlightPolicy"
+
     /// Whether `m` constructs a graph.
     let isGraphConstructor (m: FSharpMemberOrFunctionOrValue) : bool =
         m.IsConstructor && enclosing m = "Ranvier.Graph"
