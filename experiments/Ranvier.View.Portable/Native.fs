@@ -1,8 +1,9 @@
 /// <summary>
 /// The host primitives of the view sources. Under Fable each primitive is an Emit expression inlined at its call sites; on
-/// .NET each is F# over the <c>Fable.Core.TS.Dom</c> interfaces, the installed host, or .NET collections.
+/// .NET each is F# over the <c>Fable.Core.TS.Dom</c> interfaces, the installed host, or .NET collections. Part of the
+/// view runtime seam: Foundation and the DOM twin call it; applications do not.
 /// </summary>
-module internal Ranvier.View.Foundation.Native
+module Ranvier.View.Foundation.Native
 
 open Fable.Core
 open Fable.Core.TS.Dom
@@ -64,6 +65,12 @@ let private host () : IHost =
         raise (System.InvalidOperationException "No DOM host is installed on this thread; create a TwinDocument first")
 
     current
+
+/// <summary>The option's value, or the null reference for <c>None</c>; for DOM interface types, which F# does not let be null.</summary>
+let valueOrNull (value: 'T option) : 'T =
+    match value with
+    | Some item -> item
+    | None -> Unchecked.defaultof<'T>
 
 let inline private orNull (value: 'T option) : 'R =
     match value with
@@ -183,14 +190,46 @@ type SameValueZero private () =
             | :? System.ValueType as v -> v.GetHashCode ()
             | other -> System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode other
 
+/// <summary>Entries in insertion order with SameValueZero keys, as a JavaScript <c>Map</c> keeps them.</summary>
+[<Sealed>]
+[<AllowNullLiteral>]
+type private OrderedTable() =
+    let order = System.Collections.Generic.LinkedList<struct (obj * obj)>()
+
+    let index =
+        System.Collections.Generic.Dictionary<obj, System.Collections.Generic.LinkedListNode<struct (obj * obj)>>(SameValueZero.Instance)
+
+    member _.ContainsKey(key: obj) =
+        index.ContainsKey key
+
+    member _.TryGetValue(key: obj, value: byref<obj>) =
+        match index.TryGetValue key with
+        | true, node ->
+            let struct (_, stored) = node.Value
+            value <- stored
+            true
+        | false, _ -> false
+
+    member _.Set(key: obj, value: obj) =
+        match index.TryGetValue key with
+        | true, node ->
+            let struct (stored, _) = node.Value
+            node.Value <- struct (stored, value)
+        | false, _ -> index[key] <- order.AddLast (struct (key, value))
+
+    member _.Remove(key: obj) =
+        match index.TryGetValue key with
+        | true, node ->
+            order.Remove node
+            index.Remove key |> ignore
+        | false, _ -> ()
+
+    member _.Keys: obj array = [| for struct (key, _) in order -> key |]
+
 /// <summary>A JavaScript <c>Map</c>, <c>Set</c>, <c>WeakMap</c> or <c>WeakSet</c> on .NET; a set stores each key as its own value.</summary>
 [<Sealed; AllowNullLiteral>]
 type NativeTable(weak: bool) =
-    let ordered =
-        if weak then
-            null
-        else
-            System.Collections.Generic.OrderedDictionary<obj, obj>(SameValueZero.Instance)
+    let ordered = if weak then null else OrderedTable ()
 
     let held =
         if weak then
@@ -219,19 +258,19 @@ type NativeTable(weak: bool) =
         if weak then
             held.AddOrUpdate (key, value)
         else
-            ordered[key] <- value
+            ordered.Set (key, value)
 
     member _.Delete(key: obj) =
         if weak then
             held.Remove key |> ignore
         else
-            ordered.Remove key |> ignore
+            ordered.Remove key
 
     member _.Keys: obj array =
         if weak then
             invalidOp "A weak table cannot be enumerated"
         else
-            Seq.toArray ordered.Keys
+            ordered.Keys
 
 let private table (value: obj) : NativeTable =
     value :?> NativeTable

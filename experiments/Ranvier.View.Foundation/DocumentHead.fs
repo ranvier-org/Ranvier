@@ -67,7 +67,7 @@ let private marked (document: Document) (key: string) (claimed: ResizeArray<Elem
     |> Array.tryFind (fun node ->
         Option.toObj (node.getAttribute "data-ranvier-head") = key
         && not (claimed.Contains node))
-    |> Option.toObj
+    |> Native.valueOrNull
 #endif
 
 /// <summary>Whether the document's head holds a marked element.</summary>

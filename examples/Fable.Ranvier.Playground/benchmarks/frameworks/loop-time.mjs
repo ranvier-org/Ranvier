@@ -1,8 +1,8 @@
 // Edit-to-result loop timings for the DOM twin spec (§7.2). Run behind the bench lock.
 // --loop jsdom: edits tests/DelegationChecks.fs (appends, then removes, one exported value), then measures
-//   compile:  `dotnet fable tests/DomTests.fsproj --outDir generated-tests --configuration Release`; cold is the first
+//   compile:  `dotnet fickl tests/DomTests.fsproj --outDir generated-tests --configuration Release`; cold is the first
 //             run, with `--noCache`; primed is the second, which rebuilds the cache; warm is the rest
-//   watch:    the time from the edit to the rewrite of generated-tests/DelegationChecks.js under `dotnet fable watch`;
+//   watch:    the time from the edit to the rewrite of generated-tests/DelegationChecks.js under `dotnet fickl watch`;
 //             cold is the first edit, warm the rest
 //   node:     `node --test tests/delegation.test.mjs`; cold is the first run, warm the rest
 // Writes { loop, runs, steps }, each step { cold: [ms], primed?: [ms], warm: { samples, median, min, max } }. The edited
@@ -37,10 +37,10 @@ const samples = { compile: [], watch: [], node: [] };
 try {
   for (let i = 0; i < runs; i++) {
     edit(i);
-    samples.compile.push(time(() => run("dotnet", ["fable", "tests/DomTests.fsproj", "--outDir", "generated-tests", "--configuration", "Release", ...(i === 0 ? ["--noCache"] : [])])));
+    samples.compile.push(time(() => run("dotnet", ["fickl", "tests/DomTests.fsproj", "--outDir", "generated-tests", "--configuration", "Release", ...(i === 0 ? ["--noCache"] : [])])));
     samples.node.push(time(() => run(process.execPath, ["--test", "tests/delegation.test.mjs"])));
   }
-  const watcher = spawn("dotnet", ["fable", "watch", "tests/DomTests.fsproj", "--outDir", "generated-tests", "--configuration", "Release"], { cwd, stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
+  const watcher = spawn("dotnet", ["fickl", "watch", "tests/DomTests.fsproj", "--outDir", "generated-tests", "--configuration", "Release"], { cwd, stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
   let errors = "";
   watcher.stderr.on("data", d => { errors = (errors + String(d)).slice(-4000); });
   const waitForRewrite = async (since, limitMs) => {
@@ -49,10 +49,10 @@ try {
       if (existsSync(emitted) && statSync(emitted).mtimeMs > since) return performance.now() - start;
       await new Promise(r => setTimeout(r, 20));
     }
-    throw new Error(`generated-tests/DelegationChecks.js was not rewritten within ${limitMs} ms; fable watch stderr:\n${errors}`);
+    throw new Error(`generated-tests/DelegationChecks.js was not rewritten within ${limitMs} ms; fickl watch stderr:\n${errors}`);
   };
   try {
-    await new Promise((ok, fail) => { watcher.stdout.on("data", d => { if (/Watching/.test(String(d))) ok(); }); watcher.on("exit", c => fail(new Error(`fable watch exited ${c}:\n${errors}`))); });
+    await new Promise((ok, fail) => { watcher.stdout.on("data", d => { if (/Watching/.test(String(d))) ok(); }); watcher.on("exit", c => fail(new Error(`fickl watch exited ${c}:\n${errors}`))); });
     for (let i = 0; i < runs; i++) {
       const since = statSync(emitted).mtimeMs;
       edit(1000 + i);

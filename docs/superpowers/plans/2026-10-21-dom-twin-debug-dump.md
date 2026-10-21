@@ -269,6 +269,19 @@ and does not raise from it by default, as under jsdom.
 - `Native.setData` and the attribute writers convert values with `Native.jsString`, which follows JavaScript's `String`
   for the values Fable writes as primitives. `Template.numberText`'s .NET body moved into `Native.numberText`.
 
+**A10. Master at phase 2: Fickl, public seam, net8.0** (#147, #152).
+
+- #152 replaced Fable 5.18.0 with Fickl 0.3.0 (`dotnet fickl`, `.config/dotnet-tools.json`). Every `dotnet fable` command
+  in this plan is `dotnet fickl` with the same arguments; the npm scripts already call it. `FABLE_COMPILER` is still
+  the define. The Fable hazards (snapshot inlining, `.IsCase`) are kept as hazards for Fickl until shown otherwise.
+  The bundle and generated-JavaScript baselines were re-recorded with Fickl at the merge base.
+- #147 dropped Portable's `InternalsVisibleTo` for Foundation and made the declarations Foundation uses public, marked
+  as the view runtime seam. `Native` is therefore a public module documented as part of that seam (spec §3.2's "no
+  public surface" now reads "no application surface"); the twin and its tests keep their `InternalsVisibleTo` entries.
+- Portable and Foundation target `net10.0;net8.0` with FSharp.Core 8.0.100. `Native`'s ordered table is its own
+  insertion-ordered dictionary (`OrderedDictionary<,>` is .NET 9+), and `Native.valueOrNull` replaces `Option.toObj` on
+  DOM interface types, which FSharp.Core 8 types as not nullable.
+
 ---
 
 ## File structure

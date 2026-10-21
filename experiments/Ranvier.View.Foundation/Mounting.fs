@@ -210,7 +210,7 @@ let private walk (host: Node) (eventName: string) (event: obj) =
 
     let mutable node: Node =
         if Native.isNullish inner then
-            unbox<Node>(Option.toObj (unbox<Event> event).target)
+            unbox<Node>(Native.valueOrNull (unbox<Event> event).target)
         else
             Native.parentOrNull inner
 
