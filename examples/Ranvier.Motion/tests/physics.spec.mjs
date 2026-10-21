@@ -40,8 +40,7 @@ test("a mouse throw moves the puck, the release settles it in the arena, and the
   expect(box.x + box.width).toBeLessThanOrEqual(arena.x + arena.width + 1);
   const caught = await centreOf(page.locator('[data-follower="4"]'));
   const at = await centreOf(page.locator(".puck"));
-  // The followers read the puck's Position signal, which trails the settled element by about 2 px (the repro below).
-  expect(Math.abs(caught.x - at.x)).toBeLessThan(4);
+  expect(Math.abs(caught.x - at.x)).toBeLessThan(0.5);
   await shoot(page, "physics");
 });
 
@@ -85,10 +84,9 @@ test("the reduced policy shows the tips without their rise and sends the puck st
   expect(await puck(page)).toEqual([0, 0]);
 });
 
-// Library repro, expected to fail while the bug stands: anime calls onSettle while the release animation still runs, so
-// Motion.drag's Position holds x at the settle (435.02 here) and the element ends at 436.88 with no further callback.
-test("library repro: Motion.drag's Position equals the settled element's offset after a throw", async ({ page }) => {
-  test.fail(true, "anime's onSettle fires before the release animation completes; its last frames are not written to Position");
+// A regression check of a fixed bug: Motion.drag's Position held the position at anime's settle callback, before the
+// release animation ended.
+test("after a throw settles, Motion.drag's Position equals the element's offset", async ({ page }) => {
   const start = await centreOf(page.locator(".puck"));
   await page.mouse.move(start.x, start.y);
   await page.mouse.down();

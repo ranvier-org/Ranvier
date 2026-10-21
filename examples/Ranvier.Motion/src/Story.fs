@@ -1,7 +1,7 @@
 /// <summary>
 /// A scroll-driven landing page, portable: the .NET server renders it and the browser hydrates it. Scroll timelines write
 /// each section's progress into signals, the headline is split and staggered, the gallery staggers across its grid, and
-/// tiles created on the client appear. The page holds no event listener, so the server renders it under Reject.
+/// tiles created on the client appear. The server renders it under <c>Omit</c>, and its listeners attach on hydration.
 /// </summary>
 module Story
 
@@ -35,6 +35,8 @@ type Story =
     {
         Chapters: Chapter array
         Gallery: Chapter
+        /// <summary>Whether the tiles created on the client are shown.</summary>
+        More: Signal<bool>
     }
 
 let chapters =
@@ -59,7 +61,7 @@ let chapters =
         }
     |]
 
-/// <summary>The labels of the gallery's tiles, and of the tiles shown once the gallery is half scrolled through.</summary>
+/// <summary>The labels of the gallery's tiles, and of the tiles the extras button shows.</summary>
 let tiles =
     [|
         "Enter"
@@ -78,6 +80,12 @@ let tiles =
 
 let extras = [| "Spring"; "Timeline"; "Scrub"; "Track" |]
 
+/// <summary>The server options of the story: browser-only parts, its listeners among them, are left to hydration.</summary>
+let serverOptions =
+    { Server.Options.defaults with
+        Policy = Omit
+    }
+
 let private chapter () =
     {
         Progress = Api.createSignal 0.
@@ -89,6 +97,7 @@ let create () : Story =
     {
         Chapters = Array.init chapters.Length (fun _ -> chapter ())
         Gallery = chapter ()
+        More = Api.createSignal false
     }
 
 [<Emit("Array.from($0.querySelectorAll($1))")>]
@@ -232,8 +241,16 @@ let view: Component<Story -> unit> =
             section (Attrs.className "more") {
                 h2 () { "Four more, created on the client" }
 
+                button (Attrs.className "primary more-toggle", Events.onClick (fun (s: Story) _ -> s.More.Value <- not s.More.Value)) {
+                    fun (s: Story) ->
+                        if s.More.Value then
+                            "Hide the extras"
+                        else
+                            "Show the extras"
+                }
+
                 show
-                    (fun (s: Story) -> s.Gallery.Progress.Value > 0.5)
+                    (fun (s: Story) -> s.More.Value)
                     (div (Attrs.className "tiles extras") {
                         forEachFixed
                             id

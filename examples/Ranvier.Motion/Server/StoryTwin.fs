@@ -69,8 +69,16 @@ let view: Component<Story -> unit> =
             section (Attrs.className "more") {
                 h2 () { "Four more, created on the client" }
 
+                button (Attrs.className "primary more-toggle", Events.onClick (fun (s: Story) _ -> s.More.Value <- not s.More.Value)) {
+                    fun (s: Story) ->
+                        if s.More.Value then
+                            "Hide the extras"
+                        else
+                            "Show the extras"
+                }
+
                 show
-                    (fun (s: Story) -> s.Gallery.Progress.Value > 0.5)
+                    (fun (s: Story) -> s.More.Value)
                     (div (Attrs.className "tiles extras") {
                         forEachFixed id (fun (_: Story) -> extras) (div (Attrs.className "tile extra") { fun (label: string) -> label })
                     })

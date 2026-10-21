@@ -56,16 +56,17 @@ test("scrolling to each chapter writes its progress into the rail", async ({ pag
   await expect(page.locator(".rail-item .rail-value").nth(1)).toHaveText("0%");
 });
 
-test("past half the gallery the client-created tiles appear", async ({ page }) => {
+test("the hydrated extras button shows the client-created tiles, which appear", async ({ page }) => {
   await expect(page.locator(".extra")).toHaveCount(0);
-  await page.evaluate(() => {
-    const gallery = document.querySelector(".gallery").getBoundingClientRect();
-    window.scrollTo(0, window.scrollY + gallery.bottom - window.innerHeight * 0.2);
-  });
-  await page.clock.runFor(400);
-  expect((await progress(page))[3]).toBeGreaterThan(0.5);
+  await page.click("button.more-toggle");
   await expect(page.locator(".extra")).toHaveCount(4);
+  await page.clock.runFor(100);
+  const popping = await opacityOf(page.locator(".extra").first());
   await page.clock.runFor(800);
+  expect(popping).toBeLessThan(1);
   expect(await opacityOf(page.locator(".extra").first())).toBe(1);
+  await expect(page.locator("button.more-toggle")).toHaveText("Hide the extras");
+  await page.click("button.more-toggle");
+  await expect(page.locator(".extra")).toHaveCount(0);
   expect(await page.evaluate(() => window.__motion.errors())).toEqual([]);
 });

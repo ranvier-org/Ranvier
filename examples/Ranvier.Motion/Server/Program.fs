@@ -1,5 +1,5 @@
 /// <summary>
-/// Renders the story page and its twin without Motion parts under the default Reject policy, and fails when they differ.
+/// Renders the story page and its twin without Motion parts under the story's Omit policy, and fails when they differ.
 /// Given a path, writes the story's render there.
 /// </summary>
 module Program
@@ -10,7 +10,7 @@ open Ranvier.View.Foundation
 [<EntryPoint>]
 let main args =
     let render definition =
-        Server.render Server.Options.defaults definition ignore
+        Server.render Story.serverOptions definition ignore
 
     let story = render Story.view
     let twin = render StoryTwin.view
