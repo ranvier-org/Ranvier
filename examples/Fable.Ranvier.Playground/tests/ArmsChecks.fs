@@ -314,6 +314,103 @@ let hydrations: (string * (string -> unit)) array =
                 equal twinShots (shots site)
     |]
 
+let private finishes = ResizeArray<unit -> unit>()
+
+/// <summary>A site whose Loaded body holds its root on exit until <c>finish</c> runs.</summary>
+let private held =
+    Component.template
+        (fun _ (state: Signal<Load>) -> state)
+        (div () {
+            Arms.Match (
+                (fun (state: Signal<Load>) -> state.Value),
+                function
+                | Loaded (text, count) ->
+                    pre (
+                        Hooks.exit (
+                            Func<_, _, _, _>(fun (_: Signal<Load>) (_: HTMLPreElement) finish ->
+                                finishes.Add finish
+                                ignore)
+                        )
+                    ) {
+                        fun _ -> text
+                        " x"
+                        fun _ -> string count
+                    }
+                | _ -> span () { "Other" }
+            )
+        })
+
+/// <summary>The outgoing arm, held by its exit, keeps its own case's values until finish (Testing 9).</summary>
+let private heldExit queued () =
+    finishes.Clear ()
+    use graph = new Graph ()
+    let state = graph.Run (fun () -> Api.createSignal (Loaded ("a", 1)))
+    let target = host ()
+    let mounted = mountTemplate queued graph strict target (Component.render held state)
+    mounted.Flush ()
+    write graph [ mounted ] (fun () -> state.Value <- Idle)
+    equal ("a x1", "Other") (textOf target "pre", textOf target "span")
+    write graph [ mounted ] (fun () -> state.Value <- Loading 3)
+    equal ("a x1", "Other") (textOf target "pre", textOf target "span")
+    let pending = List.ofSeq finishes
+    finishes.Clear ()
+
+    for finish in pending do
+        finish ()
+
+    mounted.Flush ()
+    equal (null, "Other") (textOf target "pre", textOf target "span")
+    mounted.Dispose ()
+
+[<Emit("$0.querySelectorAll($1).length")>]
+let private countOf (target: HTMLElement) (selector: string) : int = jsNative
+
+let private pendingView =
+    Component.template (fun _ () -> ()) (p (Attrs.className "pending") { "pending" })
+
+let private failedView =
+    Component.template (fun _ (failure: BoundaryFailure) -> failure) (p (Attrs.className "failed") { fun failure -> failure.Error.Message })
+
+/// <summary>A boundary whose content is an Arms.Match site over an async value.</summary>
+let private bounded (flight: Signal<AsyncSource<int>>) =
+    let content =
+        Component.template
+            (fun _ (status: BoundaryStatus) -> status)
+            (div (Attrs.className "level") {
+                Arms.Match (
+                    (fun (_: BoundaryStatus) -> flight.Value.Value),
+                    function
+                    | 0 -> em () { "none" }
+                    | n -> b () { fun _ -> string n }
+                )
+            })
+
+    Component.template (fun _ () -> ()) (section () { boundary pendingView failedView content })
+
+/// <summary>A pending read waits with the boundary, as matchWith does (Testing 10).</summary>
+let private pendingSource queued () =
+    use graph = new Graph ()
+    let flight = graph.Run (fun () -> Api.createSignal (Api.createAsyncSource<int>()))
+    let target = host ()
+
+    let mounted =
+        Mounting.mountWith (modeOf queued) graph None strict target None (fun context ->
+            Program.run (Component.render (bounded flight) ()) context.Backend)
+
+    let state () =
+        mounted.Flush ()
+        mounted.Flush ()
+        countOf target ".pending", countOf target ".failed", textOf target ".level"
+
+    equal (1, 0, null) (state ())
+    graph.Run (fun () -> flight.Value.Settle 2)
+    equal (0, 0, "2") (state ())
+    graph.Run (fun () -> flight.Value <- Api.createAsyncSource<int>())
+    graph.Run (fun () -> flight.Value.Settle 0)
+    equal (0, 0, "none") (state ())
+    mounted.Dispose ()
+    equal "" target.textContent
+
 let cases: (string * (unit -> unit)) array =
     strictCases (
         Array.concat
@@ -327,5 +424,7 @@ let cases: (string * (unit -> unit)) array =
                 templated "rows fed by the items reader keep their elements across payload updates" rowsKeep
                 templated "one site per keyed row follows its own row through a reorder" siteInRows
                 templated "a batch that leaves a target and returns to it shows the last payload" switchBackInOneBatch
+                templated "an outgoing arm held by its exit keeps its own case's values until finish" heldExit
+                templated "a pending source inside a boundary waits with the boundary" pendingSource
             ]
     )
