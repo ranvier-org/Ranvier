@@ -94,6 +94,7 @@
     <Compile Include="PendingRegionChecks.fs" />
     <Compile Include="DepartureChecks.fs" />
     <Compile Include="PlaygroundSugar.fs" />
+    <Compile Include="TwinTrace.fs" />
     <Compile Include="SugarChecks.fs" />
     <Compile Include="SugarDebugChecks.fs" />
     <Compile Include="ArmsChecks.fs" />
