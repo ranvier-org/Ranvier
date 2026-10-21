@@ -30,7 +30,7 @@ let private registered =
              while not (isNull cursor)
                    && not (
                        cursor :? TwinElement
-                       && Selector.matches parsed (unbox cursor.Native)
+                       && Selector.matchesIn node.Native parsed (unbox cursor.Native)
                    ) do
                  cursor <- cursor.Parent
 

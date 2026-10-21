@@ -33,6 +33,10 @@ let equal expected actual =
 let host () : HTMLElement =
     (document ()).createElement "div"
 
+/// <summary>The running conformance case's document, or the page's outside a case.</summary>
+let pageOrCaseDocument () : Document =
+    document ()
+
 let modeOf queued =
     if queued then
         QueuedCommits (CollectAndContinue, ignore)

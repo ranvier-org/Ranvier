@@ -447,12 +447,23 @@ and [<Sealed; AllowNullLiteral>] TwinElement internal (owner: TwinDocument, loca
                 | null -> ""
                 | v -> v
             | "input" ->
-                if isNull dirtyValue then
-                    (match this.GetAttribute "value" with
-                     | null -> ""
-                     | v -> v)
-                else
-                    dirtyValue
+                let raw =
+                    if isNull dirtyValue then
+                        (match this.GetAttribute "value" with
+                         | null -> ""
+                         | v -> v)
+                    else
+                        dirtyValue
+
+                // HTML's value sanitization for the text-like types.
+                match this.InputType with
+                | "text"
+                | "search"
+                | "tel"
+                | "password" -> raw.Replace("\r", "").Replace("\n", "")
+                | "url"
+                | "email" -> raw.Replace("\r", "").Replace("\n", "").Trim([| ' '; '\t'; '\n'; '\f'; '\r' |])
+                | _ -> raw
             | "textarea" -> if isNull dirtyValue then this.TextContent else dirtyValue
             | "option" ->
                 match this.GetAttribute "value" with

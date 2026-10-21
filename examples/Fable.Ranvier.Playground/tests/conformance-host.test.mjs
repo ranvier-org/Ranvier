@@ -72,6 +72,19 @@ test("a listener added to the shared document outside a case, as jsdom adds its 
   dom.window.close();
 });
 
+test("the selector engine's window listeners for a document a case creates are no case's leftover", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  const { begin, leftovers } = trackShared(dom.window);
+  begin();
+  const other = dom.window.document.implementation.createHTMLDocument("other");
+  other.body.innerHTML = "<p></p>";
+  other.querySelector("p");
+  other.body.matches(":hover");
+  dom.window.addEventListener("keydown", () => {});
+  assert.deepEqual(leftovers(), ["window 'keydown' listener"]);
+  dom.window.close();
+});
+
 test("an interception of every node reaches a member that only an element interface declares, and an unknown member raises", () => {
   const dom = new JSDOM("<!doctype html><body><select><option>a</option></select></body>");
   const document = dom.window.document;

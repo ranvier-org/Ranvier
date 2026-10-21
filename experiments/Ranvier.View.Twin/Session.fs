@@ -167,3 +167,45 @@ module Twin =
 
     let mount (definition: Component<'props>) (props: 'props) : Session =
         mountWith TwinMount.defaults definition props
+
+    /// <summary>
+    /// Parses the server HTML <c>body</c> into the host and hydrates it with <c>Hydration.hydrateWith</c>; raises
+    /// <c>NotSupportedException</c> for queued commits, since hydration commits synchronously.
+    /// </summary>
+    let hydrateHtml
+        (options: TwinMount)
+        (hydration: Hydration.HydrationOptions)
+        (body: string)
+        (definition: Component<'props>)
+        (props: 'props)
+        : Session =
+        match options.Commits with
+        | Commits.Queued _ -> raise (NotSupportedException "Hydration supports synchronous commits only")
+        | Commits.Synchronous -> ()
+
+        let _, element, graph, session = start options
+
+        try
+            Html.parseInto element body
+            session.Attach (Hydration.hydrateWith SynchronousCommits graph None session.Report hydration element.Native definition props)
+            session.RaisePending ()
+            session
+        with _ ->
+            (session :> IDisposable).Dispose()
+            reraise ()
+
+    /// <summary>
+    /// Renders with <c>Server.renderPage</c>, writes the body into the host and the head into the document, and hydrates
+    /// with <c>Hydration.hydrateWith SynchronousCommits</c>.
+    /// </summary>
+    let hydrate (server: Server.Options) (hydration: Hydration.HydrationOptions) (definition: Component<'props>) (props: 'props) : Session =
+        let page = Server.renderPage server definition props
+
+        hydrateHtml
+            { TwinMount.defaults with
+                Head = page.Head
+            }
+            hydration
+            page.Body
+            definition
+            props

@@ -22,6 +22,35 @@ let tests =
                 meter.SetAttribute ("high", "0.1")
                 Expect.equal native.high 0.4 "raised to low"
 
+            testCase "document.title strips and collapses the title element's whitespace"
+            <| fun () ->
+                use document = new TwinDocument ()
+                let native = document.Native :?> Document
+                let title = document.Head.AppendChild (document.CreateElement "title")
+                title.TextContent <- "\n  Lamp \t · \r\n Shop  "
+                Expect.equal native.title "Lamp · Shop" "stripped and collapsed"
+                Expect.equal title.TextContent "\n  Lamp \t · \r\n Shop  " "the text is unchanged"
+
+            testCase "implementation.createHTMLDocument makes a separate titled document"
+            <| fun () ->
+                use document = new TwinDocument ()
+                let native = document.Native :?> Document
+                let other = native.implementation.createHTMLDocument "Other"
+                Expect.equal other.title "Other" "titled"
+                Expect.isFalse (obj.ReferenceEquals (other.head, native.head)) "its own head"
+
+            testCase "selectedIndex reads and selects an option by position"
+            <| fun () ->
+                use document = new TwinDocument ()
+                let select = document.CreateElement "select"
+                Html.parseInto select "<option>a</option><option selected>b</option><option>c</option>"
+                let native = select.Native :?> HTMLSelectElement
+                Expect.equal native.selectedIndex 1. "the selected option"
+                native.selectedIndex <- 2.
+                Expect.equal (native.selectedIndex, native.value) (2., "c") "written"
+                native.selectedIndex <- -1.
+                Expect.equal (native.selectedIndex, native.value) (-1., "") "none"
+
             testCase "SVG and MathML elements take their namespace's interfaces"
             <| fun () ->
                 use document = new TwinDocument ()

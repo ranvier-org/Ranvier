@@ -20,6 +20,7 @@
         <Compile Include="SessionTests.fs" />
         <Compile Include="AsyncTests.fs" />
         <Compile Include="../../experiments/Ranvier.View.Portable/Checks/ServerFixtures.fs" Link="Checks/ServerFixtures.fs" />
+        <Compile Include="../../experiments/Ranvier.View.Portable/Checks/ServerChecks.fs" Link="Checks/ServerChecks.fs" />
         <Compile Include="OracleTests.fs" />
         <Compile Include="../../examples/Fable.Ranvier.Playground/tests/RangeChecks.fs" Link="Checks/RangeChecks.fs" />
         <Compile Include="../../examples/Fable.Ranvier.Playground/tests/DelegationChecks.fs" Link="Checks/DelegationChecks.fs" />
@@ -31,7 +32,9 @@
         <Compile Include="../../examples/Fable.Ranvier.Playground/tests/PlacementChecks.fs" Link="Checks/PlacementChecks.fs" />
         <Compile Include="../../examples/Fable.Ranvier.Playground/tests/TemplateCatalogueChecks.fs" Link="Checks/TemplateCatalogueChecks.fs" />
         <Compile Include="../../examples/Fable.Ranvier.Playground/tests/UnsafeHtmlChecks.fs" Link="Checks/UnsafeHtmlChecks.fs" />
+        <Compile Include="../../examples/Fable.Ranvier.Playground/tests/DocumentChecks.fs" Link="Checks/DocumentChecks.fs" />
         <Compile Include="../../experiments/Ranvier.View.Portable/Checks/SugarFixtures.fs" Link="Checks/SugarFixtures.fs" />
+        <Compile Include="../../examples/Fable.Ranvier.Playground/tests/HydrationChecks.fs" Link="Checks/HydrationChecks.fs" />
         <Compile Include="../../examples/Fable.Ranvier.Playground/tests/PlaygroundSugar.fs" Link="Checks/PlaygroundSugar.fs" />
         <Compile Include="../../examples/Fable.Ranvier.Playground/tests/KeyedRowsPerf.fs" Link="Checks/KeyedRowsPerf.fs" />
         <Compile Include="../../examples/Fable.Ranvier.Playground/tests/KeyedRowsSugarPerf.fs" Link="Checks/KeyedRowsSugarPerf.fs" />
@@ -39,6 +42,7 @@
         <Compile Include="../../examples/Fable.Ranvier.Playground/tests/PendingRegionChecks.fs" Link="Checks/PendingRegionChecks.fs" />
         <Compile Include="../../examples/Fable.Ranvier.Playground/tests/OwnedAsyncChecks.fs" Link="Checks/OwnedAsyncChecks.fs" />
         <Compile Include="../../examples/Fable.Ranvier.Playground/tests/ConformanceCases.fs" Link="Checks/ConformanceCases.fs" />
+        <Compile Include="ServerParityTests.fs" />
         <Compile Include="TwinHarness.fs" />
         <Compile Include="ConformanceTests.fs" />
         <Compile Include="MembersTests.fs" />

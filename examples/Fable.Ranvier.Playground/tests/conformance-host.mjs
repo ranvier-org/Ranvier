@@ -137,7 +137,7 @@ export function runOnPage(window, create, run) {
 // between begin () and leftovers (). leftovers () describes and removes those still live and the view's $$ranvier
 // expandos on the same five; a case leaves the five as it found them, as a fresh twin document starts. Listeners added
 // outside a case are jsdom's own, such as the document's load listener jsdom adds on a later tick and its selector
-// engine's window listeners, and stay.
+// engine's window listeners, and stay. The selector engine's listeners for a document a case creates are jsdom's too.
 export function trackShared(window) {
   const document = window.document;
   document.querySelectorAll("*");
@@ -149,7 +149,8 @@ export function trackShared(window) {
   const add = prototype.addEventListener, remove = prototype.removeEventListener;
   const captureOf = options => typeof options === "boolean" ? options : Boolean(options?.capture);
   prototype.addEventListener = function (type, listener, options) {
-    if (recording && shared().some(([, target]) => target === this)) live.push({ target: this, type, listener, capture: captureOf(options) });
+    if (recording && shared().some(([, target]) => target === this) && !/[\\/]dom-selector[\\/]/.test(new Error().stack))
+      live.push({ target: this, type, listener, capture: captureOf(options) });
     return add.call(this, type, listener, options);
   };
   prototype.removeEventListener = function (type, listener, options) {

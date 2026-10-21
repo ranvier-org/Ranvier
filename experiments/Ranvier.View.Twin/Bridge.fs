@@ -708,6 +708,24 @@ module Bridge =
              getter inputs "defaultChecked" (fun n -> box ((element n).HasAttribute "checked"))
              getter [ "HTMLOptionElement" ] "selected" (fun n -> box (element n).Selected)
              setter [ "HTMLOptionElement" ] "selected" (fun n v -> (element n).Selected <- flag v)
+
+             getter [ "HTMLSelectElement" ] "selectedIndex" (fun n ->
+                 box (
+                     float (
+                         (element n).Options
+                         |> List.tryFindIndex (fun o -> o.Selected)
+                         |> Option.defaultValue -1
+                     )
+                 ))
+
+             setter [ "HTMLSelectElement" ] "selectedIndex" (fun n v ->
+                 let index = int (unbox<float> v)
+
+                 (element n).Options
+                 |> List.iteri (fun i o ->
+                     let selected = i = index
+                     o.SetSelectedness selected))
+
              getter inputs "type" (fun n -> box (element n).InputType)
              getter [ "HTMLTextAreaElement" ] "type" (fun _ -> box "textarea")
              getter disableable "disabled" (fun n -> box ((element n).HasAttribute "disabled"))
@@ -759,13 +777,38 @@ module Bridge =
              getter documents "body" (fun n -> box (n :?> TwinDocument).Body)
              getter documents "documentElement" (fun n -> box (n :?> TwinDocument).Html)
 
+             // DOMImplementation.createHTMLDocument: a new document on the same thread, with a title element when titled.
+             getter documents "implementation" (fun _ ->
+                 BridgeCore.ValueProxyOf (
+                     typeof<Fable.Core.TS.Dom.DOMImplementation>,
+                     fun m args ->
+                         match m.Name with
+                         | "createHTMLDocument" ->
+                             BridgeCore.ServeMethod m
+                             let created = new TwinDocument ()
+
+                             match BridgeCore.Unwrap (if args.Length > 0 then args[0] else null) with
+                             | null -> ()
+                             | title ->
+                                 let element = created.CreateElement "title"
+                                 element.TextContent <- string title
+                                 created.Head.AppendChild element |> ignore
+
+                             BridgeCore.ProxyOf created
+                         | _ -> raise (BridgeCore.Unsupported m)
+                 ))
+
              getter [ "Document"; "HTMLElement" ] "title" (fun n ->
                  match n with
                  | :? TwinDocument as d ->
                      d.Head.Children
                      |> List.tryPick (fun c ->
                          match c with
-                         | :? TwinElement as e when e.LocalName = "title" -> Some (box e.TextContent)
+                         | :? TwinElement as e when e.LocalName = "title" ->
+                             let words =
+                                 e.TextContent.Split ([| ' '; '\t'; '\n'; '\f'; '\r' |], StringSplitOptions.RemoveEmptyEntries)
+
+                             Some (box (String.Join (" ", words)))
                          | _ -> None)
                      |> Option.defaultValue (box "")
                  | _ -> box (text ((element n).GetAttribute "title")))

@@ -4,6 +4,7 @@ open System
 open Ranvier
 open Fable.Core
 open Fable.Core.TS.Dom
+open Ranvier.View.Testing
 open Ranvier.View.Foundation
 open Ranvier.View.Foundation.Representation
 open Ranvier.View.Foundation.Template
@@ -16,43 +17,117 @@ let private raisesArgument (action: unit -> unit) =
     with :? ArgumentException ->
         true
 
+#if FABLE_COMPILER
 [<Emit("document.title")>]
 let private title () : string = jsNative
+#else
+let private title () : string =
+    (pageOrCaseDocument ()).title
+#endif
 
+#if FABLE_COMPILER
 [<Emit("document.title = $0")>]
 let private setTitle (value: string) : unit = jsNative
+#else
+let private setTitle (value: string) : unit =
+    (pageOrCaseDocument ()).title <- value
+#endif
 
+#if FABLE_COMPILER
 [<Emit("document.head.querySelectorAll($0).length")>]
 let private headCount (selector: string) : int = jsNative
+#else
+let private headCount (selector: string) : int =
+    int ((pageOrCaseDocument ()).head.querySelectorAll selector).length
+#endif
 
+#if FABLE_COMPILER
 [<Emit("(document.head.querySelector($0)?.getAttribute($1) ?? null)")>]
 let private headAttribute (selector: string) (name: string) : string = jsNative
+#else
+let private headAttribute (selector: string) (name: string) : string =
+    match (pageOrCaseDocument ()).head.querySelector selector with
+    | Some element -> Option.toObj (element.getAttribute name)
+    | None -> null
+#endif
 
 /// <summary>Adds a marked meta description to the head, as a server page carries it, and returns it.</summary>
+#if FABLE_COMPILER
 [<Emit("(() => { const meta = document.createElement('meta'); meta.setAttribute('name', 'description'); meta.setAttribute('content', 'server'); meta.setAttribute('data-ranvier-head', 'meta:name=description'); document.head.append(meta); return meta; })()")>]
 let private serverDescription () : Node = jsNative
+#else
+let private serverDescription () : Node =
+    let document = pageOrCaseDocument ()
+    let meta = document.createElement "meta"
+    meta.setAttribute ("name", "description")
+    meta.setAttribute ("content", "server")
+    meta.setAttribute ("data-ranvier-head", "meta:name=description")
+    document.head.appendChild meta |> ignore
+    meta
+#endif
 
+#if FABLE_COMPILER
 [<Emit("$0.isConnected")>]
 let private isConnected (node: Node) : bool = jsNative
+#else
+let private isConnected (node: Node) : bool =
+    node.isConnected
+#endif
 
+#if FABLE_COMPILER
 [<Emit("(document.head.querySelector($0) === $1)")>]
 let private headHolds (selector: string) (node: Node) : bool = jsNative
+#else
+let private headHolds (selector: string) (node: Node) : bool =
+    match (pageOrCaseDocument ()).head.querySelector selector with
+    | Some element -> obj.ReferenceEquals (element, node)
+    | None -> false
+#endif
 
+#if FABLE_COMPILER
 [<Emit("document")>]
 let private currentDocument () : Document = jsNative
+#else
+let private currentDocument () : Document =
+    pageOrCaseDocument ()
+#endif
 
+#if FABLE_COMPILER
 [<Emit("document.implementation.createHTMLDocument($0)")>]
 let private otherDocument (documentTitle: string) : Document = jsNative
+#else
+let private otherDocument (documentTitle: string) : Document =
+    (pageOrCaseDocument ()).implementation.createHTMLDocument documentTitle
+#endif
 
+#if FABLE_COMPILER
 [<Emit("$0.title")>]
 let private titleOf (document: Document) : string = jsNative
+#else
+let private titleOf (document: Document) : string =
+    document.title
+#endif
 
+#if FABLE_COMPILER
 [<Emit("$0.head.querySelectorAll($1).length")>]
 let private headCountOf (document: Document) (selector: string) : int = jsNative
+#else
+let private headCountOf (document: Document) (selector: string) : int =
+    int (document.head.querySelectorAll selector).length
+#endif
 
 /// <summary>Adds a marked meta description to the document's head and returns it.</summary>
+#if FABLE_COMPILER
 [<Emit("(() => { const meta = $0.createElement('meta'); meta.setAttribute('name', 'description'); meta.setAttribute('data-ranvier-head', 'meta:name=description'); $0.head.append(meta); return meta; })()")>]
 let private markedDescriptionIn (document: Document) : Element = jsNative
+#else
+let private markedDescriptionIn (document: Document) : Element =
+    let meta = document.createElement "meta"
+    meta.setAttribute ("name", "description")
+    meta.setAttribute ("data-ranvier-head", "meta:name=description")
+    document.head.appendChild meta |> ignore
+    meta
+#endif
 
 let private description (content: string) (t: TemplateBuilder<'inst>) =
     t.Document.meta
@@ -223,14 +298,14 @@ let private explicitKeyDistinct queued () =
     mounted.Dispose ()
     equal (("/page", "/alternate"), (0, 0)) (live, (headCount "link[rel=canonical]", headCount "link[rel=alternate]"))
 
-let mutable private titleSource: Signal<AsyncSource<string>> =
-    Unchecked.defaultof<_>
+let private titleSource () =
+    Conformance.local "DocumentChecks.titleSource" (fun () -> ref (Unchecked.defaultof<_>: Signal<AsyncSource<string>>))
 
 let private pendingTitle =
     Component.define (fun _ (_: BoundaryStatus) -> ()) (fun t ->
         t.fragment
             [|
-                t.Document.title (fun () -> titleSource.Value.Value)
+                t.Document.title (fun () -> (titleSource ()).Value.Value.Value)
                 t.span [||] [| t.text "page" |]
             |])
 
@@ -247,18 +322,18 @@ let private guardedTitle =
 let private reactiveTitle queued () =
     use graph = new Graph ()
     setTitle "Before"
-    titleSource <- graph.Run (fun () -> Api.createSignal (Api.createAsyncSource<string>()))
+    (titleSource ()).Value <- graph.Run (fun () -> Api.createSignal (Api.createAsyncSource<string>()))
     let target = host ()
 
     let mounted =
         mountTemplate queued graph strict target (Component.render guardedTitle ())
 
     let pending = target.textContent, title ()
-    graph.Run (fun () -> titleSource.Value.Settle "Ready")
+    graph.Run (fun () -> (titleSource ()).Value.Value.Settle "Ready")
     mounted.Flush ()
     let revealed = target.textContent, title ()
     let next = graph.Run (fun () -> Api.createAsyncSource<string>())
-    graph.Run (fun () -> titleSource.Value <- next)
+    graph.Run (fun () -> (titleSource ()).Value.Value <- next)
     mounted.Flush ()
     let refetching = title ()
     graph.Run (fun () -> next.Settle "Again")
@@ -268,14 +343,15 @@ let private reactiveTitle queued () =
 
     equal (("loading", "Before"), ("page", "Ready"), "Ready", "Again", "Before") (pending, revealed, refetching, updated, title ())
 
-let mutable private metaSource: Signal<AsyncSource<string>> = Unchecked.defaultof<_>
+let private metaSource () =
+    Conformance.local "DocumentChecks.metaSource" (fun () -> ref (Unchecked.defaultof<_>: Signal<AsyncSource<string>>))
 
 let private pendingMeta =
     Component.define (fun _ (_: BoundaryStatus) -> ()) (fun t ->
         t.fragment
             [|
                 description "content" t
-                t.span [||] [| t.text (fun () -> metaSource.Value.Value) |]
+                t.span [||] [| t.text (fun () -> (metaSource ()).Value.Value.Value) |]
             |])
 
 let private guardedMeta =
@@ -283,18 +359,18 @@ let private guardedMeta =
 
 let private hiddenEntries queued () =
     use graph = new Graph ()
-    metaSource <- graph.Run (fun () -> Api.createSignal (Api.createAsyncSource<string>()))
+    (metaSource ()).Value <- graph.Run (fun () -> Api.createSignal (Api.createAsyncSource<string>()))
     let reports = ResizeArray<exn list>()
 
     let mounted =
         mountTemplate queued graph reports.Add (host ()) (Component.render guardedMeta ())
 
     let hidden = headCount "meta[name=description]"
-    graph.Run (fun () -> metaSource.Value.Settle "ready")
+    graph.Run (fun () -> (metaSource ()).Value.Value.Settle "ready")
     mounted.Flush ()
     let shown = headCount "meta[name=description]"
     let next = graph.Run (fun () -> Api.createAsyncSource<string>())
-    graph.Run (fun () -> metaSource.Value <- next)
+    graph.Run (fun () -> (metaSource ()).Value.Value <- next)
     graph.Run (fun () -> next.Fail (Exception "gone"))
     mounted.Flush ()
     let tornDown = headCount "meta[name=description]"
@@ -349,15 +425,15 @@ let private crossGraphTitles queued () =
     b.Dispose ()
     equal ("B · Shop", "B · Shop", "Before") (both, afterFirst, title ())
 
-let mutable private siblingSource: Signal<AsyncSource<string>> =
-    Unchecked.defaultof<_>
+let private siblingSource () =
+    Conformance.local "DocumentChecks.siblingSource" (fun () -> ref (Unchecked.defaultof<_>: Signal<AsyncSource<string>>))
 
 let private pendingSibling =
     Component.define (fun _ (_: BoundaryStatus) -> ()) (fun t ->
         t.fragment
             [|
                 description "content" t
-                t.span [||] [| t.text (fun () -> siblingSource.Value.Value) |]
+                t.span [||] [| t.text (fun () -> (siblingSource ()).Value.Value.Value) |]
             |])
 
 let private siblingRegions =
@@ -376,7 +452,7 @@ let private siblingRegions =
 let private siblingAdoption (fails: bool) queued () =
     use graph = new Graph ()
     let server = serverDescription ()
-    siblingSource <- graph.Run (fun () -> Api.createSignal (Api.createAsyncSource<string>()))
+    (siblingSource ()).Value <- graph.Run (fun () -> Api.createSignal (Api.createAsyncSource<string>()))
     let second = graph.Run (fun () -> Api.createSignal false)
     let reports = ResizeArray<exn list>()
 
@@ -393,9 +469,9 @@ let private siblingAdoption (fails: bool) queued () =
 
     graph.Run (fun () ->
         if fails then
-            siblingSource.Value.Fail (Exception "gone")
+            (siblingSource ()).Value.Value.Fail(Exception "gone")
         else
-            siblingSource.Value.Settle "ready")
+            (siblingSource ()).Value.Value.Settle "ready")
 
     mounted.Flush ()
     let settled = read ()
@@ -418,7 +494,7 @@ let private siblingAdoption (fails: bool) queued () =
 let private pendingAdopterFails queued () =
     use graph = new Graph ()
     let server = serverDescription ()
-    siblingSource <- graph.Run (fun () -> Api.createSignal (Api.createAsyncSource<string>()))
+    (siblingSource ()).Value <- graph.Run (fun () -> Api.createSignal (Api.createAsyncSource<string>()))
     let second = graph.Run (fun () -> Api.createSignal false)
     let reports = ResizeArray<exn list>()
 
@@ -426,7 +502,7 @@ let private pendingAdopterFails queued () =
         mountTemplate queued graph reports.Add (host ()) (Component.render siblingRegions second)
 
     let pending = headCount "meta[name=description]", isConnected server
-    graph.Run (fun () -> siblingSource.Value.Fail (Exception "gone"))
+    graph.Run (fun () -> (siblingSource ()).Value.Value.Fail(Exception "gone"))
     mounted.Flush ()
     let failed = headCount "meta[name=description]", isConnected server
     mounted.Dispose ()
@@ -688,27 +764,114 @@ let private hookSeesEarlierHead queued () =
 
     equal ([ "T" ], [ "Before" ]) (logged true, logged false)
 
+#if FABLE_COMPILER
 [<Emit("document.head.innerHTML = $0")>]
 let private setHead (html: string) : unit = jsNative
+#else
+let private setHead (html: string) : unit =
+    (pageOrCaseDocument ()).head.innerHTML <- html
+#endif
 
+#if FABLE_COMPILER
 [<Emit("document.head.innerHTML")>]
 let private headHtml () : string = jsNative
+#else
+let private headHtml () : string =
+    (pageOrCaseDocument ()).head.innerHTML
+#endif
 
+#if FABLE_COMPILER
 [<Emit("document.head.querySelector($0)")>]
 let private inHead (selector: string) : Node = jsNative
+#else
+let private inHead (selector: string) : Node =
+    match (pageOrCaseDocument ()).head.querySelector selector with
+    | Some element -> element :> Node
+    | None -> Unchecked.defaultof<_>
+#endif
 
+#if FABLE_COMPILER
 [<Emit("Array.from(document.head.querySelectorAll('*'))")>]
 let private headElements () : Node array = jsNative
+#else
+let private headElements () : Node array =
+    let found = (pageOrCaseDocument ()).head.querySelectorAll "*"
+    [| for i in 0 .. int found.length - 1 -> unbox<Node>(found.item (float i)) |]
+#endif
 
+#if FABLE_COMPILER
 [<Emit("document.head.querySelector('title')?.firstChild ?? null")>]
 let private titleText () : Node = jsNative
+#else
+let private titleText () : Node =
+    match (pageOrCaseDocument ()).head.querySelector "title" with
+    | Some title ->
+        match title.firstChild with
+        | Some child -> unbox<Node> child
+        | None -> Unchecked.defaultof<_>
+    | None -> Unchecked.defaultof<_>
+#endif
 
 /// <summary>
 /// Records the head's mutations; the returned function stops and returns the count of attribute and text writes, and
 /// of child list changes inside a <c>title</c> element.
 /// </summary>
+#if FABLE_COMPILER
 [<Emit("(() => { const o = new document.defaultView.MutationObserver(() => {}); o.observe(document.head, { subtree: true, childList: true, attributes: true, characterData: true }); return () => { const n = o.takeRecords().filter(r => r.type !== 'childList' || r.target.nodeName === 'TITLE').length; o.disconnect(); return n; }; })()")>]
 let private recordWrites () : unit -> int = jsNative
+#else
+let private countWritesUnder (root: unit -> Node) (names: string list) (counts: obj -> string -> obj array -> bool) : unit -> int =
+    let count = ref 0
+
+    let restores =
+        [
+            for name in names ->
+                Conformance.interceptOn null name (fun original target args ->
+                    match target with
+                    | :? Node as node when (root ()).contains node && counts target name args -> count.Value <- count.Value + 1
+                    | _ -> ()
+
+                    original args)
+        ]
+
+    fun () ->
+        for restore in restores do
+            restore ()
+
+        count.Value
+
+// The attribute and text writes under the head, and the child list changes inside a title element.
+let private recordWrites () : unit -> int =
+    let head () =
+        (pageOrCaseDocument ()).head :> Node
+
+    let childList =
+        [
+            "appendChild"
+            "insertBefore"
+            "removeChild"
+            "replaceChild"
+            "remove"
+            "replaceChildren"
+        ]
+
+    countWritesUnder
+        head
+        ([ "setAttribute"; "removeAttribute"; "set_data"; "set_textContent" ]
+         @ childList)
+        (fun target name _ ->
+            not (List.contains name childList)
+            || (match target with
+                | :? Node as node ->
+                    let rec inTitle (node: Node) =
+                        node.nodeName = "TITLE"
+                        || (match node.parentNode with
+                            | Some parent -> inTitle (unbox<Node> parent)
+                            | None -> false)
+
+                    inTitle node
+                | _ -> false))
+#endif
 
 let private sameNodes (before: Node array) (after: Node array) =
     before.Length = after.Length
@@ -1136,8 +1299,17 @@ let private freshMountFailureRestoresHead () =
             (failed, reports.Count, headHtml (), sameNodes served (headElements ()), obj.ReferenceEquals (titleText (), text), title ()))
 
 /// <summary>Changes the href of the head's first link, when the head has one, and adds a media attribute to it.</summary>
+#if FABLE_COMPILER
 [<Emit("(() => { const link = document.head.querySelector('link'); if (link) { link.setAttribute('href', '/client.css'); link.setAttribute('media', 'print'); } })()")>]
 let private editStylesheet () : unit = jsNative
+#else
+let private editStylesheet () : unit =
+    match (pageOrCaseDocument ()).head.querySelector "link" with
+    | Some link ->
+        link.setAttribute ("href", "/client.css")
+        link.setAttribute ("media", "print")
+    | None -> ()
+#endif
 
 /// <summary>A div whose setup edits the head's first link and whose mounted hook raises.</summary>
 let private stylesheetEditor =
@@ -1162,8 +1334,15 @@ let private unmarkedEditRestored () =
 
         equal ("hook", head) (failed, headHtml ()))
 
+#if FABLE_COMPILER
 [<Emit("document.head.querySelector('link').setAttribute('href', $0)")>]
 let private setStylesheet (href: string) : unit = jsNative
+#else
+let private setStylesheet (href: string) : unit =
+    ((pageOrCaseDocument ()).head.querySelector "link"
+     |> Option.get)
+        .setAttribute("href", href)
+#endif
 
 let private plainSpan =
     Component.define (fun _ () -> ()) (fun t -> t.span [||] [| t.text "page" |])
@@ -1194,14 +1373,30 @@ let private earlierEditsKept () =
         hydrated.Dispose ()
         equal ("hook", "<link rel=\"stylesheet\" href=\"/between.css\">") (failed, headHtml ()))
 
+#if FABLE_COMPILER
 [<Emit("$0.head.innerHTML = $1")>]
 let private setHeadOf (document: Document) (html: string) : unit = jsNative
+#else
+let private setHeadOf (document: Document) (html: string) : unit =
+    document.head.innerHTML <- html
+#endif
 
+#if FABLE_COMPILER
 [<Emit("$0.head.innerHTML")>]
 let private headHtmlOf (document: Document) : string = jsNative
+#else
+let private headHtmlOf (document: Document) : string =
+    document.head.innerHTML
+#endif
 
+#if FABLE_COMPILER
 [<Emit("$0.body.appendChild($0.createElement('div'))")>]
 let private hostIn (document: Document) : HTMLElement = jsNative
+#else
+let private hostIn (document: Document) : HTMLElement =
+    document.body.appendChild (document.createElement "div")
+    |> unbox<HTMLElement>
+#endif
 
 let private windowlessHeadRestored () =
     let other = otherDocument "Other"
@@ -1356,7 +1551,7 @@ let private regionRecoveryRemovesOnce () =
              + "<meta data-ranvier-head=\"meta:name=row\" name=\"row\" content=\"row 3\">")
             shown)
 
-let cases: (string * (unit -> unit)) array =
+let private checks: (string * (unit -> unit)) array =
     strictCases (
         Array.concat
             [
@@ -1413,3 +1608,5 @@ let cases: (string * (unit -> unit)) array =
                 templated "a client mount adopts marked elements without hydrate and removes none" mountAdoptsHead
             ]
     )
+
+let cases: Conformance.Case array = Conformance.ofChecks checks

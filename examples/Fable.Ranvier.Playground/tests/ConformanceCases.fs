@@ -15,4 +15,6 @@ let modules: (string * Conformance.Case array) array =
         "UnsafeHtmlChecks", UnsafeHtmlChecks.cases
         "PendingRegionChecks", PendingRegionChecks.cases
         "OwnedAsyncChecks", OwnedAsyncChecks.cases
+        "DocumentChecks", DocumentChecks.cases
+        "HydrationChecks", HydrationChecks.cases
     |]
