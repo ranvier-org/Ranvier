@@ -1354,6 +1354,8 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
     let mutable sourceState = 0
     // Whether server nodes the region did not adopt remain between the markers.
     let mutable stale = false
+    // Whether the source read of the latest pass raised a pending read.
+    let mutable sourcePending = false
 
     member _.LaidOut = laidOut
     member _.Errors = errors
@@ -1554,14 +1556,27 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
         sourceState <- BindingState.released previous
         BindingState.ready state.Scope previous
 
-    /// <summary>True when <c>failure</c> is a pending source read, which it registers with the mount's scope.</summary>
+    /// <summary>The value of <c>read</c>, the region's source read for a pass; a pending read marks the pass for <c>Settle</c> and is raised.</summary>
+    member _.ReadSource(read: unit -> 'value) : 'value =
+        sourcePending <- false
+
+        try
+            read ()
+        with NotReadyException _ ->
+            sourcePending <- true
+            reraise ()
+
+    /// <summary>Whether the source read of the latest pass, through <c>ReadSource</c>, was pending.</summary>
+    member _.SourcePending = sourcePending
+
+    /// <summary>True when the pass's source read was pending; registers the read with the mount's scope.</summary>
     member private _.Pends(failure: exn option, hydrating: bool) =
-        match failure with
-        | Some (NotReadyException _ as error) ->
-            sourceState <- BindingState.rejected state.Scope sourceState error
+        if sourcePending then
+            sourceState <- BindingState.rejected state.Scope sourceState failure.Value
             stale <- stale || hydrating
             true
-        | _ -> false
+        else
+            false
 
     /// <summary>
     /// Removes the server nodes left between the markers by a hydrating pass whose source read was pending. Call after
@@ -1573,10 +1588,10 @@ and private RegionSite(state: MountState, regionStart: Node, regionEnd: Node, re
             Row.ClearBetween (this.Parent (), regionStart, regionEnd)
 
     /// <summary>
-    /// Ends a pass. A region disposed during the pass reports <c>recorded</c>. A pending source read, the pass's
-    /// failure, keeps the region's rows and waits with the mount's boundary until a later pass ends; a hydrating
-    /// region keeps the server nodes until <c>Resume</c>. Otherwise a failure is recorded or reported with
-    /// <c>recorded</c>, and a success runs <c>settle recorded</c>.
+    /// Ends a pass. A region disposed during the pass reports <c>recorded</c>. A pass whose source read is pending keeps
+    /// the region's rows and waits with the mount's boundary until a later pass ends; a hydrating pass keeps the server
+    /// nodes until <c>Resume</c>. Otherwise a failure is recorded or reported with <c>recorded</c>, and a success runs
+    /// <c>settle recorded</c>.
     /// </summary>
     /// <remarks>
     /// A failed <c>hydrating</c> pass passes a structural mismatch to <c>Recover</c> when it is set, with the failure's
@@ -3311,7 +3326,7 @@ and internal MountState
                             graph,
                             report,
                             fun () ->
-                                let current = items.Read ()
+                                let current = site.ReadSource items.Read
                                 site.Resume ()
                                 snapshot <- current
                                 Api.untrack (fun () -> version.Value <- version.Value + 1)
@@ -3590,6 +3605,13 @@ and internal MountState
                             site.Errors.Report recorded
                 )
 
+                // A pass whose source read was pending keeps the last pass's rows, so the next pass compares against them.
+                if site.SourcePending then
+                    previousKeys <- priorKeys
+                    previousVersion <- priorVersion
+                    previousRows <- priorRows
+                    previousItems <- priorItems
+
                 if not (isNull (box measured)) then
                     measured ()
 
@@ -3721,6 +3743,9 @@ and internal MountState
 
                     reraise ()
 
+        let select () =
+            selection.Value
+
         let reconcile () =
             if site.Live () then
                 let hydrating = site.Hydrating
@@ -3742,7 +3767,7 @@ and internal MountState
                             graph,
                             report,
                             fun () ->
-                                let selected = selection.Value
+                                let selected = site.ReadSource select
 
                                 Api.untrack (fun () ->
                                     site.Resume ()

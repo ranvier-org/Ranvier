@@ -99,8 +99,8 @@ let private flush (mounted: Mounting.Mounted) =
 
 /// <summary>
 /// The region's first read is pending: the boundary shows its pending view, then reveals the content once the source
-/// settles. A refetch keeps the content and sets <c>IsPending</c> until the new source settles. A failed source shows
-/// the error view.
+/// settles. A refetch keeps the content and sets <c>IsPending</c> until the new source settles, to the same value or
+/// another. A failed source shows the error view.
 /// </summary>
 let private waitsAndRefreshes (kind: Kind) queued () =
     use graph = new Graph ()
@@ -120,6 +120,12 @@ let private waitsAndRefreshes (kind: Kind) queued () =
     graph.Run (fun () -> flight.Value <- Api.createAsyncSource<int>())
     flush mounted
     equal (0, 0, "*" + high) (state target)
+    graph.Run (fun () -> flight.Value.Settle 2)
+    flush mounted
+    equal (0, 0, "." + high) (state target)
+    graph.Run (fun () -> flight.Value <- Api.createAsyncSource<int>())
+    flush mounted
+    equal (0, 0, "*" + high) (state target)
     graph.Run (fun () -> flight.Value.Settle 0)
     flush mounted
     equal (0, 0, "." + low) (state target)
@@ -130,6 +136,24 @@ let private waitsAndRefreshes (kind: Kind) queued () =
     equal (0, 1, null) (state target)
     mounted.Dispose ()
     equal "" target.textContent
+
+/// <summary>A source that fails after a pending first read shows the error view in place of the pending view.</summary>
+let private failsBeforeReveal (kind: Kind) queued () =
+    use graph = new Graph ()
+    let flight = graph.Run (fun () -> Api.createSignal (Api.createAsyncSource<int>()))
+    let target = host ()
+
+    let mounted =
+        Mounting.mountWith (modeOf queued) graph None strict target None (fun context ->
+            Program.run (Component.render (bounded kind flight) ()) context.Backend)
+
+    flush mounted
+    let waiting = state target
+    graph.Run (fun () -> flight.Value.Fail (exn "offline"))
+    flush mounted
+    let failed = state target, textOf target ".failed"
+    mounted.Dispose ()
+    equal ((1, 0, null), ((0, 1, null), "offline")) (waiting, failed)
 
 /// <summary>Outside every boundary, a pending region source keeps the region's last rows and reports nothing.</summary>
 let private keepsOutsideBoundary (kind: Kind) queued () =
@@ -182,6 +206,95 @@ let private removedPendingRegion queued () =
     let revealed = state target
     mounted.Dispose ()
     equal ((1, 0, null), (0, 0, "[]")) (waiting, revealed)
+
+/// <summary>Hiding the arm that holds a refetching region after the reveal clears <c>IsPending</c>.</summary>
+let private removedRefetchingRegion queued () =
+    use graph = new Graph ()
+    let flight = graph.Run (fun () -> Api.createSignal (Api.createAsyncSource<int>()))
+    let outer = graph.Run (fun () -> Api.createSignal true)
+    let target = host ()
+
+    let content =
+        Component.template
+            (fun _ (status: BoundaryStatus) -> status)
+            (div (Attrs.className "level") {
+                fun (status: BoundaryStatus) -> if status.IsPending () then "*" else "."
+                "["
+                show (fun _ -> outer.Value) (span () { region Show flight })
+                "]"
+            })
+
+    let view =
+        Component.template (fun _ () -> ()) (section () { boundary pendingView failedView content })
+
+    let mounted =
+        Mounting.mountWith (modeOf queued) graph None strict target None (fun context -> Program.run (Component.render view ()) context.Backend)
+
+    graph.Run (fun () -> flight.Value.Settle 2)
+    flush mounted
+    graph.Run (fun () -> flight.Value <- Api.createAsyncSource<int>())
+    flush mounted
+    let refetching = state target
+    graph.Run (fun () -> outer.Value <- false)
+    flush mounted
+    let hidden = state target
+    mounted.Dispose ()
+    equal ((0, 0, "*[high]"), (0, 0, ".[]")) (refetching, hidden)
+
+/// <summary>The first character of the content's text, the <c>IsPending</c> marker; empty without content.</summary>
+let private marker (root: HTMLElement) =
+    match textOf root ".level" with
+    | null -> ""
+    | text -> text.Substring (0, 1)
+
+/// <summary>
+/// An arm whose component setup reads a pending value fails the setup: on the content's first pass the boundary shows
+/// its error view, and after the reveal the boundary's <c>IsPending</c> stays false.
+/// </summary>
+let private armSetupReadsPending initial queued () =
+    use graph = new Graph ()
+    let source = graph.Run (fun () -> Api.createAsyncSource<int>())
+    let flag = graph.Run (fun () -> Api.createSignal initial)
+    let reports = ResizeArray<exn list>()
+    let target = host ()
+
+    let readingArm =
+        Component.define
+            (fun _ (payload: unit -> unit) ->
+                source.Value |> ignore
+                payload)
+            (fun _ -> b () { "armed" })
+
+    let plainArm = armOf (em () { "plain" })
+
+    let content =
+        Component.template
+            (fun _ (status: BoundaryStatus) -> status)
+            (div (Attrs.className "level") {
+                fun (status: BoundaryStatus) -> if status.IsPending () then "*" else "."
+                matchWith (fun _ -> flag.Value) (fun shown -> if shown then arm readingArm () else arm plainArm ())
+            })
+
+    let view =
+        Component.template (fun _ () -> ()) (section () { boundary pendingView failedView content })
+
+    let mounted =
+        Mounting.mountWith (modeOf queued) graph None reports.Add target None (fun context -> Program.run (Component.render view ()) context.Backend)
+
+    flush mounted
+    let mountedState = state target
+    graph.Run (fun () -> flag.Value <- true)
+    flush mounted
+    let selected = countOf target ".pending", countOf target ".failed", marker target
+    graph.Run (fun () -> source.Settle 1)
+    flush mounted
+    let settled = countOf target ".pending", countOf target ".failed"
+    mounted.Dispose ()
+
+    if initial then
+        equal ((0, 1, null), (0, 1, ""), (0, 1)) (mountedState, selected, settled)
+    else
+        equal ((0, 0, ".plain"), (0, 0, "."), (0, 0)) (mountedState, selected, settled)
 
 let private serverOptions = Server.Options.defaults
 
@@ -251,12 +364,16 @@ let private hydratesPending (kind: Kind) servedReady () =
     let mounted =
         Hydration.hydrate graph None strict strictOptions target (bounded kind flight) ()
 
-    let waiting = countOf target ".failed"
+    let waiting = state target
     graph.Run (fun () -> flight.Value.Settle 2)
     flush mounted
     let revealed = state target
     mounted.Dispose ()
-    equal (0, (0, 0, "." + high)) (waiting, revealed)
+
+    // While pending, a ready server boundary shows the copy of its server content, and a pending one its pending view.
+    let shownWhilePending = if servedReady then (0, 0, "." + high) else (1, 0, null)
+
+    equal (shownWhilePending, (0, 0, "." + high)) (waiting, revealed)
 
 let private kinds = [ Show; ShowElse; MatchWith; ForEach ]
 
@@ -280,6 +397,8 @@ let cases: (string * (unit -> unit)) array =
                 $"{modeName queued}: a {nameOf kind} source reading a pending value outside every boundary keeps its last rows",
                 keepsOutsideBoundary kind queued
 
+                $"{modeName queued}: a {nameOf kind} source failing after a pending first read shows the error view", failsBeforeReveal kind queued
+
             $"server: a {nameOf kind} source reading a pending value renders the boundary's pending view", serverStates kind
             $"server: a {nameOf kind} source reading a pending value outside every boundary raises", serverRejectsUnbounded kind
             $"hydration: a {nameOf kind} source pending on the client reveals a ready server boundary once it settles", hydratesPending kind true
@@ -287,4 +406,10 @@ let cases: (string * (unit -> unit)) array =
 
         "synchronous: hiding the arm that holds the one pending region reveals the boundary", removedPendingRegion false
         "queued: hiding the arm that holds the one pending region reveals the boundary", removedPendingRegion true
+        "synchronous: hiding the arm that holds a refetching region clears IsPending", removedRefetchingRegion false
+        "queued: hiding the arm that holds a refetching region clears IsPending", removedRefetchingRegion true
+        "synchronous: an arm setup reading a pending value on the first pass shows the error view", armSetupReadsPending true false
+        "queued: an arm setup reading a pending value on the first pass shows the error view", armSetupReadsPending true true
+        "synchronous: an arm setup reading a pending value after the reveal leaves IsPending false", armSetupReadsPending false false
+        "queued: an arm setup reading a pending value after the reveal leaves IsPending false", armSetupReadsPending false true
     |]
