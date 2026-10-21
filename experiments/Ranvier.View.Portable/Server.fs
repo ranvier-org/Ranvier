@@ -234,6 +234,19 @@ let renderTo (options: Options) (definition: Component<'props>) (props: 'props) 
 
     sink.Segments write
 
+/// <summary>The <c>stateScript</c> element with <c>nonce</c>, an attribute string or empty, after its id.</summary>
+let private stateElement (nonce: string) (id: string) (json: string) : string =
+    let escaped =
+        json.Replace("<", "\\u003c").Replace(string (char 0x2028), "\\u2028").Replace(string (char 0x2029), "\\u2029")
+
+    "<script type=\"application/json\" id=\""
+    + Html.escape true id
+    + "\""
+    + nonce
+    + ">"
+    + escaped
+    + "</script>"
+
 /// <summary>
 /// A <c>&lt;script type="application/json"&gt;</c> element with the escaped <c>id</c>, holding <c>json</c> with each
 /// <c>&lt;</c>, U+2028 and U+2029 written as its six-character JSON escape.
@@ -243,14 +256,7 @@ let renderTo (options: Options) (definition: Component<'props>) (props: 'props) 
 /// returns the value <c>json</c> encodes. <c>Hydration.readState</c> reads the text back.
 /// </remarks>
 let stateScript (id: string) (json: string) : string =
-    let escaped =
-        json.Replace("<", "\\u003c").Replace(string (char 0x2028), "\\u2028").Replace(string (char 0x2029), "\\u2029")
-
-    "<script type=\"application/json\" id=\""
-    + Html.escape true id
-    + "\">"
-    + escaped
-    + "</script>"
+    stateElement "" id json
 
 /// <summary>A rendered page: the body as <c>render</c> returns it, and the document head entries' HTML.</summary>
 type Page = { Body: string; Head: string }
@@ -290,17 +296,17 @@ let renderPage (options: Options) (definition: Component<'props>) (props: 'props
 
 /// <summary>A module script of a document, written after the host element and the state elements.</summary>
 [<RequireQualifiedAccess>]
-type Script =
+type ModuleScript =
     /// <summary><c>&lt;script type="module" src&gt;</c> loading the escaped URL.</summary>
-    | Module of src: string
+    | Src of src: string
     /// <summary>
     /// <c>&lt;script type="module"&gt;</c> holding the text as given. Text containing <c>&lt;/script</c> in any ASCII
     /// case, or <c>&lt;!--</c>, is rejected.
     /// </summary>
-    | InlineModule of text: string
+    | Inline of text: string
 
 /// <summary>The HTML document <c>renderDocument</c> writes around a component.</summary>
-type Document =
+type DocumentShell =
     {
         /// <summary>The <c>lang</c> attribute of <c>&lt;html&gt;</c>; <c>None</c> omits it.</summary>
         Lang: string option
@@ -311,14 +317,20 @@ type Document =
         /// <summary>The <c>href</c> of each <c>&lt;link rel="stylesheet"&gt;</c>, written after the head entries.</summary>
         Stylesheets: string list
         /// <summary>The scripts after the state elements, in order.</summary>
-        Scripts: Script list
+        Scripts: ModuleScript list
+        /// <summary>
+        /// The <c>nonce</c> attribute of every script and state element, for a <c>Content-Security-Policy</c>
+        /// <c>script-src 'nonce-...'</c>; <c>None</c> omits it. A nonce holds ASCII letters, digits and
+        /// <c>+ / = - _</c>.
+        /// </summary>
+        Nonce: string option
         /// <summary>The further attributes of <c>&lt;html&gt;</c>, after <c>lang</c>.</summary>
         HtmlAttributes: (string * string) list
         /// <summary>The attributes of <c>&lt;body&gt;</c>.</summary>
         BodyAttributes: (string * string) list
     }
 
-module Document =
+module DocumentShell =
     /// <summary>A document with the host id <c>app</c> and every other field empty.</summary>
     let defaults =
         {
@@ -327,6 +339,7 @@ module Document =
             State = []
             Stylesheets = []
             Scripts = []
+            Nonce = None
             HtmlAttributes = []
             BodyAttributes = []
         }
@@ -351,6 +364,23 @@ let private validateId (id: string) =
                 "document"
             )
         )
+
+let private validateNonce (nonce: string) =
+    let valid (c: char) =
+        (c >= 'a' && c <= 'z')
+        || (c >= 'A' && c <= 'Z')
+        || (c >= '0' && c <= '9')
+        || c = '+'
+        || c = '/'
+        || c = '='
+        || c = '-'
+        || c = '_'
+
+    if
+        String.IsNullOrEmpty nonce
+        || not (Seq.forall valid nonce)
+    then
+        raise (ArgumentException ("A nonce must be non-empty and hold only ASCII letters, digits and + / = - _", "document"))
 
 /// <summary>Whether <c>pattern</c>, lowercase ASCII, occurs at <c>index</c> of <c>text</c> in any ASCII case.</summary>
 let private occursAt (text: string) (index: int) (pattern: string) =
@@ -397,8 +427,16 @@ let private attributes (reserved: string list) (pairs: (string * string) list) :
 /// The document's markup before the head entries, between the head entries and the body, and after the body; an
 /// invalid document raises <c>ArgumentException</c>.
 /// </summary>
-let private shell (document: Document) : string * string * string =
+let private shell (document: DocumentShell) : string * string * string =
     validateId document.HostId
+
+    let nonce =
+        match document.Nonce with
+        | Some nonce ->
+            validateNonce nonce
+            " nonce=\"" + Html.escape true nonce + "\""
+        | None -> ""
+
     let ids = ResizeArray<string> [ document.HostId ]
 
     for id, _ in document.State do
@@ -436,20 +474,27 @@ let private shell (document: Document) : string * string * string =
     let scripts =
         document.Scripts
         |> List.map (function
-            | Script.Module src ->
+            | ModuleScript.Src src ->
                 "<script type=\"module\" src=\""
                 + Html.escape true src
-                + "\"></script>"
-            | Script.InlineModule text ->
+                + "\""
+                + nonce
+                + "></script>"
+            | ModuleScript.Inline text ->
                 let text = if isNull text then "" else text
                 validateInline text
-                "<script type=\"module\">" + text + "</script>")
+
+                "<script type=\"module\""
+                + nonce
+                + ">"
+                + text
+                + "</script>")
         |> String.concat ""
 
     let finish =
         "</div>"
         + (document.State
-           |> List.map (fun (id, json) -> stateScript id json)
+           |> List.map (fun (id, json) -> stateElement nonce id json)
            |> String.concat "")
         + scripts
         + "</body></html>"
@@ -465,13 +510,15 @@ let private shell (document: Document) : string * string * string =
 /// The document is <c>&lt;!doctype html&gt;</c>, then <c>&lt;html&gt;</c> with <c>lang</c> and <c>HtmlAttributes</c>.
 /// Its <c>&lt;head&gt;</c> holds <c>&lt;meta charset="utf-8"&gt;</c>, the page's head entries and the stylesheets.
 /// Its <c>&lt;body&gt;</c> holds the host <c>&lt;div&gt;</c>, whose only content is the page's body, then the state
-/// elements, then the scripts. Elements are written without whitespace between them.
+/// elements, then the scripts. Each script and state element carries <c>Nonce</c> as its last attribute. Elements
+/// are written without whitespace between them.
 /// </para>
 /// <para>
 /// Every attribute value is escaped as <c>Html.escape true</c> escapes it. <c>ArgumentException</c> is raised for an
 /// id that is empty or contains ASCII whitespace, an id written twice, an attribute name <c>validateAttribute</c>
-/// rejects, an attribute written twice on an element, and inline module text containing <c>&lt;/script</c> in any
-/// ASCII case or <c>&lt;!--</c>.
+/// rejects, an attribute written twice on an element, a nonce that is empty or holds a character outside ASCII
+/// letters, digits and <c>+ / = - _</c>, and inline module text containing <c>&lt;/script</c> in any ASCII case or
+/// <c>&lt;!--</c>.
 /// </para>
 /// </remarks>
 /// <exception cref="T:System.ArgumentException">The document is invalid.</exception>
@@ -481,7 +528,7 @@ let private shell (document: Document) : string * string * string =
 /// <exception cref="T:System.AggregateException">
 /// The request's cleanup fails. The inner exceptions are the render's failure, when it failed, then the cleanup's.
 /// </exception>
-let renderDocumentTo (options: Options) (document: Document) (definition: Component<'props>) (props: 'props) (write: string -> unit) : unit =
+let renderDocumentTo (options: Options) (document: DocumentShell) (definition: Component<'props>) (props: 'props) (write: string -> unit) : unit =
     let start, middle, finish = shell document
     let sink = HtmlSink ()
     let heads = HeadCollector ()
@@ -508,7 +555,7 @@ let renderDocumentTo (options: Options) (document: Document) (definition: Compon
 /// <exception cref="T:System.AggregateException">
 /// The request's cleanup fails. The inner exceptions are the render's failure, when it failed, then the cleanup's.
 /// </exception>
-let renderDocument (options: Options) (document: Document) (definition: Component<'props>) (props: 'props) : string =
+let renderDocument (options: Options) (document: DocumentShell) (definition: Component<'props>) (props: 'props) : string =
     let start, middle, finish = shell document
     let page = renderPage options definition props
     start + page.Head + middle + page.Body + finish

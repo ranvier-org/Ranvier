@@ -10,9 +10,9 @@ let options = { Server.Options.defaults with Policy = Omit }
 
 let page (props: CounterProps) : string =
     let document =
-        { Server.Document.defaults with
+        { Server.DocumentShell.defaults with
             Lang = Some "en"
             State = [ stateId, counterProps.Encode props ]
-            Scripts = [ Server.Script.Module "/main.js" ] }
+            Scripts = [ Server.ModuleScript.Src "/main.js" ] }
 
     Server.renderDocument options document counter props

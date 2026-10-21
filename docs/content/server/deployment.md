@@ -93,10 +93,10 @@ let options = { Server.Options.defaults with Policy = Omit }
 
 let page (props: CounterProps) : string =
     let document =
-        { Server.Document.defaults with
+        { Server.DocumentShell.defaults with
             Lang = Some "en"
             State = [ stateId, counterProps.Encode props ]
-            Scripts = [ Server.Script.Module "/main.js" ] }
+            Scripts = [ Server.ModuleScript.Src "/main.js" ] }
 
     Server.renderDocument options document counter props
 ```
@@ -111,18 +111,20 @@ and writes the whole document around it:
 - each state element after the host, outside it;
 - each script after the state elements, so the client bundle loads after the body.
 
-| `Server.Document` field | Default | Writes |
+| `Server.DocumentShell` field | Default | Writes |
 | --- | --- | --- |
 | `Lang` | `None` | The `lang` attribute of `<html>`. |
 | `HostId` | `"app"` | The id of the host element. |
 | `State` | `[]` | One [`stateScript`](state-transfer.md#writing-the-state) element per id and JSON pair. |
 | `Stylesheets` | `[]` | One `<link rel="stylesheet">` per URL, after the head entries. |
-| `Scripts` | `[]` | `Server.Script.Module src` writes `<script type="module" src>`; `Server.Script.InlineModule text` writes the text inside `<script type="module">`. |
+| `Scripts` | `[]` | `Server.ModuleScript.Src src` writes `<script type="module" src>`; `Server.ModuleScript.Inline text` writes the text inside `<script type="module">`. |
+| `Nonce` | `None` | The `nonce` attribute of every script and state element, for a `Content-Security-Policy` of `script-src 'nonce-...'`. |
 | `HtmlAttributes`, `BodyAttributes` | `[]` | Further attributes of `<html>` and `<body>`. |
 
 Every attribute value is escaped. `renderDocument` raises `ArgumentException` before the render for an
 id that is empty, contains whitespace or is written twice, an attribute name that a template rejects or
-that an element repeats, and inline module text containing `</script` in any letter case or `<!--`.
+that an element repeats, a nonce that is empty or holds a character other than ASCII letters, digits and
+`+ / = - _`, and inline module text containing `</script` in any letter case or `<!--`.
 A failed render raises as [`renderPage`](rendering.md#failures) does.
 `Server.renderDocumentTo options document definition props write` passes the same document to `write`
 in segments, after a successful render.

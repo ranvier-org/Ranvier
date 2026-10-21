@@ -1873,11 +1873,11 @@ let private documentHead =
     + """<meta data-ranvier-head="meta:name=description" name="description" content="moons">"""
 
 let private fullDocument =
-    { Server.Document.defaults with
+    { Server.DocumentShell.defaults with
         Lang = Some "en"
         State = [ "page-props", "{\"title\":\"Tides\"}" ]
         Stylesheets = [ "/site.css" ]
-        Scripts = [ Server.Script.Module "/main.js"; Server.Script.InlineModule "start();" ]
+        Scripts = [ Server.ModuleScript.Src "/main.js"; Server.ModuleScript.Inline "start();" ]
         HtmlAttributes = [ "data-theme", "dark" ]
         BodyAttributes = [ "class", "page" ]
     }
@@ -1887,7 +1887,7 @@ let private documentOutput () =
         ("<!doctype html><html><head><meta charset=\"utf-8\">"
          + documentHead
          + "</head><body><div id=\"app\"><!--[r--><div><p>moons</p></div><!--]--></div></body></html>")
-        (Server.renderDocument Server.Options.defaults Server.Document.defaults documentPage documentProps)
+        (Server.renderDocument Server.Options.defaults Server.DocumentShell.defaults documentPage documentProps)
 
     equal
         ("<!doctype html><html lang=\"en\" data-theme=\"dark\"><head><meta charset=\"utf-8\">"
@@ -1927,12 +1927,12 @@ let private documentEscapes () =
     let escaped = "&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;&amp;"
 
     let document =
-        { Server.Document.defaults with
+        { Server.DocumentShell.defaults with
             Lang = Some hostile
             HostId = "a\"b"
             State = [ "s\"", "\"</script>\"" ]
             Stylesheets = [ hostile ]
-            Scripts = [ Server.Script.Module hostile ]
+            Scripts = [ Server.ModuleScript.Src hostile ]
             HtmlAttributes = [ "data-x", hostile ]
             BodyAttributes = [ "class", hostile ]
         }
@@ -1956,7 +1956,7 @@ let private documentEscapes () =
         (Server.renderDocument Server.Options.defaults document empty ())
 
 let private documentRejections () =
-    let rejected (document: Server.Document) =
+    let rejected (document: Server.DocumentShell) =
         documentLog.Clear ()
         let written = ResizeArray<string>()
 
@@ -1971,8 +1971,8 @@ let private documentRejections () =
         error.Message, direct.Message = error.Message, written.Count, documentLog.Count
 
     let inlineScript text =
-        { Server.Document.defaults with
-            Scripts = [ Server.Script.InlineModule text ]
+        { Server.DocumentShell.defaults with
+            Scripts = [ Server.ModuleScript.Inline text ]
         }
 
     let invalidId = "An element id must be non-empty and contain no ASCII whitespace"
@@ -1982,28 +1982,28 @@ let private documentRejections () =
         [
             for document in
                 [
-                    { Server.Document.defaults with
+                    { Server.DocumentShell.defaults with
                         HostId = ""
                     }
-                    { Server.Document.defaults with
+                    { Server.DocumentShell.defaults with
                         HostId = null
                     }
-                    { Server.Document.defaults with
+                    { Server.DocumentShell.defaults with
                         HostId = " "
                     }
-                    { Server.Document.defaults with
+                    { Server.DocumentShell.defaults with
                         HostId = "a b"
                     }
-                    { Server.Document.defaults with
+                    { Server.DocumentShell.defaults with
                         HostId = "a\tb"
                     }
-                    { Server.Document.defaults with
+                    { Server.DocumentShell.defaults with
                         HostId = "a\u000Cb"
                     }
-                    { Server.Document.defaults with
+                    { Server.DocumentShell.defaults with
                         State = [ "", "1" ]
                     }
-                    { Server.Document.defaults with
+                    { Server.DocumentShell.defaults with
                         State = [ "s\n", "1" ]
                     }
                 ] ->
@@ -2018,17 +2018,17 @@ let private documentRejections () =
 
     let duplicates =
         [
-            { Server.Document.defaults with
+            { Server.DocumentShell.defaults with
                 State = [ "app", "1" ]
             }
-            { Server.Document.defaults with
+            { Server.DocumentShell.defaults with
                 State = [ "s", "1"; "s", "2" ]
             }
-            { Server.Document.defaults with
+            { Server.DocumentShell.defaults with
                 Lang = Some "en"
                 HtmlAttributes = [ "lang", "fr" ]
             }
-            { Server.Document.defaults with
+            { Server.DocumentShell.defaults with
                 BodyAttributes = [ "class", "a"; "class", "b" ]
             }
         ]
@@ -2043,7 +2043,7 @@ let private documentRejections () =
         |> List.map (fun name ->
             let message, _, written, _ =
                 rejected
-                    { Server.Document.defaults with
+                    { Server.DocumentShell.defaults with
                         BodyAttributes = [ name, "x" ]
                     }
 
@@ -2059,12 +2059,41 @@ let private documentRejections () =
 
     equal (List.replicate 6 true) accepted
 
+let private documentNonce () =
+    let nonced =
+        { fullDocument with
+            Nonce = Some "aB3+/=-_"
+        }
+
+    equal
+        ("<script type=\"application/json\" id=\"page-props\" nonce=\"aB3+/=-_\">{\"title\":\"Tides\"}</script>"
+         + "<script type=\"module\" src=\"/main.js\" nonce=\"aB3+/=-_\"></script>"
+         + "<script type=\"module\" nonce=\"aB3+/=-_\">start();</script></body></html>")
+        (let html =
+            Server.renderDocument Server.Options.defaults nonced documentPage documentProps
+
+         html.Substring (html.IndexOf "<script"))
+
+    let rejected =
+        [ ""; "a b"; "a\"b"; "a'b"; "a<b"; "a&b"; "é"; "a\n" ]
+        |> List.map (fun nonce ->
+            documentLog.Clear ()
+            let written = ResizeArray<string>()
+
+            let error =
+                failure (fun () ->
+                    Server.renderDocumentTo Server.Options.defaults { fullDocument with Nonce = Some nonce } documentPage documentProps written.Add)
+
+            error.Message.StartsWith ("A nonce must be non-empty", StringComparison.Ordinal), written.Count, documentLog.Count)
+
+    equal (List.replicate 8 (true, 0, 0)) rejected
+
 let private documentFailures () =
     attemptLog.Clear ()
     let written = ResizeArray<string>()
 
     let pending =
-        failure (fun () -> Server.renderDocumentTo Server.Options.defaults Server.Document.defaults unguarded () written.Add)
+        failure (fun () -> Server.renderDocumentTo Server.Options.defaults Server.DocumentShell.defaults unguarded () written.Add)
 
     let isPending =
         match pending with
@@ -2076,7 +2105,7 @@ let private documentFailures () =
 
     let cleanup =
         failure (fun () ->
-            Server.renderDocument Server.Options.defaults Server.Document.defaults cleanupFails ()
+            Server.renderDocument Server.Options.defaults Server.DocumentShell.defaults cleanupFails ()
             |> ignore)
 
     equal
@@ -2172,6 +2201,7 @@ let cases: (string * (unit -> unit)) array =
         "renderDocument rejects invalid or repeated ids and attributes and closing inline script text before the render", documentRejections
         "renderDocument raises ServerPendingException and the cleanup aggregate as renderPage does, and renderDocumentTo writes nothing then",
         documentFailures
+        "renderDocument writes the nonce on every script and state element and rejects an empty or out-of-charset nonce", documentNonce
     |]
 
 #if !FABLE_COMPILER
