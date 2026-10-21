@@ -5,7 +5,8 @@ import { trackShared, interceptIn, makeClock } from "./conformance-host.mjs";
 
 test("a listener or expando left on the shared document is reported and removed", () => {
   const dom = new JSDOM("<!doctype html><body></body>");
-  const { leftovers } = trackShared(dom.window);
+  const { begin, leftovers } = trackShared(dom.window);
+  begin();
   const document = dom.window.document;
   const removed = () => {};
   document.body.addEventListener("click", removed);
@@ -23,7 +24,8 @@ test("a listener or expando left on the shared document is reported and removed"
 
 test("listeners on other elements are not shared state", () => {
   const dom = new JSDOM("<!doctype html><body></body>");
-  const { leftovers } = trackShared(dom.window);
+  const { begin, leftovers } = trackShared(dom.window);
+  begin();
   const main = dom.window.document.createElement("main");
   dom.window.document.body.append(main);
   main.addEventListener("click", () => {});
@@ -54,4 +56,18 @@ test("the clock drains microtasks after each timer and runs frames at 16 ms boun
   assert.deepEqual(log, ["f16", "t20", "m"]);
   clock.restore();
   assert.equal(target.setTimeout, undefined);
+});
+
+test("a listener added to the shared document outside a case, as jsdom adds its load listener, is no case's leftover", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  const { begin, leftovers } = trackShared(dom.window);
+  const document = dom.window.document;
+  document.addEventListener("load", () => {});
+  begin();
+  assert.deepEqual(leftovers(), []);
+  document.addEventListener("load", () => {});
+  begin();
+  document.body.addEventListener("click", () => {});
+  assert.deepEqual(leftovers(), ["body 'click' listener"]);
+  dom.window.close();
 });
