@@ -480,6 +480,31 @@ module Core =
     let isCombine (m: FSharpMemberOrFunctionOrValue) : bool =
         m.LogicalName = "Combine"
 
+    /// Whether `m` is a computation-expression loop, `For` or `While`, whose body runs again after its own awaits.
+    let isLoop (m: FSharpMemberOrFunctionOrValue) : bool =
+        m.LogicalName = "For" || m.LogicalName = "While"
+
+    /// Whether `m` is a computation-expression member that runs its lambda arguments as part of the computation:
+    /// `Delay`, `Combine`, a loop, `TryWith`, `TryFinally` or `Using`.
+    let isControl (m: FSharpMemberOrFunctionOrValue) : bool =
+        match m.LogicalName with
+        | "Delay"
+        | "Combine"
+        | "For"
+        | "While"
+        | "TryWith"
+        | "TryFinally"
+        | "Using" -> true
+        | _ -> false
+
+    /// Whether `m` is `Graph.Run`, which runs its body with the graph active.
+    let isGraphRun (m: FSharpMemberOrFunctionOrValue) : bool =
+        m.DisplayName = "Run"
+        && (m.ApparentEnclosingEntity
+            |> Option.bind _.TryFullName)
+            =
+            Some "Ranvier.Graph"
+
     /// Whether `m` creates an async value with a flight policy: `createAsyncWithPolicy` or its owning form.
     let isPolicyCreator (m: FSharpMemberOrFunctionOrValue) : bool =
         isMember Api "createAsyncWithPolicy" m
@@ -518,7 +543,7 @@ module View =
     open FSharp.Compiler.Symbols.FSharpExprPatterns
 
     /// Raises `InvalidOperationException` when the HTML parser restructures `tag` under `ancestors` (nearest first, lower
-    /// case): the view's own rule, from experiments/Ranvier.View.Portable/ContentModel.fs compiled into the analyzers.
+    /// case).
     let checkNesting (ancestors: string list) (tag: string) : unit =
         Ranvier.View.Foundation.ContentModel.check ancestors tag
 
@@ -593,12 +618,18 @@ module View =
         | Sugar, ("armOf" | "show" | "showElse") -> true
         | _ -> false
 
-    /// The name of the content part that `expr` is: `Unsafe.html` or `Hooks.widget`.
+    [<Literal>]
+    let UnsafeHtmlPart = "Unsafe.html"
+
+    [<Literal>]
+    let WidgetPart = "Hooks.widget"
+
+    /// The name of the content part that `expr` is: `UnsafeHtmlPart` or `WidgetPart`.
     let rec contentPart (expr: FSharpExpr) : string option =
         match expr with
         | Coerce (_, inner) -> contentPart inner
-        | Call (_, m, _, _, _) when enclosing m = Unsafe && m.LogicalName = "html" -> Some "Unsafe.html"
-        | Call (_, m, _, _, _) when enclosing m = Hooks && m.LogicalName = "widget" -> Some "Hooks.widget"
+        | Call (_, m, _, _, _) when enclosing m = Unsafe && m.LogicalName = "html" -> Some UnsafeHtmlPart
+        | Call (_, m, _, _, _) when enclosing m = Hooks && m.LogicalName = "widget" -> Some WidgetPart
         | _ -> None
 
     /// The void HTML elements.
@@ -725,6 +756,7 @@ module Keys =
         match enclosing m, m.LogicalName with
         | "System.Guid", "NewGuid"
         | "System.DateTime", ("get_Now" | "get_UtcNow")
+        | "System.Environment", ("get_TickCount" | "get_TickCount64")
         | "System.Object", ".ctor"
         | "Microsoft.FSharp.Core.FSharpRef`1", ("set_Value" | "set_contents")
         | Operators, (":=" | "op_ColonEquals" | "incr" | "decr") -> true
@@ -735,6 +767,15 @@ module Keys =
     let positionalCall (m: FSharpMemberOrFunctionOrValue) =
         match enclosing m, m.LogicalName with
         | ("Microsoft.FSharp.Collections.ArrayModule" | "Microsoft.FSharp.Collections.ListModule" | "Microsoft.FSharp.Collections.SeqModule"),
-          ("indexOf" | "findIndex" | "tryFindIndex") -> true
-        | _, "IndexOf" -> true
+          ("findIndex" | "tryFindIndex")
+        | ("System.Array" | "System.Collections.Generic.List`1" | "System.Collections.Generic.IList`1"), "IndexOf" -> true
         | _ -> false
+
+    /// Whether `m` is FSharp.Core's `id`.
+    let isIdentity (m: FSharpMemberOrFunctionOrValue) =
+        isMember Operators "id" m
+
+    /// Whether `m` overrides `Object.Equals` or implements an equality interface's `Equals`.
+    let isEqualsOverride (m: FSharpMemberOrFunctionOrValue) =
+        m.LogicalName = "Equals"
+        && m.IsOverrideOrExplicitInterfaceImplementation

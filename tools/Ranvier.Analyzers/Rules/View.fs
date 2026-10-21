@@ -275,10 +275,61 @@ let private comparedByReference (t: FSharpType) =
         && entity.TryFullName <> Some Symbols.StringType
         && not (
             entity.MembersFunctionsAndValues
-            |> Seq.exists (fun m ->
-                m.LogicalName = "Equals"
-                && m.IsOverrideOrExplicitInterfaceImplementation)
+            |> Seq.exists Symbols.Keys.isEqualsOverride
         ))
+
+/// The key function's body with the bodies of the same-file functions it calls, and the ranges of those functions.
+let private keyCode (index: FileIndex) (body: FSharpExpr) : FSharpExpr list * range list =
+    let rec go (visited: FSharpMemberOrFunctionOrValue list) (expr: FSharpExpr) =
+        let inner = subExpressions expr
+
+        let called =
+            inner
+            |> List.choose (fun expr ->
+                match expr with
+                | Call (None, m, _, _, _) when not (List.contains m visited) ->
+                    Index.definition index m
+                    |> Option.filter (fun definition -> not definition.Parameters.IsEmpty)
+                | _ -> None)
+            |> List.distinctBy _.Value.DeclarationLocation
+
+        let visited = visited @ (called |> List.map _.Value)
+
+        called
+        |> List.fold
+            (fun (exprs, ranges) definition ->
+                let more, scopes = go visited definition.Body
+
+                exprs @ more,
+                definition.Value.DeclarationLocation
+                :: definition.Body.Range
+                :: ranges
+                @ scopes)
+            (inner, [])
+
+    go [] body
+
+/// Whether `expr` is a member chain rooted at `value`: `value.A.B`.
+let rec private rootedAt (value: FSharpMemberOrFunctionOrValue) (expr: FSharpExpr) : bool =
+    match expr with
+    | Value v -> v = value
+    | Call (Some receiver, _, _, _, _)
+    | FSharpFieldGet (Some receiver, _, _) -> rootedAt value receiver
+    | Coerce (_, inner) -> rootedAt value inner
+    | _ -> false
+
+/// The key function's parameter and body: a lambda, or a same-file function passed by name.
+let private keyFunction (index: FileIndex) (key: FSharpExpr) : (FSharpMemberOrFunctionOrValue * FSharpExpr) option =
+    match key with
+    | Lambda (item, body) -> Some (item, body)
+    | Value value ->
+        match Index.definition index value with
+        | Some {
+                   Parameters = [ [ item ] ]
+                   Body = body
+               } -> Some (item, body)
+        | _ -> None
+    | _ -> None
 
 let private unstableKeys (input: Input) : Message list =
     [
@@ -286,9 +337,13 @@ let private unstableKeys (input: Input) : Message list =
             if isKeyed site.Callee && not site.Arguments.IsEmpty then
                 let key = site.Arguments[0]
 
-                match key with
-                | Lambda (item, body) ->
-                    let inner = subExpressions body
+                match keyFunction input.Index key with
+                | Some (item, body) ->
+                    let inner, scopes = keyCode input.Index body
+
+                    let local (location: range) =
+                        (key.Range :: body.Range :: scopes)
+                        |> List.exists (fun scope -> Range.rangeContainsRange scope location)
 
                     let impure =
                         inner
@@ -296,7 +351,7 @@ let private unstableKeys (input: Input) : Message list =
                             match expr with
                             | Call (_, m, _, _, _)
                             | NewObject (m, _, _) when Symbols.Keys.impureCall m -> Some (text input expr.Range)
-                            | ValueSet (v, _) when not (Range.rangeContainsRange key.Range v.DeclarationLocation) -> Some (text input expr.Range)
+                            | ValueSet (v, _) when not (local v.DeclarationLocation) -> Some (text input expr.Range)
                             | _ -> None)
 
                     let positional =
@@ -314,7 +369,8 @@ let private unstableKeys (input: Input) : Message list =
                         inner
                         |> List.tryPick (fun expr ->
                             match expr with
-                            | Call (Some _, m, _, _, _) when Symbols.Core.isReactiveRead m -> Some (text input expr.Range)
+                            | Call (Some receiver, m, _, _, _) when Symbols.Core.isReactiveRead m ->
+                                Some (text input expr.Range, rootedAt item receiver)
                             | _ -> None)
 
                     let structuredItem =
@@ -327,7 +383,7 @@ let private unstableKeys (input: Input) : Message list =
                         && structuredItem
                         && (match body with
                             | Value v -> v = item
-                            | Call (None, m, _, _, [ Value v ]) -> m.LogicalName = "id" && v = item
+                            | Call (None, m, _, _, [ Value v ]) -> Symbols.Keys.isIdentity m && v = item
                             | _ -> false)
 
                     match impure, positional, tracked with
@@ -345,7 +401,14 @@ let private unstableKeys (input: Input) : Message list =
                             key.Range
                             $"This key is the item's position (`{call}`), so moving or inserting an item remounts every row after it. Key by a value unique to the item, such as an id."
                             []
-                    | None, None, Some read ->
+                    | None, None, Some (read, true) ->
+                        message
+                            "RAN021"
+                            Severity.Warning
+                            key.Range
+                            $"This key reads `{read}`, a tracked value of the item, so a change to it re-keys the row. Key by a stable value of the item, such as an id."
+                            []
+                    | None, None, Some (read, false) ->
                         message
                             "RAN021"
                             Severity.Warning
@@ -370,7 +433,7 @@ let private unstableKeys (input: Input) : Message list =
                             $"The key `{body.Type.Format FSharpDisplayContext.Empty}` is compared by reference, so a rebuilt item gets a new key and its row remounts. Key by a value with structural equality, such as an id."
                             []
                     | _ -> ()
-                | _ -> ()
+                | None -> ()
     ]
 
 let ran021: Rule =
@@ -386,48 +449,115 @@ let rec private createsDefinition (expr: FSharpExpr) =
     | Call (_, m, _, _, _) when isDefinitionCreator m -> true
     | _ -> List.exists createsDefinition expr.ImmediateSubExpressions
 
-/// Whether the getter `m` is a static `Component` property whose implementation creates a definition.
-let private recreatingProperty (project: FSharpCheckProjectResults option) (m: FSharpMemberOrFunctionOrValue) =
-    m.IsPropertyGetterMethod
-    && not m.IsInstanceMember
-    && m.ReturnParameter.Type.HasTypeDefinition
-    && m.ReturnParameter.Type.TypeDefinition.TryFullName = Some ComponentType
-    && (match project with
-        | Some results ->
-            let rec find (item: FSharpImplementationFileDeclaration) =
-                match item with
-                | FSharpImplementationFileDeclaration.Entity (_, items) -> List.exists find items
-                | FSharpImplementationFileDeclaration.MemberOrFunctionOrValue (value, _, body) ->
-                    value.IsEffectivelySameAs m
-                    && createsDefinition body
-                | FSharpImplementationFileDeclaration.InitAction _ -> false
+/// The project's static `Component` getters whose implementations create a definition.
+let private recreatingProperties (project: FSharpCheckProjectResults option) : FSharpMemberOrFunctionOrValue list =
+    let isComponentGetter (m: FSharpMemberOrFunctionOrValue) =
+        m.IsPropertyGetterMethod
+        && not m.IsInstanceMember
+        && m.ReturnParameter.Type.HasTypeDefinition
+        && m.ReturnParameter.Type.TypeDefinition.TryFullName = Some ComponentType
 
-            results.AssemblyContents.ImplementationFiles
-            |> List.exists (fun file -> List.exists find file.Declarations)
-        | None -> false)
+    let rec find (item: FSharpImplementationFileDeclaration) =
+        match item with
+        | FSharpImplementationFileDeclaration.Entity (_, items) -> List.collect find items
+        | FSharpImplementationFileDeclaration.MemberOrFunctionOrValue (value, _, body) when isComponentGetter value && createsDefinition body ->
+            [ value ]
+        | FSharpImplementationFileDeclaration.MemberOrFunctionOrValue _
+        | FSharpImplementationFileDeclaration.InitAction _ -> []
+
+    match project with
+    | Some results ->
+        results.AssemblyContents.ImplementationFiles
+        |> List.collect (fun file -> List.collect find file.Declarations)
+    | None -> []
+
+/// Whether `definition` is a function: it takes parameters, or its body is a lambda.
+let private isFunction (definition: Definition) =
+    not definition.Parameters.IsEmpty
+    || (match definition.Body with
+        | Lambda _ -> true
+        | _ -> false)
+
+/// Whether `expr` creates a definition, directly or through the same-file functions it calls.
+let rec private createsThrough (index: FileIndex) (visited: FSharpMemberOrFunctionOrValue list) (expr: FSharpExpr) =
+    subExpressions expr
+    |> List.exists (fun expr ->
+        match expr with
+        | Call (_, m, _, _, _) when isDefinitionCreator m -> true
+        | Call (None, m, _, _, _) when not (List.contains m visited) ->
+            Index.definition index m
+            |> Option.exists (fun definition ->
+                isFunction definition
+                && createsThrough index (m :: visited) definition.Body)
+        | _ -> false)
+
+/// The callee as written at `range`, up to its arguments: `Component.template`, `armOf`.
+let private writtenCallee (input: Input) (range: range) =
+    let written = text input range
+    let stop = written.IndexOfAny [| ' '; '('; '\n' |]
+    if stop > 0 then written.Substring (0, stop) else written
+
+/// The range of the callee as written at the start of `range`.
+let private calleeRange (input: Input) (range: range) : range =
+    let callee = writtenCallee input range
+    Range.mkRange range.FileName range.Start (Position.mkPos range.StartLine (range.StartColumn + callee.Length))
 
 let private regionDefinitions (input: Input) : Message list =
+    let properties = lazy (recreatingProperties input.Project)
+
+    // The bodies of same-file functions passed by name as a region's lambda, `matchWith reader arms`, which the
+    // compiler may pass as `fun x -> arms x`.
+    let hoisted =
+        input.Index.Calls
+        |> Array.choose (fun site ->
+            site.Arguments
+            |> List.indexed
+            |> List.tryPick (fun (index, argument) ->
+                match argument with
+                | Value value
+                | Lambda (_, Call (None, value, _, _, _)) when isRegionLambda site.Callee index ->
+                    Index.definition input.Index value
+                    |> Option.filter isFunction
+                    |> Option.map _.Body.Range
+                | _ -> None))
+
+    let perRead (site: CallSite) =
+        inRegion site.Path
+        || hoisted
+           |> Array.exists (fun body -> Range.rangeContainsRange body site.Range)
+
     [
         for site in input.Index.Calls do
-            let creator = isDefinitionCreator site.Callee
+            let cause =
+                if isDefinitionCreator site.Callee then
+                    Some (writtenCallee input site.Range)
+                elif
+                    site.Callee.IsPropertyGetterMethod
+                    && properties.Value
+                       |> List.exists site.Callee.IsEffectivelySameAs
+                then
+                    Some (text input site.Range)
+                elif
+                    site.Receiver.IsNone
+                    && Index.definition input.Index site.Callee
+                       |> Option.exists (fun definition ->
+                           isFunction definition
+                           && not (Array.contains definition.Body.Range hoisted)
+                           && createsThrough input.Index [ site.Callee ] definition.Body)
+                then
+                    Some (writtenCallee input site.Range)
+                else
+                    None
 
-            let property =
-                not creator
-                && recreatingProperty input.Project site.Callee
-
-            if (creator || property) && inRegion site.Path then
-                let name =
-                    if creator then
-                        site.Callee.DisplayName
-                    else
-                        text input site.Range
-
+            match cause with
+            | Some name when perRead site ->
                 message
                     "RAN022"
                     Severity.Warning
                     site.Range
-                    $"`{name}` runs on every read of this region, so the arm is a new definition each time and remounts. Bind the definition with `let` outside the template."
+                    $"`{name}` runs on every read of this region, so the definition is new each time and remounts. Bind the definition with `let` outside the template."
                     []
+            | _ -> ()
     ]
 
 let ran022: Rule =
@@ -455,6 +585,13 @@ let rec private items (expr: FSharpExpr) : FSharpExpr list =
     | NewArray (_, elements) -> List.collect items elements
     | Coerce (_, inner) -> items inner
     | _ -> [ expr ]
+
+/// Whether `expr` is a literal array with at least one element.
+let rec private literalNonEmpty (expr: FSharpExpr) : bool =
+    match expr with
+    | NewArray (_, elements) -> not elements.IsEmpty
+    | Coerce (_, inner) -> literalNonEmpty inner
+    | _ -> false
 
 /// Whether a call of `m` with `arguments` writes an element: a generated tag member of the builder, `t.div parts
 /// children`, or `t.br parts` for a void element.
@@ -509,8 +646,8 @@ let elements (input: Input) : ElementSite list =
                     Parts = items site.Arguments[0]
                     HasChildren =
                         site.Arguments.Length = 2
-                        && not (items site.Arguments[1]).IsEmpty
-                    Range = site.Range
+                        && literalNonEmpty site.Arguments[1]
+                    Range = calleeRange input site.Range
                     Ancestors = ancestors site.Path
                 }
             else
@@ -558,7 +695,7 @@ let private invalidContent (input: Input) : Message list =
                     part.Range
                     $"This element has a content part (`{name}`) and template children, which fails when the definition is created. Move the children into another element."
                     []
-            | [ "Unsafe.html", part ] when
+            | [ UnsafeHtmlPart, part ] when
                 Symbols.View.voidTags.Contains element.Tag
                 || Symbols.View.rawTextTags.Contains element.Tag
                 || element.Tag = "template"
@@ -602,10 +739,32 @@ let private restructured (element: ElementSite) : string option =
     with :? System.InvalidOperationException as failure ->
         Some $"{failure.Message}, which the server render refuses at its first render. Nest the elements as the HTML parser builds them."
 
+/// Whether an enclosing literal element is itself restructured.
+let private withinRestructured (element: ElementSite) : bool =
+    let rec go (ancestors: string list) =
+        match ancestors with
+        | tag :: outer ->
+            restructured
+                { element with
+                    Tag = tag
+                    Ancestors = outer
+                }
+            |> Option.isSome
+            || go outer
+        | [] -> false
+
+    go element.Ancestors
+
 let private serverRefusals (input: Input) : Message list =
     [
         for element in elements input do
-            match refused element, restructured element with
+            match
+                refused element,
+                (if withinRestructured element then
+                     None
+                 else
+                     restructured element)
+            with
             | Some text, _
             | None, Some text -> message "RAN024" Severity.Warning element.Range text []
             | None, None -> ()
@@ -619,15 +778,40 @@ let ran024: Rule =
         Run = serverRefusals
     }
 
-let rec private queuedMode (lets: LetSite array) (expr: FSharpExpr) : bool =
-    match expr with
-    | NewUnionCase (_, case, _) -> Symbols.View.isQueuedCommits case
-    | Call (None, m, _, _, _) when Symbols.View.isQueuedModeFunction m -> true
-    | Value value ->
-        lets
-        |> Array.exists (fun site -> site.Value = value && queuedMode lets site.Bound)
-    | Coerce (_, inner) -> queuedMode lets inner
-    | _ -> false
+/// Whether `expr` evaluates to a queued commit mode, following the file's lets and its module values and functions.
+let rec private queuedMode (index: FileIndex) (depth: int) (expr: FSharpExpr) : bool =
+    let follow = queuedMode index (depth + 1)
+
+    depth < 8
+    && match expr with
+       | NewUnionCase (_, case, _) -> Symbols.View.isQueuedCommits case
+       | Call (None, m, _, _, _) when Symbols.View.isQueuedModeFunction m -> true
+       | Call (None, m, _, _, _) ->
+           Index.definition index m
+           |> Option.exists (fun definition -> follow definition.Body)
+       | Value value ->
+           index.Lets
+           |> Array.exists (fun site -> site.Value = value && follow site.Bound)
+           || Index.definition index value
+              |> Option.exists (fun definition ->
+                  definition.Parameters.IsEmpty
+                  && follow definition.Body)
+       | Coerce (_, inner)
+       | Let (_, inner)
+       | Sequential (_, inner) -> follow inner
+       | IfThenElse (_, whenTrue, whenFalse) -> follow whenTrue || follow whenFalse
+       | DecisionTree (_, targets) -> targets |> List.exists (snd >> follow)
+       | _ -> false
+
+/// The range of `mode` as written, through the compiler-generated local that a piped call binds it to.
+let private written (index: FileIndex) (mode: FSharpExpr) : range =
+    match mode with
+    | Value value when value.IsCompilerGenerated ->
+        index.Lets
+        |> Array.tryFind (fun site -> site.Value = value)
+        |> Option.map _.Bound.Range
+        |> Option.defaultValue mode.Range
+    | _ -> mode.Range
 
 let private queuedHydration (input: Input) : Message list =
     [
@@ -635,12 +819,12 @@ let private queuedHydration (input: Input) : Message list =
             match site.Arguments with
             | mode :: _ when
                 Symbols.View.isHydrateWith site.Callee
-                && queuedMode input.Index.Lets mode
+                && queuedMode input.Index 0 mode
                 ->
                 message
                     "RAN025"
                     Severity.Error
-                    mode.Range
+                    (written input.Index mode)
                     "Hydration supports synchronous commits only, so this call raises. Pass `SynchronousCommits`, or call `hydrate`."
                     []
             | _ -> ()

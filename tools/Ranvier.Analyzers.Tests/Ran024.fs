@@ -28,12 +28,12 @@ let tests =
                     "one message"
             }
 
-            test "the finding's range is the element" {
+            test "the finding's range is the element's tag member" {
                 let body =
                     "let c = Component.define (fun _ () -> ()) (fun t -> t.script [||] [||])\n"
 
                 let range = (findings body).Head.Range
-                Expect.equal (textAt (header + body) range) "t.script [||] [||]" "the script element"
+                Expect.equal (textAt (header + body) range) "t.script" "the script element"
             }
 
             test "a style element" {
@@ -48,6 +48,26 @@ let tests =
                 Expect.equal (codes "let c = Component.template (fun _ () -> ()) (table () { tr () { td () { \"x\" } } })\n") [ "RAN024" ] "table-row"
             }
 
+            test "an explicit tr in an explicit table is reported at its tag member" {
+                let body =
+                    "let c =\n    Component.define (fun _ () -> ()) (fun t ->\n        t.table [||] [|\n            t.tr [||] [| t.td [||] [||] |]\n        |])\n"
+
+                let messages = findings body
+
+                Expect.equal
+                    (messages
+                     |> List.map (fun m -> textAt (header + body) m.Range))
+                    [ "t.tr" ]
+                    "the tr member"
+            }
+
+            test "a misnested element is reported once, at the outermost restructured element" {
+                let messages =
+                    findings "let c = Component.template (fun _ () -> ()) (table () { div () { tr () { td () { \"x\" } } } })\n"
+
+                Expect.equal (messages |> List.length) 1 "the div only"
+            }
+
             test "tr in tbody in table" {
                 Expect.isEmpty
                     (codes "let c = Component.template (fun _ () -> ()) (table () { tbody () { tr () { td () { \"x\" } } } })\n")
@@ -56,9 +76,7 @@ let tests =
 
             test "a sugar tag with a quoted name keeps its HTML name" {
                 Expect.isEmpty
-                    (codes
-                        "let c = Component.template (fun _ () -> ()) (div () { select () { option' () { \"o\" } } })
-")
+                    (codes "let c = Component.template (fun _ () -> ()) (div () { select () { option' () { \"o\" } } })\n")
                     "option' is option"
             }
 

@@ -52,8 +52,8 @@ let private calleeName (input: Input) (range: range) (name: string) : range opti
     else
         None
 
-/// The pure context whose body holds the expression at `path`, and the context's callee: the search stops at the
-/// first argument of another call reached through a lambda, since that lambda is the other call's to run.
+/// The pure context whose body holds the expression at `path`, and the context's callee. The search stops at the
+/// first argument of another call reached through a lambda.
 let private pureContextOf (path: Step list) : (FSharpMemberOrFunctionOrValue * PureContext) option =
     let rec go (lambdas: int) (steps: Step list) =
         match Index.lambdaStep isTransparent steps, steps with
@@ -181,10 +181,20 @@ let ran011: Rule =
         Run = recreated
     }
 
+/// Whether the computation `expr` awaits: a bind on its own statements, or in the lambdas of its control members.
 let rec private containsAwait (expr: FSharpExpr) : bool =
     match expr with
     | Call (_, m, _, _, _) when isBind m -> true
-    | _ -> List.exists containsAwait expr.ImmediateSubExpressions
+    | Call (_, m, _, _, arguments) when isControl m -> List.exists containsAwait arguments
+    | Lambda (_, body)
+    | Let (_, body)
+    | Sequential (_, body)
+    | Coerce (_, body) -> containsAwait body
+    | IfThenElse (_, whenTrue, whenFalse) -> containsAwait whenTrue || containsAwait whenFalse
+    | DecisionTree (_, targets) -> targets |> List.exists (snd >> containsAwait)
+    | TryWith (body, _, _, _, handler, _, _) -> containsAwait body || containsAwait handler
+    | TryFinally (body, cleanup, _, _) -> containsAwait body || containsAwait cleanup
+    | _ -> false
 
 /// Whether argument `index` of `callee` is a tracked body: a pure context, an owner body, or `untrack`'s body.
 let private trackedBody (callee: FSharpMemberOrFunctionOrValue) (index: int) (count: int) : bool =
@@ -205,6 +215,14 @@ let private afterAwait (input: Input) (site: CallSite) : bool =
             && call.Arguments.Length = 2
             && containsAwait call.Arguments[0])
 
+    // The loop call at `outer` holds the read, and an await in the loop precedes the read's next run.
+    let loopAwaits (loop: FSharpMemberOrFunctionOrValue) (outer: Step list) =
+        input.Index.Calls
+        |> Array.exists (fun call ->
+            call.Callee = loop
+            && obj.ReferenceEquals (call.Path, outer)
+            && List.exists containsAwait call.Arguments)
+
     let rec go (awaited: bool) (steps: Step list) =
         match steps with
         | [] -> false
@@ -215,6 +233,7 @@ let private afterAwait (input: Input) (site: CallSite) : bool =
             ->
             false
         | Step.Argument (callee, 1, 2) :: rest when isCombine callee -> go (awaited || awaitsBefore callee rest) rest
+        | Step.Argument (callee, _, _) :: rest when isLoop callee -> go (awaited || loopAwaits callee rest) rest
         | Step.Argument (callee, index, count) :: rest ->
             match asyncComputeIndex callee count with
             | Some compute when compute = index -> awaited
@@ -306,6 +325,8 @@ let private offThreadWrites (input: Input) : Message list =
             let overGraph (expr: FSharpExpr) =
                 match expr with
                 | NewObject (constructor, _, Value graph :: _) when isNodeConstructor constructor -> graphs |> Array.contains graph
+                | Call (Some (Value graph), m, _, _, _)
+                | Call (None, m, _, _, Value graph :: _) when isGraphRun m -> graphs |> Array.contains graph
                 | _ -> false
 
             graphs |> Array.contains target

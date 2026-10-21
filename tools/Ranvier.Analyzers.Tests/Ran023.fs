@@ -61,6 +61,19 @@ let tests =
                     "textarea"
             }
 
+            test "Array.empty children are unknown" {
+                Expect.isEmpty
+                    (codes "let c = Component.define (fun _ () -> ()) (fun t -> t.div [| t.Unsafe.html markup |] Array.empty)\n")
+                    "Array.empty"
+            }
+
+            test "children passed as a variable are unknown" {
+                Expect.isEmpty
+                    (codes
+                        "let none: TemplateView<unit> array = [||]\nlet c = Component.define (fun _ () -> ()) (fun t -> t.div [| t.Unsafe.html markup |] none)\n")
+                    "a variable"
+            }
+
             test "one content part" {
                 Expect.isEmpty (codes "let c = Component.define (fun _ () -> ()) (fun t -> t.div [| t.Unsafe.html markup |] [||])\n") "valid"
             }

@@ -72,6 +72,42 @@ let h () = Hydration.hydrateWith (Scheduling.QueuedCommits 1) ()
                     "no Foundation assembly reference"
             }
 
+            test "a module-level queued mode" {
+                let body =
+                    "    ()\nlet browserMode: CommitMode = Microtask.mode CollectAndContinue\nlet other graph host definition =\n    hydrateWith browserMode graph None ignore HydrationOptions.defaults host definition ()\n"
+
+                Expect.equal (codes body) [ "RAN025" ] "module value"
+            }
+
+            test "a same-file function returning QueuedCommits" {
+                let body =
+                    "    ()\nlet queued failure = QueuedCommits (failure, ignore)\nlet other graph host definition =\n    hydrateWith (queued CollectAndContinue) graph None ignore HydrationOptions.defaults host definition ()\n"
+
+                Expect.equal (codes body) [ "RAN025" ] "same-file helper"
+            }
+
+            test "a conditional mode with a queued branch" {
+                let body =
+                    "    ()\nlet other (browser: bool) graph host definition =\n    let mode = if browser then Microtask.mode CollectAndContinue else SynchronousCommits\n    hydrateWith mode graph None ignore HydrationOptions.defaults host definition ()\n"
+
+                Expect.equal (codes body) [ "RAN025" ] "either branch"
+            }
+
+            test "the piped form's range is the mode argument" {
+                let body =
+                    "    () |> hydrateWith (QueuedCommits (failure, post)) graph None ignore HydrationOptions.defaults host definition\n"
+
+                let range = (findings body).Head.Range
+                Expect.equal (textAt (header + body) range) "QueuedCommits (failure, post)" "the mode"
+            }
+
+            test "a same-file function returning SynchronousCommits" {
+                let body =
+                    "    ()\nlet synchronous () = SynchronousCommits\nlet other graph host definition =\n    hydrateWith (synchronous ()) graph None ignore HydrationOptions.defaults host definition ()\n"
+
+                Expect.isEmpty (codes body) "synchronous"
+            }
+
             test "SynchronousCommits" { Expect.isEmpty (codes (call "SynchronousCommits")) "supported" }
 
             test "a mode parameter" {

@@ -27,7 +27,7 @@ let tests =
                      |> List.map _.Message
                      |> List.distinct)
                     [
-                        "`armOf` runs on every read of this region, so the arm is a new definition each time and remounts. Bind the definition with `let` outside the template."
+                        "`armOf` runs on every read of this region, so the definition is new each time and remounts. Bind the definition with `let` outside the template."
                     ]
                     "the message"
             }
@@ -63,6 +63,39 @@ let tests =
                     + viewOf "function Home -> arm Arms.Home () | About -> arm Arms.Home ()"
 
                 Expect.contains (codes body) "RAN022" "non-auto static property"
+            }
+
+            test "an arms function bound with let" {
+                let body =
+                    "let arms = function\n    | Home -> arm (armOf (span () { \"home\" })) ()\n    | About -> arm (armOf (span () { \"about\" })) ()\n"
+                    + "let view = Component.template (fun _ () -> page) (div () { matchWith (fun (p: Signal<Page>) -> p.Value) arms })\n"
+
+                Expect.equal (codes body) [ "RAN022"; "RAN022" ] "hoisted arms"
+            }
+
+            test "a same-file helper that creates the definition" {
+                let body =
+                    "let mkArm view = armOf view\n"
+                    + viewOf "function Home -> arm (mkArm (span () { \"home\" })) () | About -> arm (mkArm (span () { \"about\" })) ()"
+
+                let messages = findings body
+                Expect.equal (messages |> List.map _.Code) [ "RAN022"; "RAN022" ] "helper"
+                Expect.stringContains messages.Head.Message "`mkArm`" "names the helper"
+            }
+
+            test "the message names a definition creator as written" {
+                let body =
+                    "let row = li () { \"x\" }\nlet view = Component.template (fun _ () -> page) (ul () { forEach id (fun (_: Signal<Page>) -> (Component.template (fun _ () -> ()) (span () { \"x\" }) |> ignore; [| 1 |])) row })\n"
+
+                Expect.stringContains (findings body).Head.Message "`Component.template`" "qualified"
+            }
+
+            test "a same-file helper that returns a hoisted definition" {
+                let body =
+                    "let home = armOf (span () { \"home\" })\nlet homeOf () = home\n"
+                    + viewOf "function Home -> arm (homeOf ()) () | About -> arm home ()"
+
+                Expect.isEmpty (codes body) "hoisted behind a helper"
             }
 
             test "hoisted let definitions" {

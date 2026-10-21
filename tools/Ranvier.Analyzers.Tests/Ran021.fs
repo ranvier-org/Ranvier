@@ -87,6 +87,55 @@ let tests =
                     "reference key"
             }
 
+            test "Environment.TickCount makes a key per pass" {
+                Expect.equal (severities "fun (_: Todo) -> Environment.TickCount") [ Severity.Warning ] "TickCount"
+            }
+
+            test "a named key function of the same file" {
+                let source =
+                    header
+                    + "let keyOf (_: Todo) = Guid.NewGuid ()\nlet view = Component.template (fun _ () -> todos) (ul () { forEach keyOf (fun (s: Signal<Todo array>) -> s.Value) row })\n"
+
+                Expect.equal
+                    (run Analyzers.ran021Cli (context (ranvier.Force ()) source)
+                     |> List.map _.Severity)
+                    [ Severity.Warning ]
+                    "keyOf"
+            }
+
+            test "a key derived with String.IndexOf is not positional" {
+                Expect.isEmpty (findings "fun (todo: Todo) -> todo.Label.Substring (0, todo.Label.IndexOf ':')") "a string's IndexOf"
+            }
+
+            test "ResizeArray.IndexOf is positional" {
+                Expect.equal (severities "fun (todo: Todo) -> (ResizeArray todos.Peek).IndexOf todo") [ Severity.Warning ] "List`1.IndexOf"
+            }
+
+            test "a read of the item's own tracked value" {
+                let source =
+                    header
+                    + "type Live = { Key: Signal<int> }\nlet lives = createSignal [| { Key = createSignal 1 } |]\nlet liveRow = li () { \"x\" }\n"
+
+                let body =
+                    "let view = Component.template (fun _ () -> lives) (ul () { forEach (fun (live: Live) -> live.Key.Value) (fun (s: Signal<Live array>) -> s.Value) liveRow })\n"
+
+                Expect.equal
+                    (run Analyzers.ran021Cli (context (ranvier.Force ()) (source + body))
+                     |> List.map _.Message)
+                    [
+                        "This key reads `live.Key.Value`, a tracked value of the item, so a change to it re-keys the row. Key by a stable value of the item, such as an id."
+                    ]
+                    "the item's own value"
+            }
+
+            test "a user function named id is not the identity" {
+                let source =
+                    header
+                    + "let id (todo: Todo) = todo.Id\nlet view = Component.template (fun _ () -> todos) (ul () { forEach (fun (todo: Todo) -> id todo) (fun (s: Signal<Todo array>) -> s.Value) row })\n"
+
+                Expect.isEmpty (run Analyzers.ran021Cli (context (ranvier.Force ()) source)) "a shadowing id"
+            }
+
             test "an id key" { Expect.isEmpty (findings "fun (todo: Todo) -> todo.Id") "stable" }
 
             test "a string list keyed by id is correct" {

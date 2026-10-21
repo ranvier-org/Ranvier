@@ -174,6 +174,34 @@ let tests =
                 Expect.isEmpty (codes body) "no await before the read"
             }
 
+            test "an unawaited inner task in a branch is no await" {
+                Expect.isEmpty
+                    (codes (
+                        asyncMemo
+                            "            if userId.Peek > 0 then\n                (task { do! Task.Yield () }) |> ignore\n            return userId.Value\n"
+                    ))
+                    "the inner task is not awaited"
+            }
+
+            test "a read before the await in a loop body runs after the previous iteration's await" {
+                Expect.equal
+                    (codes (
+                        asyncMemo
+                            "            for _ in 1..3 do\n                let n = userId.Value\n                do! Task.Delay n\n            return 0\n"
+                    ))
+                    [ "RAN012" ]
+                    "loop body"
+            }
+
+            test "a read in a loop body without an await" {
+                Expect.isEmpty
+                    (codes (
+                        asyncMemo
+                            "            let mutable total = 0\n            for _ in 1..3 do\n                total <- total + userId.Value\n            do! Task.Yield ()\n            return total\n"
+                    ))
+                    "before the first await"
+            }
+
             test "the finding's range is the read" {
                 let range =
                     (findings (asyncMemo "            do! Task.Yield ()\n            return userId.Value\n")).Head.Range

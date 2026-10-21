@@ -48,11 +48,21 @@ type LetSite =
         Path: Step list
     }
 
+/// A module-level value or function of the file.
+[<NoEquality; NoComparison>]
+type Definition =
+    {
+        Value: FSharpMemberOrFunctionOrValue
+        Parameters: FSharpMemberOrFunctionOrValue list list
+        Body: FSharpExpr
+    }
+
 [<NoEquality; NoComparison>]
 type FileIndex =
     {
         Calls: CallSite array
         Lets: LetSite array
+        Definitions: Definition array
     }
 
 let rec private lambdas (expr: FSharpExpr) (parameters: FSharpMemberOrFunctionOrValue list) =
@@ -105,6 +115,7 @@ let private generatedComparison (value: FSharpMemberOrFunctionOrValue) =
 let private build (file: FSharpImplementationFileContents) : FileIndex =
     let calls = ResizeArray<CallSite>()
     let lets = ResizeArray<LetSite>()
+    let definitions = ResizeArray<Definition>()
     let mutable opened: string list = []
 
     // Lambdas the compiler binds to a generated local before a partial application: `p |> Projection.fold f 0` is
@@ -202,8 +213,15 @@ let private build (file: FSharpImplementationFileContents) : FileIndex =
             List.iter declaration items
             opened <- outer
         | FSharpImplementationFileDeclaration.Entity (_, items) -> List.iter declaration items
-        | FSharpImplementationFileDeclaration.MemberOrFunctionOrValue (value, _, body) ->
+        | FSharpImplementationFileDeclaration.MemberOrFunctionOrValue (value, parameters, body) ->
             if not (generatedComparison value) then
+                definitions.Add
+                    {
+                        Value = value
+                        Parameters = parameters
+                        Body = body
+                    }
+
                 walk [] body
         | FSharpImplementationFileDeclaration.InitAction body -> walk [] body
 
@@ -212,17 +230,21 @@ let private build (file: FSharpImplementationFileContents) : FileIndex =
     {
         Calls = calls.ToArray ()
         Lets = lets.ToArray ()
+        Definitions = definitions.ToArray ()
     }
 
 let private cache =
     ConditionalWeakTable<FSharpImplementationFileContents, FileIndex>()
 
+/// The file's definition of `value`, a module-level value or function.
+let definition (index: FileIndex) (value: FSharpMemberOrFunctionOrValue) : Definition option =
+    index.Definitions
+    |> Array.tryFind (fun site -> site.Value = value)
+
 /// The index of `file`, built on first use and shared by every rule.
 let ofFile (file: FSharpImplementationFileContents) : FileIndex =
     cache.GetValue (file, ConditionalWeakTable.CreateValueCallback build)
 
-/// The call arguments on `path`, innermost first, each with the number of lambdas between it and the expression.
-/// Immediately applied lambdas, and the lambda argument of a call that `transparent` accepts, are not counted.
 /// The lambdas that the lambda at the head of `steps` adds to a count, and the steps after it; None when the head is
 /// not a lambda. An immediately applied lambda, and the lambda argument of a call that `transparent` accepts, add none.
 let lambdaStep (transparent: FSharpMemberOrFunctionOrValue -> bool) (steps: Step list) : (int * Step list) option =
@@ -232,6 +254,8 @@ let lambdaStep (transparent: FSharpMemberOrFunctionOrValue -> bool) (steps: Step
     | Step.Lambda (_, false) :: rest -> Some (1, rest)
     | _ -> None
 
+/// The call arguments on `path`, innermost first, each with the number of lambdas between it and the expression.
+/// Immediately applied lambdas, and the lambda argument of a call that `transparent` accepts, are not counted.
 let arguments (transparent: FSharpMemberOrFunctionOrValue -> bool) (path: Step list) : (FSharpMemberOrFunctionOrValue * int * int * int) list =
     let rec go (lambdaCount: int) (steps: Step list) =
         match lambdaStep transparent steps, steps with

@@ -12,7 +12,7 @@
 /// <c>table</c> in <c>p</c> in quirks mode, and HTML elements inside <c>svg</c> or <c>math</c> (foreign content is
 /// checked as HTML).
 /// </para>
-/// <para>The Ranvier analyzers compile this file into their assembly (RAN024), so it references System only.</para>
+/// <para>References System only: the Ranvier analyzers compile it (RAN024).</para>
 /// </remarks>
 module internal Ranvier.View.Foundation.ContentModel
 
