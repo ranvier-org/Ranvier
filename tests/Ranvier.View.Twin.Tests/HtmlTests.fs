@@ -18,6 +18,27 @@ let private rejects (html: string) (construct: string) =
             Expect.isGreaterThan column 0 "column"
         | other -> failtestf "unexpected %O" other)
 
+/// <summary>Markup the HTML parser restructures, with the construct the twin's rejection names.</summary>
+let restructured: (string * string) list =
+    [
+        "<p><span><div>x</div></span></p>", "implied end tag (<p> closed by <div>)"
+        "<p><li>x</li></p>", "implied end tag (<p> closed by <li>)"
+        "<p><dd>x</dd></p>", "implied end tag (<p> closed by <dd>)"
+        "<p><center>x</center></p>", "implied end tag (<p> closed by <center>)"
+        "<p><summary>x</summary></p>", "implied end tag (<p> closed by <summary>)"
+        "<h1><h2>x</h2></h1>", "implied end tag (<h1> closed by <h2>)"
+        "<a><a>x</a></a>", "nested <a>"
+        "<a><span><a>x</a></span></a>", "nested <a>"
+        "<button><span><button>x</button></span></button>", "nested <button>"
+        "<form><div><form></form></div></form>", "nested <form>"
+        "<ul><li><p>a<li>b</li></p></li></ul>", "implied end tag (<li> inside <li>)"
+        "<ul><li><span><li>b</li></span></li></ul>", "implied end tag (<li> inside <li>)"
+        "<dl><dd><dt>x</dt></dd></dl>", "implied end tag (<dt> inside <dd>)"
+        "<svg><div>x</div></svg>", "HTML element <div> inside foreign content"
+        "<math><p>x</p></math>", "HTML element <p> inside foreign content"
+        "<math><mi><b>x</b></mi></math>", "an element inside a MathML text integration point"
+    ]
+
 [<Tests>]
 let tests =
     testList
@@ -141,4 +162,30 @@ let tests =
 
             testCase "document-level tags outside a document parse are rejected"
             <| fun () -> rejects "<body><p>x</p></body>" "document-level tag <body>"
+
+            testCase "markup the HTML parser restructures is rejected"
+            <| fun () ->
+                for html, construct in restructured do
+                    rejects html construct
+
+            testCase "markup inside the subset that keeps its nesting is accepted"
+            <| fun () ->
+                for html, expected in
+                    [
+                        "<p><span>x</span></p>", "<p><span>x</span></p>"
+                        "<div><p>a</p><div>b</div></div>", "<div><p>a</p><div>b</div></div>"
+                        "<button><div>x</div></button>", "<button><div>x</div></button>"
+                        "<ul><li><ul><li>x</li></ul></li></ul>", "<ul><li><ul><li>x</li></ul></li></ul>"
+                        "<svg><foreignObject><div>x</div></foreignObject></svg>", "<svg><foreignObject><div>x</div></foreignObject></svg>"
+                        "<h1><span>x</span></h1><h2>y</h2>", "<h1><span>x</span></h1><h2>y</h2>"
+                    ] do
+                    Expect.equal (roundTrip html) expected html
+
+            testCase "raw text ends only at a complete end tag"
+            <| fun () ->
+                Expect.equal (roundTrip "<script>a</scripty>b</script>") "<script>a</scripty>b</script>" "</scripty> is text"
+                rejects "<script>a</script x>" "unterminated </script>"
+
+            testCase "a numeric reference with leading zeros decodes"
+            <| fun () -> Expect.equal (roundTrip "<p>&#0000000065;</p>") "<p>A</p>" "leading zeros"
         ]

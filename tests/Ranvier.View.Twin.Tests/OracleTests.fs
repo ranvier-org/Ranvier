@@ -48,6 +48,13 @@ let private markupFixtures: string list =
         "<ul><li>a</li><li>b</li></ul>"
         "<select><option value=\"a\">A</option><option selected>B</option></select>"
         "<table><tbody><tr><td>a</td></tr></tbody></table>"
+        "<p><span>x</span></p>"
+        "<div><p>a</p><div>b</div></div>"
+        "<button><div>x</div></button>"
+        "<ul><li><ul><li>x</li></ul></li></ul>"
+        "<svg><foreignObject><div>x</div></foreignObject></svg>"
+        "<h1><span>x</span></h1><h2>y</h2>"
+        "<script>a</scripty>b</script>"
         "<p title=\"a b\">c d</p>"
     ]
 
@@ -78,11 +85,24 @@ let tests =
         "AngleSharp oracle"
         [
             for fixture in markupFixtures @ serverFixtures do
-                testCase $"the twin and AngleSharp agree on {fixture}"
+                testCase $"the twin accepts {fixture} and agrees with AngleSharp"
                 <| fun () ->
                     match twinInner fixture with
                     | Some twin -> Expect.equal twin (angleSharpInner fixture) "serialisation"
-                    | None -> ()
+                    | None -> failtestf "the twin rejected %s, which lies inside its subset" fixture
+
+            testCase "AngleSharp restructures each fixture the twin rejects as restructured markup"
+            <| fun () ->
+                for fixture, construct in HtmlTests.restructured do
+                    Expect.isNone (twinInner fixture) $"rejected: {fixture}"
+
+                    // A MathML text integration point changes namespaces, not the shape. AngleSharp's fragment parser
+                    // keeps a breakout tag inside SVG or MathML, where jsdom moves it out after the foreign element.
+                    if
+                        not (construct.Contains "integration point")
+                        && not (construct.Contains "foreign content")
+                    then
+                        Expect.notEqual (angleSharpInner fixture) fixture $"restructured by AngleSharp: {fixture}"
 
             testCase "the twin accepts every server fixture"
             <| fun () ->

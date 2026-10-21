@@ -1,4 +1,17 @@
 /// <summary>The twin's HTML: a parser for the subset Server writes and template markup holds, and two serialisers.</summary>
+/// <remarks>
+/// <para>
+/// The subset is markup the HTML parser builds as written: every element closed by its own end tag or void, tables
+/// with explicit <c>tbody</c>, SVG and MathML with their case tables, raw and escapable raw text, comments, the full
+/// named reference table and numeric references. Accepted markup serialises as jsdom serialises it.
+/// </para>
+/// <para>
+/// Markup the HTML parser would restructure raises <c>TwinParseException</c> naming the construct: an implied end tag
+/// (a p in button scope closed by a block, an li, dd or dt inside an open one, a heading inside a heading), a nested
+/// a, button, form or nobr, a table part outside a table, foster-parented content, an HTML breakout tag inside SVG or
+/// MathML, an element inside a MathML text integration point, and document-level tags outside a document parse.
+/// </para>
+/// </remarks>
 module Ranvier.View.Twin.Html
 
 open System
@@ -68,10 +81,195 @@ let private closesParagraph =
             "section"
             "table"
             "ul"
+            "li"
+            "dd"
+            "dt"
+            "center"
+            "dialog"
+            "dir"
+            "hgroup"
+            "search"
+            "summary"
+            "listing"
+            "plaintext"
+            "xmp"
         ]
 
-let private selfClosing =
-    HashSet<string> [ "li"; "option"; "dd"; "dt"; "tr"; "td"; "th" ]
+let private selfClosing = HashSet<string> [ "option"; "tr"; "td"; "th" ]
+
+let private headings = HashSet<string> [ "h1"; "h2"; "h3"; "h4"; "h5"; "h6" ]
+
+// The boundaries of HTML's "has an element in scope"; button scope adds button.
+let private scopeBoundaries =
+    HashSet<string>
+        [
+            "applet"
+            "caption"
+            "html"
+            "table"
+            "td"
+            "th"
+            "marquee"
+            "object"
+            "template"
+        ]
+
+let private foreignScopeBoundaries =
+    HashSet<string>
+        [
+            "mi"
+            "mo"
+            "mn"
+            "ms"
+            "mtext"
+            "annotation-xml"
+            "foreignObject"
+            "desc"
+            "title"
+        ]
+
+// HTML's special elements, which end the search for an open li, dd or dt.
+let private special =
+    HashSet<string>
+        [
+            "address"
+            "applet"
+            "area"
+            "article"
+            "aside"
+            "base"
+            "basefont"
+            "bgsound"
+            "blockquote"
+            "body"
+            "br"
+            "button"
+            "caption"
+            "center"
+            "col"
+            "colgroup"
+            "dd"
+            "details"
+            "dir"
+            "div"
+            "dl"
+            "dt"
+            "embed"
+            "fieldset"
+            "figcaption"
+            "figure"
+            "footer"
+            "form"
+            "frame"
+            "frameset"
+            "h1"
+            "h2"
+            "h3"
+            "h4"
+            "h5"
+            "h6"
+            "head"
+            "header"
+            "hgroup"
+            "hr"
+            "html"
+            "iframe"
+            "img"
+            "input"
+            "keygen"
+            "li"
+            "link"
+            "listing"
+            "main"
+            "marquee"
+            "menu"
+            "meta"
+            "nav"
+            "noembed"
+            "noframes"
+            "noscript"
+            "object"
+            "ol"
+            "p"
+            "param"
+            "plaintext"
+            "pre"
+            "script"
+            "search"
+            "section"
+            "select"
+            "source"
+            "style"
+            "summary"
+            "table"
+            "tbody"
+            "td"
+            "template"
+            "textarea"
+            "tfoot"
+            "th"
+            "thead"
+            "title"
+            "tr"
+            "track"
+            "ul"
+            "wbr"
+            "xmp"
+        ]
+
+// The start tags that end SVG or MathML content in the HTML parser.
+let private foreignBreakout =
+    HashSet<string>
+        [
+            "b"
+            "big"
+            "blockquote"
+            "body"
+            "br"
+            "center"
+            "code"
+            "dd"
+            "div"
+            "dl"
+            "dt"
+            "em"
+            "embed"
+            "h1"
+            "h2"
+            "h3"
+            "h4"
+            "h5"
+            "h6"
+            "head"
+            "hr"
+            "i"
+            "img"
+            "li"
+            "listing"
+            "menu"
+            "meta"
+            "nobr"
+            "ol"
+            "p"
+            "pre"
+            "ruby"
+            "s"
+            "small"
+            "span"
+            "strong"
+            "strike"
+            "sub"
+            "sup"
+            "table"
+            "tt"
+            "u"
+            "ul"
+            "var"
+            "font"
+        ]
+
+let private mathTextIntegration =
+    HashSet<string> [ "mi"; "mo"; "mn"; "ms"; "mtext" ]
 
 let private documentLevel = HashSet<string> [ "html"; "head"; "body" ]
 
@@ -335,11 +533,12 @@ let private reference (reader: Reader) (out: StringBuilder) (inAttribute: bool) 
         if digits.Length = 0 then
             literal ()
         else
+            let significant = digits.ToString().TrimStart '0'
+
             let value =
-                if digits.Length > 8 then
-                    0x110000
-                else
-                    Convert.ToInt32 (digits.ToString (), (if hex then 16 else 10))
+                if significant.Length > 8 then 0x110000
+                elif significant.Length = 0 then 0
+                else Convert.ToInt32 (significant, (if hex then 16 else 10))
 
             out.Append (codePoint value) |> ignore
             reader.Advance (if reader.PeekAt k = ';' then k + 1 else k)
@@ -403,7 +602,64 @@ let private parseNodes (parent: TwinNode) (html: string) (documentMode: bool) =
         | null -> ""
         | e -> e.LocalName
 
-    /// The namespace of an element named <c>name</c> started under the current element.
+    // The open elements of this parse, innermost first; the parse root is not among them.
+    let openElements () =
+        stack
+        |> Seq.take (stack.Count - 1)
+        |> Seq.choose (fun n ->
+            match n with
+            | :? TwinElement as e -> Some e
+            | _ -> None)
+        |> List.ofSeq
+
+    // HTML's "has an element in scope", in button scope when `button` is set.
+    let inScope (target: string) (button: bool) =
+        let rec walk (elements: TwinElement list) =
+            match elements with
+            | [] -> false
+            | e :: _ when e.Namespace = "html" && e.LocalName = target -> true
+            | e :: _ when
+                e.Namespace = "html"
+                && scopeBoundaries.Contains e.LocalName
+                ->
+                false
+            | e :: _ when
+                button
+                && e.Namespace = "html"
+                && e.LocalName = "button"
+                ->
+                false
+            | e :: _ when
+                e.Namespace <> "html"
+                && foreignScopeBoundaries.Contains e.LocalName
+                ->
+                false
+            | _ :: rest -> walk rest
+
+        walk (openElements ())
+
+    // The open li (or dd and dt) that a new one implicitly closes, found before a special element other than
+    // address, div and p.
+    let openListItem (names: string list) =
+        let rec walk (elements: TwinElement list) =
+            match elements with
+            | [] -> None
+            | e :: _ when
+                e.Namespace = "html"
+                && List.contains e.LocalName names
+                ->
+                Some e.LocalName
+            | e :: _ when
+                e.Namespace = "html"
+                && special.Contains e.LocalName
+                && not (List.contains e.LocalName [ "address"; "div"; "p" ])
+                ->
+                None
+            | _ :: rest -> walk rest
+
+        walk (openElements ())
+
+    // The namespace of an element named `name` started under the current element.
     let namespaceFor (name: string) =
         match current () with
         | _ when name = "svg" -> "svg"
@@ -411,7 +667,7 @@ let private parseNodes (parent: TwinNode) (html: string) (documentMode: bool) =
         | null -> "html"
         | e when
             e.Namespace = "svg"
-            && e.LocalName <> "foreignObject"
+            && not (List.contains e.LocalName [ "foreignObject"; "desc"; "title" ])
             ->
             "svg"
         | e when
@@ -449,7 +705,13 @@ let private parseNodes (parent: TwinNode) (html: string) (documentMode: bool) =
         if dropLeadingLineFeed && reader.Peek = '\n' then
             reader.Advance 1
 
-        while not (reader.AtEnd || reader.StartsWithIgnoreCase stop) do
+        // The end tag is complete only when a space, `/` or `>` follows its name.
+        let atEnd () =
+            reader.StartsWithIgnoreCase stop
+            && (let next = reader.PeekAt stop.Length
+                isSpace next || next = '/' || next = '>')
+
+        while not (reader.AtEnd || atEnd ()) do
             if decode && reader.Peek = '&' then
                 reference reader out false
             else
@@ -515,8 +777,8 @@ let private parseNodes (parent: TwinNode) (html: string) (documentMode: bool) =
 
         out.ToString ()
 
-    /// The attributes up to the end of the tag, in order, the first of a repeated name winning; and whether the tag
-    /// ends with <c>/></c>.
+    // The attributes up to the end of the tag, in order, the first of a repeated name winning; and whether the tag
+    // ends with `/>`.
     let readAttributes (name: string) =
         let attributes = ResizeArray<string * string>()
         skipSpace ()
@@ -554,6 +816,16 @@ let private parseNodes (parent: TwinNode) (html: string) (documentMode: bool) =
         reader.Advance (if selfClosed then 2 else 1)
         attributes, selfClosed
 
+    // Consumes the raw text element's end tag, which readUntil found.
+    let closeRaw (name: string) =
+        reader.Advance (name.Length + 2)
+        skipSpace ()
+
+        if reader.Peek <> '>' then
+            reader.Fail $"an unterminated </{name}> tag"
+
+        reader.Advance 1
+
     let appendRaw (element: TwinElement) (text: string) =
         if text.Length > 0 then
             element.AppendChild (document.CreateText text)
@@ -586,12 +858,62 @@ let private parseNodes (parent: TwinNode) (html: string) (documentMode: bool) =
             else
                 reader.Fail $"the document-level tag <{name}> outside a document parse"
         else
+            match current () with
+            | null -> ()
+            | e when
+                e.Namespace = "math"
+                && mathTextIntegration.Contains e.LocalName
+                && name <> "mglyph"
+                && name <> "malignmark"
+                ->
+                reader.Fail "an element inside a MathML text integration point"
+            | e when
+                e.Namespace <> "html"
+                && foreignBreakout.Contains name
+                && namespaceFor name <> "html"
+                ->
+                reader.Fail $"the HTML element <{name}> inside foreign content"
+            | _ -> ()
+
             let ns = namespaceFor name
             let parentName = currentName ()
 
             if ns = "html" then
-                if parentName = "p" && closesParagraph.Contains name then
+                match name with
+                | "li" ->
+                    match openListItem [ "li" ] with
+                    | Some open' -> reader.Fail $"an implied end tag (<{name}> inside <{open'}>)"
+                    | None -> ()
+                | "dd"
+                | "dt" ->
+                    match openListItem [ "dd"; "dt" ] with
+                    | Some open' -> reader.Fail $"an implied end tag (<{name}> inside <{open'}>)"
+                    | None -> ()
+                | _ -> ()
+
+                if closesParagraph.Contains name && inScope "p" true then
                     reader.Fail $"an implied end tag (<p> closed by <{name}>)"
+
+                if
+                    headings.Contains name
+                    && headings.Contains parentName
+                then
+                    reader.Fail $"an implied end tag (<{parentName}> closed by <{name}>)"
+
+                match name with
+                | "a" when
+                    openElements ()
+                    |> List.exists (fun e -> e.Namespace = "html" && e.LocalName = "a")
+                    ->
+                    reader.Fail "a nested <a>"
+                | "form" when
+                    openElements ()
+                    |> List.exists (fun e -> e.Namespace = "html" && e.LocalName = "form")
+                    ->
+                    reader.Fail "a nested <form>"
+                | "button" when inScope "button" false -> reader.Fail "a nested <button>"
+                | "nobr" when inScope "nobr" false -> reader.Fail "a nested <nobr>"
+                | _ -> ()
 
                 if selfClosing.Contains name && parentName = name then
                     reader.Fail $"an implied end tag (<{name}> inside <{name}>)"
@@ -648,14 +970,10 @@ let private parseNodes (parent: TwinNode) (html: string) (documentMode: bool) =
                     stack.Push element
             elif rawText.Contains name then
                 appendRaw element (readUntil $"</{name}" false false)
-                reader.Advance (name.Length + 2)
-                skipSpace ()
-                reader.Advance 1
+                closeRaw name
             elif escapableRaw.Contains name then
                 appendRaw element (readUntil $"</{name}" true (name = "textarea"))
-                reader.Advance (name.Length + 2)
-                skipSpace ()
-                reader.Advance 1
+                closeRaw name
             elif not (voids.Contains name) then
                 stack.Push element
 
