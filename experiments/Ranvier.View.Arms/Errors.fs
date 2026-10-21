@@ -16,10 +16,14 @@ type ArmsMatchException(message: string) =
 #endif
 
 module internal Errors =
-    /// <summary>AM006.</summary>
+    /// <summary>AM006; a Release Fable build raises the short text.</summary>
     let noArm () : 'a =
 #if FABLE_COMPILER
+#if DEBUG
         raise (InvalidOperationException Diagnostics.noArm)
+#else
+        raise (InvalidOperationException Diagnostics.noArmCode)
+#endif
 #else
         raise (ArmsMatchException Diagnostics.noArm)
 #endif

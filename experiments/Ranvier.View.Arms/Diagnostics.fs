@@ -54,6 +54,11 @@ let noPlugin =
 let noArm =
     "Arms.Match: no arm of this site is mounted for the instance this reader received. A lambda over the instance type inside a case body runs with the arm's instance."
 
+/// <summary>The AM006 text of a Release Fable build: the code and the docs entry holding the full text.</summary>
+[<Literal>]
+let noArmCode =
+    "Ranvier AM006: https://shayanhabibi.github.io/Ranvier/view/arms/#am006"
+
 /// <summary>AM007.</summary>
 [<Literal>]
 let unsupported = "Arms.Match: this pattern form is not supported."

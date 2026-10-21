@@ -117,27 +117,36 @@ emitted sites.
 
 ## Bundle
 
-`experiments/Ranvier.View.Arms/Checks/size.mjs`, Vite 8.3.3 with minification, gzip level 9, Brotli quality 11; the
+`experiments/Ranvier.View.Arms/Checks/size.mjs` compiles the Playground's DomTests in Release with no defines into
+`generated-size-tests`, then bundles each entry with Vite 8.3.3 (minified), gzip level 9 and Brotli quality 11; the
 numbers are in [`arms-match/bundle.json`](arms-match/bundle.json).
 
 | Entry | raw | gzip | Brotli |
 |---|---|---|---|
 | explicit loader | 207,850 | 60,202 | 52,828 |
-| Arms.Match loader | 209,050 | 60,698 | 53,170 |
+| Arms.Match loader | 208,666 | 60,572 | 53,130 |
 | two explicit sites | 208,693 | 60,411 | 52,980 |
-| two Arms.Match sites | 209,895 | 60,890 | 53,345 |
+| two Arms.Match sites | 209,511 | 60,759 | 53,313 |
 
-The first site costs 496 B gzip over its twin, against a budget of 250 B; the budget does not hold. The second site
-costs -17 B (budget 60). An entry that calls no `Arms.Match` holds no `Ranvier.View.Arms` module, the `Arms.Match`
-entry holds no quotation code, the emitted modules hold no curry helper, and `Arms.Prepare ()` in the entry adds no
-bytes.
+The first site costs 370 B gzip over its twin (budget 400 B) and the second -22 B (budget 60 B). The method is a
+whole-bundle gzip difference, so it resolves about ±20 B: a build with `RANVIER_VIEW_COUNTERS` moves the first figure by
+19 B and the second by 25 B without touching `Ranvier.View.Arms`. An entry that calls no `Arms.Match` holds no
+`Ranvier.View.Arms` module, the `Arms.Match` entry holds no quotation code and no curry helper, and `Arms.Prepare ()`
+in the entry adds no bytes.
 
-The first-site cost is the runtime shared by every site: the two fixed message texts (AM006 and AM005) cost 141 B, and
-the code costs 355 B (the cells with live entries per target, graph tags and the withdrawn entry; `Site.create`, inlined
-into `Arms.Match`; the AM005 check). The probe's single-slot cells cost 139 B. The Fable cells are plain JavaScript
-objects in a `WeakMap`; the first version, F# classes over fable-library arrays, cost 771 B. A target's single live
-entry is held without an array: that costs 66 B of bundle (430 B with an array per target) and saves about 90 B of heap per row (see
-"Heap"). With both texts removed, the code alone exceeds the budget by 105 B.
+How the first-site cost came down from 771 B:
+
+| Change | First site, gzip |
+|---|---|
+| F# classes over fable-library arrays (first cells) | 771 |
+| cells as JavaScript objects in a `WeakMap`, `Site.create` inline | 460 |
+| a target's single live entry held without an array (Task 10, for the heap) | 496 |
+| AM006 as a code and docs anchor in Release; no run-time AM005 branch; `enter` and `values` inlined into `Arms.Match` as closures; one `serves` closure; unchecked indexing | 370 |
+
+The remaining cost is the cells' code: entry registration and withdrawal, the read over live and withdrawn entries
+with graph tags, and the site's arm table. Holding every target's entries in an array would save about 50 B and cost
+about 90 B of heap per row; dropping graph tags under Fable would save about 36 B and let a reader under one graph read
+another graph's arm.
 
 ## Chromium
 

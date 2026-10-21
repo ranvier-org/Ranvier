@@ -1,4 +1,4 @@
-/// <summary>A site's lookup from an instance to the payload readers of its mounted arms, one list per target.</summary>
+/// <summary>A site's lookup from an instance to the entries of its mounted arms, per target.</summary>
 module internal Ranvier.View.Arms.Cells
 
 open global.Ranvier
@@ -6,9 +6,9 @@ open Ranvier.View.Foundation.Representation
 #if FABLE_COMPILER
 open Fable.Core
 
-// JavaScript runs one thread: entry lists change in place. An entry is { g: graph, c: the arm's current props, l: last
-// values }; an instance's slots hold the live entry of target t at key t (an array once two are live) and its last
-// withdrawn entry at key ~t.
+// Entry lists change in place. An entry is { g: graph, c: the arm's current props, l: last values }; an instance's
+// slots hold the live entry of target t at key t (an array once two are live) and its last withdrawn entry at key ~t.
+// enter and values are inline, so a site's Arms.Match holds them as closures over its cells.
 
 /// <summary>The site's WeakMap from an instance to its slots.</summary>
 type Cells = obj
@@ -16,60 +16,64 @@ type Cells = obj
 [<Emit("new WeakMap()")>]
 let create () : Cells = jsNative
 
+/// <summary>The value of an optional argument, or undefined.</summary>
+[<Emit("$0")>]
+let erased (value: obj option) : obj = jsNative
+
 /// <summary>The ambient graph, or undefined outside one.</summary>
 [<Emit("$0")>]
-let private tag (graph: Graph voption) : obj = jsNative
+let tag (graph: Graph voption) : obj = jsNative
 
-[<Emit("($0.get($1) || ($0.set($1, {}), $0.get($1)))")>]
-let private slotsOf (cells: Cells) (instance: obj) : obj = jsNative
+[<Emit("($0.get($1) || $0.set($1, {}).get($1))")>]
+let slotsOf (cells: Cells) (instance: obj) : obj = jsNative
 
 [<Emit("$0.get($1)")>]
-let private tryFind (cells: Cells) (instance: obj) : obj = jsNative
+let tryFind (cells: Cells) (instance: obj) : obj = jsNative
 
-[<Emit("{ g: $0, c: $1, l: null }")>]
-let private entry (graph: obj) (current: obj) : obj = jsNative
+[<Emit("{ g: $0, c: $1 }")>]
+let entry (graph: obj) (current: obj) : obj = jsNative
 
 [<Emit("($0[$1] == null ? ($0[$1] = $2) : Array.isArray($0[$1]) ? $0[$1].push($2) : ($0[$1] = [ $0[$1], $2 ]))")>]
-let private add (slots: obj) (target: int) (entry: obj) : unit = jsNative
+let add (slots: obj) (target: int) (entry: obj) : unit = jsNative
 
 /// <summary>Removes the entry from the target's live list and, when it holds values, keeps it as the withdrawn entry.</summary>
-[<Emit("(Array.isArray($0[$1]) ? $0[$1].splice($0[$1].indexOf($2) >>> 0, 1) : $0[$1] === $2 && ($0[$1] = null), $2.l != null && ($0[~$1] = $2))")>]
-let private withdraw (slots: obj) (target: int) (entry: obj) : unit = jsNative
+[<Emit("(Array.isArray($0[$1]) ? $0[$1].splice($0[$1].indexOf($2) >>> 0, 1) : $0[$1] === $2 && ($0[$1] = null), $2.l && ($0[~$1] = $2))")>]
+let withdraw (slots: obj) (target: int) (entry: obj) : unit = jsNative
 
 /// <summary>The target's live entry, its array of live entries, or null.</summary>
 [<Emit("($0 && $0[$1])")>]
-let private live (slots: obj) (target: int) : obj = jsNative
+let live (slots: obj) (target: int) : obj = jsNative
 
 [<Emit("Array.isArray($0)")>]
-let private isList (value: obj) : bool = jsNative
+let isList (value: obj) : bool = jsNative
 
 [<Emit("($0 && $0[~$1])")>]
-let private withdrawn (slots: obj) (target: int) : obj = jsNative
+let withdrawn (slots: obj) (target: int) : obj = jsNative
 
+/// <summary>The array element at the index, read without a bounds check.</summary>
 [<Emit("$0[$1]")>]
-let private at (entries: obj array) (index: int) : obj = jsNative
+let at (items: obj array) (index: int) : obj = jsNative
 
 [<Emit("$0 == null")>]
-let private absent (value: obj) : bool = jsNative
+let absent (value: obj) : bool = jsNative
 
 [<Emit("null")>]
-let private unread () : obj array = jsNative
+let unread () : obj array = jsNative
 
-/// <summary>Whether an entry serves a read under the graph: a null graph or a null tag matches any.</summary>
 [<Emit("($0 == null || $1.g == null || $1.g === $0)")>]
-let private serves (graph: obj) (entry: obj) : bool = jsNative
+let servesUnder (graph: obj) (entry: obj) : bool = jsNative
 
 [<Emit("$0.l = $0.c()[1]")>]
-let private read (entry: obj) : obj array = jsNative
+let read (entry: obj) : obj array = jsNative
 
 [<Emit("$0.l")>]
-let private last (entry: obj) : obj array = jsNative
+let last (entry: obj) : obj array = jsNative
 
 /// <summary>
 /// Registers the arm's current props (the instance and its bound values) for the instance and target, and withdraws them
 /// on the arm's cleanup.
 /// </summary>
-let enter (cells: Cells) (setup: Setup) (instance: obj) (target: int) (current: unit -> obj * obj array) : unit =
+let inline enter (cells: Cells) (setup: Setup) (instance: obj) (target: int) (current: unit -> obj * obj array) : unit =
     let slots = slotsOf cells instance
     let registered = entry (tag Graph.TryCurrent) current
     add slots target registered
@@ -81,9 +85,10 @@ let enter (cells: Cells) (setup: Setup) (instance: obj) (target: int) (current: 
 /// when it serves the ambient graph. A withdrawal under another graph replaces the target's withdrawn entry; a held read
 /// under the first graph then raises AM006.
 /// </summary>
-let values (cells: Cells) (instance: obj) (target: int) : obj array =
+let inline values (cells: Cells) (instance: obj) (target: int) : obj array =
     let slots = tryFind cells instance
     let graph = tag Graph.TryCurrent
+    let serves = fun (entry: obj) -> servesUnder graph entry
     let entries = live slots target
     let mutable first = unread ()
 
@@ -93,12 +98,12 @@ let values (cells: Cells) (instance: obj) (target: int) : obj array =
         for index in 0 .. entries.Length - 1 do
             let candidate = at entries index
 
-            if serves graph candidate then
+            if serves candidate then
                 let values = read candidate
 
                 if absent first then
                     first <- values
-    elif not (absent entries) && serves graph entries then
+    elif not (absent entries) && serves entries then
         first <- read entries
 
     if not (absent first) then
@@ -106,7 +111,7 @@ let values (cells: Cells) (instance: obj) (target: int) : obj array =
     else
         let held = withdrawn slots target
 
-        if not (absent held) && serves graph held then
+        if not (absent held) && serves held then
             last held
         else
             Errors.noArm ()

@@ -17,18 +17,15 @@ type Arms =
     /// <summary>One arm per match target of <c>arms</c>; the Ranvier.View.Arms Fable plugin supplies <c>lowered</c>.</summary>
     [<Ranvier.View.Arms.FablePlugin.CaseArms>]
     static member Match(read: 'inst -> 'u, arms: 'u -> TemplateView<'inst>, ?lowered: obj) : TemplateView<'inst> =
-        match lowered with
-        | Some packed ->
-            let cells = Cells.create ()
-            let lower = unbox<Func<Func<obj, int, obj array>, obj>> packed
+        let cells = Cells.create ()
+        let lower = unbox<Func<Func<obj, int, obj array>, obj>>(Cells.erased lowered)
 
-            let select, bodies =
-                unbox<('u -> int * obj array) * TemplateView<'inst> array>(
-                    lower.Invoke (Func<obj, int, obj array>(fun instance target -> Cells.values cells instance target))
-                )
+        let select, bodies =
+            unbox<('u -> int * obj array) * TemplateView<'inst> array>(
+                lower.Invoke (Func<obj, int, obj array>(fun instance target -> Cells.values cells instance target))
+            )
 
-            Site.create cells read select bodies
-        | None -> Errors.noPlugin ()
+        Site.create cells read select bodies
 #else
 #if FABLE_COMPILER
     /// <summary>AM005: the project compiled by Fable does not import Ranvier.View.Arms.targets.</summary>

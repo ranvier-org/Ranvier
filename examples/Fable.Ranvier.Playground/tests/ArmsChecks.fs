@@ -58,6 +58,23 @@ let private twiceShown queued () =
     equal "e x5" (textOf third "pre")
     c.Dispose ()
 
+/// <summary>A reader with no arm for its instance raises AM006: the full text in Debug, the short text in Release.</summary>
+let private noArm () =
+    let message =
+        try
+            Cells.values (Cells.create ()) (obj ()) 0
+            |> ignore
+
+            ""
+        with error ->
+            error.Message
+
+#if DEBUG
+    equal Ranvier.View.Arms.Diagnostics.noArm message
+#else
+    equal "Ranvier AM006: https://shayanhabibi.github.io/Ranvier/view/arms/#am006" message
+#endif
+
 /// <summary>Under Fable, <c>Arms.Prepare</c> returns and a site mounted after it reads its payload.</summary>
 let private prepares queued () =
     Arms.Prepare ()
@@ -639,6 +656,7 @@ let cases: (string * (unit -> unit)) array =
                 templated "one site shown twice for one instance reads live values through either disposal" twiceShown
                 templated "an arm hidden and shown again follows later writes" remountAfterHide
                 templated "Arms.Prepare returns under Fable" prepares
+                [| "a reader with no arm for its instance raises AM006", noArm |]
                 templated "each Load fixture's nine-step trace equals its twin's" traces
                 templated "value-type payload fields equal their twin" valueTraces
                 templated "an event handler reads its arm's payload at event time" eventsReadLatest

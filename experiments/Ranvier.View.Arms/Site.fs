@@ -25,4 +25,8 @@ let inline create (cells: Cells.Cells) (read: 'inst -> 'u) (select: 'u -> int * 
 
     matchWith id (fun instance ->
         let target, values = select (read instance)
+#if FABLE_COMPILER
+        arm (Fable.Core.JsInterop.emitJsExpr (definitions, target) "$0[$1]") (instance, values))
+#else
         arm definitions[target] (instance, values))
+#endif
