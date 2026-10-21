@@ -54,20 +54,53 @@ let private browserEmits () =
     let offending =
         [
             for file in compiled () do
-                let text =
-                    File.ReadAllLines (Path.Combine (portable, file))
-                    |> Array.filter (fun line -> not (line.TrimStart().StartsWith "//"))
-                    |> String.concat "\n"
+                // Native.fs holds the host primitives; each Emit there has a .NET body, which nativeBodies checks.
+                if file <> "Native.fs" then
+                    let text =
+                        File.ReadAllLines (Path.Combine (portable, file))
+                        |> Array.filter (fun line -> not (line.TrimStart().StartsWith "//"))
+                        |> String.concat "\n"
 
-                for found in browserAttribute.Matches text do
-                    if touchesBrowser found then
-                        file + ": " + found.Value
+                    for found in browserAttribute.Matches text do
+                        if touchesBrowser found then
+                            file + ": " + found.Value
         ]
 
     equal [] offending
 
+/// <summary>Every <c>#if FABLE_COMPILER</c> block of <c>Native.fs</c> has an <c>#else</c>, and the file has no Import or Global attribute.</summary>
+let private nativeBodies () =
+    let lines =
+        File.ReadAllLines (Path.Combine (portable, "Native.fs"))
+        |> Array.map _.Trim()
+
+    let fableBlocks =
+        lines
+        |> Array.filter ((=) "#if FABLE_COMPILER")
+        |> Array.length
+
+    let netBlocks =
+        lines
+        |> Array.filter ((=) "#else")
+        |> Array.length
+
+    equal fableBlocks netBlocks
+
+    let text = String.concat "\n" lines
+
+    let imports =
+        [
+            for found in browserAttribute.Matches text do
+                if found.Groups[1].Value <> "Emit" then
+                    found.Value
+        ]
+
+    equal [] imports
+
 let cases: (string * (unit -> unit)) array =
     [|
         "the portable project references only src/Ranvier and the Xantham type bindings", browserReferences
-        "the portable project's attributes use no Import or Global, and no Emit touches document, window or addEventListener", browserEmits
+        "the portable project's attributes use no Import or Global, and no Emit outside Native.fs touches document, window or addEventListener",
+        browserEmits
+        "each Emit block of Native.fs has a .NET body, and Native.fs uses no Import or Global", nativeBodies
     |]

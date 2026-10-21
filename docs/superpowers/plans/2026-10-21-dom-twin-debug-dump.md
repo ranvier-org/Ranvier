@@ -522,7 +522,7 @@ This task fixes the form every later `Native` entry takes and proves gates 1 and
 - Produces (module `internal Ranvier.View.Foundation.Native`, both hosts unless marked):
   - `isNullish: 'T -> bool`, `nextOrNull: Node -> Node`, `firstChildOf: Node -> Node`, `removeNode: Node -> unit`, `textContentOf: Node -> string`, `elementById: string -> Element`, `document: unit -> Document`
   - .NET only: `type IHost` (members below), `install: IHost -> System.IDisposable`
-- Every `Native` primitive has this shape: one `#if FABLE_COMPILER` declaration with the exact Emit text, and its `#else` F# body directly after it. Files that use a primitive keep their private name as an inline alias: `let inline private following (node: Node) : Node = Native.nextOrNull node`. An inline alias of an Emit function emits the Emit text at each call site, so the call sites do not change.
+- Every `Native` primitive has this shape: one `#if FABLE_COMPILER` declaration with the exact Emit text, and its `#else` F# body directly after it. Files that use a primitive call it as `Native.<name>` at each call site, and the file's private declaration is deleted. (Ruling, Task 3: an inline alias `let inline private following node = Native.nextOrNull node` makes Fable bind each argument to a temporary, `node_2 = node_1`, which gate 3 shows in `Hydration.js`; a direct call substitutes the argument into the Emit text and leaves the JavaScript unchanged. Every "alias" row in Tasks 4 and 5 means this: delete the declaration and call the `Native` function at its uses.)
 
 - [ ] **Step 1: Write `Native.fs`**
 
