@@ -201,6 +201,27 @@ let tests =
                 session.Act (fun () -> source.Value.Value <- [| 1; 2 |])
                 Expect.equal (List.ofSeq failures) [ "Debug.dump ran inside a flush" ] "raised in the pass"
 
+            testCase "a list dumped inside the batch that wrote its source shows stale"
+            <| fun () ->
+                let source = ref Unchecked.defaultof<Signal<int array>>
+
+                use session =
+                    Twin.mountView TwinMount.defaults (fun context ->
+                        source.Value <- Api.createSignal [| 1; 2 |]
+                        Program.run (Component.render rows source.Value) context.Backend)
+
+                Expect.isFalse ((session.Dump ()).Contains "stale") "current before the write"
+
+                let inside =
+                    session.Graph.Run (fun () ->
+                        Api.batch (fun () ->
+                            source.Value.Value <- [| 1; 2; 3 |]
+                            session.Dump ()))
+
+                Expect.stringContains inside "list  path=r-0.r0  rows=2  stale" "the last pass, marked stale"
+                Expect.stringContains (session.Dump ()) "list  path=r-0.r0  rows=3" "current after the batch"
+                Expect.isFalse ((session.Dump ()).Contains "stale") "no longer stale"
+
             testCase "NodeIds ends each field line with the core node id"
             <| fun () ->
                 use session = Twin.mount counter 3

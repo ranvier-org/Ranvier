@@ -4043,12 +4043,15 @@ and internal MountState
 
         site.Own (fun () ->
 #if RANVIER_VIEW_INSPECT || !FABLE_COMPILER
+            // The reconcile effect's node: stale once the region's source changed after its last pass.
+            let reconcileNode = ref Unchecked.defaultof<INode>
+
             Api.onCleanup (
                 Inspect.register
                     regionStart
                     (Inspect.ListProbe (
-                        parentPath.Row (region, -1),
-                        fun () ->
+                        parentPath.Row (region, -1)
+                        , fun () ->
                             if isNull previousKeys then
                                 [||]
                             else
@@ -4059,6 +4062,7 @@ and internal MountState
                                         if not (isNull row) then
                                             item previousKeys index, row.First
                                 |]
+                        , fun () -> Inspect.isStale reconcileNode.Value
                     ))
             )
 #endif
@@ -4070,7 +4074,7 @@ and internal MountState
                     snapshot :> seq<_>)
 
 #if RANVIER_VIEW_INSPECT || !FABLE_COMPILER
-            Api.untrack (fun () -> Api.createEffect (fun () -> site.InPass reconcile)))
+            Api.untrack (fun () -> reconcileNode.Value <- Api.createEffectNode (fun () -> site.InPass reconcile)))
 #else
             Api.untrack (fun () -> Api.createEffect reconcile))
 #endif
@@ -4277,8 +4281,8 @@ and internal MountState
                 Inspect.register
                     regionStart
                     (Inspect.ArmProbe (
-                        parentPath.Row (region, -1),
-                        fun () ->
+                        parentPath.Row (region, -1)
+                        , fun () ->
                             let definition =
                                 if isNull (box armItem) then
                                     Unchecked.defaultof<_>
@@ -4288,6 +4292,7 @@ and internal MountState
                                     | _ -> Unchecked.defaultof<_>
 
                             struct (armKey, definition)
+                        , fun () -> Inspect.isStale (box selection :?> INode)
                     ))
             )
 #endif

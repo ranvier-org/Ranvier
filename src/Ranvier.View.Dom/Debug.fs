@@ -22,8 +22,6 @@ type DumpOptions =
         MaxChars: int
         /// <summary>Instance fields and their values.</summary>
         Values: bool
-        /// <summary>Region and row markers as comment lines.</summary>
-        Markers: bool
         /// <summary>The document head section.</summary>
         Head: bool
         /// <summary>Core node ids on field lines.</summary>
@@ -39,7 +37,6 @@ module DumpOptions =
             MaxDepth = 64
             MaxChars = 65536
             Values = true
-            Markers = false
             Head = true
             NodeIds = false
         }
@@ -50,8 +47,8 @@ type DumpNode =
     | Element of tag: string * attributes: (string * string) array * properties: (string * string) array * children: DumpNode array
     | Text of value: string * bound: bool
     | Instance of InstanceDump * children: DumpNode array
-    | List of path: string * rows: (string * DumpNode array) array * elided: Elided option
-    | Arm of path: string * key: string * definition: string * children: DumpNode array
+    | List of path: string * rows: (string * DumpNode array) array * elided: Elided option * stale: bool
+    | Arm of path: string * key: string * definition: string * children: DumpNode array * stale: bool
     | Boundary of path: string * state: BoundaryDump * children: DumpNode array
     | Hole of path: string * children: DumpNode array
     | Leaving of DumpNode
@@ -549,7 +546,7 @@ let rec private walk (options: DumpOptions) (prefix: string ref) (first: Node) (
 
         let resume =
             match probe with
-            | Some (Inspect.ListProbe (path, rows)) ->
+            | Some (Inspect.ListProbe (path, rows, stale)) ->
                 let finish = regionEnd cursor
                 let rows = rows ()
 
@@ -581,13 +578,13 @@ let rec private walk (options: DumpOptions) (prefix: string ref) (first: Node) (
                     else
                         rowNodes, None
 
-                nodes.Add (List (shownPath prefix.Value path, shown, elided))
+                nodes.Add (List (shownPath prefix.Value path, shown, elided, stale ()))
 
                 if isNull (box finish) then
                     Unchecked.defaultof<_>
                 else
                     Native.nextOrNull finish
-            | Some (Inspect.ArmProbe (path, selected)) ->
+            | Some (Inspect.ArmProbe (path, selected, stale)) ->
                 let struct (key, definition) = selected ()
                 let children, after = regionChildren ()
 
@@ -604,7 +601,13 @@ let rec private walk (options: DumpOptions) (prefix: string ref) (first: Node) (
                         "#" + hash
 
                 nodes.Add (
-                    Arm (shownPath prefix.Value path, (if isNull key then "" else keyText options (firstOfPair key)), definitionText, children)
+                    Arm (
+                        shownPath prefix.Value path,
+                        (if isNull key then "" else keyText options (firstOfPair key)),
+                        definitionText,
+                        children,
+                        stale ()
+                    )
                 )
 
                 after
@@ -855,7 +858,7 @@ let textWith (options: DumpOptions) (dump: Dump) : string =
 
             for child in children do
                 node depth child
-        | List (path, rows, elided) ->
+        | List (path, rows, elided, stale) ->
             let count =
                 rows.Length
                 + (match elided with
@@ -868,6 +871,7 @@ let textWith (options: DumpOptions) (dump: Dump) : string =
                 + path
                 + "  rows="
                 + string count
+                + (if stale then "  stale" else "")
             )
 
             let headRows =
@@ -905,13 +909,14 @@ let textWith (options: DumpOptions) (dump: Dump) : string =
                         lines.Add (pad + "  leaving")
                         node (depth + 2) inner
                     | _ -> ())
-        | Arm (path, key, definition, children) ->
+        | Arm (path, key, definition, children, stale) ->
             lines.Add (
                 pad
                 + "arm  path="
                 + path
                 + (if key = "" then "" else "  key=" + key)
                 + (if definition = "" then "" else "  def=" + definition)
+                + (if stale then "  stale" else "")
             )
 
             for child in children do
@@ -1074,7 +1079,7 @@ let json (dump: Dump) : string =
             + "],\"children\":"
             + children items
             + "}"
-        | List (path, rows, elided) ->
+        | List (path, rows, elided, stale) ->
             let rows =
                 rows
                 |> Array.map (fun (key, items) ->
@@ -1102,14 +1107,18 @@ let json (dump: Dump) : string =
             + String.Join (",", rows)
             + "],\"elided\":"
             + elided
+            + ",\"stale\":"
+            + (if stale then "true" else "false")
             + "}"
-        | Arm (path, key, definition, items) ->
+        | Arm (path, key, definition, items, stale) ->
             "{\"kind\":\"arm\",\"path\":"
             + jsonString path
             + ",\"key\":"
             + jsonString key
             + ",\"definition\":"
             + jsonString definition
+            + ",\"stale\":"
+            + (if stale then "true" else "false")
             + ",\"children\":"
             + children items
             + "}"

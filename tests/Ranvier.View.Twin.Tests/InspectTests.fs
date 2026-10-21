@@ -38,7 +38,7 @@ let tests =
                     probes session
                     |> List.pick (fun p ->
                         match p with
-                        | Inspect.ListProbe (_, rows) ->
+                        | Inspect.ListProbe (_, rows, _) ->
                             Some (
                                 rows ()
                                 |> Array.map (fun (key, _) -> unbox<int> key)
