@@ -1,9 +1,10 @@
 # .NET DOM twin and `Debug.dump` design
 
-> **Status 2026-10-21:** draft for review. No implementation. Written against `origin/master` at `0a7fe326` in the
-> `Ranvier-dom-twin` worktree, branch `spec/dom-twin-debug-dump`. Every claim about current code cites `file:line` at
-> that commit. Two scratch probes back the feasibility claims (§2.3); their code is reproduced in Appendix A and is not
-> committed.
+> **Status 2026-10-21:** approved, with the ten decisions of §9. Implementation follows
+> [the plan](../plans/2026-10-21-dom-twin-debug-dump.md) on branch `feat/dom-twin`. Every claim about current code cites
+> `file:line` at `0a7fe326`; the merge of `origin/master` at `2cf84be` (#138) changed `src/Ranvier/Core.fs` after line
+> 4542 only, so every citation holds at the merge commit `8311aa1`. Two scratch probes back the feasibility claims
+> (§2.3); their code is reproduced in Appendix A and is not committed.
 
 Date: 2026-10-21. Inputs: `experiments/Ranvier.View.Foundation/*.fs`, `experiments/Ranvier.View.Portable/*.fs`,
 `src/Ranvier/{Core,Types,TraceApi}.fs`, `docs/content/view/{testing,events}.md`, `docs/content/server/rendering.md`,
@@ -103,12 +104,13 @@ Counts at `0a7fe326` (`grep -c "Emit("`, `grep -c emitJsExpr`, `[<Global`):
 | `Foundation/Placement.fs` | 2 | 0 | 0 | `:222-227` |
 | `Foundation/Prepared.fs`, `Microtask.fs`, `DomEvents.fs` | 0 / 0 / 1 | 0 | 1 / 1 / 0 | `queueMicrotask` (`Microtask.fs:6-10`); `addEventListener` (`DomEvents.fs:5-7`) |
 | `Portable/Departures.fs` | 13 | 1 | 0 | `WeakMap`/`WeakSet` (`:55-74`); `setTimeout` (`:88-92`); `seam` is `null` on .NET (`:49-53`) |
-| `Portable/Typed.fs`, `Template.fs`, `Scheduling.fs` | 3 / 1 / 1 | 0 | 0 | each already has a `#else` .NET branch (`Typed.fs:93-137`, `Template.fs:248-254`, `Scheduling.fs:23-27`) |
+| `Portable/Typed.fs`, `Portable/Template.fs`, `Foundation/Scheduling.fs` | 3 / 1 / 1 | 0 | 0 | each already has a `#else` .NET branch (`Typed.fs:93-137`, `Template.fs:248-254`, `Scheduling.fs:23-27`) |
 
 Probe 2 confirms the failure mode: `Scheduling.Queue` constructs on .NET, and calling `Mounting.mount` raises
-`TypeInitializationException: You've hit dummy code used for Fable bindings`. Mounting already carries seven
-`#if FABLE_COMPILER` / `#else` pairs for option comparisons (`Mounting.fs:622-626`, `:980-987`, `:1007-1019`,
-`:1113-1123`, `:1416-1423`); these .NET branches compile today and have never run.
+`TypeInitializationException: You've hit dummy code used for Fable bindings`. Mounting already carries six
+`#if FABLE_COMPILER` / `#else` pairs for option comparisons (`Mounting.fs:622-626`, `:731-735`, `:980-987`,
+`:1007-1019`, `:1113-1123`, `:1416-1423`), and TemplateDom one for aggregate errors (`TemplateDom.fs:226-236`); these
+.NET branches compile today and have never run.
 
 ### 2.2 The existing seams, mapped
 
@@ -155,15 +157,18 @@ helpers with calls through an F# `IDom` would change the Fable output and cost b
 **Divergence that remains.** The .NET bodies of the Emit helpers are a second implementation of about 105 one-line
 JavaScript expressions and four `emitJsExpr` blocks. The one-liners are mechanical (`$0.nextSibling`, `new Map()`).
 The four blocks are not: the delegated listener (`Mounting.fs:131-134`), its removal (`:136-139`), `keepHead`
-(`DocumentHead.fs:55-122`) and the Departures seam object (`Departures.fs:49-50`). The conformance suite (§6.3)
-covers each with named cases.
+(`DocumentHead.fs:55-122`) and the Departures seam object (`Departures.fs:49-50`). Five `[<Emit>]` helpers hold
+statement blocks rather than one expression and are ported with the same care: `overlaps` (`Mounting.fs:147-148`),
+`deleteBetween` (`:172-173`) and the hydration rollback snapshots `keepData`, `keepAttributes` and `keepElement`
+(`TemplateDom.fs:747-760`). The conformance suite (§6.3) covers each with named cases.
 
 ### 3.2 `Native.fs`: one file of host primitives
 
 A new first file of `Ranvier.View.Portable`, `Native.fs` (module `internal Ranvier.View.Foundation.Native`), holds
-every host primitive that is now an Emit helper, `emitJsExpr` value or `[<Global>]` value in Portable and Foundation.
-It lives in Portable because `Departures.fs` needs it; Portable's `InternalsVisibleTo` list gains
-`Ranvier.View.Twin`.
+every host primitive that is now an Emit helper, `emitJsExpr` value or `[<Global>]` value in Portable and Foundation
+and has no .NET body. Helpers that already carry a `#else` branch (`Typed.fs`, `Template.fs`, `Scheduling.fs`,
+`TemplateDom.fs:226-236`) stay in their files. It lives in Portable because `Departures.fs` needs it; Portable's
+`InternalsVisibleTo` list gains `Ranvier.View.Twin` and `Ranvier.View.Twin.Tests`.
 
 - **Under `FABLE_COMPILER`**, each primitive is the current `[<Emit>]` declaration, moved verbatim. Emit bodies are
   inlined at their call sites, so the emitted JavaScript is unchanged; the byte-identity gate (§7.1) verifies this.
@@ -443,7 +448,7 @@ module Twin =
     val mountView: TwinMount -> build: (Mounting.BuildContext -> unit) -> Session
     /// <summary>
     /// Renders with <c>Server.renderPage</c>, writes the body into the host and the head into the document, and
-    /// hydrates with <c>Hydration.hydrateWith</c>.
+    /// hydrates with <c>Hydration.hydrateWith SynchronousCommits</c>, the one mode hydration supports.
     /// </summary>
     val hydrate: Server.Options -> Hydration.HydrationOptions -> Template.Component<'props> -> 'props -> Session
     /// <summary>Hydrates the given server HTML instead of rendering it.</summary>
@@ -540,7 +545,7 @@ from the test project's output.
 - CSS: no stylesheets, no computed style, no `:hover` or `:focus`.
 - Real animation: anime-backed `Ranvier.Anime` calls are `[<Import>]` bindings (`src/Fable.Ranvier.Anime/Anime.fs:9-76`)
   and throw on .NET. The motion seam hooks (`Hooks.motion`, `Hooks.exit`, `Hooks.reflow`) run on the twin with plain
-  callbacks, as `DepartureChecks.fs` writes them. A fake anime engine is open question 9.
+  callbacks, as `DepartureChecks.fs` writes them. A fake anime engine is deferred (decision 9).
 - `MutationObserver`, `Shadow DOM`, custom elements, `iframe`, namespaces other than HTML (SVG elements parse and
   serialise as plain elements with their attributes; `SVGElement` interfaces are not bridged in phase 2).
 - Browser behaviours jsdom also lacks: caret, selection ranges, IME.
@@ -607,7 +612,7 @@ val probeOf: node: Node -> Probe option
 - **Activation.** A Fable build receives the define as `--define RANVIER_VIEW_INSPECT`, as `test:dom` passes
   `RANVIER_VIEW_COUNTERS` today (`package.json:14`); the MSBuild property `RanvierViewInspect=true` adds it to
   `DefineConstants` for the project's own tooling. Debug configurations default it on, as `RanvierTrace` defaults
-  traced in Debug (`docs/content/guide/tracing.md:31-46`); Release defaults it off (open question 3).
+  traced in Debug (`docs/content/guide/tracing.md:31-46`); Release defaults it off (decision 3).
 
 ### 4.3 API
 
@@ -722,8 +727,12 @@ head
 - Instance fields are read as stored values: F# record fields, anonymous record fields and tuple items on .NET through
   `FSharp.Reflection`, own properties under Fable. Class instances show public properties whose values are core nodes;
   their getters run untracked.
-- `capture` raises `InvalidOperationException "Debug.dump ran inside a flush"` when called during a flush, and off the
-  graph's thread, with the same checks as `Trace.dumpText` (`src/Ranvier/TraceApi.fs:278-302`).
+- `capture` raises `InvalidOperationException "Debug.dump ran inside a flush"` when called during the mount's commit
+  flush, and `InvalidOperationException "Debug.dump ran off the graph's thread"` when `Graph.IsOnGraphThread` is false.
+  `Trace.dumpText` (`src/Ranvier/TraceApi.fs:278-302`) also detects a core flush through the trace log and the
+  internal `Graph.CurrentComputation`; the core exposes neither to the view, so a dump called from inside a core
+  computation reads the last-pass values that `Peek` returns. A core-wide check is a core change and needs its own
+  decision.
 - Region probes read the region's variables, which are last-pass values. A region marked stale but not yet
   recomputed shows its last pass and the line suffix `stale`.
 
@@ -752,7 +761,7 @@ on screen and which values they show. The two connect through node identity:
 | `Settle` exceeding `maxRounds` (default 10 000) | `TwinRunawayException` naming the queue that kept refilling and its last callback's origin |
 | A `Native` global read with no host on the thread | `InvalidOperationException` naming `TwinDocument` |
 | A twin document used from another thread | `InvalidOperationException`, as the graph's thread guard does |
-| `Debug.capture` during a flush or off-thread | `InvalidOperationException` (§4.5) |
+| `Debug.capture` during the mount's commit flush or off-thread | `InvalidOperationException` (§4.5) |
 | `Debug` called from a Fable build without the define | compile error: the module is absent, as `Trace` queries are in untraced builds (`tracing.md:77-78`) |
 
 ## 6. Testing strategy
@@ -772,10 +781,15 @@ in review.
 ### 6.3 Shared conformance suite
 
 - **Cases.** The existing Playground check modules move onto `Ranvier.View.Testing`, file by file, replacing their
-  `[<Global "document">]` values with `harness.Document`: `DomChecks`, `TemplateChecks`, `TemplateCatalogueChecks`,
+  `[<Global "document">]` values with `harness.Document`: `RangeChecks`, `TemplateChecks`, `TemplateCatalogueChecks`,
   `DelegationChecks`, `BoundaryChecks`, `PendingRegionChecks`, `PlacementChecks`, `DocumentChecks`, `HydrationChecks`,
   `DepartureChecks`, `SugarChecks`, `OwnedAsyncChecks` and `UnsafeHtmlChecks`. Each module exports `cases: Case array`.
-  Modules that measure (`*Perf.fs`, `*Bench.fs`) stay jsdom-only.
+  Modules that measure (`*Perf.fs`, `*Bench.fs`) stay jsdom-only, and so does `DomChecks`, which checks the `Dom` module
+  of `src/Fable.Ranvier` rather than the view sources.
+- **Host queues.** Both harnesses own a post queue: `Post` appends to it and `RunMicrotasks` drains it, so queued
+  commits run at the same step on both hosts. Under jsdom, `AdvanceBy` ticks `node:test` mock timers. JavaScript
+  promise continuations are outside both queues; the `OwnedAsyncChecks` cases that await a promise carry the `[jsdom]`
+  tag.
 - **Runs.** `npm run test:conformance` compiles the cases with Fable and runs them under jsdom; `dotnet test
   tests/Ranvier.View.Twin.Tests` runs the same cases on the twin.
 - **Comparison.** Each case records the host HTML after every interaction and, in inspect builds, the dump text. A
@@ -841,7 +855,7 @@ and warm:
 | twin, SageFs, no edit | evaluate one interaction and one dump in a warm session |
 
 Per-case execution time is also recorded for a 1000-row keyed mount, a full reorder and a hydration of the Board
-fixture, twin against jsdom; the bridge's per-call overhead is measured separately (open question 1 decides on it).
+fixture, twin against jsdom; the bridge's per-call overhead is measured separately (decision 1 names the threshold).
 
 ## 8. Risks
 
@@ -859,44 +873,51 @@ fixture, twin against jsdom; the bridge's per-call overhead is measured separate
    local `#if`.
 5. **Bridge overhead.** `DispatchProxy` dispatch is a reflective call per DOM operation. For tests this is expected to
    stay small against the reactive work; if the 1000-row measurement shows the bridge dominating, generated bridge
-   classes replace the proxies (open question 1).
+   classes replace the proxies (decision 1).
 6. **jsdom version drift.** The `Html.outer` serialiser follows jsdom 30.1.1's escaping. A jsdom upgrade that changes
    serialisation fails the artefact diff, which is the intended signal.
 7. **Inspect builds drift from release builds.** Registration call sites exist only with the define, so a bug in a
    call site shows in Debug and inspect builds only. The conformance suite runs under jsdom both with and without the
    define.
 
-## 9. Open questions
+## 9. Decisions
 
-Each has a recommendation; the user's answer replaces it.
+The user approved each of these on 2026-10-21.
 
-1. **Bridge implementation.** `DispatchProxy` over the Xantham interfaces, or classes generated by
-   `tools/Ranvier.Dom.Generate` that implement the interfaces directly? **Recommendation:** `DispatchProxy` (probe 1
-   works today, and it needs no generator change); revisit only if §7.2 shows the bridge above a quarter of a case's
-   time.
-2. **HTML parser.** The twin's own subset parser, or AngleSharp (a spec-complete .NET HTML parser and DOM)?
-   **Recommendation:** the subset parser, with explicit failures outside its scope. Server output is within it by
-   construction, and an AngleSharp tree would need a second bridge. AngleSharp can still serve as a test-only oracle
-   for the parser if parse bugs appear.
-3. **`RANVIER_VIEW_INSPECT` default.** On in Debug, off in Release (as `RanvierTrace`), or always explicit?
-   **Recommendation:** on in Debug, off in Release; the size gates build Release.
-4. **`Native.fs` placement.** Portable (required by `Departures.fs`) or a new shared project? **Recommendation:**
-   Portable, internal, with `InternalsVisibleTo` for Foundation and the twin.
-5. **Conformance migration.** Move the existing Playground check modules onto the harness, or write a new suite?
-   **Recommendation:** move them, one module per change, each move keeping its jsdom run green before the twin run is
-   added; the old `*.test.mjs` runner for a module is deleted once its cases run in `conformance.test.mjs`.
-6. **Animation frames.** Frames only on `Frame ()`, or also on `AdvanceBy` at `FrameMs` boundaries? **Recommendation:**
-   both, matching Playwright's `page.clock.runFor`, which the motion spec already uses (`2026-10-21-motion-design.md`,
-   Testing §4).
-7. **Component names in dumps.** Instance type name plus structural hash, or a new naming API?
-   **Recommendation:** type name plus hash; add `Component.named` only if dumps in inspect builds prove unreadable.
-8. **Report policy default.** `Reports.Raise` or `Reports.Collect`? **Recommendation:** `Raise`, so an unexpected
-   failure ends the agent's step where it happened; tests of failure paths opt into `Collect`.
-9. **A fake anime engine.** In scope now, or after the twin lands? **Recommendation:** after phase 6, as `#if
-   !FABLE_COMPILER` bodies in `Fable.Ranvier.Anime` that record calls and complete on the twin clock; 0 B under Fable
-   by construction. Until then the motion seam is covered with plain-callback hooks.
-10. **Packaging.** Publish `Ranvier.View.Twin` and `Ranvier.View.Testing` to NuGet? **Recommendation:** not while the
-    view is in `experiments/`; apps in the repository reference the projects.
+1. **Bridge implementation.** The bridge is one `DispatchProxy` subclass over the Xantham interfaces (probe 1); it
+   needs no generator change. Generated bridge classes replace it only if §7.2 shows the bridge above a quarter of a
+   case's time.
+2. **HTML parser.** The twin has its own subset parser, which raises `TwinParseException` outside its scope. Server
+   output lies within that scope by construction. AngleSharp may serve later as a test-only oracle for the parser; it
+   is not a dependency.
+3. **`RANVIER_VIEW_INSPECT` default.** On in Debug, off in Release, as `RanvierTrace` is. The size gates build Release.
+4. **`Native.fs` placement.** Portable, internal, with `InternalsVisibleTo` for Foundation, the twin and the twin's
+   tests.
+5. **Conformance migration.** The existing Playground check modules move onto the harness, one module per change. Each
+   move keeps the module's jsdom run green before its twin run is added, and the module's old `*.test.mjs` runner is
+   deleted once its cases run in `conformance.test.mjs`.
+6. **Animation frames.** Frames run on `Frame ()` and on `AdvanceBy` at each `FrameMs` boundary crossed, as
+   Playwright's `page.clock.runFor` does in the motion spec (`2026-10-21-motion-design.md`, Testing §4).
+7. **Component names in dumps.** An instance is named by its instance value's type name and its definition's
+   structural hash. `Component.named` is added only if dumps in inspect builds prove unreadable.
+8. **Report policy default.** `Reports.Raise`, so an unexpected failure ends the step during which it arrived. Tests of
+   failure paths opt into `Reports.Collect`.
+9. **A fake anime engine.** Deferred until after phase 6, as `#if !FABLE_COMPILER` bodies in `Fable.Ranvier.Anime`
+   that record calls and complete on the twin clock, 0 B under Fable by construction. Until then, plain-callback hooks
+   cover the motion seam.
+10. **Packaging.** `Ranvier.View.Twin` and `Ranvier.View.Testing` stay unpublished while the view is in
+    `experiments/`; apps in the repository reference the projects.
+
+### Rulings made while planning
+
+- **`DomChecks` stays jsdom-only.** It checks `src/Fable.Ranvier`'s `Dom` module, which is not a view source and keeps
+  module-level `[<Global>]` values. `RangeChecks` takes its place in the first conformance set.
+- **The harness and both runners land in phase 2**, with the first three modules; phase 3 adds queries,
+  interactions, expectations, the artefact diff and the next five modules.
+- **Already-dual helpers and module-level values stay in their files** (§3.2, risk 4).
+- **The dump's flush check covers the mount's commit flush only** (§4.5).
+- **Hydration is synchronous on the twin**, as on the client: `hydrateWith` raises `NotSupportedException` for
+  `QueuedCommits` (`Hydration.fs:143`).
 
 ## 10. Phased implementation outline
 
@@ -909,10 +930,10 @@ Each phase lands with its gates green and is reviewable alone.
    write the .NET bodies; give `Departures.seam` a .NET object. Gates: §7.1 gates 1 and 3; the full jsdom suite;
    Foundation's .NET module initialisation succeeds with no host.
 2. **Twin DOM.** Nodes, bridge, form controls, events, the subset parser, both serialisers, selectors, the clock, and
-   `Twin.mount` with synchronous commits. Tests: §6.1, §6.2; the first conformance modules (`DomChecks`,
-   `TemplateChecks`, `DelegationChecks`) on both hosts.
-3. **Testing library and conformance runner.** `Ranvier.View.Testing` (queries, interactions, expectations, harness),
-   `conformance.test.mjs`, the .NET runner, the artefact diff in CI. Move `BoundaryChecks`, `PlacementChecks`,
+   `Twin.mount` with synchronous commits, the conformance harness, `conformance.test.mjs` and the .NET runner. Tests:
+   §6.1, §6.2; the first conformance modules (`RangeChecks`, `TemplateChecks`, `DelegationChecks`) on both hosts.
+3. **Testing library and artefact diff.** `Ranvier.View.Testing` queries, interactions and expectations; the
+   artefact recording and its diff in CI. Move `BoundaryChecks`, `PlacementChecks`,
    `SugarChecks`, `TemplateCatalogueChecks`, `UnsafeHtmlChecks`.
 4. **Queued commits, async, head, hydration, departures.** `Commits.Queued` on the clock; `Settle` with a
    `ManualDispatcher`; `Twin.hydrate`; §6.4 server parity. Move `DocumentChecks`, `HydrationChecks`,
@@ -921,8 +942,8 @@ Each phase lands with its gates green and is reviewable alone.
    `Debug.nodeAt`, expectation messages with dump excerpts. Tests: §6.5 on both hosts; §7.1 gates 1, 2 and 4.
 6. **Agent workflow and docs.** SageFs session instructions; `docs/content/view/testing.md` gains "Twin checks on
    .NET" and "Dumping a view"; `docs/content/guide/tracing.md` links the dump; the research note records §7.2.
-7. **Follow-ons, each on its own decision.** Generated bridge classes (open question 1), a fake anime engine
-   (open question 9), `SVGElement` bridging.
+7. **Follow-ons, each on its own decision.** Generated bridge classes (decision 1), a fake anime engine
+   (decision 9), `SVGElement` bridging.
 
 ## Appendix A. Probes
 
