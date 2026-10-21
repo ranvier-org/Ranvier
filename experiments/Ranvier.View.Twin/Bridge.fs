@@ -3,9 +3,13 @@ namespace Ranvier.View.Twin
 open System
 open System.Collections.Generic
 open System.Reflection
+open System.Runtime.CompilerServices
 open Microsoft.FSharp.Reflection
 
 type internal Member = TwinNode -> obj array -> obj
+
+/// <summary>A member implementation and the DOM interfaces it serves.</summary>
+type internal Entry = { Accepts: Type -> bool; Run: Member }
 
 /// <summary>The members served on the current thread while a recording is open.</summary>
 [<Sealed; AbstractClass>]
@@ -17,9 +21,14 @@ type internal ServedOnThread =
         with get () = ServedOnThread.recording
         and set (value: HashSet<string>) = ServedOnThread.recording <- value
 
-/// <summary>A live list of twin nodes, which the bridge presents as the declared list interface.</summary>
-type internal ListValue(items: unit -> TwinNode list) =
-    member _.Items = items ()
+/// <summary>
+/// A live list of twin nodes, which the bridge presents as the declared list interface. <c>Key</c> names the list on
+/// its owner, so every read of the same list returns the same object.
+/// </summary>
+type internal ListValue(owner: obj, key: string, nodes: unit -> TwinNode seq) =
+    member _.Owner = owner
+    member _.Key = key
+    member _.Nodes = nodes ()
 
 /// <summary>An element's attributes, which the bridge presents as <c>NamedNodeMap</c>.</summary>
 type internal AttributesValue(element: TwinElement) =
@@ -47,14 +56,17 @@ type NodeProxy() =
         BridgeCore.invoke this.Node targetMethod args
 
 and internal BridgeCore private () =
-    static let table = System.Collections.Concurrent.ConcurrentDictionary<string, Member>()
+    // By member name and arity: the implementations, each with the interfaces it serves.
+    static let table = System.Collections.Concurrent.ConcurrentDictionary<string, Entry list>()
     static let interfaces = System.Collections.Concurrent.ConcurrentDictionary<string, Type>()
     static let someOf = System.Collections.Concurrent.ConcurrentDictionary<Type, MethodInfo>()
 
-    // Every member served in the process, across threads: the record behind members.txt.
-    static let served = System.Collections.Concurrent.ConcurrentDictionary<string, byte>()
+    // Per owner: the list proxies already handed out, by list key and interface.
+    static let lists = ConditionalWeakTable<obj, Dictionary<string, obj>>()
 
-    static member Table = table
+    static member Register(key: string, entry: Entry) =
+        table.AddOrUpdate (key, [ entry ], fun _ entries -> entries @ [ entry ])
+        |> ignore
 
     static member Domain = typeof<Fable.Core.TS.Dom.Node>.Assembly
 
@@ -66,17 +78,29 @@ and internal BridgeCore private () =
             interfaces[name] <- t
             t
 
-    static member Serve(name: string) =
-        served.TryAdd (name, 0uy) |> ignore
+    /// <summary>The interface's name without the generic arity suffix: <c>NodeListOf</c> for <c>NodeListOf`1</c>.</summary>
+    static member NameOf(t: Type) : string =
+        match t.Name.IndexOf '`' with
+        | -1 -> t.Name
+        | index -> t.Name.Substring (0, index)
 
+    static member Qualified(targetMethod: MethodInfo) : string =
+        let name = targetMethod.Name
+
+        let display =
+            if name.StartsWith "get_" || name.StartsWith "set_" then
+                name.Substring 4
+            else
+                name
+
+        BridgeCore.NameOf targetMethod.DeclaringType
+        + "."
+        + display
+
+    static member Serve(name: string) =
         match ServedOnThread.Recording with
         | null -> ()
         | recording -> recording.Add name |> ignore
-
-    static member Served: string seq = served.Keys
-
-    static member ResetServed() =
-        served.Clear ()
 
     /// <summary>The proxy of <c>node</c>, created on first use.</summary>
     static member ProxyOf(node: TwinNode) : obj =
@@ -127,52 +151,51 @@ and internal BridgeCore private () =
                 value
 
     static member Unsupported(targetMethod: MethodInfo) : exn =
-        let name = targetMethod.Name
-
-        let display =
-            if name.StartsWith "get_" || name.StartsWith "set_" then
-                name.Substring 4
-            else
-                name
-
         NotSupportedException (
             "The DOM twin does not implement "
-            + targetMethod.DeclaringType.Name
-            + "."
-            + display
+            + BridgeCore.Qualified targetMethod
         )
 
     static member ServeMethod(targetMethod: MethodInfo) =
-        let name = targetMethod.Name
-
-        let display =
-            if name.StartsWith "get_" || name.StartsWith "set_" then
-                name.Substring 4
-            else
-                name
-
-        BridgeCore.Serve (targetMethod.DeclaringType.Name + "." + display)
+        BridgeCore.Serve (BridgeCore.Qualified targetMethod)
 
     static member ValueProxyOf(interfaceType: Type, handler: MethodInfo -> obj array -> obj) : obj =
         let proxy = DispatchProxy.Create (interfaceType, typeof<ValueProxy>) :?> ValueProxy
         proxy.Handler <- Func<MethodInfo, obj array, obj> handler
         box proxy
 
+    /// <summary>The proxy of a list or attribute map: one object per owner, key and interface.</summary>
+    static member Cached(owner: obj, key: string, interfaceType: Type, create: unit -> obj) : obj =
+        let cache = lists.GetValue (owner, fun _ -> Dictionary<string, obj>())
+        let key = key + "|" + interfaceType.FullName
+
+        match cache.TryGetValue key with
+        | true, proxy -> proxy
+        | false, _ ->
+            let proxy = create ()
+            cache[key] <- proxy
+            proxy
+
     static member ListProxy(interfaceType: Type, list: ListValue) : obj =
         BridgeCore.ValueProxyOf (
             interfaceType,
             fun m args ->
-                let items = list.Items
-
                 match m.Name with
                 | "get_length" ->
                     BridgeCore.ServeMethod m
-                    box (float items.Length)
+                    box (float (Seq.length list.Nodes))
                 | "item"
                 | "get_Item" ->
                     BridgeCore.ServeMethod m
                     let index = int (Convert.ToDouble args[0])
-                    BridgeCore.Wrap (m.ReturnType, (List.tryItem index items |> Option.toObj |> box))
+
+                    let item =
+                        if index < 0 then
+                            null
+                        else
+                            list.Nodes |> Seq.tryItem index |> Option.toObj
+
+                    BridgeCore.Wrap (m, m.ReturnType, box item)
                 | _ -> raise (BridgeCore.Unsupported m)
         )
 
@@ -191,7 +214,7 @@ and internal BridgeCore private () =
                     BridgeCore.ServeMethod m
 
                     match List.tryItem (int (Convert.ToDouble args[0])) element.Attributes with
-                    | Some (name, _) -> BridgeCore.Wrap (m.ReturnType, AttributeValue (element, name))
+                    | Some (name, _) -> BridgeCore.Wrap (m, m.ReturnType, AttributeValue (element, name))
                     | None -> null
                 | _ -> raise (BridgeCore.Unsupported m)
         )
@@ -216,12 +239,17 @@ and internal BridgeCore private () =
                 | _ -> raise (BridgeCore.Unsupported m)
         )
 
-    static member Wrap(returnType: Type, value: obj) : obj =
+    /// <summary>
+    /// The value as the member's declared return type: nodes as their proxies, options for nullable returns. A value
+    /// the type cannot hold raises the member's <c>NotSupportedException</c>.
+    /// </summary>
+    static member Wrap(targetMethod: MethodInfo, returnType: Type, value: obj) : obj =
+        let isOption =
+            returnType.IsGenericType
+            && returnType.GetGenericTypeDefinition () = typedefof<option<_>>
+
         let target =
-            if
-                returnType.IsGenericType
-                && returnType.GetGenericTypeDefinition () = typedefof<option<_>>
-            then
+            if isOption then
                 returnType.GetGenericArguments()[0]
             else
                 returnType
@@ -229,17 +257,28 @@ and internal BridgeCore private () =
         let value =
             match value with
             | :? TwinNode as node -> BridgeCore.ProxyOf node
-            | :? ListValue as list -> BridgeCore.ListProxy (target, list)
-            | :? AttributesValue as attributes -> BridgeCore.AttributesProxy (target, attributes)
+            | :? ListValue as list -> BridgeCore.Cached (list.Owner, list.Key, target, fun () -> BridgeCore.ListProxy (target, list))
+            | :? AttributesValue as attributes ->
+                BridgeCore.Cached (attributes.Element, "attributes", target, fun () -> BridgeCore.AttributesProxy (target, attributes))
             | :? AttributeValue as attribute -> BridgeCore.AttributeProxy (target, attribute)
+            | :? int as i when target = typeof<float> -> box (float i)
             | _ -> value
 
-        if returnType = typeof<Void> then
+        let fits =
+            if returnType = typeof<Void> then
+                true
+            elif isNull value then
+                isOption || not target.IsValueType
+            else
+                target.IsGenericParameter
+                || target.ContainsGenericParameters
+                || target.IsInstanceOfType value
+
+        if not fits then
+            raise (BridgeCore.Unsupported targetMethod)
+        elif returnType = typeof<Void> then
             null
-        elif
-            returnType.IsGenericType
-            && returnType.GetGenericTypeDefinition () = typedefof<option<_>>
-        then
+        elif isOption then
             if isNull value then
                 null
             else
@@ -252,30 +291,25 @@ and internal BridgeCore private () =
                         m
 
                 some.Invoke (null, [| value |])
-        elif returnType = typeof<float> then
-            match value with
-            | :? int as i -> box (float i)
-            | _ -> value
         else
             value
 
     static member invoke (node: TwinNode) (targetMethod: MethodInfo) (args: obj array) : obj =
         node.Document.Check targetMethod.Name
-        let name = targetMethod.Name
         let arity = if isNull args then 0 else args.Length
-        let key = $"{name}/{arity}"
+        let key = $"{targetMethod.Name}/{arity}"
+        let declaring = targetMethod.DeclaringType
 
-        let display =
-            if name.StartsWith "get_" || name.StartsWith "set_" then
-                name.Substring 4
-            else
-                name
+        let entry =
+            match table.TryGetValue key with
+            | true, entries ->
+                entries
+                |> List.tryFind (fun e -> e.Accepts declaring)
+            | false, _ -> None
 
-        let qualified = targetMethod.DeclaringType.Name + "." + display
-
-        match table.TryGetValue key with
-        | true, implementation ->
-            BridgeCore.Serve qualified
+        match entry with
+        | Some entry ->
+            BridgeCore.Serve (BridgeCore.Qualified targetMethod)
 
             let args =
                 if isNull args then
@@ -283,8 +317,8 @@ and internal BridgeCore private () =
                 else
                     Array.map BridgeCore.Unwrap args
 
-            BridgeCore.Wrap (targetMethod.ReturnType, implementation node args)
-        | false, _ -> raise (NotSupportedException ("The DOM twin does not implement " + qualified))
+            BridgeCore.Wrap (targetMethod, targetMethod.ReturnType, entry.Run node args)
+        | None -> raise (BridgeCore.Unsupported targetMethod)
 
 [<RequireQualifiedAccess>]
 module Bridge =
@@ -293,14 +327,25 @@ module Bridge =
         | :? NodeProxy as proxy -> proxy.Node
         | _ -> null
 
-    let registerMember (name: string) (arity: int) (implementation: TwinNode -> obj array -> obj) =
-        BridgeCore.Table[$"{name}/{arity}"] <- implementation
+    /// <summary>Accepts the members the named interfaces declare.</summary>
+    let declaredBy (names: string list) : Type -> bool =
+        let set = HashSet<string> names
+        fun t -> set.Contains (BridgeCore.NameOf t)
 
-    let served () : string list =
-        BridgeCore.Served |> Seq.sort |> List.ofSeq
+    /// <summary>Accepts the members of <c>EventTarget</c> and of every interface that extends it.</summary>
+    let eventTargets: Type -> bool =
+        let target = lazy (BridgeCore.Interface "EventTarget")
+        fun t -> target.Value.IsAssignableFrom t
 
-    let resetServed () =
-        BridgeCore.ResetServed ()
+    /// <summary>Registers an implementation of the member <c>name</c> with <c>arity</c> arguments for the accepted interfaces.</summary>
+    let registerMember (accepts: Type -> bool) (name: string) (arity: int) (implementation: TwinNode -> obj array -> obj) =
+        BridgeCore.Register (
+            $"{name}/{arity}",
+            {
+                Accepts = accepts
+                Run = implementation
+            }
+        )
 
     /// <summary>The members served on the calling thread while <c>run</c> runs, sorted.</summary>
     let servedDuring (run: unit -> unit) : string list =
@@ -329,16 +374,16 @@ module Bridge =
         | :? bool as b -> b
         | _ -> false
 
-    let private getter name (read: TwinNode -> obj) =
-        registerMember ("get_" + name) 0 (fun node _ -> read node)
+    let private getter on name (read: TwinNode -> obj) =
+        registerMember (declaredBy on) ("get_" + name) 0 (fun node _ -> read node)
 
-    let private setter name (write: TwinNode -> obj -> unit) =
-        registerMember ("set_" + name) 1 (fun node args ->
+    let private setter on name (write: TwinNode -> obj -> unit) =
+        registerMember (declaredBy on) ("set_" + name) 1 (fun node args ->
             write node args[0]
             null)
 
-    let private method name arity (run: TwinNode -> obj array -> obj) =
-        registerMember name arity run
+    let private method on name arity (run: TwinNode -> obj array -> obj) =
+        registerMember (declaredBy on) name arity run
 
     let private nodeType (node: TwinNode) =
         match node.Kind with
@@ -362,93 +407,153 @@ module Bridge =
             | NodeKind.Document -> "#document"
             | _ -> "#document-fragment"
 
-    let private childList (nodes: unit -> TwinNode list) : obj =
-        box (ListValue nodes)
+    let private siblingsFrom (first: TwinNode) : TwinNode seq =
+        seq {
+            let mutable child = first
+
+            while not (isNull child) do
+                yield child
+                child <- child.NextSibling
+        }
+
+    let private childList (owner: TwinNode) (key: string) (nodes: unit -> TwinNode seq) : obj =
+        box (ListValue (owner, key, nodes))
+
+    let private nodes = [ "Node" ]
+    let private elements = [ "Element" ]
+    let private documents = [ "Document" ]
+    let private inputs = [ "HTMLInputElement" ]
+
+    let private valued =
+        [
+            "HTMLInputElement"
+            "HTMLTextAreaElement"
+            "HTMLSelectElement"
+            "HTMLOptionElement"
+            "HTMLButtonElement"
+        ]
+
+    let private disableable =
+        [
+            "HTMLButtonElement"
+            "HTMLFieldSetElement"
+            "HTMLInputElement"
+            "HTMLOptGroupElement"
+            "HTMLOptionElement"
+            "HTMLSelectElement"
+            "HTMLTextAreaElement"
+        ]
+
+    // The node's text; a document's is null and its writer does nothing.
+    let private textContentOf (n: TwinNode) : obj =
+        if n.Kind = NodeKind.Document then
+            null
+        else
+            box n.TextContent
+
+    let private writeTextContent (n: TwinNode) (v: obj) =
+        if n.Kind <> NodeKind.Document then
+            n.TextContent <- text v
+
+    let private nodeArgument (owner: TwinNode) (value: obj) : TwinNode =
+        match value with
+        | :? TwinNode as node -> node
+        | v -> owner.Document.CreateText (string v) :> TwinNode
+
+    // The DOM's replaceWith: the replacements go before the first following sibling outside them.
+    let private replaceWith (n: TwinNode) (replacements: obj array) =
+        let parent = n.Parent
+
+        if not (isNull parent) then
+            let inserted =
+                replacements
+                |> Array.map (BridgeCore.Unwrap >> nodeArgument n)
+
+            let mutable viable = n.NextSibling
+
+            while not (isNull viable)
+                  && inserted
+                     |> Array.exists (fun r -> obj.ReferenceEquals (r, viable)) do
+                viable <- viable.NextSibling
+
+            if not (Array.exists (fun r -> obj.ReferenceEquals (r, n)) inserted) then
+                n.Remove ()
+
+            for replacement in inserted do
+                parent.InsertBefore (replacement, viable)
+                |> ignore
 
     let private core =
         lazy
             (
              // Node
-             getter "nodeType" (nodeType >> box)
-             getter "nodeName" (nodeName >> box)
-             getter "parentNode" (fun n -> box n.Parent)
+             getter nodes "nodeType" (nodeType >> box)
+             getter nodes "nodeName" (nodeName >> box)
+             getter nodes "parentNode" (fun n -> box n.Parent)
 
-             getter "parentElement" (fun n ->
+             getter nodes "parentElement" (fun n ->
                  match n.Parent with
                  | :? TwinElement as e -> box e
                  | _ -> null)
 
-             getter "firstChild" (fun n -> box n.FirstChild)
-             getter "lastChild" (fun n -> box n.LastChild)
-             getter "nextSibling" (fun n -> box n.NextSibling)
-             getter "previousSibling" (fun n -> box n.PreviousSibling)
-             getter "ownerDocument" (fun n -> if n.Kind = NodeKind.Document then null else box n.Document)
-             getter "isConnected" (fun n -> box n.IsConnected)
-             getter "childNodes" (fun n -> childList (fun () -> n.Children))
-             getter "textContent" (fun n -> box n.TextContent)
-             setter "textContent" (fun n v -> n.TextContent <- text v)
-             method "appendChild" 1 (fun n a -> box (n.AppendChild (a[0] :?> TwinNode)))
-             method "insertBefore" 2 (fun n a -> box (n.InsertBefore (a[0] :?> TwinNode, a[1] :?> TwinNode)))
-             method "removeChild" 1 (fun n a -> box (n.RemoveChild (a[0] :?> TwinNode)))
-             method "replaceChild" 2 (fun n a -> box (n.ReplaceChild (a[0] :?> TwinNode, a[1] :?> TwinNode)))
+             getter nodes "firstChild" (fun n -> box n.FirstChild)
+             getter nodes "lastChild" (fun n -> box n.LastChild)
+             getter nodes "nextSibling" (fun n -> box n.NextSibling)
+             getter nodes "previousSibling" (fun n -> box n.PreviousSibling)
 
-             method "contains" 1 (fun n a ->
+             getter [ "Node"; "CharacterData"; "Element"; "DocumentFragment"; "Document" ] "ownerDocument" (fun n ->
+                 if n.Kind = NodeKind.Document then null else box n.Document)
+
+             getter nodes "isConnected" (fun n -> box n.IsConnected)
+             getter nodes "childNodes" (fun n -> childList n "childNodes" (fun () -> siblingsFrom n.FirstChild))
+             getter [ "Node"; "CharacterData"; "Element"; "DocumentFragment"; "Document" ] "textContent" textContentOf
+             setter [ "Node"; "CharacterData"; "Element"; "DocumentFragment" ] "textContent" writeTextContent
+             method nodes "appendChild" 1 (fun n a -> box (n.AppendChild (a[0] :?> TwinNode)))
+             method nodes "insertBefore" 2 (fun n a -> box (n.InsertBefore (a[0] :?> TwinNode, a[1] :?> TwinNode)))
+             method nodes "removeChild" 1 (fun n a -> box (n.RemoveChild (a[0] :?> TwinNode)))
+             method nodes "replaceChild" 2 (fun n a -> box (n.ReplaceChild (a[0] :?> TwinNode, a[1] :?> TwinNode)))
+
+             method nodes "contains" 1 (fun n a ->
                  box (
                      not (isNull a[0])
                      && n.Contains (a[0] :?> TwinNode)
                  ))
 
-             method "cloneNode" 1 (fun n a -> box (n.Clone (flag a[0])))
+             method nodes "cloneNode" 1 (fun n a -> box (n.Clone (flag a[0])))
              // CharacterData
-             getter "data" (fun n -> box (n :?> TwinCharacterData).Data)
-             setter "data" (fun n v -> (n :?> TwinCharacterData).Data <- text v)
+             getter [ "CharacterData" ] "data" (fun n -> box (n :?> TwinCharacterData).Data)
+             setter [ "CharacterData" ] "data" (fun n v -> (n :?> TwinCharacterData).Data <- text v)
              // ChildNode
-             method "remove" 0 (fun n _ ->
+             method [ "ChildNode" ] "remove" 0 (fun n _ ->
                  n.Remove ()
                  null)
 
-             method "replaceWith" 1 (fun n a ->
-                 let parent = n.Parent
-
-                 for replacement in
-                     (a[0] :?> obj array)
-                     |> Array.map BridgeCore.Unwrap do
-                     parent.InsertBefore (
-                         (match replacement with
-                          | :? TwinNode as r -> r
-                          | v -> n.Document.CreateText (string v) :> TwinNode),
-                         n
-                     )
-                     |> ignore
-
-                 n.Remove ()
+             method [ "ChildNode" ] "replaceWith" 1 (fun n a ->
+                 replaceWith n (a[0] :?> obj array)
                  null)
              // ParentNode
-             getter "children" (fun n ->
-                 childList (fun () ->
-                     n.Children
-                     |> List.filter (fun c -> c.Kind = NodeKind.Element)))
+             getter [ "ParentNode" ] "children" (fun n ->
+                 childList n "children" (fun () ->
+                     siblingsFrom n.FirstChild
+                     |> Seq.filter (fun c -> c.Kind = NodeKind.Element)))
 
-             method "replaceChildren" 1 (fun n a ->
+             method [ "ParentNode" ] "replaceChildren" 1 (fun n a ->
+                 let replacements =
+                     (a[0] :?> obj array)
+                     |> Array.map (BridgeCore.Unwrap >> nodeArgument n)
+
                  for child in n.Children do
                      n.RemoveChild child |> ignore
 
-                 for child in
-                     (a[0] :?> obj array)
-                     |> Array.map BridgeCore.Unwrap do
-                     n.AppendChild (
-                         match child with
-                         | :? TwinNode as c -> c
-                         | v -> n.Document.CreateText (string v) :> TwinNode
-                     )
-                     |> ignore
+                 for child in replacements do
+                     n.AppendChild child |> ignore
 
                  null)
              // Element
-             getter "localName" (fun n -> box (element n).LocalName)
-             getter "tagName" (fun n -> box (nodeName n))
+             getter elements "localName" (fun n -> box (element n).LocalName)
+             getter elements "tagName" (fun n -> box (nodeName n))
 
-             getter "namespaceURI" (fun n ->
+             getter elements "namespaceURI" (fun n ->
                  box (
                      match (element n).Namespace with
                      | "svg" -> "http://www.w3.org/2000/svg"
@@ -456,26 +561,26 @@ module Bridge =
                      | _ -> "http://www.w3.org/1999/xhtml"
                  ))
 
-             getter "prefix" (fun _ -> null)
-             getter "id" (fun n -> box (text ((element n).GetAttribute "id")))
-             setter "id" (fun n v -> (element n).SetAttribute("id", text v))
-             getter "className" (fun n -> box (text ((element n).GetAttribute "class")))
-             setter "className" (fun n v -> (element n).SetAttribute("class", text v))
-             method "getAttribute" 1 (fun n a -> box ((element n).GetAttribute(string a[0])))
+             getter elements "prefix" (fun _ -> null)
+             getter elements "id" (fun n -> box (text ((element n).GetAttribute "id")))
+             setter elements "id" (fun n v -> (element n).SetAttribute("id", text v))
+             getter elements "className" (fun n -> box (text ((element n).GetAttribute "class")))
+             setter elements "className" (fun n v -> (element n).SetAttribute("class", text v))
+             method elements "getAttribute" 1 (fun n a -> box ((element n).GetAttribute(string a[0])))
 
-             method "setAttribute" 2 (fun n a ->
+             method elements "setAttribute" 2 (fun n a ->
                  (element n).SetAttribute(string a[0], text a[1])
                  null)
 
-             method "removeAttribute" 1 (fun n a ->
+             method elements "removeAttribute" 1 (fun n a ->
                  (element n).RemoveAttribute(string a[0])
                  null)
 
-             method "hasAttribute" 1 (fun n a -> box ((element n).HasAttribute(string a[0])))
-             getter "attributes" (fun n -> box (AttributesValue (element n)))
-             getter "innerHTML" (fun n -> box (Html.inner n))
+             method elements "hasAttribute" 1 (fun n a -> box ((element n).HasAttribute(string a[0])))
+             getter elements "attributes" (fun n -> box (AttributesValue (element n)))
+             getter elements "innerHTML" (fun n -> box (Html.inner n))
 
-             setter "innerHTML" (fun n v ->
+             setter elements "innerHTML" (fun n v ->
                  let target =
                      match n with
                      | :? TwinElement as e when e.LocalName = "template" -> e.Content
@@ -486,44 +591,36 @@ module Bridge =
 
                  Html.parseInto n (text v))
 
-             getter "outerHTML" (fun n -> box (Html.outer n))
+             getter elements "outerHTML" (fun n -> box (Html.outer n))
              // HTMLTemplateElement
-             getter "content" (fun n -> box (element n).Content)
+             getter [ "HTMLTemplateElement" ] "content" (fun n -> box (element n).Content)
              // Form controls
-             getter "value" (fun n -> box (element n).Value)
-             setter "value" (fun n v -> (element n).Value <- text v)
-             getter "defaultValue" (fun n -> box (element n).DefaultValue)
-             setter "defaultValue" (fun n v -> (element n).DefaultValue <- text v)
-             getter "checked" (fun n -> box (element n).Checked)
-             setter "checked" (fun n v -> (element n).Checked <- flag v)
-             getter "defaultChecked" (fun n -> box ((element n).HasAttribute "checked"))
-             getter "selected" (fun n -> box (element n).Selected)
-             setter "selected" (fun n v -> (element n).Selected <- flag v)
+             getter valued "value" (fun n -> box (element n).Value)
+             setter valued "value" (fun n v -> (element n).Value <- text v)
+             getter [ "HTMLInputElement"; "HTMLTextAreaElement" ] "defaultValue" (fun n -> box (element n).DefaultValue)
 
-             getter "type" (fun n ->
-                 box (
-                     match (element n).GetAttribute "type" with
-                     | null ->
-                         (if (element n).LocalName = "button" then
-                              "submit"
-                          else
-                              "text")
-                     | t -> t.ToLowerInvariant ()
-                 ))
+             setter [ "HTMLInputElement"; "HTMLTextAreaElement" ] "defaultValue" (fun n v -> (element n).DefaultValue <- text v)
 
-             getter "disabled" (fun n -> box ((element n).HasAttribute "disabled"))
+             getter inputs "checked" (fun n -> box (element n).Checked)
+             setter inputs "checked" (fun n v -> (element n).Checked <- flag v)
+             getter inputs "defaultChecked" (fun n -> box ((element n).HasAttribute "checked"))
+             getter [ "HTMLOptionElement" ] "selected" (fun n -> box (element n).Selected)
+             setter [ "HTMLOptionElement" ] "selected" (fun n v -> (element n).Selected <- flag v)
+             getter inputs "type" (fun n -> box (element n).InputType)
+             getter [ "HTMLTextAreaElement" ] "type" (fun _ -> box "textarea")
+             getter disableable "disabled" (fun n -> box ((element n).HasAttribute "disabled"))
 
-             setter "disabled" (fun n v ->
+             setter disableable "disabled" (fun n v ->
                  if flag v then
                      (element n).SetAttribute("disabled", "")
                  else
                      (element n).RemoveAttribute "disabled")
              // Document
-             getter "head" (fun n -> box (n :?> TwinDocument).Head)
-             getter "body" (fun n -> box (n :?> TwinDocument).Body)
-             getter "documentElement" (fun n -> box (n :?> TwinDocument).Html)
+             getter documents "head" (fun n -> box (n :?> TwinDocument).Head)
+             getter documents "body" (fun n -> box (n :?> TwinDocument).Body)
+             getter documents "documentElement" (fun n -> box (n :?> TwinDocument).Html)
 
-             getter "title" (fun n ->
+             getter [ "Document"; "HTMLElement" ] "title" (fun n ->
                  match n with
                  | :? TwinDocument as d ->
                      d.Head.Children
@@ -534,7 +631,7 @@ module Bridge =
                      |> Option.defaultValue (box "")
                  | _ -> box (text ((element n).GetAttribute "title")))
 
-             setter "title" (fun n v ->
+             setter [ "Document"; "HTMLElement" ] "title" (fun n v ->
                  match n with
                  | :? TwinDocument as d ->
                      let existing =
@@ -552,22 +649,49 @@ module Bridge =
                      title.TextContent <- text v
                  | _ -> (element n).SetAttribute("title", text v))
 
-             method "createElement" 2 (fun n a -> box ((n :?> TwinDocument).CreateElement(string a[0])))
-             method "createTextNode" 1 (fun n a -> box ((n :?> TwinDocument).CreateText(text a[0])))
-             method "createComment" 1 (fun n a -> box ((n :?> TwinDocument).CreateComment(text a[0])))
-             method "createDocumentFragment" 0 (fun n _ -> box ((n :?> TwinDocument).CreateFragment()))
-             method "importNode" 2 (fun _ a -> box ((a[0] :?> TwinNode).Clone(flag a[1])))
-             method "getElementById" 1 (fun n a -> box ((n :?> TwinDocument).ElementById(string a[0])))
-             getter "activeElement" (fun n -> box (n :?> TwinDocument).ActiveElement))
+             method documents "createElement" 2 (fun n a -> box ((n :?> TwinDocument).CreateElement(string a[0])))
+             method documents "createTextNode" 1 (fun n a -> box ((n :?> TwinDocument).CreateText(text a[0])))
+             method documents "createComment" 1 (fun n a -> box ((n :?> TwinDocument).CreateComment(text a[0])))
+             method documents "createDocumentFragment" 0 (fun n _ -> box ((n :?> TwinDocument).CreateFragment()))
+             method documents "importNode" 2 (fun _ a -> box ((a[0] :?> TwinNode).Clone(flag a[1])))
+
+             method [ "Document"; "NonElementParentNode" ] "getElementById" 1 (fun n a -> box ((n :?> TwinDocument).ElementById(string a[0])))
+
+             getter [ "DocumentOrShadowRoot" ] "activeElement" (fun n -> box (n :?> TwinDocument).ActiveElement))
+
+    // The event and selector members live in later files; they register through their own ensure, found by name.
+    let private extensions =
+        lazy
+            (let assembly = typeof<NodeProxy>.Assembly
+
+             for name in [ "Ranvier.View.Twin.Events"; "Ranvier.View.Twin.SelectorMembers" ] do
+                 match assembly.GetType name with
+                 | null -> ()
+                 | t ->
+                     match
+                         t.GetMethod (
+                             "ensure",
+                             BindingFlags.Public
+                             ||| BindingFlags.NonPublic
+                             ||| BindingFlags.Static
+                         )
+                     with
+                     | null -> ()
+                     | ensure -> ensure.Invoke (null, [||]) |> ignore)
 
     /// <summary>Registers the core members once per process; every entry point that creates a proxy calls it first.</summary>
     let ensure () =
         core.Force ()
+
+    /// <summary>Registers every member the twin serves: the core, event and selector members.</summary>
+    let ensureAll () =
+        core.Force ()
+        extensions.Force ()
 
 [<AutoOpen>]
 module NodeNative =
     type TwinNode with
         /// <summary>The node as <c>Fable.Core.TS.Dom</c> sees it: the same object on every read.</summary>
         member this.Native: Fable.Core.TS.Dom.Node =
-            Bridge.ensure ()
+            Bridge.ensureAll ()
             BridgeCore.ProxyOf this :?> Fable.Core.TS.Dom.Node

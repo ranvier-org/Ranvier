@@ -63,15 +63,66 @@ let tests =
                 Expect.equal div.innerHTML "<b>x</b><!--m-->" "round trip"
                 Expect.equal div.childNodes.length 2.0 "children"
 
-            testCase "served members are recorded by interface"
+            testCase "served members are recorded by interface on the calling thread"
             <| fun () ->
-                Bridge.resetServed ()
+                use document = new TwinDocument ()
+                let div = document.CreateElement "div"
+
+                let served =
+                    Bridge.servedDuring (fun () ->
+                        div.Native.nodeType |> ignore
+                        div.Native.childNodes.item 0. |> ignore)
+
+                Expect.equal served [ "Node.childNodes"; "Node.nodeType"; "NodeListOf.item" ] "recorded without arity suffixes"
+
+            testCase "a member serves the interfaces that declare it, and only those"
+            <| fun () ->
                 use document = new TwinDocument ()
 
-                (document.CreateElement "div").Native.nodeType
+                let element tag =
+                    (document.CreateElement tag).Native
+
+                let unsupported name (read: unit -> obj) =
+                    Expect.throwsC (fun () -> read () |> ignore) (fun e ->
+                        Expect.isTrue (e :? NotSupportedException) $"{name}: NotSupportedException, got {e.GetType().Name}"
+                        Expect.equal e.Message $"The DOM twin does not implement {name}" "message")
+
+                Expect.equal (element "textarea" :?> HTMLTextAreaElement).``type`` "textarea" "textarea type"
+                Expect.equal (element "input" :?> HTMLInputElement).``type`` "text" "input type"
+                unsupported "HTMLSelectElement.type" (fun () -> box (element "select" :?> HTMLSelectElement).``type``)
+                unsupported "HTMLLIElement.value" (fun () -> box (element "li" :?> HTMLLIElement).value)
+                unsupported "HTMLAnchorElement.type" (fun () -> box (element "a" :?> HTMLAnchorElement).``type``)
+                unsupported "HTMLOutputElement.value" (fun () -> box (element "output" :?> HTMLOutputElement).value)
+
+            testCase "the document's textContent is null and its writer does nothing"
+            <| fun () ->
+                use document = new TwinDocument ()
+
+                document.Body.AppendChild (document.CreateText "x")
                 |> ignore
 
-                Expect.contains (Bridge.served ()) "Node.nodeType" "recorded"
+                let native = document.Native
+                Expect.isNone native.textContent "null"
+                native.textContent <- Some "y"
+                Expect.equal document.Body.TextContent "x" "unchanged"
+
+            testCase "live lists are the same object on every read"
+            <| fun () ->
+                use document = new TwinDocument ()
+                let div = (document.CreateElement "div").Native :?> Element
+                Expect.isTrue (obj.ReferenceEquals (div.childNodes, div.childNodes)) "childNodes"
+                Expect.isTrue (obj.ReferenceEquals (div.children, div.children)) "children"
+                Expect.isTrue (obj.ReferenceEquals (div.attributes, div.attributes)) "attributes"
+                div.innerHTML <- "<b></b><i></i>"
+                Expect.equal div.childNodes.length 2.0 "live"
+
+            testCase "event and selector members serve a document created without a host"
+            <| fun () ->
+                use document = new TwinDocument ()
+                let div = document.CreateElement "div"
+                document.Body.AppendChild div |> ignore
+                Expect.isSome ((document.Body.Native :?> Element).querySelector "div") "querySelector"
+                (div.Native :?> HTMLElement).click()
 
             testCase "a call from another thread raises"
             <| fun () ->

@@ -124,10 +124,45 @@ let private byText () =
     graph.Dispose ()
     (unbox<Element> root).remove()
 
+let private selectorFixture =
+    "<section><div><p><span>1</span></p><span>2</span></div></section><ul><li><b><i>3</i></b></li><li><i>4</i></li></ul>"
+
+/// <summary>Each selector with the texts of its matches in document order.</summary>
+let private selectorExpectations =
+    [
+        "div > span", [ "2" ]
+        "div span", [ "1"; "2" ]
+        "section > p span", []
+        "section > div span", [ "1"; "2" ]
+        "section p > span", [ "1" ]
+        "li > i", [ "4" ]
+        "li i", [ "3"; "4" ]
+        "ul > li > b > i", [ "3" ]
+        "li:first-child i", [ "3" ]
+    ]
+
+let private selectorsAgree () =
+    let host = (Conformance.document ()).createElement "main"
+    host.innerHTML <- selectorFixture
+
+    let texts (elements: Element seq) =
+        [ for e in elements -> Query.textOf e ]
+
+    for selector, expected in selectorExpectations do
+        let engine = texts (Query.queryAll host selector)
+        let all = host.querySelectorAll selector
+
+        let native =
+            texts [ for i in 0 .. int all.length - 1 -> unbox<Element>(all.item (float i)) ]
+
+        if engine <> expected || native <> expected then
+            failwithf "%s: expected %A, engine %A, querySelectorAll %A" selector expected engine native
+
 let cases: Conformance.Case array =
     Conformance.ofChecks
         [|
             "interactions drive input, check and key and the expectations read the result", interactions
             "a query or expectation that fails raises with the selector", failures
             "byText returns the innermost element with the text", byText
+            "the selector engine and querySelectorAll agree on child and descendant combinators", selectorsAgree
         |]

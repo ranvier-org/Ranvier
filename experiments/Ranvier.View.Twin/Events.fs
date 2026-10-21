@@ -85,18 +85,10 @@ type EventProxy() =
                 match e.Init[display] with
                 | :? TwinNode as node -> BridgeCore.ProxyOf node
                 | value -> value
-            | _ ->
-                raise (
-                    NotSupportedException (
-                        "The DOM twin does not implement "
-                        + targetMethod.DeclaringType.Name
-                        + "."
-                        + display
-                    )
-                )
+            | _ -> raise (BridgeCore.Unsupported targetMethod)
 
-        BridgeCore.Serve (targetMethod.DeclaringType.Name + "." + display)
-        BridgeCore.Wrap (targetMethod.ReturnType, value)
+        BridgeCore.ServeMethod targetMethod
+        BridgeCore.Wrap (targetMethod, targetMethod.ReturnType, value)
 
 [<RequireQualifiedAccess>]
 module Events =
@@ -411,7 +403,7 @@ module Events =
         lazy
             (Bridge.ensure ()
 
-             Bridge.registerMember "addEventListener" 3 (fun node args ->
+             Bridge.registerMember Bridge.eventTargets "addEventListener" 3 (fun node args ->
                  let eventType, callback = string args[0], args[1]
 
                  let capture =
@@ -432,7 +424,7 @@ module Events =
 
                  null)
 
-             Bridge.registerMember "removeEventListener" 3 (fun node args ->
+             Bridge.registerMember Bridge.eventTargets "removeEventListener" 3 (fun node args ->
                  match added.TryGetValue node with
                  | true, list ->
                      match
@@ -449,21 +441,21 @@ module Events =
 
                  null)
 
-             Bridge.registerMember "dispatchEvent" 1 (fun node args -> box (dispatch node (eventOf args[0])))
+             Bridge.registerMember (Bridge.declaredBy [ "EventTarget" ]) "dispatchEvent" 1 (fun node args -> box (dispatch node (eventOf args[0])))
 
-             Bridge.registerMember "click" 0 (fun node _ ->
+             Bridge.registerMember (Bridge.declaredBy [ "HTMLElement" ]) "click" 0 (fun node _ ->
                  click (node :?> TwinElement)
                  null)
 
-             Bridge.registerMember "focus" 1 (fun node _ ->
+             Bridge.registerMember (Bridge.declaredBy [ "HTMLOrSVGElement" ]) "focus" 1 (fun node _ ->
                  focus (node :?> TwinElement)
                  null)
 
-             Bridge.registerMember "focus" 0 (fun node _ ->
+             Bridge.registerMember (Bridge.declaredBy [ "HTMLOrSVGElement" ]) "focus" 0 (fun node _ ->
                  focus (node :?> TwinElement)
                  null)
 
-             Bridge.registerMember "blur" 0 (fun node _ ->
+             Bridge.registerMember (Bridge.declaredBy [ "HTMLOrSVGElement" ]) "blur" 0 (fun node _ ->
                  blur (node :?> TwinElement)
                  null))
 

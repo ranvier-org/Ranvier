@@ -10,6 +10,7 @@ Document.importNode
 Element.getAttribute
 Element.innerHTML
 Element.localName
+Element.namespaceURI
 Element.setAttribute
 Element.tagName
 Element.textContent
@@ -42,7 +43,7 @@ Node.parentNode
 Node.removeChild
 Node.textContent
 NodeList.length
-NodeListOf`1.item
+NodeListOf.item
 ParentNode.children
 ParentNode.querySelector
 ParentNode.querySelectorAll

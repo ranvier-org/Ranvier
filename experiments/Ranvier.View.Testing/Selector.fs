@@ -36,6 +36,15 @@ type private Combinator =
 /// <summary>A selector list; each complex selector holds its compounds right to left with the combinator to the next.</summary>
 type Parsed = private Parsed of (Simple list * Combinator) list list
 
+let private isSpace (c: char) =
+    c = ' '
+    || c = '\t'
+    || c = '\n'
+    || c = '\r'
+    || c = '\f'
+
+let private spaces = [| ' '; '\t'; '\n'; '\r'; '\f' |]
+
 let private isNameChar (c: char) =
     System.Char.IsLetterOrDigit c
     || c = '-'
@@ -66,7 +75,7 @@ let parse (selector: string) : Parsed =
         selector.Substring (start, i.Value - start)
 
     let skipSpace () =
-        while peek () = ' ' do
+        while isSpace (peek ()) do
             i.Value <- i.Value + 1
 
     let quoted () =
@@ -104,7 +113,7 @@ let parse (selector: string) : Parsed =
         | '[' ->
             i.Value <- i.Value + 1
             skipSpace ()
-            let attribute = (name ()).ToLowerInvariant()
+            let attribute = name ()
             skipSpace ()
 
             let operator =
@@ -172,7 +181,7 @@ let parse (selector: string) : Parsed =
                 i.Value <- i.Value + 1
                 Not inner
             | _ -> fail start
-        | c when isNameChar c -> Tag ((name ()).ToLowerInvariant())
+        | c when isNameChar c -> Tag (name ())
         | _ -> fail start
 
     let compound () =
@@ -256,26 +265,90 @@ let private siblings (element: Element) : Element list =
         List.ofSeq result
     | None -> [ element ]
 
+let private htmlNamespace = "http://www.w3.org/1999/xhtml"
+
+let private isHtml (element: Element) =
+    Option.toObj element.namespaceURI = htmlNamespace
+
+// Names match HTML elements in any case and other elements (SVG, MathML) as written.
 let private attribute (element: Element) (name: string) =
-    Option.toObj (element.getAttribute name)
+    Option.toObj (element.getAttribute (if isHtml element then name.ToLowerInvariant () else name))
+
+let private isElementNamed (name: string) (node: Node) =
+    node.nodeType = 1.0
+    && (unbox<Element> node).localName = name
+
+let private firstLegendOf (fieldset: Element) : Element =
+    let mutable child = (fieldset :> Node).firstChild
+    let mutable found: Element = Unchecked.defaultof<_>
+
+    while isNull (box found) && child.IsSome do
+        let node = unbox<Node> child.Value
+
+        if isElementNamed "legend" node then
+            found <- unbox<Element> node
+
+        child <- node.nextSibling
+
+    found
+
+let private disabledControls =
+    [ "button"; "input"; "select"; "textarea"; "fieldset" ]
+
+// A form control is disabled by its own attribute, or by a disabled fieldset ancestor unless it sits in that
+// fieldset's first legend; an option is disabled by its own attribute or its optgroup's.
+let private isDisabled (element: Element) =
+    let own = not (isNull (Option.toObj (element.getAttribute "disabled")))
+
+    match element.localName with
+    | "optgroup" -> own
+    | "option" ->
+        own
+        || (match element.parentNode with
+            | Some parent when isElementNamed "optgroup" (unbox<Node> parent) ->
+                not (isNull (Option.toObj ((unbox<Element> parent).getAttribute "disabled")))
+            | _ -> false)
+    | name when List.contains name disabledControls ->
+        own
+        || (let mutable inside: Node = unbox<Node> element
+            let mutable ancestor = element.parentNode
+            let mutable disabled = false
+
+            while not disabled && ancestor.IsSome do
+                let node = unbox<Node> ancestor.Value
+
+                if
+                    isElementNamed "fieldset" node
+                    && not (isNull (Option.toObj ((unbox<Element> node).getAttribute "disabled")))
+                    && not (obj.ReferenceEquals (inside, firstLegendOf (unbox<Element> node)))
+                then
+                    disabled <- true
+
+                inside <- node
+                ancestor <- node.parentNode
+
+            disabled)
+    | _ -> false
 
 let rec private test (element: Element) (simple: Simple) : bool =
     match simple with
-    | Tag tag -> element.localName = tag
+    | Tag tag -> element.localName = (if isHtml element then tag.ToLowerInvariant () else tag)
     | Universal -> true
     | Id id -> attribute element "id" = id
     | Class name ->
         match attribute element "class" with
         | null -> false
         | classes ->
-            classes.Split ([| ' '; '\t'; '\n' |], System.StringSplitOptions.RemoveEmptyEntries)
+            classes.Split (spaces, System.StringSplitOptions.RemoveEmptyEntries)
             |> Array.contains name
     | Attribute (name, operator, value) ->
         match attribute element name, operator with
         | null, _ -> false
         | _, Exists -> true
         | actual, Equals -> actual = value
-        | actual, Includes -> actual.Split ' ' |> Array.contains value
+        | actual, Includes ->
+            actual.Split (spaces, System.StringSplitOptions.RemoveEmptyEntries)
+            |> Array.contains value
         | actual, Prefix -> value <> "" && actual.StartsWith value
         | actual, Suffix -> value <> "" && actual.EndsWith value
         | actual, Contains -> value <> "" && actual.Contains value
@@ -284,9 +357,7 @@ let rec private test (element: Element) (simple: Simple) : bool =
         | "input" -> (unbox<HTMLInputElement> element).``checked``
         | "option" -> (unbox<HTMLOptionElement> element).selected
         | _ -> false
-    | Disabled ->
-        List.contains element.localName [ "button"; "input"; "select"; "textarea"; "option"; "optgroup"; "fieldset" ]
-        && not (isNull (attribute element "disabled"))
+    | Disabled -> isDisabled element
     | FirstChild -> obj.ReferenceEquals (List.tryHead (siblings element) |> Option.toObj, element)
     | LastChild -> obj.ReferenceEquals (List.tryLast (siblings element) |> Option.toObj, element)
     | NthChild n ->
@@ -301,9 +372,7 @@ let rec private matchFrom (element: Element) (compounds: (Simple list * Combinat
     | (simples, _) :: rest when List.forall (test element) simples ->
         match rest with
         | [] -> true
-        | (_, _) :: _ ->
-            let _, combinator = List.head compounds
-
+        | (_, combinator) :: _ ->
             match combinator with
             | Child -> let parent = parentElement element in not (isNull (box parent)) && matchFrom parent rest
             | Descendant ->

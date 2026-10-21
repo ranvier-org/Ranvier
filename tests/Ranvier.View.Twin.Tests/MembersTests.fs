@@ -1,6 +1,6 @@
 /// <summary>
-/// The DOM members the conformance cases use on the twin equal <c>members.txt</c>. The test runs every twin case on its
-/// own thread inside a served-member recording, so the set is the same whatever other tests run alongside.
+/// The DOM members the conformance cases use on the twin equal <c>members.txt</c>. The test runs every twin case on the test's
+/// thread inside a served-member recording, so the set is the same whatever other tests run alongside or are filtered out.
 /// </summary>
 module Ranvier.View.Twin.Tests.MembersTests
 

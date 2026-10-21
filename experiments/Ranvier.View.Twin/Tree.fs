@@ -274,7 +274,7 @@ and [<Sealed; AllowNullLiteral>] TwinElement internal (owner: TwinDocument, loca
         attributes.RemoveAll (fun (n, _) -> n = name)
         |> ignore
 
-    member private this.InputType =
+    member internal this.InputType =
         match this.GetAttribute "type" with
         | null -> "text"
         | t -> t.ToLowerInvariant ()
