@@ -696,6 +696,39 @@ module Bridge =
                      (element n).SetAttribute("disabled", "")
                  else
                      (element n).RemoveAttribute "disabled")
+             // HTMLMeterElement.high, reflecting its attribute; without one it is the maximum, 1 by default.
+             getter [ "HTMLMeterElement" ] "high" (fun n ->
+                 let number name fallback =
+                     match
+                         Double.TryParse (
+                             (element n).GetAttribute name,
+                             Globalization.NumberStyles.Float,
+                             Globalization.CultureInfo.InvariantCulture
+                         )
+                     with
+                     | true, value -> value
+                     | false, _ -> fallback
+
+                 box (number "high" (number "max" 1.0)))
+
+             setter [ "HTMLMeterElement" ] "high" (fun n v ->
+                 (element n).SetAttribute("high", Convert.ToDouble(v).ToString(Globalization.CultureInfo.InvariantCulture)))
+             // HTMLElement.popover: the attribute's state, "auto" for an empty value and "manual" for an unknown one.
+             getter [ "HTMLElement" ] "popover" (fun n ->
+                 match (element n).GetAttribute "popover" with
+                 | null -> null
+                 | "" -> box "auto"
+                 | value ->
+                     match value.ToLowerInvariant () with
+                     | "auto"
+                     | "manual"
+                     | "hint" as state -> box state
+                     | _ -> box "manual")
+
+             setter [ "HTMLElement" ] "popover" (fun n v ->
+                 match v with
+                 | null -> (element n).RemoveAttribute "popover"
+                 | value -> (element n).SetAttribute("popover", string value))
              // Document
              getter documents "head" (fun n -> box (n :?> TwinDocument).Head)
              getter documents "body" (fun n -> box (n :?> TwinDocument).Body)

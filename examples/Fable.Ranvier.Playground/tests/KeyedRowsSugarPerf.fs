@@ -10,8 +10,13 @@ open Ranvier.View.Foundation.Template
 open Ranvier.View.Foundation.Sugar
 open KeyedRowsPerf
 
+#if FABLE_COMPILER
 [<Emit("(() => { const next = $1.slice(); next.splice($0, 1); return next; })()")>]
 let private without (index: int) (rows: KeyedRow array) : KeyedRow array = jsNative
+#else
+let private without (index: int) (rows: KeyedRow array) : KeyedRow array =
+    Array.removeAt index rows
+#endif
 
 let mutable private clicks = 0
 

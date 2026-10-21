@@ -10,4 +10,7 @@ let modules: (string * Conformance.Case array) array =
         "TestingApiChecks", TestingApiChecks.cases
         "BoundaryChecks", BoundaryChecks.cases
         "PlacementChecks", PlacementChecks.cases
+        "SugarChecks", SugarChecks.cases
+        "TemplateCatalogueChecks", TemplateCatalogueChecks.cases
+        "UnsafeHtmlChecks", UnsafeHtmlChecks.cases
     |]

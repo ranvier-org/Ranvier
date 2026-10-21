@@ -10,6 +10,24 @@ let tests =
     testList
         "Bridge"
         [
+            testCase "meter high and popover reflect their attributes"
+            <| fun () ->
+                use document = new TwinDocument ()
+                let meter = document.CreateElement "meter"
+                let native = meter.Native :?> HTMLMeterElement
+                Expect.equal native.high 1.0 "the maximum by default"
+                native.high <- 0.25
+                Expect.equal (meter.GetAttribute "high", native.high) ("0.25", 0.25) "written"
+                let span = document.CreateElement "span"
+                let element = span.Native :?> HTMLElement
+                Expect.isNone element.popover "absent"
+                element.popover <- Some ""
+                Expect.equal element.popover (Some "auto") "empty is auto"
+                span.SetAttribute ("popover", "other")
+                Expect.equal element.popover (Some "manual") "unknown is manual"
+                element.popover <- None
+                Expect.isFalse (span.HasAttribute "popover") "removed"
+
             testCase "replaceWith keeps a node among its own replacements and does nothing without a parent"
             <| fun () ->
                 use document = new TwinDocument ()

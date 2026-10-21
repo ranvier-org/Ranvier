@@ -6,11 +6,13 @@ Document.createComment
 Document.createDocumentFragment
 Document.createElement
 Document.createTextNode
+Document.head
 Document.importNode
 Element.getAttribute
 Element.innerHTML
 Element.localName
 Element.namespaceURI
+Element.prefix
 Element.removeAttribute
 Element.setAttribute
 Element.tagName
@@ -26,9 +28,11 @@ EventTarget.removeEventListener
 HTMLButtonElement.disabled
 HTMLCollectionBase.length
 HTMLElement.click
+HTMLElement.popover
 HTMLElement.title
 HTMLInputElement.checked
 HTMLInputElement.value
+HTMLMeterElement.high
 HTMLTemplateElement.content
 KeyboardEvent.key
 Node.appendChild

@@ -28,6 +28,13 @@
         <Compile Include="../../examples/Fable.Ranvier.Playground/tests/BoundaryChecks.fs" Link="Checks/BoundaryChecks.fs" />
         <Compile Include="../../examples/Fable.Ranvier.Playground/tests/CheckSupport.fs" Link="Checks/CheckSupport.fs" />
         <Compile Include="../../examples/Fable.Ranvier.Playground/tests/PlacementChecks.fs" Link="Checks/PlacementChecks.fs" />
+        <Compile Include="../../examples/Fable.Ranvier.Playground/tests/TemplateCatalogueChecks.fs" Link="Checks/TemplateCatalogueChecks.fs" />
+        <Compile Include="../../examples/Fable.Ranvier.Playground/tests/UnsafeHtmlChecks.fs" Link="Checks/UnsafeHtmlChecks.fs" />
+        <Compile Include="../../experiments/Ranvier.View.Portable/Checks/SugarFixtures.fs" Link="Checks/SugarFixtures.fs" />
+        <Compile Include="../../examples/Fable.Ranvier.Playground/tests/PlaygroundSugar.fs" Link="Checks/PlaygroundSugar.fs" />
+        <Compile Include="../../examples/Fable.Ranvier.Playground/tests/KeyedRowsPerf.fs" Link="Checks/KeyedRowsPerf.fs" />
+        <Compile Include="../../examples/Fable.Ranvier.Playground/tests/KeyedRowsSugarPerf.fs" Link="Checks/KeyedRowsSugarPerf.fs" />
+        <Compile Include="../../examples/Fable.Ranvier.Playground/tests/SugarChecks.fs" Link="Checks/SugarChecks.fs" />
         <Compile Include="../../examples/Fable.Ranvier.Playground/tests/ConformanceCases.fs" Link="Checks/ConformanceCases.fs" />
         <Compile Include="TwinHarness.fs" />
         <Compile Include="ConformanceTests.fs" />

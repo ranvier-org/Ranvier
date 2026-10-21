@@ -11,7 +11,7 @@ import { modules } from "../generated-tests/ConformanceCases.js";
 import { skippedOn } from "../generated-tests/experiments/Ranvier.View.Testing/Conformance.js";
 import { makeClock, interceptIn, trackShared } from "./conformance-host.mjs";
 
-const globals = ["window", "document", "Event", "MouseEvent", "PointerEvent", "KeyboardEvent", "InputEvent", "FocusEvent"];
+const globals = ["window", "document", "Event", "MouseEvent", "PointerEvent", "KeyboardEvent", "InputEvent", "FocusEvent", "MutationObserver", "Node", "EventTarget"];
 
 const root = new URL("../generated-conformance/jsdom/", import.meta.url);
 rmSync(root, { recursive: true, force: true });
