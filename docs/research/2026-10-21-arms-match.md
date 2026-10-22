@@ -5,8 +5,8 @@ Measurements of the `Arms.Match` implementation ([spec](../superpowers/specs/202
 
 **Summary.** The plugin is found through a project reference and the `.targets`. On .NET a site lowers in about
 1.1-1.4 ms once the process is warm; the first five-target site of a process costs 125-146 ms, 9-12 ms after
-`Arms.Prepare ()` and about 7 ms with ReadyToRun as well. Under Fable the first `Arms.Match` site costs 371 B gzip over
-its twin (budget 400 B) and each further site 12 B (budget 60 B). The retained heap per row is within 10 % of
+`Arms.Prepare ()` and about 7 ms with ReadyToRun as well. Under Fable the first `Arms.Match` site costs 374 B gzip over
+its twin (budget 400 B) and each further site 10 B (budget 60 B). The retained heap per row is within 10 % of
 `ranvier-sugar` after create and about 13 % above it after a switch. In Chromium every arm operation holds this
 release's gate, a paired median of at most 1.12 against the sugared twin (create 1.049, switch 1.075, payload 1.096,
 clear 1.041); the payload-direct follow-up measured 1.007-1.031 in a spike.
@@ -16,6 +16,11 @@ and a tracked follow-up. Measured overhead is +4.9 % create, +7.5 % switch, +9.6
 The latest switch and payload medians miss the original 1.05 gate; a passing release check does not erase that
 shortfall. The payload-direct follow-up targets the original gate. Merge also awaits the requested primitive
 instruction-count comparison. The performance work is tracked in [issue #157](https://github.com/shayanhabibi/Ranvier/issues/157).
+
+These Chromium medians are the recorded pre-#151 measurements, with their original source hashes and tool versions
+in `arms-match.json`; they were not remeasured during finalization. Integrating #151 updates Vite from 8.3.3 to 8.3.4
+and the Anime size checks' Rolldown from 1.2.12 to 1.2.14. Regenerated bundle records use the new locked tool versions.
+The committed-results timing check continues to validate historical evidence; it does not measure the new bundle.
 
 ## Plugin discovery
 
@@ -142,7 +147,7 @@ numbers are in [`arms-match/bundle.json`](arms-match/bundle.json).
 | two explicit sites | 207,634 | 60,337 | 52,937 |
 | two Arms.Match sites | 208,378 | 60,720 | 53,306 |
 
-The first site costs 371 B gzip over its twin (budget 400 B) and the second 12 B (budget 60 B), after the view's
+The first site costs 374 B gzip over its twin (budget 400 B) and the second 10 B (budget 60 B), after the view's
 graduation to `src/Ranvier.View` (#155). The method is a
 whole-bundle gzip difference, so it resolves about ±20 B: a build with `RANVIER_VIEW_COUNTERS` moves the first figure by
 19 B and the second by 25 B without touching `Ranvier.View.Arms`. An entry that calls no `Arms.Match` holds no
@@ -159,6 +164,7 @@ How the first-site cost came down from 771 B:
 | AM006 as a code and docs anchor in Release; no run-time AM005 branch; `enter` and `values` inlined into `Arms.Match` as closures; one `serves` closure; unchecked indexing | 370 |
 | live entries linked through the entries; the withdrawn entry reused by the next arm of its target; one withdrawal per entry (for the switch); the short text without the URL scheme | 394 |
 | after #155; entries seeded with their mount-time values and refreshed on withdrawal (final review I1); withdrawn entries kept in the chain and rebound in place | 371 |
+| after #151 updates the locked bundler; unchanged Arms sources and size budgets | 374 |
 
 The remaining cost is the cells' code: entry registration, rebinding and withdrawal, the read over live and withdrawn
 entries with graph tags, and the site's arm table. Dropping graph tags under Fable would save about 36 B and let a

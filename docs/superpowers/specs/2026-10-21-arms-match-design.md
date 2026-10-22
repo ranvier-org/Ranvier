@@ -441,7 +441,7 @@ through `Mounting.mountWith`.
 
 | Check | Budget |
 |---|---|
-| `Arms.Match` entry vs its explicit `armOf` + `matchWith` twin | ≤ 400 B gzip (measured 371 B, rounded up to the next 50 B: the AM006 code and anchor text, cells with per-target entries and graph tags inlined into `Arms.Match`; the method resolves about ±20 B) |
+| `Arms.Match` entry vs its explicit `armOf` + `matchWith` twin | ≤ 400 B gzip (measured 374 B after #151's bundler update, previously 371 B: the AM006 code and anchor text, cells with per-target entries and graph tags inlined into `Arms.Match`; the method resolves about ±20 B) |
 | Each further site in the same bundle, against its twin | ≤ 60 B gzip per site |
 | An app that references `Ranvier.View.Arms` and calls no `Arms.Match`, vs the same app without the reference | 0 B (byte-identical bundle) |
 | The Playground `sugar-size.mjs` explicit entry before and after this work | 0 B |
