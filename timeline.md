@@ -66,6 +66,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 83,046 | 127,102 | 1,734,026 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 82,998 | 127,188 | 1,733,954 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 83,003 | 127,164 | 1,732,378 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 82,985 | 127,180 | 1,734,056 |
 
 ## app-table
 
@@ -133,6 +134,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 4,416,064 | 9,203,925 | 107,579,989 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 4,416,080 | 9,319,178 | 107,544,285 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 4,416,060 | 9,206,635 | 107,451,150 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 4,416,178 | 9,203,633 | 107,416,196 |
 
 ## async-recover
 
@@ -200,6 +202,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 138,968 | 39,717 | 440,660 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 138,968 | 39,715 | 440,654 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 138,968 | 39,718 | 440,651 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 138,968 | 39,717 | 440,660 |
 
 ## async-resolve
 
@@ -267,6 +270,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 2,789,909 | 1,085,420 | 12,313,854 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 2,789,910 | 1,086,015 | 12,314,010 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 2,789,909 | 1,085,692 | 12,313,980 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 2,789,910 | 1,085,349 | 12,317,662 |
 
 ## chain
 
@@ -334,6 +338,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 
 ## chain-affinity
 
@@ -401,6 +406,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 2,549 | 3,067 | 2,496 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 2,549 | 3,067 | 2,496 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 2,549 | 3,067 | 2,496 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 2,549 | 3,067 | 2,496 |
 
 ## control
 
@@ -468,6 +474,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 74,709 | 833,805 | 2,589,553 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 74,709 | 833,798 | 2,589,525 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 74,709 | 833,855 | 2,589,410 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 74,709 | 833,847 | 2,589,489 |
 
 ## create
 
@@ -535,6 +542,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 13,497,950 | 2,859,678 | 2,532,363 | 2,132,052 | 4,002,883 | 33,868,258 | 49,467,981 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 13,449,965 | 2,859,678 | 2,532,363 | 2,131,893 | 4,003,302 | 33,867,964 | 49,467,917 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 13,449,993 | 2,859,678 | 2,532,379 | 2,131,916 | 4,003,461 | 33,868,930 | 49,468,018 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 13,575,486 | 2,875,678 | 2,532,380 | 2,131,775 | 4,003,088 | 33,868,647 | 49,467,552 |
 
 ## create-on
 
@@ -602,6 +610,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 2,910,484 | 4,147,653 | 54,424,696 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 2,910,486 | 4,147,486 | 54,424,787 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 2,910,486 | 4,147,271 | 54,424,718 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 2,958,500 | 4,147,452 | 54,424,919 |
 
 ## cutoff
 
@@ -669,6 +678,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 
 ## derive-effect
 
@@ -736,6 +746,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 765 | 768 | 16,102 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 765 | 768 | 16,102 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 765 | 768 | 16,102 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 765 | 768 | 16,102 |
 
 ## derive-on
 
@@ -803,6 +814,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 737 | 775 | 16,261 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 737 | 775 | 16,261 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 737 | 775 | 16,261 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 737 | 775 | 16,261 |
 
 ## dispose
 
@@ -870,6 +882,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 2,707,640 | 806,291 | 367,497 | 466,327 | 485,261 | 13,193,963 | 9,106,924 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 2,706,242 | 806,291 | 367,497 | 466,065 | 485,358 | 13,192,394 | 9,105,869 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 2,706,248 | 806,291 | 367,497 | 466,108 | 484,997 | 13,193,620 | 9,106,178 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 2,707,642 | 806,290 | 367,497 | 466,114 | 485,395 | 13,194,158 | 9,106,187 |
 
 ## dispose-on
 
@@ -937,6 +950,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 346,497 | 478,708 | 8,902,658 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 346,497 | 478,687 | 8,902,464 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 346,497 | 478,339 | 8,902,557 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 346,497 | 478,420 | 8,902,212 |
 
 ## editable-edit
 
@@ -1004,6 +1018,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 180,106 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 180,106 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 180,106 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 180,106 |
 
 ## editable-upstream
 
@@ -1071,6 +1086,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 231,255 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 231,255 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 231,255 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 231,255 |
 
 ## fail-recompute
 
@@ -1138,6 +1154,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 65,106 | 1,366 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 65,106 | 1,366 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 65,106 | 1,366 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 65,106 | 1,366 |
 
 ## flight
 
@@ -1205,6 +1222,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 
 ## keyed-insert
 
@@ -1272,6 +1290,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 1,921,913 | 53,951 | 55,052 | 3,218,786 | 661,689 | 176,583 | 44,858,901 | 2,634,940 | 2,654,384 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 1,921,809 | 53,951 | 54,942 | 3,218,694 | 661,702 | 176,529 | 44,863,324 | 2,634,938 | 2,654,362 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 1,921,810 | 53,951 | 54,954 | 3,218,743 | 661,611 | 176,521 | 44,864,602 | 2,635,027 | 2,654,287 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 1,921,809 | 53,951 | 54,950 | 3,218,665 | 661,723 | 176,613 | 44,864,609 | 2,634,991 | 2,654,373 |
 
 ## keyed-remove
 
@@ -1339,6 +1358,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 1,920,842 | 43,611 | 45,372 | 3,245,051 | 593,263 | 604,992 | 44,798,546 | 1,924,844 | 1,958,836 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 1,920,749 | 43,611 | 45,268 | 3,245,069 | 593,201 | 605,029 | 44,798,430 | 1,924,844 | 1,958,927 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 1,920,751 | 43,611 | 45,266 | 3,245,041 | 593,443 | 604,930 | 44,807,441 | 1,925,025 | 1,958,921 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 1,920,753 | 43,611 | 45,266 | 3,245,062 | 593,221 | 604,966 | 44,807,461 | 1,924,876 | 1,958,823 |
 
 ## keyed-swap
 
@@ -1406,6 +1426,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 1,973,528 | 46,161 | 47,011 | 3,561,803 | 149,105 | 511,392 | 45,980,663 | 916,660 | 932,900 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 1,973,432 | 46,161 | 46,915 | 3,564,102 | 148,822 | 511,451 | 45,980,335 | 916,675 | 932,839 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 1,973,433 | 46,161 | 46,915 | 3,560,378 | 148,802 | 511,421 | 45,968,585 | 916,669 | 932,909 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 1,973,432 | 46,161 | 46,915 | 3,562,257 | 149,095 | 511,422 | 45,968,559 | 916,684 | 932,810 |
 
 ## mvu-dispatch
 
@@ -1473,6 +1494,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 58,261 | 772 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 58,261 | 772 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 58,261 | 772 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 58,261 | 772 |
 
 ## project-chain
 
@@ -1540,6 +1562,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 1,070,251 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 1,070,228 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 1,070,203 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 1,070,363 |
 
 ## project-churn
 
@@ -1607,6 +1630,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 36,474 | 34,310 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 36,474 | 34,310 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 36,474 | 34,310 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 36,538 | 34,374 |
 
 ## project-edit
 
@@ -1674,6 +1698,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 50,415 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 50,431 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 50,415 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 50,431 |
 
 ## project-reorder
 
@@ -1741,6 +1766,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 779,147 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 779,163 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 779,147 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 779,163 |
 
 ## server-render
 
@@ -1808,6 +1834,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 675,825 | 1,130,425 | 9,834,047 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 675,889 | 1,130,848 | 9,834,015 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 675,857 | 1,130,618 | 9,832,925 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 675,825 | 1,131,028 | 9,832,638 |
 
 ## shape-diamond
 
@@ -1875,6 +1902,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 59,899 | 79,968 | 1,763,357 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 59,899 | 79,968 | 1,763,357 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 59,899 | 79,968 | 1,763,357 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 59,899 | 79,968 | 1,763,357 |
 
 ## shape-dynamic
 
@@ -1942,6 +1970,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 82,921 | 107,035 | 2,006,147 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 82,921 | 107,035 | 2,006,147 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 82,921 | 107,035 | 2,006,147 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 82,921 | 107,035 | 2,006,147 |
 
 ## stream-burst-1
 
@@ -2009,6 +2038,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 1,974 | 1,572 | 2,491 | 4,672 | 3,644 | 13,370 | 47,202 | 45,417 | 55,169 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 1,974 | 1,572 | 2,491 | 4,672 | 3,644 | 13,370 | 47,200 | 45,417 | 55,167 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 1,974 | 1,572 | 2,491 | 4,670 | 3,644 | 13,369 | 47,199 | 45,415 | 55,167 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 1,974 | 1,572 | 2,491 | 4,671 | 3,644 | 13,372 | 47,201 | 45,417 | 55,168 |
 
 ## stream-burst-16
 
@@ -2076,6 +2106,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 5,631 | 25,017 | 5,701 | 9,503 | 49,601 | 8,051 | 120,970 | 714,180 | 113,519 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 5,631 | 25,017 | 5,701 | 9,500 | 49,599 | 8,051 | 120,973 | 714,180 | 113,522 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 5,631 | 25,017 | 5,701 | 9,503 | 49,600 | 8,051 | 120,964 | 714,182 | 113,516 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 5,631 | 25,017 | 5,701 | 9,500 | 49,599 | 8,051 | 120,969 | 714,180 | 113,515 |
 
 ## stream-burst-256
 
@@ -2143,6 +2174,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 64,131 | 400,101 | 57,040 | 127,470 | 787,248 | 74,560 | 1,301,578 | 11,413,339 | 1,046,549 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 64,131 | 400,101 | 57,040 | 127,437 | 787,211 | 74,566 | 1,301,581 | 11,413,283 | 1,046,550 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 64,131 | 400,101 | 57,040 | 127,380 | 787,196 | 74,492 | 1,301,512 | 11,413,284 | 1,046,550 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 64,131 | 400,101 | 57,040 | 127,470 | 787,198 | 74,563 | 1,301,532 | 11,413,283 | 1,046,548 |
 
 ## stream-restart
 
@@ -2210,6 +2242,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 4,187 | 4,976 | 6,359 | 16,588 | 42,491 | 71,403 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 4,187 | 4,976 | 6,359 | 16,582 | 42,491 | 71,400 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 4,187 | 4,976 | 6,360 | 16,583 | 42,485 | 71,392 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 4,187 | 4,976 | 6,356 | 16,585 | 42,489 | 71,397 |
 
 ## timed-admit-both
 
@@ -2277,6 +2310,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 118,591 | 134,962 | 2,679,800 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 118,591 | 134,961 | 2,679,800 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 118,591 | 134,962 | 2,679,788 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 118,591 | 134,961 | 2,679,787 |
 
 ## timed-admit-debounce
 
@@ -2344,6 +2378,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 117,496 | 133,557 | 2,640,296 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 117,496 | 133,557 | 2,640,271 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 117,496 | 133,557 | 2,640,296 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 117,496 | 133,556 | 2,640,297 |
 
 ## timed-admit-first
 
@@ -2411,6 +2446,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 69,479 | 79,050 | 1,611,692 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 69,479 | 79,052 | 1,611,692 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 69,479 | 79,052 | 1,611,692 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 69,479 | 79,053 | 1,611,692 |
 
 ## timed-admit-last
 
@@ -2478,6 +2514,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 117,758 | 133,865 | 2,650,126 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 117,758 | 133,874 | 2,650,132 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 117,758 | 133,877 | 2,650,178 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 117,758 | 133,877 | 2,650,152 |
 
 ## timed-capture-both
 
@@ -2545,6 +2582,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 35,726 | 44,808 | 846,879 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 35,726 | 44,807 | 846,878 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 35,726 | 44,807 | 846,880 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 35,726 | 44,805 | 846,879 |
 
 ## timed-capture-debounce
 
@@ -2612,6 +2650,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 35,598 | 44,104 | 847,376 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 35,598 | 44,104 | 847,376 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 35,598 | 44,103 | 847,377 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 35,598 | 44,104 | 847,376 |
 
 ## timed-capture-first
 
@@ -2679,6 +2718,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 32,078 | 36,612 | 745,371 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 32,078 | 36,612 | 745,370 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 32,078 | 36,610 | 745,372 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 32,078 | 36,611 | 745,372 |
 
 ## timed-capture-last
 
@@ -2746,6 +2786,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 35,534 | 44,040 | 839,504 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 35,534 | 44,040 | 839,504 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 35,534 | 44,039 | 839,506 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 35,534 | 44,040 | 839,505 |
 
 ## update
 
@@ -2813,6 +2854,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 1,087,690 | 38,805 | 82,505 | 262,845 | 151,672 | 3,350,287 | 2,502,840 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 1,087,690 | 38,805 | 82,505 | 262,748 | 151,696 | 3,350,391 | 2,502,797 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 1,087,690 | 38,805 | 82,505 | 262,602 | 151,640 | 3,350,442 | 2,502,786 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 1,092,490 | 38,805 | 82,505 | 262,880 | 151,717 | 3,350,212 | 2,502,797 |
 
 ## update-on
 
@@ -2880,6 +2922,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 93,005 | 165,259 | 2,830,351 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 93,005 | 165,242 | 2,830,394 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 93,005 | 165,220 | 2,830,339 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 93,005 | 165,204 | 2,830,360 |
 
 ## work-form
 
@@ -2947,6 +2990,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 170,300 | 163,392 | 295,967 | 291,361 | 5,349,236 | 5,295,424 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 170,300 | 163,392 | 295,967 | 291,360 | 5,349,282 | 5,295,421 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 170,300 | 163,392 | 295,894 | 291,316 | 5,349,236 | 5,295,387 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 170,300 | 163,408 | 295,935 | 291,360 | 5,349,303 | 5,295,429 |
 
 ## work-status
 
@@ -3014,6 +3058,7 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 100,445 | 78,815 | 264,848 | 152,963 | 2,611,029 | 2,360,863 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 100,445 | 78,815 | 264,818 | 152,949 | 2,611,023 | 2,360,832 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 100,445 | 78,815 | 264,823 | 152,943 | 2,610,963 | 2,360,836 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 100,445 | 78,815 | 264,865 | 152,942 | 2,610,999 | 2,360,836 |
 
 ## work-value
 
@@ -3081,4 +3126,5 @@
 | `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | 107,569 | 119,471 | 265,104 | 279,898 | 2,595,629 | 2,920,187 |
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 107,569 | 119,471 | 265,109 | 279,920 | 2,595,682 | 2,920,190 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 107,570 | 119,469 | 265,113 | 279,871 | 2,595,668 | 2,920,160 |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 107,571 | 119,470 | 265,089 | 279,924 | 2,595,692 | 2,920,158 |
 
