@@ -4023,6 +4023,14 @@ and internal MountState
                                 previousVersion <- Api.untrack (fun () -> projection.KeysVersion)
                                 previousRows <- next
 
+#if RANVIER_VIEW_INSPECT || !FABLE_COMPILER
+                                for index in 0 .. min previousKeys.Length next.Length - 1 do
+                                    let row = item next index
+
+                                    if not (isNull row) then
+                                        Inspect.rememberRowKey row.First (item previousKeys index)
+#endif
+
                                 if authored then
                                     previousItems <- Array.copy snapshot
 

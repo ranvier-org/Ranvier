@@ -27,6 +27,21 @@ and [<NoEquality; NoComparison>] BoundaryProbeState =
 
 let private table = Native.newWeakMap ()
 let private instances = Native.newWeakMap ()
+let private rowKeys = Native.newWeakMap ()
+
+/// <summary>Retains a row's key at its first node through its exit hold.</summary>
+let rememberRowKey (node: Node) (key: obj) =
+    Native.set rowKeys node [| key |]
+
+/// <summary>The row's key while its first node has a parent; a detached node clears its retained entry.</summary>
+let rowKeyOf (node: Node) : obj option =
+    if node.parentNode.IsNone then
+        Native.delete rowKeys node
+        None
+    else
+        match Native.get<Node, obj array> rowKeys node with
+        | null -> None
+        | values -> Some values[0]
 
 /// <summary>The instances rooted at <c>node</c>, in outer-to-inner registration order.</summary>
 let instancesOf (node: Node) : Probe array =
