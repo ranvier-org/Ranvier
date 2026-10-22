@@ -7,7 +7,7 @@ test('documentation paths alone are docs only', () => {
   assert.equal(docsOnly(['docs/Site.fs', 'docs/guide/x.md', 'README.md', 'src/Ranvier/README.md', 'brand/og/x.svg', '.claude/rules/comments.md', 'LICENSE', '.github/FUNDING.yml', '']), true);
 });
 test('any other path, or no path, runs everything', () => {
-  for (const p of [['docs/x.md', 'src/Ranvier/Core.fs'], ['.github/workflows/ci.yml'], ['build.fsx'], ['package.json'], ['src/docs/x.fs'], ['docs/maps/model/MapModel.fs'], ['docs/maps/tests/ModelTests.fs'], ['x.mdx'], ['experiments/Ranvier.View.Portable/README.md'], [], undefined]) {
+  for (const p of [['docs/x.md', 'src/Ranvier/Core.fs'], ['.github/workflows/ci.yml'], ['build.fsx'], ['package.json'], ['src/docs/x.fs'], ['docs/maps/model/MapModel.fs'], ['docs/maps/tests/ModelTests.fs'], ['x.mdx'], ['src/Ranvier.View/README.md'], ['src/Ranvier.View.Anime/README.md'], [], undefined]) {
     assert.equal(docsOnly(p), false, JSON.stringify(p));
   }
 });
@@ -47,4 +47,8 @@ test('a master push is classified by its diff against the parent', () => {
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+test('an analyzer rule page runs the analyzer suite, which compiles its examples', () => {
+  assert.equal(docsOnly(['docs/content/analyzers/ran001.md']), false);
+  assert.equal(docsOnly(['docs/content/analyzers/index.md', 'docs/content/guide/memos.md']), false);
 });
