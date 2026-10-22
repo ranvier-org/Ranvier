@@ -21,6 +21,16 @@ type DeepState =
         Deep: obj
     }
 
+type ThrowingGetter() =
+    member _.Value: int = failwith "The dump invoked a getter"
+
+type OpaqueState =
+    {
+        Lazy: Lazy<int>
+        Pending: System.Threading.Tasks.Task<int>
+        Throwing: ThrowingGetter
+    }
+
 let private deep =
     Component.define
         (fun _ () ->
@@ -74,6 +84,54 @@ let tests =
     testList
         "Dump"
         [
+            testCase "a memo used as the instance is never evaluated by a dump"
+            <| fun () ->
+                let runs = ref 0
+                let source = ref Unchecked.defaultof<Signal<int>>
+                let memo = ref Unchecked.defaultof<Memo<int>>
+
+                let definition =
+                    Component.define
+                        (fun _ () ->
+                            source.Value <- Api.createSignal 1
+
+                            memo.Value <-
+                                Api.createMemo (fun _ ->
+                                    runs.Value <- runs.Value + 1
+                                    source.Value.Value * 2)
+
+                            memo.Value)
+                        (fun t -> t.p [||] [||])
+
+                use session = Twin.mount definition ()
+                session.Graph.Run (fun () -> memo.Value.Value |> ignore)
+                session.Graph.Run (fun () -> source.Value.Value <- 5)
+                let status = (memo.Value :> INode).Status
+                session.Dump () |> ignore
+                Expect.equal runs.Value 1 "capture does not recompute the instance"
+                Expect.equal (memo.Value :> INode).Status status "status is unchanged"
+
+            testCase "opaque values never run getters, force a lazy or wait for a task"
+            <| fun () ->
+                let value = lazy (failwith "The dump forced a lazy": int)
+                let pending = System.Threading.Tasks.TaskCompletionSource<int>()
+
+                let definition =
+                    Component.define
+                        (fun _ () ->
+                            {
+                                Lazy = value
+                                Pending = pending.Task
+                                Throwing = ThrowingGetter ()
+                            })
+                        (fun t -> t.p [||] [||])
+
+                use session = Twin.mount definition ()
+                let text = session.Dump ()
+                Expect.isFalse value.IsValueCreated "lazy remains unevaluated"
+                Expect.isFalse pending.Task.IsCompleted "task remains pending"
+                Expect.stringContains text "ThrowingGetter" "opaque type remains identifiable"
+
             testCase "a counter dumps its instance, field and bound text"
             <| fun () ->
                 use session = Twin.mount counter 4
@@ -127,6 +185,24 @@ let tests =
                         }
 
                 Expect.stringContains text "lines omitted" "truncated"
+
+            testCase "small MaxRows values retain an elision line"
+            <| fun () ->
+                let source = ref Unchecked.defaultof<Signal<int array>>
+
+                use session =
+                    Twin.mountView TwinMount.defaults (fun context ->
+                        source.Value <- Api.createSignal [| 1; 2; 3; 4; 5 |]
+                        Program.run (Component.render rows source.Value) context.Backend)
+
+                for maximum in [ 0; 1; 2 ] do
+                    let text =
+                        session.Dump
+                            { Debug.DumpOptions.defaults with
+                                MaxRows = maximum
+                            }
+
+                    Expect.stringContains text ("… " + string (5 - maximum) + " rows") "all omitted rows are reported"
 
             testCase "a dump runs no memo and shows a stale memo's previous value"
             <| fun () ->
@@ -256,6 +332,22 @@ let tests =
                 | None -> failtest "no node"
 
 #if RANVIER_TRACE
+            testCase "NodeIds includes the trace snapshot path without recording events"
+            <| fun () ->
+                use session = Twin.mount counter 3
+                let node = (instanceOf<CounterState> session).Count :> INode
+                let expected = (Trace.snapshot session.Graph).Nodes[node.Id].Path
+                let before = Trace.events session.Graph
+
+                let text =
+                    session.Dump
+                        { Debug.DumpOptions.defaults with
+                            NodeIds = true
+                        }
+
+                Expect.stringContains text ("  trace=" + expected) "trace path"
+                Expect.equal (Trace.events session.Graph).Length before.Length "no events"
+
             testCase "a dump records no trace event"
             <| fun () ->
                 use session = Twin.mount counter 3

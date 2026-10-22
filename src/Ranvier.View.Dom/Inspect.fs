@@ -26,6 +26,13 @@ and [<NoEquality; NoComparison>] BoundaryProbeState =
     | Failed of error: exn * generation: int
 
 let private table = Native.newWeakMap ()
+let private instances = Native.newWeakMap ()
+
+/// <summary>The instances rooted at <c>node</c>, in outer-to-inner registration order.</summary>
+let instancesOf (node: Node) : Probe array =
+    match Native.get<Node, Probe array> instances node with
+    | null -> [||]
+    | probes -> probes
 
 /// <summary>Whether the node's sources changed after its last run; false for null.</summary>
 let isStale (node: INode) =
@@ -34,12 +41,26 @@ let isStale (node: INode) =
 
 /// <summary>Registers <c>probe</c> for <c>node</c> until the returned cleanup runs.</summary>
 let register (node: Node) (probe: Probe) : unit -> unit =
-    Native.set table node probe
+    match probe with
+    | InstanceProbe _ ->
+        Native.set instances node (Array.append (instancesOf node) [| probe |])
 
-    fun () ->
-        match Native.get<Node, Probe> table node with
-        | current when obj.ReferenceEquals (current, probe) -> Native.delete table node
-        | _ -> ()
+        fun () ->
+            let remaining =
+                instancesOf node
+                |> Array.filter (fun current -> not (obj.ReferenceEquals (current, probe)))
+
+            if remaining.Length = 0 then
+                Native.delete instances node
+            else
+                Native.set instances node remaining
+    | _ ->
+        Native.set table node probe
+
+        fun () ->
+            match Native.get<Node, Probe> table node with
+            | current when obj.ReferenceEquals (current, probe) -> Native.delete table node
+            | _ -> ()
 
 let private bound = Native.newWeakSet ()
 
@@ -53,6 +74,6 @@ let isBound (node: Node) =
 
 let probeOf (node: Node) : Probe option =
     match box (Native.get<Node, Probe> table node) with
-    | null -> None
+    | null -> instancesOf node |> Array.tryHead
     | probe -> Some (unbox<Probe> probe)
 #endif

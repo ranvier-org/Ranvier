@@ -3,6 +3,7 @@ module DumpChecks
 
 #if RANVIER_VIEW_INSPECT || !FABLE_COMPILER
 open global.Ranvier
+open Fable.Core
 open Fable.Core.TS.Dom
 open Ranvier.View
 open Ranvier.View.Dom
@@ -90,8 +91,142 @@ let private board =
 
 let private options = Debug.DumpOptions.defaults
 
+#if !FABLE_COMPILER
+let private checkJson (dump: Debug.Dump) =
+    use document = System.Text.Json.JsonDocument.Parse (Debug.json dump)
+
+    let rec check (expected: Debug.DumpNode) (actual: System.Text.Json.JsonElement) =
+        let property name =
+            actual.GetProperty (name: string)
+
+        let equal name value =
+            if (property name).GetString() <> value then
+                failwith ("JSON field differs: " + name)
+
+        let children (values: Debug.DumpNode array) =
+            let json =
+                (property "children").EnumerateArray()
+                |> Seq.toArray
+
+            if json.Length <> values.Length then
+                failwith "JSON child count differs"
+
+            Array.iter2 check values json
+
+        match expected with
+        | Debug.Element (tag, attrs, props, nested) ->
+            equal "kind" "element"
+            equal "tag" tag
+
+            for name, expected in [ "attributes", attrs; "properties", props ] do
+                let pairs =
+                    (property name).EnumerateArray()
+                    |> Seq.map (fun pair -> pair[0].GetString(), pair[1].GetString())
+                    |> Seq.toArray
+
+                if pairs <> expected then
+                    failwith ("JSON pairs differ: " + name)
+
+            children nested
+        | Debug.Text (value, bound) ->
+            equal "kind" "text"
+            equal "value" value
+
+            if (property "bound").GetBoolean() <> bound then
+                failwith "JSON binding differs"
+        | Debug.Instance (instance, nested) ->
+            equal "kind" "instance"
+            equal "name" instance.Name
+            equal "path" instance.Path
+            equal "hash" instance.Hash
+
+            let fields =
+                (property "fields").EnumerateArray()
+                |> Seq.toArray
+
+            if fields.Length <> instance.Fields.Length then
+                failwith "JSON field count differs"
+
+            Array.iter2
+                (fun (field: Debug.FieldDump) (json: System.Text.Json.JsonElement) ->
+                    for key, expected in
+                        [
+                            "name", field.Name
+                            "kind", field.Kind
+                            "value", field.Value
+                            "status", field.Status
+                        ] do
+                        if json.GetProperty(key).GetString() <> expected then
+                            failwith ("JSON instance field differs: " + key))
+                instance.Fields
+                fields
+
+            children nested
+        | Debug.List (path, rows, _, stale) ->
+            equal "kind" "list"
+            equal "path" path
+
+            if (property "stale").GetBoolean() <> stale then
+                failwith "JSON list status differs"
+
+            let actualRows = (property "rows").EnumerateArray() |> Seq.toArray
+
+            if actualRows.Length <> rows.Length then
+                failwith "JSON row count differs"
+
+            Array.iter2
+                (fun (key, nodes) (row: System.Text.Json.JsonElement) ->
+                    if row.GetProperty("key").GetString() <> key then
+                        failwith "JSON row key differs"
+
+                    Array.iter2
+                        check
+                        nodes
+                        (row.GetProperty("children").EnumerateArray()
+                         |> Seq.toArray))
+                rows
+                actualRows
+        | Debug.Arm (path, key, definition, nested, _) ->
+            equal "kind" "arm"
+            equal "path" path
+            equal "key" key
+            equal "definition" definition
+            children nested
+        | Debug.Boundary (path, state, nested) ->
+            equal "kind" "boundary"
+            equal "path" path
+            equal "state" state.State
+            equal "reason" state.Reason
+            children nested
+        | Debug.Hole (path, nested) ->
+            equal "kind" "hole"
+            equal "path" path
+            children nested
+        | Debug.Leaving nested ->
+            equal "kind" "leaving"
+            check nested (property "node")
+        | Debug.Truncated _ -> equal "kind" "truncated"
+
+    if
+        document.RootElement.GetProperty("schema").GetString()
+        <> "ranvier-view-dump/1"
+    then
+        failwith "JSON schema differs"
+
+    Array.iter2
+        check
+        dump.Root
+        (document.RootElement.GetProperty("root").EnumerateArray()
+         |> Seq.toArray)
+#endif
+
 let private record (name: string) (graph: Graph) (target: HTMLElement) =
-    Conformance.recordIfRunning name (Debug.textWith options (Debug.captureNode options graph target))
+    let captured = Debug.captureNode options graph target
+#if !FABLE_COMPILER
+    checkJson captured
+#endif
+    Conformance.recordIfRunning name (Debug.textWith options captured)
+    Conformance.recordIfRunning (name + " json") (Debug.json captured)
     Conformance.recordIfRunning (name + " html") target.innerHTML
 
 let private mounted (view: Program.View) (check: Graph -> HTMLElement -> Mounting.Mounted -> unit) =
@@ -128,7 +263,10 @@ let private boardDump () =
         let state = boardOf target
         graph.Run (fun () -> state.Cards.Value <- items |> Array.filter (fun c -> c.Id <> 2))
         mounted.Flush ()
-        record "board" graph target)
+        record "board" graph target
+        let captured = Debug.capture options mounted
+        Conformance.recordIfRunning "mounted board" (Debug.text captured)
+        Conformance.recordIfRunning "mounted board json" (Debug.json captured))
 
 let private armDump () =
     mounted (Component.render board ()) (fun graph target mounted ->
@@ -180,6 +318,88 @@ let private headed =
 let private headDump () =
     mounted (Component.render headed ()) (fun graph target _ -> record "head" graph target)
 
+type ValueMode =
+    | Viewing
+    | Editing of int
+
+type MixedValues =
+    {
+        N: int
+        Ints: int array
+        Big: int64
+        Mode: ValueMode
+        Character: char
+        Id: System.Guid
+        Decimal: decimal
+        Items: ResizeArray<int>
+        Map: Map<string, int>
+        Set: Set<int>
+        List: int list
+        Optional: int option
+        Anonymous: obj
+    }
+
+let private valueDump () =
+    let definition =
+        Component.define
+            (fun _ () ->
+                {
+                    N = 4
+                    Ints = [| 1; 2; 3 |]
+                    Big = 9007199254740993L
+                    Mode = Editing 2
+                    Character = 'x'
+                    Id = System.Guid.Empty
+                    Decimal = 1.5m
+                    Items = ResizeArray [ 1; 2 ]
+                    Map = Map.ofList [ "a", 1 ]
+                    Set = Set.ofList [ 1; 2 ]
+                    List = [ 1; 2 ]
+                    Optional = Some 3
+                    Anonymous = box {| Label = "anonymous" |}
+                })
+            (fun t -> t.p [||] [| t.text "values" |])
+
+    mounted (Component.render definition ()) (fun graph target _ -> record "values" graph target)
+
+let private heldRowsDump () =
+    mounted (Component.render board ()) (fun graph target mounted ->
+        let state = boardOf target
+        graph.Run (fun () -> state.Cards.Value <- items[1..])
+        mounted.Flush ()
+        record "leading exit" graph target
+        graph.Run (fun () -> state.Cards.Value <- [||])
+        mounted.Flush ()
+        record "empty held list" graph target)
+
+type OpaqueDump() =
+    member _.cases() : string array =
+        failwith "called cases"
+
+    member _.fields: obj array = failwith "read fields"
+    member _.message: string = failwith "read message"
+
+let private opaqueValue () : obj =
+#if FABLE_COMPILER
+    JsInterop.emitJsExpr
+        ()
+        "(() => { class OpaqueDump { cases() { throw Error('called cases'); } get message() { throw Error('read message'); } get head() { throw Error('read head'); } get [Symbol.iterator]() { throw Error('read iterator'); } } const value = new OpaqueDump(); value.fields = []; value.tag = 0; Object.defineProperty(value, 'constructor', {get() { throw Error('read constructor'); }}); return value; })()"
+#else
+    box (OpaqueDump ())
+#endif
+
+let private opaqueDump () =
+    let definition =
+        Component.define (fun _ () -> {| Value = opaqueValue () |}) (fun t -> t.p [||] [||])
+
+    mounted (Component.render definition ()) (fun graph target _ ->
+        let text = Debug.text (Debug.captureNode options graph target)
+
+        if not (text.Contains "OpaqueDump") then
+            failwith "opaque value lost its type name"
+
+        record "opaque" graph target)
+
 let cases: Conformance.Case array =
     Conformance.ofChecks
         [|
@@ -189,5 +409,8 @@ let cases: Conformance.Case array =
             "a boundary dump shows the failed state with its error", failedBoundaryDump
             "a view hole dump shows the view mounted in the hole", holeDump
             "the head section lists the marked head elements", headDump
+            "value kinds and values agree between both hosts", valueDump
+            "held rows before live rows and after clearing remain visible", heldRowsDump
+            "opaque values execute neither getters nor union-shaped methods", opaqueDump
         |]
 #endif

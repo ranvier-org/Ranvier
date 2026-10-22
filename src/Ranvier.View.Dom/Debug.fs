@@ -91,22 +91,85 @@ type Dump =
         Mount: string
         Root: DumpNode array
         Head: (string * string) array
+        Options: DumpOptions
+        TracePaths: Map<string, string>
     }
 
 // The host's view of a value: whether it is a core node and how its fields read.
 #if FABLE_COMPILER
+[<Emit("Object.getPrototypeOf($0)")>]
+let private prototypeOf (value: obj) : obj = jsNative
+
+[<Emit("$0.prototype")>]
+let private constructorPrototype (constructor: obj) : obj = jsNative
+
+[<Emit("($1 != null && typeof $1 === 'object' && Object.prototype.isPrototypeOf.call($0, $1))")>]
+let private hasPrototype (prototype: obj) (value: obj) : bool = jsNative
+
+let private recordPrototype =
+    prototypeOf (constructorPrototype (box (JsInterop.jsConstructor<FieldDump>)))
+
+let private unionPrototype =
+    prototypeOf (constructorPrototype (box (JsInterop.jsConstructor<Choice<obj, obj>>)))
+
+let private listPrototype = prototypeOf (box ([]: obj list))
+let private mapPrototype = prototypeOf (box (Map.empty<int, int>))
+let private setPrototype = prototypeOf (box (Set.empty<int>))
+let private decimalPrototype = prototypeOf (box 0M)
+let private optionPrototype = prototypeOf (box (Some (box null)))
+let private exceptionPrototype = prototypeOf (box (exn ""))
+
+let private corePrototypes =
+    [|
+        constructorPrototype (box (JsInterop.jsConstructor<Signal<obj>>))
+        constructorPrototype (box (JsInterop.jsConstructor<Memo<obj>>))
+        constructorPrototype (box (JsInterop.jsConstructor<AsyncMemo<obj>>))
+        constructorPrototype (box (JsInterop.jsConstructor<AsyncSource<obj>>))
+    |]
+
 // A core node: its INode members are class getters, its other members module functions over its fields.
-[<Emit("($0 != null && typeof $0 === 'object' && 'Status' in $0 && 'Id' in $0 && 'AddObserver' in $0)")>]
-let private isNode (value: obj) : bool = jsNative
+let private isNode (value: obj) =
+    corePrototypes
+    |> Array.exists (fun prototype -> hasPrototype prototype value)
 
 [<Emit("$0.value")>]
 let private peek (node: obj) : obj = jsNative
 
-[<Emit("($0 == null ? 'null' : typeof $0 === 'function' ? 'fun' : ($0.constructor && $0.constructor.name ? $0.constructor.name.replace(/\\$\\d+$/, '') : typeof $0))")>]
-let private typeName (value: obj) : string = jsNative
+[<Emit("(() => { if ($0 == null) return 'null'; const t = typeof $0; if(t === 'function') return 'fun'; if(t === 'string') return 'string'; if(t === 'boolean') return 'bool'; if(t === 'number') return 'number'; if(t === 'bigint') return 'int64'; if(Array.isArray($0) || ArrayBuffer.isView($0)) return 'array'; let p=Object.getPrototypeOf($0); while(p) { const d=Object.getOwnPropertyDescriptor(p,'constructor'); if(d && 'value' in d) { const n=Object.getOwnPropertyDescriptor(d.value,'name'); if(n && 'value' in n) return n.value === 'Object' ? 'record' : n.value.replace(/\\$\\d+$/, ''); } p=Object.getPrototypeOf(p); } return 'object'; })()")>]
+let private rawTypeName (value: obj) : string = jsNative
 
-[<Emit("(typeof $0 === 'object' && $0 !== null && !Array.isArray($0) ? Object.keys($0).map(k => [k, $0[k]]) : null)")>]
-let private ownFields (value: obj) : (string * obj) array = jsNative
+let private typeName (value: obj) =
+    if hasPrototype decimalPrototype value then "decimal"
+    elif hasPrototype mapPrototype value then "map"
+    elif hasPrototype setPrototype value then "set"
+    elif hasPrototype listPrototype value then "list"
+    else rawTypeName value
+
+[<Emit("typeof $0 === 'bigint'")>]
+let private isBigInteger (value: obj) : bool = jsNative
+
+let private isExactScalar (value: obj) =
+    isBigInteger value
+    || hasPrototype decimalPrototype value
+
+let private isCountedCollection (value: obj) =
+    hasPrototype mapPrototype value
+    || hasPrototype setPrototype value
+
+[<Emit("Object.entries(Object.getOwnPropertyDescriptors($0)).filter(([k, d]) => d.enumerable && 'value' in d).map(([k, d]) => [k, d.value])")>]
+let private dataFields (value: obj) : (string * obj) array = jsNative
+
+[<Emit("($0 != null && Object.getPrototypeOf($0) === Object.prototype)")>]
+let private isPlainRecord (value: obj) : bool = jsNative
+
+let private ownFields (value: obj) =
+    if
+        hasPrototype recordPrototype value
+        || isPlainRecord value
+    then
+        dataFields value
+    else
+        null
 
 [<Emit("($0.Status ?? 0)")>]
 let private statusOf (node: obj) : int = jsNative
@@ -126,14 +189,14 @@ let private isNumber (value: obj) : bool = jsNative
 [<Emit("typeof $0 === 'boolean'")>]
 let private isBool (value: obj) : bool = jsNative
 
-[<Emit("Array.isArray($0)")>]
+[<Emit("(Array.isArray($0) || ArrayBuffer.isView($0))")>]
 let private isArray (value: obj) : bool = jsNative
 
 [<Emit("Array.from($0)")>]
 let private itemsOf (value: obj) : obj array = jsNative
 
-[<Emit("($0 != null && typeof $0[Symbol.iterator] === 'function' && $0.head !== undefined)")>]
-let private isList (value: obj) : bool = jsNative
+let private isList (value: obj) =
+    hasPrototype listPrototype value
 
 [<Emit("$0.nodeType")>]
 let private kindOf (node: Node) : float = jsNative
@@ -162,10 +225,14 @@ let private markedHead (node: Node) : Node array = jsNative
 [<Emit("(Array.isArray($0) && $0.length === 2 ? $0[0] : $0)")>]
 let private firstOfPair (value: obj) : obj = jsNative
 
-[<Emit("($0 instanceof Error || ($0 != null && typeof $0 === 'object' && typeof $0.message === 'string' && ('stack' in $0 || 'innerException' in $0)))")>]
-let private isError (value: obj) : bool = jsNative
+[<Emit("($0 instanceof Error)")>]
+let private isNativeError (value: obj) : bool = jsNative
 
-[<Emit("$0.message")>]
+let private isError (value: obj) =
+    isNativeError value
+    || hasPrototype exceptionPrototype value
+
+[<Emit("(Object.getOwnPropertyDescriptor($0,'message')?.value ?? '')")>]
 let private messageOf (value: obj) : string = jsNative
 
 [<Emit("(($0.ownerDocument ?? $0).title ?? '')")>]
@@ -180,16 +247,74 @@ let private peek (node: obj) : obj =
 let private typeName (value: obj) : string =
     match value with
     | null -> "null"
+    | :? string
+    | :? char
+    | :? Guid -> "string"
+    | :? int64
+    | :? uint64
+    | :? bigint -> "int64"
+    | :? decimal -> "decimal"
+    | :? bool -> "bool"
+    | :? Array -> "array"
     | :? Delegate -> "fun"
     | _ when Microsoft.FSharp.Reflection.FSharpType.IsFunction (value.GetType ()) -> "fun"
     | _ ->
-        let name = value.GetType().Name
-        let tick = name.IndexOf '`'
-        if tick < 0 then name else name.Substring (0, tick)
+        let t = value.GetType ()
+
+        if t.IsPrimitive then
+            "number"
+        elif
+            t.IsGenericType
+            && t.GetGenericTypeDefinition () = typedefof<ResizeArray<_>>
+        then
+            "array"
+        elif
+            t.IsGenericType
+            && t.GetGenericTypeDefinition () = typedefof<Map<_, _>>
+        then
+            "map"
+        elif
+            t.IsGenericType
+            && t.GetGenericTypeDefinition () = typedefof<Set<_>>
+        then
+            "set"
+        elif
+            t.IsGenericType
+            && t.GetGenericTypeDefinition () = typedefof<list<_>>
+        then
+            "list"
+        elif t.Name.StartsWith "<>f__AnonymousType" then
+            "record"
+        else
+            let t =
+                if
+                    Microsoft.FSharp.Reflection.FSharpType.IsUnion t
+                    && not (isNull t.BaseType)
+                    && Microsoft.FSharp.Reflection.FSharpType.IsUnion t.BaseType
+                then
+                    t.BaseType
+                else
+                    t
+
+            let tick = t.Name.IndexOf '`'
+            if tick < 0 then t.Name else t.Name.Substring (0, tick)
+
+let private isExactScalar (value: obj) =
+    value :? int64
+    || value :? uint64
+    || value :? bigint
+    || value :? decimal
+
+let private isCountedCollection (value: obj) =
+    not (isNull value)
+    && value.GetType().IsGenericType
+    && (value.GetType().GetGenericTypeDefinition() = typedefof<Map<_, _>>
+        || value.GetType().GetGenericTypeDefinition() = typedefof<Set<_>>)
 
 let private ownFields (value: obj) : (string * obj) array =
     match value with
     | null -> null
+    | :? INode -> null
     | _ ->
         let t = value.GetType ()
 
@@ -204,15 +329,7 @@ let private ownFields (value: obj) : (string * obj) array =
             Microsoft.FSharp.Reflection.FSharpValue.GetTupleFields value
             |> Array.mapi (fun i item -> $"Item{i + 1}", item)
         else
-            t.GetProperties (
-                Reflection.BindingFlags.Public
-                ||| Reflection.BindingFlags.Instance
-            )
-            |> Array.filter (fun property -> property.GetIndexParameters().Length = 0)
-            |> Array.choose (fun property ->
-                match property.GetValue value with
-                | :? INode as node -> Some (property.Name, box node)
-                | _ -> None)
+            null
 
 let private statusOf (node: obj) : int =
     int (unbox<INode> node).Status
@@ -242,7 +359,7 @@ let private errorOf (node: obj) : string =
         | _ -> ""
 
 let private isString (value: obj) =
-    value :? string
+    value :? string || value :? char || value :? Guid
 
 let private isNumber (value: obj) =
     match value with
@@ -253,6 +370,11 @@ let private isNumber (value: obj) =
     | :? decimal
     | :? int16
     | :? byte
+    | :? sbyte
+    | :? uint16
+    | :? uint64
+    | :? nativeint
+    | :? unativeint
     | :? uint32 -> true
     | _ -> false
 
@@ -261,6 +383,9 @@ let private isBool (value: obj) =
 
 let private isArray (value: obj) =
     value :? Array
+    || (not (isNull value)
+        && value.GetType().IsGenericType
+        && value.GetType().GetGenericTypeDefinition() = typedefof<ResizeArray<_>>)
 
 let private itemsOf (value: obj) : obj array =
     [| for item in (value :?> Collections.IEnumerable) -> item |]
@@ -319,8 +444,23 @@ let private documentTitle (node: Node) =
 #endif
 
 #if FABLE_COMPILER
-let private isSome (_: obj) = false
-let private someValue (value: obj) = value
+let private isSome (value: obj) =
+    hasPrototype optionPrototype value
+
+[<Emit("$0.value")>]
+let private someValue (value: obj) : obj = jsNative
+
+let private isUnion (value: obj) =
+    hasPrototype unionPrototype value
+
+[<Emit("[$0.cases()[$0.tag], $0.fields]")>]
+let private unionParts (value: obj) : string * obj array = jsNative
+
+[<Emit("String($0)")>]
+let private scalarText (value: obj) : string = jsNative
+
+[<Emit("$0.size")>]
+let private collectionCount (value: obj) : int = jsNative
 #else
 let private isSome (value: obj) =
     not (isNull value)
@@ -329,6 +469,24 @@ let private isSome (value: obj) =
 
 let private someValue (value: obj) =
     value.GetType().GetProperty("Value").GetValue value
+
+let private isUnion (value: obj) =
+    not (isNull value)
+    && Microsoft.FSharp.Reflection.FSharpType.IsUnion (value.GetType ())
+
+let private unionParts (value: obj) =
+    let case, fields =
+        Microsoft.FSharp.Reflection.FSharpValue.GetUnionFields (value, value.GetType ())
+
+    case.Name, fields
+
+let private scalarText (value: obj) =
+    match value with
+    | :? IFormattable as number -> number.ToString (null, Globalization.CultureInfo.InvariantCulture)
+    | _ -> string value
+
+let private collectionCount (value: obj) =
+    unbox<int>(value.GetType().GetProperty("Count").GetValue value)
 #endif
 
 let private numberOf (value: obj) : float =
@@ -356,9 +514,11 @@ let rec private format (options: DumpOptions) (path: obj list) (depth: int) (val
     if isNull value then
         "null"
     elif isString value then
-        quote options (unbox<string> value)
+        quote options (scalarText value)
     elif isBool value then
         (if unbox<bool> value then "true" else "false")
+    elif isExactScalar value then
+        scalarText value
     elif isNumber value then
         Template.numberText (numberOf value)
     elif depth >= options.MaxDepth then
@@ -395,6 +555,24 @@ let rec private format (options: DumpOptions) (path: obj list) (depth: int) (val
             items "[|" "|]" (itemsOf value)
         elif isList value then
             items "[" "]" (itemsOf value)
+        elif isCountedCollection value then
+            typeName value
+            + " ("
+            + string (collectionCount value)
+            + ")"
+        elif isUnion value then
+            let name, fields = unionParts value
+
+            if fields.Length = 0 then
+                name
+            else
+                name
+                + " "
+                + String.Join (
+                    " ",
+                    fields
+                    |> Array.map (format options path (depth + 1))
+                )
         else
             match ownFields value with
             | null -> typeName value
@@ -442,7 +620,7 @@ let private fieldOf (options: DumpOptions) (name: string, value: obj) : FieldDum
     else
         {
             Name = name
-            Kind = typeName value
+            Kind = typeName (if isSome value then someValue value else value)
             Value = format options [] 1 value
             Status = ""
             Node = ""
@@ -523,11 +701,13 @@ let private keyText (options: DumpOptions) (key: obj) =
 let rec private walk (options: DumpOptions) (prefix: string ref) (first: Node) (until: Node) : DumpNode array =
     let nodes = ResizeArray<DumpNode>()
     let mutable cursor = first
+    let inheritedPrefix = prefix.Value
 
     while not (isNull (box cursor))
           && not (obj.ReferenceEquals (cursor, until)) do
         let next = Native.nextOrNull cursor
         let probe = Inspect.probeOf cursor
+        let startIndex = nodes.Count
 
         match probe with
         | Some (Inspect.MountProbe (_, _, _, mountPrefix, _) as mount) ->
@@ -550,6 +730,9 @@ let rec private walk (options: DumpOptions) (prefix: string ref) (first: Node) (
                 let finish = regionEnd cursor
                 let rows = rows ()
 
+                let leading =
+                    walk options prefix next (if rows.Length = 0 then finish else snd rows[0])
+
                 let rowNodes =
                     rows
                     |> Array.mapi (fun index (key, firstNode) ->
@@ -559,12 +742,12 @@ let rec private walk (options: DumpOptions) (prefix: string ref) (first: Node) (
                             else
                                 finish
 
-                        keyText options key, walk options prefix firstNode stop)
+                        lazy (keyText options key, walk options prefix firstNode stop))
 
                 let shown, elided =
                     if rowNodes.Length > options.MaxRows then
-                        let head = options.MaxRows - 3
-                        let tail = 3
+                        let tail = min 3 (max 0 options.MaxRows)
+                        let head = max 0 (options.MaxRows - tail)
 
                         let hidden = rows[head .. rows.Length - tail - 1]
 
@@ -577,6 +760,14 @@ let rec private walk (options: DumpOptions) (prefix: string ref) (first: Node) (
                             }
                     else
                         rowNodes, None
+
+                let shown = shown |> Array.map (fun row -> row.Value)
+
+                let shown =
+                    if leading.Length = 0 then
+                        shown
+                    else
+                        Array.append [| "", leading |] shown
 
                 nodes.Add (List (shownPath prefix.Value path, shown, elided, stale ()))
 
@@ -655,16 +846,34 @@ let rec private walk (options: DumpOptions) (prefix: string ref) (first: Node) (
                         else
                             dump
 
-                    match probe with
-                    | Some (Inspect.InstanceProbe (definition, instance, _, path)) ->
-                        nodes.Add (Instance (instanceOf options prefix.Value definition instance path, [| dump |]))
-                    | _ -> nodes.Add dump
+                    nodes.Add dump
                 | None -> ()
 
                 next
 
+        let instances = Inspect.instancesOf cursor
+
+        if instances.Length > 0 && nodes.Count > startIndex then
+            let children = [| for i in startIndex .. nodes.Count - 1 -> nodes[i] |]
+            nodes.RemoveRange (startIndex, nodes.Count - startIndex)
+
+            let wrapped =
+                Array.foldBack
+                    (fun probe children ->
+                        match probe with
+                        | Inspect.InstanceProbe (definition, instance, _, path) ->
+                            [|
+                                Instance (instanceOf options prefix.Value definition instance path, children)
+                            |]
+                        | _ -> children)
+                    instances
+                    children
+
+            nodes.AddRange wrapped
+
         cursor <- resume
 
+    prefix.Value <- inheritedPrefix
     nodes.ToArray ()
 
 /// <summary>The dump of one element or text node; None for a comment.</summary>
@@ -688,7 +897,7 @@ and private nodeOf (options: DumpOptions) (prefix: string ref) (node: Node) : Du
                         && attribute <> Some value
                         && not (attribute.IsNone && value = "")
                     then
-                        yield "value", quote options value
+                        yield "value", value
 
                 match checkedOf node with
                 | null -> ()
@@ -713,6 +922,19 @@ and private nodeOf (options: DumpOptions) (prefix: string ref) (node: Node) : Du
     | 3.0 -> Some (Text (dataOf node, Inspect.isBound node))
     | _ -> None
 
+let private tracePaths (options: DumpOptions) (graph: Graph) =
+#if RANVIER_TRACE
+    if options.NodeIds then
+        (Trace.snapshot graph).Nodes
+        |> Map.toSeq
+        |> Seq.map (fun (id, node) -> string id, node.Path)
+        |> Map.ofSeq
+    else
+        Map.empty
+#else
+    Map.empty<string, string>
+#endif
+
 /// <summary>The dump of the nodes under <c>root</c>, with the probes registered on them.</summary>
 let captureNode (options: DumpOptions) (graph: Graph) (root: Node) : Dump =
     if not graph.IsOnGraphThread then
@@ -729,6 +951,8 @@ let captureNode (options: DumpOptions) (graph: Graph) (root: Node) : Dump =
 
         {
             Mount = ""
+            Options = options
+            TracePaths = tracePaths options graph
             Root = walk options (ref "") first Unchecked.defaultof<_>
             Head =
                 if options.Head then
@@ -796,31 +1020,37 @@ let capture (options: DumpOptions) (mounted: Mounting.Mounted) : Dump =
 
         {
             Mount = header
+            Options = options
+            TracePaths = tracePaths options graph
             Root = root
             Head = head.Head
         })
 
-let private fieldLine (options: DumpOptions) (field: FieldDump) =
+let private fieldLine (options: DumpOptions) (paths: Map<string, string>) (field: FieldDump) =
     field.Name
     + "  "
     + field.Kind
     + "  "
     + field.Value
     + (if options.NodeIds && field.Node <> "" then
-           "  node=" + field.Node
+           "  node="
+           + field.Node
+           + (paths
+              |> Map.tryFind field.Node
+              |> Option.map (fun path -> "  trace=" + path)
+              |> Option.defaultValue "")
        else
            "")
 
-let private elementLine (tag: string) (attributes: (string * string) array) (properties: (string * string) array) =
+let private elementLine (options: DumpOptions) (tag: string) (attributes: (string * string) array) (properties: (string * string) array) =
     let parts =
         [|
-            for name, value in attributes ->
-                " "
+            for name, value in attributes -> " " + name + "=" + quote options value
+            for name, value in properties ->
+                " ."
                 + name
-                + "=\""
-                + value.Replace ("\"", "&quot;")
-                + "\""
-            for name, value in properties -> " ." + name + "=" + value
+                + "="
+                + (if name = "checked" then value else quote options value)
         |]
 
     "<" + tag + String.Join ("", parts) + ">"
@@ -834,7 +1064,10 @@ let textWith (options: DumpOptions) (dump: Dump) : string =
 
         match dumped with
         | Element (tag, attributes, properties, children) ->
-            lines.Add (pad + elementLine tag attributes properties)
+            lines.Add (
+                pad
+                + elementLine options tag attributes properties
+            )
 
             for child in children do
                 node (depth + 1) child
@@ -854,13 +1087,19 @@ let textWith (options: DumpOptions) (dump: Dump) : string =
             )
 
             for field in instance.Fields do
-                lines.Add (pad + "  " + fieldLine options field)
+                lines.Add (
+                    pad
+                    + "  "
+                    + fieldLine options dump.TracePaths field
+                )
 
             for child in children do
                 node depth child
         | List (path, rows, elided, stale) ->
             let count =
-                rows.Length
+                (rows
+                 |> Array.filter (fun (key, _) -> key <> "")
+                 |> Array.length)
                 + (match elided with
                    | Some e -> e.Count
                    | None -> 0)
@@ -876,27 +1115,31 @@ let textWith (options: DumpOptions) (dump: Dump) : string =
 
             let headRows =
                 match elided with
-                | Some _ -> rows.Length - 3
+                | Some _ -> rows.Length - min 3 (max 0 options.MaxRows)
                 | None -> rows.Length
+
+            let showElision () =
+                match elided with
+                | Some e ->
+                    lines.Add (
+                        pad
+                        + "  … "
+                        + string e.Count
+                        + " rows (keys "
+                        + e.FirstKey
+                        + " … "
+                        + e.LastKey
+                        + ")"
+                    )
+                | None -> ()
 
             rows
             |> Array.iteri (fun index (key, children) ->
                 if index = headRows then
-                    match elided with
-                    | Some e ->
-                        lines.Add (
-                            pad
-                            + "  … "
-                            + string e.Count
-                            + " rows (keys "
-                            + e.FirstKey
-                            + " … "
-                            + e.LastKey
-                            + ")"
-                        )
-                    | None -> ()
+                    showElision ()
 
-                lines.Add (pad + "  row " + key)
+                if key <> "" then
+                    lines.Add (pad + "  row " + key)
 
                 for child in children do
                     match child with
@@ -909,6 +1152,9 @@ let textWith (options: DumpOptions) (dump: Dump) : string =
                         lines.Add (pad + "  leaving")
                         node (depth + 2) inner
                     | _ -> ())
+
+            if headRows = rows.Length then
+                showElision ()
         | Arm (path, key, definition, children, stale) ->
             lines.Add (
                 pad
@@ -932,7 +1178,10 @@ let textWith (options: DumpOptions) (dump: Dump) : string =
                        "  waiting=" + string state.Waiting
                    else
                        "")
-                + (if state.Reason = "" then "" else "  " + state.Reason)
+                + (if state.Reason = "" then
+                       ""
+                   else
+                       "  reason=" + quote options state.Reason)
             )
 
             for child in children do
@@ -997,9 +1246,9 @@ let textWith (options: DumpOptions) (dump: Dump) : string =
 
     output.ToString ()
 
-/// <summary>The text form under the default options.</summary>
+/// <summary>The text form under the options used to capture the dump.</summary>
 let text (dump: Dump) : string =
-    textWith DumpOptions.defaults dump
+    textWith dump.Options dump
 
 let private jsonString (value: string) =
     let builder = Text.StringBuilder ("\"")
@@ -1064,8 +1313,17 @@ let json (dump: Dump) : string =
                     + jsonString field.Value
                     + ",\"status\":"
                     + jsonString field.Status
-                    + ",\"node\":"
-                    + jsonString field.Node
+                    + (if dump.Options.NodeIds then
+                           ",\"node\":" + jsonString field.Node
+                       else
+                           "")
+                    + (if dump.Options.NodeIds then
+                           dump.TracePaths
+                           |> Map.tryFind field.Node
+                           |> Option.map (fun path -> ",\"trace\":" + jsonString path)
+                           |> Option.defaultValue ""
+                       else
+                           "")
                     + "}")
 
             "{\"kind\":\"instance\",\"name\":"
@@ -1149,8 +1407,35 @@ let json (dump: Dump) : string =
             + string count
             + "}"
 
+    let mount =
+        if dump.Mount = "" then
+            "null"
+        else
+            let parts = dump.Mount.Split ([| "  " |], StringSplitOptions.None)
+
+            let value key =
+                parts
+                |> Array.tryFind (fun p -> p.StartsWith (key + "="))
+                |> Option.map (fun p -> p.Substring (key.Length + 1))
+                |> Option.defaultValue ""
+
+            let failures =
+                match Int32.TryParse (value "failures") with
+                | true, n -> n
+                | _ -> 0
+
+            "{\"prefix\":"
+            + jsonString parts[0]
+            + ",\"phase\":"
+            + jsonString (value "phase")
+            + ",\"commits\":"
+            + jsonString (value "commits")
+            + ",\"failures\":"
+            + string failures
+            + "}"
+
     "{\"schema\":\"ranvier-view-dump/1\",\"mount\":"
-    + jsonString dump.Mount
+    + mount
     + ",\"root\":["
     + String.Join (",", dump.Root |> Array.map node)
     + "],\"head\":"
@@ -1171,6 +1456,11 @@ let nodeAt (mounted: Mounting.Mounted, path: string) : INode option =
         let instancePath, fieldName = path.Substring (0, dot), path.Substring (dot + 1)
         let struct (first, last) = mounted.Range
 
+        let mountPrefix =
+            match Inspect.probeOf first with
+            | Some (Inspect.MountProbe (_, _, _, prefix, _)) -> prefix
+            | _ -> ""
+
         let rec find (node: Node) : INode option =
             if
                 isNull (box node)
@@ -1179,18 +1469,19 @@ let nodeAt (mounted: Mounting.Mounted, path: string) : INode option =
                 None
             else
                 let here =
-                    match Inspect.probeOf node with
-                    | Some (Inspect.InstanceProbe (_, instance, _, instancePathValue)) when
-                        not (isNull (box instancePathValue))
-                        && ("-" + instancePathValue.Text) = instancePath.Substring (max 0 (instancePath.IndexOf '-'))
-                        ->
-                        match ownFields instance with
-                        | null -> None
-                        | fields ->
-                            fields
-                            |> Array.tryFind (fun (name, value) -> name = fieldName && isNode value)
-                            |> Option.map (fun (_, value) -> unbox<INode> value)
-                    | _ -> None
+                    Inspect.instancesOf node
+                    |> Array.tryPick (function
+                        | Inspect.InstanceProbe (_, instance, _, instancePathValue) when
+                            not (isNull (box instancePathValue))
+                            && (mountPrefix + "-" + instancePathValue.Text) = instancePath
+                            ->
+                            match ownFields instance with
+                            | null -> None
+                            | fields ->
+                                fields
+                                |> Array.tryFind (fun (name, value) -> name = fieldName && isNode value)
+                                |> Option.map (fun (_, value) -> unbox<INode> value)
+                        | _ -> None)
 
                 match here with
                 | Some _ -> here
