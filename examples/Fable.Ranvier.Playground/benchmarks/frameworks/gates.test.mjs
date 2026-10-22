@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { defaultAllow, diffDirectories, parseExpectedChange } from "./generated-diff.mjs";
+import { defaultAllow, diffDirectories, expectedChangesFromArgs, parseExpectedChange } from "./generated-diff.mjs";
 import { inspectionFailures } from "./inspection-presence.mjs";
 
 const inspectBundle = "//#region ../../src/Ranvier.View.Dom/Debug.js\nconst tag = InstanceProbe;\n";
@@ -80,6 +80,39 @@ test("a baseline already holding the expected change is rejected", () => {
   const expected = { name: "Mounting.js", hunks: [{ before: "before();", after: "after();" }] };
   const patched = tree({ "Mounting.js": "after();\n" });
   assert.deepEqual(diffDirectories(patched, patched, /.*/, [expected]).disallowed, ["Mounting.js"]);
+});
+
+test("each explicit expected file is checked, even under a broad allow pattern", () => {
+  const directory = tree({
+    "one.diff": "--- a/One.js\n+++ b/One.js\n@@ -1 +1 @@\n-beforeOne();\n+afterOne();\n",
+    "two.diff": "--- a/Two.js\n+++ b/Two.js\n@@ -1 +1 @@\n-beforeTwo();\n+afterTwo();\n",
+  });
+  const args = ["--expected-hunk", join(directory, "one.diff"), "--expected-hunk", join(directory, "two.diff")];
+  const changes = expectedChangesFromArgs(args);
+  const base = tree({ "One.js": "beforeOne();\n", "Two.js": "beforeTwo();\n" });
+  const branch = tree({ "One.js": "afterOne();\n", "Two.js": "afterTwo();\n" });
+  assert.deepEqual(diffDirectories(base, branch, /.*/, changes).disallowed, []);
+  writeFileSync(join(branch, "Two.js"), "afterTwo();\nextra();\n");
+  assert.deepEqual(diffDirectories(base, branch, /.*/, changes).disallowed, ["Two.js"]);
+  assert.throws(() => expectedChangesFromArgs(["--expected-hunk"]), /requires a file/);
+  assert.throws(() => expectedChangesFromArgs([...args, "--expected-hunk", join(directory, "one.diff")]), /distinct files/);
+});
+
+test("the production manifest restricts every named file to exact hunks", () => {
+  const changes = expectedChangesFromArgs([]);
+  assert.deepEqual(changes.map(change => change.name).sort(), [
+    "src/Ranvier.View.Dom/Mounting.js", "src/Ranvier/Api.js", "src/Ranvier/Bindings.js",
+    "src/Ranvier/Core.js", "src/Ranvier/Projections.js", "src/Ranvier/Streams.js", "src/Ranvier/Timed.js",
+  ]);
+  for (const expected of changes) {
+    const before = expected.hunks.map(h => h.before).join("\nseparator\n");
+    const after = expected.hunks.map(h => h.after).join("\nseparator\n");
+    const base = tree({ [expected.name]: before });
+    const branch = tree({ [expected.name]: after });
+    assert.deepEqual(diffDirectories(base, branch, defaultAllow, [expected]).disallowed, []);
+    writeFileSync(join(branch, expected.name), after + "\nextra();");
+    assert.deepEqual(diffDirectories(base, branch, /.*/, [expected]).disallowed, [expected.name]);
+  }
 });
 
 test("the committed placement exception applies every hunk and rejects an ambiguous base", () => {

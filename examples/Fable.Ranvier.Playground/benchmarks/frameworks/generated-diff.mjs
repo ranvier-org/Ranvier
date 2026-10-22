@@ -1,7 +1,7 @@
 // Gate 3 of the DOM twin spec (§7.1): the Fable output files that differ between a base and a branch directory,
 // with carriage returns and lines starting `import ` ignored and `fable_modules/` (package output) skipped. Exits 1
 // when a differing file does not match the allowed pattern, by default the Native module of Ranvier.View.
-// Usage: node benchmarks/frameworks/generated-diff.mjs <base dir> <branch dir> [--allow <regex>] [--expected-hunk <file>]
+// Usage: node benchmarks/frameworks/generated-diff.mjs <base dir> <branch dir> [--allow <regex>] [--expected-hunk <file> ...]
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -23,6 +23,24 @@ const body = path => readFileSync(path, "utf8").replace(/\r/g, "").split("\n").f
 
 /** The allow pattern of the command line when `--allow` is absent. */
 export const defaultAllow = /^src\/Ranvier\.View\/Native\.js$/;
+
+export function expectedChangesFromArgs(args) {
+  const paths = [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] !== "--expected-hunk") continue;
+    if (!args[i + 1] || args[i + 1].startsWith("--")) throw new Error("--expected-hunk requires a file");
+    paths.push(args[++i]);
+  }
+  if (!paths.length) {
+    const directory = new URL("../../../../docs/research/2026-10-21-dom-twin/", import.meta.url);
+    const manifest = JSON.parse(readFileSync(new URL("production-changes.json", directory), "utf8"));
+    paths.push(...manifest.patches.map(path => new URL(path, directory)));
+  }
+  const changes = paths.map(path => parseExpectedChange(readFileSync(path, "utf8")));
+  if (new Set(changes.map(change => change.name)).size !== changes.length)
+    throw new Error("Expected changes must name distinct files");
+  return changes;
+}
 
 export function parseExpectedChange(patch) {
   const lines = patch.replace(/\r/g, "").trimEnd().split("\n");
@@ -74,12 +92,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const [base, branch] = process.argv.slice(2);
   const index = process.argv.indexOf("--allow");
   const allow = index < 0 ? defaultAllow : new RegExp(process.argv[index + 1]);
-  const expectedIndex = process.argv.indexOf("--expected-hunk");
-  const expectedPath = expectedIndex < 0
-    ? new URL("../../../../docs/research/2026-10-21-dom-twin/i1-mounting.diff", import.meta.url)
-    : process.argv[expectedIndex + 1];
-  const expected = parseExpectedChange(readFileSync(expectedPath, "utf8"));
-  const { differing, disallowed } = diffDirectories(base, branch, allow, [expected]);
+  const expected = expectedChangesFromArgs(process.argv.slice(4));
+  const { differing, disallowed } = diffDirectories(base, branch, allow, expected);
   for (const name of differing) console.log(`${disallowed.includes(name) ? "DIFFERS" : "allowed"} ${name}`);
   process.exitCode = disallowed.length ? 1 : 0;
 }
