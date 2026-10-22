@@ -10,6 +10,9 @@ open Ranvier.View.Dom
 open Ranvier.View.Testing
 open CheckSupport
 open SugarFixtures
+#if FABLE_COMPILER
+open TwinTrace
+#else
 
 type private Step =
     | Write of (unit -> unit)
@@ -20,10 +23,6 @@ type private WriteWatch =
     abstract drain: unit -> string array
     abstract stop: unit -> unit
 
-#if FABLE_COMPILER
-[<Emit("(() => { const o = new MutationObserver(() => {}); o.observe($0, { attributes: true, childList: true, characterData: true, subtree: true }); return { drain: () => o.takeRecords().map(r => r.type + ':' + (r.attributeName ?? '') + ':' + r.addedNodes.length + ':' + r.removedNodes.length), stop: () => o.disconnect() }; })()")>]
-let private watchWrites (root: HTMLElement) : WriteWatch = jsNative
-#else
 // The writes to nodes under the root since the last drain, one entry per DOM call: the member, then the attribute
 // name or the number of nodes inserted.
 let private watchWrites (root: HTMLElement) : WriteWatch =
@@ -89,17 +88,12 @@ let private watchWrites (root: HTMLElement) : WriteWatch =
             for restore in restores do
                 restore ()
     }
-#endif
 
 /// <summary>Listener registrations made through <c>addEventListener</c> since the wrap was installed.</summary>
 type private ListenerWatch =
     abstract under: HTMLElement -> int
     abstract stop: unit -> unit
 
-#if FABLE_COMPILER
-[<Emit("(() => { const log = []; const proto = window.EventTarget.prototype; const original = proto.addEventListener; proto.addEventListener = function (type, ...rest) { log.push([this, type]); return original.call(this, type, ...rest); }; return { under: (root) => log.filter(([target]) => target instanceof Node && root.contains(target)).length, stop: () => { proto.addEventListener = original; } }; })()")>]
-let private watchListeners () : ListenerWatch = jsNative
-#else
 // The addEventListener calls since the watch began whose target is under the root when counted.
 let private watchListeners () : ListenerWatch =
     let targets = ResizeArray<obj>()
@@ -121,14 +115,8 @@ let private watchListeners () : ListenerWatch =
         member _.stop() =
             restore ()
     }
-#endif
 
-#if FABLE_COMPILER
-[<Emit("globalThis.ranvierExpectCounters === true")>]
-let private countersExpected () : bool = jsNative
-#else
 let private countersExpected () : bool = false
-#endif
 
 /// <summary>The graph counters as name-value pairs; fails when counters are expected but not compiled.</summary>
 let private tally () : (string * float) list =
@@ -243,6 +231,7 @@ let private same (explicitTrace: Trace, sugarTrace: Trace) =
 
 let private pair queued make explicitView sugarView steps =
     same (fst (twins queued make explicitView sugarView steps))
+#endif
 
 let private benchClicks queued () =
     pair queued (fun _ -> ()) (fun () -> Component.render benchExplicit 3) (fun () -> Component.render benchSugar 3) (fun () ->
