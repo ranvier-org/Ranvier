@@ -504,6 +504,10 @@ Each item names its suite; the research's unprobed items are marked **(new)**.
     --ops=armsCreate1k,armsSwitch1k,armsPayload1k,armsClear1k --processes=3 --rounds=15 --pairs=ranvier-arms-match:ranvier-sugar` under `bench.lock`
     (`mkdir C:/Users/shaya/.claude/jobs/7fee9ca9/tmp/bench.lock` before, `rmdir` after) and the browser lock. Gate, per
     operation: the paired ratio (each `ranvier-arms-match` sample over the `ranvier-sugar` sample of the same process and round, `--pairs=ranvier-arms-match:ranvier-sugar`) has a median of at most 1.12 for this release (the payload-direct follow-on, Phased implementation 8, targets 1.05); its 95 % bootstrap interval is reported. `Checks/chromium-gate.mjs` checks the committed results. Runs record the CPU load in `notes`.
+    The user explicitly accepted the 1.12 allowance for this release on 2026-10-22, requiring the cost to remain
+    visible and a tracked follow-up (plan Ruling 38). The original 1.05 gate remains unmet by the latest switch
+    (+7.5 %) and payload (+9.6 %) medians; [follow-up #157](https://github.com/shayanhabibi/Ranvier/issues/157)
+    targets that original gate.
 12. **Heap profile (new)**: `keyed-heap.mjs` with the new mode at 1,000 and 10,000 rows; retained bytes per row within
     10 % of `ranvier-sugar` plus the cells entries (one `WeakMap` entry and one list per row instance).
 13. **Docs samples**: the `arms.md` samples compile in `docs/samples/view` (.NET, quotation path) and their quoted HTML

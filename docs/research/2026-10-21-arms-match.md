@@ -11,6 +11,12 @@ its twin (budget 400 B) and each further site 12 B (budget 60 B). The retained h
 release's gate, a paired median of at most 1.12 against the sugared twin (create 1.049, switch 1.075, payload 1.096,
 clear 1.041); the payload-direct follow-up measured 1.007-1.031 in a spike.
 
+The user explicitly accepted the 1.12 allowance for this release on 2026-10-22, requiring the cost to remain visible
+and a tracked follow-up. Measured overhead is +4.9 % create, +7.5 % switch, +9.6 % payload and +4.1 % clear.
+The latest switch and payload medians miss the original 1.05 gate; a passing release check does not erase that
+shortfall. The payload-direct follow-up targets the original gate. Merge also awaits the requested primitive
+instruction-count comparison. The performance work is tracked in [issue #157](https://github.com/shayanhabibi/Ranvier/issues/157).
+
 ## Plugin discovery
 
 From `experiments/Ranvier.View.Arms/Checks/Discovery`, an app with a project reference to `Ranvier.View.Arms` and an
