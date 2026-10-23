@@ -63,6 +63,54 @@ let tests =
     testList
         "Inspect"
         [
+            for name, definition, count in
+                [
+                    "shared root", outer, 2
+                    "wrapped root", wrapped, 2
+                    "three levels", nested, 3
+                ] do
+                testCase $"strict hydration registers nested instances: {name}"
+                <| fun () ->
+                    use session =
+                        Twin.hydrate
+                            Server.Options.defaults
+                            { Hydration.HydrationOptions.defaults with
+                                Strict = true
+                            }
+                            definition
+                            "child"
+
+                    let instances =
+                        probes session
+                        |> List.choose (function
+                            | Inspect.InstanceProbe (_, _, _, path) -> Some path.Text
+                            | _ -> None)
+
+                    Expect.equal instances.Length count "every hydrated instance"
+                    Expect.equal (List.distinct instances).Length count "distinct hydrated paths"
+                    Expect.stringContains (session.Dump ()) "instance InnerState" "the child's instance is visible"
+
+            testCase "strict hydration keeps text separators and list-root instance probes"
+            <| fun () ->
+                for definition, count in [ textChildren, 3; regionFirst, 2 ] do
+                    use session =
+                        Twin.hydrate
+                            Server.Options.defaults
+                            { Hydration.HydrationOptions.defaults with
+                                Strict = true
+                            }
+                            definition
+                            ()
+
+                    let instances =
+                        probes session
+                        |> List.filter (function
+                            | Inspect.InstanceProbe _ -> true
+                            | _ -> false)
+
+                    Expect.equal instances.Length count "instance registration after hydration"
+                    Expect.stringContains (session.Dump ()) "path=r-0" "hydrated paths use the root prefix"
+
             testCase "a keyed list registers its rows' keys in order"
             <| fun () ->
                 let source = ref Unchecked.defaultof<Signal<int array>>

@@ -53,7 +53,6 @@ type ProbeState =
         Doubled: Memo<int>
     }
 
-// A memo bound to no node, counting its runs, beside a signal bound through a text slot.
 let private probe (runs: int ref) =
     Component.define
         (fun _ () ->
@@ -68,7 +67,6 @@ let private probe (runs: int ref) =
             })
         (fun t -> t.p [||] [| t.text (fun (s: ProbeState) -> string s.Source.Value) |])
 
-// The first instance value of type 'T registered under the session's host.
 let private instanceOf<'T> (session: Session) : 'T =
     let rec find (node: TwinNode) =
         match Inspect.probeOf (unbox node.Native) with
@@ -79,11 +77,195 @@ let private instanceOf<'T> (session: Session) : 'T =
     | Some value -> value
     | None -> failwith "no instance"
 
+let private guardedPass commits build =
+    let mounted = ref Unchecked.defaultof<Mounting.Mounted>
+    let change = ref ignore
+    let failures = ResizeArray<string>()
+
+    let capture () =
+        if not (isNull (box mounted.Value)) then
+            try
+                Debug.capture Debug.DumpOptions.defaults mounted.Value
+                |> ignore
+            with :? InvalidOperationException as error ->
+                failures.Add error.Message
+
+    use session =
+        Twin.mountView
+            { TwinMount.defaults with
+                Commits = commits
+                Reports = Reports.Collect
+            }
+            (fun context ->
+                let view, update = build capture
+                change.Value <- update
+                Program.run view context.Backend)
+
+    mounted.Value <- session.Mounted
+    session.Act change.Value
+    Expect.equal (List.ofSeq failures) [ "Debug.dump ran inside a flush" ] "capture is rejected during the region pass"
+
 [<Tests>]
 let tests =
     testList
         "Dump"
         [
+            testCase "prepared roots require HTML interfaces even when the local name is svg"
+            <| fun () ->
+                use session = Twin.mount counter 1
+                let document = session.Host.ownerDocument
+                let html = document.createElement "svg"
+                let supported = Prepared.Template (fun () -> html)
+                Expect.equal (supported.Invoke().namespaceURI) (Some "http://www.w3.org/1999/xhtml") "HTML namespace"
+
+                let svg =
+                    document.createElementNS (namespaceURI = Some "http://www.w3.org/2000/svg", qualifiedName = "svg")
+
+                let unsupported =
+                    Prepared.Template (fun () -> unbox<Fable.Core.TS.Dom.HTMLElement> svg)
+
+                Expect.throwsT<InvalidCastException>
+                    (fun () -> unsupported.Invoke () |> ignore)
+                    "a foreign SVG element cannot satisfy the prepared HTML root contract"
+
+            for commits in [ Commits.Synchronous; Commits.Queued Scheduling.CollectAndContinue ] do
+                testCase $"a keyed row setup rejects capture during {commits} commits"
+                <| fun () ->
+                    guardedPass commits (fun capture ->
+                        let items = Api.createSignal [| 1 |]
+
+                        let child =
+                            Component.define
+                                (fun _ (_: unit -> int) ->
+                                    capture ()
+                                    ())
+                                (fun t -> t.li [||] [||])
+
+                        let view =
+                            Component.define (fun _ () -> ()) (fun t -> t.ul [||] [| t.each id (fun () -> items.Value) child |])
+
+                        Component.render view (), (fun () -> items.Value <- [| 1; 2 |]))
+
+                testCase $"an arm setup rejects capture during {commits} commits"
+                <| fun () ->
+                    guardedPass commits (fun capture ->
+                        let selected = Api.createSignal false
+
+                        let arm =
+                            Component.define
+                                (fun _ (_: unit -> unit) ->
+                                    capture ()
+                                    ())
+                                (fun t -> t.p [||] [||])
+
+                        let idle =
+                            Component.define (fun _ (_: unit -> unit) -> ()) (fun t -> t.span [||] [||])
+
+                        let view =
+                            Component.define (fun _ () -> ()) (fun t ->
+                                t.branch (fun () -> selected.Value) (fun active -> if active then t.arm arm () else t.arm idle ()))
+
+                        Component.render view (), (fun () -> selected.Value <- true))
+
+                testCase $"a boundary fallback rejects capture during {commits} commits"
+                <| fun () ->
+                    guardedPass commits (fun capture ->
+                        let source = Api.createAsyncSource<string>()
+                        let loading = Component.define (fun _ () -> ()) (fun t -> t.p [||] [||])
+
+                        let failed =
+                            Component.define
+                                (fun _ (_: BoundaryFailure) ->
+                                    capture ()
+                                    ())
+                                (fun t -> t.p [||] [||])
+
+                        let content =
+                            Component.define (fun _ (_: BoundaryStatus) -> ()) (fun t -> t.p [||] [| t.text (fun () -> source.Value) |])
+
+                        let view =
+                            Component.define (fun _ () -> ()) (fun t -> t.boundary loading failed content)
+
+                        Component.render view (), (fun () -> source.Fail (exn "failed")))
+
+                testCase $"a hole setup rejects capture during {commits} commits"
+                <| fun () ->
+                    guardedPass commits (fun capture ->
+                        let selected = Api.createSignal false
+                        let child = Component.define (fun _ () -> ()) (fun t -> t.p [||] [||])
+
+                        let holed =
+                            Component.define (fun _ (_: unit -> unit) -> ()) (fun t ->
+                                t.div
+                                    [||]
+                                    [|
+                                        t.view (fun () ->
+                                            capture ()
+                                            Component.render child ())
+                                    |])
+
+                        let idle =
+                            Component.define (fun _ (_: unit -> unit) -> ()) (fun t -> t.span [||] [||])
+
+                        let view =
+                            Component.define (fun _ () -> ()) (fun t ->
+                                t.branch (fun () -> selected.Value) (fun active -> if active then t.arm holed () else t.arm idle ()))
+
+                        Component.render view (), (fun () -> selected.Value <- true))
+
+            testCase "a nested sibling mount restores the enclosing identity prefix"
+            <| fun () ->
+                use session = Twin.mount counter 1
+                let struct (first, _) = session.Mounted.Range
+                let before = first.nextSibling.Value :?> Fable.Core.TS.Dom.Node
+
+                let nested =
+                    Mounting.mount session.Graph None ignore session.Host (Some before) (fun context ->
+                        Program.run (Component.render counter 2) context.Backend)
+
+                let struct (nestedFirst, _) = nested.Range
+
+                let remove =
+                    Inspect.register nestedFirst (Inspect.MountProbe ((fun () -> Attached), false, (fun () -> false), "nested", session.Graph))
+
+                try
+                    let captured = Debug.capture Debug.DumpOptions.defaults session.Mounted
+
+                    let paths =
+                        captured.Root
+                        |> Array.choose (function
+                            | Debug.Instance (instance, _) -> Some instance.Path
+                            | _ -> None)
+
+                    Expect.equal paths [| "nested-0"; "r-0" |] "only the nested range gets its prefix"
+                finally
+                    remove ()
+                    nested.Dispose ()
+
+            testCase "mounted capture reads each list probe once and ignores sibling mounts"
+            <| fun () ->
+                use session = Twin.mount counter 1
+                let sibling = session.Host.ownerDocument.createComment "["
+                session.Host.appendChild sibling |> ignore
+                let mutable reads = 0
+
+                let remove =
+                    Inspect.register
+                        sibling
+                        (Inspect.ListProbe (
+                            Unchecked.defaultof<_>,
+                            (fun () ->
+                                reads <- reads + 1
+                                [||]),
+                            (fun () -> false)
+                        ))
+
+                try
+                    session.Dump () |> ignore
+                    Expect.equal reads 0 "head capture must not traverse a sibling's probes"
+                finally
+                    remove ()
+
             testCase "a memo used as the instance is never evaluated by a dump"
             <| fun () ->
                 let runs = ref 0

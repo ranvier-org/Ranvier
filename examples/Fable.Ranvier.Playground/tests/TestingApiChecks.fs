@@ -197,7 +197,7 @@ let private failureOf (attempt: unit -> unit) : string =
         "no failure"
     with
     | Expect.ExpectationException message -> message
-    | Query.QueryException (selector, count, _) -> $"query '{selector}' matched {count}"
+    | Query.QueryException (selector, count, excerpt) -> $"query '{selector}' matched {count}{excerpt}"
 
 // Each failure message is an artefact compared across hosts.
 let private failureMessages () =
@@ -221,8 +221,7 @@ let private failureMessages () =
         ]
         |> List.map (fun (name, attempt) ->
             let message = failureOf attempt
-            // The first line: the dump excerpt after it is present in inspect builds only.
-            Conformance.recordIfRunning ("failure: " + name) (message.Split('\n').[0])
+            Conformance.recordIfRunning ("failure: " + name) message
             name, message)
 
     let has name (part: string) =
@@ -326,22 +325,64 @@ let private textAndEvents () =
 type private Counted = { Count: Signal<int> }
 
 let private counted =
-    Component.define (fun _ () -> { Count = Api.createSignal 4 }) (fun t -> t.button [||] [| t.text (fun (c: Counted) -> string c.Count.Value) |])
+    Component.define (fun _ () -> { Count = Api.createSignal 4 }) (fun t ->
+        t.button [| t.Attrs.className "single" |] [| t.text (fun (c: Counted) -> string c.Count.Value) |])
 
-// An expectation failure under a mount carries the dump excerpt in inspect builds and on .NET.
+let private fragmentCounted =
+    Component.define (fun _ () -> { Count = Api.createSignal 5 }) (fun t ->
+        t.fragment
+            [|
+                t.p [||] [| t.text "fragment label" |]
+                t.button [| t.Attrs.className "fragment" |] [| t.text (fun (c: Counted) -> string c.Count.Value) |]
+            |])
+
 let private excerptInMessages () =
     use graph = new Graph ()
     let target = (Conformance.document ()).createElement "main"
 
+    let page =
+        Component.define (fun _ () -> ()) (fun t ->
+            t.div
+                [||]
+                (Array.append
+                    (Array.init 60 (fun _ -> t.p [||] [| t.text "earlier sibling" |]))
+                    [| t.render counted (fun _ -> ()); t.render fragmentCounted (fun _ -> ()) |]))
+
     let mounted =
         Mounting.mount graph None (fun errors -> failwithf "%A" errors) target None (fun context ->
-            Program.run (Component.render counted ()) context.Backend)
+            Program.run (Component.render page ()) context.Backend)
 
-    let message = failureOf (fun () -> Expect.text (target :> Node) "button" "nope")
+    let message =
+        failureOf (fun () -> Expect.text (target :> Node) "button.single" "nope")
+
+    let button = Query.get target "button.single"
+    let queryMessage = failureOf (fun () -> Query.get button ".missing" |> ignore)
+
+    let fragmentMessage =
+        failureOf (fun () -> Expect.text target "button.fragment" "nope")
+
     mounted.Dispose ()
 #if RANVIER_VIEW_INSPECT || !FABLE_COMPILER
-    if not (message.Contains "instance Counted") then
-        failwithf "no excerpt in %s" message
+    for name, failure in [ "expectation excerpt", message; "query excerpt", queryMessage ] do
+        if
+            not (failure.Contains "instance Counted")
+            || not (failure.Contains "=\"4\"")
+        then
+            failwithf "no focused excerpt in %s" failure
+
+        if failure.Contains "earlier sibling" then
+            failwithf "excerpt starts outside the failing instance: %s" failure
+
+        Conformance.recordIfRunning name failure
+
+    if
+        not (fragmentMessage.Contains "fragment label")
+        || not (fragmentMessage.Contains "=\"5\"")
+        || fragmentMessage.Contains "earlier sibling"
+    then
+        failwithf "no fragment instance excerpt in %s" fragmentMessage
+
+    Conformance.recordIfRunning "fragment expectation excerpt" fragmentMessage
 #else
     if message.Contains "instance" then
         failwithf "an excerpt in %s" message

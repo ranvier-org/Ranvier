@@ -29,12 +29,12 @@ instance Board  path=r-0  hash=ab61253f
           Title  signal  "Rest"
         <li class="card">
           ="Rest"
-  arm  path=r-0.r1  key="edit"  def=#d6d741d4
+  arm  path=r-0.r1  key="edit"  def=form#d6d741d4
     instance unit  path=r-0.r1.0  hash=d6d741d4
     <form>
       "edit"
-  boundary  path=r-0.r2  state=ready
+  boundary  path=r-0.r2  state=ready  view=p#8fe1b6e4
     instance BoundaryStatus  path=r-0.r2.0  hash=8fe1b6e4
-      IsPending  fun  fun
+      IsPending  fun
     <p>
       ="Loaded"

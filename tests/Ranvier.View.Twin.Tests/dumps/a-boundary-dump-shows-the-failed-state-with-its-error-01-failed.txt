@@ -29,13 +29,13 @@ instance Board  path=r-0  hash=ab61253f
           Title  signal  "Rest"
         <li class="card">
           ="Rest"
-  arm  path=r-0.r1  key="edit"  def=#d6d741d4
+  arm  path=r-0.r1  key="edit"  def=form#d6d741d4
     instance unit  path=r-0.r1.0  hash=d6d741d4
     <form>
       "edit"
-  boundary  path=r-0.r2  state=failed  reason="offline"
+  boundary  path=r-0.r2  state=failed  view=p#8fe1b6e4  reason="offline"
     instance BoundaryFailure  path=r-0.r2.2  hash=8fe1b6e4
       Error  Exception  Exception "offline"
-      Retry  fun  fun
+      Retry  fun
     <p>
       ="offline"

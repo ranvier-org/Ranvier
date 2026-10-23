@@ -17,13 +17,14 @@ let internal control (root: Node) (selector: string) : Element =
     | "input"
     | "textarea"
     | "select" -> target
-    | tag -> fail root $"'{selector}' matched a <{tag}>, which has no value"
+    | tag -> fail target $"'{selector}' matched a <{tag}>, which has no value"
 
 let text (root: Node) (selector: string) (expected: string) : unit =
-    let actual = Query.textOf (Query.get root selector)
+    let target = Query.get root selector
+    let actual = Query.textOf target
 
     if actual <> expected then
-        fail root $"'{selector}' text: expected \"{expected}\", actual \"{actual}\""
+        fail target $"'{selector}' text: expected \"{expected}\", actual \"{actual}\""
 
 let count (root: Node) (selector: string) (expected: int) : unit =
     let actual = (Query.queryAll root selector).Length
@@ -33,17 +34,19 @@ let count (root: Node) (selector: string) (expected: int) : unit =
 
 /// <summary>The attribute of the single match is <c>expected</c>; <c>None</c> expects it absent.</summary>
 let attribute (root: Node) (selector: string) (name: string) (expected: string option) : unit =
-    let actual = (Query.get root selector).getAttribute name
+    let target = Query.get root selector
+    let actual = target.getAttribute name
 
     if actual <> expected then
         let show = Option.defaultValue "(absent)"
-        fail root $"'{selector}' [{name}]: expected {show expected}, actual {show actual}"
+        fail target $"'{selector}' [{name}]: expected {show expected}, actual {show actual}"
 
 let value (root: Node) (selector: string) (expected: string) : unit =
-    let actual = Query.valueOf (control root selector)
+    let target = control root selector
+    let actual = Query.valueOf target
 
     if actual <> expected then
-        fail root $"'{selector}' value: expected \"{expected}\", actual \"{actual}\""
+        fail target $"'{selector}' value: expected \"{expected}\", actual \"{actual}\""
 
 /// <summary>The serialisation of the root's children equals <c>expected</c>.</summary>
 let html (root: Node) (expected: string) : unit =

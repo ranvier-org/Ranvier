@@ -9,7 +9,7 @@ instance Board  path=r-0  hash=ab61253f
     ="3"
   <ul>
     list  path=r-0.r0  rows=3
-      leaving
+      leaving  key=1
         <li class="card">
           ="Write spec"
       row 2
@@ -27,11 +27,11 @@ instance Board  path=r-0  hash=ab61253f
           Title  signal  "Rest"
         <li class="card">
           ="Rest"
-  arm  path=r-0.r1  key="edit"  def=#d6d741d4
+  arm  path=r-0.r1  key="edit"  def=form#d6d741d4
     instance unit  path=r-0.r1.0  hash=d6d741d4
     <form>
       "edit"
-  boundary  path=r-0.r2  state=pending  waiting=1
+  boundary  path=r-0.r2  state=pending  view=p#11e65dcc  waiting=1
     instance unit  path=r-0.r2.1  hash=11e65dcc
     <p>
       "Loading"

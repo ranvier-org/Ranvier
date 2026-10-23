@@ -205,6 +205,10 @@ let private checkJson (dump: Debug.Dump) =
         | Debug.Leaving nested ->
             equal "kind" "leaving"
             check nested (property "node")
+        | Debug.LeavingRow (key, nested) ->
+            equal "kind" "leaving"
+            equal "key" key
+            check nested (property "node")
         | Debug.Truncated _ -> equal "kind" "truncated"
 
     if
@@ -220,7 +224,52 @@ let private checkJson (dump: Debug.Dump) =
          |> Seq.toArray)
 #endif
 
+#if !FABLE_COMPILER
+let private observedNodes (target: Node) =
+    let nodes = ResizeArray<INode>()
+    nodes.Add ((query ()).Value :> INode)
+
+    let rec visit (node: Node) =
+        for probe in Inspect.instancesOf node do
+            match probe with
+            | Inspect.InstanceProbe (_, value, _, _) when
+                not (isNull value)
+                && Microsoft.FSharp.Reflection.FSharpType.IsRecord (value.GetType ())
+                ->
+                for field in Microsoft.FSharp.Reflection.FSharpValue.GetRecordFields value do
+                    match field with
+                    | :? INode as source -> nodes.Add source
+                    | _ -> ()
+            | _ -> ()
+
+        let mutable child = node.firstChild
+
+        while child.IsSome do
+            let current = unbox<Node> child.Value
+            visit current
+            child <- current.nextSibling
+
+    visit target
+
+    nodes
+    |> Seq.distinctBy (fun node -> node.Id)
+    |> Seq.toArray
+
+let private observerState (node: INode) =
+    let flags =
+        System.Reflection.BindingFlags.Instance
+        ||| System.Reflection.BindingFlags.Public
+        ||| System.Reflection.BindingFlags.NonPublic
+
+    let observers = node.GetType().GetField("observers", flags).GetValue node
+    node.Id, node.Status, unbox<int>(observers.GetType().GetProperty("Count", flags).GetValue observers)
+#endif
+
 let private record (name: string) (graph: Graph) (target: HTMLElement) =
+#if !FABLE_COMPILER
+    let nodes = observedNodes target
+    let before = Array.map observerState nodes
+#endif
     let captured = Debug.captureNode options graph target
 #if !FABLE_COMPILER
     checkJson captured
@@ -228,6 +277,10 @@ let private record (name: string) (graph: Graph) (target: HTMLElement) =
     Conformance.recordIfRunning name (Debug.textWith options captured)
     Conformance.recordIfRunning (name + " json") (Debug.json captured)
     Conformance.recordIfRunning (name + " html") target.innerHTML
+#if !FABLE_COMPILER
+    if Array.map observerState nodes <> before then
+        failwith "capturing and formatting changed a fixture node's status or observer count"
+#endif
 
 let private mounted (view: Program.View) (check: Graph -> HTMLElement -> Mounting.Mounted -> unit) =
     use graph = new Graph ()
@@ -399,6 +452,41 @@ let private opaqueDump () =
             failwith "opaque value lost its type name"
 
         record "opaque" graph target)
+
+let benchmarkBoardHydration (now: unit -> float) =
+    use graph = new Graph ()
+    (query ()).Value <- graph.Run (fun () -> Api.createAsyncSource<string>())
+
+    let body =
+        Server.render
+            { Server.Options.defaults with
+                Policy = Omit
+            }
+            board
+            ()
+
+    let target = host ()
+    target.innerHTML <- body
+    let started = now ()
+
+    let mounted =
+        Hydration.hydrate graph None strict Hydration.HydrationOptions.defaults target board ()
+
+    let elapsed = now () - started
+
+    try
+        if
+            target.textContent
+            <> "Cards: 4Write specReviewShipResteditLoading"
+        then
+            failwith "The hydrated Board differs from its fixture"
+
+        elapsed
+    finally
+        mounted.Dispose ()
+
+        target.parentNode
+        |> Option.iter (fun parent -> parent.removeChild target |> ignore)
 
 let cases: Conformance.Case array =
     Conformance.ofChecks

@@ -34,7 +34,7 @@ exception QueryException of selector: string * count: int * excerpt: string with
     override this.Message =
         $"Expected one match for '{this.selector}', found {this.count}.{this.excerpt}"
 
-/// <summary>The dump excerpt appended to query and expectation failures: the first 40 lines of the root's dump.</summary>
+/// <summary>Up to 40 lines of the nearest instance, appended to query and expectation failures.</summary>
 #if RANVIER_VIEW_INSPECT || !FABLE_COMPILER
 let internal excerptOf (root: Node) : string =
     Ranvier.View.Dom.Debug.excerpt root

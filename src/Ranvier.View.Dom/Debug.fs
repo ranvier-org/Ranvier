@@ -52,6 +52,7 @@ type DumpNode =
     | Boundary of path: string * state: BoundaryDump * children: DumpNode array
     | Hole of path: string * children: DumpNode array
     | Leaving of DumpNode
+    | LeavingRow of key: string * node: DumpNode
     | Truncated of lines: int
 
 and InstanceDump =
@@ -95,7 +96,6 @@ type Dump =
         TracePaths: Map<string, string>
     }
 
-// The host's view of a value: whether it is a core node and how its fields read.
 #if FABLE_COMPILER
 [<Emit("Object.getPrototypeOf($0)")>]
 let private prototypeOf (value: obj) : obj = jsNative
@@ -127,7 +127,6 @@ let private corePrototypes =
         constructorPrototype (box (JsInterop.jsConstructor<AsyncSource<obj>>))
     |]
 
-// A core node: its INode members are class getters, its other members module functions over its fields.
 let private isNode (value: obj) =
     corePrototypes
     |> Array.exists (fun prototype -> hasPrototype prototype value)
@@ -655,7 +654,6 @@ let private instanceOf (options: DumpOptions) (prefix: string) (definition: Temp
 let private isComment (node: Node) =
     kindOf node = 8.0
 
-// The end marker of the region whose start marker is `start`: the sibling that closes it at depth 0.
 let private regionEnd (start: Node) : Node =
     let mutable depth = 1
     let mutable cursor = Native.nextOrNull start
@@ -697,11 +695,27 @@ let private keyText (options: DumpOptions) (key: obj) =
     else
         format options [] 1 key
 
+let rec private rootName (nodes: DumpNode array) =
+    nodes
+    |> Array.tryPick (function
+        | Element (tag, _, _, _) -> Some tag
+        | Instance (_, children) -> Some (rootName children)
+        | _ -> None)
+    |> Option.defaultValue "fragment"
+
+let private selectedView (nodes: DumpNode array) =
+    nodes
+    |> Array.tryPick (function
+        | Instance (instance, children) -> Some (rootName children + "#" + instance.Hash)
+        | _ -> None)
+    |> Option.defaultValue (rootName nodes)
+
 /// <summary>The dump nodes of the siblings from <c>first</c> up to, not including, <c>until</c> (null for the last sibling).</summary>
 let rec private walk (options: DumpOptions) (prefix: string ref) (first: Node) (until: Node) : DumpNode array =
     let nodes = ResizeArray<DumpNode>()
     let mutable cursor = first
     let inheritedPrefix = prefix.Value
+    let mutable mountPrefixes = []
 
     while not (isNull (box cursor))
           && not (obj.ReferenceEquals (cursor, until)) do
@@ -712,7 +726,14 @@ let rec private walk (options: DumpOptions) (prefix: string ref) (first: Node) (
         match probe with
         | Some (Inspect.MountProbe (_, _, _, mountPrefix, _) as mount) ->
             checkFlushing mount
+            mountPrefixes <- prefix.Value :: mountPrefixes
             prefix.Value <- mountPrefix
+        | _ when isComment cursor && dataOf cursor = "ranvier:end" ->
+            match mountPrefixes with
+            | parent :: rest ->
+                prefix.Value <- parent
+                mountPrefixes <- rest
+            | [] -> ()
         | _ -> ()
 
         let regionChildren () =
@@ -789,7 +810,7 @@ let rec private walk (options: DumpOptions) (prefix: string ref) (first: Node) (
                             with _ ->
                                 "?"
 
-                        "#" + hash
+                        rootName children + "#" + hash
 
                 nodes.Add (
                     Arm (
@@ -842,7 +863,9 @@ let rec private walk (options: DumpOptions) (prefix: string ref) (first: Node) (
                             leaving cursor
                             && not (leaving (Native.parentOrNull cursor))
                         then
-                            Leaving dump
+                            match Inspect.rowKeyOf cursor with
+                            | Some key -> LeavingRow (keyText options key, dump)
+                            | None -> Leaving dump
                         else
                             dump
 
@@ -935,6 +958,39 @@ let private tracePaths (options: DumpOptions) (graph: Graph) =
     Map.empty<string, string>
 #endif
 
+let private captureHead (options: DumpOptions) (root: Node) =
+    if options.Head then
+        [|
+            match documentTitle root with
+            | null
+            | "" -> ()
+            | title -> yield "title  key=title", quote options title
+
+            for element in markedHead root ->
+                let attributes = attributesOf element
+
+                let key =
+                    attributes
+                    |> Array.tryFind (fun (name, _) -> name = "data-ranvier-head")
+                    |> Option.map snd
+                    |> Option.defaultValue ""
+
+                let rest =
+                    attributes
+                    |> Array.filter (fun (name, _) -> name <> "data-ranvier-head")
+                    |> Array.map (fun (name, value) -> name + "=" + quote options value)
+
+                let text =
+                    if tagOf element = "title" then
+                        quote options (Native.textContentOf element)
+                    else
+                        String.Join (" ", rest)
+
+                tagOf element + "  key=" + key, text
+        |]
+    else
+        [||]
+
 /// <summary>The dump of the nodes under <c>root</c>, with the probes registered on them.</summary>
 let captureNode (options: DumpOptions) (graph: Graph) (root: Node) : Dump =
     if not graph.IsOnGraphThread then
@@ -954,38 +1010,7 @@ let captureNode (options: DumpOptions) (graph: Graph) (root: Node) : Dump =
             Options = options
             TracePaths = tracePaths options graph
             Root = walk options (ref "") first Unchecked.defaultof<_>
-            Head =
-                if options.Head then
-                    [|
-                        match documentTitle root with
-                        | null
-                        | "" -> ()
-                        | title -> yield "title", quote options title
-
-                        for element in markedHead root ->
-                            let attributes = attributesOf element
-
-                            let key =
-                                attributes
-                                |> Array.tryFind (fun (name, _) -> name = "data-ranvier-head")
-                                |> Option.map snd
-                                |> Option.defaultValue ""
-
-                            let rest =
-                                attributes
-                                |> Array.filter (fun (name, _) -> name <> "data-ranvier-head")
-                                |> Array.map (fun (name, value) -> name + "=" + quote options value)
-
-                            let text =
-                                if tagOf element = "title" then
-                                    quote options (Native.textContentOf element)
-                                else
-                                    String.Join (" ", rest)
-
-                            tagOf element + "  key=" + key, text
-                    |]
-                else
-                    [||]
+            Head = captureHead options root
         })
 
 /// <summary>The dump of <c>mounted</c>; raises <c>InvalidOperationException</c> during a flush or off the graph's thread.</summary>
@@ -1016,22 +1041,20 @@ let capture (options: DumpOptions) (mounted: Mounting.Mounted) : Dump =
 
     graph.Untrack (fun () ->
         let root = walk options (ref "") first last
-        let head = captureNode options graph (Native.parentOrNull first)
 
         {
             Mount = header
             Options = options
             TracePaths = tracePaths options graph
             Root = root
-            Head = head.Head
+            Head = captureHead options first
         })
 
 let private fieldLine (options: DumpOptions) (paths: Map<string, string>) (field: FieldDump) =
     field.Name
     + "  "
     + field.Kind
-    + "  "
-    + field.Value
+    + (if field.Kind = field.Value then "" else "  " + field.Value)
     + (if options.NodeIds && field.Node <> "" then
            "  node="
            + field.Node
@@ -1143,11 +1166,15 @@ let textWith (options: DumpOptions) (dump: Dump) : string =
 
                 for child in children do
                     match child with
-                    | Leaving _ -> ()
+                    | Leaving _
+                    | LeavingRow _ -> ()
                     | _ -> node (depth + 2) child
 
                 for child in children do
                     match child with
+                    | LeavingRow (key, inner) ->
+                        lines.Add (pad + "  leaving  key=" + key)
+                        node (depth + 2) inner
                     | Leaving inner ->
                         lines.Add (pad + "  leaving")
                         node (depth + 2) inner
@@ -1174,6 +1201,8 @@ let textWith (options: DumpOptions) (dump: Dump) : string =
                 + path
                 + "  state="
                 + state.State
+                + "  view="
+                + selectedView children
                 + (if state.State = "pending" then
                        "  waiting=" + string state.Waiting
                    else
@@ -1197,6 +1226,12 @@ let textWith (options: DumpOptions) (dump: Dump) : string =
 
             if lines.Count > before then
                 lines[before] <- lines[before] + "  leaving"
+        | LeavingRow (key, inner) ->
+            let before = lines.Count
+            node depth inner
+
+            if lines.Count > before then
+                lines[before] <- lines[before] + "  leaving  key=" + key
         | Truncated count -> lines.Add (pad + "… " + string count + " lines omitted")
 
     let depth =
@@ -1215,7 +1250,6 @@ let textWith (options: DumpOptions) (dump: Dump) : string =
         for key, value in dump.Head do
             lines.Add ("  " + key + "  " + value)
 
-    // The cut: whole lines within MaxChars, then the count of the lines left out.
     let output = Text.StringBuilder ()
     let mutable index = 0
     let mutable fits = true
@@ -1402,6 +1436,12 @@ let json (dump: Dump) : string =
             "{\"kind\":\"leaving\",\"node\":"
             + node inner
             + "}"
+        | LeavingRow (key, inner) ->
+            "{\"kind\":\"leaving\",\"key\":"
+            + jsonString key
+            + ",\"node\":"
+            + node inner
+            + "}"
         | Truncated count ->
             "{\"kind\":\"truncated\",\"lines\":"
             + string count
@@ -1499,8 +1539,8 @@ let nodeAt (mounted: Mounting.Mounted, path: string) : INode option =
         find (Native.nextOrNull first)
 
 /// <summary>
-/// The first 40 lines of the dump of the nodes under <c>root</c>, after a line break; empty when no mount is registered
-/// under <c>root</c> or beside one of its ancestors, off the mount's graph thread, and during a flush.
+/// Up to 40 lines from the nearest enclosing instance, or the nodes under <c>root</c>, after a line break.
+/// Returns empty outside a registered mount, off its graph thread, or during a flush.
 /// </summary>
 let excerpt (root: Node) : string =
     let graphAt (node: Node) =
@@ -1555,8 +1595,53 @@ let excerpt (root: Node) : string =
         ""
     else
         try
-            let lines =
-                (textWith DumpOptions.defaults (captureNode DumpOptions.defaults graph root)).Split '\n'
+            let rec prefixAt (node: Node) =
+                let parent = Native.parentOrNull node
+
+                if isNull (box parent) then
+                    ""
+                else
+                    let mutable cursor = Native.firstChildOf parent
+                    let mutable mounts = []
+
+                    while not (isNull (box cursor))
+                          && not (obj.ReferenceEquals (cursor, node)) do
+                        match Inspect.probeOf cursor with
+                        | Some (Inspect.MountProbe (_, _, _, prefix, _) as mount) ->
+                            checkFlushing mount
+                            mounts <- prefix :: mounts
+                        | _ when isComment cursor && dataOf cursor = "ranvier:end" ->
+                            mounts <-
+                                match mounts with
+                                | _ :: rest -> rest
+                                | [] -> []
+                        | _ -> ()
+
+                        cursor <- Native.nextOrNull cursor
+
+                    match mounts with
+                    | prefix :: _ -> prefix
+                    | [] -> prefixAt parent
+
+            let options =
+                { DumpOptions.defaults with
+                    Head = false
+                }
+
+            let captured =
+                match Inspect.enclosingInstanceOf root with
+                | None -> captureNode options graph root
+                | Some (instance, finish) ->
+                    graph.Untrack (fun () ->
+                        {
+                            Mount = ""
+                            Root = walk options (ref (prefixAt instance)) instance finish
+                            Head = [||]
+                            Options = options
+                            TracePaths = Map.empty
+                        })
+
+            let lines = (text captured).Split '\n'
 
             "\n" + String.Join ("\n", Array.truncate 40 lines)
         with :? InvalidOperationException ->

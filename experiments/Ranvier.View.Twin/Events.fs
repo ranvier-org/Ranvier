@@ -188,7 +188,6 @@ module Events =
     let listen (node: TwinNode) (eventType: string) (capture: bool) (callback: obj -> unit) : unit -> unit =
         listenWith node eventType capture false false callback
 
-    // Runs the node's listeners of the event's type whose capture flag is `capture`, in registration order.
     let private invoke (node: TwinNode) (event: TwinEvent) (phase: int) (capture: bool) (failures: ResizeArray<exn>) =
         match listeners.TryGetValue node with
         | true, list ->
@@ -339,7 +338,6 @@ module Events =
         | "label" -> true
         | _ -> false
 
-    // The click's activation target: the clicked element or its nearest ancestor with activation behaviour.
     let private activationTargetOf (clicked: TwinElement) : TwinElement =
         let mutable cursor: TwinNode = clicked
         let mutable found: TwinElement = null

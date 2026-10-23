@@ -29,11 +29,11 @@ instance Board  path=r-0  hash=ab61253f
           Title  signal  "Rest"
         <li class="card">
           ="Rest"
-  arm  path=r-0.r1  key="view"  def=#7336d24d
+  arm  path=r-0.r1  key="view"  def=section#7336d24d
     instance unit  path=r-0.r1.1  hash=7336d24d
     <section>
       "view"
-  boundary  path=r-0.r2  state=pending  waiting=1
+  boundary  path=r-0.r2  state=pending  view=p#11e65dcc  waiting=1
     instance unit  path=r-0.r2.1  hash=11e65dcc
     <p>
       "Loading"
