@@ -1,7 +1,3 @@
-// The five pages and the index as one multi-page app. The story page is served as the document the .NET server rendered
-// with Server.renderDocument (npm run server writes generated-server/story.html), so the client hydrates it; without that
-// file the page's own index.html is served and the story mounts on the client. Only npm run server writes the render:
-// after an edit to src/Story.fs, re-run it, or strict hydration reports the stale document.
 import { defineConfig } from "vite";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -16,7 +12,9 @@ const serverRender = {
   transformIndexHtml: {
     order: "pre",
     handler(html, context) {
-      if (!context.path.includes("/story/") || !existsSync(served)) return html;
+      if (!context.path.includes("/story/")) return html;
+      if (!existsSync(served))
+        throw new Error("Missing generated-server/story.html: run npm run server before serving Story, or npm run build for a complete build");
       if (statSync(served).mtimeMs < statSync(source).mtimeMs)
         console.warn("generated-server/story.html is older than src/Story.fs: run npm run server");
       return readFileSync(served, "utf8");

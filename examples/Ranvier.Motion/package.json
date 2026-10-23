@@ -11,12 +11,13 @@
     "server": "dotnet run --project Server/ServerChecks.fsproj -c Release -- --write generated-server/story.html",
     "dev": "npm run server && dotnet fickl watch Motion.fsproj --outDir generated --configuration Release --run vite --host 127.0.0.1",
     "serve:test": "vite --host 127.0.0.1 --port 5179 --strictPort",
-    "build": "npm run compile && vite build",
+    "build": "npm run compile && npm run server && vite build",
     "size": "npm run build && node size.mjs",
     "size:only": "vite build && node size.mjs",
     "test:dom": "npm run compile:tests && node --test tests/pages.test.mjs",
     "test:browser": "npm run compile && npm run server && playwright test",
-    "test": "npm run test:dom && npm run test:browser"
+    "test:build": "node --test tests/build.test.mjs",
+    "test": "npm run test:build && npm run test:dom && npm run test:browser"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",
