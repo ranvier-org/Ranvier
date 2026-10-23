@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { isAbsolute, resolve, sep } from "node:path";
-import { exec, execFile } from "node:child_process";
+import { spawn, execFile } from "node:child_process";
 
 export function readPages(root) {
   const manifest = resolve(root, "generated-pages/pages.json");
@@ -57,15 +57,25 @@ export function createRebuilder(rebuild, reload, cancel = async () => {}) {
 }
 
 function compilePages(root) {
-  let child;
+  const child = spawn("npm run compile", {
+    cwd: root,
+    shell: true,
+    stdio: ["ignore", "pipe", "pipe"],
+    windowsHide: true,
+    detached: process.platform !== "win32"
+  });
+  let stdout = "";
+  let stderr = "";
+  child.stdout.on("data", data => { stdout = (stdout + data).slice(-131072); });
+  child.stderr.on("data", data => { stderr = (stderr + data).slice(-131072); });
   const promise = new Promise((resolve, reject) => {
-    child = exec("npm run compile", {
-      cwd: root,
-      maxBuffer: 16 * 1024 * 1024,
-      windowsHide: true,
-      detached: process.platform !== "win32"
-    }, (error, stdout, stderr) => {
-      if (error) { error.stderr = stderr; reject(error); }
+    child.once("error", reject);
+    child.once("close", (code, signal) => {
+      if (code !== 0) {
+        const error = new Error(`npm run compile failed (${signal || code}):\n${stderr || stdout}`);
+        error.stderr = stderr;
+        reject(error);
+      }
       else resolve(stdout);
     });
   });

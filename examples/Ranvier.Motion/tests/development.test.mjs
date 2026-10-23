@@ -62,11 +62,13 @@ test("closing cancels an active build and discards queued edits without reloadin
   assert.deepEqual(events, ["compile", "cancel"]);
 });
 
-function fileCreated(path) {
-  return new Promise(resolve => {
-    const watcher = watch(join(path, ".."), () => {
+function fileCreated(path, signal) {
+  return new Promise((resolve, reject) => {
+    signal.throwIfAborted();
+    const watcher = watch(join(path, ".."), { signal }, () => {
       if (existsSync(path)) { watcher.close(); resolve(); }
     });
+    signal.addEventListener("abort", () => reject(signal.reason), { once: true });
     if (existsSync(path)) { watcher.close(); resolve(); }
   });
 }
@@ -85,8 +87,10 @@ test("the dev server gates HTML on rebuilds, reports failure and serves fresh ou
     import { watch, readFileSync, writeFileSync } from "node:fs";
     const value = readFileSync("src/Page.fs", "utf8");
     if (value === "failure") { console.error("fixture generation failed"); process.exit(23); }
+    const deadline = setTimeout(() => { writeFileSync("watchdog-expired", "compile was not terminated"); process.exit(124); }, 10000);
     const watcher = watch(".", (_, name) => {
       if (name !== "release") return;
+      clearTimeout(deadline);
       watcher.close();
       writeFileSync("index.html", "<html><body>" + value + "</body></html>");
       writeFileSync("generated/client.js", 'export const value = "' + value + '";');
@@ -104,13 +108,14 @@ test("the dev server gates HTML on rebuilds, reports failure and serves fresh ou
   const rebuild = async value => {
     rmSync(join(directory, "started"), { force: true });
     rmSync(join(directory, "release"), { force: true });
-    const changed = new Promise(resolve => {
+    const changed = new Promise((resolve, reject) => {
       const listener = file => { if (file.replaceAll("\\", "/") === page.replaceAll("\\", "/")) { server.watcher.off("change", listener); resolve(); } };
       server.watcher.on("change", listener);
+      t.signal.addEventListener("abort", () => { server.watcher.off("change", listener); reject(t.signal.reason); }, { once: true });
     });
     writeFileSync(page, value);
     await changed;
-    if (value !== "failure") await fileCreated(join(directory, "started"));
+    if (value !== "failure") await fileCreated(join(directory, "started"), t.signal);
   };
   await rebuild("Fresh page");
   const pending = fetch(address);
@@ -134,6 +139,7 @@ test("the dev server gates HTML on rebuilds, reports failure and serves fresh ou
   const childPid = Number(readFileSync(join(directory, "child-pid"), "utf8"));
   server.watcher.emit("change", page);
   await server.close();
+  assert.equal(existsSync(join(directory, "watchdog-expired")), false, "server.close must terminate its compiler before the fixture's safety deadline");
   assert.throws(() => process.kill(childPid, 0), { code: "ESRCH" });
   assert.match(readFileSync(join(directory, "index.html"), "utf8"), /Recovered page/);
 });
