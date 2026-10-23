@@ -67,7 +67,6 @@ let nextSeed (seed: int) =
 let unitOf (seed: int) =
     float (seed % 10000) / 10000.
 
-/// <summary>Schedules browser setup after hydration; disposing before the microtask cancels it.</summary>
 [<Emit("queueMicrotask($0)")>]
 let private queue (callback: unit -> unit) : unit = jsNative
 

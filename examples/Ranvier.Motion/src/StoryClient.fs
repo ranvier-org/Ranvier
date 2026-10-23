@@ -1,4 +1,4 @@
-/// <summary>The story page's browser entry: hydrates the server's document strictly, or mounts when the page was not served.</summary>
+/// <summary>Story mount adapters and controls exposed to the browser tests.</summary>
 module StoryClient
 
 open Fable.Core
