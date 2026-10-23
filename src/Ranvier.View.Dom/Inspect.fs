@@ -28,6 +28,72 @@ and [<NoEquality; NoComparison>] BoundaryProbeState =
 let private table = Native.newWeakMap ()
 let private instances = Native.newWeakMap ()
 let private rowKeys = Native.newWeakMap ()
+let private instanceRanges = Native.newWeakMap ()
+
+/// <summary>Registers the inclusive root span of an instance until cleanup.</summary>
+let registerInstanceRange (first: Node) (last: Node) =
+    let entry = [| first; last |]
+    let entries = Native.get<Node, Node array array> instanceRanges first
+    Native.set instanceRanges first (Array.append (if isNull entries then [||] else entries) [| entry |])
+
+    fun () ->
+        let entries = Native.get<Node, Node array array> instanceRanges first
+
+        if not (isNull entries) then
+            let remaining =
+                entries
+                |> Array.filter (fun current -> not (obj.ReferenceEquals (current, entry)))
+
+            if remaining.Length = 0 then
+                Native.delete instanceRanges first
+            else
+                Native.set instanceRanges first remaining
+
+/// <summary>The nearest instance's first root and current end-exclusive sibling around <c>target</c>.</summary>
+let rec enclosingInstanceOf (target: Node) : (Node * Node) option =
+    if isNull (box target) then
+        None
+    else
+        let parent = Native.parentOrNull target
+
+        let mutable cursor =
+            if isNull (box parent) then
+                target
+            else
+                Native.firstChildOf parent
+
+        let mutable found = None
+        let mutable searching = true
+
+        while searching && not (isNull (box cursor)) do
+            let entries = Native.get<Node, Node array array> instanceRanges cursor
+
+            if not (isNull entries) then
+                for entry in entries do
+                    let mutable root = entry[0]
+                    let mutable contains = false
+                    let mutable within = true
+
+                    while within && not (isNull (box root)) do
+                        if obj.ReferenceEquals (root, target) then
+                            contains <- true
+
+                        if obj.ReferenceEquals (root, entry[1]) then
+                            within <- false
+                        else
+                            root <- Native.nextOrNull root
+
+                    if contains then
+                        found <- Some (entry[0], Native.nextOrNull entry[1])
+
+            if obj.ReferenceEquals (cursor, target) then
+                searching <- false
+            else
+                cursor <- Native.nextOrNull cursor
+
+        match found with
+        | Some _ -> found
+        | None -> enclosingInstanceOf parent
 
 /// <summary>Retains a row's key at its first node through its exit hold.</summary>
 let rememberRowKey (node: Node) (key: obj) =

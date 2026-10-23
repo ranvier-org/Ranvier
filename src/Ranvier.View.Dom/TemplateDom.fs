@@ -1673,6 +1673,7 @@ let private childRootPaths = Native.newWeakMap ()
 
 let private instanceRootPaths (root: TemplateNode) =
     let paths = ResizeArray<int array>()
+    let ends = ResizeArray<int array>()
 
     let rec siblings (nodes: TemplateNode array) (parent: int list) =
         let mutable index = 0
@@ -1686,6 +1687,7 @@ let private instanceRootPaths (root: TemplateNode) =
             | ChildNode (definition, _) ->
                 let child = paths.Count
                 paths.Add null
+                ends.Add null
                 write (child :: owners) definition.Root
             | HeadNode _
             | TextNode "" -> ()
@@ -1705,6 +1707,13 @@ let private instanceRootPaths (root: TemplateNode) =
                     if isNull paths[owner] then
                         paths[owner] <- List.rev path |> List.toArray
 
+                    let last =
+                        match other with
+                        | RegionNode _ -> (index + 1) :: parent
+                        | _ -> path
+
+                    ends[owner] <- List.rev last |> List.toArray
+
                 match other with
                 | ElementNode (_, _, _, _, _, _, children) -> siblings children path
                 | _ -> ()
@@ -1721,11 +1730,11 @@ let private instanceRootPaths (root: TemplateNode) =
             write [] node
 
     siblings [| root |] []
-    paths.ToArray ()
+    Array.zip (paths.ToArray ()) (ends.ToArray ())
 
 let private instanceRoots (template: TemplateComponent) (clone: Node) (roots: Node array) =
     let paths =
-        match Native.get<TemplateComponent, int array array> childRootPaths template with
+        match Native.get<TemplateComponent, (int array * int array) array> childRootPaths template with
         | null ->
             let paths = instanceRootPaths template.Root
             Native.set childRootPaths template paths
@@ -1744,8 +1753,7 @@ let private instanceRoots (template: TemplateComponent) (clone: Node) (roots: No
 
         node
 
-    paths
-    |> Array.map (fun path ->
+    let resolve (path: int array) =
         if isNull path then
             noNode
         else
@@ -1760,7 +1768,10 @@ let private instanceRoots (template: TemplateComponent) (clone: Node) (roots: No
             for index in 1 .. path.Length - 1 do
                 node <- siblingAt (Native.firstChildOf node) path[index]
 
-            node)
+            node
+
+    paths
+    |> Array.map (fun (first, last) -> resolve first, resolve last)
 #endif
 
 /// <summary>
@@ -1833,6 +1844,18 @@ let rec internal materialise
 
     if not (isNull (box first)) then
         Api.onCleanup (Inspect.register first (Inspect.InstanceProbe (template, instance, Api.getOwner (), path)))
+
+        let last =
+            if not (isNull roots) then
+                at roots (roots.Length - 1)
+            elif clone.nodeType = 11.0 then
+                clone.lastChild
+                |> Option.map (fun node -> node :> Node)
+                |> Option.defaultValue noNode
+            else
+                clone
+
+        Api.onCleanup (Inspect.registerInstanceRange first last)
 #endif
 
     let childBase =
@@ -1852,12 +1875,14 @@ let rec internal materialise
                 let childInstance =
                     setUpChild services child (partInstance state childBase child.Owner)
 
-                let first = at childRoots k
+                let first, last = at childRoots k
 
                 if not (isNull (box first)) then
                     Api.onCleanup (
                         Inspect.register first (Inspect.InstanceProbe (child.Definition, childInstance, Api.getOwner (), identity.Path ()))
                     )
+
+                    Api.onCleanup (Inspect.registerInstanceRange first last)
 
                 childInstance
 #else
