@@ -69,6 +69,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 82,985 | 127,180 | 1,734,056 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 83,131 | 127,176 | 1,734,023 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 83,047 | 127,156 | 1,734,026 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 83,081 | 127,141 | 1,734,016 |
 
 ## app-table
 
@@ -139,6 +140,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 4,416,178 | 9,203,633 | 107,416,196 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 4,416,256 | 9,087,879 | 107,416,006 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 4,416,141 | 9,203,967 | 107,301,745 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 4,416,278 | 9,320,024 | 107,301,725 |
 
 ## async-recover
 
@@ -209,6 +211,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 138,968 | 39,717 | 440,660 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 139,064 | 39,725 | 440,649 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 139,064 | 39,721 | 440,651 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 139,064 | 39,718 | 440,650 |
 
 ## async-resolve
 
@@ -279,6 +282,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 2,789,910 | 1,085,349 | 12,317,662 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 2,793,108 | 1,085,781 | 12,314,116 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 2,793,108 | 1,085,441 | 12,317,429 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 2,793,110 | 1,085,526 | 12,317,430 |
 
 ## chain
 
@@ -349,6 +353,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 
 ## chain-affinity
 
@@ -419,6 +424,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 2,549 | 3,067 | 2,496 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 2,549 | 3,067 | 2,496 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 2,549 | 3,067 | 2,496 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 2,549 | 3,067 | 2,496 |
 
 ## control
 
@@ -489,6 +495,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 74,709 | 833,847 | 2,589,489 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 74,709 | 833,849 | 2,597,161 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 74,709 | 833,906 | 2,597,154 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 74,709 | 833,760 | 2,597,060 |
 
 ## create
 
@@ -559,6 +566,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 13,575,486 | 2,875,678 | 2,532,380 | 2,131,775 | 4,003,088 | 33,868,647 | 49,467,552 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 13,466,086 | 2,859,678 | 2,532,363 | 2,131,942 | 4,003,018 | 33,868,366 | 49,400,878 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 13,450,061 | 2,859,678 | 2,548,363 | 2,131,658 | 4,003,277 | 33,868,220 | 49,400,934 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 13,465,945 | 2,859,679 | 2,532,363 | 2,131,573 | 4,002,853 | 33,868,016 | 49,401,172 |
 
 ## create-on
 
@@ -629,6 +637,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 2,958,500 | 4,147,452 | 54,424,919 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 2,910,501 | 4,147,618 | 54,424,700 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 2,910,484 | 4,147,730 | 54,424,672 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 2,910,484 | 4,147,316 | 54,424,712 |
 
 ## cutoff
 
@@ -699,6 +708,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 
 ## derive-effect
 
@@ -769,6 +779,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 765 | 768 | 16,102 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 765 | 768 | 16,102 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 765 | 768 | 16,102 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 765 | 768 | 16,102 |
 
 ## derive-on
 
@@ -839,6 +850,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 737 | 775 | 16,261 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 737 | 775 | 16,261 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 737 | 775 | 16,261 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 737 | 775 | 16,261 |
 
 ## dispose
 
@@ -909,6 +921,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 2,707,642 | 806,290 | 367,497 | 466,114 | 485,395 | 13,194,158 | 9,106,187 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 2,706,245 | 806,291 | 367,497 | 465,943 | 485,288 | 13,194,036 | 9,106,085 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 2,706,245 | 806,291 | 367,497 | 466,106 | 485,501 | 13,194,030 | 9,106,268 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 2,706,757 | 806,290 | 367,497 | 465,559 | 485,089 | 13,193,697 | 9,106,101 |
 
 ## dispose-on
 
@@ -979,6 +992,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 346,497 | 478,420 | 8,902,212 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 346,497 | 478,514 | 8,903,043 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 346,497 | 478,551 | 8,902,833 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 346,497 | 478,276 | 8,902,420 |
 
 ## editable-edit
 
@@ -1049,6 +1063,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 180,106 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 180,106 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 180,106 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 180,106 |
 
 ## editable-upstream
 
@@ -1119,6 +1134,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 231,255 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 231,255 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 231,255 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 231,255 |
 
 ## fail-recompute
 
@@ -1189,6 +1205,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 65,106 | 1,366 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 65,106 | 1,366 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 65,106 | 1,366 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 65,106 | 1,366 |
 
 ## flight
 
@@ -1259,6 +1276,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 
 ## keyed-insert
 
@@ -1329,6 +1347,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 1,921,809 | 53,951 | 54,950 | 3,218,665 | 661,723 | 176,613 | 44,864,609 | 2,634,991 | 2,654,373 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 1,921,793 | 53,951 | 54,932 | 3,218,704 | 661,687 | 176,495 | 44,863,340 | 2,634,975 | 2,654,389 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 1,921,825 | 53,951 | 54,960 | 3,218,696 | 661,696 | 176,329 | 44,869,087 | 2,634,979 | 2,654,396 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 1,922,001 | 53,981 | 55,041 | 3,218,693 | 661,653 | 176,513 | 44,869,054 | 2,634,996 | 2,654,375 |
 
 ## keyed-remove
 
@@ -1399,6 +1418,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 1,920,753 | 43,611 | 45,266 | 3,245,062 | 593,221 | 604,966 | 44,807,461 | 1,924,876 | 1,958,823 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 1,920,738 | 43,611 | 45,252 | 3,245,047 | 593,233 | 604,841 | 44,804,863 | 1,924,920 | 1,958,870 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 1,920,772 | 43,611 | 45,283 | 3,245,026 | 593,199 | 604,949 | 44,804,866 | 1,924,920 | 1,958,915 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 1,920,940 | 43,641 | 45,362 | 3,245,009 | 593,219 | 604,990 | 44,804,921 | 1,924,909 | 1,958,800 |
 
 ## keyed-swap
 
@@ -1469,6 +1489,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 1,973,432 | 46,161 | 46,915 | 3,562,257 | 149,095 | 511,422 | 45,968,559 | 916,684 | 932,810 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 1,973,416 | 46,162 | 46,899 | 3,561,458 | 148,802 | 511,458 | 45,980,331 | 916,648 | 932,835 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 1,973,448 | 46,162 | 46,931 | 3,561,331 | 149,136 | 511,463 | 45,980,333 | 916,685 | 932,872 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 1,973,624 | 46,181 | 47,011 | 3,558,316 | 148,834 | 511,464 | 45,973,023 | 916,687 | 932,822 |
 
 ## mvu-dispatch
 
@@ -1539,6 +1560,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 58,261 | 772 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 58,261 | 772 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 58,261 | 772 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 58,261 | 772 |
 
 ## project-chain
 
@@ -1609,6 +1631,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 1,070,363 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 1,070,280 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 1,070,263 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 1,070,385 |
 
 ## project-churn
 
@@ -1679,6 +1702,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 36,538 | 34,374 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 36,506 | 34,328 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 36,506 | 34,326 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 36,490 | 34,326 |
 
 ## project-edit
 
@@ -1749,6 +1773,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 50,431 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 50,431 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 50,431 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 50,415 |
 
 ## project-reorder
 
@@ -1819,6 +1844,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 779,163 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 779,148 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 779,148 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 779,147 |
 
 ## server-render
 
@@ -1889,6 +1915,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 675,825 | 1,131,028 | 9,832,638 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 675,724 | 1,131,008 | 9,833,970 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 675,756 | 1,130,374 | 9,834,088 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 677,319 | 1,130,889 | 9,833,171 |
 
 ## shape-diamond
 
@@ -1959,6 +1986,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 59,899 | 79,968 | 1,763,357 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 59,899 | 79,968 | 1,763,357 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 59,899 | 79,968 | 1,763,357 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 59,899 | 79,968 | 1,763,357 |
 
 ## shape-dynamic
 
@@ -2029,6 +2057,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 82,921 | 107,035 | 2,006,147 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 82,921 | 107,035 | 2,006,148 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 82,921 | 107,036 | 2,006,148 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 82,921 | 107,035 | 2,006,148 |
 
 ## stream-burst-1
 
@@ -2099,6 +2128,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 1,974 | 1,572 | 2,491 | 4,671 | 3,644 | 13,372 | 47,201 | 45,417 | 55,168 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 1,974 | 1,572 | 2,490 | 4,672 | 3,644 | 13,370 | 47,202 | 45,417 | 55,171 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 1,974 | 1,572 | 2,506 | 4,672 | 3,644 | 13,369 | 47,201 | 45,417 | 55,171 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 1,974 | 1,572 | 2,542 | 4,672 | 3,644 | 13,376 | 47,202 | 45,417 | 55,168 |
 
 ## stream-burst-16
 
@@ -2169,6 +2199,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 5,631 | 25,017 | 5,701 | 9,500 | 49,599 | 8,051 | 120,969 | 714,180 | 113,515 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 5,631 | 25,017 | 5,700 | 9,499 | 49,601 | 8,050 | 120,973 | 714,180 | 113,521 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 5,631 | 25,017 | 5,716 | 9,503 | 49,601 | 8,050 | 120,973 | 714,180 | 113,519 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 5,631 | 25,017 | 5,752 | 9,503 | 49,601 | 8,049 | 120,965 | 714,180 | 113,517 |
 
 ## stream-burst-256
 
@@ -2239,6 +2270,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 64,131 | 400,101 | 57,040 | 127,470 | 787,198 | 74,563 | 1,301,532 | 11,413,283 | 1,046,548 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 64,131 | 400,101 | 57,039 | 126,999 | 787,169 | 74,564 | 1,301,581 | 11,413,283 | 1,046,548 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 64,131 | 400,101 | 57,055 | 127,109 | 787,246 | 74,474 | 1,301,581 | 11,413,283 | 1,046,511 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 64,131 | 400,101 | 57,091 | 126,882 | 787,152 | 74,561 | 1,301,492 | 11,413,283 | 1,046,482 |
 
 ## stream-restart
 
@@ -2309,6 +2341,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 4,187 | 4,976 | 6,356 | 16,585 | 42,489 | 71,397 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 4,187 | 4,984 | 6,355 | 16,582 | 42,491 | 71,401 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 4,187 | 5,000 | 6,355 | 16,586 | 42,488 | 71,402 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 4,187 | 5,048 | 6,355 | 16,584 | 42,491 | 71,400 |
 
 ## timed-admit-both
 
@@ -2379,6 +2412,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 118,591 | 134,961 | 2,679,787 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 118,591 | 134,963 | 2,679,829 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 119,615 | 134,963 | 2,679,816 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 118,591 | 134,964 | 2,679,829 |
 
 ## timed-admit-debounce
 
@@ -2449,6 +2483,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 117,496 | 133,556 | 2,640,297 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 117,496 | 133,558 | 2,640,271 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 118,520 | 133,559 | 2,640,328 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 117,496 | 133,553 | 2,640,303 |
 
 ## timed-admit-first
 
@@ -2519,6 +2554,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 69,479 | 79,053 | 1,611,692 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 69,479 | 79,053 | 1,611,692 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 70,503 | 79,053 | 1,611,692 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 69,479 | 79,053 | 1,611,692 |
 
 ## timed-admit-last
 
@@ -2589,6 +2625,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 117,758 | 133,877 | 2,650,152 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 117,758 | 133,865 | 2,650,133 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 118,782 | 133,875 | 2,650,159 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 117,758 | 133,878 | 2,650,159 |
 
 ## timed-capture-both
 
@@ -2659,6 +2696,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 35,726 | 44,805 | 846,879 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 35,726 | 44,808 | 846,890 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 35,726 | 44,806 | 846,890 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 35,726 | 44,806 | 846,890 |
 
 ## timed-capture-debounce
 
@@ -2729,6 +2767,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 35,598 | 44,104 | 847,376 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 35,598 | 44,104 | 847,376 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 35,598 | 44,104 | 847,376 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 35,598 | 44,104 | 847,376 |
 
 ## timed-capture-first
 
@@ -2799,6 +2838,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 32,078 | 36,611 | 745,372 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 32,078 | 36,612 | 745,370 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 32,078 | 36,611 | 745,370 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 32,078 | 36,612 | 745,370 |
 
 ## timed-capture-last
 
@@ -2869,6 +2909,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 35,534 | 44,040 | 839,505 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 35,534 | 44,040 | 839,510 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 35,534 | 44,040 | 839,504 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 35,534 | 44,038 | 839,509 |
 
 ## update
 
@@ -2939,6 +2980,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 1,092,490 | 38,805 | 82,505 | 262,880 | 151,717 | 3,350,212 | 2,502,797 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 1,089,283 | 38,805 | 82,505 | 262,645 | 151,697 | 3,350,261 | 2,502,803 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 1,087,683 | 38,805 | 84,105 | 262,751 | 151,736 | 3,350,261 | 2,502,830 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 1,087,690 | 38,805 | 82,505 | 262,806 | 151,732 | 3,350,288 | 2,502,722 |
 
 ## update-on
 
@@ -3009,6 +3051,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 93,005 | 165,204 | 2,830,360 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 93,005 | 165,220 | 2,830,387 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 93,005 | 165,240 | 2,830,389 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 93,005 | 165,229 | 2,830,302 |
 
 ## work-form
 
@@ -3079,6 +3122,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 170,300 | 163,408 | 295,935 | 291,360 | 5,349,303 | 5,295,429 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 170,300 | 163,392 | 295,946 | 291,346 | 5,349,271 | 5,295,442 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 170,300 | 163,408 | 295,967 | 291,327 | 5,349,324 | 5,295,441 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 170,300 | 167,392 | 295,933 | 291,314 | 5,349,277 | 5,295,444 |
 
 ## work-status
 
@@ -3149,6 +3193,7 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 100,445 | 78,815 | 264,865 | 152,942 | 2,610,999 | 2,360,836 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 100,445 | 78,815 | 264,880 | 152,987 | 2,611,020 | 2,360,853 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 100,445 | 78,815 | 264,834 | 152,958 | 2,611,050 | 2,360,857 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 100,445 | 78,815 | 264,836 | 152,959 | 2,611,010 | 2,360,821 |
 
 ## work-value
 
@@ -3219,4 +3264,5 @@
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 107,571 | 119,470 | 265,089 | 279,924 | 2,595,692 | 2,920,158 |
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 107,569 | 119,469 | 265,045 | 279,896 | 2,595,673 | 2,920,170 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 107,569 | 119,469 | 265,068 | 279,928 | 2,595,680 | 2,920,190 |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 107,571 | 119,470 | 265,088 | 279,918 | 2,595,611 | 2,920,176 |
 
