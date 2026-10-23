@@ -5,6 +5,7 @@ import { createServer } from "vite";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, watch, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 
 function deferred() {
   let resolve;
@@ -73,6 +74,38 @@ function fileCreated(path, signal) {
   });
 }
 
+function assertTerminated(pid) {
+  try {
+    process.kill(pid, 0);
+  } catch (error) {
+    if (error.code === "ESRCH") return;
+    throw error;
+  }
+  if (process.platform === "linux") {
+    let stat;
+    try { stat = readFileSync(`/proc/${pid}/stat`, "utf8"); }
+    catch (error) { if (error.code === "ENOENT") return; throw error; }
+    assert.match(stat.slice(stat.lastIndexOf(")") + 2), /^[ZX] /, "the compiler must be exited or awaiting reaping");
+  } else {
+    assert.fail("the compiler process is still running");
+  }
+}
+
+async function waitForTermination(pid) {
+  const deadline = performance.now() + 2000;
+  while (true) {
+    try { assertTerminated(pid); return; }
+    catch (error) {
+      if (!(error instanceof assert.AssertionError) || performance.now() >= deadline) throw error;
+      await delay(10);
+    }
+  }
+}
+
+test("the termination check rejects a live process", () => {
+  assert.throws(() => assertTerminated(process.pid), assert.AssertionError);
+});
+
 test("the dev server gates HTML on rebuilds, reports failure and serves fresh output after recovery", { timeout: 30000 }, async t => {
   const root = fileURLToPath(new URL("../", import.meta.url));
   const directory = mkdtempSync(join(root, ".dev-test-"));
@@ -140,6 +173,6 @@ test("the dev server gates HTML on rebuilds, reports failure and serves fresh ou
   server.watcher.emit("change", page);
   await server.close();
   assert.equal(existsSync(join(directory, "watchdog-expired")), false, "server.close must terminate its compiler before the fixture's safety deadline");
-  assert.throws(() => process.kill(childPid, 0), { code: "ESRCH" });
+  await waitForTermination(childPid);
   assert.match(readFileSync(join(directory, "index.html"), "utf8"), /Recovered page/);
 });
