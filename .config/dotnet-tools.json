@@ -9,7 +9,7 @@
     }
     ,
     "fickl": {
-      "version": "0.3.0",
+      "version": "0.5.3",
       "commands": [ "fickl" ],
       "rollForward": false
     }
