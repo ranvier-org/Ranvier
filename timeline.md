@@ -67,6 +67,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 82,998 | 127,188 | 1,733,954 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 83,003 | 127,164 | 1,732,378 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 82,985 | 127,180 | 1,734,056 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 83,131 | 127,176 | 1,734,023 |
 
 ## app-table
 
@@ -135,6 +136,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 4,416,080 | 9,319,178 | 107,544,285 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 4,416,060 | 9,206,635 | 107,451,150 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 4,416,178 | 9,203,633 | 107,416,196 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 4,416,256 | 9,087,879 | 107,416,006 |
 
 ## async-recover
 
@@ -203,6 +205,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 138,968 | 39,715 | 440,654 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 138,968 | 39,718 | 440,651 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 138,968 | 39,717 | 440,660 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 139,064 | 39,725 | 440,649 |
 
 ## async-resolve
 
@@ -271,6 +274,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 2,789,910 | 1,086,015 | 12,314,010 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 2,789,909 | 1,085,692 | 12,313,980 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 2,789,910 | 1,085,349 | 12,317,662 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 2,793,108 | 1,085,781 | 12,314,116 |
 
 ## chain
 
@@ -339,6 +343,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 
 ## chain-affinity
 
@@ -407,6 +412,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 2,549 | 3,067 | 2,496 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 2,549 | 3,067 | 2,496 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 2,549 | 3,067 | 2,496 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 2,549 | 3,067 | 2,496 |
 
 ## control
 
@@ -475,6 +481,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 74,709 | 833,798 | 2,589,525 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 74,709 | 833,855 | 2,589,410 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 74,709 | 833,847 | 2,589,489 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 74,709 | 833,849 | 2,597,161 |
 
 ## create
 
@@ -543,6 +550,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 13,449,965 | 2,859,678 | 2,532,363 | 2,131,893 | 4,003,302 | 33,867,964 | 49,467,917 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 13,449,993 | 2,859,678 | 2,532,379 | 2,131,916 | 4,003,461 | 33,868,930 | 49,468,018 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 13,575,486 | 2,875,678 | 2,532,380 | 2,131,775 | 4,003,088 | 33,868,647 | 49,467,552 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 13,466,086 | 2,859,678 | 2,532,363 | 2,131,942 | 4,003,018 | 33,868,366 | 49,400,878 |
 
 ## create-on
 
@@ -611,6 +619,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 2,910,486 | 4,147,486 | 54,424,787 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 2,910,486 | 4,147,271 | 54,424,718 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 2,958,500 | 4,147,452 | 54,424,919 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 2,910,501 | 4,147,618 | 54,424,700 |
 
 ## cutoff
 
@@ -679,6 +688,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 
 ## derive-effect
 
@@ -747,6 +757,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 765 | 768 | 16,102 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 765 | 768 | 16,102 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 765 | 768 | 16,102 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 765 | 768 | 16,102 |
 
 ## derive-on
 
@@ -815,6 +826,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 737 | 775 | 16,261 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 737 | 775 | 16,261 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 737 | 775 | 16,261 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 737 | 775 | 16,261 |
 
 ## dispose
 
@@ -883,6 +895,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 2,706,242 | 806,291 | 367,497 | 466,065 | 485,358 | 13,192,394 | 9,105,869 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 2,706,248 | 806,291 | 367,497 | 466,108 | 484,997 | 13,193,620 | 9,106,178 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 2,707,642 | 806,290 | 367,497 | 466,114 | 485,395 | 13,194,158 | 9,106,187 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 2,706,245 | 806,291 | 367,497 | 465,943 | 485,288 | 13,194,036 | 9,106,085 |
 
 ## dispose-on
 
@@ -951,6 +964,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 346,497 | 478,687 | 8,902,464 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 346,497 | 478,339 | 8,902,557 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 346,497 | 478,420 | 8,902,212 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 346,497 | 478,514 | 8,903,043 |
 
 ## editable-edit
 
@@ -1019,6 +1033,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 180,106 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 180,106 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 180,106 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 180,106 |
 
 ## editable-upstream
 
@@ -1087,6 +1102,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 231,255 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 231,255 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 231,255 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 231,255 |
 
 ## fail-recompute
 
@@ -1155,6 +1171,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 65,106 | 1,366 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 65,106 | 1,366 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 65,106 | 1,366 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 65,106 | 1,366 |
 
 ## flight
 
@@ -1223,6 +1240,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 
 ## keyed-insert
 
@@ -1291,6 +1309,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 1,921,809 | 53,951 | 54,942 | 3,218,694 | 661,702 | 176,529 | 44,863,324 | 2,634,938 | 2,654,362 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 1,921,810 | 53,951 | 54,954 | 3,218,743 | 661,611 | 176,521 | 44,864,602 | 2,635,027 | 2,654,287 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 1,921,809 | 53,951 | 54,950 | 3,218,665 | 661,723 | 176,613 | 44,864,609 | 2,634,991 | 2,654,373 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 1,921,793 | 53,951 | 54,932 | 3,218,704 | 661,687 | 176,495 | 44,863,340 | 2,634,975 | 2,654,389 |
 
 ## keyed-remove
 
@@ -1359,6 +1378,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 1,920,749 | 43,611 | 45,268 | 3,245,069 | 593,201 | 605,029 | 44,798,430 | 1,924,844 | 1,958,927 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 1,920,751 | 43,611 | 45,266 | 3,245,041 | 593,443 | 604,930 | 44,807,441 | 1,925,025 | 1,958,921 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 1,920,753 | 43,611 | 45,266 | 3,245,062 | 593,221 | 604,966 | 44,807,461 | 1,924,876 | 1,958,823 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 1,920,738 | 43,611 | 45,252 | 3,245,047 | 593,233 | 604,841 | 44,804,863 | 1,924,920 | 1,958,870 |
 
 ## keyed-swap
 
@@ -1427,6 +1447,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 1,973,432 | 46,161 | 46,915 | 3,564,102 | 148,822 | 511,451 | 45,980,335 | 916,675 | 932,839 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 1,973,433 | 46,161 | 46,915 | 3,560,378 | 148,802 | 511,421 | 45,968,585 | 916,669 | 932,909 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 1,973,432 | 46,161 | 46,915 | 3,562,257 | 149,095 | 511,422 | 45,968,559 | 916,684 | 932,810 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 1,973,416 | 46,162 | 46,899 | 3,561,458 | 148,802 | 511,458 | 45,980,331 | 916,648 | 932,835 |
 
 ## mvu-dispatch
 
@@ -1495,6 +1516,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 58,261 | 772 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 58,261 | 772 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 58,261 | 772 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 58,261 | 772 |
 
 ## project-chain
 
@@ -1563,6 +1585,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 1,070,228 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 1,070,203 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 1,070,363 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 1,070,280 |
 
 ## project-churn
 
@@ -1631,6 +1654,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 36,474 | 34,310 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 36,474 | 34,310 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 36,538 | 34,374 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 36,506 | 34,328 |
 
 ## project-edit
 
@@ -1699,6 +1723,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 50,431 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 50,415 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 50,431 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 50,431 |
 
 ## project-reorder
 
@@ -1767,6 +1792,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 779,163 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 779,147 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 779,163 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 779,148 |
 
 ## server-render
 
@@ -1835,6 +1861,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 675,889 | 1,130,848 | 9,834,015 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 675,857 | 1,130,618 | 9,832,925 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 675,825 | 1,131,028 | 9,832,638 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 675,724 | 1,131,008 | 9,833,970 |
 
 ## shape-diamond
 
@@ -1903,6 +1930,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 59,899 | 79,968 | 1,763,357 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 59,899 | 79,968 | 1,763,357 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 59,899 | 79,968 | 1,763,357 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 59,899 | 79,968 | 1,763,357 |
 
 ## shape-dynamic
 
@@ -1971,6 +1999,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 82,921 | 107,035 | 2,006,147 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 82,921 | 107,035 | 2,006,147 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 82,921 | 107,035 | 2,006,147 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 82,921 | 107,035 | 2,006,148 |
 
 ## stream-burst-1
 
@@ -2039,6 +2068,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 1,974 | 1,572 | 2,491 | 4,672 | 3,644 | 13,370 | 47,200 | 45,417 | 55,167 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 1,974 | 1,572 | 2,491 | 4,670 | 3,644 | 13,369 | 47,199 | 45,415 | 55,167 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 1,974 | 1,572 | 2,491 | 4,671 | 3,644 | 13,372 | 47,201 | 45,417 | 55,168 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 1,974 | 1,572 | 2,490 | 4,672 | 3,644 | 13,370 | 47,202 | 45,417 | 55,171 |
 
 ## stream-burst-16
 
@@ -2107,6 +2137,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 5,631 | 25,017 | 5,701 | 9,500 | 49,599 | 8,051 | 120,973 | 714,180 | 113,522 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 5,631 | 25,017 | 5,701 | 9,503 | 49,600 | 8,051 | 120,964 | 714,182 | 113,516 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 5,631 | 25,017 | 5,701 | 9,500 | 49,599 | 8,051 | 120,969 | 714,180 | 113,515 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 5,631 | 25,017 | 5,700 | 9,499 | 49,601 | 8,050 | 120,973 | 714,180 | 113,521 |
 
 ## stream-burst-256
 
@@ -2175,6 +2206,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 64,131 | 400,101 | 57,040 | 127,437 | 787,211 | 74,566 | 1,301,581 | 11,413,283 | 1,046,550 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 64,131 | 400,101 | 57,040 | 127,380 | 787,196 | 74,492 | 1,301,512 | 11,413,284 | 1,046,550 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 64,131 | 400,101 | 57,040 | 127,470 | 787,198 | 74,563 | 1,301,532 | 11,413,283 | 1,046,548 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 64,131 | 400,101 | 57,039 | 126,999 | 787,169 | 74,564 | 1,301,581 | 11,413,283 | 1,046,548 |
 
 ## stream-restart
 
@@ -2243,6 +2275,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 4,187 | 4,976 | 6,359 | 16,582 | 42,491 | 71,400 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 4,187 | 4,976 | 6,360 | 16,583 | 42,485 | 71,392 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 4,187 | 4,976 | 6,356 | 16,585 | 42,489 | 71,397 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 4,187 | 4,984 | 6,355 | 16,582 | 42,491 | 71,401 |
 
 ## timed-admit-both
 
@@ -2311,6 +2344,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 118,591 | 134,961 | 2,679,800 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 118,591 | 134,962 | 2,679,788 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 118,591 | 134,961 | 2,679,787 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 118,591 | 134,963 | 2,679,829 |
 
 ## timed-admit-debounce
 
@@ -2379,6 +2413,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 117,496 | 133,557 | 2,640,271 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 117,496 | 133,557 | 2,640,296 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 117,496 | 133,556 | 2,640,297 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 117,496 | 133,558 | 2,640,271 |
 
 ## timed-admit-first
 
@@ -2447,6 +2482,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 69,479 | 79,052 | 1,611,692 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 69,479 | 79,052 | 1,611,692 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 69,479 | 79,053 | 1,611,692 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 69,479 | 79,053 | 1,611,692 |
 
 ## timed-admit-last
 
@@ -2515,6 +2551,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 117,758 | 133,874 | 2,650,132 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 117,758 | 133,877 | 2,650,178 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 117,758 | 133,877 | 2,650,152 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 117,758 | 133,865 | 2,650,133 |
 
 ## timed-capture-both
 
@@ -2583,6 +2620,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 35,726 | 44,807 | 846,878 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 35,726 | 44,807 | 846,880 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 35,726 | 44,805 | 846,879 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 35,726 | 44,808 | 846,890 |
 
 ## timed-capture-debounce
 
@@ -2651,6 +2689,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 35,598 | 44,104 | 847,376 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 35,598 | 44,103 | 847,377 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 35,598 | 44,104 | 847,376 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 35,598 | 44,104 | 847,376 |
 
 ## timed-capture-first
 
@@ -2719,6 +2758,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 32,078 | 36,612 | 745,370 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 32,078 | 36,610 | 745,372 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 32,078 | 36,611 | 745,372 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 32,078 | 36,612 | 745,370 |
 
 ## timed-capture-last
 
@@ -2787,6 +2827,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 35,534 | 44,040 | 839,504 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 35,534 | 44,039 | 839,506 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 35,534 | 44,040 | 839,505 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 35,534 | 44,040 | 839,510 |
 
 ## update
 
@@ -2855,6 +2896,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 1,087,690 | 38,805 | 82,505 | 262,748 | 151,696 | 3,350,391 | 2,502,797 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 1,087,690 | 38,805 | 82,505 | 262,602 | 151,640 | 3,350,442 | 2,502,786 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 1,092,490 | 38,805 | 82,505 | 262,880 | 151,717 | 3,350,212 | 2,502,797 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 1,089,283 | 38,805 | 82,505 | 262,645 | 151,697 | 3,350,261 | 2,502,803 |
 
 ## update-on
 
@@ -2923,6 +2965,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 93,005 | 165,242 | 2,830,394 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 93,005 | 165,220 | 2,830,339 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 93,005 | 165,204 | 2,830,360 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 93,005 | 165,220 | 2,830,387 |
 
 ## work-form
 
@@ -2991,6 +3034,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 170,300 | 163,392 | 295,967 | 291,360 | 5,349,282 | 5,295,421 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 170,300 | 163,392 | 295,894 | 291,316 | 5,349,236 | 5,295,387 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 170,300 | 163,408 | 295,935 | 291,360 | 5,349,303 | 5,295,429 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 170,300 | 163,392 | 295,946 | 291,346 | 5,349,271 | 5,295,442 |
 
 ## work-status
 
@@ -3059,6 +3103,7 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 100,445 | 78,815 | 264,818 | 152,949 | 2,611,023 | 2,360,832 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 100,445 | 78,815 | 264,823 | 152,943 | 2,610,963 | 2,360,836 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 100,445 | 78,815 | 264,865 | 152,942 | 2,610,999 | 2,360,836 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 100,445 | 78,815 | 264,880 | 152,987 | 2,611,020 | 2,360,853 |
 
 ## work-value
 
@@ -3127,4 +3172,5 @@
 | `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | 107,569 | 119,471 | 265,109 | 279,920 | 2,595,682 | 2,920,190 |
 | `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | 107,570 | 119,469 | 265,113 | 279,871 | 2,595,668 | 2,920,160 |
 | `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | 107,571 | 119,470 | 265,089 | 279,924 | 2,595,692 | 2,920,158 |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 107,569 | 119,469 | 265,045 | 279,896 | 2,595,673 | 2,920,170 |
 
