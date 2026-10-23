@@ -70,6 +70,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 83,131 | 127,176 | 1,734,023 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 83,047 | 127,156 | 1,734,026 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 83,081 | 127,141 | 1,734,016 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 83,132 | 127,079 | 1,734,045 |
 
 ## app-table
 
@@ -141,6 +142,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 4,416,256 | 9,087,879 | 107,416,006 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 4,416,141 | 9,203,967 | 107,301,745 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 4,416,278 | 9,320,024 | 107,301,725 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 4,416,231 | 9,203,874 | 107,694,957 |
 
 ## async-recover
 
@@ -212,6 +214,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 139,064 | 39,725 | 440,649 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 139,064 | 39,721 | 440,651 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 139,064 | 39,718 | 440,650 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 139,064 | 39,733 | 440,651 |
 
 ## async-resolve
 
@@ -283,6 +286,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 2,793,108 | 1,085,781 | 12,314,116 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 2,793,108 | 1,085,441 | 12,317,429 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 2,793,110 | 1,085,526 | 12,317,430 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 2,793,108 | 1,085,316 | 12,317,611 |
 
 ## chain
 
@@ -354,6 +358,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 13,035 | 318 | 2,450 | 4,491 | 3,179 | 72,782 | 66,618 |
 
 ## chain-affinity
 
@@ -425,6 +430,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 2,549 | 3,067 | 2,496 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 2,549 | 3,067 | 2,496 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 2,549 | 3,067 | 2,496 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 2,549 | 3,067 | 2,496 |
 
 ## control
 
@@ -496,6 +502,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 74,709 | 833,849 | 2,597,161 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 74,709 | 833,906 | 2,597,154 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 74,709 | 833,760 | 2,597,060 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 74,709 | 838,556 | 2,597,110 |
 
 ## create
 
@@ -567,6 +574,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 13,466,086 | 2,859,678 | 2,532,363 | 2,131,942 | 4,003,018 | 33,868,366 | 49,400,878 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 13,450,061 | 2,859,678 | 2,548,363 | 2,131,658 | 4,003,277 | 33,868,220 | 49,400,934 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 13,465,945 | 2,859,679 | 2,532,363 | 2,131,573 | 4,002,853 | 33,868,016 | 49,401,172 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 13,450,057 | 2,859,678 | 2,532,364 | 2,131,537 | 4,003,184 | 33,867,549 | 49,401,072 |
 
 ## create-on
 
@@ -638,6 +646,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 2,910,501 | 4,147,618 | 54,424,700 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 2,910,484 | 4,147,730 | 54,424,672 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 2,910,484 | 4,147,316 | 54,424,712 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 2,942,484 | 4,147,489 | 54,424,570 |
 
 ## cutoff
 
@@ -709,6 +718,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 
 ## derive-effect
 
@@ -780,6 +790,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 765 | 768 | 16,102 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 765 | 768 | 16,102 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 765 | 768 | 16,102 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 765 | 768 | 16,102 |
 
 ## derive-on
 
@@ -851,6 +862,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 737 | 775 | 16,261 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 737 | 775 | 16,261 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 737 | 775 | 16,261 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 769 | 775 | 16,261 |
 
 ## dispose
 
@@ -922,6 +934,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 2,706,245 | 806,291 | 367,497 | 465,943 | 485,288 | 13,194,036 | 9,106,085 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 2,706,245 | 806,291 | 367,497 | 466,106 | 485,501 | 13,194,030 | 9,106,268 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 2,706,757 | 806,290 | 367,497 | 465,559 | 485,089 | 13,193,697 | 9,106,101 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 2,707,643 | 806,291 | 367,497 | 466,319 | 485,204 | 13,193,892 | 9,106,272 |
 
 ## dispose-on
 
@@ -993,6 +1006,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 346,497 | 478,514 | 8,903,043 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 346,497 | 478,551 | 8,902,833 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 346,497 | 478,276 | 8,902,420 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 346,497 | 478,790 | 8,902,289 |
 
 ## editable-edit
 
@@ -1064,6 +1078,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 180,106 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 180,106 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 180,106 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 180,106 |
 
 ## editable-upstream
 
@@ -1135,6 +1150,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 231,255 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 231,255 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 231,255 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 231,255 |
 
 ## fail-recompute
 
@@ -1206,6 +1222,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 65,106 | 1,366 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 65,106 | 1,366 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 65,106 | 1,366 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 65,106 | 1,366 |
 
 ## flight
 
@@ -1277,6 +1294,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 
 ## keyed-insert
 
@@ -1348,6 +1366,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 1,921,793 | 53,951 | 54,932 | 3,218,704 | 661,687 | 176,495 | 44,863,340 | 2,634,975 | 2,654,389 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 1,921,825 | 53,951 | 54,960 | 3,218,696 | 661,696 | 176,329 | 44,869,087 | 2,634,979 | 2,654,396 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 1,922,001 | 53,981 | 55,041 | 3,218,693 | 661,653 | 176,513 | 44,869,054 | 2,634,996 | 2,654,375 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 1,921,809 | 53,951 | 54,946 | 3,218,650 | 661,698 | 176,436 | 44,869,121 | 2,634,987 | 2,654,332 |
 
 ## keyed-remove
 
@@ -1419,6 +1438,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 1,920,738 | 43,611 | 45,252 | 3,245,047 | 593,233 | 604,841 | 44,804,863 | 1,924,920 | 1,958,870 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 1,920,772 | 43,611 | 45,283 | 3,245,026 | 593,199 | 604,949 | 44,804,866 | 1,924,920 | 1,958,915 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 1,920,940 | 43,641 | 45,362 | 3,245,009 | 593,219 | 604,990 | 44,804,921 | 1,924,909 | 1,958,800 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 1,920,744 | 43,611 | 45,267 | 3,245,079 | 593,209 | 605,186 | 44,805,451 | 1,924,925 | 1,958,821 |
 
 ## keyed-swap
 
@@ -1490,6 +1510,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 1,973,416 | 46,162 | 46,899 | 3,561,458 | 148,802 | 511,458 | 45,980,331 | 916,648 | 932,835 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 1,973,448 | 46,162 | 46,931 | 3,561,331 | 149,136 | 511,463 | 45,980,333 | 916,685 | 932,872 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 1,973,624 | 46,181 | 47,011 | 3,558,316 | 148,834 | 511,464 | 45,973,023 | 916,687 | 932,822 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 1,973,432 | 46,162 | 46,915 | 3,563,272 | 148,799 | 511,460 | 45,980,314 | 916,709 | 932,874 |
 
 ## mvu-dispatch
 
@@ -1561,6 +1582,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 58,261 | 772 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 58,261 | 772 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 58,261 | 772 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 58,261 | 772 |
 
 ## project-chain
 
@@ -1632,6 +1654,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 1,070,280 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 1,070,263 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 1,070,385 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 1,070,279 |
 
 ## project-churn
 
@@ -1703,6 +1726,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 36,506 | 34,328 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 36,506 | 34,326 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 36,490 | 34,326 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 36,490 | 34,326 |
 
 ## project-edit
 
@@ -1774,6 +1798,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 50,431 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 50,431 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 50,415 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 50,431 |
 
 ## project-reorder
 
@@ -1845,6 +1870,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 779,148 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 779,148 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 779,147 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 779,164 |
 
 ## server-render
 
@@ -1916,6 +1942,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 675,724 | 1,131,008 | 9,833,970 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 675,756 | 1,130,374 | 9,834,088 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 677,319 | 1,130,889 | 9,833,171 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 675,756 | 1,130,590 | 9,833,904 |
 
 ## shape-diamond
 
@@ -1987,6 +2014,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 59,899 | 79,968 | 1,763,357 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 59,899 | 79,968 | 1,763,357 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 59,899 | 79,968 | 1,763,357 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 59,899 | 79,968 | 1,763,357 |
 
 ## shape-dynamic
 
@@ -2058,6 +2086,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 82,921 | 107,035 | 2,006,148 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 82,921 | 107,036 | 2,006,148 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 82,921 | 107,035 | 2,006,148 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 82,921 | 107,035 | 2,006,148 |
 
 ## stream-burst-1
 
@@ -2129,6 +2158,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 1,974 | 1,572 | 2,490 | 4,672 | 3,644 | 13,370 | 47,202 | 45,417 | 55,171 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 1,974 | 1,572 | 2,506 | 4,672 | 3,644 | 13,369 | 47,201 | 45,417 | 55,171 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 1,974 | 1,572 | 2,542 | 4,672 | 3,644 | 13,376 | 47,202 | 45,417 | 55,168 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 1,974 | 1,572 | 2,538 | 4,671 | 3,644 | 13,370 | 47,202 | 45,417 | 55,169 |
 
 ## stream-burst-16
 
@@ -2200,6 +2230,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 5,631 | 25,017 | 5,700 | 9,499 | 49,601 | 8,050 | 120,973 | 714,180 | 113,521 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 5,631 | 25,017 | 5,716 | 9,503 | 49,601 | 8,050 | 120,973 | 714,180 | 113,519 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 5,631 | 25,017 | 5,752 | 9,503 | 49,601 | 8,049 | 120,965 | 714,180 | 113,517 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 5,631 | 25,017 | 5,748 | 9,500 | 49,601 | 8,050 | 120,972 | 714,180 | 113,522 |
 
 ## stream-burst-256
 
@@ -2271,6 +2302,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 64,131 | 400,101 | 57,039 | 126,999 | 787,169 | 74,564 | 1,301,581 | 11,413,283 | 1,046,548 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 64,131 | 400,101 | 57,055 | 127,109 | 787,246 | 74,474 | 1,301,581 | 11,413,283 | 1,046,511 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 64,131 | 400,101 | 57,091 | 126,882 | 787,152 | 74,561 | 1,301,492 | 11,413,283 | 1,046,482 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 64,131 | 400,101 | 57,087 | 126,921 | 787,222 | 74,563 | 1,301,579 | 11,413,283 | 1,046,548 |
 
 ## stream-restart
 
@@ -2342,6 +2374,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 4,187 | 4,984 | 6,355 | 16,582 | 42,491 | 71,401 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 4,187 | 5,000 | 6,355 | 16,586 | 42,488 | 71,402 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 4,187 | 5,048 | 6,355 | 16,584 | 42,491 | 71,400 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 4,187 | 5,016 | 6,355 | 16,583 | 42,487 | 71,401 |
 
 ## timed-admit-both
 
@@ -2413,6 +2446,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 118,591 | 134,963 | 2,679,829 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 119,615 | 134,963 | 2,679,816 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 118,591 | 134,964 | 2,679,829 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 118,591 | 134,963 | 2,679,816 |
 
 ## timed-admit-debounce
 
@@ -2484,6 +2518,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 117,496 | 133,558 | 2,640,271 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 118,520 | 133,559 | 2,640,328 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 117,496 | 133,553 | 2,640,303 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 117,496 | 133,555 | 2,640,303 |
 
 ## timed-admit-first
 
@@ -2555,6 +2590,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 69,479 | 79,053 | 1,611,692 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 70,503 | 79,053 | 1,611,692 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 69,479 | 79,053 | 1,611,692 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 69,479 | 79,053 | 1,611,692 |
 
 ## timed-admit-last
 
@@ -2626,6 +2662,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 117,758 | 133,865 | 2,650,133 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 118,782 | 133,875 | 2,650,159 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 117,758 | 133,878 | 2,650,159 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 117,758 | 133,865 | 2,650,179 |
 
 ## timed-capture-both
 
@@ -2697,6 +2734,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 35,726 | 44,808 | 846,890 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 35,726 | 44,806 | 846,890 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 35,726 | 44,806 | 846,890 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 35,726 | 44,806 | 846,890 |
 
 ## timed-capture-debounce
 
@@ -2768,6 +2806,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 35,598 | 44,104 | 847,376 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 35,598 | 44,104 | 847,376 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 35,598 | 44,104 | 847,376 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 35,598 | 44,104 | 847,376 |
 
 ## timed-capture-first
 
@@ -2839,6 +2878,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 32,078 | 36,612 | 745,370 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 32,078 | 36,611 | 745,370 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 32,078 | 36,612 | 745,370 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 32,078 | 36,612 | 745,370 |
 
 ## timed-capture-last
 
@@ -2910,6 +2950,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 35,534 | 44,040 | 839,510 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 35,534 | 44,040 | 839,504 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 35,534 | 44,038 | 839,509 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 35,534 | 44,040 | 839,504 |
 
 ## update
 
@@ -2981,6 +3022,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 1,089,283 | 38,805 | 82,505 | 262,645 | 151,697 | 3,350,261 | 2,502,803 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 1,087,683 | 38,805 | 84,105 | 262,751 | 151,736 | 3,350,261 | 2,502,830 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 1,087,690 | 38,805 | 82,505 | 262,806 | 151,732 | 3,350,288 | 2,502,722 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 1,089,283 | 38,805 | 82,505 | 262,846 | 151,638 | 3,350,261 | 2,502,817 |
 
 ## update-on
 
@@ -3052,6 +3094,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 93,005 | 165,220 | 2,830,387 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 93,005 | 165,240 | 2,830,389 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 93,005 | 165,229 | 2,830,302 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 96,205 | 165,182 | 2,830,411 |
 
 ## work-form
 
@@ -3123,6 +3166,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 170,300 | 163,392 | 295,946 | 291,346 | 5,349,271 | 5,295,442 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 170,300 | 163,408 | 295,967 | 291,327 | 5,349,324 | 5,295,441 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 170,300 | 167,392 | 295,933 | 291,314 | 5,349,277 | 5,295,444 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 170,300 | 163,392 | 295,875 | 291,326 | 5,349,323 | 5,295,442 |
 
 ## work-status
 
@@ -3194,6 +3238,7 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 100,445 | 78,815 | 264,880 | 152,987 | 2,611,020 | 2,360,853 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 100,445 | 78,815 | 264,834 | 152,958 | 2,611,050 | 2,360,857 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 100,445 | 78,815 | 264,836 | 152,959 | 2,611,010 | 2,360,821 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 100,445 | 82,015 | 264,825 | 152,938 | 2,611,040 | 2,360,854 |
 
 ## work-value
 
@@ -3265,4 +3310,5 @@
 | `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | 107,569 | 119,469 | 265,045 | 279,896 | 2,595,673 | 2,920,170 |
 | `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | 107,569 | 119,469 | 265,068 | 279,928 | 2,595,680 | 2,920,190 |
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 107,571 | 119,470 | 265,088 | 279,918 | 2,595,611 | 2,920,176 |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 107,569 | 122,669 | 265,043 | 279,926 | 2,595,654 | 2,920,185 |
 
