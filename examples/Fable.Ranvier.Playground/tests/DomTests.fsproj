@@ -121,6 +121,7 @@
     <Compile Include="RepresentationBench.fs" />
     <Compile Include="../../../experiments/Ranvier.View.Checks/SnapshotBench.fs" Link="SnapshotBench.fs" />
     <Compile Include="DumpChecks.fs" />
+    <Compile Include="LoopBench.fs" />
     <Compile Include="ConformanceCases.fs" />
     <ProjectReference Include="../../../src/Fable.Ranvier/Fable.Ranvier.fsproj" />
     <ProjectReference Include="../../../src/Ranvier.Elmish/Ranvier.Elmish.fsproj" />
