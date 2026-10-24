@@ -52,8 +52,10 @@ type TraceExportFull =
 
 /// <summary>When an exporter checkpoints the graph's log at the events it has exported.</summary>
 /// <remarks>
-/// The exporter checkpoints between flushes, on the graph's thread. A checkpoint at a <c>NodeNew</c> or an
-/// <c>OwnerNew</c> whose <c>Label</c> follows it is taken one seq earlier.
+/// The exporter checkpoints between flushes, on the graph's thread, once the events past the checkpoint reach the
+/// policy's <c>Capacity</c>, and at the stream's end. The log will retain fewer than <c>Capacity</c> exported events
+/// past the checkpoint. A checkpoint at a <c>NodeNew</c> or an <c>OwnerNew</c> whose <c>Label</c> follows it is taken
+/// one seq earlier.
 /// </remarks>
 [<RequireQualifiedAccess>]
 type TraceExportCheckpoint =
@@ -472,7 +474,8 @@ type TraceExport internal (graph: Graph, sink: ITraceSink, policy: SinkPolicy) =
             else
                 false
 
-    // Checkpoints the log at the seq the policy names, unless a flush, a discharge or a run is in progress. Graph thread.
+    // Checkpoints the log at the seq the policy names once a capacity of events lies past the checkpoint, or once the
+    // stream has ended, unless a flush, a discharge or a run is in progress. Graph thread.
     member private _.Checkpoint() =
         let mark =
             match policy.Checkpoint with
@@ -480,10 +483,16 @@ type TraceExport internal (graph: Graph, sink: ITraceSink, policy: SinkPolicy) =
             | TraceExportCheckpoint.Enqueued -> cursor
             | TraceExportCheckpoint.Acknowledged -> lock gate (fun () -> acknowledged)
 
-        if mark > TraceGate.checkpointSeq log && not log.Busy then
+        let floor = TraceGate.checkpointSeq log
+
+        let due =
+            mark - floor >= policy.Capacity
+            || lock gate (fun () -> disposed)
+
+        if due && mark > floor && not log.Busy then
             let mark = if log.LabelFollows mark then mark - 1 else mark
 
-            if mark > TraceGate.checkpointSeq log then
+            if mark > floor then
                 TraceGate.truncate log mark sink.Name
 
     // Runs a pull unless one is in progress lower on the stack. Graph thread.

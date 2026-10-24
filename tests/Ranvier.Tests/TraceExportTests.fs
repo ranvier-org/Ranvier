@@ -353,6 +353,37 @@ let tests =
                 Expect.sequenceEqual (streamSeqs sink) [ 1..last ] "the events and the gap cover every seq once, in order"
             }
 
+            test "Enqueued checkpoints once the exported events past the checkpoint reach the capacity" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let s = createSignal 0
+                createEffect (fun () -> s.Value |> ignore)
+                let sink = TraceSinks.memory ()
+
+                let policy =
+                    { waiting with
+                        Checkpoint = TraceExportCheckpoint.Enqueued
+                    }
+
+                let export = Trace.export g sink policy
+                s.Value <- 1
+
+                Expect.isLessThan (Trace.lastSeq g) policy.Capacity "fewer events than the capacity"
+                Expect.equal (checkpointSeq g) 0 "fewer exported events than the capacity take no checkpoint"
+
+                for i in 2..1000 do
+                    s.Value <- i
+
+                    Expect.isLessThan (Trace.lastSeq g - checkpointSeq g) policy.Capacity "the log retains fewer events than the capacity"
+
+                Expect.isGreaterThan (checkpointSeq g) 0 "the exported events took a checkpoint"
+                export.Dispose ()
+
+                Expect.isTrue export.Completion.IsCompleted "the sink holds every record"
+                Expect.equal (checkpointSeq g) (Trace.lastSeq g) "the stream's end checkpoints every event"
+                Expect.sequenceEqual (exportedSeqs sink) [ 1 .. Trace.lastSeq g ] "every seq, once and in order"
+            }
+
             test "Enqueued checkpoints before a NodeNew whose Label follows it" {
                 use g = new Graph ()
                 use _ = g.Activate ()
@@ -411,7 +442,13 @@ let tests =
 
                 sink.Release ()
 
-                Expect.equal (checkpointSeq g) (exportedTo sink) "the checkpoint is at the last acknowledged seq"
+                Expect.isGreaterThan (checkpointSeq g) 0 "the acknowledged events took a checkpoint"
+
+                Expect.isLessThan
+                    (exportedTo sink - checkpointSeq g)
+                    waiting.Capacity
+                    "fewer acknowledged events than the capacity stay past the checkpoint"
+
                 Expect.equal (Trace.checkpointOf g).Name "memory" "the checkpoint carries the sink's name"
 
                 export.Dispose ()
