@@ -49,6 +49,7 @@ PR on the branch below it. Merge bottom-up.
 | issue/167 | #167 | https://github.com/shayanhabibi/Ranvier/pull/176 | integration/issues |
 | issue/69 | #69 | https://github.com/shayanhabibi/Ranvier/pull/175 | integration/issues |
 | issue/70 | #70 | https://github.com/shayanhabibi/Ranvier/pull/174 | integration/issues |
+| issue/165 | #165 | https://github.com/shayanhabibi/Ranvier/pull/178 | integration/issues |
 
 ## Log
 
@@ -68,3 +69,4 @@ Each iteration appends one line: date, issue, outcome, commit, next step.
 - 2026-10-24 #165 done — plan steps 1 to 12 done on `issue/165`, with the review fixes (checkpoint refuses a NodeNew/Label split; a first run after a checkpoint roots at its NodeNew seq; the checkpoint trims the log's storage; Fable-safe exception constructors). Gates passed: `build.fsx -- test` (unfiltered), `format --dry-format`, the traced test stage (CSharp 102, Ranvier.Tests 1,610, Twin 1,069, Wire 290, maps 76), `bench/Ranvier.Counters.Tests` (82, Debug and Release), the traced and untraced Fable report, and `counters.ps1 -NoPmc` bytes/op parity with `f48a3a7` (30 .NET and 25 Node.js Ranvier rows; the baseline holds no library counters). Measurements in `docs/.ai/benchmarks/tracing/b786373/` — the gate record — next: push `issue/165` and open its PR on `issue/164`
 - 2026-10-24 #165 done — second review fixes: `whyNot` folds the checkpoint's edges with the tail, and `TraceModel.prune` releases disposed nodes and owners from the checkpoint snapshot (root churn keeps its size constant). Gates passed: `build.fsx -- test` (unfiltered), `format --dry-format`, the traced test stage in Release (CSharp 102, Ranvier.Tests 1,614, Twin 1,069, Wire 290, maps 76), `test-fable` (traced Tracing.fs 98 of 98) — next: push `issue/165` and open its PR on `issue/164`
 - 2026-10-24 #165 in-progress — both review findings fixed (whyNot reads checkpoint edges; prune bounds checkpoint state) and gates pass — 42750524 — next: resolve outstanding review findings before pushing `issue/165` and opening its PR on `issue/164`
+- 2026-10-24 #165 in-progress — restacked on `integration/issues` (`71937dd1`) without the #164 commits; `build.fsx -- test` (unfiltered) and the traced test stage in Release (CSharp 102, Ranvier.Tests 1,614, Twin 1,069, Wire 290, maps 76) pass on the rebased tip; PR https://github.com/shayanhabibi/Ranvier/pull/178 opened on `integration/issues` — c533080e — next: review and merge PR #178
