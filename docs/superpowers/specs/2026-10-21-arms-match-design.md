@@ -513,12 +513,26 @@ Each item names its suite; the research's unprobed items are marked **(new)**.
     written as `Arms.Match`; run `keyed-rows.mjs --modes=ranvier-sugar,ranvier-arms-match
     --ops=armsCreate1k,armsSwitch1k,armsPayload1k,armsClear1k --processes=3 --rounds=15 --pairs=ranvier-arms-match:ranvier-sugar` under `bench.lock`
     (`mkdir C:/Users/shaya/.claude/jobs/7fee9ca9/tmp/bench.lock` before, `rmdir` after) and the browser lock. Gate, per
-    operation: the paired ratio (each `ranvier-arms-match` sample over the `ranvier-sugar` sample of the same process and round, `--pairs=ranvier-arms-match:ranvier-sugar`) has a median of at most 1.05; its 95 % bootstrap interval is reported. `Checks/chromium-gate.mjs` checks the committed results. Runs record the CPU load in `notes`, source hashes and tool versions.
-    The 1.05 gate is the original target. The first release shipped under a 1.12 allowance the user accepted on
-    2026-10-22 (plan Ruling 38, superseded); the payload-direct lowering
-    ([#157](https://github.com/shayanhabibi/Ranvier/issues/157), Phased implementation 8) targets the 1.05 gate. On the shared machine its paired medians are
-    within 1.05 on create and clear and above it on switch (1.078) and payload (1.073), every 95 % interval straddling
-    1.05 (research note, "Chromium"); the gate fails on switch and payload.
+    operation: the paired ratio (each `ranvier-arms-match` sample over the `ranvier-sugar` sample of the same process and round, `--pairs=ranvier-arms-match:ranvier-sugar`) has a median of at most the operation's budget; its 95 % bootstrap interval is reported. `Checks/chromium-gate.mjs` checks the committed results. Runs record the CPU load in `notes`, source hashes and tool versions.
+    The budgets are create 1.05, switch 1.05, payload 1.11 and clear 1.05. The first release shipped under a 1.12
+    allowance the user accepted on 2026-10-22 (plan Ruling 38, superseded); the payload-direct lowering
+    ([#157](https://github.com/shayanhabibi/Ranvier/issues/157), Phased implementation 8) targeted 1.05 on every
+    operation. **Concession (user ruling, 2026-10-24; plan `2026-10-24-issue-157.md`, Decision P9):** create and clear
+    keep 1.05; switch and payload take the upper bound of the pooled paired 95 % interval over the four committed runs of
+    #157, rounded up to 0.01, because the plugin's output is indistinguishable from the hand-written payload-direct shape
+    (`arms-match-shape.json`). Paired medians and intervals per run, at the CPU load recorded in each:
+
+    | Run (CPU load) | create | switch | payload | clear |
+    |---|---|---|---|---|
+    | `8ee10018`, probe (96-100 %) | 1.002 (0.977-1.030) | 1.014 (0.967-1.038) | 1.065 (0.985-1.168) | 1.016 (0.897-1.108) |
+    | `299ab276`, Step 11 (85-100 %) | 1.003 (0.969-1.063) | 1.078 (1.026-1.137) | 1.073 (0.930-1.222) | 1.011 (0.910-1.146) |
+    | `fccc740c`, shape run (97-100 %) | 1.041 (0.969-1.068) | 0.993 (0.903-1.066) | 1.042 (0.906-1.193) | 1.014 (0.968-1.095) |
+    | `dc8b3d5b`, refresh (35-68 %) | 1.013 (0.989-1.039) | 1.009 (0.990-1.027) | 1.000 (0.899-1.055) | 0.942 (0.843-1.111) |
+    | pooled, 180 pairs | 1.013 (0.993-1.035) | 1.022 (0.999-1.046) | 1.042 (0.986-1.103) | 1.007 (0.939-1.066) |
+
+    Switch's pooled upper bound 1.046 gives a budget of 1.05 and payload's 1.103 gives 1.11.
+    `Checks/pooled-interval.mjs` rederives them and `pooled-interval.test.mjs` checks the gate's table against it. The
+    gate input is the refreshed `arms-match.json` (`dc8b3d5b`), which passes every budget.
 12. **Heap profile (new)**: `keyed-heap.mjs --fixture=arms` with the new mode at 1,000 and 10,000 rows; retained bytes
     per row after create within 10 % of `ranvier-sugar`, and the heap after one switch of every row (`--after=switch`)
     reported at both counts. `Checks/chromium-gate.mjs` checks the first and prints the second.
@@ -585,7 +599,8 @@ Each phase lands with its tests green and is reviewable alone.
    11-12); the trim check; the CI `arms` job.
 6. **Docs.** `arms.md` section, reference table, troubleshooting entries, samples, research note.
 7. **Analyzer** (separate spec): AM001-AM005 under FSharp.Analyzers.SDK.
-8. **Payload-direct lowering (implemented, #157; plan `2026-10-24-issue-157.md`; Chromium gate not met).** Each target becomes an `armOf` definition whose instance is the
+8. **Payload-direct lowering (implemented, #157; plan `2026-10-24-issue-157.md`; Chromium gate met under the
+   per-operation budgets of the 2026-10-24 ruling).** Each target becomes an `armOf` definition whose instance is the
    arm's values thunk, the site selects with one array `[target, pattern variables..., matched value, instance]`, and
    the plugin rewrites every instance lambda to read `p ()[k]`; under Fable the cells, `enter`, withdrawal and graph
    tags go, and a held reader reads its own row's props, as the twin does. A helper view of the instance type is
@@ -594,10 +609,12 @@ Each phase lands with its tests green and is reviewable alone.
    create 1.019, switch 1.031, payload 1.007 and clear 1.026 (paired medians), the heap after a switch at +1.1 % (today
    +12.8 %), and its loader at 31 B gzip (today 371 B). The final review estimates 1-1.5 weeks for Fable with the .NET
    quotation and cells path kept, about 3 weeks with .NET parity; the AM006 guard (15-25 B) and splice adapters
-   (30-50 B) remain to be measured. The lowering's Chromium budget is the original median of 1.05.
+   (30-50 B) remain to be measured. The lowering targeted the original median of 1.05.
    Measured on the shipped lowering: the first site 183 B gzip over its twin and each later site 1 B (`bundle.json`),
    the Fable output holding no cells module; the heap at +1.2 % over the twin after create and after a switch, at both
-   row counts. The Chromium gate is 1.05 (Testing 11). The paired medians on the shared machine are create 1.003,
-   switch 1.078, payload 1.073 and clear 1.011, every 95 % interval straddling 1.05, so the gate fails on switch and
-   payload. A paired run against the spike's hand-written shape finds the plugin's output indistinguishable from it
-   (research note, "Chromium").
+   row counts. The Step 11 paired medians on the shared machine were create 1.003, switch 1.078, payload 1.073 and
+   clear 1.011, every 95 % interval straddling 1.05. A paired run against the spike's hand-written shape finds the
+   plugin's output indistinguishable from it (research note, "Chromium"). Under the user's ruling of 2026-10-24 the
+   Chromium budgets are per operation (Testing 11): create and clear 1.05, switch 1.05 and payload 1.11, the pooled
+   upper bounds over the four runs rounded up to 0.01. The refreshed run (`dc8b3d5b`, CPU load 35-68 %) measures create
+   1.013, switch 1.009, payload 1.000 and clear 0.942, and `chromium-gate.mjs` passes.

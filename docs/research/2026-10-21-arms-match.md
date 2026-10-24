@@ -9,12 +9,12 @@ Measurements of the `Arms.Match` implementation ([spec](../superpowers/specs/202
 ([#157](https://github.com/shayanhabibi/Ranvier/issues/157)): one `armOf` definition per target over the arm's values
 thunk, and no cells. The first site costs 183 B gzip over its twin (budget 400 B) and each further site 1 B (budget
 60 B). The retained heap per row is 1.2 % above `ranvier-sugar` after create and after a switch, at 1,000 and 10,000
-rows. The Chromium gate is the original paired median of at most 1.05 against the sugared twin; the cells release ran
-under a 1.12 allowance (plan Ruling 38, superseded), and its committed timings miss 1.05 on switch (1.075) and payload
-(1.096). On the shared machine at 85-100 % load, the payload-direct shape's paired medians are create 1.003, switch
-1.078, payload 1.073 and clear 1.011, and every 95 % interval straddles 1.05; the spike of the shape measured
-1.007-1.031. The Chromium gate fails on the switch and payload medians. In a paired run against the hand-written
-shape, the plugin's output is indistinguishable from it on every operation.
+rows. The Chromium gate is a paired median against the sugared twin of at most 1.05 on create, switch and clear and
+1.11 on payload, under the user's concession of 2026-10-24 ("Chromium"); the cells release ran under a 1.12 allowance
+(plan Ruling 38, superseded), and its committed timings miss 1.05 on switch (1.075) and payload (1.096). Pooled over the
+four committed runs of #157 at 35-100 % load, the payload-direct shape's paired medians are create 1.013, switch 1.022,
+payload 1.042 and clear 1.007; the refreshed gate run measures 1.013, 1.009, 1.000 and 0.942 and passes. In a paired
+run against the hand-written shape, the plugin's output is indistinguishable from it on every operation.
 
 ## Plugin discovery
 
@@ -167,16 +167,45 @@ How the first-site cost moved:
 
 ## Chromium
 
-The gate (spec, Testing 11) is a paired median of at most 1.05 per operation, the 95 % interval reported:
-`node experiments/Ranvier.View.Arms/Checks/chromium-gate.mjs` checks the committed `arms-match/arms-match.json`. It is
-the original target; the cells release ran under a 1.12 allowance (plan Ruling 38), which the payload-direct lowering
-supersedes.
+The gate (spec, Testing 11) is a paired median of at most the operation's budget, the 95 % interval reported:
+`node experiments/Ranvier.View.Arms/Checks/chromium-gate.mjs` checks the committed `arms-match/arms-match.json`. The
+budgets are create 1.05, switch 1.05, payload 1.11 and clear 1.05; the cells release ran under a 1.12 allowance (plan
+Ruling 38), which the payload-direct lowering supersedes.
+
+**Concession (user ruling, 2026-10-24).** The payload-direct lowering targeted 1.05 on every operation. Create and
+clear keep it. Switch and payload take the upper bound of the pooled paired 95 % interval over the four committed runs
+below, rounded up to 0.01 (plan `2026-10-24-issue-157.md`, Decision P9), because the plugin's output is
+indistinguishable from the hand-written shape the spike measured ("Against the hand-written shape"). Pooling
+concatenates each run's per-pair ratios and applies the bootstrap of `keyed-rows.mjs`;
+`experiments/Ranvier.View.Arms/Checks/pooled-interval.mjs` prints the result and `pooled-interval.test.mjs` checks the
+gate's budgets against it.
+
+| Run (CPU load) | create | switch | payload | clear |
+|---|---|---|---|---|
+| `8ee10018`, probe (96-100 %) | 1.002 (0.977-1.030) | 1.014 (0.967-1.038) | 1.065 (0.985-1.168) | 1.016 (0.897-1.108) |
+| `299ab276`, Step 11 (85-100 %) | 1.003 (0.969-1.063) | 1.078 (1.026-1.137) | 1.073 (0.930-1.222) | 1.011 (0.910-1.146) |
+| `fccc740c`, shape run (97-100 %) | 1.041 (0.969-1.068) | 0.993 (0.903-1.066) | 1.042 (0.906-1.193) | 1.014 (0.968-1.095) |
+| `dc8b3d5b`, refresh (35-68 %) | 1.013 (0.989-1.039) | 1.009 (0.990-1.027) | 1.000 (0.899-1.055) | 0.942 (0.843-1.111) |
+| pooled, 180 pairs | 1.013 (0.993-1.035) | 1.022 (0.999-1.046) | 1.042 (0.986-1.103) | 1.007 (0.939-1.066) |
+| budget | 1.05 | 1.05 | 1.11 | 1.05 |
+
+**Refresh.** The gate input is the refreshed run: the Step 11 command with `--build` through `gate-lock.ps1 bench`
+at `dc8b3d5b`, CPU load 51, 68 and 46 % before the build and 47, 35 and 59 % after the run, source hashes matching the
+working tree (`Lower.fs` `9c7c6613…`, `Site.fs` `644adbf6…`). Every median is within its budget; create and switch
+intervals lie below theirs, payload's lies below 1.11 and clear's straddles 1.05.
+
+| Operation | ranvier-sugar median (process medians), ms | ranvier-arms-match median (process medians), ms | paired median ratio | 95 % interval | arms slower in |
+|---|---|---|---|---|---|
+| armsCreate1k | 15.09 (15.06, 15.40, 14.61) | 15.28 (15.28, 15.75, 14.84) | 1.013 | 0.989-1.039 | 24/45 |
+| armsSwitch1k | 7.78 (7.82, 7.49, 8.29) | 7.88 (7.82, 7.71, 8.31) | 1.009 | 0.990-1.027 | 26/45 |
+| armsPayload1k | 1.25 (1.21, 1.30, 1.38) | 1.24 (1.24, 1.11, 1.34) | 1.000 | 0.899-1.055 | 22/45 |
+| armsClear1k | 2.66 (2.59, 2.52, 3.13) | 2.73 (2.56, 2.63, 2.87) | 0.942 | 0.843-1.111 | 20/45 |
 
 **Payload-direct shape.** `keyed-rows.mjs --bundle --modes=ranvier-sugar,ranvier-arms-match
 --ops=armsCreate1k,armsSwitch1k,armsPayload1k,armsClear1k --processes=3 --rounds=15
 --pairs=ranvier-arms-match:ranvier-sugar` under `gate-lock.ps1 bench`, at `299ab276` (clean apart from the untracked
-probe below), Node v26.7.0, Chromium 156.0.8078.4, Fickl 0.5.3, Fable 5.23.0, Solid 2.0.0-rc.14; source hashes in
-`arms-match.json` (`Lower.fs` `51311ec0…`, `Site.fs` `5ce539ae…`). The machine is shared with up to three lanes, and its
+probe below), Node v26.7.0, Chromium 156.0.8078.4, Fickl 0.5.3, Fable 5.23.0, Solid 2.0.0-rc.14; results and source
+hashes in `arms-match/arms-match-299ab276.json` (`Lower.fs` `51311ec0…`, `Site.fs` `5ce539ae…`). The machine is shared with up to three lanes, and its
 load is the baseline (plan `2026-10-24-issue-157.md`, Decision P7): CPU load read 96, 85 and 91 % before the run and 87,
 90 and 100 % after it. Each ratio pairs samples of the same process and round.
 
@@ -188,14 +217,14 @@ load is the baseline (plan `2026-10-24-issue-157.md`, Decision P7): CPU load rea
 | armsClear1k | 4.29 (3.38, 4.38, 4.55) | 4.42 (3.76, 4.42, 4.77) | 1.011 | 0.910-1.146, straddles | 23/45 |
 
 Every interval straddles 1.05: none clearly meets the budget and none clearly misses it. The medians of create and
-clear are within it; those of switch and payload are above it, so `chromium-gate.mjs` fails on them and prints each
-interval as straddling. An earlier probe of the same sources at `8ee10018`, under 96-100 % load
-(`docs/.ai/benchmarks/arms-157-noisy-probe.json`, superseded by this run), measured create 1.002 (0.977-1.030),
+clear are within it; those of switch and payload are above it, so the uniform 1.05 gate of that time failed on them.
+An earlier probe of the same sources at `8ee10018`, under 96-100 % load (`docs/.ai/benchmarks/arms-157-noisy-probe.json`,
+superseded by this run), measured create 1.002 (0.977-1.030),
 switch 1.014 (0.967-1.038), payload 1.065 (0.985-1.168) and clear 1.016 (0.897-1.108): its switch interval lies below
 1.05 and its payload interval straddles it. Across the two runs only payload's median stays above 1.05; at this load the
 paired interval is too wide to separate a 5 % budget from no difference.
 
-**Against the hand-written shape.** A second run of the same sources (source hashes equal to `arms-match.json`'s) at
+**Against the hand-written shape.** A second run of the same sources (source hashes equal to `arms-match-299ab276.json`'s) at
 `fccc740c` adds the spike's hand-written payload-direct fixture, `ranvier-sugar-array`, to the same processes and
 rounds: `keyed-rows.mjs --build --modes=ranvier-sugar,ranvier-arms-match,ranvier-sugar-array
 --ops=armsCreate1k,armsSwitch1k,armsPayload1k,armsClear1k --processes=3 --rounds=15
@@ -214,7 +243,7 @@ Every arms-match : sugar-array interval contains 1: on this machine the plugin's
 hand-written shape the spike measured, which itself reads 1.075 on payload in this run. Pooling the arms-match : sugar
 pairs of both runs (90 per operation, the same bootstrap) gives create 1.016 (0.981-1.059), switch 1.052
 (0.993-1.091), payload 1.061 (0.945-1.170) and clear 1.012 (0.950-1.088). The pooled switch and payload medians stay
-above 1.05, and the gate stays failed.
+above 1.05; this finding is the reason for the concession above.
 
 **Cells release (history).** At `2667e8e5`, before #151 updated the locked bundler (Fickl 0.3.0, Fable 5.22.0; source
 hashes in the JSON). The run started after three load readings below 20 % (25, 8, 3, 3 %); the load read 53 % right after the smoke build and 97 % at the
