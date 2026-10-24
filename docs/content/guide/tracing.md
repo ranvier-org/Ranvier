@@ -361,10 +361,53 @@ event order. Single-threaded access alone does not make async completion order, 
 formatting deterministic for every program.
 `Trace.events graph` returns the raw `TraceEvent[]` for your own analysis.
 
+## Incremental reads and checkpoints
+
+A consumer that polls the log keeps a cursor: the seq of the last event it read, 0 before the first.
+`Trace.eventsSince graph seq` returns the events after `seq`, oldest first, and copies those alone.
+
+```fsharp
+let mutable cursor = 0
+
+let drain () =
+    let fresh = Trace.eventsSince graph cursor
+
+    if fresh.Length > 0 then
+        cursor <- fresh[fresh.Length - 1].Seq
+
+    fresh
+```
+
+`Trace.checkpoint graph seq name` folds the events up to and including `seq` into a snapshot named
+`name`, then drops them from the log along with the values and exceptions they hold. It runs on the
+graph's thread between flushes, like a dump. `Trace.checkpointOf graph` returns the checkpoint's `Name`,
+null before the first, and its `Snapshot`, whose `Seq` is the last dropped seq.
+
+```fsharp
+let events = Trace.events graph
+Trace.checkpoint graph events[events.Length - 1].Seq "session-1"
+```
+
+After a checkpoint:
+
+- `Trace.snapshot` and `reconcile` return what they returned before it. `origin` of a node created
+  before it reads the snapshot, with `Run` 0. `dumpText` writes the checkpoint's name and snapshot in
+  its header lines, then the retained events.
+- `why`, `whyAt`, `whyDepth` and `history` end a chain whose cause was dropped at
+  `BeforeCheckpoint name`. A first run still ends at `Created`, with the node's `NodeNew` seq.
+- `snapshotAt` accepts a seq from the checkpoint's seq on. `whyNot` and `waitingOn` read the retained
+  events alone.
+- A cursor before the checkpoint's seq has expired: `eventsSince` raises `ArgumentOutOfRangeException`,
+  naming the checkpoint's seq. Resync with `Trace.eventsSince graph (Trace.checkpointOf graph).Snapshot.Seq`.
+- A seq that falls between a `NodeNew` or `OwnerNew` and the `Label` recorded with it raises
+  `ArgumentOutOfRangeException`; checkpoint at the label's seq instead.
+
+C# callers use `Tracing.EventsSince`, `Tracing.Checkpoint` and `Tracing.CheckpointOf`.
+
 ## Limits
 
 :::warning Use tracing during development
-A traced build is slower, allocates per event, and retains its log for the graph's lifetime.
+A traced build is slower, allocates per event, and retains its log until a checkpoint drops it.
 Ship against the untraced `Ranvier` package.
 :::
 
@@ -374,11 +417,11 @@ Ship against the untraced `Ranvier` package.
   draw and exposes `Trace.dumpText`; file-writing `Trace.dump` and `TraceModel.parseDump` are absent.
 - **Development builds only.** A traced build is slower and allocates per event. Ship against the
   untraced `Ranvier` package.
-- **The log retains events.** Events stay in memory for the graph's lifetime, up to the implementation's
-  sequence limit. There is no eviction or checkpoint API.
+- **The log retains events.** Events stay in memory until a [checkpoint](#incremental-reads-and-checkpoints)
+  drops them, up to the implementation's sequence limit. Nothing drops events automatically.
 - **Payloads retain values.** Writes, transitions and settlements can retain values or exceptions in
   event payloads. These are object references, not immutable historical snapshots: later mutation can
-  affect their formatting. Retention can keep application objects alive for the log's lifetime.
+  affect their formatting. Retention can keep application objects alive until a checkpoint drops their events.
 - **Native AOT uses the payload's `ToString`.** Traced packages support trimming and Native AOT; see
   [Installation](installation.md#native-aot-and-trimming). An application type needs an AOT-compatible
   `ToString` for useful payload text in a trimmed build.
