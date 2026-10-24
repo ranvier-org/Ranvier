@@ -289,7 +289,8 @@ type TraceSnapshotNode =
         Status: TraceNodeStatus
         /// <summary>
         /// The <c>valueText</c> of the latest value or exception recorded by a moving <c>Write</c>, a <c>Moved</c>, or
-        /// an async source's <c>Settle</c> or <c>Fail</c>.
+        /// an async source's <c>Settle</c> or <c>Fail</c>. A null written by a <c>Write</c>, or a <c>Moved</c> to null by a
+        /// memo, async memo, boundary or lookup cell, gives <c>valueText null</c>.
         /// </summary>
         Value: string option
     }
@@ -1188,8 +1189,20 @@ module TraceModel =
                             Owners = s.Owners.Add (e.Node, { o with Disposed = true })
                         }
                 | None -> ()
-            | TraceEventKind.Write when e.Flag = 1 -> updateNode e.Node (fun n -> { n with Value = valueOf e.Payload })
+            | TraceEventKind.Write when e.Flag = 1 ->
+                updateNode e.Node (fun n ->
+                    { n with
+                        Value = Some (valueText e.Payload)
+                    })
             | TraceEventKind.Moved when not (Platform.isNull e.Payload) -> updateNode e.Node (fun n -> { n with Value = valueOf e.Payload })
+            | TraceEventKind.Moved ->
+                updateNode e.Node (fun n ->
+                    match n.Kind with
+                    | TraceNodeKind.Memo
+                    | TraceNodeKind.AsyncMemo
+                    | TraceNodeKind.Boundary
+                    | TraceNodeKind.LookupCell -> { n with Value = Some (valueText null) }
+                    | _ -> n)
             | TraceEventKind.Settle
             | TraceEventKind.Fail when e.Arg = 0 -> updateNode e.Node (fun n -> { n with Value = valueOf e.Payload })
             | TraceEventKind.Mark when e.Arg = 2 ->

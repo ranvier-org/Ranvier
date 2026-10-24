@@ -471,6 +471,20 @@ let tests =
                 Expect.equal (valueOf opt) (Some TracePayload.Null) "None"
             }
 
+            test "state gives a memo that moved to null before a checkpoint as Lossy of null's text" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let x = createSignal 1
+                let text = createMemo (fun _ -> if x.Value = 1 then "a" else null)
+                text.Value |> ignore
+                x.Value <- 2
+                text.Value |> ignore
+                Trace.checkpoint g (Trace.lastSeq g) "cut"
+                let state = Trace.state g (TraceCodecs.ofList [])
+                Expect.equal state.Nodes[(text :> INode).Id].Value (Some (TracePayload.Lossy (TraceModel.valueText null))) "the folded null"
+                Expect.equal (Trace.snapshot g).Nodes[(text :> INode).Id].Value (Some (TraceModel.valueText null)) "the snapshot holds the null"
+            }
+
             test "state gives a projection that moved without a value as None" {
                 use g = new Graph ()
                 use _ = g.Activate ()

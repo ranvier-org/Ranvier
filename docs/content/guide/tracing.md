@@ -537,7 +537,9 @@ list lacks. Under Fable, a number with an integral value in the 32-bit range is 
 
 `Lossy` also marks a value whose log entry is ambiguous. A lookup cell records a null value and a
 suspension alike, so its null state value is `Lossy "null"`. A memo, async memo or boundary that moved
-to null holds `Null`; a projection records no value, and holds `None`.
+to null holds `Null`; a projection records no value, and holds `None`. A checkpoint holds a null
+value as the text of null, so after the checkpoint drops its `Moved`, the state value is
+`Lossy "null"`.
 
 `Trace.dumpTextWith graph codecs` writes the log in schema 3, with each payload in its form, and
 `TraceContract.parseDumpWith codecs text` decodes one back. `TraceModel.parseDump` reads schemas 1 to

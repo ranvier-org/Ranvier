@@ -15,8 +15,8 @@ type Op =
     | Unwatch
 
 /// <summary>
-/// A graph of two signals, a lazy memo over both, a lazy host memo that creates a child memo in each run, and the nodes
-/// <c>Named</c> and <c>Watch</c> add.
+/// A graph of two signals, a lazy memo over both, a lazy host memo that creates a child memo in each run, a lazy memo
+/// that is null while the first signal is even, and the nodes <c>Named</c> and <c>Watch</c> add.
 /// </summary>
 type private Script(graph: Graph) =
     let a = graph.Run (fun () -> Trace.named "a" (fun () -> Signal (graph, 0)))
@@ -29,7 +29,10 @@ type private Script(graph: Graph) =
                 let child = Trace.named "child" (fun () -> createMemo (fun _ -> a.Value))
                 child.Value + b.Value))
 
-    let memos = ResizeArray<INode> [ m :> INode; host :> INode ]
+    let parity =
+        graph.Run (fun () -> createMemo (fun _ -> if a.Value % 2 = 0 then null else "odd"))
+
+    let memos = ResizeArray<INode> [ m :> INode; host :> INode; parity :> INode ]
     let roots = System.Collections.Generic.Queue<Owner>()
 
     member _.Memos = List.ofSeq memos
@@ -48,6 +51,7 @@ type private Script(graph: Graph) =
             | Read ->
                 m.Value |> ignore
                 host.Value |> ignore
+                parity.Value |> ignore
             | Named index ->
                 let index = abs index % 3
 
@@ -179,7 +183,14 @@ let private contractMatches (twin: Graph) (g: Graph) (twinMemos: INode list) (me
         Expect.equal { n with Value = None } { t with Value = None } $"node {id}"
 
         match n.Value with
-        | Some (TracePayload.Lossy text) -> Expect.equal (Some text) twinSnap.Nodes[id].Value $"the folded value of node {id}"
+        | Some (TracePayload.Lossy text) ->
+            let twinText =
+                match t.Value with
+                | Some (TracePayload.Lossy text) -> Some text
+                | Some payload -> Some (TraceModel.valueText (TraceCodecs.decode codecs payload))
+                | None -> None
+
+            Expect.equal (Some text) twinText $"the folded value of node {id}"
         | value -> Expect.equal value t.Value $"the value of node {id}"
 
     let read = TraceJson.readState (TraceJson.state state)
