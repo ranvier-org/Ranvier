@@ -65,7 +65,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Streams.fs | 26 | 26 | 26 | 26 | 26 | 26 | 1 | 0 |
 | PreviousValues.fs | 12 | 12 | 12 | 12 | 12 | 12 | 15 | 0 |
 | Texts.fs | 5 | 5 | 5 | 43 | 43 | 43 | 1 | 0 |
-| Journal.fs | 23 | 22 | 22 | 25 | 24 | 24 | 0 | 0 |
+| Journal.fs | 38 | 37 | 37 | 41 | 40 | 40 | 0 | 0 |
 | FailureOrigins.fs | 16 | 16 | 16 | 16 | 16 | 16 | 2 | 0 |
 | NullChecks.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
 | Editables.fs | 17 | 17 | 17 | 17 | 17 | 17 | 1 | 0 |
@@ -85,7 +85,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 9 | 9 | 9 | 9 | 9 | 9 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1574 | 1552 | 1549 | 1787 | 1760 | 1757 | 143 | 1 |
+| **Total** | 1589 | 1567 | 1564 | 1803 | 1776 | 1773 | 143 | 1 |
 
 ## Tests.fs
 
@@ -2012,7 +2012,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | untraced | a write after an await in an async memo's body is not journaled | failed | failed | Every `await` suspends |
 | traced | a write after an await in an async memo's body is not journaled | failed | failed | Every `await` suspends |
 
-<details><summary>24 passed in every build and delivery that runs them</summary>
+<details><summary>40 passed in every build and delivery that runs them</summary>
 
 - GraphOptions.Default has no journal
 - WithJournal sets the journal
@@ -2026,6 +2026,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a key registered in a disposed root is free again
 - a key registered in an owning memo's body is free again when the memo re-runs
 - Journal.key in a pure memo's body raises the scope error
+- a keyed node registered under a second key raises and keeps its first key
 - the same key on two graphs is allowed
 - Journal.key on a graph without a journal is a no-op
 - an Encode that raises records a non-replayable entry and the write lands
@@ -2035,9 +2036,24 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - one Flush follows each flush pass that followed recorded entries
 - a batch of two writes gives two Write entries and one Flush
 - a write that queues nothing records no Flush
+- replay of writes, settles and failures into a fresh graph gives equal values
+- re-enactment skips the recorded settles
+- Journal.replaying returns the mode while the replay runs
+- replay requires a graph with a journal
+- re-enactment re-runs the async work, and a changed async result flows through the replay
 - the entry unions print their case names
+- replay raises JournalReplayException / on a non-replayable entry
+- replay raises JournalReplayException / on a key the target graph lacks
+- replay raises JournalReplayException / on a codec name mismatch
+- replay raises JournalReplayException / on a codec version mismatch
+- replay raises JournalReplayException / on a decode error
+- replay raises JournalReplayException / on an entry kind the key's input does not take
+- Mvu.journal / an external dispatch records one Message entry and its flush
+- Mvu.journal / a dispatch from an effect records nothing
+- Mvu.journal / replay dispatches the recorded messages
 - a traced Journal.key labels an unlabelled node with the key (traced only)
 - a traced Journal.key keeps an existing label (traced only)
+- a diagnostic replay of the traced cart gives the live run's snapshot and the why of every banner run (traced only)
 
 </details>
 

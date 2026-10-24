@@ -94,15 +94,19 @@ type CartMsg =
     | AddLine of CartLine
     | SetQty of sku: string * qty: int
 
-let cartCodec: JournalCodec<CartMsg> =
-    let invariant = System.Globalization.CultureInfo.InvariantCulture
+let private cents (value: decimal) =
+    string (int (value * 100m))
 
+let private ofCents (text: string) =
+    decimal (int text) / 100m
+
+let cartCodec: JournalCodec<CartMsg> =
     {
         Name = "cart"
         Version = 1
         Encode =
             function
-            | AddLine line -> $"add|{line.Sku}|{line.Price.ToString invariant}|{line.Qty}"
+            | AddLine line -> $"add|{line.Sku}|{cents line.Price}|{line.Qty}"
             | SetQty (sku, qty) -> $"qty|{sku}|{qty}"
         Decode =
             fun text ->
@@ -112,7 +116,7 @@ let cartCodec: JournalCodec<CartMsg> =
                         AddLine
                             {
                                 Sku = sku
-                                Price = System.Decimal.Parse (price, invariant)
+                                Price = ofCents price
                                 Qty = int qty
                             }
                     )
@@ -121,17 +125,15 @@ let cartCodec: JournalCodec<CartMsg> =
     }
 
 let decimalCodec: JournalCodec<decimal> =
-    let invariant = System.Globalization.CultureInfo.InvariantCulture
-
     {
-        Name = "decimal"
+        Name = "cents"
         Version = 1
-        Encode = fun value -> value.ToString invariant
+        Encode = cents
         Decode =
             fun text ->
-                match System.Decimal.TryParse (text, System.Globalization.NumberStyles.Number, invariant) with
-                | true, value -> Ok value
-                | _ -> Error ("not a decimal: " + text)
+                match System.Int32.TryParse text with
+                | true, value -> Ok (decimal value / 100m)
+                | _ -> Error ("not a cent count: " + text)
     }
 
 /// <summary>The tracing guide's cart: the lines in a journaled MVU loop, a keyed discount, two memos and a banner.</summary>
@@ -816,6 +818,7 @@ let tests =
                 Expect.equal shown3.Value 200 "the changed result reaches the memo"
             }
 
+#if !FABLE_COMPILER
             testPropertyWithConfig
                 { FsCheckConfig.defaultConfig with
                     maxTest = 200
@@ -832,6 +835,7 @@ let tests =
 
                 Expect.equal replayed.State live.State "the inputs and memos"
                 Expect.equal replayed.Runs live.Runs "the effect's runs"
+#endif
 
 #if RANVIER_TRACE
             test "a diagnostic replay of the traced cart gives the live run's snapshot and the why of every banner run" {
