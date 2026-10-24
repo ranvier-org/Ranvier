@@ -642,7 +642,6 @@ type internal TraceLog(locked: bool) =
                 raise (
                     ArgumentOutOfRangeException (
                         nameof seq,
-                        seq,
                         String.Concat ("A checkpoint seq lies between ", string floor, " and ", string clock, ".")
                     )
                 )
@@ -692,7 +691,6 @@ type internal TraceLog(locked: bool) =
                 raise (
                     ArgumentOutOfRangeException (
                         nameof seq,
-                        seq,
                         String.Concat ("A checkpoint seq lies between ", string floor, " and ", string clock, ".")
                     )
                 )
@@ -715,16 +713,15 @@ type internal TraceLog(locked: bool) =
             let floor = clock - events.Count
 
             if seq < 0 then
-                raise (ArgumentOutOfRangeException (nameof seq, seq, "A trace cursor starts at 0."))
+                raise (ArgumentOutOfRangeException (nameof seq, "A trace cursor starts at 0."))
 
             if seq > clock then
-                raise (ArgumentOutOfRangeException (nameof seq, seq, String.Concat ("The cursor is past the log's last seq, ", string clock, ".")))
+                raise (ArgumentOutOfRangeException (nameof seq, String.Concat ("The cursor is past the log's last seq, ", string clock, ".")))
 
             if seq < floor then
                 raise (
                     ArgumentOutOfRangeException (
                         nameof seq,
-                        seq,
                         String.Concat ("The cursor precedes the log's checkpoint at seq ", string floor, ". Resync from Trace.checkpointOf.")
                     )
                 )

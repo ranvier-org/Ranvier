@@ -622,7 +622,7 @@ let traceTests =
                 let before = Trace.timing graph output
                 let events = Trace.events graph
                 Trace.checkpoint graph events[events.Length - 1].Seq "cut"
-                Expect.isSome before "the timed node reports its gate"
+                Expect.isTrue before.IsSome "the timed node reports its gate"
                 Expect.equal (Trace.timing graph output) before "the checkpoint keeps the gate"
             testCase "admission names the winning capture and reports the held window"
             <| fun _ ->

@@ -269,7 +269,6 @@ module Trace =
             raise (
                 System.ArgumentOutOfRangeException (
                     nameof seq,
-                    seq,
                     "The seq precedes the log's checkpoint at seq "
                     + string checkpoint.Snapshot.Seq
                     + "."
@@ -418,7 +417,6 @@ module Trace =
             raise (
                 System.ArgumentOutOfRangeException (
                     nameof seq,
-                    seq,
                     "Seq "
                     + string seq
                     + " creates a node or owner whose Label is seq "
