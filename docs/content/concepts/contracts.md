@@ -35,8 +35,8 @@ dispatch runs inline, affinity checks are omitted, `IsOnGraphThread` is true, an
 | `graph.DispatchAsync work` | Any | As `Dispatch`, and the returned task completes once `work` has run. On the owning thread, `work` runs inline and the task is already complete. | As `Dispatch`. |
 | `AsyncSource.Settle` and `Fail`, flight completions, stream items | Any | Queued in the inbox, as `Dispatch` is. On the owning thread, they apply inline. | As `Dispatch`. |
 | Stale reads, node creation, `batch`, `flush`, `untrack`, `createRoot`, `onCleanup`, `Dispose` | Owning | Raise `InvalidOperationException`. A read of a current value is unchecked. | As a write. |
-| `Journal.key`, `Journal.keySource`, `Journal.messages`, `Journal.replay` | Owning | Raise `InvalidOperationException` on a graph with a journal. | As a write. |
-| `Journal.work`, `Journal.produce` | Any | `produce` queues its input, as `Dispatch` does. On the owning thread, it runs inline. | As `Dispatch`. |
+| `Journal.key`, `Journal.keySource`, `Journal.messages`, `Journal.replay`, `Journal.work` | Owning | Raise `InvalidOperationException` on a graph with a journal. | As a write. |
+| `Journal.produce` | Any | `produce` queues its input, as `Dispatch` does. On the owning thread, it runs inline. | As `Dispatch`. |
 
 Under `Guarded`, the affinity check compares the calling thread with the thread that constructed the graph.
 The check depends on the thread alone: a second thread that has the owning thread's

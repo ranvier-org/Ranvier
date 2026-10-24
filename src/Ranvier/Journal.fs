@@ -84,9 +84,9 @@ type JournalSite<'Msg> internal (graph: Graph, id: int) =
 /// <c>Journal.produce</c> record <c>Produced</c> entries.
 /// </summary>
 [<Sealed>]
-type JournalWork internal (graph: Graph, generation: JournalGeneration) =
+type JournalWork internal (graph: Graph, attribution: JournalAttribution) =
     member internal _.Graph = graph
-    member internal _.Generation = generation
+    member internal _.Attribution = attribution
 
 /// <summary>An input journal that keeps its entries in memory, in recording order.</summary>
 type MemoryJournal(stream: string) =
@@ -207,7 +207,8 @@ module Journal =
     /// <summary>
     /// Records <c>msg</c> as a <c>Message</c> entry of <c>site</c> when it arrives from outside every computation, then
     /// runs <c>apply</c>. The writes and messages made while <c>apply</c> runs are derived from <c>msg</c> and are not
-    /// recorded.
+    /// recorded. A message a diagnostic replay drops, as it drops a re-run work's input, is not recorded and does not
+    /// run <c>apply</c>.
     /// </summary>
     let recordMessage (site: JournalSite<'Msg>) (msg: 'Msg) (apply: unit -> unit) : unit =
         let graph = site.Graph
@@ -215,8 +216,7 @@ module Journal =
 
         if Platform.isNull recorder then
             apply ()
-        else
-            graph.RecordInput (JournalEntryKind.Message, site.Id, box msg)
+        elif graph.RecordInput (JournalEntryKind.Message, site.Id, box msg) then
             recorder.EnterDerived ()
 
             try
@@ -225,32 +225,36 @@ module Journal =
                 recorder.LeaveDerived ()
 
     /// <summary>
-    /// The async work starting on <c>graph</c>, for <c>produce</c>. Captured in the synchronous part of the work, such as
-    /// an effect's body before its first <c>await</c>.
+    /// A new async work on <c>graph</c>, for <c>produce</c>, numbered after the graph's earlier work. Captured in the
+    /// synchronous part of the work, such as an effect's body before its first <c>await</c>.
     /// </summary>
+    /// <exception cref="T:System.InvalidOperationException">
+    /// The graph has a journal, and the call runs off the graph's thread.
+    /// </exception>
     let work (graph: Graph) : JournalWork =
         let recorder = graph.Journal
 
-        JournalWork (
-            graph,
-            (if Platform.isNull recorder then
-                 null
-             else
-                 recorder.Generation)
-        )
+        if Platform.isNull recorder then
+            JournalWork (graph, null)
+        else
+            graph.AssertOnGraphThread "Journal.work"
+            JournalWork (graph, recorder.NextWork ())
 
     /// <summary>
     /// Runs <c>input</c> on the graph's thread as an input of <c>work</c>: its writes, settles, failures and messages
-    /// record <c>Produced</c> entries. Called off the graph's thread, it is queued, as <c>Graph.Dispatch</c> queues work.
+    /// record <c>Produced</c> entries carrying the work's number. Called off the graph's thread, it is queued, as
+    /// <c>Graph.Dispatch</c> queues work.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <c>Reenact</c> skips the <c>Produced</c> entries, and the re-run work produces them again. Once a
-    /// <c>Diagnostic</c> replay starts on the graph, <c>produce</c> drops the inputs of work captured before the replay
-    /// returns, and the replay applies their recorded entries instead.
+    /// <c>Reenact</c> skips the <c>Produced</c> entries, and the re-run work produces them again. Under
+    /// <c>Diagnostic</c>, an input of <c>work</c> is dropped while the replayed entries hold an unmatched
+    /// <c>Produced</c> entry of the same work, and <c>input</c> still runs.
     /// </para>
     /// <para>
-    /// Inside a computation, a flush or another derived section, <c>input</c> always runs, unrecorded.
+    /// Inside a computation, a flush or another derived section, <c>input</c>'s inputs are unrecorded and applied.
+    /// On .NET, the continuations of an effect's body need no <c>produce</c>: their inputs are attributed to the
+    /// effect's run. Under Fable, which has no async context, pass them through <c>produce</c>.
     /// </para>
     /// </remarks>
     /// <example>
@@ -274,18 +278,11 @@ module Journal =
 
             if
                 Platform.isNull recorder
-                || Platform.isNull work.Generation
-                || graph.Running
-                || recorder.DerivedDepth > 0
+                || Platform.isNull work.Attribution
             then
                 input ()
-            elif not work.Generation.Covered then
-                recorder.EnterProduced ()
-
-                try
-                    input ()
-                finally
-                    recorder.LeaveProduced ()
+            else
+                recorder.RunAttributed (work.Attribution, input)
 
         if graph.IsOnGraphThread then
             run ()
@@ -294,8 +291,8 @@ module Journal =
 
     /// <summary>The mode of the replay running on <c>graph</c>, or <c>None</c> outside a replay.</summary>
     /// <remarks>
-    /// An effect that calls an external service reads it to skip the call under <c>Diagnostic</c>. The call's outcome,
-    /// passed to <c>produce</c>, is dropped either way.
+    /// An effect that calls an external service reads it to skip the call under <c>Diagnostic</c>, which applies the
+    /// recorded outcome.
     /// </remarks>
     let replaying (graph: Graph) : ReplayMode option =
         let recorder = graph.Journal
@@ -305,20 +302,16 @@ module Journal =
         else
             recorder.Replaying
 
+    let private replayedExternal = JournalAttribution (0, true)
+
     let private prepare (mode: ReplayMode) (recorder: JournalRecorder) (entry: JournalEntry) : (unit -> unit) option =
         let failWith reason =
             raise (JournalReplayException (entry.Seq, entry.Key, entry.PayloadType, reason))
 
-        match entry.Kind with
-        | JournalEntryKind.Flush -> None
-        | _ when
-            mode = ReplayMode.Reenact
-            && entry.Origin = JournalOrigin.Produced
-            ->
-            None
-        | JournalEntryKind.Settle
-        | JournalEntryKind.Fail when mode = ReplayMode.Reenact -> None
-        | kind ->
+        match entry.Kind, entry.Origin with
+        | JournalEntryKind.Flush, _ -> None
+        | _, JournalOrigin.Produced _ when mode = ReplayMode.Reenact -> None
+        | kind, _ ->
             match entry.Payload with
             | JournalPayload.NonReplayable payloadType ->
                 failWith (
@@ -364,15 +357,13 @@ module Journal =
                     )
 
                 match binding.Prepare (kind, data) with
-                | Ok run when entry.Origin = JournalOrigin.Produced ->
-                    Some (fun () ->
-                        recorder.EnterProduced ()
+                | Ok run ->
+                    let attribution =
+                        match entry.Origin with
+                        | JournalOrigin.Produced work -> JournalAttribution (work, true)
+                        | JournalOrigin.External -> replayedExternal
 
-                        try
-                            run ()
-                        finally
-                            recorder.LeaveProduced ())
-                | Ok run -> Some run
+                    Some (fun () -> recorder.RunAttributed (attribution, run))
                 | Error error -> failWith ("decode error: " + error)
 
     /// <summary>
@@ -389,12 +380,17 @@ module Journal =
     /// under the recorded keys. The replay's own inputs are recorded on that journal.
     /// </para>
     /// <para>
+    /// <para>
     /// <c>Diagnostic</c> applies every entry, and settles and fails async sources with the recorded outcomes; a failure
-    /// arrives as a <c>JournalReplayedFailure</c> with the recorded message. The inputs of the attributed async work
-    /// started before the replay returns are dropped. <c>Reenact</c> skips the <c>Produced</c> entries and the recorded
-    /// settles and failures, and the re-run work produces its inputs. Either way, each recorded input reaches the graph
-    /// once. An applied <c>Produced</c> entry records a <c>Produced</c> entry. <c>replaying</c> returns the mode while
-    /// the replay runs.
+    /// arrives as a <c>JournalReplayedFailure</c> with the recorded message. The application's async work runs again,
+    /// and each of its inputs is dropped while the replayed entries hold an unmatched <c>Produced</c> entry of the same
+    /// work, during the replay or after it returns. <c>Reenact</c> applies the <c>External</c> entries and skips the
+    /// <c>Produced</c> entries, and the re-run work produces its inputs. In both modes each recorded input reaches the
+    /// graph once when every input of the re-run work is attributed: on .NET, the inputs of an <c>Mvu</c> command, of a
+    /// continuation of an effect's body, and those passed to <c>produce</c>; under Fable, the inputs of an <c>Mvu</c>
+    /// command and those passed to <c>produce</c>. An unattributed input of re-run work is recorded as
+    /// <c>External</c> and is applied twice. An applied entry records an entry of the same origin. <c>replaying</c>
+    /// returns the mode while the replay runs.
     /// </para>
     /// <para>
     /// The entries of a batch are checked and decoded before the batch runs, so a failing entry leaves the preceding
@@ -415,43 +411,73 @@ module Journal =
             raise (InvalidOperationException "A journal replay requires a graph with a journal: the recorded keys are resolved on it.")
 
         graph.AssertOnGraphThread "A journal replay"
-        let previous = recorder.Replaying
-        recorder.Replaying <- Some mode
+
+        let sorted =
+            entries
+            |> Seq.sortBy (fun entry -> entry.Seq)
+            |> Seq.toArray
+
+        let produced (entry: JournalEntry) =
+            match entry.Origin with
+            | JournalOrigin.Produced work when entry.Kind <> JournalEntryKind.Flush -> work
+            | _ -> 0
 
         if mode = ReplayMode.Diagnostic then
-            recorder.Generation.Covered <- true
+            for entry in sorted do
+                let work = produced entry
+
+                if work > 0 then
+                    recorder.Expect work
+
+        let previous = recorder.Replaying
+        recorder.Replaying <- Some mode
+        // The entries before this index are applied.
+        let applied = ref 0
 
         try
-            let pending = List<unit -> unit>()
+            try
+                let pending = List<unit -> unit>()
 
-            let applyPending () =
-                if pending.Count = 1 then
-                    let run = pending[0]
-                    pending.Clear ()
-                    run ()
-                elif pending.Count > 1 then
-                    let runs = pending.ToArray ()
-                    pending.Clear ()
+                let applyPending (upTo: int) =
+                    if pending.Count = 1 then
+                        let run = pending[0]
+                        pending.Clear ()
+                        run ()
+                    elif pending.Count > 1 then
+                        let runs = pending.ToArray ()
+                        pending.Clear ()
 
-                    graph.RunBatch (fun () ->
-                        for run in runs do
-                            run ())
+                        graph.RunBatch (fun () ->
+                            for run in runs do
+                                run ())
 
-            for entry in entries |> Seq.sortBy (fun entry -> entry.Seq) do
-                if entry.Kind = JournalEntryKind.Flush then
-                    applyPending ()
+                    applied.Value <- upTo
 
-                    // A segment that queued effects has already flushed.
-                    if recorder.Unflushed then
-                        graph.Flush ()
-                else
-                    match prepare mode recorder entry with
-                    | Some run -> pending.Add run
-                    | None -> ()
+                for index in 0 .. sorted.Length - 1 do
+                    let entry = sorted[index]
 
-            applyPending ()
+                    if entry.Kind = JournalEntryKind.Flush then
+                        applyPending index
+
+                        // A segment that queued effects has already flushed.
+                        if recorder.Unflushed then
+                            graph.Flush ()
+
+                        applied.Value <- index + 1
+                    else
+                        match prepare mode recorder entry with
+                        | Some run -> pending.Add run
+                        | None -> ()
+
+                applyPending sorted.Length
+            with _ ->
+                if mode = ReplayMode.Diagnostic then
+                    for index in applied.Value .. sorted.Length - 1 do
+                        let work = produced sorted[index]
+
+                        if work > 0 then
+                            recorder.Unexpect work
+
+                reraise ()
         finally
             recorder.Replaying <- previous
-
-            if mode = ReplayMode.Diagnostic then
-                recorder.Renew ()

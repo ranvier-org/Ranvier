@@ -395,17 +395,22 @@ type JournalOrigin =
     /// <summary>From outside the graph's computations and the application's attributed async work.</summary>
     | External
     /// <summary>
-    /// From the application's own async work: a message an <c>Mvu</c> command dispatches after its synchronous part, or
-    /// an input passed to <c>Journal.produce</c>. A re-run of that work produces the input again.
+    /// From the application's own async work: a message an <c>Mvu</c> command dispatches after its synchronous part, an
+    /// input passed to <c>Journal.produce</c>, or, on .NET, an input made in a continuation of an effect's body. A re-run
+    /// of that work produces the input again.
     /// </summary>
-    | Produced
+    /// <remarks>
+    /// <c>work</c> numbers the work on its graph in the order it started. Code that builds and drives a graph alike
+    /// numbers its work alike, so the re-run of a work carries the recorded number.
+    /// </remarks>
+    | Produced of work: int
 
     // AoT compat
-    /// <summary>The case name.</summary>
+    /// <summary>The case name, followed by the work's number for <c>Produced</c>.</summary>
     override this.ToString() =
         match this with
         | JournalOrigin.External -> "External"
-        | JournalOrigin.Produced -> "Produced"
+        | JournalOrigin.Produced work -> "Produced " + string work
 
 /// <summary>One input to a graph, in the order the graph thread observed it.</summary>
 type JournalEntry =
@@ -449,13 +454,13 @@ type IInputJournal =
 type ReplayMode =
     /// <summary>
     /// Reproduces the recorded run: every entry is applied, and async sources settle and fail with the recorded
-    /// values. The inputs of attributed async work started before the replay returns are dropped, so each recorded
-    /// input reaches the graph once.
+    /// values. A re-run work's input is dropped while the replayed entries hold an unmatched <c>Produced</c> entry of
+    /// the same work; its later inputs are live.
     /// </summary>
     | Diagnostic
     /// <summary>
-    /// Re-enacts the recorded run: the <c>External</c> writes and messages are applied, and the <c>Produced</c> entries
-    /// and the recorded settles and failures are skipped. The application's async work runs again and produces them.
+    /// Re-enacts the recorded run: the <c>External</c> entries are applied, and the <c>Produced</c> entries are skipped.
+    /// The application's async work runs again and produces them.
     /// </summary>
     | Reenact
 

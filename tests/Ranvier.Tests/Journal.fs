@@ -19,6 +19,11 @@ let intCodec: JournalCodec<int> =
                 | _ -> Error ("not an int: " + text)
     }
 
+let originName (origin: JournalOrigin) =
+    match origin with
+    | JournalOrigin.External -> "External"
+    | JournalOrigin.Produced _ -> "Produced"
+
 let writes (journal: MemoryJournal) =
     journal.Entries
     |> List.filter (fun e -> e.Kind = JournalEntryKind.Write)
@@ -646,7 +651,7 @@ let tests =
                 | other -> failtestf "expected the live failure, got %O" other
             }
 
-            test "re-enactment skips the recorded settles" {
+            test "re-enactment applies an external settle once" {
                 let journal, g = journaled ()
                 let a = Signal (g, 0) |> Journal.key "a" intCodec
 
@@ -667,7 +672,7 @@ let tests =
                 Journal.replay ReplayMode.Reenact g2 journal.Entries
 
                 Expect.equal a2.Peek 1 "the write is applied"
-                Expect.equal load2.TryValue Pending "the settle is left to the re-run async work"
+                Expect.equal load2.TryValue (Ready 9) "the external settle is applied"
             }
 
             test "Journal.replaying returns the mode while the replay runs" {
@@ -768,7 +773,7 @@ let tests =
 
             test "re-enactment re-runs the async work, and a changed async result flows through the replay" {
                 // A query signal, a gateway effect that queues a call per query outside a diagnostic replay, a
-                // keyed source the completed calls settle, and a memo over the source.
+                // keyed source the completed calls settle as inputs of the effect's work, and a memo over the source.
                 let build () =
                     let journal, g = journaled ()
                     let query = Signal (g, 0) |> Journal.key "query" intCodec
@@ -777,7 +782,7 @@ let tests =
                         AsyncSource<int> g
                         |> Journal.keySource "result" intCodec
 
-                    let calls = System.Collections.Generic.Queue<int>()
+                    let calls = System.Collections.Generic.Queue<int * JournalWork>()
 
                     g.Run (fun () ->
                         createEffect (fun () ->
@@ -787,7 +792,7 @@ let tests =
                                 q > 0
                                 && Journal.replaying g <> Some ReplayMode.Diagnostic
                             then
-                                calls.Enqueue q))
+                                calls.Enqueue (q, Journal.work g)))
 
                     let shown =
                         g.Run (fun () ->
@@ -798,7 +803,8 @@ let tests =
 
                     let complete (service: int -> int) =
                         while calls.Count > 0 do
-                            result.Settle (service (calls.Dequeue ()))
+                            let q, work = calls.Dequeue ()
+                            Journal.produce work (fun () -> result.Settle (service q))
 
                     journal, g, query, shown, calls, complete
 
@@ -812,31 +818,94 @@ let tests =
                 Expect.equal calls2.Count 0 "the diagnostic replay makes no call"
                 Expect.equal shown2.Value 20 "the recorded settle"
 
-                let _, g3, _, shown3, calls3, complete3 = build ()
+                let replayed3, g3, _, shown3, calls3, complete3 = build ()
                 Journal.replay ReplayMode.Reenact g3 journal.Entries
-                Expect.equal (List.ofSeq calls3) [ 2 ] "the re-enactment calls the service again"
+                Expect.equal (calls3 |> Seq.map fst |> List.ofSeq) [ 2 ] "the re-enactment calls the service again"
                 Expect.equal shown3.Value -1 "the recorded settle is skipped"
                 complete3 (fun q -> q * 100)
                 Expect.equal shown3.Value 200 "the changed result reaches the memo"
+
+                Expect.equal
+                    (replayed3.Entries
+                     |> List.filter (fun e -> e.Kind = JournalEntryKind.Settle)
+                     |> List.length)
+                    1
+                    "the source settles once"
             }
+
+#if !FABLE_COMPILER
+            // .NET only: Fable has no async context to carry the work into a continuation.
+            testCaseAsync "an effect continuation's direct settle reaches each replay once"
+            <| async {
+                // An effect over query settles the keyed source with service q after an await on the gate.
+                let build (service: int -> int) =
+                    let journal, g = journaled ()
+                    let gate = System.Threading.Tasks.TaskCompletionSource<unit>()
+                    let query = Signal (g, 0) |> Journal.key "query" intCodec
+
+                    let result =
+                        AsyncSource<int> g
+                        |> Journal.keySource "result" intCodec
+
+                    g.Run (fun () ->
+                        createEffect (fun () ->
+                            let q = query.Value
+
+                            if q > 0 then
+                                task {
+                                    do! gate.Task
+                                    result.Settle (service q)
+                                }
+                                |> ignore))
+
+                    journal, g, query, result, gate
+
+                let settles (journal: MemoryJournal) =
+                    journal.Entries
+                    |> List.filter (fun e -> e.Kind = JournalEntryKind.Settle)
+
+                let journal, _, query, result, gate = build (fun q -> q * 10)
+                query.Value <- 2
+                gate.SetResult ()
+                do! drained ()
+                Expect.equal result.TryValue (Ready 20) "the live result"
+
+                Expect.isTrue
+                    (settles journal
+                     |> List.forall (fun e -> e.Origin <> JournalOrigin.External))
+                    "the continuation's settle is attributed to the effect's work"
+
+                for mode in [ ReplayMode.Diagnostic; ReplayMode.Reenact ] do
+                    let replayed, g2, _, result2, gate2 = build (fun q -> q * 100)
+                    Journal.replay mode g2 journal.Entries
+                    gate2.SetResult ()
+                    do! drained ()
+
+                    let expected = if mode = ReplayMode.Diagnostic then 20 else 200
+                    Expect.equal result2.TryValue (Ready expected) $"the {mode} replay's result"
+                    Expect.equal (settles replayed |> List.length) 1 $"the {mode} replay settles once"
+                    ignore g2
+            }
+#endif
 
 #if !FABLE_COMPILER
             testPropertyWithConfig
                 { FsCheckConfig.defaultConfig with
                     maxTest = 200
                 }
-                "replay into a fresh untraced graph gives every keyed input and memo the recorded run's value"
+                "replay in either mode into a fresh untraced graph gives every keyed input and memo the recorded run's value"
             <| fun (ops: ReplayOp list) ->
                 let live = ReplayModel (journaled ())
 
                 for op in ops do
                     live.Apply op
 
-                let replayed = ReplayModel (journaled ())
-                Journal.replay ReplayMode.Diagnostic replayed.Graph live.Journal.Entries
+                for mode in [ ReplayMode.Diagnostic; ReplayMode.Reenact ] do
+                    let replayed = ReplayModel (journaled ())
+                    Journal.replay mode replayed.Graph live.Journal.Entries
 
-                Expect.equal replayed.State live.State "the inputs and memos"
-                Expect.equal replayed.Runs live.Runs "the effect's runs"
+                    Expect.equal replayed.State live.State $"the {mode} replay's inputs and memos"
+                    Expect.equal replayed.Runs live.Runs $"the {mode} replay's effect runs"
 #endif
 
 #if RANVIER_TRACE
@@ -1011,14 +1080,44 @@ let tests =
 
                         Expect.equal
                             (journal.Entries
-                             |> List.map (fun e -> e.Kind, e.Payload, e.Origin))
+                             |> List.map (fun e -> e.Kind, e.Payload, originName e.Origin))
                             [
-                                JournalEntryKind.Message, JournalPayload.Encoded ("int", 1, "1"), JournalOrigin.External
-                                JournalEntryKind.Flush, JournalPayload.Empty, JournalOrigin.External
-                                JournalEntryKind.Message, JournalPayload.Encoded ("int", 1, "2"), JournalOrigin.Produced
-                                JournalEntryKind.Flush, JournalPayload.Empty, JournalOrigin.External
+                                JournalEntryKind.Message, JournalPayload.Encoded ("int", 1, "1"), "External"
+                                JournalEntryKind.Flush, JournalPayload.Empty, "External"
+                                JournalEntryKind.Message, JournalPayload.Encoded ("int", 1, "2"), "Produced"
+                                JournalEntryKind.Flush, JournalPayload.Empty, "External"
                             ]
                             "the dispatched message's origin"
+                    }
+
+                    testCaseAsync "a diagnostic replay of a journal cut before a command dispatches applies the dispatch once"
+                    <| async {
+                        let journal, _, app, _, _ = awaiting (journaled ())
+                        app.Dispatch 1
+                        let cut = journal.Entries
+
+                        let _, g2, _, seen2, gate2 = awaiting (journaled ())
+                        Journal.replay ReplayMode.Diagnostic g2 cut
+                        gate2.SetResult ()
+                        do! drained ()
+
+                        Expect.equal (List.ofSeq seen2) [ 1; 2 ] "the re-run command's dispatch is live"
+                        ignore g2
+                    }
+
+                    testCaseAsync "a diagnostic replay keeps the inputs of work started on the target before it"
+                    <| async {
+                        let journal, _, app, _, _ = awaiting (journaled ())
+                        app.Dispatch 3
+
+                        let _, g2, app2, seen2, gate2 = awaiting (journaled ())
+                        app2.Dispatch 1
+                        Journal.replay ReplayMode.Diagnostic g2 journal.Entries
+                        gate2.SetResult ()
+                        do! drained ()
+
+                        Expect.equal (List.ofSeq seen2) [ 1; 3; 2 ] "the earlier command's dispatch is live"
+                        ignore g2
                     }
 
                     testCaseAsync "a replay records the entries of the run it replays"
@@ -1084,8 +1183,8 @@ let tests =
 
                         Expect.equal
                             (writes journal
-                             |> List.map (fun e -> e.Key, e.Origin))
-                            [ Some "q", JournalOrigin.External; Some "out", JournalOrigin.Produced ]
+                             |> List.map (fun e -> e.Key, originName e.Origin))
+                            [ Some "q", "External"; Some "out", "Produced" ]
                             "the writes' origins"
                     }
 
@@ -1100,10 +1199,7 @@ let tests =
                             do! drained ()
 
                             Expect.equal out2.Peek 20 $"the {mode} replay's value"
-
-                            let expected = if mode = ReplayMode.Reenact then [ 20 ] else []
-
-                            Expect.equal (List.ofSeq written2) expected $"the {mode} replay's continuation writes"
+                            Expect.equal (List.ofSeq written2) [ 20 ] $"the {mode} replay's continuation runs"
 
                             Expect.equal
                                 (writes replayed
@@ -1111,6 +1207,59 @@ let tests =
                                 (writes journal
                                  |> List.map (fun e -> e.Key, e.Origin))
                                 $"the {mode} replay's writes"
+                    }
+
+                    testCaseAsync "an async memo's continuation write through Journal.produce reaches each replay once"
+                    <| async {
+                        // An async memo over a positive q writes q * 10 to out after an await on the gate, and returns q.
+                        let build () =
+                            let journal, g = journaled ()
+                            let gate = System.Threading.Tasks.TaskCompletionSource<unit>()
+                            let q = Signal (g, 0) |> Journal.key "q" intCodec
+                            let out = Signal (g, 0) |> Journal.key "out" intCodec
+
+                            let memo =
+                                Make.AsyncMemo<int>(
+                                    g,
+                                    fun _ _ ->
+                                        let v = q.Value
+                                        let work = Journal.work g
+
+                                        if v > 0 then
+                                            task {
+                                                do! gate.Task
+                                                Journal.produce work (fun () -> out.Value <- v * 10)
+                                                return v
+                                            }
+                                        else
+                                            System.Threading.Tasks.Task.FromResult v
+                                )
+
+                            g.Run (fun () -> createEffect (fun () -> memo.TryValue |> ignore))
+                            journal, g, q, out, gate
+
+                        let journal, _, q, out, gate = build ()
+                        q.Value <- 2
+                        gate.SetResult ()
+                        do! drained ()
+                        Expect.equal out.Peek 20 "the live run's write"
+
+                        for mode in [ ReplayMode.Reenact; ReplayMode.Diagnostic ] do
+                            let replayed, g2, _, out2, gate2 = build ()
+                            Journal.replay mode g2 journal.Entries
+                            gate2.SetResult ()
+                            do! drained ()
+
+                            Expect.equal out2.Peek 20 $"the {mode} replay's value"
+
+                            Expect.equal
+                                (writes replayed
+                                 |> List.map (fun e -> e.Key, e.Origin))
+                                (writes journal
+                                 |> List.map (fun e -> e.Key, e.Origin))
+                                $"the {mode} replay's writes"
+
+                            ignore g2
                     }
 
                     test "work captured with no journal runs its input" {
@@ -1122,7 +1271,7 @@ let tests =
                 ]
 
             test "the entry unions print their case names" {
-                Expect.equal (JournalOrigin.Produced.ToString ()) "Produced" "an origin"
+                Expect.equal ((JournalOrigin.Produced 3).ToString()) "Produced 3" "an origin"
                 Expect.equal (JournalEntryKind.Settle.ToString ()) "Settle" "a kind"
                 Expect.equal (JournalPayload.Empty.ToString ()) "Empty" "Empty"
                 Expect.equal ((JournalPayload.Encoded ("int", 1, "3")).ToString()) "Encoded (int, 1, 3)" "Encoded"

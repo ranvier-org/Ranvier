@@ -35,7 +35,7 @@ Each entry is a `JournalEntry`:
 | `Key` | The application key of the input; `None` for an unkeyed input and for `Flush`. |
 | `PayloadType` | The runtime type name of the value. |
 | `Payload` | `Encoded (codec, version, data)`, `NonReplayable payloadType`, or `Empty` for `Flush`. |
-| `Origin` | `External`, or `Produced` for an input of the application's attributed async work. |
+| `Origin` | `External`, or `Produced work` for an input of the application's attributed async work, numbered in the order the work started on the graph. |
 
 A `Flush` entry ends each flush pass that followed a recorded entry. Replay flushes at the same
 points, so effects run as often as they did in the recorded run.
@@ -54,14 +54,31 @@ An equal write is recorded, as the traced log records it.
 ### Async work
 
 An input that the application's own async work makes after an `await` is recorded with
-`Origin = Produced`: a re-run of that work makes the input again. Replay uses the origin so that each
-recorded input reaches the graph once in either mode. The journal attributes two kinds of work:
+`Origin = Produced work`: a re-run of that work makes the input again. `work` numbers the work on its
+graph in the order it started, so a graph built and driven by the same code numbers its work alike.
+The journal attributes three kinds of work:
 
 - an `Mvu` command: a message it dispatches after its synchronous part;
+- on .NET, an effect run: a write, settle, failure or message made in a continuation of the effect's
+  body, including one marshalled through `Graph.Dispatch`;
 - work captured with `Journal.work`: an input passed to `Journal.produce`.
 
-Capture the work in its synchronous part, such as an effect's body before its first `await`, and pass
-each later write, settle or failure through `Journal.produce`:
+An effect's continuation on .NET needs no journal code:
+
+```fsharp
+createEffect (fun () ->
+    let q = query.Value
+
+    task {
+        let! hits = service.Search q
+        results.Settle hits
+    }
+    |> ignore)
+```
+
+Fable has no async context to carry the effect run into the continuation, so under Fable capture the
+work in the synchronous part and pass each later input through `Journal.produce`. The same code
+records the same entries on .NET:
 
 ```fsharp
 createEffect (fun () ->
@@ -76,9 +93,8 @@ createEffect (fun () ->
 ```
 
 `Journal.produce` runs the input on the graph's thread, and queues it when called from another
-thread. An input of async work that bypasses `Journal.produce` is recorded as `External`, and a replay
-of a run that re-runs the work applies it twice.
-
+thread. An input made outside every attributed work, such as a socket push or an event handler's
+write after an `await`, is recorded as `External`: replay applies it, and nothing re-runs it.
 ## Keys and codecs
 
 A replay finds each input by its application key, a string stable across runs. `Journal.key`
@@ -158,10 +174,11 @@ replay's own inputs are recorded on the target's journal.
 `ReplayMode.Diagnostic` reproduces the recorded run. Every entry is applied: async sources settle
 with the recorded values, a recorded failure arrives as a `JournalReplayedFailure` carrying the
 recorded message, and the `Produced` messages and writes are applied in their recorded order. The
-attributed async work still runs, and its inputs are dropped: a command started by a replayed message
-dispatches into nothing, as does `Journal.produce` for work captured before the replay returns. Work
-captured after the replay returns is live.
-
+attributed async work still runs. An input of a re-run work is dropped while the replayed entries
+hold an unmatched `Produced` entry of the same work, during the replay or after it returns. Its
+inputs beyond the recorded ones are live: the dispatch of a command still in flight when the journal
+was cut reaches `update`, as do the inputs of work started on the target graph before the replay and
+of work started after it.
 A gateway that also wants to skip its external call reads `Journal.replaying` in its synchronous part:
 
 ```fsharp
@@ -178,12 +195,17 @@ run's `Trace.snapshot` and the `Trace.why` of every effect run.
 
 ### Re-enactment
 
-`ReplayMode.Reenact` applies the `External` writes and messages, and skips the `Produced` entries and
-the recorded settles and failures. The application's async work runs again and makes those inputs,
+`ReplayMode.Reenact` applies the `External` entries, writes, settles, failures and messages alike,
+and skips the `Produced` entries. The application's async work runs again and makes those inputs,
 and a changed result flows through the graph. The re-run inputs arrive when the work completes, after
-the replay returns. Use it to check a
-recorded session against a new service or a changed `update`.
+the replay returns. Use it to check a recorded session against a new service or a changed `update`.
 
+### Exactly once
+
+In both modes each recorded input reaches the graph once, provided every input of the re-run async
+work is attributed. An unattributed input of re-run work, such as an effect continuation's settle
+under Fable without `Journal.produce`, is recorded as `External`: the replay applies it, and the
+re-run work makes it again.
 ### Errors
 
 A replay raises `JournalReplayException` on an entry it cannot apply, naming its `Seq`, `Key` and
@@ -209,7 +231,13 @@ graph.
 
 ## Fable
 
-The journal, `Mvu.journal` and both replay modes behave the same under Fable, with one difference: a
-write or settle after an `await` in an async memo's body is recorded as an `External` input, where
-.NET records nothing. Pass it through `Journal.produce`, with the work captured before the `await`,
-to record it as `Produced`. See [Fable](../fable/index.md).
+The journal, `Mvu.journal` and both replay modes behave the same under Fable, with two differences,
+both from Fable having no async context:
+
+- an effect's continuation is not attributed to the effect run: pass its inputs through
+  `Journal.produce`;
+- a write or settle after an `await` in an async memo's body is recorded as an `External` input,
+  where .NET records nothing. Pass it through `Journal.produce`, with the work captured before the
+  `await`, to record it as `Produced` and apply it once in either mode.
+
+See [Fable](../fable/index.md).

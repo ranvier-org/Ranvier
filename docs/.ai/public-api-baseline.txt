@@ -271,8 +271,9 @@ member Ranvier.JournalOrigin ToString() : String
 member Ranvier.JournalOrigin get_IsExternal() : Boolean
 member Ranvier.JournalOrigin get_IsProduced() : Boolean
 member Ranvier.JournalOrigin get_Tag() : Int32
+member Ranvier.JournalOrigin static NewProduced(Int32) : Ranvier.JournalOrigin
 member Ranvier.JournalOrigin static get_External() : Ranvier.JournalOrigin
-member Ranvier.JournalOrigin static get_Produced() : Ranvier.JournalOrigin
+member Ranvier.JournalOrigin+Produced get_work() : Int32
 member Ranvier.JournalPayload CompareTo(Object) : Int32
 member Ranvier.JournalPayload CompareTo(Object,System.Collections.IComparer) : Int32
 member Ranvier.JournalPayload CompareTo(Ranvier.JournalPayload) : Int32
@@ -623,6 +624,7 @@ type Ranvier.JournalOrigin implements System.Collections.IStructuralEquatable
 type Ranvier.JournalOrigin implements System.IComparable
 type Ranvier.JournalOrigin implements System.IComparable`1<Ranvier.JournalOrigin>
 type Ranvier.JournalOrigin implements System.IEquatable`1<Ranvier.JournalOrigin>
+type Ranvier.JournalOrigin+Produced : Ranvier.JournalOrigin
 type Ranvier.JournalOrigin+Tags : System.Object
 type Ranvier.JournalPayload : System.Object
 type Ranvier.JournalPayload implements System.Collections.IStructuralComparable
