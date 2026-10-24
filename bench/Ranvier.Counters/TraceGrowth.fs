@@ -97,3 +97,212 @@ let summarise (checkpoints: Checkpoint[]) : Result<GrowthSummary, string> =
                 EventSlope = eventSlope
                 RetainedSlope = retainedSlope
             }
+
+/// <summary>The runtime's heap and clock, as the probe reads them.</summary>
+type Host =
+    {
+        /// <summary>Heap bytes in use after a full collection.</summary>
+        RetainedBytes: unit -> float
+        /// <summary>A monotonic clock in milliseconds.</summary>
+        Now: unit -> float
+    }
+
+/// <summary>Every checkpoint of a probe run, oldest first per workload, and each workload's growth.</summary>
+type GrowthRun =
+    {
+        /// <summary><c>dotnet</c> or <c>node</c>.</summary>
+        Runtime: string
+        /// <summary>Whether the library was compiled with <c>RANVIER_TRACE</c>.</summary>
+        Traced: bool
+        Checkpoints: Checkpoint[]
+        Summaries: GrowthSummary[]
+    }
+
+/// <summary>
+/// Writes before each checkpoint that the tail read covers. Checkpoints lie at least this many writes apart.
+/// </summary>
+[<Literal>]
+let TailUpdates = 100
+
+/// <summary>Timed runs of each export operation; a checkpoint records the fastest.</summary>
+[<Literal>]
+let private Repeats = 3
+
+/// <summary>Written by every reaction, so no reaction's result is provably unused.</summary>
+let mutable private sink = 0
+
+/// <summary>The last export result, so no export is provably unused.</summary>
+let mutable private kept: obj = null
+
+let private traced =
+#if RANVIER_TRACE
+    true
+#else
+    false
+#endif
+
+/// <summary>One signal read by one memo, read by one effect. Returns the signal's write.</summary>
+let private memo (graph: Ranvier.Graph) =
+    let source = Ranvier.Signal (graph, 0)
+    let doubled = Ranvier.Memo (graph, (fun _ -> source.Value * 2))
+
+    new Ranvier.Effect (graph, (fun () -> sink <- sink + doubled.Value))
+    |> ignore
+
+    fun () -> source.Value <- source.Peek + 1
+
+/// <summary>One signal read by 64 memos, all read by one effect. Returns the signal's write.</summary>
+let private fanout (graph: Ranvier.Graph) =
+    let source = Ranvier.Signal (graph, 0)
+
+    let memos =
+        Array.init 64 (fun i -> Ranvier.Memo (graph, (fun _ -> source.Value + i)))
+
+    new Ranvier.Effect (
+        graph,
+        fun () ->
+            for m in memos do
+                sink <- sink + m.Value
+    )
+    |> ignore
+
+    fun () -> source.Value <- source.Peek + 1
+
+/// <summary>
+/// The measured workloads and their checkpoints. A <c>fanout</c> write records about 28 times the events of a
+/// <c>memo</c> write, so its checkpoints stop at 10,000 updates, about 3.9 million events.
+/// </summary>
+let plan: (string * int[]) list =
+    [ "memo", [| 1000; 10000; 100000 |]; "fanout", [| 100; 1000; 10000 |] ]
+
+let private workload (name: string) =
+    match name with
+    | "memo" -> memo
+    | "fanout" -> fanout
+    | _ -> invalidArg (nameof name) $"No trace growth workload named '%s{name}'."
+
+/// <summary>The fastest of <c>Repeats</c> runs of <c>f</c>, in milliseconds.</summary>
+let private fastest (host: Host) (f: unit -> obj) =
+    let mutable best = infinity
+
+    for _ in 1..Repeats do
+        let start = host.Now ()
+        kept <- f ()
+        best <- min best (host.Now () - start)
+
+    best
+
+/// <summary>
+/// The checkpoints of <c>name</c>'s workload on one graph, written to <c>checkpoints</c> times in ascending order.
+/// </summary>
+/// <exception cref="T:System.ArgumentException">
+/// A checkpoint lies under <c>TailUpdates</c> writes after the previous one, or after the start.
+/// </exception>
+let probe (host: Host) (name: string) (checkpoints: int[]) : Checkpoint[] =
+    checkpoints
+    |> Array.iteri (fun i target ->
+        let previous = if i = 0 then 0 else checkpoints[i - 1]
+
+        if target - previous < TailUpdates then
+            invalidArg (nameof checkpoints) $"Checkpoint %d{target} lies under %d{TailUpdates} writes after %d{previous}.")
+
+    let build = workload name
+    let baseline = host.RetainedBytes ()
+    let graph = new Ranvier.Graph ()
+    let write = build graph
+    let mutable updates = 0
+
+    let advance (target: int) =
+        while updates < target do
+            write ()
+            updates <- updates + 1
+
+    let result =
+        [|
+            for target in checkpoints do
+                advance (target - TailUpdates)
+#if RANVIER_TRACE
+                let read = (Ranvier.Trace.events graph).Length
+#endif
+                advance target
+                let retained = host.RetainedBytes () - baseline
+#if RANVIER_TRACE
+                let events = (Ranvier.Trace.events graph).Length
+
+                yield
+                    {
+                        Workload = name
+                        Updates = target
+                        Events = events
+                        RetainedBytes = retained
+                        EventsMs = fastest host (fun () -> box (Ranvier.Trace.events graph))
+                        SnapshotMs = fastest host (fun () -> box (Ranvier.Trace.snapshot graph))
+                        DumpTextMs = fastest host (fun () -> box (Ranvier.Trace.dumpText graph))
+                        TailReadMs =
+                            fastest host (fun () ->
+                                let all = Ranvier.Trace.events graph
+                                box all[read..])
+                        TailEvents = events - read
+                    }
+#else
+                yield
+                    {
+                        Workload = name
+                        Updates = target
+                        Events = 0
+                        RetainedBytes = retained
+                        EventsMs = 0.
+                        SnapshotMs = 0.
+                        DumpTextMs = 0.
+                        TailReadMs = 0.
+                        TailEvents = 0
+                    }
+#endif
+        |]
+
+    kept <- null
+    (graph :> System.IDisposable).Dispose()
+    result
+
+/// <summary>Every workload of <c>workloads</c> probed on its own graph, in order, with its growth.</summary>
+let run (host: Host) (runtime: string) (workloads: (string * int[]) list) : GrowthRun =
+    let probed =
+        workloads
+        |> List.map (fun (name, checkpoints) -> probe host name checkpoints)
+
+    {
+        Runtime = runtime
+        Traced = traced
+        Checkpoints = Array.concat probed
+        Summaries =
+            probed
+            |> List.choose (fun checkpoints ->
+                match summarise checkpoints with
+                | Ok summary -> Some summary
+                | Error _ -> None)
+            |> List.toArray
+    }
+
+#if !FABLE_COMPILER
+/// <summary>The .NET heap after a full, compacting collection, and <c>Stopwatch</c> time.</summary>
+let dotnetHost: Host =
+    {
+        RetainedBytes =
+            fun () ->
+                System.GC.Collect ()
+                System.GC.WaitForPendingFinalizers ()
+                float (System.GC.GetTotalMemory true)
+        Now = fun () -> System.Diagnostics.Stopwatch.GetElapsedTime(0L).TotalMilliseconds
+    }
+
+let private jsonOptions =
+    System.Text.Json.JsonSerializerOptions (WriteIndented = true)
+
+/// <summary>Writes <c>growth</c> to <c>path</c> as JSON.</summary>
+let write (path: string) (growth: GrowthRun) =
+    System.IO.File.WriteAllText (path, System.Text.Json.JsonSerializer.Serialize (growth, jsonOptions))
+
+/// <summary>The probe run in the JSON file at <c>path</c>, written by <c>write</c> or by the Fable harness.</summary>
+let read (path: string) : GrowthRun =
+    System.Text.Json.JsonSerializer.Deserialize<GrowthRun>(System.IO.File.ReadAllText path, jsonOptions)
+#endif

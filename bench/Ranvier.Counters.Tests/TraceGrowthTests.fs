@@ -1,6 +1,7 @@
 module CounterBench.Tests.TraceGrowthTests
 
 open Expecto
+open CounterBench
 open CounterBench.TraceGrowth
 
 let private checkpoint (updates: int) (events: int) (retained: float) : Checkpoint =
@@ -76,5 +77,56 @@ let tests =
                             }
                         |])
                     "two workloads"
+            }
+        ]
+
+[<Tests>]
+let probeTests =
+    testList
+        "TraceGrowth.probe"
+        [
+            test "the JSON written for a small run round-trips through the reader" {
+                let run =
+                    TraceGrowth.run TraceGrowth.dotnetHost "dotnet" [ "memo", [| 100; 300 |]; "fanout", [| 100; 200 |] ]
+
+                Expect.equal
+                    (run.Checkpoints
+                     |> Array.map (fun c -> c.Workload, c.Updates))
+                    [| "memo", 100; "memo", 300; "fanout", 100; "fanout", 200 |]
+                    "checkpoints in plan order"
+
+                Expect.equal (run.Summaries |> Array.map _.Workload) [| "memo"; "fanout" |] "one summary per workload"
+
+                for c in run.Checkpoints do
+                    Expect.equal (c.Events > 0) run.Traced "events exactly when traced"
+                    Expect.equal (c.TailEvents > 0) run.Traced "tail events exactly when traced"
+
+                let file =
+                    System.IO.Path.Combine (
+                        System.IO.Path.GetTempPath (),
+                        "ranvier-trace-growth-"
+                        + string (System.Guid.NewGuid ())
+                        + ".json"
+                    )
+
+                try
+                    TraceGrowth.write file run
+                    Expect.equal (TraceGrowth.read file) run "read back"
+                finally
+                    System.IO.File.Delete file
+            }
+
+            test "checkpoints closer than the tail read are refused" {
+                Expect.throws
+                    (fun () ->
+                        TraceGrowth.run TraceGrowth.dotnetHost "dotnet" [ "memo", [| 100; 150 |] ]
+                        |> ignore)
+                    "gap under TailUpdates"
+
+                Expect.throws
+                    (fun () ->
+                        TraceGrowth.run TraceGrowth.dotnetHost "dotnet" [ "memo", [| 50; 300 |] ]
+                        |> ignore)
+                    "first checkpoint under TailUpdates"
             }
         ]
