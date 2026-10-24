@@ -295,6 +295,20 @@ let tests =
                 Expect.isTrue export.Completion.IsCompleted "the sink holds every record"
                 Expect.equal (List.length (gaps sink)) 1 "one gap"
                 Expect.sequenceEqual (streamSeqs sink) [ 1..last ] "the events and the gap cover every seq once, in order"
+#if !FABLE_COMPILER
+                let dump = TraceContract.parseDumpWith dropping.Codecs sink.Text
+                Expect.equal dump.Gaps (gaps sink) "the stream's gap parses"
+
+                Expect.sequenceEqual
+                    (dump.Events |> Array.map _.Seq)
+                    (streamSeqs sink
+                     |> List.except
+                         [
+                             for from, ``to`` in gaps sink do
+                                 yield! [ from..``to`` ]
+                         ])
+                    "the stream's events parse"
+#endif
             }
 
             // Sequenced: the memory reading is process-wide.
