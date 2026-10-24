@@ -68,7 +68,12 @@ let private itemRows =
             Arms.Match (
                 (fun (state: Signal<Load>) -> state.Value),
                 function
-                | Loaded (text, _) -> ul () { forEachFixed id (fun (state: Signal<Load>) -> [| state |]) (li () { fun (_: Signal<Load>) -> text }) }
+                | Loaded (text, _) ->
+                    ul () {
+                        // The row item is the instance: the fixture covers a reader that receives the row item.
+                        // fsharpanalyzer: ignore-line-next RAN021
+                        forEachFixed id (fun (state: Signal<Load>) -> [| state |]) (li () { fun (_: Signal<Load>) -> text })
+                    }
                 | _ -> span () { "Other" }
             )
         })
