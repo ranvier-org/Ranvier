@@ -24,6 +24,15 @@ let private exportedTo (sink: MemoryTraceSink) =
             | TraceExportRecord.Events (_, ``to``, _) -> ``to``
             | _ -> last)
         0
+
+// The seqs of the events the sink holds, in stream order.
+let private exportedSeqs (sink: MemoryTraceSink) =
+    sink.Records
+    |> List.collect (fun record ->
+        match record with
+        | TraceExportRecord.Events (from, ``to``, _) -> [ from..``to`` ]
+        | TraceExportRecord.Gap (from, ``to``) -> failtestf "a gap from %d to %d" from ``to``
+        | TraceExportRecord.Header _ -> [])
 #endif
 
 [<Tests>]
@@ -154,6 +163,55 @@ let tests =
 
                 Expect.isTrue export.Completion.IsCompleted "the sink holds every record"
                 Expect.equal (exportedTo sink) last "the events up to Dispose"
+            }
+
+            test "Wait loses no event behind a stalled sink, and the stream is the dumpTextWith text" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let s = createSignal 0
+                let mutable seen = 0
+                createEffect (fun () -> seen <- s.Value)
+                let sink = TraceSinks.memory ()
+                sink.Stall ()
+                let export = Trace.export g sink waiting
+
+                for i in 1..10000 do
+                    s.Value <- i
+
+                let expected = Trace.dumpTextWith g waiting.Codecs
+                let last = Trace.lastSeq g
+                Expect.isLessThan (exportedTo sink) last "the stalled sink holds back the stream"
+
+                sink.Release ()
+                export.Dispose ()
+
+                Expect.isTrue export.Completion.IsCompleted "the sink holds every record"
+                Expect.equal export.Dropped 0 "no event dropped"
+                Expect.sequenceEqual (exportedSeqs sink) [ 1..last ] "every seq, once and in order"
+                Expect.equal sink.Text expected "the header and events concatenate to dumpTextWith"
+            }
+
+            test "a write completed off the graph's thread resumes the export through Graph.Dispatch" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let s = createSignal 0
+                createEffect (fun () -> s.Value |> ignore)
+                let sink = TraceSinks.memory ()
+                sink.Stall ()
+                let export = Trace.export g sink waiting
+
+                for i in 1..1000 do
+                    s.Value <- i
+
+                (System.Threading.Tasks.Task.Run (fun () -> sink.Release ())).Wait()
+                Expect.isLessThan (exportedTo sink) (Trace.lastSeq g) "the rest waits for the graph's thread"
+
+                Expect.equal (g.Pump ()) 1 "the pump ran the dispatched resume"
+                Expect.equal (exportedTo sink) (Trace.lastSeq g) "the dispatched resume exported the rest"
+
+                export.Dispose ()
+                Expect.isTrue export.Completion.IsCompleted "the sink holds every record"
+                Expect.sequenceEqual (exportedSeqs sink) [ 1 .. Trace.lastSeq g ] "every seq, once and in order"
             }
 
             test "a gap record writes a gap line" {
