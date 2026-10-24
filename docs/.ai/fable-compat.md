@@ -65,7 +65,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Streams.fs | 26 | 26 | 26 | 26 | 26 | 26 | 1 | 0 |
 | PreviousValues.fs | 12 | 12 | 12 | 12 | 12 | 12 | 15 | 0 |
 | Texts.fs | 5 | 5 | 5 | 43 | 43 | 43 | 1 | 0 |
-| Journal.fs | 38 | 37 | 37 | 41 | 40 | 40 | 0 | 0 |
+| Journal.fs | 45 | 44 | 44 | 48 | 47 | 47 | 0 | 0 |
 | FailureOrigins.fs | 16 | 16 | 16 | 16 | 16 | 16 | 2 | 0 |
 | NullChecks.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
 | Editables.fs | 17 | 17 | 17 | 17 | 17 | 17 | 1 | 0 |
@@ -85,7 +85,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 9 | 9 | 9 | 9 | 9 | 9 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1589 | 1567 | 1564 | 1803 | 1776 | 1773 | 143 | 1 |
+| **Total** | 1596 | 1574 | 1571 | 1810 | 1783 | 1780 | 143 | 1 |
 
 ## Tests.fs
 
@@ -2012,7 +2012,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | untraced | a write after an await in an async memo's body is not journaled | failed | failed | Every `await` suspends |
 | traced | a write after an await in an async memo's body is not journaled | failed | failed | Every `await` suspends |
 
-<details><summary>40 passed in every build and delivery that runs them</summary>
+<details><summary>47 passed in every build and delivery that runs them</summary>
 
 - GraphOptions.Default has no journal
 - WithJournal sets the journal
@@ -2051,6 +2051,13 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - Mvu.journal / an external dispatch records one Message entry and its flush
 - Mvu.journal / a dispatch from an effect records nothing
 - Mvu.journal / replay dispatches the recorded messages
+- Mvu.journal / a re-enactment applies a message a command dispatches after an await once
+- Mvu.journal / a diagnostic replay applies a message a command dispatches after an await once
+- Mvu.journal / a message a command dispatches after an await records a Produced entry
+- Mvu.journal / a replay records the entries of the run it replays
+- Journal.produce / a write in a continuation records a Produced entry
+- Journal.produce / each replay mode applies a write in a continuation once
+- Journal.produce / work captured with no journal runs its input
 - a traced Journal.key labels an unlabelled node with the key (traced only)
 - a traced Journal.key keeps an existing label (traced only)
 - a diagnostic replay of the traced cart gives the live run's snapshot and the why of every banner run (traced only)
