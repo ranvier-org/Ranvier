@@ -445,7 +445,8 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Serialised: a drain that finds the graph held leaves the work, and the holder posts it again | JavaScript has one thread. |
 | off-thread calls wait in the inbox, then run in arrival order with Dispatch on the graph thread | JavaScript has one thread. |
 | a synchronisation-context dispatcher completes the task without a manual pump | JavaScript has one thread. |
-| a continuation of the task runs outside the drain | JavaScript has one thread. |
+| a continuation of a queued item's task runs outside the drain | JavaScript has one thread. |
+| a synchronous continuation of an inline call's task runs on the graph thread | JavaScript has one thread. |
 | queued work that throws faults its task, and later items still run | JavaScript has one thread. |
 | an off-thread call on a disposed graph faults the task and queues nothing | JavaScript has one thread. |
 | an item queued before disposal and drained after it faults and does not run | JavaScript has one thread. |

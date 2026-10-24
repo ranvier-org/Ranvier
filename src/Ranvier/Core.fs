@@ -2173,8 +2173,9 @@ type Graph(options: GraphOptions) =
     /// On the graph thread the work runs before the call returns and the task is already complete. From another
     /// thread the work joins the inbox behind earlier <c>Dispatch</c> and <c>DispatchAsync</c> items and runs on the
     /// drain the dispatcher schedules; under <c>ManualDispatcher</c> that is the owner's next <c>Pump</c>. Continuations
-    /// of the task run on the thread pool, outside the drain. Blocking on the task from the owning thread deadlocks when
-    /// that thread is the only one that drains.
+    /// of a queued item's task run on the thread pool, outside the drain. A continuation attached to an inline call's
+    /// task, by <c>await</c> or <c>ExecuteSynchronously</c>, runs at once on the graph thread, inside the graph.
+    /// Blocking on the task from the owning thread deadlocks when that thread is the only one that drains.
     ///
     /// Completion marks the end of the work, not of what it triggers. Effects woken by its writes run as they do for
     /// <c>Dispatch</c> work: at the write, or at the end of a batch the work opens, before the task completes. An

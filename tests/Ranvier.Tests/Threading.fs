@@ -1021,7 +1021,7 @@ let tests =
 
 #if !FABLE_COMPILER
                     // .NET only: JavaScript has one thread.
-                    test "a continuation of the task runs outside the drain" {
+                    test "a continuation of a queued item's task runs outside the drain" {
                         let g = new Graph ()
                         let result = offThread (fun () -> g.DispatchAsync (fun () -> 7))
 
@@ -1032,6 +1032,20 @@ let tests =
 
                         Expect.isTrue (continuation.Wait (TimeSpan.FromSeconds 5.0)) "the continuation ran"
                         Expect.isFalse continuation.Result "a synchronous continuation still resumes off the graph thread"
+                    }
+#endif
+
+#if !FABLE_COMPILER
+                    // .NET only: JavaScript has one thread.
+                    test "a synchronous continuation of an inline call's task runs on the graph thread" {
+                        let g = new Graph ()
+                        let result = g.DispatchAsync (fun () -> 7)
+
+                        let continuation =
+                            result.ContinueWith ((fun (_: Task<int>) -> g.IsOnGraphThread), TaskContinuationOptions.ExecuteSynchronously)
+
+                        Expect.isTrue continuation.IsCompleted "the continuation ran before ContinueWith returned"
+                        Expect.isTrue continuation.Result "the already-complete task resumes the continuation on the graph thread"
                     }
 #endif
 

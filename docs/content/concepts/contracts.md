@@ -97,7 +97,9 @@ thread pool against a graph owned by a dedicated thread.
   they do for `Dispatch` work: at the write, or at the end of a batch `work` opens, before the task completes.
   An inline call inside an enclosing batch completes its task first, and that batch's flush runs the effects.
   Async memos `work` starts settle later.
-- **Continuations.** On .NET they run on the thread pool, outside the drain and outside a `Serialised` graph.
+- **Continuations.** On .NET a queued item's continuations run on the thread pool, outside the drain and outside a
+  `Serialised` graph. An `await` or an `ExecuteSynchronously` continuation on an inline call's task resumes at
+  once on the graph thread, inside the graph.
 - **Blocking.** Waiting on the task's `Result` from the owning thread deadlocks when that thread is the only one
   that drains the inbox.
 - **Fable.** `work` runs inline, and the task is a promise settled before the call returns.
