@@ -26,6 +26,7 @@
         <Compile Include="..\..\experiments\Ranvier.View.Checks\ServerFixtures.fs" Link="ServerFixtures.fs" />
         <Compile Include="..\..\bench\Ranvier.Counters\ServerWorkloads.fs" Link="ServerWorkloads.fs" />
         <Compile Include="..\..\bench\Ranvier.Counters\Control.fs" Link="Control.fs" />
+        <Compile Include="..\..\bench\Ranvier.Counters\TraceGrowth.fs" Link="TraceGrowth.fs" />
         <Compile Include="Scenarios.fs" />
         <Compile Include="Appended.fs" />
         <Compile Include="Main.fs" />

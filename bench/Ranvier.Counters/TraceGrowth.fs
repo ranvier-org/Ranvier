@@ -142,29 +142,32 @@ let private traced =
 #endif
 
 /// <summary>One signal read by one memo, read by one effect. Returns the signal's write.</summary>
-let private memo (graph: Ranvier.Graph) =
-    let source = Ranvier.Signal (graph, 0)
-    let doubled = Ranvier.Memo (graph, (fun _ -> source.Value * 2))
-
-    new Ranvier.Effect (graph, (fun () -> sink <- sink + doubled.Value))
-    |> ignore
+let private memo (graph: Ranvier.Graph) : unit -> unit =
+    let source =
+        graph.CreateRoot (fun _ ->
+            use _active = graph.Activate ()
+            let source = Ranvier.Api.createSignal 0
+            let doubled = Ranvier.Api.createMemo (fun _ -> source.Value * 2)
+            Ranvier.Api.createEffect (fun () -> sink <- sink + doubled.Value)
+            source)
 
     fun () -> source.Value <- source.Peek + 1
 
 /// <summary>One signal read by 64 memos, all read by one effect. Returns the signal's write.</summary>
-let private fanout (graph: Ranvier.Graph) =
-    let source = Ranvier.Signal (graph, 0)
+let private fanout (graph: Ranvier.Graph) : unit -> unit =
+    let source =
+        graph.CreateRoot (fun _ ->
+            use _active = graph.Activate ()
+            let source = Ranvier.Api.createSignal 0
 
-    let memos =
-        Array.init 64 (fun i -> Ranvier.Memo (graph, (fun _ -> source.Value + i)))
+            let memos =
+                Array.init 64 (fun i -> Ranvier.Api.createMemo (fun _ -> source.Value + i))
 
-    new Ranvier.Effect (
-        graph,
-        fun () ->
-            for m in memos do
-                sink <- sink + m.Value
-    )
-    |> ignore
+            Ranvier.Api.createEffect (fun () ->
+                for m in memos do
+                    sink <- sink + m.Value)
+
+            source)
 
     fun () -> source.Value <- source.Peek + 1
 
