@@ -64,14 +64,15 @@ let private dumpOf (write: Graph -> 'T) : 'T =
     write g
 
 #if !FABLE_COMPILER
-let private fixture (name: string) =
+/// <summary>The path of the committed trace fixture <c>name</c>.</summary>
+let internal fixture (name: string) =
     System.IO.Path.Combine (__SOURCE_DIRECTORY__, "fixtures", "trace", name)
 
 /// <summary>
 /// Asserts that <c>text</c> equals the committed fixture <c>name</c>, or writes the fixture when
 /// <c>RANVIER_WRITE_FIXTURES</c> is <c>1</c>.
 /// </summary>
-let private matchesFixture (name: string) (text: string) =
+let internal matchesFixture (name: string) (text: string) =
     let path = fixture name
 
     if System.Environment.GetEnvironmentVariable "RANVIER_WRITE_FIXTURES" = "1" then
@@ -146,6 +147,28 @@ let tests =
 #if !FABLE_COMPILER
             // .NET only: TraceModel.parseDump is .NET only, and the fixtures are files.
             test "dumpText writes the committed schema 1 fixture byte for byte" { matchesFixture "dump-text-schema-1.jsonl" (dumpOf Trace.dumpText) }
+
+            test "dumpTextWith writes the committed schema 3 fixture byte for byte" {
+                matchesFixture "dump-text-schema-3.jsonl" (dumpOf (fun g -> Trace.dumpTextWith g codecs))
+            }
+
+            test "the committed schema 1 and 3 fixtures parse to the program's events and payload forms" {
+                let events = dumpOf Trace.events
+                let forms = formsOf events
+
+                for name, schema in [ "dump-text-schema-1.jsonl", 1; "dump-text-schema-3.jsonl", 3 ] do
+                    let dump = TraceModel.parseDump (System.IO.File.ReadAllText (fixture name))
+                    Expect.equal dump.Schema schema name
+                    Expect.equal (dump.Events |> Array.map _.Seq) (events |> Array.map _.Seq) "the events"
+
+                    if schema = 3 then
+                        Expect.equal dump.Payloads forms "the payload forms"
+
+                let decoded =
+                    TraceContract.parseDumpWith codecs (System.IO.File.ReadAllText (fixture "dump-text-schema-3.jsonl"))
+
+                Expect.contains (decoded.Events |> Array.map _.Payload) (box { X = 3; Y = 4 }) "a codec's payload decodes"
+            }
 
             test "a schema 3 dump parses to the forms written" {
                 let text, forms, events =
