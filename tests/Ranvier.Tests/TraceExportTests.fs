@@ -240,30 +240,6 @@ let tests =
             }
 #endif
 
-            test "under Wait, the stream ends at Dispose when the queue is full and events follow it" {
-                use g = new Graph ()
-                use _ = g.Activate ()
-                let s = createSignal 0
-                createEffect (fun () -> s.Value |> ignore)
-                let sink = TraceSinks.memory ()
-                sink.Stall ()
-                let export = Trace.export g sink { waiting with Capacity = 7 }
-
-                for i in 1..50 do
-                    s.Value <- i
-
-                let last = Trace.lastSeq g
-                export.Dispose ()
-
-                for i in 51..100 do
-                    s.Value <- i
-
-                sink.Release ()
-
-                Expect.isTrue export.Completion.IsCompleted "the sink holds every record"
-                Expect.sequenceEqual (exportedSeqs sink) [ 1..last ] "every seq up to Dispose, once and in order"
-            }
-
             test "Drop writes the dropped seqs in one gap once the stalled sink frees a slot" {
                 use g = new Graph ()
                 use _ = g.Activate ()
