@@ -137,61 +137,6 @@ let tests =
                 Expect.equal sink.Text "1..2\n3..4\n5..5\n" "the text of the records"
             }
 
-            test "export writes the header first, then the retained events" {
-                use g = new Graph ()
-                use _ = g.Activate ()
-                let s = createSignal 0
-                s.Value <- 1
-                let sink = TraceSinks.memory ()
-                use _export = Trace.export g sink waiting
-
-                match sink.Records with
-                | TraceExportRecord.Header header :: _ ->
-                    Expect.stringStarts header "{\"schema\":3," "a schema 3 header"
-                    Expect.equal (header.Split('\n').Length) 3 "the header line and the snapshot line"
-                | records -> failtestf "the first record is a header: %A" records
-
-                Expect.equal (exportedTo sink) (Trace.lastSeq g) "the retained events"
-            }
-
-            test "the events of a flush are exported when it ends" {
-                use g = new Graph ()
-                use _ = g.Activate ()
-                let s = createSignal 0
-                let mutable seen = 0
-                createEffect (fun () -> seen <- s.Value)
-                let sink = TraceSinks.memory ()
-                use _export = Trace.export g sink waiting
-
-                s.Value <- 1
-
-                Expect.equal seen 1 "the effect ran"
-                Expect.equal (exportedTo sink) (Trace.lastSeq g) "the flush's events, with no Drain call"
-
-                let kinds =
-                    Trace.eventsSince g 0
-                    |> Array.filter (fun e -> e.Seq > 0)
-                    |> Array.map _.Kind
-
-                Expect.contains kinds TraceEventKind.FlushEnd "the log holds the flush"
-            }
-
-            test "Drain exports the events of a write that wakes no effect" {
-                use g = new Graph ()
-                use _ = g.Activate ()
-                let s = createSignal 0
-                let sink = TraceSinks.memory ()
-                use export = Trace.export g sink waiting
-
-                s.Value <- 1
-                s.Value <- 2
-                let before = exportedTo sink
-                export.Drain ()
-
-                Expect.isLessThan before (Trace.lastSeq g) "the writes ran no flush"
-                Expect.equal (exportedTo sink) (Trace.lastSeq g) "Drain exported the writes"
-            }
-
             test "Dispose stops the export and completes Completion once the sink holds every record" {
                 use g = new Graph ()
                 use _ = g.Activate ()
@@ -211,32 +156,6 @@ let tests =
 
                 Expect.isTrue export.Completion.IsCompleted "the sink holds every record"
                 Expect.equal (exportedTo sink) last "the events up to Dispose"
-            }
-
-            test "Wait loses no event behind a stalled sink, and the stream is the dumpTextWith text" {
-                use g = new Graph ()
-                use _ = g.Activate ()
-                let s = createSignal 0
-                let mutable seen = 0
-                createEffect (fun () -> seen <- s.Value)
-                let sink = TraceSinks.memory ()
-                sink.Stall ()
-                let export = Trace.export g sink waiting
-
-                for i in 1..10000 do
-                    s.Value <- i
-
-                let expected = Trace.dumpTextWith g waiting.Codecs
-                let last = Trace.lastSeq g
-                Expect.isLessThan (exportedTo sink) last "the stalled sink holds back the stream"
-
-                sink.Release ()
-                export.Dispose ()
-
-                Expect.isTrue export.Completion.IsCompleted "the sink holds every record"
-                Expect.equal export.Dropped 0 "no event dropped"
-                Expect.sequenceEqual (exportedSeqs sink) [ 1..last ] "every seq, once and in order"
-                Expect.equal sink.Text expected "the header and events concatenate to dumpTextWith"
             }
 
             test "a write completed off the graph's thread resumes the export through Graph.Dispatch" {

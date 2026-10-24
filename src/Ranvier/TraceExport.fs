@@ -403,17 +403,18 @@ type TraceExport internal (graph: Graph, sink: ITraceSink, policy: SinkPolicy) =
         TaskCompletionSource<unit> TaskCreationOptions.RunContinuationsAsynchronously
 #endif
 
+    // Settles Completion once, from a flag and an error: under Fable, ValueSome null is ValueNone.
     member private _.Settle() =
-        let outcome =
+        let struct (finished, error) =
             lock gate (fun () ->
                 if settled then
-                    ValueNone
+                    struct (false, null)
                 else
                     let error = if isNull fault then queue.Fault else fault
 
                     if not (isNull error) then
                         settled <- true
-                        ValueSome error
+                        struct (true, error)
                     elif
                         disposed
                         && cursor >= target
@@ -421,18 +422,21 @@ type TraceExport internal (graph: Graph, sink: ITraceSink, policy: SinkPolicy) =
                         && queue.Idle
                     then
                         settled <- true
-                        ValueSome null
+                        struct (true, null)
                     else
-                        ValueNone)
+                        struct (false, null))
 
-        match outcome with
-        | ValueNone -> ()
+        if finished then
 #if FABLE_COMPILER
-        | ValueSome null -> completion.Resolve ()
-        | ValueSome error -> completion.Reject error
+            if isNull error then
+                completion.Resolve ()
+            else
+                completion.Reject error
 #else
-        | ValueSome null -> completion.TrySetResult () |> ignore
-        | ValueSome error -> completion.TrySetException error |> ignore
+            if isNull error then
+                completion.TrySetResult () |> ignore
+            else
+                completion.TrySetException error |> ignore
 #endif
 
     member private this.Enqueue(batch: TraceEvent[]) =
