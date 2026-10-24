@@ -22,11 +22,15 @@ them with the same comparisons run by hand.
 | `Graph.RunFlush` | The guarded `Boundary` call after a flush pass. |
 | `Graph.RunUntrackedHosted`, `RunUntrackedHostedWith` | The guarded `EnterDerived` / `LeaveDerived` pair. |
 | `Graph.EnterContinuation`, `LeaveContinuation` | The guarded `EnterDerived` / `LeaveDerived` pair for an async-memo continuation. |
+| `Effect.RunBody`, `EffectOn.Act` | Added by the second review fix of PR #188: `ldfld graph`, `ldfld journal`, `brfalse` before the body runs; the work numbering and its closure run only with a journal. |
+| `Graph.Post` | Added by the same fix: on the queued, off-thread path only, a `journal` null check before the inbox enqueue. |
 | `Graph..ctor` | Resolving `options.Journal` into the `journal` field. |
 | `GraphOptions` members | The record's fifth field, `Journal`. |
 | `AsyncMemo.applyResult` | No instruction change: the `ldstr` source path and line literal of a raise site differ between the two trees. |
 
 ## Counters, every scenario
+
+The counters below predate the second review fix. Its journal-off additions are the null checks in the table above and allocate nothing; the counters were not rerun for it.
 
 `counters-base-aae54f2e.md` and `counters-head.md`: `Ranvier.Counters --no-pmc` with a
 `RanvierCounters` counters worker, base then head, under `gate-lock.ps1 bench`. CPU load 63 % before,
