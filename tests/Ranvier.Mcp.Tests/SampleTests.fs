@@ -124,3 +124,64 @@ let tests =
                     client.DisposeAsync().AsTask().Wait()
             }
         ]
+
+#if RANVIER_TRACE
+/// The ids of the cart's <c>discount</c>, <c>subtotal</c> and <c>total</c> nodes.
+let private nodeIds (session: Session<Cart.App>) =
+    session.Host.Invoke (fun app -> (app.Discount :> Ranvier.INode).Id, (app.Subtotal :> Ranvier.INode).Id, (app.Total :> Ranvier.INode).Id)
+
+/// Adds a line, then sets a 10% discount, through dispatch.
+let private addThenDiscount (session: Session<Cart.App>) =
+    task {
+        let! _ = call session "dispatch" script[0]
+        let! _ = call session "dispatch" script[2]
+        return ()
+    }
+
+[<Tests>]
+let diagnosis =
+    testList
+        "MCP sample cart diagnosis (traced)"
+        [
+            testTask "why_not and trace_state show the --defect total does not depend on the discount" {
+                use! session = connect true
+                do! addThenDiscount session
+                let! discount, subtotal, total = nodeIds session
+
+                let! whyNot = call session "why_not" """{"node":"total"}"""
+
+                match (Ranvier.TraceJson.readWhyNot (textOf whyNot)).Body with
+                | Some (Ranvier.WhyNotReason.CheckedClean (_, upstream)) ->
+                    Expect.equal upstream [ subtotal ] "the total was checked clean against the subtotal alone"
+                | other -> failtest $"expected CheckedClean, got {other}"
+
+                let! state = call session "trace_state" "{}"
+                let state = Ranvier.TraceJson.readState (textOf state)
+                Expect.equal state.Body.Sources[total] [ subtotal ] "the total's only source is the subtotal"
+
+                Expect.isFalse
+                    (state.Body.Sources[total]
+                     |> List.contains discount)
+                    "the discount is not a source"
+            }
+
+            testTask "why traces the healthy total's last run to the discount write" {
+                use! session = connect false
+                do! addThenDiscount session
+                let! discount, subtotal, total = nodeIds session
+
+                let! state = call session "trace_state" "{}"
+                let state = Ranvier.TraceJson.readState (textOf state)
+
+                Expect.equal (List.sort state.Body.Sources[total]) (List.sort [ subtotal; discount ]) "the total reads both"
+
+                let! why = call session "why" """{"node":"total"}"""
+                let why = Ranvier.TraceJson.readWhy (textOf why)
+
+                Expect.isTrue
+                    (why.Body.Steps
+                     |> List.exists (fun step -> step.Node = discount))
+                    "the chain passes through the discount"
+            }
+        ]
+#endif
