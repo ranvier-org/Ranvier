@@ -948,8 +948,9 @@ module private Perf =
 
     /// <summary>
     /// Builds the counter bench and its Fable harness untraced and traced, runs the counter scenarios and the trace
-    /// growth probe of both on .NET and Node.js, runs the BenchmarkDotNet <c>Trace</c> category, and writes
-    /// <c>versions.json</c> and <c>report.md</c> into OUT.
+    /// growth probe of both on .NET and Node.js, runs the Playground's keyed-row harness on an untraced and a traced
+    /// Chromium bundle, runs the BenchmarkDotNet <c>Trace</c> category, and writes <c>versions.json</c> and
+    /// <c>report.md</c> into OUT.
     /// </summary>
     let trace =
         input {
@@ -958,9 +959,24 @@ module private Perf =
 
             and! short =
                 Input.option<bool> "--short"
-                |> Input.description "Runs BenchmarkDotNet's short job: a smoke run, not a baseline"
+                |> Input.description "Runs BenchmarkDotNet's short job and one Chromium process: a smoke run, not a baseline"
+
+            and! noChromium =
+                Input.option<bool> "--no-chromium"
+                |> Input.description "Skips the Chromium keyed-row runs"
 
             let output = absolute directory
+
+            let playground =
+                combine __REPOSITORY_DIRECTORY__ "examples/Fable.Ranvier.Playground"
+
+            let chromiumModes = "--modes=ranvier,ranvier-sugar"
+
+            let chromiumRuns =
+                if short then
+                    [ "--processes=1"; "--rounds=5" ]
+                else
+                    [ "--processes=3"; "--rounds=15" ]
 
             let worker variant =
                 combine output ("dotnet/" + variant + "/Ranvier.Counters.dll")
@@ -1077,6 +1093,46 @@ module private Perf =
                                     ]
                             )
                         }
+
+                    if not noChromium then
+                        stage "chromium packages" {
+                            workingDir playground
+                            run "npm ci"
+                        }
+
+                        // Each variant compiles the Playground's Fable output, so the keyed-heap bundle follows the
+                        // keyed-rows build of the same variant.
+                        for traced, variant in variants do
+                            stage ("chromium " + variant) {
+                                workingDir playground
+                                envVars [ ("RanvierTrace", (string traced).ToLowerInvariant()) ]
+
+                                run (
+                                    Cmd.ofList
+                                        "node"
+                                        ([
+                                            "benchmarks/frameworks/keyed-rows.mjs"
+                                            "--build"
+                                            "--dist=generated-keyed-" + variant
+                                            chromiumModes
+                                            "--out=" + combine output "chromium"
+                                            "--label=rows-" + variant
+                                         ]
+                                         @ chromiumRuns)
+                                )
+
+                                run (
+                                    Cmd.ofList
+                                        "node"
+                                        [
+                                            "benchmarks/frameworks/keyed-heap.mjs"
+                                            chromiumModes
+                                            (if short then "--processes=1" else "--processes=2")
+                                            "--out=" + combine output "chromium"
+                                            "--label=heap-" + variant
+                                        ]
+                                )
+                            }
 
                     stage "benchmarks" {
                         run (

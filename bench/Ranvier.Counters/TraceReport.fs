@@ -75,15 +75,123 @@ let allocationRows (untraced: JsonElement) (traced: JsonElement) : AllocationRow
                 GcFree = row.GcFree && tracedRow.GcFree
             }))
 
+/// <summary>The median milliseconds of a keyed-list operation in an untraced and a traced Chromium bundle.</summary>
+type ChromiumTiming =
+    {
+        Operation: string
+        /// <summary>The adapter of <c>keyed-rows.mjs</c>: <c>ranvier</c> or <c>ranvier-sugar</c>.</summary>
+        Mode: string
+        UntracedMs: float
+        TracedMs: float
+    }
+
+/// <summary>A mounted keyed list's JavaScript heap bytes per row in an untraced and a traced Chromium bundle.</summary>
+type ChromiumHeap =
+    {
+        /// <summary>
+        /// <c>retained heap</c>: used V8 heap per row after forced collections, from <c>keyed-rows.mjs</c>.
+        /// <c>new JS objects</c>: self size per row of the objects new between two heap snapshots, from
+        /// <c>keyed-heap.mjs</c>.
+        /// </summary>
+        Measure: string
+        Mode: string
+        Rows: int
+        Untraced: float
+        Traced: float
+    }
+
+/// <summary>The Chromium figures of a <c>perf trace</c> run.</summary>
+type Chromium =
+    {
+        Version: string
+        Timings: ChromiumTiming[]
+        Heaps: ChromiumHeap[]
+    }
+
+/// <summary>The operations and modes present in both <c>keyed-rows.mjs</c> results, in the untraced result's order.</summary>
+let chromiumTimings (untraced: JsonElement) (traced: JsonElement) : ChromiumTiming[] =
+    let medians (result: JsonElement) =
+        [|
+            for row in result.GetProperty("summaries").EnumerateArray() ->
+                (row.GetProperty("operation").GetString(), row.GetProperty("mode").GetString()), row.GetProperty("medianMs").GetDouble()
+        |]
+
+    let tracedMs = medians traced |> Map.ofArray
+
+    medians untraced
+    |> Array.choose (fun ((operation, mode), ms) ->
+        tracedMs
+        |> Map.tryFind (operation, mode)
+        |> Option.map (fun tracedMs ->
+            {
+                Operation = operation
+                Mode = mode
+                UntracedMs = ms
+                TracedMs = tracedMs
+            }))
+
+let private median (values: float[]) =
+    let sorted = Array.sort values
+    sorted[sorted.Length / 2]
+
+/// <summary>
+/// The median across replicates of each mode and row count present in both results. A <c>keyed-rows.mjs</c> result
+/// gives <c>retained heap</c> rows; a <c>keyed-heap.mjs</c> result gives <c>new JS objects</c> rows.
+/// </summary>
+let chromiumHeaps (untraced: JsonElement) (traced: JsonElement) : ChromiumHeap[] =
+    let mutable rows = Unchecked.defaultof<JsonElement>
+
+    let measure (result: JsonElement) =
+        if result.TryGetProperty ("heaps", &rows) then
+            "retained heap",
+            [|
+                for row in rows.EnumerateArray () ->
+                    (row.GetProperty("mode").GetString(), row.GetProperty("count").GetInt32()), row.GetProperty("retainedBytesPerRow").GetDouble()
+            |]
+        else
+            "new JS objects",
+            [|
+                for row in result.GetProperty("results").EnumerateArray() ->
+                    (row.GetProperty("mode").GetString(), row.GetProperty("rows").GetInt32()), row.GetProperty("jsBytesPerRow").GetDouble()
+            |]
+
+    let medians samples =
+        samples
+        |> Array.groupBy fst
+        |> Array.map (fun (key, group) -> key, median (Array.map snd group))
+
+    let name, untracedSamples = measure untraced
+    let _, tracedSamples = measure traced
+    let tracedBytes = medians tracedSamples |> Map.ofArray
+
+    medians untracedSamples
+    |> Array.choose (fun ((mode, count), bytes) ->
+        tracedBytes
+        |> Map.tryFind (mode, count)
+        |> Option.map (fun tracedBytes ->
+            {
+                Measure = name
+                Mode = mode
+                Rows = count
+                Untraced = bytes
+                Traced = tracedBytes
+            }))
+
 let private number (format: string) (value: float) =
     value.ToString (format, invariant)
 
 /// <summary>
 /// The report: <c>versions</c>, the traced-to-untraced allocation ratio of each row, each workload's growth on each
-/// runtime, the export and tail-read timings of each traced checkpoint, then each BenchmarkDotNet table of
-/// <c>benchmarks</c> under its title.
+/// runtime, the export and tail-read timings of each traced checkpoint, the Chromium timings and heaps, then each
+/// BenchmarkDotNet table of <c>benchmarks</c> under its title.
 /// </summary>
-let markdown (versions: (string * string)[]) (allocations: AllocationRow[]) (growth: GrowthRun[]) (benchmarks: (string * string)[]) : string =
+let markdown
+    (versions: (string * string)[])
+    (allocations: AllocationRow[])
+    (growth: GrowthRun[])
+    (chromium: Chromium option)
+    (benchmarks: (string * string)[])
+    : string =
     let text = StringBuilder ()
 
     let line (s: string) =
@@ -172,6 +280,50 @@ let markdown (versions: (string * string)[]) (allocations: AllocationRow[]) (gro
 
             line $"| %s{run.Runtime} | %s{c.Workload} | %d{c.Updates} | %d{c.Events} | %s{timings} | %d{c.TailEvents} |"
 
+    match chromium with
+    | None -> ()
+    | Some chromium ->
+        line ""
+        line "## Chromium keyed rows"
+        line ""
+        line $"Chromium %s{chromium.Version}, the Playground's framework harness. Each bundle runs in its own browser processes,"
+        line "so a ratio divides the traced median by the untraced median, not paired samples."
+        line ""
+        line "| Operation | Mode | Untraced ms | Traced ms | Ratio |"
+        line "| --- | --- | ---: | ---: | ---: |"
+
+        for t in chromium.Timings do
+            let ratio =
+                if t.UntracedMs = 0. then
+                    "n/a"
+                else
+                    number "0.00" (t.TracedMs / t.UntracedMs)
+
+            let figures =
+                [ t.UntracedMs; t.TracedMs ]
+                |> List.map (number "0.000")
+                |> String.concat " | "
+
+            line $"| %s{t.Operation} | %s{t.Mode} | %s{figures} | %s{ratio} |"
+
+        line ""
+        line "| Measure | Mode | Rows | Untraced B/row | Traced B/row | Traced - untraced | Ratio |"
+        line "| --- | --- | ---: | ---: | ---: | ---: | ---: |"
+
+        for h in chromium.Heaps do
+            let ratio =
+                if h.Untraced = 0. then
+                    "n/a"
+                else
+                    number "0.00" (h.Traced / h.Untraced)
+
+            let figures =
+                [ h.Untraced; h.Traced; h.Traced - h.Untraced ]
+                |> List.map (number "0")
+                |> String.concat " | "
+
+            line $"| %s{h.Measure} | %s{h.Mode} | %d{h.Rows} | %s{figures} | %s{ratio} |"
+
     if benchmarks.Length > 0 then
         line ""
         line "## BenchmarkDotNet, category Trace"
@@ -193,8 +345,9 @@ let private onlyJson (directory: string) =
 /// <summary>
 /// Reads a <c>perf trace</c> output directory and writes its <c>report.md</c>, returning the report's path. The
 /// directory holds <c>versions.json</c>, one counter report in each of <c>counters/untraced</c> and
-/// <c>counters/traced</c>, <c>growth/&lt;runtime&gt;-&lt;variant&gt;.json</c>, and BenchmarkDotNet's
-/// <c>benchmarks/results</c>.
+/// <c>counters/traced</c>, <c>growth/&lt;runtime&gt;-&lt;variant&gt;.json</c>, BenchmarkDotNet's
+/// <c>benchmarks/results</c>, and optionally <c>chromium/rows-&lt;variant&gt;.json</c> and
+/// <c>chromium/heap-&lt;variant&gt;.json</c>.
 /// </summary>
 let write (directory: string) =
     let versions =
@@ -218,6 +371,32 @@ let write (directory: string) =
                         yield read file
         |]
 
+    let chromium =
+        let file (name: string) =
+            Path.Combine (directory, "chromium", name + ".json")
+
+        if File.Exists (file "rows-untraced") then
+            let element name =
+                JsonDocument.Parse(File.ReadAllText (file name)).RootElement
+
+            let rows = element "rows-untraced"
+            let tracedRows = element "rows-traced"
+
+            let objects =
+                if File.Exists (file "heap-untraced") then
+                    chromiumHeaps (element "heap-untraced") (element "heap-traced")
+                else
+                    [||]
+
+            Some
+                {
+                    Version = rows.GetProperty("chromium").GetString()
+                    Timings = chromiumTimings rows tracedRows
+                    Heaps = Array.append (chromiumHeaps rows tracedRows) objects
+                }
+        else
+            None
+
     let results = Path.Combine (directory, "benchmarks", "results")
 
     let benchmarks =
@@ -233,7 +412,7 @@ let write (directory: string) =
             [||]
 
     let report =
-        markdown versions (allocationRows (counters "untraced") (counters "traced")) growth benchmarks
+        markdown versions (allocationRows (counters "untraced") (counters "traced")) growth chromium benchmarks
 
     let path = Path.Combine (directory, "report.md")
     File.WriteAllText (path, report)

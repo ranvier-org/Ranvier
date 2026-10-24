@@ -72,6 +72,27 @@ let private growth traced =
             | Error e -> failtest e
     }
 
+let private keyedRows (summaries: (string * string * float) list) (heaps: (string * int * float) list) =
+    let summary =
+        summaries
+        |> List.map (fun (operation, mode, ms) -> $"""{{"operation":"%s{operation}","mode":"%s{mode}","medianMs":%g{ms}}}""")
+        |> String.concat ","
+
+    let heap =
+        heaps
+        |> List.map (fun (mode, count, bytes) -> $"""{{"mode":"%s{mode}","count":%d{count},"retainedBytesPerRow":%g{bytes}}}""")
+        |> String.concat ","
+
+    (JsonDocument.Parse ($"""{{"chromium":"140.0","summaries":[%s{summary}],"heaps":[%s{heap}]}}""")).RootElement
+
+let private keyedHeap (results: (string * int * float) list) =
+    let body =
+        results
+        |> List.map (fun (mode, rows, bytes) -> $"""{{"mode":"%s{mode}","rows":%d{rows},"jsBytesPerRow":%g{bytes}}}""")
+        |> String.concat ","
+
+    (JsonDocument.Parse ($"""{{"results":[%s{body}]}}""")).RootElement
+
 [<Tests>]
 let tests =
     testList
@@ -117,6 +138,7 @@ let tests =
                         [| "Source", "abc1234"; "OS", "TestOS" |]
                         [| row "memo" 100. 250. true |]
                         [| growth false; growth true |]
+                        None
                         [| "TraceCostBenchmarks", "| Method | Mean |" |]
 
                 Expect.stringContains text "| Source | abc1234 |" "versions"
@@ -126,14 +148,101 @@ let tests =
                 Expect.stringContains text "| Method | Mean |" "BenchmarkDotNet table"
             }
 
+            test "Chromium timings pair operations and modes across the variants" {
+                let timings =
+                    TraceReport.chromiumTimings
+                        (keyedRows [ "create1k", "ranvier", 2.; "swap1k", "ranvier", 1.; "create1k", "solid", 9. ] [])
+                        (keyedRows [ "create1k", "ranvier", 3.; "create1k", "solid", 9. ] [])
+
+                Expect.equal
+                    timings
+                    [|
+                        {
+                            Operation = "create1k"
+                            Mode = "ranvier"
+                            UntracedMs = 2.
+                            TracedMs = 3.
+                        }
+                        {
+                            Operation = "create1k"
+                            Mode = "solid"
+                            UntracedMs = 9.
+                            TracedMs = 9.
+                        }
+                    |]
+                    "operations in both variants"
+            }
+
+            test "Chromium heaps take the median of the replicates of each mode and row count" {
+                let heaps =
+                    TraceReport.chromiumHeaps
+                        (keyedRows [] [ "ranvier", 1000, 900.; "ranvier", 1000, 1000.; "ranvier", 1000, 1100. ])
+                        (keyedRows [] [ "ranvier", 1000, 2000.; "ranvier", 1000, 1800.; "ranvier", 1000, 2200. ])
+
+                Expect.equal
+                    heaps
+                    [|
+                        {
+                            Measure = "retained heap"
+                            Mode = "ranvier"
+                            Rows = 1000
+                            Untraced = 1000.
+                            Traced = 2000.
+                        }
+                    |]
+                    "keyed-rows heap"
+
+                let objects =
+                    TraceReport.chromiumHeaps (keyedHeap [ "ranvier", 10000, 300. ]) (keyedHeap [ "ranvier", 10000, 450. ])
+
+                Expect.equal
+                    (objects
+                     |> Array.map (fun h -> h.Measure, h.Rows, h.Untraced, h.Traced))
+                    [| "new JS objects", 10000, 300., 450. |]
+                    "keyed-heap objects"
+            }
+
+            test "the report holds the Chromium rows" {
+                let chromium =
+                    {
+                        Version = "140.0"
+                        Timings =
+                            [|
+                                {
+                                    Operation = "create1k"
+                                    Mode = "ranvier"
+                                    UntracedMs = 2.
+                                    TracedMs = 3.
+                                }
+                            |]
+                        Heaps =
+                            [|
+                                {
+                                    Measure = "retained heap"
+                                    Mode = "ranvier"
+                                    Rows = 1000
+                                    Untraced = 1000.
+                                    Traced = 2500.
+                                }
+                            |]
+                    }
+
+                let text = TraceReport.markdown [||] [||] [||] (Some chromium) [||]
+
+                Expect.stringContains text "Chromium 140.0" "version"
+                Expect.stringContains text "| create1k | ranvier | 2.000 | 3.000 | 1.50 |" "timing ratio"
+                Expect.stringContains text "| retained heap | ranvier | 1000 | 1000 | 2500 | 1500 | 2.50 |" "heap ratio"
+            }
+
             test "a zero untraced allocation has no ratio" {
-                let text = TraceReport.markdown [||] [| row "signal" 0. 123. true |] [||] [||]
+                let text = TraceReport.markdown [||] [| row "signal" 0. 123. true |] [||] None [||]
 
                 Expect.stringContains text "| dotnet | signal | Ranvier | 0 | 123 | 123 | n/a | yes |" "no ratio"
             }
 
             test "a row with a collection inside a region has no ratio" {
-                let text = TraceReport.markdown [||] [| row "timed" 10. -200. false |] [||] [||]
+                let text =
+                    TraceReport.markdown [||] [| row "timed" 10. -200. false |] [||] None [||]
 
                 Expect.stringContains text "| dotnet | timed | Ranvier | 10 | -200 | -210 | n/a | no |" "collected"
             }
